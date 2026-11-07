@@ -12,6 +12,12 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
 
 - **Listening** (`ascolto`): audio of any format (ogg/opus from Telegram, webm from the browser, mp3, wav, m4a…) → text.
 - **Speaking** (`voce`): text → audio (`ogg_opus` for Telegram voice notes, `mp3` for browsers, `wav`, `webm`).
+  **Language follows the conversation** (Marko 2026-11-07): the text to speak is read in its own language
+  (`core/lang.py`, langdetect; short or unsure texts keep `echo.language`, Italian when it is `auto`), and a local
+  voice of another language is swapped for that language's voice of the same kind (Kokoro: `if_sara` + English →
+  `af_heart`; Piper: `PIPER_BY_LANG`, downloaded on first use); a language the engine has no voice for is an error,
+  so the chain moves on. A program at home (Chatterbox…) gets `language` in the OpenAI request. Listening with
+  `auto` lets Whisper recognise the language. A `say` stream fixes the language on its first long sentence.
   Before speaking, the text is made speakable (markdown, links, code and emoji dropped; very long texts cut at
   `echo.voce.max_chars` with «il resto è nel testo»).
 - **Streams in blocks**: `listen` (microphone in chunks → partial text, trailing silence for the end of a turn) and
@@ -101,7 +107,7 @@ never changes.
 ## Settings (Themis, `echo.*`)
 
 `echo.providers`, `echo.chains`, `echo.usecases`, `echo.mode`, `echo.external.provider`, `echo.external.model`,
-`echo.external.fallback`, `echo.language` (it), `echo.voce.max_chars` (1200), `echo.ascolto.max_seconds` (600),
+`echo.external.fallback`, `echo.language` (auto = follow the conversation), `echo.voce.max_chars` (1200), `echo.ascolto.max_seconds` (600),
 `echo.live.silence_ms` (1250), `echo.chains.cooldown` (60 min), `echo.audio.space_mb` (2048),
 `echo.audio.generated_days` (30), `echo.pricing`; group «La tua voce»: `echo.impronta.soglia` (0.45),
 `echo.impronta.usi` (`["webui.live.ascolto"]`), `echo.dizionario.conferme` (2).
@@ -126,7 +132,7 @@ never changes.
 | GET | `/audio`, `/audio/{id}?format=`, `/audio-for?ref_id=` | kept audio (list with space, one, the one of a message) |
 | DELETE | `/audio/{id}`, `/audio?notification_id=\|message_id=` | delete one; drop regenerable audio of a removed notification |
 | POST | `/audio/cleanup` | agenda job |
-| GET | `/setup/catalog` | guided setup «Voce» (`core/voice_setup.py`): providers per direction, local first, with their models/voices (a cloud one once its key is there) and the chain's current first step; each provider has `note` (one line on what it is: Kokoro natural, Piper light) and each direction `steps` (the whole chain); `?hosts=` also looks on other computers of the house: speech programs found at home (Speaches 8000 / LocalAI 8080 through `/v1/models` with speech models, Home Assistant's Wyoming 10300/10200 through `describe`) are listed as local with `found`, `url`; a block at a private address counts as local too |
+| GET | `/setup/catalog` | guided setup «Voce» (`core/voice_setup.py`): providers per direction, local first, with their models/voices (a cloud one once its key is there) and the chain's current first step; each provider has `note` (one line on what it is: Kokoro natural, Piper light) and each direction `steps` (the whole chain); `?hosts=` also looks on other computers of the house: speech programs found at home (Chatterbox 8004 and Kokoro-FastAPI 8880 through `/v1/audio/voices`, Speaches 8000 / LocalAI 8080 through `/v1/models` with speech models, Home Assistant's Wyoming 10300/10200 through `describe`) are listed as local with `found`, `url`; a block at a private address counts as local too; each direction has `programs` (free speech programs not found, offered to install with their site: Chatterbox, Kokoro-FastAPI, Speaches); Kokoro lists all its 54 voices, Piper one female and one male voice per language, each label with its language («Sara · italiano»); «Ascolta» says a sentence in the voice's own language |
 | POST | `/setup/reload-keys` | Echo re-reads the `ECHO_KEY_*` lines of its own `.env` (`Hestia-Echo/app/.env`, `blocks.reload_keys` → `hestia_common.env_keys`) → `{keys}` (names only): a key saved by the setup works at once, no container re-create; also at startup |
 | POST | `/setup/test` | «Prova» of a speech service `{provider}`: its list read with the key (no audio made) → `{ok, detail, models, voices, recommended {ascolto, voce}}` (preselected once the key works) |
 | POST | `/setup/preview` | «Ascolta» on a voice chosen in the setup `{provider, voice, model?, text?}`: a short sentence spoken by that provider only (no chain, nothing saved) → `{ok, audio_b64, mime_type}` or `{ok: false, detail}` (a local engine not downloaded yet, a service without key) |

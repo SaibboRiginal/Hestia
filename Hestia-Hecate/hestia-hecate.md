@@ -90,6 +90,10 @@ Adding a new data source = implementing this interface and registering the conne
 | `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
 | `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, env_credentials, waiting_code, last_sync, last_error}` |
 | `POST` | `/api/gateway/garmin/connect` | «Collega Garmin»: Hermes secret form (email + password) to the owner |
+| `GET` | `/api/gateway/connections` | Every linkable service, same shape `{id, label, icon, what, state, detail, step, actions}` (`?place=setup`: only the ones offered in the setup) |
+| `POST` | `/api/gateway/connections/{id}` | The current step's values `{values}` → `{item, open_url?, message?}`; refused → 422 with the reason in words |
+| `POST` | `/api/gateway/connections/{id}/{action}` | A button of the card (`sync`, `again`, `cancel`, `client`) → `{item, …}` |
+| `DELETE` | `/api/gateway/connections/{id}` | Unlink → `{item}` |
 | `POST` | `/api/gateway/garmin/login` | Target of the secret form and of the Dispositivi form `{direct?, values: {email, password} \| {code}}` → `connected \| needs_code` (second form, or with `direct` the code asked in the page) |
 | `DELETE` | `/api/gateway/garmin` | Forget Garmin (delete the tokens) |
 | `GET` | `/api/gateway/garmin/day?day=` | One normalised day (sleep, steps, resting HR, body battery, HRV, readiness, stress, activities) |
@@ -139,14 +143,25 @@ Adding a new data source = implementing this interface and registering the conne
 | No `refresh_token` returned | Remove the app at myaccount.google.com/permissions, re-authorize. |
 | `state mismatch` | URL from an older attempt → use the latest link. |
 
-### «Collega Google» by hand (round 6 of the guided setup)
+### Connected services: one list, one card (2026-11-07)
 
-The WebUI element `<hecate-google>` (bundle `ui/src/google.ts`) is the one way to connect Google from a page: the
-Dispositivi page shows it next to `<hecate-garmin>` (`ui/src/garmin.ts`) and the phone card, and the setup screen
-«Calendario, mail e dispositivi» mounts the same two elements through the plugin outlet. Steps: the OAuth client
-(type «App desktop», with a short guide; `POST /api/gateway/auth/google/client`), then «Collega Google» →
-`initiate/google`, Google's page opens in a new tab and the card polls `poll/google`; when the return page cannot
-load (phone, no public address) the user pastes its address or the code → `complete/google`. No chat needed.
+Every account or device Hecate links is a **connector** (`app/connections.py`) with the same shape, and the WebUI
+draws all of them with one element, `<hecate-connections>` (`ui/src/connections.ts`): the Dispositivi page shows the
+whole list, the guided setup screen «I tuoi servizi» the ones with `in_setup` (`?place=setup`, the phone is not
+offered there). A row = service, one line on what it gives, state (collegato / in attesa / non collegato); opening
+it shows the current **step** at once, the same way for every service: fields + one button (`kind: form`, optional
+`guide` and `link`), or a page opened in another tab that the card polls every 5 s with an optional field to paste
+(`kind: wait`). Buttons of a connected service come from `actions` (`sync`, `forget`, `again`…). A search box
+appears past 6 services. A new service = one more `Connector` registered in `main.py`: no new card.
+
+| Connector | Steps |
+|---|---|
+| `google` | OAuth client of Google Cloud (id + secret or the JSON, short guide + link) → «Collega Google» opens Google's page (`open_url`) → waits (`poll`) or the pasted address/code → connected; actions «Collega di nuovo», «Cambia accesso Google Cloud» |
+| `garmin` | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Leggi adesso», «Scollega» |
+| `phone` | three steps to follow on the phone (Tasker/MacroDroid); connected once it has sent a signal (Dispositivi only) |
+
+The old endpoints (`auth/google*`, `auth/initiate|poll|complete/google`, `garmin/*`) stay for Telegram, the
+assistant tools and the secret forms; the connectors call the same code.
 
 ### OAuth Flow (API)
 

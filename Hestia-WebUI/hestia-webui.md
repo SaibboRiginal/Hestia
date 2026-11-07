@@ -531,11 +531,16 @@ with the models just chosen (`brain/hello`, «Scritto con <model>»), drawn by t
 writes again once the download is over. In Voce every voice has «Ascolta», in the lists too, before choosing it (a short sentence with that voice,
 `voice/preview`; `setup-pick` `trial`), in Ascolto «Prova a parlare» on every engine (tap, speak, tap: «Ho capito: …»,
 `voice/hear`); a local engine not downloaded yet says it can be tried after «Conferma», a sound the browser refuses
-to play says so (never a silent play). Memoria is the same step with `single`: one embedding model in all,
+to play says so (never a silent play); every sound goes through the site's one player (`VoiceService.play`), so a
+new try stops the one playing (chat included), a second tap on the same voice stops it, and a late answer never
+plays over a newer one. Voce says it speaks in the language you write in; every voice shows its
+language, and under the local list (in every step) «Altri programmi gratis» lists the programs not found yet
+(Modelli: LM Studio…; Voce: Chatterbox, Kokoro-FastAPI, Speaches) with their site. Memoria is the same step with `single`: one embedding model in all,
 local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
-Voce writes both chains and queues the downloads. The «Calendario, mail e Garmin» screen mounts only Hecate's own
-cards `<hecate-google>` and `<hecate-garmin>` through `hx-plugin-outlet` (the same ones as the Dispositivi page):
+Voce writes both chains and queues the downloads. The «I tuoi servizi» screen mounts Hecate's one list of
+services `<hecate-connections>` (ctx `params.place = setup`) through `hx-plugin-outlet`, the same list as the
+Dispositivi page (every service the same card):
 Google connects by hand there (OAuth client with a short guide, «Collega Google», pasted address as fallback).
 «Fuori casa»: one line on what it is, «Attiva» right there, the steps while it starts, then the address with «Apri»
 and «Copia», a warning with «Riprova» when no address comes in 90 s. «Tutto pronto»: each choice as a row that goes

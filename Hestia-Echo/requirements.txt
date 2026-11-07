@@ -7,3 +7,5 @@ requests==2.32.3
 faster-whisper==1.2.1
 piper-tts==1.8.0
 kokoro-onnx==0.6.1
+# The language of a text to speak (the voice follows the language of the conversation, Marko 2026-11-07).
+langdetect==1.0.9

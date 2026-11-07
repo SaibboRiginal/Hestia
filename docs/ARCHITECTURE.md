@@ -143,6 +143,7 @@ with a direction `ascolto` or `voce` (quota skip until reset), uses declared by 
 Keeps audio in Archive (blobs + `echo-store`): Marko's recordings never deleted, generated audio while useful
 (`echo.audio.generated_days`, regenerated from the text), space limit drops regenerable audio first. Live mode on every
 client = the same Oracle chat + Echo; no external live service. Callers use `hestia_common.voice_client`. Audio is normalised to 16 kHz WAV with a rewritten header (ffmpeg pipes leave the size unset); local Whisper gets samples, not files.
+The voice follows the language of the conversation (2026-11-07): a text is spoken in its own language with a voice of that language (same kind as the chosen one), listening recognises the language (`echo.language` auto); free speech programs at home (Chatterbox, Kokoro-FastAPI, Speaches) are found like the model programs.
 Details: `Hestia-Echo/hestia-echo.md`.
 
 ### Hestia-Hermes 📨

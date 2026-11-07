@@ -18,6 +18,7 @@ from collections import deque
 from typing import Any, Callable
 
 from . import audio
+from . import lang
 from .blocks import Blocks, ChainExhausted
 from .keep import Keep
 from .standards import STANDARDS
@@ -62,7 +63,17 @@ class Echo:
         self._lock = threading.Lock()
 
     def language(self, override: str | None = None) -> str:
-        return str(override or self.get("echo.language", "it") or "it")
+        """``echo.language``: «auto» (default) = follow the conversation (listening recognises it, speaking reads
+        the language of the text), or one language forced for listening."""
+        return str(override or self.get("echo.language", "auto") or "auto")
+
+    def speak_language(self, text: str, override: str | None = None) -> str:
+        """The language to read ``text`` in: the caller's, else the text's own (Marko 2026-11-07: an English reply is
+        spoken in English by an English voice), else the configured one (Italian when it is «auto»)."""
+        if override:
+            return str(override)
+        base = self.language()
+        return lang.detect(text, "it" if base == "auto" else base)
 
     # ── bookkeeping ──────────────────────────────────────────────────────────
     def _record(self, kind: str, info: dict, *, ms: int, ok: bool, seconds: float = 0.0, chars: int = 0,
@@ -200,9 +211,11 @@ class Echo:
             return {"ok": False, "detail": why}
         std = STANDARDS[p["type"]]
         step = {"provider": p["name"], "model": str(body.get("model") or ""), "voice": str(body.get("voice") or "")}
-        text = str(body.get("text") or "Ciao, sono Hestia. Questa è la mia voce.")[:200]
+        own = std.voice_language(step["voice"] or step["model"])     # a voice tried speaks its own language
+        speech = own or self.speak_language(str(body.get("text") or ""))
+        text = str(body.get("text") or lang.SAMPLE.get(speech) or lang.SAMPLE["it"])[:200]
         try:
-            data, mime = std.speak(p, step["model"], step["voice"], text, self.language(), _opts(std, p, step, "voce"))
+            data, mime = std.speak(p, step["model"], step["voice"], text, speech, _opts(std, p, step, "voce"))
             pcm = audio.to_pcm16k(data, mime)
             out, out_mime = audio.encode(data, str(body.get("format") or "mp3"))
         except Exception as exc:  # noqa: BLE001 — a failed try is an answer, not an error page
@@ -267,7 +280,8 @@ class Echo:
         clean = self.prepare_text(text)
         if not clean:
             raise Invalid("niente da leggere")
-        data, mime, info = self._spoken(clean, uc, str(body.get("voice") or ""), self.language(body.get("language")))
+        data, mime, info = self._spoken(clean, uc, str(body.get("voice") or ""),
+                                        self.speak_language(clean, body.get("language")))
         try:
             pcm = audio.to_pcm16k(data, mime)
             out, out_mime = audio.encode(data, fmt)
@@ -353,8 +367,8 @@ class Echo:
     def say_open(self, body: dict) -> dict:
         return self._open("say", use_case=str(body.get("use_case") or "echo.prova.voce"),
                           fmt=str(body.get("format") or "mp3"), voice=str(body.get("voice") or ""),
-                          language=self.language(body.get("language")), cutter=audio.SentenceCutter(), seq=0,
-                          pcm=[], text="", keep=body.get("keep"), failed=0)
+                          language=self.speak_language("", body.get("language")), sure=bool(body.get("language")),
+                          cutter=audio.SentenceCutter(), seq=0, pcm=[], text="", keep=body.get("keep"), failed=0)
 
     def _say_blocks(self, st: dict, sentences: list[str]) -> list[dict]:
         blocks = []
@@ -362,6 +376,9 @@ class Echo:
             clean = audio.speakable(sentence)
             if not clean:
                 continue
+            if not st.get("sure"):                    # the reply's language, read from its first long sentence
+                st["language"] = lang.detect(clean, st["language"])
+                st["sure"] = len(clean) >= 40
             try:
                 data, mime, _ = self._spoken(clean, st["use_case"], st["voice"], st["language"])
                 out, out_mime = audio.encode(data, st["fmt"])

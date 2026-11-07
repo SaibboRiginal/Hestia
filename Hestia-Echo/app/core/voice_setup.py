@@ -39,7 +39,7 @@ ENGINE_NOTES = {
     "kokoro": "La voce più naturale, quasi umana. Circa 350 MB, va bene anche senza scheda video. Consigliata.",
     "piper": "Leggerissima e istantanea (circa 60 MB a voce), anche su computer vecchi; suona più da sintetizzatore.",
     "wyoming": "Il server voce di Home Assistant che hai in casa.",
-    "openai": "Un programma vocale che hai in casa (Speaches, LocalAI…).",
+    "openai": "Un programma vocale che hai in casa (Chatterbox, Speaches, LocalAI…).",
 }
 WHISPER_NOTES = {"tiny": "Il più leggero, sbaglia di più.", "base": "Leggero.",
                  "small": "Buon equilibrio: consigliato.", "medium": "Più preciso, più lento.",
@@ -49,8 +49,18 @@ WHISPER_NOTES = {"tiny": "Il più leggero, sbaglia di più.", "base": "Leggero."
 # Speech programs that may run at home, on their usual port. Seen from the container, this computer is
 # ``host.docker.internal`` (compose ``extra_hosts``).
 THIS_COMPUTER = "host.docker.internal"
+# ``site``/``note``/``dirs``: a free program the setup offers to install when it is not found (Marko 2026-11-07:
+# «mettiamo tutte le voci locali»). ``model``: its speech model when it has no ``/v1/models`` list.
 SPEECH_PROGRAMS = [
-    {"name": "speaches", "label": "Speaches", "port": 8000, "type": "openai"},
+    {"name": "chatterbox", "label": "Chatterbox", "port": 8004, "type": "openai", "model": "chatterbox",
+     "site": "https://github.com/devnen/Chatterbox-TTS-Server", "dirs": ("voce",),
+     "note": "La voce più naturale, in 23 lingue (italiano compreso). Usa la scheda video, va anche senza ma lenta."},
+    {"name": "kokoro-fastapi", "label": "Kokoro (programma)", "port": 8880, "type": "openai", "model": "kokoro",
+     "site": "https://github.com/remsky/Kokoro-FastAPI", "dirs": ("voce",),
+     "note": "Kokoro come programma a parte, più veloce con la scheda video."},
+    {"name": "speaches", "label": "Speaches", "port": 8000, "type": "openai",
+     "site": "https://github.com/speaches-ai/speaches", "dirs": ("ascolto", "voce"),
+     "note": "Ascolto e voce in un programma solo (Whisper, Kokoro, Piper)."},
     {"name": "localai", "label": "LocalAI", "port": 8080, "type": "openai"},
     {"name": "wyoming-whisper", "label": "Whisper di Home Assistant", "port": 10300, "type": "wyoming"},
     {"name": "wyoming-piper", "label": "Piper di Home Assistant", "port": 10200, "type": "wyoming"},
@@ -85,14 +95,20 @@ def is_home(url: str) -> bool:
         return False
 
 
-def _probe_openai(base: str) -> dict[str, list[dict]] | None:
-    """An OpenAI-compatible server's speech models (None when nothing answers or it only has chat models)."""
+def _probe_openai(base: str, model: str = "") -> dict[str, list[dict]] | None:
+    """An OpenAI-compatible server's speech models (None when nothing answers or it only has chat models).
+    ``model``: a speech-only program without a model list (Chatterbox): it counts when its voice list answers."""
     try:
         resp = requests.get(f"{base}/models", timeout=1.5)
         ids = [str(m.get("id")) for m in (resp.json() or {}).get("data") or [] if isinstance(m, dict) and m.get("id")] \
             if resp.ok else None
     except Exception:
-        return None
+        ids = None
+    if not ids and model:
+        try:
+            ids = [model] if requests.get(f"{base}/audio/voices", timeout=1.5).ok else None
+        except Exception:
+            ids = None
     if ids is None:
         return None
     listen = [i for i in ids if any(w in i.lower() for w in _LISTEN_WORDS)]
@@ -150,13 +166,15 @@ def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
         if spec["type"] == "wyoming":
             return f"tcp://{host}:{spec['port']}", _probe_wyoming(host, spec["port"])
         base = f"http://{host}:{spec['port']}/v1"
-        return base, _probe_openai(base)
+        return base, _probe_openai(base, spec.get("model", ""))
     with ThreadPoolExecutor(max_workers=min(16, len(probes))) as pool:
         answers = list(pool.map(ask, probes))
     out = []
     for (spec, host), (url, got) in zip(probes, answers):
         if got is None or url in known:
             continue
+        if spec.get("model") and spec["model"] not in {v["id"] for v in got["voce"]}:
+            got["voce"].append({"id": spec["model"], "label": spec["model"]})
         here = host == THIS_COMPUTER
         out.append({"name": spec["name"] if here else f"{spec['name']}-{re.sub(r'[^a-z0-9]+', '-', host.lower()).strip('-')}",
                     "label": spec["label"] if here else f"{spec['label']} · {host}", "type": spec["type"], "url": url,
@@ -205,8 +223,12 @@ def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) 
         steps = [{"provider": s.get("provider", ""), "model": s.get("model", ""), "voice": s.get("voice", "")}
                  for s in chain.get("steps") or [] if s.get("provider")]
         # ``current`` = the first step (kept for older pages), ``steps`` = the whole chain in order.
+        have = [f["name"] for f in found] + [p["name"] for p in blocks.providers().values()]
+        programs = [{"name": sp["name"], "label": sp["label"], "site": sp["site"], "note": sp["note"]}
+                    for sp in SPEECH_PROGRAMS if sp.get("site") and direction in sp["dirs"]
+                    and not any(h == sp["name"] or h.startswith(sp["name"] + "-") for h in have)]
         out[direction] = {"providers": rows, "current": steps[0] if steps else {"provider": "", "model": "", "voice": ""},
-                          "steps": steps}
+                          "steps": steps, "programs": programs}
     return out
 
 

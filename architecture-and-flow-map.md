@@ -351,10 +351,11 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    «I modelli sono pronti»: WebUI `setup/brain/hello` → Hephaestus → Hub → Oracle `/api/llm/generate`
    (use case `hephaestus.setup`) → the assistant's first message shown on the page. Voce/Ascolto «Ascolta» and
    «Prova a parlare»: WebUI `setup/voice/preview|hear` → Hephaestus → Hub → Echo `/api/voice/setup/preview|hear`.
-2c. Google by hand: setup screen «Calendario, mail e dispositivi» and the Dispositivi page mount Hecate's
-   `<hecate-google>` → WebUI `/api/webui/plugins/hecate/call/…` → Hub → Hecate `auth/google/client` (OAuth client
-   kept in `Hestia-Hecate/data`), `auth/initiate/google` → Google's page in a new tab → callback or pasted address →
-   `auth/complete/google` → token in `data/google_token.json`.
+2c. Connected services: setup screen «I tuoi servizi» and the Dispositivi page mount Hecate's one list
+   `<hecate-connections>` → WebUI `/api/webui/plugins/hecate/call/…` → Hub → Hecate `GET /api/gateway/connections`
+   (every service the same shape and step) and `POST /api/gateway/connections/{id}` (Google: OAuth client kept in
+   `Hestia-Hecate/data`, Google's page in a new tab, callback or pasted address, token in `data/google_token.json`;
+   Garmin: email + password once, then the code, tokens in `data/garmin`).
 3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
    bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
 4. Backup passphrase → root `.env` → `hestia_archive` re-created.

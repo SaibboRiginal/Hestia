@@ -3472,6 +3472,48 @@ paths:
       responses:
         "200": {description: OK}
 
+  /api/gateway/connections:
+    get:
+      tags: [Hecate]
+      summary: "Every service Hecate can link, the same shape for all {items[{id, label, icon, what, state connected|waiting|not_connected, detail, step{kind form|wait, text, fields[], submit, guide?, link?, url?}, actions[]}]}; place=setup → only the ones offered in the guided setup"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: place, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/gateway/connections/{cid}:
+    post:
+      tags: [Hecate]
+      summary: "The current step's values {values} (never logged) → {item, open_url?, message?}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
+    delete:
+      tags: [Hecate]
+      summary: "Unlink the service → {item}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/gateway/connections/{cid}/{action}:
+    post:
+      tags: [Hecate]
+      summary: "A button of a service's card (sync, again, cancel, client) → {item, open_url?, message?}"
+      servers:
+        - url: http://localhost:19003
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+        - {name: action, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
   /api/gateway/garmin/login:
     post:
       tags: [Hecate]
@@ -7948,7 +7990,7 @@ paths:
       parameters:
         - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
-        "200": {description: "{ascolto {providers[], current}, voce {providers[], current}}"}
+        "200": {description: "{ascolto {providers[], current, steps, programs[]}, voce {…}}; programs = free speech programs to install {name, label, site, note}"}
 
   /api/setup/voice/preview:
     post:
@@ -13068,7 +13110,7 @@ paths:
   /api/voice/setup/catalog:
     get:
       tags: [Echo]
-      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
+      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Chatterbox 8004, Kokoro-FastAPI 8880, Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
       servers:
         - url: http://localhost:19021
       parameters:

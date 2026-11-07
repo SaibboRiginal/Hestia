@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 import requests
 
 from . import audio
+from .lang import name as lang_name
 
 logger = logging.getLogger("hestia_echo.standards")
 
@@ -149,6 +150,10 @@ class Standard:
     def speak(self, provider: dict, model: str, voice: str, text: str, language: str, opts: dict) -> tuple[bytes, str]:
         raise EngineError(f"{self.label} non parla")
 
+    def voice_language(self, voice: str) -> str:
+        """The language a voice speaks ('' = any: a multilingual cloud voice reads every language itself)."""
+        return ""
+
 
 # ── local engines ────────────────────────────────────────────────────────────
 
@@ -224,6 +229,11 @@ def _whisper_samples(data: bytes):
 
 
 PIPER_ITALIAN = ["it_IT-paola-medium", "it_IT-riccardo-x_low"]
+# A Piper voice speaks one language: a text in another one is read by this voice of that language (female, male).
+PIPER_BY_LANG = {"it": ("it_IT-paola-medium", "it_IT-riccardo-x_low"), "en": ("en_US-lessac-medium", "en_US-ryan-medium"),
+                 "es": ("es_MX-claude-high", "es_ES-davefx-medium"), "fr": ("fr_FR-siwis-medium", "fr_FR-tom-medium"),
+                 "de": ("de_DE-eva_k-x_low", "de_DE-thorsten-medium"), "pt": ("pt_BR-faber-medium", "pt_BR-faber-medium")}
+PIPER_MALE = {"riccardo", "ryan", "davefx", "tom", "thorsten", "faber"}
 
 
 class Piper(Standard):
@@ -249,12 +259,13 @@ class Piper(Standard):
         return "ready" if self._installed() else "not_installed"
 
     def voices(self, provider, language="it"):
-        names = set(PIPER_ITALIAN if language.startswith("it") else [])
+        lang = "it" if (language or "auto") == "auto" else language[:2]
+        names = {v for pair in PIPER_BY_LANG.values() for v in pair}     # one per kind in every language
         d = MODELS_DIR / "piper"
         if d.is_dir():
             names |= {p.stem for p in d.glob("*.onnx")}
-        return [{"id": n, "label": n.split("-")[1].capitalize() + " · " + n.split("-")[-1] if n.count("-") >= 2 else n}
-                for n in sorted(names)]
+        return [{"id": n, "label": (n.split("-")[1].replace("_", " ").capitalize() + " · " + lang_name(self.voice_language(n)))
+                 if n.count("-") >= 2 else n} for n in sorted(names, key=lambda n: (self.voice_language(n) != lang, n))]
 
     @staticmethod
     def title(name: str, suffix: str = ".onnx") -> str:
@@ -288,10 +299,25 @@ class Piper(Standard):
                 self._voices[name] = PiperVoice.load(str(self._download(name)))
             return self._voices[name]
 
+    def voice_language(self, voice: str) -> str:
+        return voice.split("_")[0].lower() if "_" in voice.split("-")[0] else ""
+
+    def for_language(self, voice: str, language: str) -> str:
+        """The voice to read a text in ``language``: the chosen one when it speaks it, else that language's voice of
+        the same kind (female/male); a language Piper has no voice for → error, the chain moves on."""
+        lang = (language or "")[:2]
+        if not lang or lang == "au" or self.voice_language(voice) in ("", lang):
+            return voice
+        pair = PIPER_BY_LANG.get(lang)
+        if not pair:
+            raise EngineError(f"Piper non ha una voce in {lang}")
+        male = voice.split("-")[1] in PIPER_MALE if voice.count("-") >= 2 else False
+        return pair[1] if male else pair[0]
+
     def speak(self, provider, model, voice, text, language, opts):
         if not self._installed():
             raise EngineError("piper-tts non installato")
-        v = self._voice(voice or model or PIPER_ITALIAN[0])
+        v = self._voice(self.for_language(voice or model or PIPER_ITALIAN[0], language))
         import wave
         buf = tempfile.SpooledTemporaryFile()
         with wave.open(buf, "wb") as w:
@@ -310,6 +336,21 @@ class Piper(Standard):
 
 KOKORO_VOICES = {"it": [("if_sara", "Sara"), ("im_nicola", "Nicola")],
                  "en": [("af_heart", "Heart"), ("af_bella", "Bella"), ("am_michael", "Michael"), ("bf_emma", "Emma")]}
+# Kokoro voice ids start with their language (a/b English US/UK, i Italian…) and kind (f/m). A text in another
+# language is read by that language's voice of the same kind, never by an Italian voice reading English.
+KOKORO_LANG_OF = {"a": "en", "b": "en", "e": "es", "f": "fr", "h": "hi", "i": "it", "j": "ja", "p": "pt", "z": "zh"}
+KOKORO_BY_LANG = {"it": ("if_sara", "im_nicola"), "en": ("af_heart", "am_michael"), "es": ("ef_dora", "em_alex"),
+                  "fr": ("ff_siwis", "ff_siwis"), "pt": ("pf_dora", "pm_alex"), "ja": ("jf_alpha", "jm_kumo"),
+                  "zh": ("zf_xiaoxiao", "zm_yunxi"), "hi": ("hf_alpha", "hm_omega")}
+KOKORO_ESPEAK = {"a": "en-us", "b": "en-gb", "e": "es", "f": "fr-fr", "h": "hi", "i": "it", "j": "ja", "p": "pt-br",
+                 "z": "cmn"}
+# Every voice of voices-v1.0.bin (Marko 2026-11-07: «mettiamo tutte le voci»), listed in the setup.
+KOKORO_ALL = ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river",
+              "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx",
+              "am_puck", "am_santa", "bf_alice", "bf_emma", "bf_isabella", "bf_lily", "bm_daniel", "bm_fable", "bm_george",
+              "bm_lewis", "ef_dora", "em_alex", "em_santa", "ff_siwis", "hf_alpha", "hf_beta", "hm_omega", "hm_psi",
+              "if_sara", "im_nicola", "jf_alpha", "jf_gongitsune", "jf_nezumi", "jf_tebukuro", "jm_kumo", "pf_dora", "pm_alex",
+              "pm_santa", "zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi", "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"]
 KOKORO_TITLES = {"kokoro-v1.0.onnx": "Voce naturale", "voices-v1.0.bin": "Voce naturale · timbri"}
 KOKORO_MB = {"kokoro-v1.0.onnx": 326, "voices-v1.0.bin": 28}
 KOKORO_FILES = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
@@ -335,9 +376,25 @@ class Kokoro(Standard):
         return "ready" if self._installed() else "not_installed"
 
     def voices(self, provider, language="it"):
-        lang = (language or "it")[:2]
-        return [{"id": v, "label": label} for v, label in KOKORO_VOICES.get(lang, []) + (
-            KOKORO_VOICES["en"] if lang != "en" else [])]
+        lang = "it" if (language or "auto") == "auto" else language[:2]
+        first = [v for v, _ in KOKORO_VOICES.get(lang, []) + KOKORO_VOICES["en"]]   # the usual ones on top
+        order = first + [v for v in KOKORO_ALL if v not in first]
+        return [{"id": v, "label": f"{v[3:].replace('_', ' ').capitalize()} · {lang_name(self.voice_language(v))}"}
+                for v in dict.fromkeys(order)]
+
+    def voice_language(self, voice: str) -> str:
+        return KOKORO_LANG_OF.get(voice[:1], "") if len(voice) > 2 and voice[2] == "_" else ""
+
+    def for_language(self, voice: str, language: str) -> str:
+        """The voice to read a text in ``language`` (see KOKORO_BY_LANG); no voice in that language → error, so the
+        chain moves on to the next voice (e.g. German → a cloud voice)."""
+        lang = (language or "")[:2]
+        if not lang or lang == "au" or self.voice_language(voice) in ("", lang):
+            return voice
+        pair = KOKORO_BY_LANG.get(lang)
+        if not pair:
+            raise EngineError(f"Kokoro non ha una voce in {lang}")
+        return pair[1] if voice[1:2] == "m" else pair[0]
 
     def _load(self):
         with self._lock:
@@ -353,10 +410,10 @@ class Kokoro(Standard):
     def speak(self, provider, model, voice, text, language, opts):
         if not self._installed():
             raise EngineError("kokoro-onnx non installato")
+        name = self.for_language(voice or model or "if_sara", language)
         engine = self._load()
-        lang = {"it": "it", "en": "en-us", "es": "es", "fr": "fr-fr"}.get((language or "it")[:2], "it")
-        samples, rate = engine.create(text, voice=voice or model or "if_sara", speed=float(opts.get("speed") or 1.0),
-                                      lang=lang)
+        samples, rate = engine.create(text, voice=name, speed=float(opts.get("speed") or 1.0),
+                                      lang=KOKORO_ESPEAK.get(name[:1], "it"))
         return audio.float_to_wav(samples, int(rate)), "audio/wav"
 
 
@@ -422,6 +479,9 @@ class OpenAICompatible(Standard):
                 "speed": float(opts.get("speed") or 1.0)}
         if opts.get("instructions"):
             body["instructions"] = str(opts["instructions"])
+        host = urlsplit(self.url(provider)).hostname or ""
+        if language and language != "auto" and not any(h in host for h in ("openai.com", "groq.com")):
+            body["language"] = language[:2]      # programs at home (Chatterbox multilingual…) read it; public APIs not
         resp = requests.post(f"{self.url(provider)}/audio/speech", headers=self._headers(provider), json=body,
                              timeout=120)
         if resp.status_code >= 400:

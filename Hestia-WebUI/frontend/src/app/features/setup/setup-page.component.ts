@@ -8,7 +8,7 @@ import { PluginsService } from '../plugins/plugins.service';
 import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
 import { AssistantTextComponent } from '../chat/assistant-text.component';
-import { MicRecorder, b64ToBlob, blobToB64 } from '../../services/voice.service';
+import { MicRecorder, VoiceService, b64ToBlob, blobToB64 } from '../../services/voice.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
@@ -234,11 +234,10 @@ function store(key: string, value: string): void {
             }
 
             @case ('esterni') {
-              <h1>Calendario, mail e Garmin</h1>
+              <h1>I tuoi servizi</h1>
               <p class="lead">Se vuoi, collegali ora. Puoi farlo anche dopo dalla pagina Dispositivi.</p>
               <div class="outlets">
-                <hx-plugin-outlet module="hecate" element="hecate-google" />
-                <hx-plugin-outlet module="hecate" element="hecate-garmin" />
+                <hx-plugin-outlet module="hecate" element="hecate-connections" [ctx]="{ params: { place: 'setup' } }" />
               </div>
             }
 
@@ -302,6 +301,7 @@ function store(key: string, value: string): void {
               @if (voiceError()) { <p class="fact warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ voiceError() }}</p> } @else { <div class="center"><hx-spinner /></div> }
             } @else {
               <app-setup-chain [homeItems]="voiceLocalItems(dir.id)" [home]="voiceLocalPick()[dir.id]" (homeChange)="setVoice(voiceLocalPick, dir.id, $event)"
+                               [programs]="voiceCat()?.[dir.id]?.programs || []"
                                homeEmpty="Nessun programma per la voce trovato."
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)"
@@ -435,6 +435,9 @@ function store(key: string, value: string): void {
 })
 export class SetupPageComponent {
   private api = inject(SetupApi);
+  /** The site's one player: a voice tried stops the one playing (in the setup or in the chat), never two at once. */
+  private player = inject(VoiceService);
+  private trialTicket = 0;
   private router = inject(Router);
   readonly claudeType = CLAUDE_TYPE;
   /** The list of the steps + the downloads, opened from the step on the bar at the top. */
@@ -503,7 +506,7 @@ export class SetupPageComponent {
   // ── Voce (Echo's blocks, the same cards as the cloud services) ──
   readonly voiceDirs = [
     { id: 'ascolto' as const, question: 'Come ti ascolta?', lead: 'Per capire quello che dici a voce.' },
-    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'La voce con cui Hestia ti parla.' },
+    { id: 'voce' as const, question: 'Con che voce ti risponde?', lead: 'Parla nella lingua in cui le scrivi: se scrivi in inglese, risponde con una voce inglese.' },
   ];
   /** The voice screen open now (Ascolto or Voce): the same step, one direction each. */
   voiceDir = computed(() => this.voiceDirs.find(d => d.id === this.screen()) || null);
@@ -555,27 +558,26 @@ export class SetupPageComponent {
   }
   // «Prova» on a voice (hear it) or listening engine (speak, see what it understood), chosen or still in the lists:
   // nothing saved.
-  trialState = signal<{ key: string; busy?: boolean; recording?: boolean; text?: string } | null>(null);
+  trialState = signal<{ key: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   private mic: MicRecorder | null = null;
   async tryVoice(dir: VoiceDir, row: { key: string; provider: string; model: string }) {
     const cur = this.trialState();
     if (dir === 'voce') {
+      const ticket = ++this.trialTicket;              // a later tap wins: an older answer never plays over it
+      this.player.stop();
+      if (cur?.key === row.key && (cur.playing || cur.busy)) { this.trialState.set(null); return; }   // tap again = stop
       this.trialState.set({ key: row.key, busy: true });
       try {
         const r = await this.api.voicePreview(row.provider, row.model);
+        if (ticket !== this.trialTicket) return;
         if (r.ok && r.audio_b64) {
-          const url = URL.createObjectURL(b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'));
-          const a = new Audio(url);
-          a.onended = () => URL.revokeObjectURL(url);
-          try {
-            await a.play();
-            this.trialState.set(null);
-          } catch (err) {               // never a silent «played»: say why the browser did not play it
-            URL.revokeObjectURL(url);
-            this.trialState.set({ key: row.key, text: `Il browser non l'ha riprodotta (${(err as Error)?.name || 'errore'}): riprova.` });
-          }
+          this.trialState.set({ key: row.key, playing: true });
+          this.player.play('setup:' + row.key, b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'),
+            err => { if (ticket === this.trialTicket)      // never a silent «played»: say why it did not play
+              this.trialState.set({ key: row.key, text: `Il browser non l'ha riprodotta (${(err as Error)?.name || 'errore'}): riprova.` }); },
+            () => { if (ticket === this.trialTicket) this.trialState.set(null); });
         } else this.trialState.set({ key: row.key, text: r.detail || 'Non ha risposto.' });
-      } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
+      } catch (e) { if (ticket === this.trialTicket) this.trialState.set({ key: row.key, text: setupError(e) }); }
       return;
     }
     if (cur?.recording && cur.key === row.key && this.mic) {   // second tap: stop and hear it
