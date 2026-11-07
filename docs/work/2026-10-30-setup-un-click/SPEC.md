@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.17 |
+| **Version** | 2.18 |
 | **Source** | user via Project thread (Marko 2026-10-30: «possiamo fare un setup in one click per windows e linux e mac os? che fa letteralmente tutto con fallback e no fail? magari si puo pensare che hestia si costruisce da sola? si mette su da sola ma essendo su docker magari non so se ha accesso al host?») |
 | **Status** | Approved by Marko 2026-10-30 («principale è Windows e linux. mac os solo se semplice. rendilo facile da configurare tutte le parti importanti e necessarie come oracle ovviamente») — implemented (all phases on main; Marko real run pending) |
 
@@ -296,6 +296,22 @@ and the setup's «Voce» screen (queues the voices); Telegram tools `modelli_dow
 - **Google by hand**: Hecate `<hecate-google>` card (OAuth client typed or JSON pasted, kept in `data/`; «Collega
   Google»; pasted address fallback), shown in Dispositivi and in the setup screen through the plugin outlet, next to
   `<hecate-garmin>`.
+
+### 4.10 Round 7: the setup redone (Marko 2026-11-07)
+
+Marko: «questa UI fa schifo, ripensala completamente», and no text about things nobody knows or that do not matter
+for the setup (the phone-as-sensor line). Rules applied to every screen:
+- **Layout**: one centred column (640 px), a bar on top (Hestia · «3/11 Memoria» · «Finisco dopo») with a thin
+  progress line; the step opens one drop-down with every step (jump back) and the downloads; the buttons
+  (Indietro · Più tardi · Avanti) sit in a footer that is always visible. No side summary, no cards around cards.
+- **One step component**: `setup-chain` now holds the cloud services too (`setup-services` removed). On top
+  «Scelti» (or «Scelto» for the memory): what Hestia uses, in order, each row with ↑ and ×; below two tabs
+  «Locale» (gratis e privato) and «Cloud» (con una chiave). Cloud services are rows that open in place: key,
+  «Prendi la chiave», «Salva e prova», then «La chiave funziona» and the same picker for its models or voices.
+- **Texts**: one short line under each title; nothing about modules, engines nobody chose, or other pages' features.
+  The «Calendario, mail e Garmin» screen has only the two cards; «Per modalità» is a closed optional section;
+  «Tutto pronto» lists each choice as a row that goes back to it. The plugin outlet says «Non disponibile in
+  questo momento» instead of naming the module.
 
 ## 5. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 
