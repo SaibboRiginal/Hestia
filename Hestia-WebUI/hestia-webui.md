@@ -312,6 +312,9 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   detailed · live — default compact (was hidden, so nothing showed). `<chat-thinking [display]>`: compact closed,
   detailed open with full reasoning and tool results, live open while working and closed when the answer comes;
   a click wins. Editable from the chat ⚙ popover and Personali; the drawer follows it too.
+  The title says what is inside: «Ragionamento · N passi · M strumenti» only when the model really reasoned (N =
+  reasoning steps), «Strumenti usati · M» when the trace holds tool calls alone; an empty frame is not a step
+  (docs/work/2026-11-11-ragionamento-vuoto).
 - Header `<hx-chat-context>`: ring with the % of the context window of the provider in use; popover with
   provider/model and billing kind, context breakdown, this conversation's tokens (input / cache / output,
   calls, API-equivalent cost for Claude CLI) and *Compatta*. Refreshed when an answer ends or the conversation

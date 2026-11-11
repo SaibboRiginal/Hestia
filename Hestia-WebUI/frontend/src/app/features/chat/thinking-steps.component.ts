@@ -3,7 +3,9 @@ import { ThinkingStep } from '../../models/chat.models';
 import { IconComponent } from '../../ui';
 
 /**
- * Reasoning / tool trace of an assistant answer ("Ragionamento · 3 passi").
+ * Reasoning / tool trace of an assistant answer. The title says what is inside: «Ragionamento · 2 passi ·
+ * 1 strumento» only when the model really reasoned (steps of type `reasoning`), «Strumenti usati · 1» when the
+ * trace holds tool calls alone, so a block never reads as thinking that did not happen.
  * `display` (Impostazioni → Ragionamento): compact = closed, one line per step · detailed = open,
  * full reasoning text and tool results · live = open while working, closes when the answer arrives.
  * A click on the header always wins over the automatic open/close.
@@ -14,8 +16,8 @@ import { IconComponent } from '../../ui';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button class="toggle" (click)="toggle()">
-      <hx-icon [name]="live() ? 'sparkle' : 'brain'" [size]="14" [class.pulse]="live()" />
-      <span>{{ live() ? 'Sto ragionando…' : 'Ragionamento' }}</span>
+      <hx-icon [name]="live() ? 'sparkle' : thought() ? 'brain' : 'zap'" [size]="14" [class.pulse]="live()" />
+      <span>{{ title() }}</span>
       <span class="sum">{{ summary() }}</span>
       <hx-icon [name]="open() ? 'chevron-up' : 'chevron-down'" [size]="14" />
     </button>
@@ -69,10 +71,18 @@ export class ThinkingStepsComponent {
 
   toggle() { this.touched = true; this.open.set(!this.open()); }
 
+  /** Reasoning steps: what the model thought, not the tools it used. */
+  readonly thought = computed(() => this.steps().filter(x => x.type === 'reasoning').length);
+  private readonly tools = computed(() => this.steps().filter(x => x.type === 'tool_call').length);
+
+  readonly title = computed(() => this.thought()
+    ? (this.live() ? 'Sto ragionando…' : 'Ragionamento')
+    : (this.live() ? 'Uso gli strumenti…' : 'Strumenti usati'));
+
   summary = computed(() => {
-    const s = this.steps();
-    const tools = s.filter(x => x.type === 'tool_call').length;
-    return `· ${s.length} passi${tools ? ` · ${tools} strumenti` : ''}`;
+    const n = this.thought(), tools = this.tools();
+    if (!n) return tools ? `· ${tools}` : '';
+    return `· ${n} ${n === 1 ? 'passo' : 'passi'}${tools ? ` · ${tools} ${tools === 1 ? 'strumento' : 'strumenti'}` : ''}`;
   });
 
   label(s: ThinkingStep): string {

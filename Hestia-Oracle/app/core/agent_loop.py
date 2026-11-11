@@ -608,8 +608,8 @@ def run_agent_loop(
                             len(str((decision or {}).get("reasoning_content") or "")))
 
                 # ── Emit reasoning_content as thinking event ───────────────
-                _reasoning = str(
-                    (decision or {}).get("reasoning_content") or "").strip()
+                _reasoning = _stream_emitter.clean_reasoning(
+                    (decision or {}).get("reasoning_content"))
                 if _reasoning and on_thinking:
                     on_thinking(_stream_emitter.emit_thinking(
                         action="reasoning",

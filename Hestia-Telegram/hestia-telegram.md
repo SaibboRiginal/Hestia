@@ -100,7 +100,9 @@ subscription compile), `pausa_voto`.
 ## Chat (`services/chat_service.py`, `reply_renderer.py`)
 
 - One Oracle stream → **one answer message** (status → steps «• Uso: <azione>» → streamed tokens → final); split
-  only above 4000 characters. Reasoning in an expandable quote «Ragionamento · N passi».
+  only above 4000 characters. Reasoning in an expandable quote «Ragionamento · N passi»;
+  with tool calls and no reasoning the quote is «Strumenti usati · N» (never «Ragionamento» for a model that
+  did not reason).
 - Notices from Oracle are italic lines inside the answer (🔴 only for errors), per the notice setting.
 - **Reply or quote = context**: replying to (or quoting part of) any message sends
   `quoted: {text, from: assistant|user|notification, at, ref}` with `/api/chat`; Oracle uses it for that turn only.

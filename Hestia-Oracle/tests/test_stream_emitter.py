@@ -12,6 +12,7 @@ from core.services.stream_emitter import (
     emit_status,
     emit_token,
     emit_thinking,
+    clean_reasoning,
     emit_final,
     emit_question,
     emit_needs_input,
@@ -227,3 +228,16 @@ class TestEmitToolSummary:
         data = json.loads(line)
         assert data["type"] == "signal"
         assert data["data"]["calls"] == []
+
+
+@pytest.mark.unit
+class TestCleanReasoning:
+    """Regression: a «Ragionamento» block with nothing in it (docs/work/2026-11-11-ragionamento-vuoto)."""
+
+    @pytest.mark.parametrize("raw", ["", None, "   \n ", "<think>\n\n</think>", "<thinking></thinking>",
+                                     "<｜end▁of▁thinking｜>"])
+    def test_empty_wrapper_is_no_reasoning(self, raw):
+        assert clean_reasoning(raw) == ""
+
+    def test_real_reasoning_is_kept_without_tags(self):
+        assert clean_reasoning("<think>Serve il meteo di domani.</think>") == "Serve il meteo di domani."

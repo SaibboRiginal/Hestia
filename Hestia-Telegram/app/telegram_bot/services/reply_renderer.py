@@ -4,7 +4,7 @@ One Oracle stream → ONE answer message (split only when > 4096 chars):
 
     ┌ status message (reused) ──────────────────────────────┐
     │ live status / live steps / streaming tokens ▍          │  while working
-    │ ▸ Ragionamento · 3 passi   (expandable blockquote)     │  final
+    │ ▸ Ragionamento · 3 passi   (expandable blockquote)     │  final («Strumenti usati · N» with no reasoning)
     │ answer…                                                │
     │ Ricordato: l'utente ha due figli          (italic)     │  notices (inline)
     │ [ Ascolta ] [ 👍 ] [ 👎 ]                               │  one row (voice_service)
@@ -69,7 +69,7 @@ class ReplyRenderer:
         action = str(evt.get("action") or "")
         tool = str(evt.get("tool") or "")
         meta = evt.get("metadata") if isinstance(evt.get("metadata"), dict) else {}
-        if action == "reasoning" and evt.get("content"):
+        if action == "reasoning" and str(evt.get("content") or "").strip():
             self.reasoning += 1
             self.steps.append("• " + str(evt["content"]).strip().split("\n")[0][:180])
         elif action == "tool_call" and tool:
@@ -168,12 +168,20 @@ class ReplyRenderer:
             return ""
         steps = self.steps[-MAX_STEP_LINES:]
         more = len(self.steps) - len(steps)
-        summary = f"{self.reasoning} passi" + (f" · {self.tool_calls} strumenti" if self.tool_calls else "")
+        # The title says what is inside: «Ragionamento» only when the model really reasoned, otherwise the block
+        # is the list of the tools used (same rule as the WebUI's chat-thinking).
+        tools = f"{self.tool_calls} {'strumento' if self.tool_calls == 1 else 'strumenti'}"
+        if self.reasoning:
+            title = "Ragionamento"
+            summary = f"{self.reasoning} {'passo' if self.reasoning == 1 else 'passi'}" + (
+                f" · {tools}" if self.tool_calls else "")
+        else:
+            title, summary = "Strumenti usati", str(self.tool_calls)
         body = "\n".join(escape(s) for s in steps)
         if more:
             body = f"… (+{more})\n" + body
         tag = "<blockquote>" if self.thinking_mode == "detailed" else "<blockquote expandable>"
-        return f"{tag}<b>Ragionamento</b> · {summary}\n{body}</blockquote>"
+        return f"{tag}<b>{title}</b> · {summary}\n{body}</blockquote>"
 
     def _live_edit(self) -> None:
         text = f"<i>{escape(_strip_emoji(self.status_text) or 'Sto lavorando…')}</i>"
