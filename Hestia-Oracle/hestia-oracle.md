@@ -278,7 +278,9 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 ### Visible Thinking
 - The agent loop emits **thinking** NDJSON events (`type: "thinking"`) for real-time visibility:
-  - `action: "reasoning"` — LLM reasoning before a tool call
+  - `action: "reasoning"` — LLM reasoning before a tool call; sent only when there is text to read
+    (`stream_emitter.clean_reasoning` drops empty `<think></think>` wrappers), so a client can title its block
+    «reasoning» only when such a frame arrived
   - `action: "tool_call"` — about to execute a named tool
   - `action: "tool_result"` — tool execution completed (with result count, duration)
 - A **tool summary** signal (`event: "tool.summary"`) is emitted after the final answer, carrying a compact log of every tool invocation with parameters, results, and timing.

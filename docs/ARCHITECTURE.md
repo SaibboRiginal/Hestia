@@ -121,7 +121,7 @@ Single database gateway.
 ### Hestia-Oracle 🧠
 Conversational reasoning layer with unified agentic tool calling.
 - **Single tool-calling path:** all Hub commands + domain tools + memory tools flow through one ReAct agent loop (no separate pre-check or heuristic routing).
-- **Visible thinking:** emits `thinking` NDJSON events during the agent loop (reasoning, tool_call, tool_result) and a `tool.summary` signal after the answer.
+- **Visible thinking:** emits `thinking` NDJSON events during the agent loop (reasoning, tool_call, tool_result) and a `tool.summary` signal after the answer. A `reasoning` frame is sent only when the model returned reasoning text, and clients title the block by what it holds: «Ragionamento» with at least one reasoning frame, «Strumenti usati» with tool frames alone (`docs/work/2026-11-11-ragionamento-vuoto`).
 - **Memory tools:** `memory.save` and `memory.search` are first-class agent loop tools — the LLM decides when to persist or recall facts.
 - **Single classify call:** mode + domain + action_intent detected in one LLM call (no separate action intent detection).
 - Handles chat sessions and long-term preferences via background memory extraction as safety net.

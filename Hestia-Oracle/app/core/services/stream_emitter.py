@@ -19,6 +19,7 @@ Event types:
                Hestia-Shared/hestia-shared.md § Response packets).
 """
 import json
+import re
 
 
 def emit_status(message: str) -> str:
@@ -29,6 +30,15 @@ def emit_status(message: str) -> str:
 def emit_token(token: str) -> str:
     """Return a token-type NDJSON line for incremental LLM output."""
     return json.dumps({"type": "token", "text": token}) + "\n"
+
+
+_THINK_TAGS = re.compile(r"</?\s*(?:think|thinking|reasoning)\s*>|<｜[^｜]*｜>", re.IGNORECASE)
+
+
+def clean_reasoning(text: str | None) -> str:
+    """The model's reasoning as text to show, or "" when there is none. Some local models send only the
+    empty wrapper (``<think>\n\n</think>``): without this a client drew a «Ragionamento» block with nothing in it."""
+    return _THINK_TAGS.sub("", str(text or "")).strip()
 
 
 def emit_thinking(

@@ -401,6 +401,9 @@ export class ChatService {
   }
 
   private handleThinking(event: ServerEvent): void {
+    // A step with nothing to show is not a step: no «Ragionamento» block for an empty thought.
+    const kind = event.action || 'reasoning';
+    if (kind === 'reasoning' ? !(event.content || '').trim() : !event.tool) return;
     this.stepCounter++;
     const step: ThinkingStep = {
       stepNumber: this.stepCounter,

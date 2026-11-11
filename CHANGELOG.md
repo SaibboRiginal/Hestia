@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-11
+- Fix: the chat no longer shows «Ragionamento» on every answer: the block had that title also when it held only the tools used (or an empty thought from a local model); now «Ragionamento» appears only when the model really reasoned, tools alone read «Strumenti usati», in the site, in «Crea con Hestia» and on Telegram → `docs/work/2026-11-11-ragionamento-vuoto/` [ext-chat]
+
 ## 2026-11-07
 - Guided setup: voices are chosen with a language selector next to the search, the names no longer repeat the language → `docs/work/2026-10-30-setup-un-click/` [ext-chat]
 - Connected services in one list: Google, Garmin and the phone have the same card and connect the same way (open it, what to do is right there), in the setup and in Dispositivi; a new service is just one more row → `docs/work/2026-10-30-setup-un-click/` [ext-chat]

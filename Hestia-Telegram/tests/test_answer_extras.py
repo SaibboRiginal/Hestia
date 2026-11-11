@@ -71,3 +71,30 @@ def test_component_button_sends_its_text_to_the_chat(bot):
     with patch("telegram_bot.services.chat_service.chat_from_text") as chat:
         answer_extras.handle_callback(call)
     chat.assert_called_once_with(12345, "mostra dettagli")
+
+
+@pytest.mark.unit
+def test_tools_alone_are_not_called_reasoning(bot):
+    """Regression (docs/work/2026-11-11-ragionamento-vuoto): a trace with tool calls only read «Ragionamento · 0 passi»."""
+    r = _renderer()
+    r.on_thinking({"action": "reasoning", "content": "  \n "})
+    r.on_thinking({"action": "tool_call", "tool": "weather_today"})
+    r.on_thinking({"action": "tool_result", "tool": "weather_today", "metadata": {"ok": True}})
+    block = r._reasoning_block()
+    assert "Ragionamento" not in block and "0 passi" not in block
+    assert "<b>Strumenti usati</b> · 1" in block
+
+
+@pytest.mark.unit
+def test_real_reasoning_keeps_its_title(bot):
+    r = _renderer()
+    r.on_thinking({"action": "reasoning", "content": "Serve il meteo."})
+    r.on_thinking({"action": "tool_call", "tool": "weather_today"})
+    assert "<b>Ragionamento</b> · 1 passo · 1 strumento" in r._reasoning_block()
+
+
+@pytest.mark.unit
+def test_no_steps_no_block(bot):
+    r = _renderer()
+    r.on_thinking({"action": "reasoning", "content": ""})
+    assert r._reasoning_block() == ""
