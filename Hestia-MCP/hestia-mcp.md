@@ -117,7 +117,7 @@ mount does not hide it):
 | `GET` | `/api/mcp/outbound` | Servizi esterni (from Hecate) |
 | `GET` | `/api/mcp/ui/tools` | Comandi page: tools the WebUI sees, as commands `{command, title, description, service, method, path, response_mode, writes, arguments_schema}` + `services` |
 | `POST` | `/api/mcp/ui/tools/call` | Run one `{command, args}` as client `webui` → `{ok, result, error?, status_code, response_mode}`; hidden/unknown → 404 |
-| `POST` | `/api/mcp/ui/tools/format` | `{command, result, response_prompt?}` → Oracle `/api/format` via Hub → `{ok, text}` (plain text; failure → `ok:false`) |
+| `POST` | `/api/mcp/ui/tools/format` | `{command, result, response_prompt?}` → Oracle `/api/format` via Hub → `{ok, text}` (plain text: the page sends its own format contract `FORMAT_INSTRUCTIONS`, Oracle has none; failure → `ok:false`) |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | Plugin manifest and bundle |
 | `GET` | `/health` | Service health |
 | `GET` | `/api/logs` | Filterable log buffer |
