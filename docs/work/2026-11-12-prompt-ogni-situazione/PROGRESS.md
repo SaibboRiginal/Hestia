@@ -8,6 +8,6 @@
 - [x] D `voice` on `/api/llm/generate`; Hermes, Argus, Athena recap, Chronos plan, Plutus, setup hello
 - [x] E tests (Oracle 734, Hermes 94, Athena 147, Telegram 154, Argus 41, Chronos 99, Plutus 40, Hephaestus 92, MCP 47)
 - [x] Docs, swagger, root CHANGELOG
-- [ ] precheck, PR, merge on green CI
+- [x] precheck, PR #99, merged on green CI
 - [ ] Waiting for Marko: classifier removal; tool descriptions in English; language of notifications; internal
       module prompts in English; CoT orchestrator with steering (with the agents thread)

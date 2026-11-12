@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | 1.0 |
 | **Source** | user via external chat (thread «Migliorare i prompt per ogni situazione», Marko 2026-11-09 and 2026-11-12) |
-| **Status** | Implemented, PR open; real run by Marko pending. Point 6 (classifier) waits for his answer |
+| **Status** | Implemented and merged (PR #99); real run by Marko pending. Point 6 (classifier) waits for his answer |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 Follows `docs/work/2026-11-06-hestia-viva` and `docs/work/2026-11-12-identita-e-proattivita` (who the assistant
