@@ -437,7 +437,7 @@ minutes/min_minutes, days, time_of_day, gaps, `not_same_day`, `with`, priority).
   now overlaps a planned block (`sync_worker` → `on_calendar_synced`), chat/page («Rifai il piano», busy block).
   A change to today/tomorrow sends one notice through Hermes (`reminder_event`, domain `system`, key `coach.change`).
 - **Weekly job** `chronos.coach_week` (agenda, the day before the week starts, 18:00; pausing it stops the weekly
-  plan — no switch) → plan + Oracle use case `chronos.coach` writes the message (fixed-text fallback) → Hermes
+  plan — no switch) → plan + Oracle use case `chronos.coach` writes the message (`voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format; fixed-text fallback) → Hermes
   (`coach.week`, link to the page).
 
 Endpoints (plugin prefix): `GET /api/agenda/coach/week?date=`, `GET /api/agenda/coach/today`,

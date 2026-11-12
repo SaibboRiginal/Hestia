@@ -569,13 +569,22 @@ class ChainAgent:
 _chain_agents: dict[str, ChainAgent] = {}
 
 
-def agent_for(use_case: str) -> ChainAgent:
-    """Shared chain agent of a use case (module calls through ``/api/llm/generate``)."""
+def agent_for(use_case: str, voice: bool = False) -> ChainAgent:
+    """Shared chain agent of a use case (module calls through ``/api/llm/generate``).
+
+    *voice*: the text is meant for the owner (a notification, a recap, a plan), so the model gets the same system
+    prompt as the chat (``prompt_config.system_identity``: name, she/he, owner, style, language). Without it the
+    call is a plain tool for the module (extraction, scoring, review) and has no persona."""
     use_case = str(use_case or GENERAL).strip().lower()
+    key = f"{use_case}|voice" if voice else use_case
     with _lock:
-        agent = _chain_agents.get(use_case)
+        agent = _chain_agents.get(key)
         if agent is None:
-            agent = _chain_agents[use_case] = ChainAgent(use_case, label=use_case)
+            role: Any = ""
+            if voice:
+                from core.services import prompt_config
+                role = prompt_config.system_identity
+            agent = _chain_agents[key] = ChainAgent(use_case, role_prompt=role, label=use_case)
         return agent
 
 

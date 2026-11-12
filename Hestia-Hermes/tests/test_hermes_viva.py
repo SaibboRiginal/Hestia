@@ -1,7 +1,7 @@
 """Notification style «Frase di Hestia» (docs/work/2026-11-06-hestia-viva F5). Markers: unit."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -46,14 +46,23 @@ def test_style_setting_is_declared_with_card_default():
     assert [v for v, _ in hermes_settings.STYLES] == ["scheda", "frase"]
 
 
-def test_phrase_style_speaks_with_the_chosen_name_and_gender(monkeypatch):
-    from modules import hermes_settings
-    monkeypatch.setitem(hermes_settings.settings._shared, "themis.personal.assistant_name", "Leo")
-    monkeypatch.setitem(hermes_settings.settings._shared, "themis.personal.assistant_gender", "lui")
-    monkeypatch.setitem(hermes_settings.settings._shared, "themis.personal.owner_name", "Marco")
+def test_phrase_style_leaves_the_identity_to_oracle():
+    """Hermes sends what to say and the data; who speaks (name, she/he, owner) is Oracle's system prompt, asked
+    with ``voice`` (docs/work/2026-11-12-prompt-ogni-situazione): no «Sei …» written here."""
     with patch("modules.service.narrate", return_value="Fatto.") as narrate:
         _say("Spesa salvata")
-    assert narrate.call_args[0][0].startswith("Sei Leo, l'amico che vive con Marco.")
+    prompt = narrate.call_args[0][0]
+    assert prompt.startswith("Say this notification in ONE short natural sentence") and "Sei " not in prompt
+    assert "Text: Spesa salvata" in prompt
+
+
+def test_narrate_asks_oracle_for_the_assistant_voice():
+    from modules import oracle_client
+    resp = MagicMock(status_code=200, content=b"x")
+    resp.json.return_value = {"status_code": 200, "payload": {"response": "Fatto."}}
+    with patch("modules.oracle_client.requests.post", return_value=resp) as post:
+        oracle_client.narrate("x")
+    assert post.call_args.kwargs["json"]["body"] == {"prompt": "x", "voice": True}
 
 
 def test_view_exposes_the_kind_of_the_sender():

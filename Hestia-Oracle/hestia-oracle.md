@@ -83,17 +83,17 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 
 ### Hestia viva: persona, spoken turns, awareness, reactions (dossier `docs/work/2026-11-06-hestia-viva`)
 - **Persona** (`prompt_config` key `analyst_persona_default`, also served by `assistant_profile` to other AIs): a
-  person who lives with the owner (CHI SEI · RAPPORTO · CARATTERE · MEMORIA · TONO · LUNGHEZZA 1–2 frasi · VERITÀ),
-  then the operating rules 1–13 and the Telegram format, unchanged.
+  person who lives with the owner (WHO YOU ARE · BOND · CHARACTER · MEMORY · TONE · LENGTH 1–2 sentences · TRUTH).
+  Only who she is: the operating rules are `tool_rules` (added where the turn has tools), the format is the client's.
 - **One identity on every path**: the persona is the system prompt of every chain, also on Ollama native tool
-  calling (persona + a short STRUMENTI rule, no separate «tool-calling engine» prompt); the agent-loop preambles
-  open with «Sei Hestia, la persona descritta sopra» and the quick answer asks 1–2 sentences. Before (Marko's
+  calling (system prompt + a short TOOLS rule, no separate «tool-calling engine» prompt); the agent-loop preambles
+  say «Speak as <name>, always». Before (Marko's
   real run 2026-11-07) a local model answered «Sono il motore di ragionamento di Hestia».
 - **Name, she/he, owner** (dossier `docs/work/2026-11-12-identita-e-proattivita`): the prompts that speak to the
   owner hold tokens (`{assistant}`, `{owner}`, `{owner_rule}`, `{g:amica|amico}`) filled by `prompt_config.prompt()`
   with `hestia_common.identity` from the personal settings `themis.personal.assistant_name` (default Hestia),
-  `assistant_gender` (lei/lui), `owner_name`, `owner_call` (Oracle follows them, live). The persona opens «Sei
-  <nome>, l'assistente personale di <lui>: sua e di nessun altro»; name unknown → she asks. The chains read the
+  `assistant_gender` (lei/lui), `owner_name`, `owner_call` (Oracle follows them, live). The persona opens «You are
+  <name>, the personal assistant of <owner>: theirs and nobody else's»; name unknown → she asks. The chains read the
   persona at every call (`ChainAgent` takes a function), so a change needs no restart. Internal extractors
   («compilatore di Hestia»…) and the product keep the name Hestia.
 - **Style contract** (`conversation_style_contract`): forbids bot closings and status lines («sono qui, pronta»),
@@ -314,8 +314,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   `{source: chat}`. `memory_recall` = keyword search, max 20 compact rows. Page **Memoria** lists and forgets them.
 - `assistant_profile` (2026-10-30, docs/work/2026-10-30-hestia-in-claude, `core/services/assistant_profile.py`) —
   external only: the block another AI follows when the user switches Hestia on inside it (Claude Code mod
-  `claude-plugins/hestia`). Same pieces Oracle uses itself: persona (`analyst_persona_default` without the Telegram
-  formatting part), style contract, the user's tone and instructions (`oracle.chat.*`), the client contract
+  `claude-plugins/hestia`). Same pieces Oracle uses itself: persona (`analyst_persona_default`), style contract and language rule, the user's tone and instructions (`oracle.chat.*`), the client contract
   `client_contract_claude` (prompt key), and a memory digest (`memory_recall("")`) in what is left of the cap
   `oracle.chat.profile_max_tokens` (Contesto, default 1500; persona and contract never cut). Returns
   `{client, revision, text, tokens_estimate, memories, max_tokens}`; `revision` = hash of the text. No LLM call.
@@ -420,7 +419,7 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 
 | Mode | think | Classify | Description |
 |------|-------|----------|-------------|
-| `quick` | False | No | Single ask, no tools. <2s latency |
+| `quick` (Rapida) | False | Yes | Same path as `auto` (persona, memories, tools); only the model's reasoning is off |
 | `auto` | True (agent loop) | Yes | Classify → quick_chat (no think) or agent loop (with think). Default |
 | `thinking` (Pensata) | True | Yes, no quick-chat shortcut | Always agent loop, model reasoning on |
 | `cot` (CoT) | "deep" | Yes, no quick-chat shortcut | Deep reasoning, ≥50 turns, prompt line asking a step-by-step plan and a «Passi:» recap |
@@ -538,11 +537,26 @@ OpenAI-compatible endpoint (Gemini `…/v1beta/openai`, Anthropic `…/v1`, any 
 
 ## Prompts (caveman style, single source)
 
+- **One composer** (dossier `docs/work/2026-11-12-prompt-ogni-situazione`): `prompt_config.system_identity()` =
+  persona + `conversation_style_contract` + `language_rule`. It is the system prompt of every chain that speaks to
+  the owner (`agent_factory`), of the external agent, of `assistant_profile`, and of `/api/llm/generate` with
+  `voice: true`. Nothing adds these blocks again (before, the style was in the prompt twice per turn).
+  `tool_rules` is included by the two agent-loop preambles only. Tests: `tests/test_prompt_composer.py`.
+- **English hidden text**: prompts, labels (`OWNER PREFERENCES`, `CONVERSATION HISTORY`, `CLIENT INSTRUCTIONS`,
+  `USER:`), awareness/presence/reaction/quote lines, tone sentences. Quoted Italian is only an example of what the
+  owner or a bot writes. `language_rule`: the answer is in the language of the owner's latest message.
+- **No client format in Oracle**: the persona and `/api/format` carry no HTML/Markdown rule; the caller sends it in
+  `client_instructions` (Telegram: setting `telegram.chat.client_instructions`; WebUI: `OracleClientInstructions`;
+  spoken turn: `voice_turn_contract` on `spoken`).
+- **Small talk shortcut** (`_quick_answer`, modes `quick` and `auto`): one call without tools, with the owner's
+  preferences (`OWNER PREFERENCES`, same source as the agent loop).
+- **Module texts** (`/api/llm/generate {voice: true}`): the prompt is prefixed with `module_voice_instruction`
+  and runs with `system_identity()`; without `voice` the call has no persona (extraction, scoring, review).
+
 - All prompts live in `app/core/services/prompt_config.py` (`_DEFAULT_PROMPTS`). Style: short imperative lines,
   zero filler — every token is paid on every turn (small local context, billed cloud). ~40% fewer chars than before.
 - `app/prompts/oracle_prompts.json` (or `ORACLE_PROMPTS_FILE`) is for **runtime overrides only** and ships empty `{}`.
-  It used to duplicate the defaults with drifted content (two sources of truth); the live persona (female voice,
-  premium tone) and Telegram-HTML rules were merged into the defaults.
+  It used to duplicate the defaults with drifted content (two sources of truth).
 - Removed dead prompts never referenced by code: `router_system`, `scribe_system`, `quick_chat_template`,
   `action_selector_template`, `action_intent_detector_template`, `arg_picker_scope_selector_template`.
 - Classifier routes self-development requests ("aggiungi una funzione", "approva sviluppo", "usa il cloud") to `domain=system`.

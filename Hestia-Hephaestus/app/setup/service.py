@@ -227,10 +227,11 @@ class SetupService:
     def brain_hello(self) -> dict[str, Any]:
         """«I modelli sono pronti»: the assistant writes its first message with the models just chosen, so the user
         sees them answer (Oracle's general chain through the use case ``hephaestus.setup``)."""
-        prompt = ("Sei Hestia, assistente personale. Primo messaggio all'utente, appena configurata. Italiano, 2 frasi "
-                  "brevi e calde: sei pronta, chiedi da cosa iniziare. Niente emoji, niente elenchi.")
+        prompt = ("This is your very first message to the owner: you have just been set up. Italian, 2 short warm "
+                  "sentences: you are there, ask where to start. No emoji, no lists.")
         try:
-            out = self.oracle("POST", "/api/llm/generate", body={"prompt": prompt, "use_case": "hephaestus.setup"},
+            out = self.oracle("POST", "/api/llm/generate", body={"prompt": prompt, "use_case": "hephaestus.setup",
+                                                                     "voice": True},
                               timeout=120)
         except Exception as exc:
             logger.warning("[🔄] event=setup_hello_failed error=%s", str(exc)[:200])

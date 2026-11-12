@@ -4309,6 +4309,10 @@ paths:
                 use_case:
                   type: string
                   description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.annunci, athena.strategia; default oracle.generale; undeclared → runs like oracle.generale and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
+                voice:
+                  type: boolean
+                  default: false
+                  description: "true = the text is for the owner (notification, recap, plan): Oracle writes it as the assistant (system prompt = identity, style and language rule of the chat); the prompt carries only what to say, the data and the format. false = plain tool call without persona (extraction, scoring, review)."
       responses:
         "200":
           description: "{response, model, provider, use_case, chain} — provider/model of the chain step that answered"

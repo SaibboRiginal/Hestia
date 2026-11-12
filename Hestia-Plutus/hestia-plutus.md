@@ -23,7 +23,8 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
 - **Recurring**: same merchant, ±15 % amount, weekly/monthly/yearly interval, 3+ times (2 for yearly) → suggestion;
   the user confirms or dismisses (dismissed ones are not proposed again).
 - Does not read mail itself (Iris pushes it), does not call models directly (Oracle `/api/llm/chat` with use case
-  `plutus.lettura`, chain chosen in Oracle → Cervello → Modelli, only as a fallback), has no database (Archive `finance-store` + blobs).
+  `plutus.lettura`, chain chosen in Oracle → Cervello → Modelli, only as a fallback; the monthly summary text is asked
+  with `/api/llm/generate` and `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format), has no database (Archive `finance-store` + blobs).
 
 ## Inputs (every input works automatic and manual)
 

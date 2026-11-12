@@ -5,7 +5,7 @@ assistant's name (default «Hestia») and whether it is a she or a he. Every pro
 written once with tokens and rendered with :func:`render`:
 
 - ``{assistant}``         → the assistant's name
-- ``{owner}``             → how to call the owner (``chi ti scrive`` while unknown)
+- ``{owner}``             → how to call the owner (``the person writing to you`` while unknown)
 - ``{owner_rule}``        → one sentence: his name, or «ask him» while unknown
 - ``{g:amica|amico}``     → the first form for a she, the second for a he
 
@@ -27,7 +27,7 @@ ASSISTANT_NAME = "themis.personal.assistant_name"
 ASSISTANT_GENDER = "themis.personal.assistant_gender"
 
 DEFAULT_NAME = "Hestia"
-UNKNOWN_OWNER = "chi ti scrive"
+UNKNOWN_OWNER = "the person writing to you"
 _GENDERED = re.compile(r"\{g:([^{}|]*)\|([^{}|]*)\}")
 _MAX_NAME = 40
 
@@ -59,9 +59,9 @@ def default() -> dict[str, str]:
 def owner_rule(ident: dict[str, str]) -> str:
     if ident.get("owner"):
         full = ident.get("owner_name") or ""
-        also = f" (nome: {full})" if full and full != ident["owner"] else ""
-        return f"Si chiama {ident['owner']}{also}: chiamalo per nome ogni tanto, non sempre."
-    return "Non sai ancora come si chiama: se non è nei ricordi, chiediglielo alla prima occasione."
+        also = f" (full name: {full})" if full and full != ident["owner"] else ""
+        return f"Their name is {ident['owner']}{also}: use it now and then, not always."
+    return "You do not know their name yet: if it is not in what you remember, ask at the first chance."
 
 
 def render(text: str, ident: dict[str, str] | None = None) -> str:

@@ -31,10 +31,10 @@ ORACLE_STREAM_TIMEOUT = "telegram.oracle.stream_timeout"
 MENU_LAYOUT = "telegram.menu.layout"
 
 DEFAULT_CLIENT_INSTRUCTIONS = (
-    "FORMATO TELEGRAM. Scrivi in HTML di Telegram: <b>, <i>, <a href=\"url\">testo</a>, <code>, <blockquote>. "
-    "Niente Markdown, niente titoli #, niente tabelle. Elenchi: una riga per voce che inizia con •. "
-    "NIENTE EMOJI. Mai URL in chiaro: link sul testo che descrive. "
-    "Breve: poche righe, salvo che ti chieda un elenco o i dettagli. Grassetto solo per l'informazione chiave."
+    "FORMAT (the answer is shown in Telegram). Write Telegram HTML, tags ONLY: <b> <i> <u> <s> <code> <pre> "
+    "<blockquote> <a href=\"url\">text</a>. FORBIDDEN: <ul> <ol> <li> <div> <span> <h1>-<h6> <p> <br/>. "
+    "NEVER Markdown (**x**, _x_, ##, [x](url), tables). Lists: one line per item starting with •. "
+    "No emoji. Never a bare URL: put the link on the text that describes it. Bold only for the key information."
 )
 
 settings = SettingsClient("telegram")

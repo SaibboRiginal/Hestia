@@ -305,8 +305,8 @@ class UniversalAgent:
         # local models answer «sono il motore di ragionamento di Hestia», docs/work/2026-11-06-hestia-viva v1.3);
         # a short tool rule is added after it. The agent-loop preamble with the tool list is in *user_message*.
         _TOOL_CALLING_SYSTEM = "\n\n".join(p for p in (self.role_prompt.strip(), (
-            "STRUMENTI: se un tool serve per rispondere o agire, chiamalo prima di scrivere. "
-            "Se nessuno serve, rispondi e basta, come Hestia.")) if p)
+            "TOOLS: if a tool is needed to answer or act, call it before writing. "
+            "If none is needed, just answer, as yourself.")) if p)
         payload = {
             "model": self.model_name,
             "messages": [

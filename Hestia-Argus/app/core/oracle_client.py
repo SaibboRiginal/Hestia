@@ -25,12 +25,14 @@ ORACLE_ROUTE_PATH = os.getenv("ORACLE_ROUTE_PATH", "api/llm/generate").strip("/"
 ORACLE_SESSION_ID = "argus-analysis"
 
 
-def analyze(prompt: str, context: str = "") -> str:
+def analyze(prompt: str, context: str = "", voice: bool = False) -> str:
     """Send a prompt to Oracle for LLM analysis and return the reply text.
 
     ``context`` is injected as ``client_instructions`` — Oracle prepends it to
     the system prompt so the model has full awareness of the Hestia ecosystem
     before evaluating the supplied data.
+
+    ``voice``: the text is for the owner (an alert, a recovery), so Oracle writes it as the assistant.
 
     Returns an empty string if Oracle is unreachable or returns an error.
     """
@@ -53,7 +55,7 @@ def analyze(prompt: str, context: str = "") -> str:
             "method": "POST",
             "headers": {},
             "query": {},
-            "body": {"prompt": full_prompt, "use_case": USE_CASE},  # chain chosen in Oracle → Modelli
+            "body": {"prompt": full_prompt, "use_case": USE_CASE, "voice": bool(voice)},  # chain chosen in Oracle → Modelli
             "timeout_seconds": 60,
         }
         resp = requests.post(

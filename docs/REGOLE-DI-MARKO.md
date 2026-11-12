@@ -49,6 +49,10 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
 
 ## R6 — Cost and privacy (2026-10-04, 2026-10-24)
 - Prompts for local models are «caveman»: short and dense, every token is paid each turn.
+- Everything the model reads and the owner does not (prompts, labels, context lines) is English; the answer is always in the
+  language of the owner's last message (2026-11-12).
+- Oracle does not know the client: each client sends its own answer format. Rapida, Pensata and CoT differ only in
+  how much the model reasons, never in what it knows (2026-11-12).
 - No personal data in tracked files (chat ids, emails, passwords, names of real people). Configuration values go in
   `.env`; notify targets use `owner`.
 - Text sent to a model from logs or reports passes `hestia_common.redact` first.

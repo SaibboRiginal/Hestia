@@ -26,8 +26,8 @@ logger = logging.getLogger("hestia_mcp.ui_tools")
 CLIENT = "webui"
 CALL_TIMEOUT = 20.0     # the WebUI plugin proxy waits 30 s for the whole request
 FORMAT_TIMEOUT = 25.0
-FORMAT_INSTRUCTIONS = ("Rispondi in italiano conciso. Solo testo semplice: niente HTML, niente Markdown. "
-                       "Per gli elenchi usa •.")
+FORMAT_INSTRUCTIONS = ("FORMAT: plain text only, no HTML, no Markdown. Lists: one line per item starting with •. "
+                       "Be concise.")
 
 
 def as_command(tool: dict) -> dict:

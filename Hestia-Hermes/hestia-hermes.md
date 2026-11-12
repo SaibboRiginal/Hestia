@@ -253,7 +253,7 @@ cloud test bench; regression test `TestHubKeepalive`).
   no client got it). Attempts are stored in `payload.deliveries`.
 - **Batches (real_estate):** a failed batch is re-queued with exponential backoff (`hermes.batch.max_attempts`, 6; settling window `hermes.batch.window`, 30 s),
   merged with entities that arrived meanwhile.
-- **Narration** uses Oracle `/api/llm/generate` (plain generation), not the full `/api/chat` pipeline.
+- **Narration** uses Oracle `/api/llm/generate` (plain generation), not the full `/api/chat` pipeline. The call carries `voice: true`: Oracle writes as the assistant (name, she/he, style), the prompt here holds only what to say, the data and the format (rule 13 of `docs/ARCHITECTURE.md`).
 
 ## Central settings (Themis)
 
