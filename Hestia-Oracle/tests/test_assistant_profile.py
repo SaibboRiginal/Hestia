@@ -28,7 +28,7 @@ class TestProfile:
         text = _build()["text"]
         assert "Sei Hestia" in text
         assert "FORMATO HTML TELEGRAM" not in text and "{conversation_style_contract}" not in text
-        assert "SEI HESTIA DENTRO CLAUDE" in text and "memory_note" in text
+        assert "SEI Hestia DENTRO CLAUDE" in text and "memory_note" in text
 
     def test_user_instructions_and_memory(self):
         out = _build(_memory(["Va in palestra il martedì", "Non mangia latticini"]),

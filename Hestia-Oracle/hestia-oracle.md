@@ -89,6 +89,19 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   calling (persona + a short STRUMENTI rule, no separate «tool-calling engine» prompt); the agent-loop preambles
   open with «Sei Hestia, la persona descritta sopra» and the quick answer asks 1–2 sentences. Before (Marko's
   real run 2026-11-07) a local model answered «Sono il motore di ragionamento di Hestia».
+- **Name, she/he, owner** (dossier `docs/work/2026-11-12-identita-e-proattivita`): the prompts that speak to the
+  owner hold tokens (`{assistant}`, `{owner}`, `{owner_rule}`, `{g:amica|amico}`) filled by `prompt_config.prompt()`
+  with `hestia_common.identity` from the personal settings `themis.personal.assistant_name` (default Hestia),
+  `assistant_gender` (lei/lui), `owner_name`, `owner_call` (Oracle follows them, live). The persona opens «Sei
+  <nome>, l'assistente personale di <lui>: sua e di nessun altro»; name unknown → she asks. The chains read the
+  persona at every call (`ChainAgent` takes a function), so a change needs no restart. Internal extractors
+  («compilatore di Hestia»…) and the product keep the name Hestia.
+- **Style contract** (`conversation_style_contract`): forbids bot closings and status lines («sono qui, pronta»),
+  not the personality: on small talk she answers warmly and may ask ONE real question; on a task she goes to the
+  point. (Before: «saluto di una parola», «nessuna domanda» switched the persona off.)
+- **She writes first** (`core/services/opener.py`, `POST /api/chat/opener {reasons[], avoid[]}`): Athena brings the
+  reasons, Oracle writes one or two plain-text sentences in the persona with the memory digest and the awareness
+  lines; `NIENTE` → `{text: ""}` (no message). Oracle only writes: Athena decides when, Hermes delivers.
 - **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
   `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
 - **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today
@@ -96,6 +109,8 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   opened or started (Metis `/api/metis/usage/recent`); read in parallel through Hub, 2 s each, cached 60 s; a source
   down leaves its line out (`[🔄] event=awareness_source_*`). Items per line: `oracle.chat.consapevolezza_righe`
   (3; 0 = none).
+  A fourth line, when she wrote first today (Hermes item `kind: athena.talk`): the whole sentence, so his answer
+  in any chat has its context; those items are left out of the notifications line.
 - **Reactions** (`core/services/reaction_marker.py`): for `webui`/`telegram` owner turns the prompt allows a leading
   `[[r:EMOJI]]`; the stream filter turns it into `{"type":"reaction","emoji"}` before the text, strips it from
   tokens, `final.reply` and the saved history; a marker-only answer → `final.reaction_only: true`, `reply: ""`.
@@ -331,6 +346,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 | Method | Path | Description |
 |---|---|---|
+| `POST` | `/api/chat/opener` | She writes first: `{reasons[], avoid[]}` → `{text}` (plain, ≤ 400 chars) or `{text: "", skip}`; 503 = no model. Called by Athena only |
 | `POST` | `/api/chat/reaction` | The owner's emoji on one of Hestia's messages `{session_id, emoji, text}` → one history line `{ok, line}` (empty emoji = taken away) |
 | `POST` | `/api/chat` | Send a message, receive NDJSON stream; `spoken: true` = heard and answered aloud (voice contract); `quoted: {text, from, at, ref}` = the message the user replied to or quoted (one context line for this turn, `core/services/quoted_context.py`; the saved user message stays `message`); `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
 | `GET` | `/api/chat/questions?session_id=` | Questions the assistant asked and still open in that session (clients draw them again after a reload) |

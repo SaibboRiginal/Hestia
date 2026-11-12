@@ -1329,6 +1329,28 @@ def chat_reaction(req: ChatReactionRequest):
     return {"ok": True, "line": line}
 
 
+class ChatOpenerRequest(BaseModel):
+    reasons: list[str] = []      # why she writes now (mood, what an area noticed…), short lines
+    avoid: list[str] = []        # what she already wrote lately
+
+
+@app.post("/api/chat/opener")
+def chat_opener(req: ChatOpenerRequest):
+    """She writes first: one or two sentences in the persona from the reasons Athena brings, what Oracle remembers
+    of the owner and the awareness lines (docs/work/2026-11-12-identita-e-proattivita). Oracle only writes: Athena
+    decides when, Hermes delivers. ``{"text": ""}`` = nothing true to say now."""
+    from core.services import opener
+    if _no_usable_model():
+        raise HTTPException(status_code=503, detail="no model available")
+    try:
+        return opener.write(engine._ask_analyst, reasons=req.reasons, avoid=req.avoid,
+                            memory_service=engine._memory_service, awareness=_awareness_lines(),
+                            now_context=engine._current_datetime_context())
+    except Exception as exc:
+        logger.warning("[🔄] event=chat_opener_failed error=%s fallback=no_message", str(exc)[:200])
+        raise HTTPException(status_code=503, detail="opener non scritto")
+
+
 @app.post("/api/chat/question-answer")
 def question_answer_endpoint(req: QuestionAnswerRequest):
     """Receive a user's answer to a previously emitted question frame.

@@ -168,6 +168,8 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.reflection.min_correlation` | float | 0.6 | minimum |r| (advanced) |
 | `athena.reflection.repeat_days` | int giorni | 14 | same topic not repeated before (advanced) |
 | `athena.reflection.detail_budget` | int caratteri | 600 | detail asked to a module (advanced) |
+| `athena.talk.max_per_day` | int | 2 | times a day she may write first (0 = never) |
+| `athena.talk.min_gap_hours` | int ore | 4 | pause between two of her messages (advanced) |
 | `athena.log.level` | enum | `LOG_LEVEL` env | log verbosity |
 
 ### Thinking archive
@@ -180,6 +182,21 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
   bassa)» — the factors that cost the most points, or the strongest ones when accepted) and `outcome`
   (`emitted` · `forge` · `forge_skipped` · `setting_proposed` · `setting_skipped` · `failed` · `discarded`). The record
   also has `threshold` and `duration_ms`. Log: `event=thinking_cycle_done trigger= candidates= accepted= emitted= ms=`.
+
+### «Parla con te»: she writes first (`app/core/talk.py`, dossier `docs/work/2026-11-12-identita-e-proattivita`)
+Third output, next to the system briefs and the life observations (those stay in the evening recap):
+1. **When**: agenda window `athena.talk` («Ti scrive per prima», default 9–21; paused = never), at most
+   `athena.talk.max_per_day` a day (0 = never), `athena.talk.min_gap_hours` apart, never while he is chatting
+   (Oracle `/api/activity` < 10 min). The minute is not fixed (random wait after the window opens and after each
+   attempt). Checked at every loop tick **before** the thinking gate, so she can write while he is awake.
+2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`attenzione`, a long silence (≥ 20 h).
+3. **What**: Oracle `POST /api/chat/opener {reasons, avoid}` writes it in the persona; empty text = nothing true to
+   say → no message, new try in ~90 min. Model or delivery down → new try in ~30 min (`[🔄]`).
+4. **How**: Hermes event `service.action_required` with `kind: athena.talk`, no title, `_chat: true` (clients show
+   it as chat text, never retracted). Kept in Archive `signals-store` (`kind=talk`, `ref_id=athena`): the last six
+   go back to Oracle as «already written».
+`POST /api/athena/think?track=parla` = «Scrivimi ora» (past the limit and the pause); `GET /api/athena/talk?days=`
+lists what she wrote with the reasons.
 
 ### «Pensa ora» (one cycle now)
 `POST /api/athena/think` runs one full cycle (observe → think → gate → act → archive, `trigger=manual`) in the
@@ -237,6 +254,8 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/logs` | Service logs (filterable) |
 | GET | `/api/athena/status` | Runtime status (ticks, emissions, strategist state) |
 | POST | `/api/athena/trigger` | Manual trigger with custom signals |
+| POST | `/api/athena/think?track=parla` | «Scrivimi ora»: she writes first now (background) |
+| GET | `/api/athena/talk?days=7` | What she wrote first, newest first: `{items: [{id, day, at, text, reasons, trigger}]}` |
 | GET | `/api/athena/tasks` | Task lifecycle records |
 | GET | `/api/athena/tasks/{task_id}` | Single task detail |
 | GET | `/api/athena/commitments` | Active commitments (action items tracked) |
@@ -266,6 +285,7 @@ makes them user-editable and Chronos keeps your edits over the registered defaul
 | `athena.skill_curation` | daily 05–07 | skill curation, once per day inside the window |
 | `athena.thinking` | all day | idle thinking cycles (observe → think → propose); skip/pause = Athena silent |
 | `athena.reflection` | daily 18–20 | life reflection, once per day inside the window; skip/pause = no observations |
+| `athena.talk` | daily 9–21 | hours in which she may write first («parla con te»); skip/pause = she never writes first |
 
 Missing window or Chronos down → default hours (consolidation 03–05) / always (skills, thinking). Skipped or paused
 window = closed (your decision). Thinking still requires the idle gate (`athena.loop.idle_seconds`).

@@ -118,6 +118,9 @@ subscription compile), `pausa_voto`.
 - «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.risposta`), kept so a second tap does not regenerate.
 - `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
   With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
+- **She wrote first** (dossier `docs/work/2026-11-12-identita-e-proattivita`): a notification whose payload has
+  `_chat` is sent as plain chat text (escaped, no card, no tone dot, no cut at 80 characters) and remembered like an
+  answer of hers («Ascolta» and the owner's reactions work on it). Hermes never retracts it.
 - **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame →
   `setMessageReaction` on the owner's message (Telegram's own emoji list; a near one is mapped, 😂 → 🤣, otherwise
   skipped); `final.reaction_only` → no text, the «Sto pensando…» message is deleted. The owner's reactions on her

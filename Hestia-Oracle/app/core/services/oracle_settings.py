@@ -391,6 +391,13 @@ def _advanced_except_models(defs: list[dict]) -> list[dict]:
 
 settings.declare(_advanced_except_models(_definitions() + _CHAT + _CONTEXT + _AGENT + _TIMEOUTS + _PROVIDER
                                          + _MEMORY + _APPROVAL + _RUNTIME + _DOCUMENTS + _AB)).declare_log_level()
+settings.follow_personal()      # who the owner is and who the assistant is (hestia_common.identity)
+
+
+def identity() -> dict[str, str]:
+    """Assistant name, she/he and the owner's name, live from the personal settings."""
+    from hestia_common import identity as _identity
+    return _identity.read(settings.get)
 
 
 # ── Typed readers (live; a bad stored value falls back to the declared default) ──────────────

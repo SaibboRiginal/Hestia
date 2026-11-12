@@ -199,6 +199,13 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   and the sentences play in order; speaking again (or «Interrompi») stops the voice and the answer. No external live
   service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando. Its turns go to Oracle with
   `spoken: true` (SignalR `chat` message → `ChatHubMessage.Spoken`): short spoken answers, no lists.
+- **Name of the assistant** (`services/identity.service.ts`, dossier `docs/work/2026-11-12-identita-e-proattivita`):
+  reads/saves the four personal settings (`themis.personal.assistant_name|assistant_gender|owner_name|owner_call`)
+  through the central-settings door. The chat («Scrivi a …», «Parla con … a voce») and the setup greeting show the
+  chosen name; the product stays «Hestia». Guided setup, second step **«Tu e io»**: your name (needed to go on), how
+  to call you, her/his name, a she or a he → saved live. Later: Sistema → Impostazioni → Personali.
+- **She wrote first**: a Hermes push whose payload has `_chat` (Athena «parla con te») is also added to the open
+  chat as a message of hers (it stays in Notifiche too).
 - **Reactions** (dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame shows Hestia's emoji on the
   owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
   six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =

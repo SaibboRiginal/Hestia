@@ -1,8 +1,9 @@
 """What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-hestia-viva F3).
 
-Up to three short background lines, read at turn time through Hub (each source owns its data):
+Up to four short background lines, read at turn time through Hub (each source owns its data):
 - the owner's mood of today (Psyche ``GET /api/mood/today`` → ``summary``);
-- the last notifications Hestia sent him today (Hermes ``GET /api/notifications``);
+- the last notifications Hestia sent him today (Hermes ``GET /api/notifications``), and what she wrote him first
+  today (kind ``athena.talk``), in full;
 - the last things he opened or started (Metis ``GET /api/metis/usage/recent``).
 Sources are read in parallel with a short timeout and cached ``CACHE_SECONDS``; a source that does not answer is
 left out (``[🔄]`` log): the turn never waits on it or fails because of it. How many items: setting
@@ -24,6 +25,7 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 CACHE_SECONDS = 60
 TIMEOUT_SECONDS = 2
 PREFIX = "[Contesto interno, non citarlo se non chiesto]"
+TALK_KIND = "athena.talk"      # a message she wrote first (Hermes notification of Athena)
 
 # (service, path, query) of each source; the hub routes them (Hub is the only door).
 SOURCES = {
@@ -75,12 +77,31 @@ def notifications_line(payload: Any, limit: int, today: str | None = None) -> st
     for row in items or []:
         at = _local(row.get("created_at")) if isinstance(row, dict) else None
         title = str((row or {}).get("title") or "").strip() if isinstance(row, dict) else ""
-        if not at or not title or at.date().isoformat() != today:
+        if not at or not title or at.date().isoformat() != today or row.get("kind") == TALK_KIND:
             continue
         out.append(f"{at:%H:%M} «{title[:60]}»")
         if len(out) >= limit:
             break
     return ("Ultime notifiche che gli hai mandato oggi: " + "; ".join(out) + ".") if out else ""
+
+
+def talk_line(payload: Any, today: str | None = None) -> str:
+    """What she wrote him first today (Athena «parla con te», kind ``athena.talk``): the whole sentence, so his
+    answer in any chat has its context (docs/work/2026-11-12-identita-e-proattivita)."""
+    items = (payload or {}).get("items") if isinstance(payload, dict) else None
+    today = today or datetime.now(_tz()).date().isoformat()
+    out = []
+    for row in items or []:
+        if not isinstance(row, dict) or row.get("kind") != TALK_KIND:
+            continue
+        at = _local(row.get("created_at"))
+        text = " ".join(str(row.get("message") or "").split())
+        if not at or not text or at.date().isoformat() != today:
+            continue
+        out.append(f"{at:%H:%M} «{text[:240]}»")
+        if len(out) >= 2:
+            break
+    return ("Oggi gli hai scritto tu per prima (se risponde, è a questo): " + "; ".join(out) + ".") if out else ""
 
 
 def taps_line(payload: Any, limit: int) -> str:
@@ -113,8 +134,8 @@ def build_lines(fetch: Callable[[str, str, dict], Any], limit: int) -> list[str]
             except Exception as exc:
                 logger.info("[🔄] event=awareness_source_failed source=%s error=%s fallback=skip_line", name, exc)
                 got[name] = None
-    lines = [mood_line(got["mood"]), notifications_line(got["notifications"], limit),
-             taps_line(got["taps"], limit)]
+    lines = [mood_line(got["mood"]), talk_line(got["notifications"]),
+             notifications_line(got["notifications"], limit), taps_line(got["taps"], limit)]
     return [f"{PREFIX} {line}" for line in lines if line]
 
 

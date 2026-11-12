@@ -254,6 +254,20 @@ Palestra…; editor `places`, options from `hecate:/api/gateway/weather/places`)
 it again on every change; `settings.get("themis.personal.week_start")` then works like an own key
 (`week_start_index()` gives 0 = Monday … 6 = Sunday).
 
+## Identity (`hestia_common.identity`, dossier `docs/work/2026-11-12-identita-e-proattivita`)
+
+Who the assistant is and whose it is: `themis.personal.assistant_name` (default Hestia), `assistant_gender`
+(lei/lui), `owner_name`, `owner_call`. A prompt that speaks to the owner is written once with tokens and rendered:
+
+```python
+from hestia_common import identity
+ident = identity.read(settings.get)            # after settings.follow_personal()
+text = identity.render("Sei {assistant}, {g:l'amica|l'amico} di {owner}. {owner_rule}", ident)
+```
+`{assistant}` name · `{owner}` how to call him (`chi ti scrive` while unknown) · `{owner_rule}` one sentence (his
+name, or «ask him») · `{g:lei|lui}` gendered words. Other braces are untouched, so the template can be formatted
+after. Never write a fixed «Sei Hestia» in a prompt that talks to the owner. The product and modules stay Hestia.
+
 ## Reminders (`hestia_common.reminders`)
 
 One reminder model for every module; the schedule is a Chronos agenda job, delivery is Hermes.

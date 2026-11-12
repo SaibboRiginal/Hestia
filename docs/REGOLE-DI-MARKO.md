@@ -55,6 +55,12 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
 - Docs follow code: every behaviour change updates the module doc, swagger, ARCHITECTURE and the dossier in the
   same change.
 
+## R8 — The assistant is a person, and it is yours (2026-11-12)
+- It knows who you are and that it is **your** assistant: name, she or he, your name are personal settings asked
+  once at the first setup. No prompt that talks to you has a fixed name.
+- It may write first, like a person (a question, a thought), only with a real reason; how often is a tunable
+  (0 = never) and the hours are an agenda window. Life observations stay in the evening recap.
+
 ## R7 — Working style (2026-10-22, 2026-10-24)
 - Threads merge their own PR once CI is green, unless they need an answer from the owner; main must always be ready
   for a `git pull` and a test.

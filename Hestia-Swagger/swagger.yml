@@ -4103,6 +4103,25 @@ paths:
         "400": {description: "session_id missing"}
         "502": {description: "history not saved"}
 
+  /api/chat/opener:
+    post:
+      tags: [Oracle]
+      summary: "She writes first: one or two plain-text sentences in the persona from the reasons Athena brings (no tools, nothing saved). docs/work/2026-11-12-identita-e-proattivita"
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reasons: {type: array, items: {type: string}, description: "why now: mood, what an area noticed, a long silence"}
+                avoid: {type: array, items: {type: string}, description: "what she already wrote lately"}
+      responses:
+        "200": {description: "{text} | {text: '', skip: nothing_to_say}"}
+        "503": {description: "no model available or the model failed"}
+
   /api/chat/questions:
     get:
       tags: [Oracle]
@@ -12649,13 +12668,25 @@ paths:
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
         track=vita runs the life reflection instead (signals → links → details → observations for the recap).
+        track=parla = «Scrivimi ora»: she writes first now (reasons → Oracle /api/chat/opener → Hermes).
       servers:
         - url: http://localhost:19009
       parameters:
-        - {name: track, in: query, schema: {type: string, enum: [sistema, vita], default: sistema}}
+        - {name: track, in: query, schema: {type: string, enum: [sistema, vita, parla], default: sistema}}
       responses:
         "200": {description: "{status: started, trace_id, track} | {status: busy, detail}"}
         "422": {description: "unknown track"}
+
+  /api/athena/talk:
+    get:
+      tags: [Athena]
+      summary: "What the assistant wrote first («parla con te»), newest first, with the reasons. docs/work/2026-11-12-identita-e-proattivita"
+      servers:
+        - url: http://localhost:19009
+      parameters:
+        - {name: days, in: query, schema: {type: integer, default: 7, maximum: 30}}
+      responses:
+        "200": {description: "{items: [{id, day, at, text, reasons[], trigger (periodic|manual)}]}"}
 
   /api/athena/signals:
     get:

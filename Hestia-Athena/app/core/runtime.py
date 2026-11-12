@@ -23,6 +23,7 @@ import requests
 from .consolidator import CONSOLIDATION_WINDOW_DEFAULT, MemoryConsolidator
 from .observer import Observer
 from .reflection import LifeReflection, local_day
+from .talk import Talk
 from .skill_curator import SkillCurator
 from .schemas import (
     ActionCandidate,
@@ -54,9 +55,11 @@ WINDOW_CONSOLIDATION = "athena.consolidation"
 WINDOW_SKILL_CURATION = "athena.skill_curation"
 WINDOW_THINKING = "athena.thinking"
 WINDOW_REFLECTION = "athena.reflection"
+WINDOW_TALK = "athena.talk"
 SKILL_CURATION_WINDOW_DEFAULT = (5, 7)
 THINKING_WINDOW_DEFAULT = (0, 0)
 REFLECTION_WINDOW_DEFAULT = (18, 20)   # before the evening recap (default 21:30)
+TALK_WINDOW_DEFAULT = (9, 21)          # when she may write first
 
 logger = logging.getLogger("hestia_athena.runtime")
 
@@ -137,6 +140,8 @@ class AthenaRuntime:
             self.hub_api_url, gate=self._gate, propose_setting=self._propose_setting,
             settings_lines=lambda: self.observer.observe_settings(limit=40))
         self._reflection_ran_today: str = ""
+        # «Parla con te»: she writes first when she has a reason (its own gate, not the thinking loop's).
+        self.talk = Talk(self.hub_api_url, idle_seconds=self._chat_idle_seconds)
 
         # Assistant agenda: when Athena works is data the user can edit.
         self.agenda = AgendaClient("athena", self.hub_api_url)
@@ -882,6 +887,11 @@ class AthenaRuntime:
                          description="Legge i segnali delle aree (allenamento, cura di sé, spese…), cerca i "
                                      "collegamenti tra le settimane e prepara le osservazioni per il recap della "
                                      "sera. Una volta al giorno; in pausa = nessuna riflessione."),
+            daily_window(WINDOW_TALK, "Ti scrive per prima",
+                         *TALK_WINDOW_DEFAULT,
+                         description="Le ore in cui può scriverti lei per prima, per una domanda o due chiacchiere "
+                                     "(quante volte: impostazione «Ti scrive per prima»). In pausa = non scrive mai "
+                                     "per prima."),
             daily_window(WINDOW_THINKING, "Riflessione nei momenti liberi",
                          t_start, t_end,
                          description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
@@ -1215,6 +1225,7 @@ class AthenaRuntime:
             if self._loop_paused_logged:
                 logger.info("event=athena_loop_enabled setting=%s", S.LOOP_ENABLED)
                 self._loop_paused_logged = False
+            self._talk_tick()      # before the thinking gate: she may write while he is awake
             wait = self._light_work_wait()
             if wait:
                 self._stop_event.wait(wait)
@@ -1238,6 +1249,46 @@ class AthenaRuntime:
             logger.debug("[🔄] event=athena_cycle_deferred_user_active idle_seconds=%s", idle)
             return max(30, min(self.interval_seconds, self.idle_required_seconds - idle))
         return 0
+
+    def _talk_tick(self) -> None:
+        """«Parla con te»: one attempt when it is due and the window ``athena.talk`` is open. Never raises."""
+        try:
+            if not self.talk.due():
+                return
+            if not self._window_open(WINDOW_TALK, lambda: TALK_WINDOW_DEFAULT[0] <= datetime.now().hour
+                                     < TALK_WINDOW_DEFAULT[1]):
+                self.talk.window_closed()
+                return
+            self.talk.run(f"athena-parla-{uuid4().hex[:10]}")
+        except Exception as exc:  # noqa: BLE001 - a missed message never stops the loop
+            logger.warning("[🔄] event=talk_tick_failed error=%s fallback=next_tick", exc)
+
+    def talk_now(self) -> dict[str, Any]:
+        """«Scrivimi ora»: one attempt now, in the background, past the daily limit and the pause."""
+        trace_id = f"athena-parla-{uuid4().hex[:10]}"
+
+        def _run() -> None:
+            try:
+                out = self.talk.run(trace_id, force=True)
+                logger.info("event=talk_now_done trace_id=%s status=%s", trace_id, out.get("status"))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("event=talk_now_failed trace_id=%s error=%s", trace_id, exc)
+
+        threading.Thread(target=_run, daemon=True, name="athena-talk-now").start()
+        return {"status": "started", "trace_id": trace_id, "track": "parla"}
+
+    def _chat_idle_seconds(self) -> int | None:
+        """Seconds since his last chat message (Oracle ``/api/activity``); None = unknown."""
+        try:
+            resp = requests.post(
+                f"{self.hub_api_url}/route/oracle/api/activity",
+                json={"method": "GET", "headers": {}, "query": {}, "body": None, "timeout_seconds": 5},
+                timeout=7)
+            payload = (resp.json() or {}).get("payload") if resp.ok else None
+            idle = (payload or {}).get("idle_seconds")
+            return int(idle) if idle is not None else None
+        except Exception:
+            return None
 
     def _heavy_allowed(self) -> bool:
         """Memory consolidation / skill curation use the local model for a while: they need the

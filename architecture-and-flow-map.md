@@ -209,7 +209,10 @@ flowchart LR
 5. Emoji reactions: Oracle stream `reaction` → Telegram `setMessageReaction` / WebUI bubble; the owner's reaction →
    client → Oracle `/api/chat/reaction` (one history line). Owner turns also read Psyche `/api/mood/today`, Hermes
    `/api/notifications` and Metis `/api/metis/usage/recent` through Hub for the awareness lines.
-6. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
+6. She writes first: Athena loop (window `athena.talk`) → Psyche `/api/mood/today` + signals → Oracle
+   `POST /api/chat/opener` → Hermes `/api/events/ingest` (`kind: athena.talk`, `_chat`) → Telegram chat text / WebUI
+   chat + Notifiche; the owner's answer is a normal `/api/chat` turn (awareness line «Oggi gli hai scritto tu»).
+7. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
    Telegram `POST /api/webapp/verify` (bot-token HMAC, owner only) → 12-hour session token.
 
 ### Plugin flow (module pages and widgets)

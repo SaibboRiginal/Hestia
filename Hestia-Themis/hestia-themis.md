@@ -33,7 +33,9 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 
 Personal settings (owner Themis, group «Personali»): `themis.personal.week_start`, `themis.personal.currency`,
 `themis.personal.places` (list of `{id, name, address, kind home|work|other, lat?, lon?}`, editor «Luoghi», one
-Casa; options resolved by Hecate). `options_source` may name another module: `"<module>:/path"` is fetched through
+Casa; options resolved by Hecate). Group «Tu e l'assistente» (dossier `docs/work/2026-11-12-identita-e-proattivita`):
+`themis.personal.owner_name`, `owner_call`, `assistant_name` (default Hestia), `assistant_gender` (lei/lui): read by
+Oracle, Hermes and the WebUI through `hestia_common.identity`. `options_source` may name another module: `"<module>:/path"` is fetched through
 Hub from that module (e.g. `hecate:/api/gateway/weather/places`).
 
 ## Flows
