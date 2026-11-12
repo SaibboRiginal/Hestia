@@ -44,3 +44,20 @@ def test_style_setting_is_declared_with_card_default():
     from modules import hermes_settings
     assert hermes_settings.NOTIFICATION_STYLE == "hermes.notifiche.stile"
     assert [v for v, _ in hermes_settings.STYLES] == ["scheda", "frase"]
+
+
+def test_phrase_style_speaks_with_the_chosen_name_and_gender(monkeypatch):
+    from modules import hermes_settings
+    monkeypatch.setitem(hermes_settings.settings._shared, "themis.personal.assistant_name", "Leo")
+    monkeypatch.setitem(hermes_settings.settings._shared, "themis.personal.assistant_gender", "lui")
+    monkeypatch.setitem(hermes_settings.settings._shared, "themis.personal.owner_name", "Marco")
+    with patch("modules.service.narrate", return_value="Fatto.") as narrate:
+        _say("Spesa salvata")
+    assert narrate.call_args[0][0].startswith("Sei Leo, l'amico che vive con Marco.")
+
+
+def test_view_exposes_the_kind_of_the_sender():
+    from modules.notifications import view
+    row = {"outbound_event_id": "n1", "lifecycle_state": "delivered",
+           "payload": {"event_payload": {"kind": "athena.talk"}, "notification": {"message": "Ciao"}}}
+    assert view(row)["kind"] == "athena.talk" and view({"payload": {}})["kind"] == ""

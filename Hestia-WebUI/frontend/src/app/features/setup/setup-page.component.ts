@@ -9,9 +9,10 @@ import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys,
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
 import { AssistantTextComponent } from '../chat/assistant-text.component';
 import { MicRecorder, VoiceService, b64ToBlob, blobToB64 } from '../../services/voice.service';
+import { DEFAULT_ASSISTANT, IdentityService } from '../../services/identity.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
-type Screen = 'benvenuto' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
+type Screen = 'benvenuto' | 'chi' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
 /** What the server stores, derived from the choices: something at home, something in the cloud, or both. «claude»
  * (Claude Code as the whole brain) is not offered here: the Claude subscription is one of the cloud services. */
 type Recipe = 'locale' | 'cloud' | 'entrambi';
@@ -31,7 +32,7 @@ const SCREEN_KEY = 'hestia_setup_screen';
 const HOSTS_KEY = 'hestia_setup_hosts';
 /** The steps list (from the bar on top): one line per screen. */
 const TITLES: Record<Screen, string> = {
-  benvenuto: 'Inizio', modelli: 'Modelli', memoria: 'Memoria', cervello: 'Modelli pronti', ascolto: 'Ascolto',
+  benvenuto: 'Inizio', chi: 'Tu e io', modelli: 'Modelli', memoria: 'Memoria', cervello: 'Modelli pronti', ascolto: 'Ascolto',
   voce: 'Voce', telegram: 'Telegram', backup: 'Backup', esterni: 'Calendario e Garmin', fuori: 'Fuori casa', pronto: 'Fine',
 };
 /** No address after this long: say so instead of a spinner forever. */
@@ -117,10 +118,27 @@ function store(key: string, value: string): void {
             @case ('benvenuto') {
               <div class="hero">
                 <span class="mark"><hx-icon name="sparkle" [size]="26" tone="accent" /></span>
-                <h1>Ciao, sono Hestia</h1>
+                <h1>Ciao, sono {{ identity.assistant() }}</h1>
                 <p class="lead">Ti preparo tutto in pochi passi. Ogni risposta si salva subito: puoi chiudere e riprendere quando vuoi.</p>
                 <p class="fact top"><hx-icon name="host" [size]="16" tone="muted" /><span>{{ hardwareText() }}</span></p>
               </div>
+            }
+
+            @case ('chi') {
+              <h1>Come ti chiami?</h1>
+              <p class="lead">Così so chi sei e come chiamarti. Puoi anche darmi un altro nome.</p>
+              <hx-field label="Il tuo nome">
+                <input class="hx-input" autocomplete="given-name" maxlength="40" [(ngModel)]="ownerName" />
+              </hx-field>
+              <hx-field label="Come vuoi che ti chiami" hint="Un soprannome o un diminutivo. Vuoto = il tuo nome.">
+                <input class="hx-input" autocomplete="nickname" maxlength="40" [(ngModel)]="ownerCall" />
+              </hx-field>
+              <hx-field label="Il mio nome">
+                <input class="hx-input" autocomplete="off" maxlength="40" [(ngModel)]="assistantName" />
+              </hx-field>
+              <hx-field label="Sono">
+                <hx-segmented [options]="genderOptions" [value]="assistantGender()" (changed)="assistantGender.set($event)" />
+              </hx-field>
             }
 
             @case ('modelli') {
@@ -478,12 +496,19 @@ export class SetupPageComponent {
   cloudRank = signal<string[]>([]);
   botToken = '';
   passphrase = '';
+  /** «Tu e io»: who the owner is and who the assistant is (personal settings, live for every module). */
+  readonly identity = inject(IdentityService);
+  ownerName = '';
+  ownerCall = '';
+  assistantName = DEFAULT_ASSISTANT;
+  assistantGender = signal<'lei' | 'lui'>('lei');
+  readonly genderOptions: { value: 'lei' | 'lui'; label: string }[] = [{ value: 'lei', label: 'Una lei' }, { value: 'lui', label: 'Un lui' }];
 
   screen = signal<Screen>('benvenuto');
   /** The furthest screen reached in this run: the summary jumps back freely, forward only up to here. */
   reached = signal(0);
   /** The screens: Modelli, Memoria, Ascolto and Voce are the same step (app-setup-chain) on a different module. */
-  screens = signal<Screen[]>(['benvenuto', 'modelli', 'memoria', 'cervello', 'ascolto', 'voce', 'telegram', 'backup', 'esterni', 'fuori', 'pronto']);
+  screens = signal<Screen[]>(['benvenuto', 'chi', 'modelli', 'memoria', 'cervello', 'ascolto', 'voce', 'telegram', 'backup', 'esterni', 'fuori', 'pronto']);
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
   optional = computed(() => (['ascolto', 'voce'].includes(this.screen()) && !this.voiceQueued())
     || (['telegram', 'backup'].includes(this.screen()) && !this.stepDone(this.screen())));
@@ -688,6 +713,12 @@ export class SetupPageComponent {
       if (this.screen() === 'cervello') void this.sayHello();
       this.api.tunnel().then(t => this.tunnel.set(t)).catch(() => undefined);
       void this.refreshDownloads();
+      void this.identity.load(true).then(() => {
+        this.ownerName = this.identity.ownerName();
+        this.ownerCall = this.identity.ownerCall();
+        this.assistantName = this.identity.assistant();
+        this.assistantGender.set(this.identity.gender());
+      });
     } catch (e) {
       this.loadError.set(setupError(e));
     }
@@ -783,6 +814,7 @@ export class SetupPageComponent {
     if (!st) return false;
     switch (s) {
       case 'benvenuto': return this.reached() > 0;
+      case 'chi': return !!this.identity.ownerName();
       case 'modelli': case 'memoria': case 'cervello': return !!st.brain.recipe;
       case 'ascolto': case 'voce': return this.voiceQueued();
       case 'telegram': return st.telegram.linked;
@@ -834,10 +866,11 @@ export class SetupPageComponent {
   private helloWait = false;
 
   /** «Tutto pronto»: one row per choice, a tap goes back to it. */
-  recapSteps(): Screen[] { return ['modelli', 'memoria', 'voce', 'telegram', 'backup', 'fuori']; }
+  recapSteps(): Screen[] { return ['chi', 'modelli', 'memoria', 'voce', 'telegram', 'backup', 'fuori']; }
   recapText(s: Screen): string {
     const st = this.state()!;
     switch (s) {
+      case 'chi': return this.identity.ownerName() ? `${this.identity.ownerCall() || this.identity.ownerName()} e ${this.identity.assistant()}.` : 'Non mi hai ancora detto come ti chiami.';
       case 'modelli': return st.brain.summary || 'Non ancora scelti.';
       case 'memoria': { const c = this.embeddingWanted() || this.catalog()?.embedding; return c?.model || 'Non ancora scelto.'; }
       case 'voce': return this.voiceQueued() ? 'Scelte.' : 'Più tardi.';
@@ -850,6 +883,7 @@ export class SetupPageComponent {
 
   canNext(): boolean {
     switch (this.screen()) {
+      case 'chi': return !!this.ownerName.trim();
       case 'modelli': return (this.useLocal() || this.useCloud()) && this.cloudPicked().every(n => this.cloudReady()[n])
         && Object.values(this.modeOwn()).every(c => (!!c.home || c.order.length > 0) && c.order.every(n => this.cloudReady()[n]));
       case 'memoria': return this.embedOrder().every(n => this.embedReady()[n]) && (!!this.embeddingWanted() || !!this.catalog()?.embedding?.model);
@@ -879,6 +913,10 @@ export class SetupPageComponent {
     const following = this.screens()[this.index() + 1];
     this.busy.set(true);
     try {
+      if (screen === 'chi') {
+        await this.identity.save({ assistant: this.assistantName, gender: this.assistantGender(), ownerName: this.ownerName, ownerCall: this.ownerCall });
+        this.assistantName = this.identity.assistant();
+      }
       if (following === 'cervello') { await this.applyBrain(); return; }
       if (screen === 'voce' && !this.voiceQueued()) {
         const out = await this.api.voiceApply(this.voiceSteps('ascolto'), this.voiceSteps('voce'));

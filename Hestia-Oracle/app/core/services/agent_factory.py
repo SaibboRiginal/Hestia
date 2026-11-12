@@ -23,8 +23,9 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 # ── System prompts ────────────────────────────────────────────────────────────
 
-# Persona text = prompt map (overridable in the prompts file like every prompt).
-_GENERIC_SYSTEM_PROMPT = prompt_config.analyst_persona_default()
+# Persona text = prompt map (overridable in the prompts file like every prompt). A function, read at every call:
+# the assistant's name, she/he and the owner's name are personal settings and change live.
+_GENERIC_SYSTEM_PROMPT = prompt_config.analyst_persona_default
 _CODE_SYSTEM_PROMPT = (
     "You are an expert software engineer. Output clean, correct, well-structured code. "
     "Think before writing. Explain your approach briefly, then provide the implementation."

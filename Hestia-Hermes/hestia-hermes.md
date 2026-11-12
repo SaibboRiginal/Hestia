@@ -144,6 +144,14 @@ Setting `hermes.notifiche.stile`: `scheda` (default, unchanged) or `frase`. With
 `conversational_message()` asks Oracle (`/api/llm/generate` via `narrate`) to say an informative notification as
 one short sentence of Hestia, like in chat. Warnings, errors, `service.action_required` / `service.health`, and
 events with `_actions`, `_question` or `_secret` stay cards. Oracle down or empty answer → the card text as is.
+The prompt speaks with the chosen name and gender (`hestia_common.identity`; Hermes follows the personal settings).
+
+## Messages of the conversation (`_chat`, dossier `docs/work/2026-11-12-identita-e-proattivita`)
+
+An event whose payload has `_chat: true` is a message the assistant wrote on her own (Athena «parla con te»,
+`kind: athena.talk`): delivered like any notification (presence and quiet hours hold), but clients show it as chat
+text and it is **never retracted** from Telegram. The inbox view and `GET /api/notifications` items carry `kind`
+(the event payload's `kind`), which Oracle's awareness reads.
 
 ## API (MVP)
 

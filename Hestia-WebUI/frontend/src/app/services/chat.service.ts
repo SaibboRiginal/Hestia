@@ -41,6 +41,14 @@ export class ChatService {
       if (event.type === 'queued_answer') { if (this.channel === 'main') this.handleQueuedAnswer(event); return; }
       if (this.signalR.activeChannel === this.channel) this.handleEvent(event);
     });
+    // She wrote first (Athena «parla con te», a notification whose payload has `_chat`): it also appears in the open
+    // chat, like a message of hers. Oracle knows it through its awareness line, so the answer has its context.
+    this.signalR.notifications$.subscribe(push => {
+      const chat = (push['payload'] as { _chat?: boolean } | undefined)?._chat;
+      const text = String(push['message'] ?? '').trim();
+      if (this.channel !== 'main' || push.kind !== 'notification' || !chat || !text || push['silent']) return;
+      this.messages.update(msgs => [...msgs, { id: uid(), role: 'assistant', content: text, timestamp: new Date() }]);
+    });
     // Another chat took the connection: the server cancelled our stream.
     this.signalR.claims$.subscribe(ch => {
       const id = this.currentStreamingId();

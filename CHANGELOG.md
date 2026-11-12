@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-12
+- The assistant is now yours and knows who you are: in the guided setup a new step «Tu e io» asks your name, how to call you, the assistant's name (Hestia or any other) and whether it is a she or a he; you can change them later in Impostazioni → Personali and every answer follows at once. The rules that made it answer like a machine («one-word greeting», «no questions») are rewritten: in small talk it answers like a friend and may ask you something, on a task it goes to the point. And it can write to you first, like a person: a question or a thought when it has a real reason (how you feel today, something it noticed, something it does not know about you yet), at most twice a day by default (setting «Ti scrive per prima», 0 = never; the hours are in the calendar). The evening recap is unchanged → `docs/work/2026-11-12-identita-e-proattivita/` [ext-chat]
+
 ## 2026-11-11
 - Fix: the chat no longer shows «Ragionamento» on every answer: the block had that title also when it held only the tools used (or an empty thought from a local model); now «Ragionamento» appears only when the model really reasoned, tools alone read «Strumenti usati», in the site, in «Crea con Hestia» and on Telegram → `docs/work/2026-11-11-ragionamento-vuoto/` [ext-chat]
 

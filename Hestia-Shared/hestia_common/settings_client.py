@@ -112,6 +112,18 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
                  "o l'indirizzo con la città."),
     setting("themis.personal.birth_date", "Data di nascita", "string", "", group="Personali",
             help="AAAA-MM-GG. Il tuo compleanno entra negli eventi speciali (lo puoi cambiare anche lì)."),
+    # Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita): read by every prompt
+    # that speaks to the owner through ``hestia_common.identity``.
+    setting("themis.personal.owner_name", "Il tuo nome", "string", "", group="Tu e l'assistente", order=1,
+            help="Come ti chiami. L'assistente sa di essere il tuo e ti chiama per nome."),
+    setting("themis.personal.owner_call", "Come vuoi essere chiamato", "string", "", group="Tu e l'assistente",
+            order=2, help="Un soprannome o un diminutivo. Vuoto = il tuo nome."),
+    setting("themis.personal.assistant_name", "Nome dell'assistente", "string", "Hestia",
+            group="Tu e l'assistente", order=3,
+            help="Il nome con cui si presenta e a cui risponde in chat, a voce e nelle notifiche."),
+    setting("themis.personal.assistant_gender", "L'assistente è", "enum", "lei", group="Tu e l'assistente",
+            order=4, options=[("lei", "Una lei"), ("lui", "Un lui")],
+            help="Cambia come parla di sé (amica o amico, pronta o pronto)."),
 )}
 PERSONAL["themis.personal.places"]["item"] = {
     "type": "object", "label": "Luogo",

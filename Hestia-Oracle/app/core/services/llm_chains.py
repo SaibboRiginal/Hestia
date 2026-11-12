@@ -373,21 +373,29 @@ class ChainAgent:
     """Same interface as ``UniversalAgent`` for one use case: every call walks the use case's chain.
     Settings are read at call time (live): changing a chain or a use case needs no restart."""
 
-    def __init__(self, use_case: str, role_prompt: str = "", label: str = ""):
+    def __init__(self, use_case: str, role_prompt: Any = "", label: str = ""):
         self.use_case = use_case
-        self.role_prompt = role_prompt
+        # A callable is read at every call: the persona follows the personal settings (name, she/he, owner).
+        self._role = role_prompt if callable(role_prompt) else (lambda: role_prompt)
         self.label = label or use_case
         self._agents: dict[tuple, Any] = {}
         self._alock = threading.Lock()
 
+    @property
+    def role_prompt(self) -> str:
+        return str(self._role() or "")
+
     # ── steps ────────────────────────────────────────────────────────────
     def _agent(self, step: dict, thinking: bool):
         from agents.universal_agent import UniversalAgent
-        key = (step["provider"], step["model"], thinking, self.role_prompt)
+        role = self.role_prompt
+        key = (step["provider"], step["model"], thinking, role)
         with self._alock:
             agent = self._agents.get(key)
             if agent is None:
-                agent = UniversalAgent(role_prompt=self.role_prompt, provider=step["provider"],
+                if len(self._agents) > 64:      # identity changed many times: drop the old personas
+                    self._agents.clear()
+                agent = UniversalAgent(role_prompt=role, provider=step["provider"],
                                        model_name=step["model"], thinking=thinking, label=self.label)
                 self._agents[key] = agent
             return agent

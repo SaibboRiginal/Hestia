@@ -337,9 +337,18 @@ def athena_think_now(track: str = "sistema") -> dict[str, Any]:
     """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
     ``track`` = ``sistema`` (default) or ``vita``. ``started`` or ``busy`` (a cycle is already running); the
     record appears in /api/athena/thinking."""
+    if track == "parla":       # «Scrivimi ora»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
+        return runtime.talk_now()
     if track not in ("sistema", "vita"):
-        raise HTTPException(status_code=422, detail="track: sistema | vita")
+        raise HTTPException(status_code=422, detail="track: sistema | vita | parla")
     return runtime.think_now(track=track)
+
+
+@app.get("/api/athena/talk")
+def athena_talk(days: int = 7) -> dict[str, Any]:
+    """What she wrote first in the last days (newest first), with the reasons she had."""
+    rows = runtime.talk.recent(days=max(1, min(int(days), 30)))
+    return {"items": [{k: r.get(k) for k in ("id", "day", "at", "text", "reasons", "trigger")} for r in rows]}
 
 
 @app.get("/api/athena/signals")

@@ -57,6 +57,9 @@ SKILLS_STALE_DAYS = "athena.skills.stale_days"
 SKILLS_HARD_DELETE_DAYS = "athena.skills.hard_delete_days"
 SKILLS_CORE_USE_COUNT = "athena.skills.core_use_count"
 
+TALK_MAX_PER_DAY = "athena.talk.max_per_day"
+TALK_MIN_GAP_HOURS = "athena.talk.min_gap_hours"
+
 REFLECTION_MAX_PER_DAY = "athena.reflection.max_per_day"
 REFLECTION_MAX_TOPICS = "athena.reflection.max_topics"
 REFLECTION_MIN_WEEKS = "athena.reflection.min_weeks"
@@ -82,6 +85,7 @@ _G_SKILLS = "Cura delle skill"
 _G_AUDIT = "Audit conversazioni"
 _G_RECAP = "Recap della giornata"
 _G_REFLECTION = "Riflessione sulla tua vita"
+_G_TALK = "Ti scrive per prima"
 
 _ON_LOOP = {"key": LOOP_ENABLED, "equals": True}
 _ON_HINTS = {"key": HINTS_ENABLED, "equals": True}
@@ -213,6 +217,13 @@ settings.declare([
     setting(REFLECTION_DETAIL_BUDGET, "Dettagli chiesti a ogni area", "int", 600, group=_G_REFLECTION, min=100,
             max=3000, unit="caratteri", advanced=True,
             help="Quanto testo chiedere a un'area quando un segnale merita un approfondimento."),
+
+    # ── She writes first (docs/work/2026-11-12-identita-e-proattivita). WHEN = agenda window athena.talk ──
+    setting(TALK_MAX_PER_DAY, "Quante volte al giorno", "int", 2, group=_G_TALK, min=0, max=6,
+            help="Quante volte al giorno può scriverti per prima, per chiederti qualcosa o fare due chiacchiere. "
+                 "Lo fa solo se ha un motivo vero. 0 = mai. Gli orari li sposti nel calendario."),
+    setting(TALK_MIN_GAP_HOURS, "Pausa tra due messaggi", "int", 4, group=_G_TALK, min=1, max=24, unit="ore",
+            advanced=True, help="Quanto aspetta almeno tra un suo messaggio e il successivo."),
 
     # ── Conversation audit ──────────────────────────────────────────────────
     setting(AUDIT_TIMEOUT, "Attesa audit", "float", 40.0, group=_G_AUDIT, min=5, max=600, unit="s",

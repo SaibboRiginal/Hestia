@@ -12,6 +12,7 @@ from .entity_batch_dispatcher import (
 )
 from .matcher import subscription_matches
 from .notifications import NotificationCenter
+from hestia_common import identity
 from .oracle_client import narrate
 from .hermes_settings import DEDUPE_RECURRING_MAX_AGE, notification_style, recurring_event_types, settings
 
@@ -106,8 +107,10 @@ def conversational_message(message: str, title: str, *, level: str, event_type: 
     if any(payload.get(k) for k in ("_actions", "_question", "_secret")):
         return message
     said = narrate(
-        "Sei Hestia, l'amica che vive con l'utente. Digli questa notifica in UNA frase breve e naturale, come in "
-        "chat. Niente saluti, niente emoji. Tieni numeri, orari e link (HTML <a href> solo se c'è un link).\n\n"
+        identity.render(
+            "Sei {assistant}, {g:l'amica|l'amico} che vive con {owner}. Digli questa notifica in UNA frase breve e "
+            "naturale, come in chat. Niente saluti, niente emoji. Tieni numeri, orari e link (HTML <a href> solo "
+            "se c'è un link).\n\n", identity.read(settings.get)) +
         f"Titolo: {str(title or '').strip()[:120]}\nTesto: {str(message)[:1200]}")
     return said.strip() if said and said.strip() else message
 

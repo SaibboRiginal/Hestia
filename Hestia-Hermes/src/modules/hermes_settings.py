@@ -71,7 +71,7 @@ settings.declare([
     setting(NOTIFICATION_STYLE, "Stile delle notifiche", "enum", "scheda", group="Consegna", options=STYLES,
             help="Scheda: come sempre. Frase di Hestia: le notifiche informative arrivano come una sua frase "
                  "breve, come in chat; avvisi, errori e quelle con pulsanti o domande restano schede."),
-]).declare_log_level()
+]).declare_log_level().follow_personal()   # assistant name, she/he, owner: the «frase» style speaks as her
 
 
 def notification_style() -> str:

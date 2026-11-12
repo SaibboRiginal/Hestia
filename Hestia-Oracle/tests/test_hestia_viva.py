@@ -31,7 +31,7 @@ def _final(reply):
 @pytest.mark.unit
 def test_persona_is_a_person_short_and_keeps_rules():
     text = prompt_config.analyst_persona_default()
-    assert "una persona che vive con l'utente" in text
+    assert "una persona che vive con lui" in text and "l'assistente personale di" in text
     assert "LUNGHEZZA: 1-2 frasi" in text and "Mai inventare" in text
     assert "REGOLE:" in text and "11. Mai dire fatto/salvato" in text      # operating rules untouched
     assert "professionale, lucida" not in text
@@ -195,3 +195,108 @@ def test_ollama_native_tools_keep_the_persona_as_system(monkeypatch):
         agent._ask_with_tools_ollama_native("ciao", [{"name": "t", "description": "d", "parameters": {}}])
     system = post.call_args.kwargs["json"]["messages"][0]["content"]
     assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "STRUMENTI" in system
+
+
+# ── Identity: name, she/he, owner (docs/work/2026-11-12-identita-e-proattivita) ──────────────────────────────
+
+@pytest.fixture
+def ident(monkeypatch):
+    """Set the personal settings Oracle follows for one test."""
+    from core.services import oracle_settings
+
+    def apply(**values):
+        for key, value in values.items():
+            monkeypatch.setitem(oracle_settings.settings._shared, f"themis.personal.{key}", value)
+    return apply
+
+
+@pytest.mark.unit
+def test_identity_defaults_to_hestia_she_and_asks_the_name():
+    text = prompt_config.analyst_persona_default()
+    assert text.startswith("Sei Hestia, l'assistente personale di chi ti scrive: sua e di nessun altro.")
+    assert "amica fidata" in text and "chiediglielo alla prima occasione" in text
+    assert "{" not in text.split("REGOLE:")[0]                     # every token rendered
+
+
+@pytest.mark.unit
+def test_identity_follows_the_personal_settings(ident):
+    ident(assistant_name="Leo", assistant_gender="lui", owner_name="Marco", owner_call="Marko")
+    text = prompt_config.analyst_persona_default()
+    assert text.startswith("Sei Leo, l'assistente personale di Marko: suo e di nessun altro.")
+    assert "uomo, caldo, sveglio, schietto" in text and "amico fidato" in text and "Hestia stessa" in text
+    assert "Si chiama Marko (nome: Marco)" in text and "donna" not in text
+    assert prompt_config.prompt("quick_chat_static_instruction").startswith("Sei Leo, la persona descritta sopra")
+    assert prompt_config.prompt("agent_loop_system_preamble_compact", tools_list="- t").startswith("Sei Leo,")
+    assert "Spero di esserti stato utile" in prompt_config.conversation_style_contract()
+
+
+@pytest.mark.unit
+def test_chain_agent_reads_the_persona_at_every_call(ident):
+    from core.services.agent_factory import AgentFactory
+    agent = AgentFactory.create().generic
+    assert agent.role_prompt.startswith("Sei Hestia,")
+    ident(assistant_name="Leo")
+    assert agent.role_prompt.startswith("Sei Leo,")
+
+
+@pytest.mark.unit
+def test_style_lets_her_chat_and_bans_bot_phrases():
+    text = prompt_config.conversation_style_contract()
+    assert "UNA domanda vera su di lui" in text and "Compito o dato: vai al punto" in text
+    assert "saluto di una parola" not in text and "sono qui" in text
+
+
+# ── She writes first («parla con te», docs/work/2026-11-12-identita-e-proattivita) ───────────────────────────
+
+@pytest.mark.unit
+def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
+    from core.services import opener
+    memory = MagicMock()
+    memory.recall.return_value = (True, [{"fact": "L'utente lavora come sviluppatore"}])
+    asked = []
+    out = opener.write(lambda p: asked.append(p) or "Com'è andata poi la riunione di stamattina?",
+                       reasons=["Umore di oggi: giù, per lavoro"], avoid=["Hai mangiato?"], memory_service=memory,
+                       awareness=["[Contesto] x"])
+    assert out == {"text": "Com'è andata poi la riunione di stamattina?"}
+    prompt = asked[0]
+    assert "ORA SCRIVI TU PER PRIMA" in prompt and "- Umore di oggi: giù, per lavoro" in prompt
+    assert "- L'utente lavora come sviluppatore" in prompt and "- Hai mangiato?" in prompt and "persone care" in prompt
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("answer", ["NIENTE", "niente.", "", "NIENTE: è tardi"])
+def test_opener_nothing_to_say_sends_nothing(answer):
+    from core.services import opener
+    assert opener.write(lambda p: answer, reasons=[], avoid=[]) == {"text": "", "skip": "nothing_to_say"}
+
+
+@pytest.mark.unit
+def test_opener_drops_a_reaction_marker_and_quotes():
+    from core.services import opener
+    assert opener.clean('[[r:👋]] «Come stai oggi?»') == "Come stai oggi?"
+
+
+@pytest.mark.unit
+def test_awareness_talk_line_is_whole_and_not_repeated_as_notification():
+    now = datetime.now(timezone.utc).isoformat()
+    payload = {"items": [{"title": "", "message": "Com'è andata la riunione?", "kind": "athena.talk", "created_at": now},
+                         {"title": "Allenamento", "message": "x", "kind": "", "created_at": now}]}
+    line = awareness.talk_line(payload)
+    assert "Oggi gli hai scritto tu per prima" in line and "«Com'è andata la riunione?»" in line
+    assert "riunione" not in awareness.notifications_line(payload, 3)
+
+
+@pytest.mark.api
+def test_opener_endpoint_writes_or_stays_silent(client):
+    main, http = client
+    main.engine._memory_service.recall.return_value = (True, [])
+    main.engine._current_datetime_context.return_value = "martedì sera"
+    with patch.object(main, "_no_usable_model", return_value=False), \
+            patch.object(main, "_awareness_lines", return_value=[]):
+        main.engine._ask_analyst.return_value = "Hai poi finito quel libro?"
+        res = http.post("/api/chat/opener", json={"reasons": ["nessuno"], "avoid": []})
+        assert res.status_code == 200 and res.json() == {"text": "Hai poi finito quel libro?"}
+        main.engine._ask_analyst.return_value = "NIENTE"
+        assert http.post("/api/chat/opener", json={}).json()["text"] == ""
+    with patch.object(main, "_no_usable_model", return_value=True):
+        assert http.post("/api/chat/opener", json={}).status_code == 503

@@ -22,6 +22,7 @@ import { PresenceService } from '../../services/presence.service';
 import { MicRecorder, VoiceService } from '../../services/voice.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
 import { REACTION_EMOJI } from './reaction-emoji';
+import { IdentityService } from '../../services/identity.service';
 
 const LIVE_LABELS: Record<string, string> = {
   starting: 'Accendo il microfono…', listening: 'Ti ascolto', hearing: 'Ti sento…', thinking: 'Ci penso…', speaking: 'Sto parlando',
@@ -40,7 +41,7 @@ const LIVE_LABELS: Record<string, string> = {
       <span class="ttl">{{ chat.messages().length ? 'Conversazione' : '' }}</span>
       <div class="hx-grow"></div>
       <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" (click)="toggleLive()"
-              [attr.aria-pressed]="live.on" title="Parla con Hestia a voce">Parla</button>
+              [attr.aria-pressed]="live.on" [title]="'Parla con ' + identity.assistant() + ' a voce'">Parla</button>
       <hx-chat-context />
       <hx-chat-quick-settings />
       <hx-menu [items]="menu" (select)="onMenu($event)">
@@ -72,10 +73,10 @@ const LIVE_LABELS: Record<string, string> = {
                 </div>
                 @if (m.transcribing) { <div class="vtext muted">Trascrivo…</div> }
                 @else if (m.content) { <div class="vtext" [class.verr]="m.error">{{ m.content }}</div> }
-                @if (m.reaction) { <span class="rx" title="Reazione di Hestia">{{ m.reaction }}</span> }
+                @if (m.reaction) { <span class="rx" [title]="'Reazione di ' + identity.assistant()">{{ m.reaction }}</span> }
               </div></div>
             } @else {
-              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}@if (m.reaction) { <span class="rx" title="Reazione di Hestia">{{ m.reaction }}</span> }</div></div>
+              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}@if (m.reaction) { <span class="rx" [title]="'Reazione di ' + identity.assistant()">{{ m.reaction }}</span> }</div></div>
             }
           } @else {
             <div class="msg asst hx-fade-in">
@@ -173,7 +174,7 @@ const LIVE_LABELS: Record<string, string> = {
           </div>
         }
         <textarea #ta [hidden]="recording()" [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="1"
-                  [placeholder]="signalR.connectionState() === 'connected' ? 'Scrivi a Hestia…' : 'Connessione in corso…'"></textarea>
+                  [placeholder]="signalR.connectionState() === 'connected' ? 'Scrivi a ' + identity.assistant() + '…' : 'Connessione in corso…'"></textarea>
         <div class="tools">
           <input #file type="file" hidden (change)="onFile($event)" />
           <button hx-btn variant="ghost" size="sm" icon="paperclip" iconOnly aria-label="Allega" (click)="file.click()" [disabled]="chat.isStreaming()"></button>
@@ -316,6 +317,8 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   rated = signal<Record<string, 'good' | 'bad'>>({});
   /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-hestia-viva F4). */
   readonly reactions = REACTION_EMOJI;
+  /** The assistant's chosen name (personal setting): the chat talks about her or him by name. */
+  readonly identity = inject(IdentityService);
   picker = signal<string | null>(null);
 
   react(m: ChatMessage, emoji: string): void {
@@ -340,6 +343,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   constructor() {
     // After a reload: queued messages keep their hourglass and an open question comes back (oracle-offline v3).
     void this.chat.restorePending();
+    void this.identity.load();
   }
 
   ngOnDestroy() {

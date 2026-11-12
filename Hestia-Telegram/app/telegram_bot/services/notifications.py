@@ -99,10 +99,20 @@ def handle_notify(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     return _deliver(body)
 
 
+def is_chat_message(body: dict[str, Any]) -> bool:
+    """``_chat`` in the event payload: a message of the conversation written by the assistant on her own."""
+    payload = body.get("payload")
+    return isinstance(payload, dict) and bool(payload.get("_chat")) and bool(str(body.get("message") or "").strip())
+
+
 def render_notification(body: dict[str, Any]) -> str:
     """🟠 <b>Title</b> / message / <i>Saltato 2 volte</i> — the tone dot from the level, no other emoji."""
     title = ui.strip_emoji(body.get("title") or "")
     message = str(body.get("message") or "").strip()
+    if is_chat_message(body):
+        # The assistant wrote first («parla con te»): plain chat text, no card, no tone dot.
+        from html import escape
+        return escape(message, quote=False)
     if message[:1] and ui._is_emoji_char(message[0]):
         message = ui.strip_emoji(message.split(" ", 1)[0]) + (" " + message.split(" ", 1)[1] if " " in message else "")
         message = message.strip()
@@ -165,6 +175,9 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     if last is not None and getattr(last, "message_id", None):
         from telegram_bot.services.chat_service import remember_notification_message
         remember_notification_message(chat_id, last.message_id, notification_id)
+        if is_chat_message(body):   # like an answer of hers: «Ascolta» and the owner's reactions work on it
+            from telegram_bot.services import voice_service
+            voice_service.remember_answer(chat_id, last.message_id, str(body.get("message") or "").strip())
     with _unseen_lock:
         _unseen.add(notification_id)
     logger.info("event=notification_delivered notification_id=%s parts=%d", notification_id, len(sent or []))

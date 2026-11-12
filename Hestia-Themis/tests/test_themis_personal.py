@@ -104,3 +104,28 @@ def test_personal_places_validate_and_resolve_through_hecate():
     # «hecate:/path» options source: asked to Hecate, not to the owner (Themis)
     opts = themis.options("themis.personal.places")
     assert opts["options"][0]["label"] == "Casa · Milano" and calls == [("hecate", "/api/gateway/weather/places")]
+
+
+# ── Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita) ───────────────────────
+
+@pytest.mark.unit
+def test_identity_settings_are_personal_with_hestia_she_by_default():
+    from hestia_common.settings_client import PERSONAL
+    assert PERSONAL["themis.personal.assistant_name"]["default"] == "Hestia"
+    assert PERSONAL["themis.personal.assistant_gender"]["default"] == "lei"
+    assert [o["value"] for o in PERSONAL["themis.personal.assistant_gender"]["options"]] == ["lei", "lui"]
+    assert PERSONAL["themis.personal.owner_name"]["default"] == "" and "themis.personal.owner_call" in PERSONAL
+
+
+@pytest.mark.unit
+def test_identity_render_name_gender_owner():
+    from hestia_common import identity
+    template = "Sei {assistant}, {g:amica|amico} di {owner}. {owner_rule} JSON {\"a\": 1} {tools}"
+    she = identity.render(template, identity.default())
+    assert she.startswith("Sei Hestia, amica di chi ti scrive. Non sai ancora come si chiama")
+    assert she.endswith('JSON {"a": 1} {tools}')                       # other braces untouched
+    values = {identity.ASSISTANT_NAME: " Leo{}\n", identity.ASSISTANT_GENDER: "lui",
+              identity.OWNER_NAME: "Marco", identity.OWNER_CALL: ""}
+    he = identity.render(template, identity.read(values.get))
+    assert he.startswith("Sei Leo, amico di Marco. Si chiama Marco: chiamalo per nome")
+    assert identity.read(lambda key: None) == identity.default()

@@ -272,6 +272,9 @@ def view(row: dict[str, Any], client: str = "") -> dict[str, Any]:
         "source": n.get("source") or row.get("domain") or "",
         "domain": row.get("domain") or "",
         "event_type": row.get("event_type") or "",
+        # What it is for the sender (e.g. ``athena.talk`` = she wrote first): Oracle's awareness reads it.
+        "kind": str((stored.get("event_payload") or {}).get("kind") or "") if isinstance(
+            stored.get("event_payload"), dict) else "",
         "actions": public_actions(actions),
         "audience": n.get("audience") or "global",
         "origin": origin,
@@ -979,6 +982,8 @@ class NotificationCenter:
             spec = stored.get("notification") or {}
             if row.get("lifecycle_state") == "seen" and asks(spec):
                 continue  # still waiting for an answer: never removed
+            if (stored.get("event_payload") or {}).get("_chat"):
+                continue  # a message of the conversation (the assistant wrote first): it stays in the chat
             deliveries = dict(stored.get("deliveries") or {})
             changed = False
             for name, d in deliveries.items():
