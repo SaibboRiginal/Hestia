@@ -115,10 +115,9 @@ def _row(use_case: str, chain: str, index: int, provider: str, model: str, stats
 
 
 def _window(provider: str) -> int:
-    from core.services import llm_providers, oracle_settings
+    from core.services import local_window
     try:
-        if llm_providers.type_of(provider) == "ollama" or provider == "ollama":
-            return int(oracle_settings.context_window())
+        return int(local_window.window_of(provider)[0])
     except Exception:
         pass
     return 0

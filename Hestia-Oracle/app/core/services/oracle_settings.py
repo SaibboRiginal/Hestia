@@ -120,10 +120,11 @@ _CONTEXT = [
             min=300, max=8000, unit="token",
             help="Quanto pesa al massimo la personalità di Hestia (con istruzioni e ricordi) quando la attivi "
                  "dentro un'altra AI, per esempio Claude."),
-    setting(NUM_CTX, "Ollama · finestra di contesto", "int", 8192, group="Contesto", min=2048, max=262144,
+    setting(NUM_CTX, "Modello locale · finestra di contesto", "int", 0, group="Contesto", min=0, max=262144,
             unit="token", order=0,
-            help="Token che il modello locale tiene in memoria per ogni richiesta. Più alto = ricorda di più "
-                 "ma usa più VRAM; cambiarlo ricarica il modello."),
+            help="0 = automatica: Hestia usa la finestra impostata nel programma che fa girare il modello "
+                 "(Ollama, LM Studio, llama-server) e la legge da lì. Un numero la forza da qui: più alto = "
+                 "ricorda di più ma usa più VRAM; cambiarlo ricarica il modello."),
     setting(KEEP_ALIVE, "Ollama · modello in memoria", "enum", "30m", group="Contesto", options=_KEEP_ALIVE,
             order=1, help="Quanto resta caricato il modello dopo l'ultima richiesta: evita la partenza a freddo."),
     setting(COMPACT_THRESHOLD, "Compatta il contesto oltre", "float", 0.8, group="Contesto", min=0.3, max=0.95,
@@ -468,12 +469,20 @@ def prompt_ab(surface: str) -> dict:
             "forced": str(settings.get(f"{prefix}.force") or "").strip()}
 
 
-def context_window() -> int:
-    """Real context window (tokens) sent to Ollama and used for budgeting/compaction."""
+def forced_num_ctx() -> int:
+    """Window the owner forced from Hestia (0 = automatic: the local program decides)."""
     try:
-        return max(512, int(settings.get(NUM_CTX) or 8192))
+        value = int(settings.get(NUM_CTX) or 0)
     except (TypeError, ValueError):
-        return 8192
+        return 0
+    return max(512, value) if value > 0 else 0
+
+
+def context_window(model: str = "") -> int:
+    """Real context window (tokens) of the local model: budgeting, compaction, gauge. Forced by the setting, or
+    read from the program that runs the model (``core.services.local_window``)."""
+    from core.services import local_window
+    return local_window.ollama_window(model)
 
 
 def compact_threshold() -> float:
@@ -490,11 +499,14 @@ def stub_after_turns() -> int:
         return 0
 
 
-def ollama_request_options() -> dict:
-    """Fields added to every Ollama request: same ``num_ctx`` on every call (a different
-    value makes Ollama reload the model) and ``keep_alive`` (avoid cold starts)."""
+def ollama_request_options(model: str = "") -> dict:
+    """Fields added to every Ollama request: ``keep_alive`` (avoid cold starts) and, only when the window is
+    forced from Hestia (or Ollama's own is too small), the same ``num_ctx`` on every call (a different value
+    makes Ollama reload the model). On «automatica» no ``num_ctx`` is sent: Ollama keeps the owner's window."""
+    from core.services import local_window
     keep = str(settings.get(KEEP_ALIVE) or "30m")
-    return {"options": {"num_ctx": context_window()}, "keep_alive": -1 if keep == "always" else keep}
+    num_ctx = local_window.ollama_num_ctx(model)
+    return {"options": {"num_ctx": num_ctx} if num_ctx else {}, "keep_alive": -1 if keep == "always" else keep}
 
 
 def provider_settings(provider_type: str) -> dict:

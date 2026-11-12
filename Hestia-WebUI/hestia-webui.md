@@ -111,7 +111,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 - Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
   Sidebar: one scroll area between a fixed top and bottom, collapsible sections, entries pinned to "Fissati" leave
   their section; plugin pages may show a `badge` counter (DESIGN-SYSTEM §9). Ctrl/⌘+K palette: «Adesso», quick actions,
-  module pages, dashboards, WebUI pages.
+  module pages, dashboards, WebUI pages and, while typing, every setting.
 - Client config (Themis, scope user, layer `client`): `webui.plugins.hidden`, `webui.plugins.order`,
   `webui.home.quick` (pinned chips), `webui.dashboards` (`{dashboards: [...]}`), `webui.plugins.prefs`,
   `webui.sidebar.pinned` (pinned sidebar entries, in order), `webui.sidebar.collapsed` (closed sidebar sections).
@@ -323,9 +323,19 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   reasoning steps), «Strumenti usati · M» when the trace holds tool calls alone; an empty frame is not a step
   (docs/work/2026-11-11-ragionamento-vuoto).
 - Header `<hx-chat-context>`: ring with the % of the context window of the provider in use; popover with
-  provider/model and billing kind, context breakdown, this conversation's tokens (input / cache / output,
-  calls, API-equivalent cost for Claude CLI) and *Compatta*. Refreshed when an answer ends or the conversation
-  changes.
+  provider/model and billing kind, a coloured bar of what the last prompt was made of (instructions, tools of the
+  turn, history, your message, tool results, free space) with a legend whose rows add up to the total, where the
+  window comes from (read from the local program, forced in Hestia, the service's own) with a «cambia» shortcut to
+  that setting, a warning when the prompt is larger than the window, this conversation's tokens (input / cache /
+  output, calls, API-equivalent cost for Claude CLI) split per model («stimati» only on the model whose numbers
+  are estimated) and *Compatta*. Refreshed when an answer ends or the conversation changes.
+- **Shortcuts to settings** (2026-11-12, `docs/work/2026-11-12-contesto-e-scorciatoie/`): one component,
+  `<hx-setting-link>` (`ui/setting-link.component.ts`), next to a value that comes from a setting; it opens
+  Impostazioni on that setting, scrolled to and highlighted (`/settings?key=<central key>` or
+  `?section=<personal section>&row=<row>`; filters and «Avanzate» are opened when needed). Used in the context
+  popover, the chat mode picker, the chat quick settings; every module page gets one gear (top right, drawn once by
+  `plugin-page.component.ts`) that opens that module's settings; modules can call `host.openSetting(key?)`.
+  The Ctrl/⌘+K palette finds every setting (central and personal) by name, help or key while you type.
 
 ### "Crea con Hestia" drawer (2026-10-04, `features/assistant/`, `services/assistant.service.ts`)
 

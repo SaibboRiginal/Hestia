@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, HostListener, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { BadgeComponent, IconComponent, ResizeHandleComponent, savedWidth } from '../../ui';
 import { ModuleInfo } from './central-settings.api';
 import { CentralSettingsStore, moduleLabel } from './central-settings.store';
@@ -12,8 +13,14 @@ import { TransferSettingsComponent } from './transfer-settings.component';
  * Impostazioni, VS Code-like: one search box over every setting (personal and system), a
  * resizable sidebar (Personali sections, then Sistema: overview + modules with their state and
  * the number of matches while searching), and the content in the same rows everywhere.
- * Deep links: /settings?tab=system&module=oracle · /settings?section=assistente
+ * Deep links: /settings?tab=system&module=oracle · /settings?section=assistente · /settings?key=<central setting>
+ * and /settings?section=messaggi&row=notice_mode: the last two open the right view, scroll to that one setting and
+ * highlight it (the target of every <hx-setting-link>, the palette and the modules' host.openSetting).
  */
+
+/** Central settings that Personali edits with its own row. */
+const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.chat.instructions': 'instructions' };
+
 @Component({
   selector: 'app-settings-page',
   imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent, PluginSettingsComponent, TransferSettingsComponent],
@@ -133,16 +140,52 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
   readonly pTotal = computed(() => this.store.onlyModified() ? 0 : [...this.pHits().values()].reduce((a, b) => a + b, 0));
   readonly totalHits = computed(() => this.pTotal() + this.store.visible().length);
 
+  private sub?: Subscription;
+  private host = inject(ElementRef<HTMLElement>);
+
   ngOnInit() {
-    const p = this.route.snapshot.queryParamMap;
-    const module = p.get('module'), section = p.get('section');
-    if (module) this.open(module, false);
-    else if (p.get('tab') === 'system') this.open('system', false);
-    else if (p.get('tab') === 'transfer') this.open('transfer', false);
-    else if (section && PERSONAL_SECTIONS.some(s => s.id === section)) this.open('p:' + section, false);
     void this.store.init();
+    this.sub = this.route.queryParamMap.subscribe(p => void this.follow(p));
   }
-  ngOnDestroy() { this.store.stopPolling(); }
+  ngOnDestroy() { this.sub?.unsubscribe(); this.store.stopPolling(); }
+
+  /** The address decides the view (also while the page is open: a shortcut from the palette lands here). */
+  private async follow(p: ParamMap) {
+    const key = p.get('key'), module = p.get('module'), section = p.get('section'), row = p.get('row');
+    if (key) { await this.goToKey(key); return; }
+    const view = module ? module : p.get('tab') === 'system' ? 'system' : p.get('tab') === 'transfer' ? 'transfer'
+      : section && PERSONAL_SECTIONS.some(s => s.id === section) ? 'p:' + section : '';
+    if (view && view !== this.view()) this.open(view, false);
+    if (row) {
+      this.flash(`[data-row="${row}"]`);
+      void this.router.navigate([], { queryParams: { row: null }, queryParamsHandling: 'merge', replaceUrl: true });
+    }
+  }
+
+  /** One central setting: its module (or Personali for a personal one), filters out of the way, highlighted. */
+  private async goToKey(key: string) {
+    await this.store.init();
+    if (!this.store.items().length) await this.store.loadItems();
+    const item = this.store.items().find(i => i.key === key);
+    const personal = item?.scope === 'user';
+    const module = item?.module ?? key.split('.')[0];
+    if (item) this.store.reveal(item);
+    const view = personal ? 'p:assistente' : this.store.modules().some(m => m.module === module) ? module : 'system';
+    this.open(view, false);
+    const queryParams = personal ? { key: null, section: 'assistente', tab: null, module: null }
+      : { key: null, tab: 'system', module: view === 'system' ? null : view, section: null };
+    void this.router.navigate([], { queryParams, queryParamsHandling: 'merge', replaceUrl: true });
+    if (item) this.flash(KEY_ROWS[key] ? `[data-row="${KEY_ROWS[key]}"]` : `[data-setting="${key}"]`);
+  }
+
+  /** Scrolls to an element of the content once it is drawn and marks it for a moment. */
+  private flash(selector: string, tries = 30) {
+    const el = this.host.nativeElement.querySelector(selector) as HTMLElement | null;
+    if (!el) { if (tries > 0) setTimeout(() => this.flash(selector, tries - 1), 100); return; }
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('hx-flash');
+    setTimeout(() => el.classList.remove('hx-flash'), 3600);
+  }
 
   open(view: string, navigate = true) {
     this.view.set(view);

@@ -322,6 +322,9 @@ script) — see its `README.md`. `hxk-field` also takes `type="password"` and `t
 login form in Dispositivi).
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
 2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
+Host API (2026-11-12): `host.openSetting(key?)` opens Impostazioni on one central setting (highlighted), or on the
+module's own settings; the WebUI draws a gear to the module's settings on every module page, and the kit keeps the
+title line clear of it (`.page > :first-child` reads `--head-inset-end`).
 SDK helpers (2026-10-29): `plural(n, 'esercizio', 'esercizi')` → «1 esercizio» / «3 esercizi»; a widget calls
 `this.markEmpty(true|false)` when it has nothing to show, and the dashboard gives that cell less room. Kit controls
 read `--tap` (44px on touch screens) and the page's first line leaves `--head-inset` for the phone menu button.

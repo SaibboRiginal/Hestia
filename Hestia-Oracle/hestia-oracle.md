@@ -261,7 +261,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
   (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
   unsure or unknown domain → every domain. Every tool of every module was ~250 tools / 30k tokens per call, more
-  than a local model's context (`oracle.provider.ollama.num_ctx` 8192): Ollama cut the start of the prompt (rules
+  than a small local model's context (8192 on a bare Ollama): Ollama cut the start of the prompt (rules
   and tools).
 - **No replay** (Cindy 2): when the external brain fails after it already ran tools, its tool log
   (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
@@ -530,7 +530,7 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 | POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd, transcript_path}`. Runs `claude -p --output-format stream-json --verbose`; every line is written live to `<ORACLE_CODE_WORKDIR_ROOT>/.transcripts/<task>.jsonl` (outside the worktree) for the WebUI Sviluppo page |
 
 `/api/llm/chat` walks the chain like every other call (quota skip, next step on error). An Ollama step is served
-through Ollama's native `/api/chat` with the same `num_ctx` + `keep_alive` as every other Oracle call (Ollama's `/v1`
+through Ollama's native `/api/chat` with the same window (`num_ctx` only when forced) + `keep_alive` as every other Oracle call (Ollama's `/v1`
 ignores `num_ctx`: long Forge prompts were cut silently); request/response are translated to the OpenAI shape
 (`reasoning_content`, `tool_calls`, `finish_reason=length` when the window is full). Other steps go to the provider's
 OpenAI-compatible endpoint (Gemini `…/v1beta/openai`, Anthropic `…/v1`, any `openai` provider) with its
@@ -586,11 +586,27 @@ Put them as steps of a chain (Cervello → Modelli); skipped while not configure
 ### Local models: real context window, prompt cache, OpenAI-compatible servers
 
 Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto** (Themis, no env):
-- `oracle.provider.ollama.num_ctx` (8192) and `oracle.provider.ollama.keep_alive` (`30m`, `always` = -1) are sent
-  on **every** Ollama call (generate, chat/tools, stream, vision; embeddings get keep_alive only). Before, Ollama ran
-  at its server default (often 4096) and silently cut the start of longer prompts. The same value drives
-  `TokenCounter`, `/api/chat/context` and auto-compaction (`oracle.context.compact_threshold`, 0.8). Startup logs
-  `event=ollama_context_config` and warns `ollama_context_smaller` when `/api/ps` shows a model loaded smaller.
+- **Window of the local model = the one set in its program** (`core/services/local_window.py`, dossier
+  `docs/work/2026-11-12-contesto-e-scorciatoie/`). `oracle.provider.ollama.num_ctx` defaults to **0 = automatica**:
+  Oracle sends **no** `num_ctx`, so Ollama keeps the window the owner set there, and Oracle reads it back from
+  `GET /api/ps` (`context_length` of the loaded model) after its calls (background, at most every 30 s; never
+  blocks a call). Only when Ollama's own window is under 8192 (a bare install: 4096) Oracle asks for 8192 on every
+  call, because an assistant with tools never fits under it and a cut prompt loses its rules without any error;
+  it reads Ollama's own value again every 6 h, in case the owner raised it. A number in the setting forces that
+  window from Hestia (sent on every call, as before). Before 2026-11-12 the setting defaulted to 8192 and was
+  always sent: it silently replaced a larger window set in Ollama (64k → 8k) and prompts were cut.
+  OpenAI-compatible local servers are read too: LM Studio `/api/v0/models` (`loaded_context_length`),
+  llama-server `/props` (`n_ctx`), vLLM `/v1/models` (`max_model_len`).
+  `oracle.provider.ollama.keep_alive` (`30m`, `always` = -1) is still sent on every Ollama call (embeddings too).
+  The window drives `TokenCounter`, `/api/chat/context` and auto-compaction (`oracle.context.compact_threshold`,
+  0.8); the agent loop takes the window of the model that **answers** (`run_agent_loop(context_window=…)`), so a
+  cloud model is no longer compacted at the size of the local one. Startup logs `event=ollama_context_config
+  mode=automatic|forced`; every read logs `event=local_window_read`.
+- **Context gauge** (`/api/chat/context`): `window_source` (`provider` · `runtime` · `setting` · `floor` ·
+  `default`), `window_setting_key`, `over_window`, and `breakdown` = what the last prompt was made of (system,
+  tools of this turn, history, message, tool results), noted by the agent loop (`llm_stats.note_breakdown`) and
+  scaled to the size the provider reported, so the rows add up to the total; `session_usage.by_model` = the
+  conversation's calls per model, each with its own `estimated` flag.
 - **Telemetry**: every call logs `event=llm_call_stats agent=<use case> prompt_tokens cached_tokens cache_hit_pct
   load_ms prompt_ms output_tokens tok_per_s`; `/api/chat/context` returns `runtime` = per-agent averages of the
   last 50 calls. Ollama reports only the tokens it had to evaluate (`prompt_eval_count`), so its cache share is an

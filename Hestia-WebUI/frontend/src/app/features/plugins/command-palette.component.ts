@@ -5,8 +5,11 @@ import { APP_MODULES } from '../../app.modules';
 import { PluginsService } from './plugins.service';
 import { QuickActionsService } from './quick-actions.service';
 import { MetisService } from '../../services/metis.service';
+import { CentralSettingsStore, matches, moduleLabel } from '../settings/central-settings.store';
+import { PERSONAL_ROWS, PERSONAL_SECTIONS } from '../settings/personal-rows';
 
-interface Entry { id: string; label: string; hint: string; icon: string; group: string; run: () => void; }
+interface Entry { id: string; label: string; hint: string; icon: string; group: string; run: () => void;
+  /** Extra text the search reads (help, key…). */ more?: string; }
 
 /**
  * Ctrl/⌘+K palette: «Adesso» (what makes sense now, from Metis), every quick action (one tap, same as the Home
@@ -22,7 +25,7 @@ interface Entry { id: string; label: string; hint: string; icon: string; group: 
       <div class="backdrop" (mousedown)="close()">
         <div class="pal hx-glass hx-fade-in" role="dialog" aria-label="Azioni rapide" (mousedown)="$event.stopPropagation()">
           <div class="in"><hx-icon name="search" [size]="17" />
-            <input #q placeholder="Cosa vuoi fare? (azioni, pagine, dashboard)" [value]="query()" (input)="query.set($any($event.target).value); sel.set(0)"
+            <input #q placeholder="Cosa vuoi fare? (azioni, pagine, impostazioni)" [value]="query()" (input)="query.set($any($event.target).value); sel.set(0)"
                    (keydown)="onKeys($event)" aria-label="Cerca"></div>
           <div class="list">
             @for (e of results(); track e.id; let i = $index) {
@@ -55,6 +58,7 @@ export class CommandPaletteComponent {
   private qa = inject(QuickActionsService);
   private router = inject(Router);
   private metis = inject(MetisService);
+  private settings = inject(CentralSettingsStore);
   readonly open = signal(false);
   readonly query = signal('');
   readonly sel = signal(0);
@@ -75,10 +79,25 @@ export class CommandPaletteComponent {
         run: () => void this.router.navigateByUrl('/' + m.path) })),
     ];
   });
+  /** Every setting (central and personal): found by name, help or key, opened already on it. Shown only while
+   *  searching, after the things to do. */
+  private readonly settingEntries = computed<Entry[]>(() => {
+    const section = (id: string) => PERSONAL_SECTIONS.find(s => s.id === id)?.label ?? id;
+    const go = (queryParams: Record<string, string>) => () => void this.router.navigate(['/settings'], { queryParams });
+    return [
+      ...PERSONAL_ROWS.map(r => ({ id: 'set:row:' + r.id, label: r.label, hint: 'Impostazioni · ' + section(r.section), icon: 'settings',
+        group: 'Impostazioni', more: `${r.help} ${r.keywords}`, run: go({ section: r.section, row: r.id }) })),
+      ...this.settings.items().map(i => ({ id: 'set:' + i.key, label: i.label,
+        hint: 'Impostazioni · ' + (i.scope === 'user' ? 'Assistente' : moduleLabel(i.module)) + (i.group ? ' · ' + i.group : ''),
+        icon: 'settings', group: 'Impostazioni', more: `${i.help ?? ''} ${i.key}`, run: go({ key: i.key }) })),
+    ];
+  });
   readonly results = computed(() => {
-    const q = this.query().trim().toLowerCase();
-    const list = q ? this.entries().filter(e => `${e.label} ${e.hint}`.toLowerCase().includes(q)) : this.entries();
-    return list.slice(0, 60);
+    const q = this.query().trim();
+    if (!q) return this.entries().slice(0, 60);
+    const hit = (e: Entry) => matches(q, e.label, e.hint, e.more);
+    const byName = (e: Entry) => matches(q, e.label) ? 0 : 1;      // a name that matches comes before a help text that does
+    return [...this.entries().filter(hit), ...this.settingEntries().filter(hit).sort((a, b) => byName(a) - byName(b))].slice(0, 60);
   });
 
   constructor() {
@@ -109,6 +128,7 @@ export class CommandPaletteComponent {
     this.query.set(''); this.sel.set(0); this.open.set(true);
     void this.qa.reload();
     void this.metis.loadAdesso();
+    if (!this.settings.items().length) void this.settings.loadItems();   // one read; the Impostazioni page keeps it fresh
   }
 
   exec(e: Entry) { this.close(); e.run(); }

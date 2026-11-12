@@ -337,6 +337,8 @@ export class PluginsService {
       navigate: (page: string, params?: Record<string, string>, other?: string) =>
         void svc.router.navigateByUrl(svc.link(other || module, page, params)),
       link: (page: string, params?: Record<string, string>, other?: string) => svc.link(other || module, page, params),
+      openSetting: (key?: string) =>
+        void svc.router.navigate(['/settings'], { queryParams: key ? { key } : { tab: 'system', module } }),
       toast: (text: string, t?: string, action?: { label: string; run: () => void }) => svc.toasts.show(text, tone(t), action, action ? 6000 : 4500),
       confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? 'Conferma', !!o?.danger),
       assistant: (o: { label: string; hints?: Record<string, string | number>; prompt?: string; suggestions?: string[] }) =>

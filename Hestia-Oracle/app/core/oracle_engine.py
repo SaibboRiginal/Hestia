@@ -1348,6 +1348,7 @@ class OracleEngine:
                 guard_checker=loop_guard.llm_checker,
                 prior_actions=_prior_actions,
                 trace_out=_loop_trace,
+                context_window=self._chat_window(),
             )
             tool_log = list(_prior_actions) + list(tool_log)
 
@@ -1663,56 +1664,87 @@ class OracleEngine:
         turn_trace.forget_session(self._hub, session_id)
         return out
 
-    def estimate_context_stats(self, session_id: str) -> dict:
-        """Return context-window usage estimates for *session_id*.
+    def _chat_window(self) -> int:
+        """Window of the model that answers the chat (cloud: the service's own; local: forced in Hestia or read
+        from the program that runs it)."""
+        try:
+            from agents.providers import runtime_info
+            from core.services import oracle_settings
+            generic = self._agents.generic
+            return int(runtime_info(generic.provider, oracle_settings.context_window(generic.model_name),
+                                    generic.model_name)["context_window"])
+        except Exception as exc:
+            logger.debug("event=chat_window_unavailable error=%s", exc)
+            return 0
 
-        Uses Ollama /api/tokenize when available; falls back to heuristic.
-        Context window = setting oracle.provider.ollama.num_ctx (sent to Ollama on every call);
+    def estimate_context_stats(self, session_id: str) -> dict:
+        """Return context-window usage for *session_id*.
+
+        Window = the answering model's (``runtime_info``): a cloud service's own, or the local model's (forced by
+        the setting oracle.provider.ollama.num_ctx, else read from its program, ``core.services.local_window``).
+        ``breakdown`` = what the last prompt was made of (measured by the agent loop, scaled to the size the
+        provider reported); before the first turn it is a rough estimate (``breakdown_measured`` false).
         ``runtime`` = measured per-agent stats of the last calls (prompt size, cache reuse, speed).
         """
         from core.agent_loop import TokenCounter
+        from agents.providers import runtime_info
+        from core.services import oracle_settings
+        generic = self._agents.generic
         counter = TokenCounter()
         _est = counter.estimate
-        _window = counter.context_window
 
-        # History
+        # Rough estimate, used until a turn has been measured.
         history_data = self._hub.get_history(session_id, limit=200) or []
         history_chars = sum(len(str(m.get("content", ""))) for m in history_data if isinstance(m, dict))
         history_tokens = _est("x" * history_chars)
-
-        # Tools from Hestia-MCP
         all_commands = self._mcp.list_tools()
         tool_count = len(all_commands)
         tool_chars_est = tool_count * 120  # compact name+desc average
         tools_tokens = _est("x" * tool_chars_est)
-
-        # Preferences
         prefs = self._load_preferences(["general"]) or []
         pref_count = len(prefs)
         pref_chars = sum(len(str(p.get("fact", ""))) for p in prefs[:10])
         pref_tokens = _est("x" * pref_chars)
-
-        # System overhead (preamble, style, boundary markers)
         system_overhead_chars = 3_500
         system_tokens = _est("x" * system_overhead_chars)
-
         total_chars = history_chars + tool_chars_est + pref_chars + system_overhead_chars
         total_tokens = history_tokens + tools_tokens + pref_tokens + system_tokens
 
-        # Provider in use for chat (use case generic): its own window, billing kind, and the real
-        # prompt size of this conversation's last call when a provider reported it.
-        from agents.providers import runtime_info
-        generic = self._agents.generic
         active = {"use_case": "generic", "model": generic.model_name,
-                  **runtime_info(generic.provider, _window)}
+                  **runtime_info(generic.provider, oracle_settings.context_window(generic.model_name),
+                                 generic.model_name)}
         _window = active["context_window"]
         usage = llm_stats.session_usage(session_id)
         measured = int(usage.get("last_prompt_tokens") or 0)
         used_tokens = measured or total_tokens
         pct = min(100.0, 100.0 * used_tokens / _window) if _window else 0.0
 
+        # What the prompt is made of. Measured parts are scaled so they add up to the reported size.
+        parts = {k: int(v or 0) for k, v in (usage.get("breakdown") or {}).items()}
+        part_sum = sum(parts.values())
+        if part_sum > 0:
+            scale = (used_tokens / part_sum) if measured else 1.0
+            order = [("system", "Istruzioni e preferenze"), ("tools", "Strumenti di questo turno"),
+                     ("history", "Cronologia"), ("message", "Il tuo messaggio"),
+                     ("results", "Risultati degli strumenti"), ("other", "Altro")]
+            breakdown = [{"id": pid, "label": label, "tokens": int(round(parts.get(pid, 0) * scale))}
+                         for pid, label in order if parts.get(pid, 0) > 0]
+            drift = used_tokens - sum(r["tokens"] for r in breakdown) if measured else 0
+            if breakdown and drift:
+                biggest = max(breakdown, key=lambda r: r["tokens"])
+                biggest["tokens"] = max(0, biggest["tokens"] + drift)
+        else:
+            breakdown = [{"id": "system", "label": "Istruzioni e preferenze", "tokens": system_tokens + pref_tokens},
+                         {"id": "tools", "label": "Strumenti (tutti)", "tokens": tools_tokens},
+                         {"id": "history", "label": "Cronologia", "tokens": history_tokens}]
+
         return {
             "context_window": _window,
+            "window_source": active.get("window_source", ""),
+            "window_setting_key": oracle_settings.NUM_CTX if active.get("window_source") != "provider" else "",
+            "over_window": bool(_window and used_tokens > _window),
+            "breakdown": breakdown,
+            "breakdown_measured": part_sum > 0,
             "history_messages": len(history_data) if isinstance(history_data, list) else 0,
             "history_chars": history_chars,
             "history_tokens_est": history_tokens,
@@ -2715,7 +2747,7 @@ class OracleEngine:
                     ask_fn=lambda p: self._ask_analyst(p, thinking=think_level), ask_tools_fn=ask_tools,
                     stream_fn=None, client_instructions=instructions,
                     conversation_style=conversation_style_contract(), on_thinking=frames.append,
-                    guard_checker=loop_guard.llm_checker)
+                    guard_checker=loop_guard.llm_checker, context_window=self._chat_window())
             except Exception as exc:
                 logger.warning("[🔄] event=goal_round_failed session_id=%s error=%s", session_id, exc)
                 break

@@ -4451,13 +4451,20 @@ paths:
              history_tokens_est, tool_count, preference_count,
              total_tokens_est, context_used_pct, compaction_available,
              context_used_tokens, context_measured,
-             active: {use_case, provider, provider_label, model, billing, context_window},
+             window_source (provider | runtime | setting | floor | default), window_setting_key
+             (central setting that forces the window, "" for a cloud model), over_window,
+             breakdown: [{id: system|tools|history|message|results|other, label, tokens}] (adds up to
+             context_used_tokens when breakdown_measured), breakdown_measured,
+             active: {use_case, provider, provider_label, model, billing, context_window, window_source},
              session_usage: {calls, input_tokens, cached_tokens, output_tokens, cost_usd, estimated,
-             last_prompt_tokens, provider, model, last_at} ({} before the first counted call),
+             last_prompt_tokens, provider, model, last_at, breakdown,
+             by_model: [{provider, model, calls, input_tokens, cached_tokens, output_tokens, cost_usd,
+             estimated}]} ({} before the first counted call),
              runtime: {<use case>: {calls, provider, model, avg_prompt_tokens, max_prompt_tokens,
              cache_hit_pct, cache_estimated, avg_load_ms, avg_prompt_ms, tokens_per_second, last_at}}}.
-            context_window = window of the chat provider in use (Ollama/OpenAI-compatible: setting
-            oracle.provider.ollama.num_ctx; Gemini 1,048,576; Claude 200,000). context_used_tokens = real
+            context_window = window of the chat provider in use (local Ollama / OpenAI-compatible server:
+            read from the program itself, or forced by the setting oracle.provider.ollama.num_ctx when it is
+            not 0; Gemini 1,048,576; Claude 200,000). context_used_tokens = real
             prompt size of this conversation's last call when measured, else the estimate.
 
   /api/chat/compact:
@@ -12821,7 +12828,7 @@ paths:
       tags: [WebUI]
       summary: Context gauge of the current conversation (→ Oracle /api/chat/context?session_id=<current>)
       responses:
-        "200": {description: Oracle context stats (active provider, session_usage)}
+        "200": {description: "Oracle context stats (active provider, window and where it comes from, breakdown of the last prompt, session_usage with by_model)"}
 
   /api/webui/chat/pending:
     get:

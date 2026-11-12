@@ -168,7 +168,15 @@ history/undo) or just `<hx-setting-control [item] [compact] (commit)>` (the inpu
 `CentralSettingsStore.set(item, value)`. Never build a custom form for a module setting: declare it in the module
 (`hestia_common.settings_client.setting`, optional `row`/`column` for a table) and it appears in Impostazioni → Sistema.
 A setting that lives only in this client uses `<hx-setting-shell label help [wide]>` around its control, so every
-row of Impostazioni looks the same and the page search finds it (add it to `personal-settings.component.ts`).
+row of Impostazioni looks the same and the page search finds it (add it to `personal-rows.ts`, which also feeds
+the Ctrl+K palette).
+
+**Shortcut to a setting.** Wherever a page shows a value that the user changes in Impostazioni, put
+`<hx-setting-link key="oracle.chat.mode" />` next to it (a small gear + «cambia»): it opens Impostazioni already on
+that setting, highlighted. `key` = central setting · `module` = that module's settings · `section` + `row` = a
+personal one · `label=""` = gear alone · `(go)` to close a popover. Never write a sentence that tells the user where
+to go («predefinita in Impostazioni → Personali»): put the link. Module pages (plugins): `host.openSetting(key?)`;
+the gear that opens the module's settings is already drawn on every module page by the shell.
 
 ## 9. Client plugins (`features/plugins/`, contract in `docs/work/2026-10-17-client-plugins/SPEC.md` §4)
 

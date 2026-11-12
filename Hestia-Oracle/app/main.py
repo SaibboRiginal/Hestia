@@ -748,22 +748,17 @@ def register_on_hub_startup():
 
 
 def _log_ollama_context():
-    """Log the context/keep-alive Oracle sends and warn when a loaded model runs smaller."""
+    """Read the window of the models Ollama has loaded (core.services.local_window) and log what Oracle sends."""
+    from core.services import local_window
     opts = _oracle_settings.ollama_request_options()
-    num_ctx = opts["options"]["num_ctx"]
-    logger.info("event=ollama_context_config num_ctx=%s keep_alive=%s", num_ctx, opts["keep_alive"])
-    base = (os.getenv("OLLAMA_API_URL") or os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
-            ).split("/api/")[0].rstrip("/")
-    try:
-        models = (requests.get(f"{base}/api/ps", timeout=5).json() or {}).get("models") or []
-    except Exception as exc:
-        logger.debug("event=ollama_ps_unavailable error=%s", exc)
-        return
-    for m in models:
-        loaded = m.get("context_length")
-        if loaded and int(loaded) < int(num_ctx):
+    forced = _oracle_settings.forced_num_ctx()
+    loaded = local_window.refresh_ollama()
+    logger.info("event=ollama_context_config mode=%s num_ctx=%s keep_alive=%s loaded=%s",
+                "forced" if forced else "automatic", forced or "runtime", opts["keep_alive"], loaded or "none")
+    for name, ctx in loaded.items():
+        if forced and ctx < forced:
             logger.warning("[🔄] event=ollama_context_smaller model=%s loaded_ctx=%s wanted=%s "
-                           "— reloads with the right size on the next Oracle call", m.get("name"), loaded, num_ctx)
+                           "— reloads with the right size on the next Oracle call", name, ctx, forced)
 
 
 def _register_on_hub():

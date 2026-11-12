@@ -149,3 +149,13 @@ kbd { border: 1px solid var(--border-strong); border-bottom-width: 2px; border-r
 /* While a panel is being resized (<hx-resize>): no text selection, no width transitions lagging behind the pointer. */
 body.hx-resizing { cursor: col-resize; user-select: none; }
 body.hx-resizing * { transition: none !important; }
+
+/* A setting reached through a shortcut (<hx-setting-link>, the palette): marked for a moment so the eye lands on it. */
+.hx-flash { border-radius: var(--radius-md, 8px); animation: hx-flash 3.6s ease-out; }
+@keyframes hx-flash {
+  0%, 55% { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+  100% { background: transparent; box-shadow: 0 0 0 2px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-flash { animation: none; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+}
