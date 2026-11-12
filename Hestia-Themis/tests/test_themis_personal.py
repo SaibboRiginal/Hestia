@@ -122,10 +122,11 @@ def test_identity_render_name_gender_owner():
     from hestia_common import identity
     template = "Sei {assistant}, {g:amica|amico} di {owner}. {owner_rule} JSON {\"a\": 1} {tools}"
     she = identity.render(template, identity.default())
-    assert she.startswith("Sei Hestia, amica di chi ti scrive. Non sai ancora come si chiama")
+    # Names and gendered words come from the template; what the library adds is English like every hidden text.
+    assert she.startswith("Sei Hestia, amica di the person writing to you. You do not know their name yet")
     assert she.endswith('JSON {"a": 1} {tools}')                       # other braces untouched
     values = {identity.ASSISTANT_NAME: " Leo{}\n", identity.ASSISTANT_GENDER: "lui",
               identity.OWNER_NAME: "Marco", identity.OWNER_CALL: ""}
     he = identity.render(template, identity.read(values.get))
-    assert he.startswith("Sei Leo, amico di Marco. Si chiama Marco: chiamalo per nome")
+    assert he.startswith("Sei Leo, amico di Marco. Their name is Marco: use it now and then")
     assert identity.read(lambda key: None) == identity.default()
