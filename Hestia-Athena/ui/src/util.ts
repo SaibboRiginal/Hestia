@@ -8,6 +8,7 @@ export const KINDS: Record<string, string> = {
 
 export const OUTCOMES: Record<string, { label: string; tone: string }> = {
   emitted: { label: 'inviata a te', tone: 'success' },
+  collecting: { label: 'raccolgo prove', tone: 'neutral' },
   forge: { label: 'passata a Forge', tone: 'success' },
   forge_skipped: { label: 'Forge: saltata (limite o già proposta)', tone: 'warning' },
   setting_proposed: { label: 'proposta di impostazione', tone: 'success' },

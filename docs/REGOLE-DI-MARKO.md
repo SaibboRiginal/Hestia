@@ -64,6 +64,10 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
   once at the first setup. No prompt that talks to you has a fixed name.
 - It may write first, like a person (a question, a thought), only with a real reason; how often is a tunable
   (0 = never) and the hours are an agenda window. Life observations stay in the evening recap.
+- (2026-11-13) Nothing is random for its own sake: she writes when she has something to say or it has been a
+  while, less if you do not answer, little in the first days. And she **observes before proposing**: no
+  improvement or setting proposal on a new install, only after days of data and the same thing seen on several
+  days (faults are reported at once; on demand always works).
 
 ## R7 — Working style (2026-10-22, 2026-10-24)
 - Threads merge their own PR once CI is green, unless they need an answer from the owner; main must always be ready

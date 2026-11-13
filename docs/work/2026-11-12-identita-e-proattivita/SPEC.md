@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (thread «Rendere Hestia viva come Verity», Marko 2026-11-09 and 2026-11-12: «mi piace vai») |
-| **Status** | Implemented, PR open; real run by Marko pending |
+| **Status** | Implemented, merged (PR #98); real run by Marko pending. Timing of «parla con te» changed by `docs/work/2026-11-13-prima-osserva-poi-propone` |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 Follows `docs/work/2026-11-06-hestia-viva` (persona, awareness, reactions).

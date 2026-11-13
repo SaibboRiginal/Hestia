@@ -91,7 +91,7 @@ class ActionCandidate(BaseModel):
     score: float = 0.0
     accepted: bool = False
     gate_reason: str = ""   # why the relevance gate accepted/discarded it (Italian, shown on the Pensieri page)
-    outcome: str = ""       # emitted | forge | forge_skipped | setting_proposed | setting_skipped | observed | failed | discarded
+    outcome: str = ""       # emitted | collecting | forge | forge_skipped | setting_proposed | setting_skipped | observed | failed | discarded
     track: str = "sistema"  # sistema (Hestia's own health) | vita (life reflection, observations go to the recap)
     topic_key: str | None = None   # vita: the signal / link the observation is about (dedup)
 

@@ -10,5 +10,5 @@
 - [x] B WebUI setup step «Tu e io», `IdentityService`, name in the chat
 - [x] Tests (Oracle, Athena, Hermes, Telegram, Themis), `ng build`
 - [x] Docs, swagger, ARCHITECTURE rule 14, flow map, REGOLE R8, root CHANGELOG
-- [ ] precheck, PR, merge once CI is green
+- [x] precheck, PR #98, merged 2026-11-12 (8ec10ee)
 - [ ] Marko's real run (.NET build not needed: no backend change in the WebUI)

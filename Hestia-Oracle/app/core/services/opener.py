@@ -48,13 +48,16 @@ def memory_lines(memory_service) -> list[str]:
 
 
 def build_prompt(reasons: list[str], avoid: list[str], memories: list[str], awareness: list[str],
-                 now_context: str = "") -> str:
+                 now_context: str = "", past: list[str] | None = None) -> str:
     parts = [prompt_config.prompt("opener_instruction", topics=", ".join(TOPICS))]
     if now_context:
         parts.append(f"NOW:\n{now_context.strip()}")
     if awareness:
         parts.append("CONTEXT:\n" + "\n".join(awareness))
     parts.append("REASONS OF TODAY:\n" + ("\n".join(_lines(reasons, 6)) or "- none in particular"))
+    if past:
+        parts.append("THE LAST DAYS (pick up a thread if there is one; never repeat a question left unanswered):\n"
+                     + "\n".join(_lines(past, 8)))
     parts.append("WHAT YOU KNOW ABOUT THEM:\n" + ("\n".join(memories) or "- almost nothing yet"))
     if avoid:
         parts.append("YOU ALREADY WROTE THEM (do not repeat, do not insist):\n" + "\n".join(_lines(avoid, 6)))
@@ -73,10 +76,10 @@ def clean(answer: str) -> str:
 
 
 def write(ask: Callable[[str], str], *, reasons: list[str], avoid: list[str], memory_service=None,
-          awareness: list[str] | None = None, now_context: str = "") -> dict[str, Any]:
+          awareness: list[str] | None = None, now_context: str = "", past: list[str] | None = None) -> dict[str, Any]:
     """``{"text": "..."}`` or ``{"text": "", "skip": "nothing_to_say"}``. ``ask`` = the persona's chain."""
     memories = memory_lines(memory_service)
-    answer = ask(build_prompt(reasons, avoid, memories, list(awareness or []), now_context))
+    answer = ask(build_prompt(reasons, avoid, memories, list(awareness or []), now_context, past))
     text = clean(answer)
     logger.info("event=opener_written chars=%d reasons=%d memories=%d", len(text), len(reasons or []), len(memories))
     return {"text": text} if text else {"text": "", "skip": "nothing_to_say"}
