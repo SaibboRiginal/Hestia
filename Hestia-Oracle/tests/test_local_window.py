@@ -118,6 +118,17 @@ class TestOpenAiCompatibleWindow:
         with patch("core.services.local_window.requests.get", side_effect=self._get(answers)):
             assert local_window.openai_window("http://localhost:8000/v1", "big") == 100000
 
+    def test_first_read_happens_on_a_machine_just_started(self):
+        """The clock used for the cache starts near zero at boot: «never read» must not look «just read»."""
+        answers = {"/props": {"n_ctx": 16384}}
+        with patch("core.services.local_window.time.monotonic", return_value=5.0), \
+             patch("core.services.local_window.threading.Thread") as thread, \
+             patch("core.services.local_window.requests.get", side_effect=self._get(answers)):
+            assert local_window.openai_window("http://localhost:8081/v1", "any") == 16384
+            local_window._native["m"] = 32768          # already known: only the age of the last read decides
+            local_window.note_call("m", 0)
+            assert thread.called
+
     def test_silent_server_gives_zero_and_is_cached(self):
         with patch("core.services.local_window.requests.get", side_effect=OSError("down")) as get:
             assert local_window.openai_window("http://localhost:9/v1", "x") == 0

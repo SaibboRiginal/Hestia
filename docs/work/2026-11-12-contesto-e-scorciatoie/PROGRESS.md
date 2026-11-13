@@ -15,3 +15,4 @@
 Not verified here: a real Ollama (the `/api/ps` read and the reload behaviour are covered by mocked tests only);
 the gear on a real module page (the mocked check had no module bundle); the .NET build (no backend change).
 Left in the thread's plan (next PR): sidebar, notifications bell, chat delete, voice bubble, dividers, Ascolta errors.
+- [x] CI fix: on a machine just started the cache clock is near zero, so «never read» looked «just read» and the window of a local server was not read; default is now «never» + regression test

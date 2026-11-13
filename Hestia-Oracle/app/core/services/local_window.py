@@ -68,7 +68,7 @@ def ollama_num_ctx(model: str = "") -> int:
     with _lock:
         key = _base(model) or _last_model
         native = _native.get(key, 0)
-        if 0 < native < FLOOR and time.monotonic() - _native_at.get(key, 0.0) >= _RECHECK:
+        if 0 < native < FLOOR and time.monotonic() - _native_at.get(key, float("-inf")) >= _RECHECK:
             _native.pop(key, None)                    # one call without num_ctx: Ollama shows its window again
             native = 0
     return FLOOR if 0 < native < FLOOR else 0
@@ -111,7 +111,7 @@ def note_call(model: str, sent: int, address: str = "") -> None:
     with _lock:
         _last_model = key
         _sent[key] = int(sent or 0)
-        due = key not in _native or time.monotonic() - _read_at.get(address or "ollama", 0.0) >= _TTL
+        due = key not in _native or time.monotonic() - _read_at.get(address or "ollama", float("-inf")) >= _TTL
     if due:
         threading.Thread(target=refresh_ollama, args=(address,), daemon=True, name="ollama-window").start()
 
@@ -205,7 +205,7 @@ def openai_window(address: str, model: str = "") -> int:
     key = (address, str(model or "").strip().lower())
     now = time.monotonic()
     with _lock:
-        fresh = now - _read_at.get(f"{address}|{key[1]}", 0.0) < _TTL * 2
+        fresh = now - _read_at.get(f"{address}|{key[1]}", float("-inf")) < _TTL * 2
         cached = _openai.get(key, 0)
     if fresh:
         return cached
