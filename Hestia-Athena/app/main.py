@@ -346,9 +346,26 @@ def athena_think_now(track: str = "sistema") -> dict[str, Any]:
 
 @app.get("/api/athena/talk")
 def athena_talk(days: int = 7) -> dict[str, Any]:
-    """What she wrote first in the last days (newest first), with the reasons she had."""
+    """What she wrote first in the last days (newest first), with the reasons and the drive she had and whether
+    the owner answered; ``state`` = her drive to write now against the bar of ``athena.talk.eagerness``."""
     rows = runtime.talk.recent(days=max(1, min(int(days), 30)))
-    return {"items": [{k: r.get(k) for k in ("id", "day", "at", "text", "reasons", "trigger")} for r in rows]}
+    try:
+        state = runtime.talk.weigh()
+    except Exception as exc:  # noqa: BLE001 - the list is still useful without the state
+        logger.warning("[🔄] event=talk_state_failed error=%s fallback=no_state", exc)
+        state = None
+    return {"items": [{k: r.get(k) for k in ("id", "day", "at", "text", "reasons", "trigger", "drive", "answered")}
+                      for r in rows], "state": state}
+
+
+@app.get("/api/athena/evidence")
+def athena_evidence() -> dict[str, Any]:
+    """First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone): the findings she is still
+    collecting proof for, the days she has been observing and what she needs before proposing."""
+    from .core import athena_settings as AS
+    return {"known_days": runtime.evidence.known_days(),
+            "min_days": AS.get_int(AS.EVIDENCE_MIN_DAYS), "seen_days": AS.get_int(AS.EVIDENCE_SEEN_DAYS),
+            "window_days": AS.get_int(AS.EVIDENCE_WINDOW_DAYS), "items": runtime.evidence.list()}
 
 
 @app.get("/api/athena/signals")

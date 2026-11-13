@@ -61,9 +61,27 @@ class TestGateHistory:
     def test_improvement_outcome_says_if_forge_took_it(self, rt, monkeypatch):
         c = ActionCandidate(title="Migliora prompt", kind="improvement", signals=HIGH)
         monkeypatch.setattr(rt, "_send_to_forge", lambda *a: False)
+        monkeypatch.setattr(rt.evidence, "weigh", lambda cand, on_demand=False: {"ready": True, "note": ""})
         with patch.object(rt.strategist, "reason", return_value=[c]):
             rt._run_once()
         assert rt._thinking_records[-1]["candidates"][0]["outcome"] == "forge_skipped"
+
+    def test_improvement_without_proof_is_kept_collecting_not_proposed(self, rt, monkeypatch):
+        """First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone)."""
+        c = ActionCandidate(title="Migliora prompt", kind="improvement", signals=HIGH)
+        sent = []
+        monkeypatch.setattr(rt, "_send_to_forge", lambda *a: sent.append(a) or True)
+        monkeypatch.setattr(rt.evidence, "weigh", lambda cand, on_demand=False: {
+            "ready": on_demand, "note": "Chiesto da te." if on_demand else "Raccolgo prove: visto in 1 giorno su 3."})
+        with patch.object(rt.strategist, "reason", return_value=[c]):
+            rt._run_once()
+        got = rt._thinking_records[-1]["candidates"][0]
+        assert got["outcome"] == "collecting" and "Raccolgo prove" in got["gate_reason"] and sent == []
+        assert rt._thinking_records[-1]["emitted_count"] == 0
+        with patch.object(rt.strategist, "reason", return_value=[
+                ActionCandidate(title="Migliora prompt", kind="improvement", signals=HIGH)]):
+            rt._thinking_cycle("manual", "t-now")                    # «Pensa ora»: the owner asked, no wait
+        assert rt._thinking_records[-1]["candidates"][0]["outcome"] == "forge" and len(sent) == 1
 
     def test_gate_reason_names_weak_factors(self, rt):
         text = rt.gate_reason(LOW, rt.score(LOW), False)

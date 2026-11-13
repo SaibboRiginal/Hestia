@@ -1332,6 +1332,7 @@ def chat_reaction(req: ChatReactionRequest):
 class ChatOpenerRequest(BaseModel):
     reasons: list[str] = []      # why she writes now (mood, what an area noticed…), short lines
     avoid: list[str] = []        # what she already wrote lately
+    past: list[str] = []         # the last days: how the owner was, what she wrote and whether they answered
 
 
 @app.post("/api/chat/opener")
@@ -1343,7 +1344,7 @@ def chat_opener(req: ChatOpenerRequest):
     if _no_usable_model():
         raise HTTPException(status_code=503, detail="no model available")
     try:
-        return opener.write(engine._ask_analyst, reasons=req.reasons, avoid=req.avoid,
+        return opener.write(engine._ask_analyst, reasons=req.reasons, avoid=req.avoid, past=req.past,
                             memory_service=engine._memory_service, awareness=_awareness_lines(),
                             now_context=engine._current_datetime_context())
     except Exception as exc:

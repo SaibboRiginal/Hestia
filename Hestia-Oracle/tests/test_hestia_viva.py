@@ -255,9 +255,10 @@ def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
     asked = []
     out = opener.write(lambda p: asked.append(p) or "Com'è andata poi la riunione di stamattina?",
                        reasons=["Umore di oggi: giù, per lavoro"], avoid=["Hai mangiato?"], memory_service=memory,
-                       awareness=["[Contesto] x"])
+                       awareness=["[Contesto] x"], past=["2026-11-11: you wrote «Hai mangiato?» (no answer)"])
     assert out == {"text": "Com'è andata poi la riunione di stamattina?"}
     prompt = asked[0]
+    assert "THE LAST DAYS" in prompt and "- 2026-11-11: you wrote «Hai mangiato?» (no answer)" in prompt
     assert "NOW YOU WRITE FIRST" in prompt and "- Umore di oggi: giù, per lavoro" in prompt
     assert "- L'utente lavora come sviluppatore" in prompt and "- Hai mangiato?" in prompt and "loved ones" in prompt
 

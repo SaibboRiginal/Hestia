@@ -170,6 +170,10 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.reflection.detail_budget` | int caratteri | 600 | detail asked to a module (advanced) |
 | `athena.talk.max_per_day` | int | 2 | times a day she may write first (0 = never) |
 | `athena.talk.min_gap_hours` | int ore | 4 | pause between two of her messages (advanced) |
+| `athena.talk.eagerness` | int 1–5 | 3 | «Quanto è loquace»: the drive she needs to write first (1 = only with much to say) |
+| `athena.evidence.min_days` | int giorni | 5 | days of observation after the first start before any improvement / setting proposal |
+| `athena.evidence.seen_days` | int giorni | 3 | different days the same finding must come up before she proposes it |
+| `athena.evidence.window_days` | int giorni | 14 | older sightings stop counting (advanced) |
 | `athena.log.level` | enum | `LOG_LEVEL` env | log verbosity |
 
 ### Thinking archive
@@ -180,23 +184,44 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 - A record keeps **every** candidate the strategist proposed, accepted or discarded: `score`, the 5 `signals` (after
   the retrospective boost), `accepted`, `gate_reason` (Italian: «punteggio 0.48 < soglia 0.55 (urgenza bassa, utilità
   bassa)» — the factors that cost the most points, or the strongest ones when accepted) and `outcome`
-  (`emitted` · `forge` · `forge_skipped` · `setting_proposed` · `setting_skipped` · `failed` · `discarded`). The record
+  (`emitted` · `collecting` · `forge` · `forge_skipped` · `setting_proposed` · `setting_skipped` · `failed` · `discarded`). The record
   also has `threshold` and `duration_ms`. Log: `event=thinking_cycle_done trigger= candidates= accepted= emitted= ms=`.
 
 ### «Parla con te»: she writes first (`app/core/talk.py`, dossier `docs/work/2026-11-12-identita-e-proattivita`)
 Third output, next to the system briefs and the life observations (those stay in the evening recap):
 1. **When**: agenda window `athena.talk` («Ti scrive per prima», default 9–21; paused = never), at most
    `athena.talk.max_per_day` a day (0 = never), `athena.talk.min_gap_hours` apart, never while he is chatting
-   (Oracle `/api/activity` < 10 min). The minute is not fixed (random wait after the window opens and after each
-   attempt). Checked at every loop tick **before** the thinking gate, so she can write while he is awake.
-2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`attenzione`, a long silence (≥ 20 h).
-3. **What**: Oracle `POST /api/chat/opener {reasons, avoid}` writes it in the persona; empty text = nothing true to
-   say → no message, new try in ~90 min. Model or delivery down → new try in ~30 min (`[🔄]`).
+   (Oracle `/api/activity` < 10 min). No clock and no dice (dossier `docs/work/2026-11-13-prima-osserva-poi-propone`):
+   she writes when her **drive** (0–1) reaches the bar of `athena.talk.eagerness` (1 → 0.80 … 3 → 0.50 … 5 → 0.20).
+   Drive = 0.45 × silence (full after 36 h) + 0.40 × true things to say today (two = full) + 0.10 if he answered
+   her last message − 0.25 for each of her last messages left unanswered, all damped in the first days (× 0.5 on
+   day 0, × 1 after 7 days of observation). Weighed again every 30 min (`event=talk_quiet drive= bar=`). Checked
+   at every loop tick **before** the thinking gate, so she can write while he is awake.
+2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`attenzione`, a long silence (≥ 20 h); plus
+   the **last days** (`past`): how he felt each of the last 3 days (Psyche `/api/mood/history`), what she wrote
+   and whether he answered (he wrote after it = yes; 12 h without a word = no, kept on the stored row), and «do
+   not insist» after unanswered messages. These lines are hidden text for Oracle, in English.
+3. **What**: Oracle `POST /api/chat/opener {reasons, avoid, past}` writes it in the persona; empty text = nothing
+   true to say → no message, new try in ~90 min. Model or delivery down → new try in ~30 min (`[🔄]`).
 4. **How**: Hermes event `service.action_required` with `kind: athena.talk`, no title, `_chat: true` (clients show
    it as chat text, never retracted). Kept in Archive `signals-store` (`kind=talk`, `ref_id=athena`): the last six
    go back to Oracle as «already written».
-`POST /api/athena/think?track=parla` = «Scrivimi ora» (past the limit and the pause); `GET /api/athena/talk?days=`
-lists what she wrote with the reasons.
+`POST /api/athena/think?track=parla` = «Scrivimi ora» (past the drive, the limit and the pause);
+`GET /api/athena/talk?days=` lists what she wrote with the reasons, the drive and whether he answered, plus `state`
+(her drive now).
+
+### First observe, then propose (`app/core/evidence.py`, dossier `docs/work/2026-11-13-prima-osserva-poi-propone`)
+One sighting is not enough to judge, and on the first day she does not know how the system normally behaves. For
+accepted candidates of kind `improvement` (→ Forge) and `setting` (→ Themis proposal) of the system track:
+- she proposes only after `athena.evidence.min_days` days of observation since the first start **and** when the
+  same finding came up on `athena.evidence.seen_days` different days within `athena.evidence.window_days`;
+- same finding = same setting key, or improvement titles sharing at least half of their words;
+- until then: outcome `collecting`, the reason in `gate_reason` («Raccolgo prove: visto in 2 giorni su 3
+  richiesti»), nothing emitted; when proposed the proof goes in the reasoning and the count restarts from zero;
+- never wait: other kinds (faults, notices), and «Pensa ora» (`trigger=manual`);
+- ledger in Archive `signals-store` (`kind=evidence`, `ref_id=athena`; row `_start` = first day). Not readable →
+  nothing proposed in that cycle (`[🔄] event=evidence_read_failed`). Log `event=evidence_weighed`.
+The life reflection has its own wait (`athena.reflection.min_weeks`).
 
 ### «Pensa ora» (one cycle now)
 `POST /api/athena/think` runs one full cycle (observe → think → gate → act → archive, `trigger=manual`) in the
@@ -255,7 +280,8 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/athena/status` | Runtime status (ticks, emissions, strategist state) |
 | POST | `/api/athena/trigger` | Manual trigger with custom signals |
 | POST | `/api/athena/think?track=parla` | «Scrivimi ora»: she writes first now (background) |
-| GET | `/api/athena/talk?days=7` | What she wrote first, newest first: `{items: [{id, day, at, text, reasons, trigger}]}` |
+| GET | `/api/athena/talk?days=7` | What she wrote first, newest first: `{items: [{id, day, at, text, reasons, trigger, drive, answered}], state: {drive, bar, wants, reasons, past, …}}` |
+| GET | `/api/athena/evidence` | What she is still collecting proof for: `{known_days, min_days, seen_days, window_days, items: [{key, kind, title, days[], first_day, proposed_day}]}` |
 | GET | `/api/athena/tasks` | Task lifecycle records |
 | GET | `/api/athena/tasks/{task_id}` | Single task detail |
 | GET | `/api/athena/commitments` | Active commitments (action items tracked) |
