@@ -99,8 +99,8 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - **Style contract** (`conversation_style_contract`): forbids bot closings and status lines («sono qui, pronta»),
   not the personality: on small talk she answers warmly and may ask ONE real question; on a task she goes to the
   point. (Before: «saluto di una parola», «nessuna domanda» switched the persona off.)
-- **She writes first** (`core/services/opener.py`, `POST /api/chat/opener {reasons[], avoid[]}`): Athena brings the
-  reasons, Oracle writes one or two plain-text sentences in the persona with the memory digest and the awareness
+- **She writes first** (`core/services/opener.py`, `POST /api/chat/opener {reasons[], avoid[], past[]}`): Athena brings the
+  reasons and the last days (`past`: how the owner was, what she wrote and whether they answered), Oracle writes one or two plain-text sentences in the persona with the memory digest and the awareness
   lines; `NIENTE` → `{text: ""}` (no message). Oracle only writes: Athena decides when, Hermes delivers.
 - **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
   `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
@@ -345,7 +345,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/chat/opener` | She writes first: `{reasons[], avoid[]}` → `{text}` (plain, ≤ 400 chars) or `{text: "", skip}`; 503 = no model. Called by Athena only |
+| `POST` | `/api/chat/opener` | She writes first: `{reasons[], avoid[], past[]}` → `{text}` (plain, ≤ 400 chars) or `{text: "", skip}`; 503 = no model. Called by Athena only |
 | `POST` | `/api/chat/reaction` | The owner's emoji on one of Hestia's messages `{session_id, emoji, text}` → one history line `{ok, line}` (empty emoji = taken away) |
 | `POST` | `/api/chat` | Send a message, receive NDJSON stream; `spoken: true` = heard and answered aloud (voice contract); `quoted: {text, from, at, ref}` = the message the user replied to or quoted (one context line for this turn, `core/services/quoted_context.py`; the saved user message stays `message`); `queued: [{text, written_at}]` = messages kept while unavailable, answered in one turn (v3 C); 503 `{models: "none"}` when no step of the chain is usable (out of quota / not configured; a chain that only failed recently is still tried) |
 | `GET` | `/api/chat/questions?session_id=` | Questions the assistant asked and still open in that session (clients draw them again after a reload) |

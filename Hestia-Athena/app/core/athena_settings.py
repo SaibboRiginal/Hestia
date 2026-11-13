@@ -59,6 +59,11 @@ SKILLS_CORE_USE_COUNT = "athena.skills.core_use_count"
 
 TALK_MAX_PER_DAY = "athena.talk.max_per_day"
 TALK_MIN_GAP_HOURS = "athena.talk.min_gap_hours"
+TALK_EAGERNESS = "athena.talk.eagerness"
+
+EVIDENCE_MIN_DAYS = "athena.evidence.min_days"
+EVIDENCE_SEEN_DAYS = "athena.evidence.seen_days"
+EVIDENCE_WINDOW_DAYS = "athena.evidence.window_days"
 
 REFLECTION_MAX_PER_DAY = "athena.reflection.max_per_day"
 REFLECTION_MAX_TOPICS = "athena.reflection.max_topics"
@@ -86,6 +91,7 @@ _G_AUDIT = "Audit conversazioni"
 _G_RECAP = "Recap della giornata"
 _G_REFLECTION = "Riflessione sulla tua vita"
 _G_TALK = "Ti scrive per prima"
+_G_EVIDENCE = "Prima osserva, poi propone"
 
 _ON_LOOP = {"key": LOOP_ENABLED, "equals": True}
 _ON_HINTS = {"key": HINTS_ENABLED, "equals": True}
@@ -224,6 +230,23 @@ settings.declare([
                  "Lo fa solo se ha un motivo vero. 0 = mai. Gli orari li sposti nel calendario."),
     setting(TALK_MIN_GAP_HOURS, "Pausa tra due messaggi", "int", 4, group=_G_TALK, min=1, max=24, unit="ore",
             advanced=True, help="Quanto aspetta almeno tra un suo messaggio e il successivo."),
+    setting(TALK_EAGERNESS, "Quanto è loquace", "int", 3, group=_G_TALK, min=1, max=5,
+            help="Quanta voglia ha di scriverti per prima. La voglia cresce se non vi sentite da un po' e se ha "
+                 "qualcosa di vero da dirti, cala se non le rispondi. 1 = solo quando ha molto da dire, "
+                 "5 = spesso. Nei primi giorni, sapendo poco di te, scrive comunque poco."),
+
+    # ── First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone) ──
+    setting(EVIDENCE_MIN_DAYS, "Giorni di osservazione prima di proporre", "int", 5, group=_G_EVIDENCE, min=0,
+            max=30, unit="giorni", order=0,
+            help="Dopo il primo avvio osserva e basta per questi giorni: nessuna proposta di miglioramento o di "
+                 "modifica alle impostazioni. I guasti veri te li segnala subito, e «Pensa ora» non aspetta."),
+    setting(EVIDENCE_SEEN_DAYS, "In quanti giorni diversi deve rivederlo", "int", 3, group=_G_EVIDENCE, min=1,
+            max=14, unit="giorni", order=1,
+            help="Propone un miglioramento o una modifica solo se la stessa cosa è emersa in almeno questi "
+                 "giorni diversi. Una volta sola non basta per giudicare."),
+    setting(EVIDENCE_WINDOW_DAYS, "Entro quanti giorni", "int", 14, group=_G_EVIDENCE, min=1, max=90,
+            unit="giorni", order=2, advanced=True,
+            help="Le prove più vecchie di così non contano più."),
 
     # ── Conversation audit ──────────────────────────────────────────────────
     setting(AUDIT_TIMEOUT, "Attesa audit", "float", 40.0, group=_G_AUDIT, min=5, max=600, unit="s",

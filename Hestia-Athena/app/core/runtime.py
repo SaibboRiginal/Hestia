@@ -23,6 +23,7 @@ import requests
 from .consolidator import CONSOLIDATION_WINDOW_DEFAULT, MemoryConsolidator
 from .observer import Observer
 from .reflection import LifeReflection, local_day
+from .evidence import Evidence
 from .talk import Talk
 from .skill_curator import SkillCurator
 from .schemas import (
@@ -141,7 +142,9 @@ class AthenaRuntime:
             settings_lines=lambda: self.observer.observe_settings(limit=40))
         self._reflection_ran_today: str = ""
         # «Parla con te»: she writes first when she has a reason (its own gate, not the thinking loop's).
-        self.talk = Talk(self.hub_api_url, idle_seconds=self._chat_idle_seconds)
+        self.evidence = Evidence(self.hub_api_url)
+        self.talk = Talk(self.hub_api_url, idle_seconds=self._chat_idle_seconds,
+                         known_days=self.evidence.known_days)
 
         # Assistant agenda: when Athena works is data the user can edit.
         self.agenda = AgendaClient("athena", self.hub_api_url)
@@ -1114,6 +1117,15 @@ class AthenaRuntime:
             )
         else:
             for candidate in candidates:
+                # First observe, then propose: a change to code or settings needs the same finding on several days.
+                weight = self.evidence.weigh(candidate, on_demand=trigger == "manual")
+                if weight.get("note"):
+                    candidate.gate_reason = f"{candidate.gate_reason} {weight['note']}".strip()
+                if not weight["ready"]:
+                    candidate.outcome = "collecting"
+                    continue
+                if weight.get("note") and candidate.kind in ("improvement", "setting"):
+                    candidate.reasoning = f"{candidate.reasoning} ({weight['note']})".strip()
                 try:
                     self._task_store.mark_running(
                         task_id,

@@ -4118,6 +4118,7 @@ paths:
               properties:
                 reasons: {type: array, items: {type: string}, description: "why now: mood, what an area noticed, a long silence"}
                 avoid: {type: array, items: {type: string}, description: "what she already wrote lately"}
+                past: {type: array, items: {type: string}, description: "the last days: how the owner was, what she wrote and whether they answered (docs/work/2026-11-13-prima-osserva-poi-propone)"}
       responses:
         "200": {description: "{text} | {text: '', skip: nothing_to_say}"}
         "503": {description: "no model available or the model failed"}
@@ -12712,13 +12713,22 @@ paths:
   /api/athena/talk:
     get:
       tags: [Athena]
-      summary: "What the assistant wrote first («parla con te»), newest first, with the reasons. docs/work/2026-11-12-identita-e-proattivita"
+      summary: "What the assistant wrote first («parla con te»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identita-e-proattivita"
       servers:
         - url: http://localhost:19009
       parameters:
         - {name: days, in: query, schema: {type: integer, default: 7, maximum: 30}}
       responses:
-        "200": {description: "{items: [{id, day, at, text, reasons[], trigger (periodic|manual)}]}"}
+        "200": {description: "{items: [{id, day, at, text, reasons[], trigger (periodic|manual), drive, answered (true|false|null)}], state: {drive, bar, wants, idle_seconds, known_days, unanswered, reasons[], past[]} | null}"}
+
+  /api/athena/evidence:
+    get:
+      tags: [Athena]
+      summary: "First observe, then propose: findings she is still collecting proof for before an improvement or a setting proposal. docs/work/2026-11-13-prima-osserva-poi-propone"
+      servers:
+        - url: http://localhost:19009
+      responses:
+        "200": {description: "{known_days, min_days, seen_days, window_days, items: [{key, kind (improvement|setting), title, days[], first_day, proposed_day}]}"}
 
   /api/athena/signals:
     get:
