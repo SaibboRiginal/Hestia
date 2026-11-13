@@ -512,8 +512,8 @@ def fixed_text(plan: dict, past: list[dict]) -> str:
 
 
 def _prompt(plan: dict, past: list[dict]) -> str:
-    lines = ["Sei l'assistente personale. Scrivi il messaggio del piano della settimana, in italiano, max 6 righe,",
-             "tono caldo e pratico, niente emoji, niente nomi di moduli o di sistemi. Solo testo.",
+    lines = ["Write the owner the message with the plan of the week, in Italian, 6 lines at most, practical.",
+             "No emoji, no names of modules or systems. Format: plain text. (NON ENTRA = does not fit.)",
              "PIANO:"]
     for d in plan["days"]:
         for i in d["items"]:
@@ -534,8 +534,8 @@ def _prompt(plan: dict, past: list[dict]) -> str:
 
 
 def _brain_text(prompt: str, timeout: float = 60) -> str:
-    status, payload = _route("oracle", "POST", "api/llm/generate", body={"prompt": prompt, "use_case": USE_CASE},
-                             timeout=timeout)
+    status, payload = _route("oracle", "POST", "api/llm/generate", body={"prompt": prompt, "use_case": USE_CASE,
+                                                                  "voice": True}, timeout=timeout)
     if status >= 400:
         raise RuntimeError(f"oracle status {status}")
     text = payload.get("response") or payload.get("raw") if isinstance(payload, dict) else payload

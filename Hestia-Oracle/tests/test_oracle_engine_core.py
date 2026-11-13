@@ -939,15 +939,31 @@ class TestQuestionProtocol:
 
 @pytest.mark.unit
 class TestChatModes:
-    def test_quick_mode_skips_classify_and_returns_fast_answer(self, engine):
-        """Quick mode should bypass classify + agent loop entirely."""
-        engine._agents.generic.ask.return_value = "Risposta rapida."
-        lines = _collect_ndjson_lines(engine.chat(
-            "Ciao!", "test-session", mode="quick"
-        ))
-        answers = [l for l in lines if l.get("type") == "final"]
-        assert len(answers) == 1
-        assert "Risposta rapida" in answers[0]["reply"]
+    def test_quick_mode_is_the_full_path_with_thinking_off(self, engine):
+        """Rapida = same routing, persona, memories and tools as every mode; only the model's thinking is off
+        (Marko 2026-11-12). It is no longer a separate, poorer prompt."""
+        seen = []
+
+        def _tools(prompt, manifest, agent_override=None, thinking=False):
+            seen.append(thinking)
+            return {"tool_call": None, "tool_calls": [], "text": "Fatto."}
+        engine._ask_analyst_with_tools = _tools
+        engine._quick_answer = MagicMock(return_value="x")
+        lines = _collect_ndjson_lines(engine.chat("Che impegni ho domani?", "test-session", mode="quick"))
+        assert len([l for l in lines if l.get("type") == "final"]) == 1
+        engine._quick_answer.assert_not_called()          # classified as a request → the agent loop, with tools
+        assert seen and all(t is False for t in seen)
+
+    def test_thinking_modes_switch_the_model_reasoning_on(self, engine):
+        seen = []
+
+        def _tools(prompt, manifest, agent_override=None, thinking=False):
+            seen.append(thinking)
+            return {"tool_call": None, "tool_calls": [], "text": "Fatto."}
+        engine._ask_analyst_with_tools = _tools
+        _collect_ndjson_lines(engine.chat("Che impegni ho domani?", "s-think", mode="thinking"))
+        _collect_ndjson_lines(engine.chat("Che impegni ho domani?", "s-cot", mode="cot"))
+        assert seen[0] is True and "deep" in seen
 
     def test_quick_mode_saves_history(self, engine):
         """Quick mode should still persist history."""

@@ -31,16 +31,17 @@ def _final(reply):
 @pytest.mark.unit
 def test_persona_is_a_person_short_and_keeps_rules():
     text = prompt_config.analyst_persona_default()
-    assert "una persona che vive con lui" in text and "l'assistente personale di" in text
-    assert "LUNGHEZZA: 1-2 frasi" in text and "Mai inventare" in text
-    assert "REGOLE:" in text and "11. Mai dire fatto/salvato" in text      # operating rules untouched
-    assert "professionale, lucida" not in text
+    assert "a person who lives with them" in text and "the personal assistant of" in text
+    assert "LENGTH: 1-2 sentences" in text and "Never invent" in text
+    # Tool rules live with the tools, client format with the client: the persona is only who she is.
+    assert "TOOL RULES" not in text and "HTML" not in text and "Markdown" not in text
+    assert "Never say done/saved" in prompt_config.prompt("tool_rules")
 
 
 @pytest.mark.unit
 def test_voice_contract_forbids_lists_and_markup():
     text = prompt_config.voice_turn_contract()
-    assert "1-2 frasi parlate" in text and "elenchi" in text and "markdown" in text
+    assert "1-2 spoken sentences" in text and "lists" in text and "markdown" in text
 
 
 # ── F2 controls gate ───────────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ def test_awareness_lines_from_three_sources():
     assert len(lines) == 3 and all(line.startswith(awareness.PREFIX) for line in lines)
     assert "giù, energia 2/5, stress 4/5, per lavoro" in lines[0]
     assert "«Allenamento di oggi»" in lines[1] and "Vecchia" not in lines[1]
-    assert "Spese (sito" in lines[2]
+    assert "Spese (website" in lines[2]
 
 
 @pytest.mark.unit
@@ -170,7 +171,7 @@ def test_spoken_turn_and_reaction_line_reach_the_engine(client):
         res = http.post("/api/chat", json={"message": "ciao", "session_id": "s2", "client": "webui", "spoken": True})
     assert res.status_code == 200
     instructions = main.engine.chat.call_args.kwargs["client_instructions"]
-    assert "TURNO A VOCE" in instructions and "[[r:EMOJI]]" in instructions
+    assert "SPOKEN TURN" in instructions and "[[r:EMOJI]]" in instructions
 
 
 # ── v1.3 identity: never «il motore di ragionamento di Hestia» (Marko's real run 2026-11-07) ──────────────────
@@ -179,9 +180,8 @@ def test_spoken_turn_and_reaction_line_reach_the_engine(client):
 def test_agent_loop_preambles_speak_as_hestia():
     for key in ("agent_loop_system_preamble", "agent_loop_system_preamble_compact"):
         text = prompt_config.prompt(key, tools_json="[]", tools_list="")
-        assert "motore" not in text and text.startswith("Sei Hestia, la persona descritta sopra")
-    assert "1-2 frasi" in prompt_config.prompt("quick_chat_static_instruction")
-    assert "NOME: Hestia" in prompt_config.analyst_persona_default()
+        assert "engine" not in text and "Speak as Hestia, always." in text and "TOOL RULES:" in text
+    assert "NAME: Hestia" in prompt_config.analyst_persona_default()
 
 
 @pytest.mark.unit
@@ -194,7 +194,7 @@ def test_ollama_native_tools_keep_the_persona_as_system(monkeypatch):
     with patch("agents.universal_agent.requests.post", return_value=resp) as post:
         agent._ask_with_tools_ollama_native("ciao", [{"name": "t", "description": "d", "parameters": {}}])
     system = post.call_args.kwargs["json"]["messages"][0]["content"]
-    assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "STRUMENTI" in system
+    assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "TOOLS:" in system
 
 
 # ── Identity: name, she/he, owner (docs/work/2026-11-12-identita-e-proattivita) ──────────────────────────────
@@ -213,37 +213,36 @@ def ident(monkeypatch):
 @pytest.mark.unit
 def test_identity_defaults_to_hestia_she_and_asks_the_name():
     text = prompt_config.analyst_persona_default()
-    assert text.startswith("Sei Hestia, l'assistente personale di chi ti scrive: sua e di nessun altro.")
-    assert "amica fidata" in text and "chiediglielo alla prima occasione" in text
-    assert "{" not in text.split("REGOLE:")[0]                     # every token rendered
+    assert text.startswith("You are Hestia, the personal assistant of the person writing to you:")
+    assert "a woman" in text and "ask at the first chance" in text
+    assert "{" not in text                                         # every token rendered
 
 
 @pytest.mark.unit
 def test_identity_follows_the_personal_settings(ident):
     ident(assistant_name="Leo", assistant_gender="lui", owner_name="Marco", owner_call="Marko")
     text = prompt_config.analyst_persona_default()
-    assert text.startswith("Sei Leo, l'assistente personale di Marko: suo e di nessun altro.")
-    assert "uomo, caldo, sveglio, schietto" in text and "amico fidato" in text and "Hestia stessa" in text
-    assert "Si chiama Marko (nome: Marco)" in text and "donna" not in text
-    assert prompt_config.prompt("quick_chat_static_instruction").startswith("Sei Leo, la persona descritta sopra")
-    assert prompt_config.prompt("agent_loop_system_preamble_compact", tools_list="- t").startswith("Sei Leo,")
-    assert "Spero di esserti stato utile" in prompt_config.conversation_style_contract()
+    assert text.startswith("You are Leo, the personal assistant of Marko:")
+    assert "a man" in text and "a woman" not in text
+    assert "Their name is Marko (full name: Marco)" in text
+    assert "Speak as Leo, always." in prompt_config.prompt("agent_loop_system_preamble_compact", tools_list="- t")
+    assert prompt_config.system_identity().startswith("You are Leo,")
 
 
 @pytest.mark.unit
 def test_chain_agent_reads_the_persona_at_every_call(ident):
     from core.services.agent_factory import AgentFactory
     agent = AgentFactory.create().generic
-    assert agent.role_prompt.startswith("Sei Hestia,")
+    assert agent.role_prompt.startswith("You are Hestia,")
     ident(assistant_name="Leo")
-    assert agent.role_prompt.startswith("Sei Leo,")
+    assert agent.role_prompt.startswith("You are Leo,")
 
 
 @pytest.mark.unit
 def test_style_lets_her_chat_and_bans_bot_phrases():
     text = prompt_config.conversation_style_contract()
-    assert "UNA domanda vera su di lui" in text and "Compito o dato: vai al punto" in text
-    assert "saluto di una parola" not in text and "sono qui" in text
+    assert "ONE real question about them" in text and "Task or data: go to the point" in text
+    assert "one-word greeting" not in text and "sono qui" in text and "Fammi sapere" in text
 
 
 # ── She writes first («parla con te», docs/work/2026-11-12-identita-e-proattivita) ───────────────────────────
@@ -259,8 +258,8 @@ def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
                        awareness=["[Contesto] x"])
     assert out == {"text": "Com'è andata poi la riunione di stamattina?"}
     prompt = asked[0]
-    assert "ORA SCRIVI TU PER PRIMA" in prompt and "- Umore di oggi: giù, per lavoro" in prompt
-    assert "- L'utente lavora come sviluppatore" in prompt and "- Hai mangiato?" in prompt and "persone care" in prompt
+    assert "NOW YOU WRITE FIRST" in prompt and "- Umore di oggi: giù, per lavoro" in prompt
+    assert "- L'utente lavora come sviluppatore" in prompt and "- Hai mangiato?" in prompt and "loved ones" in prompt
 
 
 @pytest.mark.unit
@@ -282,7 +281,7 @@ def test_awareness_talk_line_is_whole_and_not_repeated_as_notification():
     payload = {"items": [{"title": "", "message": "Com'è andata la riunione?", "kind": "athena.talk", "created_at": now},
                          {"title": "Allenamento", "message": "x", "kind": "", "created_at": now}]}
     line = awareness.talk_line(payload)
-    assert "Oggi gli hai scritto tu per prima" in line and "«Com'è andata la riunione?»" in line
+    assert "Today you wrote to them first" in line and "«Com'è andata la riunione?»" in line
     assert "riunione" not in awareness.notifications_line(payload, 3)
 
 

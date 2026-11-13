@@ -456,22 +456,21 @@ def run_agent_loop(
         if len(preference_facts) > 10:
             pref_block += f"\n- … and {len(preference_facts) - 10} more saved preferences"
         system_prompt += prompt_config.optional_section(
-            "ACTIVE USER PREFERENCES", pref_block)
+            "OWNER PREFERENCES", pref_block)
         logger.trace("event=agent_loop_preferences_injected count=%d capped=%d",
                      len(preference_facts), len(_capped))
 
-    if conversation_style:
-        system_prompt += f"\n\n{conversation_style}"
-        logger.trace("event=agent_loop_conversation_style_injected len=%d", len(conversation_style))
+    # *conversation_style* is no longer added here: persona, style and language are the model's system prompt on
+    # every path (``prompt_config.system_identity``); adding the style again paid it twice per turn.
 
     # Per-request hint: kept out of the static prefix so the cached part does not change with it.
     action_hint = ""
     if action_intent:
         action_hint = prompt_config.optional_section(
             "ACTION INTENT",
-            "The user appears to want a state-changing action. Prioritise calling the "
-            "appropriate tool over giving a text-only answer. If no matching tool "
-            "exists, explain clearly that the action cannot be performed.",
+            "The owner appears to want a state-changing action. Prioritise calling the "
+            "appropriate tool over giving a text-only answer. If no tool does it, follow TOOL RULES 3 "
+            "(propose developing it), never claim it was done.",
         )
         logger.trace("event=agent_loop_action_intent_injected")
 
@@ -514,8 +513,7 @@ def run_agent_loop(
         if _failed:
             dynamic_parts.append(_FAILED_WRITES_NOTE.format(titles=", ".join(_failed)))
         if is_final:
-            dynamic_parts.append(
-                "Now provide your final answer to the user (no tool_call blocks):")
+            dynamic_parts.append(prompt_config.prompt("final_answer_instruction"))
         result = prompt_config.compose_with_dynamic_boundary(
             static_sections=[system_prompt],
             dynamic_sections=dynamic_parts,

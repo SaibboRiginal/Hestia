@@ -19,8 +19,8 @@ _TAG = re.compile(r"</?[a-zA-Z][^>]*>")
 MAX_CHARS = 400
 MEMORY_MAX = 20
 # What a person who lives with someone knows about them: a gap here is a good reason for a question.
-TOPICS = ("lavoro o studio", "persone care", "passioni e tempo libero", "cibo", "musica, film, libri", "sport",
-          "obiettivi di quest'anno", "giornata tipo", "cosa lo rilassa", "cosa lo stressa")
+TOPICS = ("work or study", "loved ones", "passions and free time", "food", "music, films, books", "sport",
+          "goals of this year", "a typical day", "what relaxes them", "what stresses them")
 
 
 def _lines(values: Any, cap: int, width: int = 240) -> list[str]:
@@ -51,14 +51,14 @@ def build_prompt(reasons: list[str], avoid: list[str], memories: list[str], awar
                  now_context: str = "") -> str:
     parts = [prompt_config.prompt("opener_instruction", topics=", ".join(TOPICS))]
     if now_context:
-        parts.append(f"ADESSO:\n{now_context.strip()}")
+        parts.append(f"NOW:\n{now_context.strip()}")
     if awareness:
-        parts.append("CONTESTO:\n" + "\n".join(awareness))
-    parts.append("MOTIVI DI OGGI:\n" + ("\n".join(_lines(reasons, 6)) or "- nessuno in particolare"))
-    parts.append("COSA SAI DI LUI:\n" + ("\n".join(memories) or "- ancora quasi niente"))
+        parts.append("CONTEXT:\n" + "\n".join(awareness))
+    parts.append("REASONS OF TODAY:\n" + ("\n".join(_lines(reasons, 6)) or "- none in particular"))
+    parts.append("WHAT YOU KNOW ABOUT THEM:\n" + ("\n".join(memories) or "- almost nothing yet"))
     if avoid:
-        parts.append("GLI HAI GIÀ SCRITTO (non ripetere, non insistere):\n" + "\n".join(_lines(avoid, 6)))
-    parts.append("Il tuo messaggio (oppure NIENTE):")
+        parts.append("YOU ALREADY WROTE THEM (do not repeat, do not insist):\n" + "\n".join(_lines(avoid, 6)))
+    parts.append("Your message, in the language of what you know about them (Italian if unsure), or NIENTE:")
     return "\n\n".join(parts)
 
 

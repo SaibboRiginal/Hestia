@@ -9,9 +9,9 @@ from core.services import quoted_context
 @pytest.mark.unit
 def test_instruction_names_who_wrote_it_and_keeps_it_short():
     line = quoted_context.instruction({"text": "Domani  piove\nalle 18", "from": "assistant", "at": "2026-10-24T18:30:00"})
-    assert line == "RISPONDE A tuo messaggio (2026-10-24 18:30): «Domani piove alle 18». Il messaggio dell'utente si riferisce a questo."
+    assert line == "THEY ARE REPLYING TO your message (2026-10-24 18:30): «Domani piove alle 18». Their message refers to this."
     long = quoted_context.instruction({"text": "parola " * 400, "from": "notification"})
-    assert "tua notifica" in long and len(long) < quoted_context.MAX_CHARS + 120
+    assert "your notification" in long and len(long) < quoted_context.MAX_CHARS + 120
 
 
 @pytest.mark.unit

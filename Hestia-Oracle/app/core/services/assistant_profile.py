@@ -15,16 +15,13 @@ from core.services import oracle_settings, prompt_config
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 CLIENTS = ("claude",)
-# Oracle's persona ends with Telegram formatting rules; another AI keeps its own formatting.
-_PERSONA_CUT = "FORMATO HTML TELEGRAM"
 _CHARS_PER_TOKEN = 4  # rough, Italian text; only used for the cap
 DIGEST_MAX = 20
 
 
 def persona_core() -> str:
-    """Identity and rules of Oracle's persona, without the client-specific formatting part."""
-    text = prompt_config.analyst_persona_default()
-    return text.split(_PERSONA_CUT, 1)[0].strip()
+    """Identity of Oracle's persona (it carries no client format: each client brings its own)."""
+    return prompt_config.analyst_persona_default().strip()
 
 
 def _memory_lines(memory_service, budget_chars: int) -> list[str]:
@@ -58,13 +55,13 @@ def build(memory_service=None, *, client: str = "claude", session: str = "") -> 
     client = client if client in CLIENTS else "claude"
     max_chars = oracle_settings.get_int(oracle_settings.PROFILE_MAX_TOKENS, 300) * _CHARS_PER_TOKEN
     persona = persona_core()
-    style = prompt_config.conversation_style_contract()
+    style = prompt_config.conversation_style_contract() + "\n\n" + prompt_config.prompt("language_rule")
     contract = prompt_config.prompt(f"client_contract_{client}")
     instructions = "\n".join(oracle_settings.chat_instructions(client=client, session=session))
     fixed = len(persona) + len(style) + len(contract) + 8
     if instructions and fixed + len(instructions) > max_chars:
         instructions = instructions[:max(0, max_chars - fixed)].rstrip()
-    budget = max_chars - fixed - len(instructions) - len("RICORDI SULL'UTENTE:\n")
+    budget = max_chars - fixed - len(instructions) - len("WHAT YOU REMEMBER ABOUT THE OWNER (for more use memory_recall):\n")
     memory = _memory_lines(memory_service, budget)
 
     parts = [persona, style]
@@ -72,7 +69,7 @@ def build(memory_service=None, *, client: str = "claude", session: str = "") -> 
         parts.append(instructions)
     parts.append(contract)
     if memory:
-        parts.append("RICORDI SULL'UTENTE (da Hestia; per altro usa memory_recall):\n" + "\n".join(memory))
+        parts.append("WHAT YOU REMEMBER ABOUT THE OWNER (for more use memory_recall):\n" + "\n".join(memory))
     text = "\n\n".join(p.strip() for p in parts if p and p.strip())
     revision = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
     logger.info("event=assistant_profile_built client=%s chars=%d memories=%d revision=%s",

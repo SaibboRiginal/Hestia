@@ -26,9 +26,9 @@ def _build(memory=None, *, max_tokens=1500, instructions=None):
 class TestProfile:
     def test_persona_without_telegram_formatting(self):
         text = _build()["text"]
-        assert "Sei Hestia" in text
-        assert "FORMATO HTML TELEGRAM" not in text and "{conversation_style_contract}" not in text
-        assert "SEI Hestia DENTRO CLAUDE" in text and "memory_note" in text
+        assert text.startswith("You are Hestia")
+        assert "TELEGRAM" not in text.upper() and "{" not in text.split("INSIDE CLAUDE")[0]
+        assert "YOU ARE Hestia INSIDE CLAUDE" in text and "memory_note" in text and "LANGUAGE:" in text
 
     def test_user_instructions_and_memory(self):
         out = _build(_memory(["Va in palestra il martedì", "Non mangia latticini"]),
@@ -51,7 +51,7 @@ class TestProfile:
         svc = MagicMock()
         svc.recall.side_effect = RuntimeError("archive down")
         out = _build(svc)
-        assert out["memories"] == 0 and "Sei Hestia" in out["text"]
+        assert out["memories"] == 0 and "You are Hestia" in out["text"]
 
     def test_unknown_client_falls_back_to_claude(self):
         with patch.object(oracle_settings, "get_int", return_value=1500), \

@@ -79,8 +79,8 @@ def _definitions() -> list[dict]:
 
 
 TONES = [("warm", "Caldo"), ("neutral", "Neutro"), ("direct", "Diretto"), ("formal", "Formale")]
-_TONE_SENTENCE = {"warm": "Tono: caldo e amichevole.", "neutral": "",
-                  "direct": "Tono: diretto, essenziale, niente preamboli.", "formal": "Tono: formale."}
+_TONE_SENTENCE = {"warm": "Tone: warm and friendly.", "neutral": "",
+                  "direct": "Tone: direct, essential, no preambles.", "formal": "Tone: formal."}
 TONE, INSTRUCTIONS = "oracle.chat.tone", "oracle.chat.instructions"
 MODE = "oracle.chat.mode"
 PROFILE_MAX_TOKENS = "oracle.chat.profile_max_tokens"
@@ -515,7 +515,7 @@ def chat_instructions(*, client: str = "", session: str = "") -> list[str]:
         out.append(tone)
     custom = str(values.get(INSTRUCTIONS) or "").strip()
     if custom:
-        out.append(f"Istruzioni dell'utente: {custom}")
+        out.append(f"The owner's own instructions (follow them): {custom}")
     return out
 
 

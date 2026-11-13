@@ -17,6 +17,9 @@ _SESSION_ID = "hermes-narration"
 def narrate(prompt: str) -> str:
     """Ask Oracle to write a message from *prompt*; "" if Oracle fails.
 
+    ``voice: true``: the text is for the owner, so Oracle writes it as the assistant (name, she/he, style: its
+    own system prompt). The prompt here carries only what to say, the data and the format Hermes delivers.
+
     Uses the plain generation endpoint: narration needs no classifier, tools
     or chat history (the full /api/chat pipeline was slow and burned context).
     """
@@ -24,7 +27,7 @@ def narrate(prompt: str) -> str:
         resp = requests.post(
             f"{_HUB_API_URL}/route/oracle/api/llm/generate",
             json={"method": "POST", "headers": {}, "query": {},
-                  "body": {"prompt": prompt}, "timeout_seconds": 60},
+                  "body": {"prompt": prompt, "voice": True}, "timeout_seconds": 60},
             timeout=62,
         )
         if resp.status_code >= 400:

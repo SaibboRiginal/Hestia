@@ -182,7 +182,7 @@ Env keeps only secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, 
 | `telegram.feedback.prompt_rate` | 0.15 |
 | `telegram.feedback.snooze_days` | 7 |
 | `telegram.chat.locale` | `it` |
-| `telegram.chat.client_instructions` | Telegram format contract (no emoji, HTML) |
+| `telegram.chat.client_instructions` | Telegram format contract (no emoji, HTML), in English like every text the model reads. Telegram owns it: Oracle carries no format rule |
 | `telegram.oracle.stream_timeout` | 600 s |
 | `telegram.menu.layout` | `{}` (system scope; see Navigation) |
 | `telegram.log.level` | `LOG_LEVEL` at boot |

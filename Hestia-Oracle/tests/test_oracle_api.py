@@ -216,7 +216,7 @@ class TestOracleChatEndpoint:
                                        "client_instructions": "HTML semplice"})
         sent = mock_engine.chat.call_args.kwargs["client_instructions"]
         assert sent.startswith("HTML semplice")
-        assert "Tono: diretto" in sent and "rispondi breve" in sent
+        assert "Tone: direct" in sent and "rispondi breve" in sent
         assert seen == {"client": "webui", "session": "s1"}
 
 

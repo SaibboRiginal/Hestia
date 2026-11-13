@@ -262,11 +262,13 @@ Who the assistant is and whose it is: `themis.personal.assistant_name` (default 
 ```python
 from hestia_common import identity
 ident = identity.read(settings.get)            # after settings.follow_personal()
-text = identity.render("Sei {assistant}, {g:l'amica|l'amico} di {owner}. {owner_rule}", ident)
+text = identity.render("You are {assistant}, {g:a woman|a man}, a friend of {owner}. {owner_rule}", ident)
 ```
-`{assistant}` name · `{owner}` how to call him (`chi ti scrive` while unknown) · `{owner_rule}` one sentence (his
-name, or «ask him») · `{g:lei|lui}` gendered words. Other braces are untouched, so the template can be formatted
-after. Never write a fixed «Sei Hestia» in a prompt that talks to the owner. The product and modules stay Hestia.
+`{assistant}` name · `{owner}` how to call him (`the person writing to you` while unknown) · `{owner_rule}` one
+English sentence (his name, or «ask») · `{g:lei|lui}` gendered words. Other braces are untouched, so the template
+can be formatted after. The rendered text is English like every text the model reads
+(`docs/work/2026-11-12-prompt-ogni-situazione`). A module rarely needs this: a text for the owner is asked to Oracle
+with `/api/llm/generate {voice: true}` and Oracle adds who speaks. The product and modules stay Hestia.
 
 ## Reminders (`hestia_common.reminders`)
 

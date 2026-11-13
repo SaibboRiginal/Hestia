@@ -198,7 +198,7 @@ class ContextBuilder:
         current_datetime_context: str | None = None,
     ) -> str:
         pref_text = "\n".join([f"- {fact}" for fact in preference_facts]
-                              ) if preference_facts else "Nessuna preferenza."
+                              ) if preference_facts else "None."
         route_metadata = {
             "domains": valid_domains,
             "filters": active_filters,

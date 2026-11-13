@@ -78,8 +78,8 @@ def test_extractor_sees_what_the_turn_already_did_when_asked_to_remember():
     svc.extract_and_save_preferences("ricorda che mia mamma si chiama Laura, e segnala nelle persone", "s1",
                                      done_actions=["Aggiungi persona"])
     prompt = svc._ask.call_args[0][0]
-    assert "AZIONI GIÀ FATTE IN QUESTO TURNO: Aggiungi persona" in prompt
-    assert "promemoria, non memoria" in prompt
+    assert "ACTIONS ALREADY DONE IN THIS TURN: Aggiungi persona" in prompt
+    assert "a reminder, not memory" in prompt
 
 
 def test_search_finds_other_word_forms():
@@ -99,4 +99,4 @@ def test_quick_answer_that_claims_an_action_is_asked_again():
     eng = OracleEngine.__new__(OracleEngine)
     eng._ask_analyst = MagicMock(side_effect=["Ho registrato la stanchezza.", "Capita: oggi vai piano."])
     assert eng._quick_answer("oggi sono stanco", "", None, None) == "Capita: oggi vai piano."
-    assert "non hai fatto nessuna azione" in eng._ask_analyst.call_args_list[1][0][0]
+    assert "you did no action" in eng._ask_analyst.call_args_list[1][0][0]

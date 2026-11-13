@@ -134,7 +134,7 @@ def test_chat_request_is_not_delivered_nor_stored():
 def test_prompt_is_caveman_and_has_no_module_names():
     prompt = build_prompt([HERCULES, PLUTUS], "sera", date(2026, 10, 20), date(2026, 10, 21), "asciutto", 600)
     assert "hercules" not in prompt.lower() and "plutus" not in prompt.lower()
-    assert "Max 600 caratteri" in prompt and "asciutto" in prompt
+    assert "Max 600 characters" in prompt and "dry, facts only" in prompt
 
 
 def test_clean_text_keeps_bold_and_caps_length():

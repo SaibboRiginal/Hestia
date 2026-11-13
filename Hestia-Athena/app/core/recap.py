@@ -108,17 +108,16 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
             facts.append(f"[{title}|nota] {p['note']}")
     when = (f"oggi={day_label(day)} domani={day_label(nxt)}" if momento == "sera"
             else f"ieri={day_label(day)} oggi={day_label(nxt)}")
-    tone = ("amichevole, caldo, una frase d'apertura breve" if style == "amichevole"
-            else "asciutto, solo fatti, niente frasi di cortesia")
+    tone = ("friendly, warm, one short opening sentence" if style == "amichevole"
+            else "dry, facts only, no courtesy phrases")
     return (
-        f"Scrivi recap {'serale' if momento == 'sera' else 'del mattino'} per l'utente. Italiano. Tu = suo assistente.\n"
+        f"Write the owner the {'evening' if momento == 'sera' else 'morning'} recap, in Italian.\n"
         f"{when}\n"
-        f"Parti: 1) com'è andata ({'oggi' if momento == 'sera' else 'ieri'}): fatto/saltato per area; "
-        f"2) {'domani' if momento == 'sera' else 'oggi'}: cosa c'è, in ordine di ora.\n"
-        f"Tono: {tone}. Max {max_chars} caratteri. HTML Telegram: solo <b> per titoletti, niente markdown, "
-        "un emoji al massimo per titoletto. Non inventare nulla oltre i fatti. Non nominare programmi o moduli. "
-        "Niente domande finali.\n"
-        "FATTI:\n" + "\n".join(facts)
+        f"Parts: 1) how it went ({'today' if momento == 'sera' else 'yesterday'}): done/skipped by area; "
+        f"2) {'tomorrow' if momento == 'sera' else 'today'}: what is planned, in time order.\n"
+        f"Tone: {tone}. Max {max_chars} characters. Format: HTML, only <b> for small titles, no Markdown, "
+        "one emoji at most per title. Nothing beyond the facts. Never name programs or modules.\n"
+        "FACTS:\n" + "\n".join(facts)
     )
 
 
@@ -206,7 +205,8 @@ class RecapComposer:
         prompt = build_prompt(pieces, momento, day, nxt, style, max_chars)
         try:
             status, payload = self._route("oracle", "POST", "api/llm/generate",
-                                          body={"prompt": prompt, "use_case": USE_CASE}, timeout=90)
+                                          body={"prompt": prompt, "use_case": USE_CASE, "voice": True},
+                                          timeout=90)
             text = ""
             if status < 400:
                 text = str((payload or {}).get("response") or (payload or {}).get("text") or "") \
