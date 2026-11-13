@@ -83,27 +83,28 @@ class ChatClassifier:
             if str(current_datetime_context or "").strip()
             else ""
         )
-        # Caveman style: runs on EVERY message, keep it tight.
+        # Runs on EVERY message: keep it tight. English like every hidden text; the quoted Italian is what the
+        # owner may write.
         return (
-            "Classifica intento utente. Output SOLO JSON:\n"
-            '{"mode":"quick_chat|domain_query","domain":<uno di AVAILABLE_DOMAINS o null>,'
-            '"confidence":0-1,"domains":[...] o ["general"],"filters":{},"filters_gt":{},'
+            "Classify the owner's intent. Output ONLY JSON:\n"
+            '{"mode":"quick_chat|domain_query","domain":<one of AVAILABLE_DOMAINS or null>,'
+            '"confidence":0-1,"domains":[...] or ["general"],"filters":{},"filters_gt":{},'
             '"filters_lt":{},"sort_by":null,"sort_order":"asc|desc","action_intent":true|false}\n\n'
-            "Regole:\n"
-            "- quick_chat SOLO chiacchiera pura (saluti, battute, small talk). Dubbio -> domain_query.\n"
-            "- domain_query: dati, filtri, liste, avvisi/sottoscrizioni, azioni.\n"
-            "- domain=system (sempre domain_query) per: stato/salute/servizi/come funzioni ('come stai messa', "
-            "'sei operativa', 'stato dei servizi') E richieste di sviluppare/correggere/migliorare Hestia stessa "
+            "Rules:\n"
+            "- quick_chat ONLY for pure small talk (greetings, jokes, chit-chat). In doubt -> domain_query.\n"
+            "- domain_query: data, filters, lists, alerts/subscriptions, actions.\n"
+            "- domain=system (always domain_query) for: state/health/services/how you work ('come stai messa', "
+            "'sei operativa', 'stato dei servizi') AND requests to develop/fix/improve the system itself "
             "('aggiungi una funzione', 'correggi il bug', 'approva sviluppo', 'usa il cloud').\n"
-            "- Utente mette in dubbio le tue fonti ('come lo sai') -> domain_query.\n"
-            "- domain solo se esplicito/alta confidenza, altrimenti null.\n"
-            "- Date relative (oggi, domani) -> usa CURRENT_DATETIME_CONTEXT.\n"
-            "- action_intent=true per richieste imperative che cambiano stato (crea, aggiungi, modifica, "
-            "elimina, imposta, esegui, disattiva, /comando). Semantica, non keyword. Domande/lettura -> false.\n\n"
+            "- The owner doubts your sources ('come lo sai') -> domain_query.\n"
+            "- domain only if explicit or high confidence, otherwise null.\n"
+            "- Relative dates (today, tomorrow) -> use CURRENT_DATETIME_CONTEXT.\n"
+            "- action_intent=true for imperative requests that change state (create, add, edit, delete, set, "
+            "run, switch off, /command). Meaning, not keywords. Questions/reading -> false.\n\n"
             f"AVAILABLE_DOMAINS: {', '.join(domain_candidates) or 'none'}\n\n"
             f"{datetime_block}"
-            f"SCHEMI DATI:\n{json.dumps(schemas or {}, ensure_ascii=False, separators=(',', ':'))}\n\n"
-            f"CONTESTO:\n{history_text}\n\n"
+            f"DATA SCHEMAS:\n{json.dumps(schemas or {}, ensure_ascii=False, separators=(',', ':'))}\n\n"
+            f"CONTEXT:\n{history_text}\n\n"
             f"USER_MESSAGE: {user_message}\n"
         )
 

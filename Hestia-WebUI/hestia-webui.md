@@ -394,6 +394,8 @@ The page asks Hestia through the plugin host (`host.assistant(...)`), logs come 
   🔄 regenerates the last answer.
 - **Command palette**: arguments from the command's `arguments_schema`; `oracle_natural` results are formatted by
   Oracle `/api/format` (like Telegram) and appear in the chat.
+- **Answer format**: the WebUI sends its own format contract with every turn (`WebUI:OracleClientInstructions` in
+  `appsettings.json`: GitHub-flavoured Markdown, which the chat renders); Oracle carries no format rule.
 - **Settings**: tone / custom prompt become Oracle client instructions; *thinking display* is UI-only
   (hidden = no reasoning box, compact = collapsed, detailed = expanded).
 - **System notices**: Oracle `notice` packets (memory saved, action done/failed, subscriptions…) render as

@@ -158,7 +158,7 @@ volumes:
 
 1. Monitor loop detects a service is down or degraded (or new WARNING+ log lines).
 2. `alert_worker.send_alert()` dedupes (cooldown) and batches (`argus.alerts.batch_window`).
-3. The batch text is written by Oracle (`/route/oracle/api/llm/generate`, plain generation); if Oracle fails or is
+3. The batch text is written by Oracle (`/route/oracle/api/llm/generate`, plain generation, `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format); if Oracle fails or is
    offline, a fixed grouped text is used at once.
 4. Argus publishes the event to **Hermes** (`service.health`, `_message` = the text): Hermes delivers it to every
    client (Telegram, WebUI). Argus never talks to Telegram directly (Hermes is the only outbound messenger).

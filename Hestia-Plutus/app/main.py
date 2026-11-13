@@ -102,6 +102,17 @@ LLM_USECASES = [llm_usecase(LLM_USECASE, "Spese · email ed estratti", chain="ve
                                  "categorie.")]
 
 
+def _voice(prompt: str) -> str | None:
+    """A text for the owner: Oracle writes it as the assistant (``voice``); failure → None (caller has a fallback)."""
+    try:
+        out = hub.ok("oracle", "POST", "api/llm/generate",
+                     body={"prompt": prompt, "use_case": LLM_USECASE, "voice": True}, timeout=120)
+        return str((out or {}).get("response") or "")
+    except Exception as exc:
+        logger.warning("[🔄] event=plutus_voice_failed error=%s fallback=plain_text", str(exc)[:200])
+        return None
+
+
 def _llm(prompt: str) -> str | None:
     """Oracle (the only door to models), compact prompt, JSON answers; failure → None (caller has a fallback)."""
     body = {"use_case": LLM_USECASE, "temperature": 0, "max_tokens": 1500,
@@ -551,9 +562,9 @@ def alerts_run():
 
 def _review_text(r: dict) -> str:
     cur = r["currency"]
-    prompt = ("Scrivi in italiano, 3-5 frasi brevi e concrete, il riepilogo spese del mese per l'utente (tu = "
-              "l'assistente). Niente consigli generici. Dati JSON: " + str(r))
-    text = (_llm(prompt) or "").strip()
+    prompt = ("Write the owner the summary of the month's expenses, in Italian, 3-5 short concrete sentences. "
+              "No generic advice. Format: plain text. JSON data: " + str(r))
+    text = (_voice(prompt) or "").strip()
     if text:
         return text[:1200]
     parts = [f"{r['month']}: spesi {r['spent']:.2f} {cur}"

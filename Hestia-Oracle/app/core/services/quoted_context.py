@@ -7,7 +7,7 @@ stays the text the user wrote, so history and memory hold no copies.
 from __future__ import annotations
 
 MAX_CHARS = 1200    # a quoted notification or a long answer: the start is enough to know what the user means
-WHO = {"assistant": "tuo messaggio", "user": "suo messaggio", "notification": "tua notifica"}
+WHO = {"assistant": "your message", "user": "their own message", "notification": "your notification"}
 
 
 def instruction(quoted: dict | None) -> str:
@@ -19,10 +19,10 @@ def instruction(quoted: dict | None) -> str:
         return ""
     if len(text) > MAX_CHARS:
         text = text[:MAX_CHARS].rsplit(" ", 1)[0] + "…"
-    who = WHO.get(str(quoted.get("from") or "").lower(), "messaggio")
+    who = WHO.get(str(quoted.get("from") or "").lower(), "a message")
     at = str(quoted.get("at") or "")[:16].replace("T", " ")
-    head = f"RISPONDE A {who}" + (f" ({at})" if at else "")
-    return f"{head}: «{text}». Il messaggio dell'utente si riferisce a questo."
+    head = f"THEY ARE REPLYING TO {who}" + (f" ({at})" if at else "")
+    return f"{head}: «{text}». Their message refers to this."
 
 
 def with_instructions(client_instructions: str | None, quoted: dict | None) -> str | None:

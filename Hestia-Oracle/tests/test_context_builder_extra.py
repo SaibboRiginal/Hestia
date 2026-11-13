@@ -156,7 +156,7 @@ class TestBuildAnalysisPrompt:
             formatted_context="test", history_text="",
             user_message="Hello",
         )
-        assert "Nessuna preferenza" in prompt
+        assert "USER_PREFERENCES:\nNone." in prompt
 
     def test_omits_datetime_when_none(self, builder):
         prompt = builder.build_analysis_prompt(

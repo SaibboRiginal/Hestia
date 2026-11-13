@@ -24,7 +24,7 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 CACHE_SECONDS = 60
 TIMEOUT_SECONDS = 2
-PREFIX = "[Contesto interno, non citarlo se non chiesto]"
+PREFIX = "[Internal context, do not mention it unless asked]"
 TALK_KIND = "athena.talk"      # a message she wrote first (Hermes notification of Athena)
 
 # (service, path, query) of each source; the hub routes them (Hub is the only door).
@@ -67,7 +67,7 @@ def mood_line(payload: Any) -> str:
     causes = [str(c) for c in (summary.get("causes") or [])][:3]
     if causes:
         parts.append("per " + ", ".join(causes))
-    return "Umore di oggi dell'utente: " + ", ".join(parts) + "."
+    return "The owner's mood today: " + ", ".join(parts) + "."
 
 
 def notifications_line(payload: Any, limit: int, today: str | None = None) -> str:
@@ -82,7 +82,7 @@ def notifications_line(payload: Any, limit: int, today: str | None = None) -> st
         out.append(f"{at:%H:%M} «{title[:60]}»")
         if len(out) >= limit:
             break
-    return ("Ultime notifiche che gli hai mandato oggi: " + "; ".join(out) + ".") if out else ""
+    return ("Last notifications you sent them today: " + "; ".join(out) + ".") if out else ""
 
 
 def talk_line(payload: Any, today: str | None = None) -> str:
@@ -101,7 +101,7 @@ def talk_line(payload: Any, today: str | None = None) -> str:
         out.append(f"{at:%H:%M} «{text[:240]}»")
         if len(out) >= 2:
             break
-    return ("Oggi gli hai scritto tu per prima (se risponde, è a questo): " + "; ".join(out) + ".") if out else ""
+    return ("Today you wrote to them first (if they answer, it is to this): " + "; ".join(out) + ".") if out else ""
 
 
 def taps_line(payload: Any, limit: int) -> str:
@@ -114,11 +114,11 @@ def taps_line(payload: Any, limit: int) -> str:
         at = _local(row.get("at"))
         if not name:
             continue
-        where = {"webui": "sito", "telegram": "Telegram", "mcp": "un'altra AI"}.get(str(row.get("client")), "")
+        where = {"webui": "website", "telegram": "Telegram", "mcp": "another AI"}.get(str(row.get("client")), "")
         out.append(f"{name[:40]}" + (f" ({where}" + (f", {at:%H:%M})" if at else ")") if where else ""))
         if len(out) >= limit:
             break
-    return ("Ultime cose che ha aperto o avviato: " + "; ".join(out) + ".") if out else ""
+    return ("Last things they opened or started: " + "; ".join(out) + ".") if out else ""
 
 
 def build_lines(fetch: Callable[[str, str, dict], Any], limit: int) -> list[str]:

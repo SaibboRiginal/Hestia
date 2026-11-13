@@ -215,12 +215,11 @@ class SessionIntent:
 def external_agent_system_prompt(preference_facts: list[str], client_instructions: str | None) -> str:
     """System prompt of the external agent (§D): Oracle's persona and style contract first (fixed prefix → the
     provider's prompt cache works), then the tool rule, preferences and this turn's instructions."""
-    parts = [prompt_config.analyst_persona_default(), conversation_style_contract(),
-             "Strumenti: usa SOLO gli strumenti MCP «hestia» per leggere o cambiare i dati di Hestia; se nessuno "
-             "serve rispondi e basta. Le azioni importanti chiedono conferma all'utente: se lo strumento lo dice, "
-             "riferiscilo."]
+    parts = [prompt_config.system_identity(), prompt_config.prompt("tool_rules"),
+             "Tools: use ONLY the MCP «hestia» tools to read or change the assistant's data; if none is needed "
+             "just answer. Important actions ask the owner for confirmation: if the tool says so, report it."]
     if preference_facts:
-        parts.append("PREFERENZE DELL'UTENTE:\n" + "\n".join(f"- {f}" for f in preference_facts[:10]))
+        parts.append("OWNER PREFERENCES:\n" + "\n".join(f"- {f}" for f in preference_facts[:10]))
     if client_instructions:
         parts.append(str(client_instructions).strip())
     return "\n\n".join(p.strip() for p in parts if p and p.strip())
@@ -868,8 +867,8 @@ class OracleEngine:
         proposes and notifies (Cindy 6).
 
         Modes (control PROCESS, same model for all; main.py resolves "" from oracle.chat.mode):
-          quick    → single ask(), no classify, no tools. <2s latency.
-          auto     → classify → agent loop if domain_query. Default.
+          quick    → like auto, model reasoning off (everything else identical: persona, memories, tools).
+          auto     → classify → agent loop if domain_query, model reasoning on. Default.
           thinking → always agent loop (no quick-chat shortcut), model reasoning on.
           cot      → always agent loop, deep reasoning, higher max_turns, step-by-step plan.
 
@@ -958,42 +957,8 @@ class OracleEngine:
             trace_id=trace_id,
         )
 
-        # ── MODE: quick (in esterna the agent answers every turn) ─────────────
-        if mode == "quick" and not external:
-            yield stream_emitter.emit_status("💬 Risposta rapida...")
-            temporal_context = self._current_datetime_context()
-            _quick_trace: dict = {}
-            answer = self._quick_answer(
-                user_message, history_text, client_instructions,
-                extra_context=None, current_datetime_context=temporal_context, trace_out=_quick_trace,
-            )
-            logger.trace(
-                "event=chat_quick_answer trace_id=%s session_id=%s answer=%s",
-                trace_id,
-                session_id,
-                json.dumps(answer, ensure_ascii=False),
-            )
-            if save_history:
-                self._save_history(session_id, user_message, answer, trace_id=trace_id)
-            yield stream_emitter.emit_final(answer, "general", trace_id=trace_id)
-            _record_turn("quick", answer=answer, trace_parts=_quick_trace)
-            logger.info(
-                "event=chat_done_summary session_id=%s total_ms=%s mode=quick model=%s provider=%s thinking=%s tools=0 answer_len=%s trace_id=%s",
-                session_id,
-                int((time.perf_counter() - t0) * 1000),
-                agent.model_name,
-                agent.provider,
-                agent.thinking,
-                len(answer or ""),
-                trace_id,
-            )
-            _mem_waiter = self._phase_background_memory(
-                user_message, session_id, notify_target,
-                force_notification_compiler, trace_id=trace_id,
-            )
-
-            yield from self._memory_notice_frames(_mem_waiter)
-            return
+        # Rapida is not a poorer path (Marko 2026-11-12): same persona, memories, tools and routing as every
+        # mode; the only difference is that the model does not think (``_think_level`` below stays off).
         logger.trace(
             "event=chat_phase_timing_ms Chat phase timing | session=%s phase=init ms=%s domains=%s",
             session_id,
@@ -1076,6 +1041,8 @@ class OracleEngine:
                 extra_context or None,
                 current_datetime_context=temporal_context,
                 trace_out=_quick_trace,
+                preference_facts=[str(p.get("fact", "")).strip()
+                                  for p in self._load_preferences(["general"]) if p.get("fact")],
             )
             if save_history:
                 self._save_history(session_id, user_message,
@@ -1218,10 +1185,10 @@ class OracleEngine:
         _module_index = self._module_registry.index_text()
         if _module_index:
             agent_loop_client_instructions_parts.append(
-                "MODULI (quando usarli; module_manual(modulo) per il manuale):\n" + _module_index)
+                "MODULES (when to use them; module_manual(module) for the manual):\n" + _module_index)
         _goal = conversation_goal.active(self._hub, session_id)
         if _goal:
-            agent_loop_client_instructions_parts.append(f"OBIETTIVO della conversazione: {_goal['text']}")
+            agent_loop_client_instructions_parts.append(f"GOAL of this conversation: {_goal['text']}")
         if self._wants_ui_blocks(client):
             agent_loop_client_instructions_parts.append(ui_blocks.PROMPT)
         if planner_contract:
@@ -1238,17 +1205,9 @@ class OracleEngine:
             agent_loop_client_instructions_parts.append(
                 f"CURRENT_DATETIME_CONTEXT:\n{temporal_context}")
         if "system" in intent.valid_domains:
-            agent_loop_client_instructions_parts.append(
-                "SYSTEM: domanda su stato/salute di Hestia o richiesta di "
-                "svilupparla. CHIAMA i tool system prima di rispondere. "
-                "Mai rispondere da history o a memoria."
-            )
+            agent_loop_client_instructions_parts.append(prompt_config.prompt("system_domain_instruction"))
         if mode == "cot":
-            agent_loop_client_instructions_parts.append(
-                "MODALITÀ CoT: scomponi la richiesta in passi, verifica ogni passo "
-                "(strumenti se servono), poi rispondi. In fondo alla risposta: "
-                "«Passi:» con 2-5 righe brevi del ragionamento seguito."
-            )
+            agent_loop_client_instructions_parts.append(prompt_config.prompt("cot_instruction"))
         if client_instructions and str(client_instructions).strip():
             agent_loop_client_instructions_parts.append(
                 str(client_instructions).strip())
@@ -1340,7 +1299,6 @@ class OracleEngine:
                 ask_tools_fn=_ask_tools_bound,
                 stream_fn=_stream_final,
                 client_instructions=agent_loop_client_instructions,
-                conversation_style=conversation_style_contract(),
                 max_turns=resolved_max_turns,
                 on_thinking=_on_thinking,
                 action_intent=intent.action_intent,
@@ -1574,7 +1532,6 @@ class OracleEngine:
         is_multi_alert = bool(isinstance(payload, dict)
                               and payload.get("multiple_alerts"))
 
-        html_format_rule = prompt_config.prompt("formatter_html_rule")
         alert_context_block = prompt_config.optional_section(
             "ALERT PAYLOAD SUMMARY",
             _build_alert_payload_context(payload),
@@ -1586,7 +1543,6 @@ class OracleEngine:
                 template_key,
                 surface="alert_formatter",
                 seed=variant_seed,
-                html_format_rule=html_format_rule,
                 command=command,
                 payload_text=payload_text,
                 alert_context_block=alert_context_block,
@@ -1600,19 +1556,17 @@ class OracleEngine:
         else:
             base_prompt = prompt_config.prompt(
                 "formatter_generic_template",
-                html_format_rule=html_format_rule,
                 command=command,
                 payload_text=payload_text,
             )
 
-        static_sections = [
-            base_prompt,
-            conversation_style_contract(),
-        ]
+        # Persona, style and language are the system prompt already; the format is the caller's
+        # (``client_instructions``): Oracle does not know where the text will be shown.
+        static_sections = [base_prompt]
         dynamic_sections: list[str] = []
         if locale and str(locale).strip():
             dynamic_sections.append(
-                f"LINGUA: Rispondi SEMPRE in lingua '{str(locale).strip()}'. Traduci qualsiasi testo del payload nella lingua richiesta."
+                f"LANGUAGE: ALWAYS answer in language '{str(locale).strip()}'. Translate any payload text into it."
             )
         if response_prompt and str(response_prompt).strip():
             dynamic_sections.append(
@@ -1624,7 +1578,7 @@ class OracleEngine:
             )
         if max_length:
             dynamic_sections.append(
-                f"LUNGHEZZA: Rispondi in massimo {max_length} parole."
+                f"LENGTH: at most {max_length} words."
             )
 
         prompt = prompt_config.compose_with_dynamic_boundary(
@@ -2081,7 +2035,6 @@ class OracleEngine:
         )
         return prompt_config.compose_with_dynamic_boundary(
             static_sections=[
-                conversation_style_contract(),
                 str(no_action_contract or "").strip(),
                 str(planner_contract or "").strip(),
             ],
@@ -2746,7 +2699,7 @@ class OracleEngine:
                     preference_facts=preference_facts, tools=tools,
                     ask_fn=lambda p: self._ask_analyst(p, thinking=think_level), ask_tools_fn=ask_tools,
                     stream_fn=None, client_instructions=instructions,
-                    conversation_style=conversation_style_contract(), on_thinking=frames.append,
+                    on_thinking=frames.append,
                     guard_checker=loop_guard.llm_checker, context_window=self._chat_window())
             except Exception as exc:
                 logger.warning("[🔄] event=goal_round_failed session_id=%s error=%s", session_id, exc)
@@ -3287,7 +3240,10 @@ class OracleEngine:
         extra_context: str | None,
         current_datetime_context: str | None = None,
         trace_out: dict | None = None,
+        preference_facts: list[str] | None = None,
     ) -> str:
+        """The small talk shortcut: one call without tools. It knows the owner like the agent loop does
+        (*preference_facts*: what she remembers about them), so a chat turn is never answered by a stranger."""
         # Only when the user asked for a change: otherwise small models repeat the
         # contract to the user ("Non risulta eseguita alcuna azione di modifica").
         no_action_contract = prompt_config.prompt(
@@ -3297,25 +3253,25 @@ class OracleEngine:
         )
         prompt = prompt_config.compose_with_dynamic_boundary(
             static_sections=[
-                prompt_config.prompt(
-                    "quick_chat_static_instruction",
-                    conversation_style_contract=conversation_style_contract(),
-                )
+                prompt_config.prompt("quick_chat_static_instruction")
             ],
             dynamic_sections=[
+                prompt_config.optional_section(
+                    "OWNER PREFERENCES", "\n".join(f"- {f}" for f in (preference_facts or [])[:10])
+                ).strip(),
                 prompt_config.optional_section(
                     "CURRENT_DATETIME_CONTEXT", current_datetime_context
                 ).strip(),
                 prompt_config.optional_section(
-                    "CONTESTO CONVERSAZIONE", history_text
+                    "CONVERSATION HISTORY", history_text
                 ).strip(),
                 prompt_config.optional_section(
-                    "CONTESTO AGGIUNTIVO", extra_context
+                    "EXTRA CONTEXT", extra_context
                 ).strip(),
                 prompt_config.optional_section(
-                    "STILE CLIENTE", combined_client_instructions
+                    "CLIENT INSTRUCTIONS", combined_client_instructions
                 ).strip(),
-                f"MESSAGGIO UTENTE:\n{user_message}",
+                f"USER: {user_message}",
             ],
         )
         if trace_out is not None:

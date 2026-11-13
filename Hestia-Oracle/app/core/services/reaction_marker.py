@@ -14,9 +14,9 @@ import re
 from typing import Iterator
 
 CLIENTS = {"telegram", "webui"}
-INSTRUCTION = ("REAZIONE (facoltativa): puoi reagire al suo messaggio iniziando con [[r:EMOJI]] (una sola emoji, "
-               "es. [[r:👍]] [[r:😂]] [[r:❤]]), come in una chat tra amici. Se basta la reazione (ok, grazie, "
-               "saluto di congedo) rispondi SOLO col marcatore.")
+INSTRUCTION = ("REACTION (optional): you may react to their message by starting with [[r:EMOJI]] (one emoji, "
+               "e.g. [[r:👍]] [[r:😂]] [[r:❤]]), like in a chat between friends. If the reaction is enough (ok, "
+               "thanks, a goodbye) answer ONLY with the marker.")
 
 _MARKER = re.compile(r"^\s*\[\[\s*r\s*:\s*([^\]\s]{1,8})\s*\]\]\s*", re.UNICODE)
 _MAX_PREFIX = 24          # longer than any marker: past this the answer has no marker

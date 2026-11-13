@@ -229,7 +229,7 @@ One message a day, «com'è andata e cosa c'è domani». `app/core/recap.py` `Re
 1. **Collect**: every module with capability `recap_endpoint` (Hub registry) is asked `GET /api/module/recap?day=&next=`
    in parallel (`athena.recap.piece_timeout_seconds`); a module down or slow is just left out. Athena's own piece
    «Da tenere d'occhio» (reflection thread) comes the same way.
-2. **Write**: Oracle use case `athena.recap` (chain veloce, caveman prompt, `athena.recap.style`, `athena.recap.max_chars`);
+2. **Write**: Oracle use case `athena.recap` (chain veloce, caveman English prompt, `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, `athena.recap.style`, `athena.recap.max_chars`);
    Oracle failing → deterministic list per area (`fallback: true`, `[🔄] event=recap_fallback`).
 3. **Quiet day** (every piece empty) → nothing is sent (`event=recap_empty`); proposals belong to other moments.
 4. **Deliver**: Hermes `service.action_required` (domain system, level info, `replaces: athena.recap`, target `owner`,

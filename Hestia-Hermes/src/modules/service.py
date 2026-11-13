@@ -12,7 +12,6 @@ from .entity_batch_dispatcher import (
 )
 from .matcher import subscription_matches
 from .notifications import NotificationCenter
-from hestia_common import identity
 from .oracle_client import narrate
 from .hermes_settings import DEDUPE_RECURRING_MAX_AGE, notification_style, recurring_event_types, settings
 
@@ -81,8 +80,8 @@ def _entity_message(payload: dict[str, Any], domain: str) -> str:
     facts = "\n".join(f"{k}: {v}" for k, v in payload.items()
                       if not str(k).startswith("_") and isinstance(v, (str, int, float)) and str(v).strip())[:1500]
     text = narrate(
-        f"Scrivi una notifica breve in italiano per l'utente su questo elemento ({domain}). "
-        f"Solo HTML semplice (<b>, <a href>), niente saluti, inizia dall'informazione.\n\n{facts}")
+        f"Write a short notification in Italian about this item ({domain}). Start from the information. "
+        f"Format: simple HTML only (<b>, <a href>).\n\n{facts}")
     if text:
         return text
     url = str(payload.get("url") or "").strip()
@@ -107,11 +106,9 @@ def conversational_message(message: str, title: str, *, level: str, event_type: 
     if any(payload.get(k) for k in ("_actions", "_question", "_secret")):
         return message
     said = narrate(
-        identity.render(
-            "Sei {assistant}, {g:l'amica|l'amico} che vive con {owner}. Digli questa notifica in UNA frase breve e "
-            "naturale, come in chat. Niente saluti, niente emoji. Tieni numeri, orari e link (HTML <a href> solo "
-            "se c'è un link).\n\n", identity.read(settings.get)) +
-        f"Titolo: {str(title or '').strip()[:120]}\nTesto: {str(message)[:1200]}")
+        "Say this notification in ONE short natural sentence, like in chat, in the language of its text. No "
+        "emoji. Keep numbers, times and links (HTML <a href> only if there is a link).\n\n"
+        f"Title: {str(title or '').strip()[:120]}\nText: {str(message)[:1200]}")
     return said.strip() if said and said.strip() else message
 
 

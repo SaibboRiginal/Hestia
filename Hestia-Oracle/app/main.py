@@ -1603,7 +1603,9 @@ def llm_code_endpoint(req: CodeTaskRequest):
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """
-    Plain generation for services: {"prompt": "...", "use_case": "scout.annunci"}.
+    Plain generation for services: {"prompt": "...", "use_case": "scout.annunci", "voice": false}.
+    ``voice: true`` = the text is for the owner: Oracle speaks as the assistant (same identity, style and language
+    rule as the chat), the module sends only the data and what to say. Default false: a plain tool call.
     ``use_case`` (declared by the module in its Hub registration) picks the chain (setting oracle.usecases,
     default «Uso generale»); the chain tries its steps in order and skips the ones out of quota.
     Returns: {"response": "...", "model": "...", "provider": "...", "use_case": "...", "chain": "..."}
@@ -1613,10 +1615,14 @@ def llm_generate_endpoint(req: dict):
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt required")
     use_case = str(req.get("use_case") or llm_chains.GENERAL).strip().lower()
+    voice = bool(req.get("voice"))
+    if voice:
+        prompt = f"{_prompt_config.prompt('module_voice_instruction')}\n\n{prompt}"
     from core.services import external_agent
     if external_agent.mode_for(use_case) == "esterna":
         try:   # external agent, one shot without tools
-            text = external_agent.ask(prompt, use_case=use_case)
+            text = external_agent.ask(prompt, system=_prompt_config.system_identity() if voice else "",
+                                      use_case=use_case)
             cfg = external_agent.brain()
             return {"response": text, "model": cfg["model"], "provider": cfg["agent"], "use_case": use_case,
                     "chain": f"agente:{cfg['agent']}"}
@@ -1625,7 +1631,7 @@ def llm_generate_endpoint(req: dict):
                 raise HTTPException(status_code=503, detail=f"external agent: {exc}")
             logger.warning("[🔄] event=llm_generate_external_failed use_case=%s fallback=interna error=%s",
                            use_case, str(exc)[:200])
-    agent = llm_chains.agent_for(use_case)
+    agent = llm_chains.agent_for(use_case, voice=voice)
     try:
         text = agent.ask(prompt)
     except llm_chains.ChainExhausted as exc:

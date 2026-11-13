@@ -40,7 +40,7 @@ class TestDeclaredSettings:
             assert key not in defs, key
 
     def test_client_instructions_ask_for_no_emoji(self):
-        assert "NIENTE EMOJI" in ts.DEFAULT_CLIENT_INSTRUCTIONS
+        assert "No emoji" in ts.DEFAULT_CLIENT_INSTRUCTIONS and "Telegram HTML" in ts.DEFAULT_CLIENT_INSTRUCTIONS
 
     def test_personal_chat_settings_stay_separate(self):
         from telegram_bot.services import personal_settings

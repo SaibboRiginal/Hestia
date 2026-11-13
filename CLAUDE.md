@@ -44,7 +44,9 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
   never hardcode hours/loops. User edits win; paused/cancelled = user decision (no fallback).
 - Never touch `.env`, tokens, `data/` folders; never commit secrets. Mail = Gmail via OAuth token only (no IMAP).
 - Logs: `event=<snake_case> key=value`; recovery/fallback paths prefixed `[🔄]`. No task is abandoned.
-- Prompts for local models: "caveman" style (short, dense) — every token is paid each turn.
+- Prompts for local models: "caveman" style (short, dense) — every token is paid each turn. Hidden text is English;
+  the answer follows the owner's language. A text for the owner = `/api/llm/generate` with `voice: true` (Oracle adds
+  who speaks); never write «Sei Hestia…» in a module. Answer format belongs to the client, not to Oracle.
 
 ## Repo map
 

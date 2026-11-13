@@ -71,7 +71,7 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.m
   Cervello → Modelli. A new module that needs an LLM declares its use cases; it never names a provider or model.
 - Brain mode `oracle.brain.mode` interna (chains) | esterna (Claude Code / Codex run the loop with Hestia's tools
   through `core.services.mcp_bridge`; Archive stays the session truth). Usage rows → Archive `llm-usage`.
-- `/api/llm/generate {prompt, use_case}` plain prompt; `/api/llm/chat {use_case, messages, tools}` OpenAI-compatible
+- `/api/llm/generate {prompt, use_case, voice?}` plain prompt (`voice: true` = a text for the owner, written as the assistant; never write «Sei Hestia…» in a module); `/api/llm/chat {use_case, messages, tools}` OpenAI-compatible
   along the use case's chain (Forge: `forge.codice`).
 - `/api/llm/code`: Claude Code CLI (`claude -p`) in a Forge worktree under `/forge/worktrees`, auth
   `CLAUDE_CODE_OAUTH_TOKEN` (Pro/Max, from `claude setup-token`). Only for code tasks.

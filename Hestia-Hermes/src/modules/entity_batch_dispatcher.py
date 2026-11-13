@@ -220,17 +220,12 @@ def _narrate_entities(entry: _BatchEntry) -> str:
 
     noun = "annuncio immobiliare" if n == 1 else "annunci immobiliari"
     prompt = (
-        f"Hestia ha trovato {n} nuov{'o' if n == 1 else 'i'} {noun}{filters_desc}.\n\n"
-        f"Ecco i dettagli:\n\n{raw}\n\n"
-        f"Scrivi una notifica amichevole e personalizzata in italiano per l'utente. "
-        f"Sii conciso ma informativo: menziona prezzo, posizione e caratteristiche più "
-        f"rilevanti di ogni annuncio. "
-        f"Includi i link come HTML: <a href=\"URL_ESATTO\">indirizzo o titolo</a>. "
-        f"Non usare liste puntate o numerate — scrivi in modo naturale e scorrevole, "
-        f"come se stessi segnalando opportunità a un amico. "
-        f"Usa esclusivamente HTML per la formattazione (non markdown). "
-        f"Se ci sono più annunci, raggruppali brevemente per zona o fascia di prezzo "
-        f"se ha senso farlo."
+        f"You found {n} new real estate listing{'' if n == 1 else 's'}{filters_desc}. Tell the owner, in Italian.\n"
+        f"- Concise but informative: price, location and the most relevant features of each listing.\n"
+        f"- Natural flowing text, no bulleted or numbered lists.\n"
+        f"- Several listings: group them briefly by area or price range if it makes sense.\n"
+        f"- Format: HTML only, no Markdown. Links: <a href=\"EXACT_URL\">address or title</a>.\n\n"
+        f"LISTINGS:\n{raw}"
     )
 
     narrated = narrate(prompt)

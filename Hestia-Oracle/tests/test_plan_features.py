@@ -155,16 +155,16 @@ def test_turn_tool_domains_narrow_only_when_sure():
 class TestModeRouting:
     """Plan P1: mode (quick/auto/thinking) and model independence."""
 
-    def test_quick_mode_no_classify(self, engine):
-        """Quick mode skips classification entirely."""
-        engine._phase_classify = MagicMock()
-        engine._quick_answer = MagicMock(return_value="Quick response")
+    def test_quick_mode_routes_like_every_mode(self, engine):
+        """Rapida is routed like auto (same classify, same tools): only the model's thinking is off."""
+        real_classify = engine._phase_classify
+        engine._phase_classify = MagicMock(side_effect=real_classify)
         engine._save_history = MagicMock()
         engine._phase_init = MagicMock(return_value=("", ["general"], {}))
         engine._phase_background_memory = MagicMock()
 
-        lines = list(engine.chat("hello", "s1", mode="quick", model="generic"))
-        engine._phase_classify.assert_not_called()
+        list(engine.chat("hello", "s1", mode="quick", model="generic"))
+        engine._phase_classify.assert_called_once()
 
     def test_thinking_mode_uses_resolved_agent(self, engine):
         """Thinking mode uses the agent from _resolve_agent(model), not forced reasoning."""

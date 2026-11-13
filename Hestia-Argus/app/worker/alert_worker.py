@@ -137,18 +137,14 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
     raw = "\n".join(lines)
 
     prompt = (
-        f"Hestia ha rilevato i seguenti problemi nel sistema:\n\n"
-        f"{raw}\n\n"
-        f"Scrivi una breve notifica amichevole in italiano per l'utente (massimo 4-5 righe). "
-        f"Menziona quali servizi sono coinvolti e cosa sembra succedere. "
-        f"Puoi includere un breve estratto dell'errore grezzo se è utile. "
-        f"Scrivi in modo naturale come se stessi informando qualcuno di un problema tecnico. "
-        f"FORMATTAZIONE HTML TELEGRAM: usa <b>testo</b> per grassetto, <i>testo</i> per corsivo. "
-        f"MAI usare sintassi Markdown (**testo**, _testo_, * item, - item). "
-        f"Non usare JSON o elenchi puntati nel messaggio finale."
+        f"You noticed these problems in your own system. Tell the owner, in Italian, 4-5 lines at most.\n"
+        f"- Which services are involved and what seems to be happening.\n"
+        f"- A short excerpt of the raw error only if it helps.\n"
+        f"- Format: HTML <b> and <i> only. No Markdown, no JSON, no bulleted lists.\n\n"
+        f"PROBLEMS:\n{raw}"
     )
 
-    narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt)
+    narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():
         count = f" · {len(alerts)} eventi" if len(alerts) > 1 else ""
         return f"🔔 <b>Hestia Monitor{count}</b>\n\n{narrated.strip()}"
@@ -206,10 +202,9 @@ def send_recovery(service: str) -> None:
         _clear(_health_fingerprint(service, status))
 
     prompt = (
-        f"Il servizio '{service}' di Hestia è tornato online correttamente. "
-        f"Scrivi una breve notifica amichevole in italiano per informare l'utente della ripresa."
+        f"The service '{service}' of your own system is back online. Tell the owner in one short line, in Italian."
     )
-    narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt)
+    narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():
         text = f"✅ <b>Hestia Monitor</b>\n\n{narrated.strip()}"
     else:
