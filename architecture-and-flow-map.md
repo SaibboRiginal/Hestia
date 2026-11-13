@@ -229,6 +229,9 @@ flowchart LR
 6. The WebUI shell uses the same doors: Metis (taps, «Adesso», «Scopri»), Aphrodite (look of now), Hermes
    `/api/ui/push/*` (Web Push), Oracle `/api/ui/chats*` (conversation history and tags → Archive
    `/api/chat/sessions/*`); a suggested tool or an «Annulla» runs through Hestia-MCP `/api/mcp/ui/tools/call`.
+   Deleting a conversation: WebUI «…» → Oracle `DELETE /api/ui/chats/{id}` → Archive `DELETE /api/chat/sessions/{id}`
+   (messages + title/tags/pin) and Metis forgets its saved turns. The model that answered travels with the answer:
+   Oracle `final.model` → Archive `chat_history.model` → WebUI divider / Telegram line where it changes.
 7. Training dataset (docs/work/2026-10-30-dataset-allenamento): after each owner turn Oracle → Hub →
    `metis /api/metis/traces` (background) → Archive `/api/dataset-store`; Metis reads chat meta `training_off`
    (`/api/chat/sessions/{id}/meta`); a deleted or excluded chat → Oracle → `DELETE metis /api/metis/traces`. The
