@@ -168,7 +168,8 @@ ui.webui(
                        help="Ogni ciclo di Athena, in due tracce: Vita (segnali delle aree, collegamenti tra le "
                             "settimane, osservazioni per il recap) e Sistema (salute di Hestia). Cosa ha osservato, "
                             "il punteggio (5 fattori) e cosa ha fatto o scartato, con il motivo. «Pensa ora» per un "
-                            "ciclo subito."),
+                            "ciclo subito. In Sistema anche le prove che sta raccogliendo prima di proporre; in "
+                            "«Ti scrive» quando e perché ti scrive per prima."),
            plugin_page("segnali", "Segnali", element="athena-signals", icon="pulse", order=131,
                        help="I segnali brevi che ogni area pubblica sui suoi dati e i numeri settimanali che la "
                             "riflessione confronta. Le osservazioni che ne nascono arrivano nel recap della sera."),
@@ -348,14 +349,19 @@ def athena_think_now(track: str = "sistema") -> dict[str, Any]:
 def athena_talk(days: int = 7) -> dict[str, Any]:
     """What she wrote first in the last days (newest first), with the reasons and the drive she had and whether
     the owner answered; ``state`` = her drive to write now against the bar of ``athena.talk.eagerness``."""
+    from .core.talk import shown
     rows = runtime.talk.recent(days=max(1, min(int(days), 30)))
     try:
-        state = runtime.talk.weigh()
+        full = runtime.talk.weigh()
+        # For the owner: no hidden text (the lines for the model stay inside Athena).
+        state = {k: full.get(k) for k in ("drive", "bar", "wants", "idle_seconds", "known_days", "unanswered")}
+        state["reasons"] = [shown(r) for r in full.get("reasons") or []]
     except Exception as exc:  # noqa: BLE001 - the list is still useful without the state
         logger.warning("[🔄] event=talk_state_failed error=%s fallback=no_state", exc)
         state = None
-    return {"items": [{k: r.get(k) for k in ("id", "day", "at", "text", "reasons", "trigger", "drive", "answered")}
-                      for r in rows], "state": state}
+    items = [{**{k: r.get(k) for k in ("id", "day", "at", "text", "trigger", "drive", "answered")},
+              "reasons": [shown(x) for x in r.get("reasons") or []]} for r in rows]
+    return {"items": items, "state": state}
 
 
 @app.get("/api/athena/evidence")

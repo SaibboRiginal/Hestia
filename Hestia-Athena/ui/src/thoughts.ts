@@ -5,15 +5,19 @@
  * evening recap) and Sistema (Hestia's own health).
  * Reads GET /api/athena/thinking/summary?track= · /api/athena/commitments; POST /api/athena/think?track=,
  * POST /api/athena/commitments/{id}/resolve.
+ * Same page, no new one (docs/work/2026-11-13-prima-osserva-poi-propone): Sistema shows what she is still collecting
+ * proof for (GET /api/athena/evidence); the third tab «Ti scrive» shows how much she wants to write now, why, what
+ * she wrote and whether you answered (GET /api/athena/talk), with «Scrivimi ora» (POST /api/athena/think?track=parla).
  */
 import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
-import { API, FACTORS, KINDS, OUTCOMES, ago, area, linkText, pct, secs, when } from './util';
+import { API, FACTORS, KINDS, OUTCOMES, ago, area, day, hours, linkText, pct, secs, when } from './util';
 
 export class AthenaThoughts extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, commitments: { state: true },
                         error: { state: true }, thinking: { state: true }, open: { state: true },
-                        track: { state: true } };
-  declare track: 'vita' | 'sistema';
+                        track: { state: true }, evidence: { state: true }, talk: { state: true } };
+  declare track: 'vita' | 'sistema' | 'parla';
+  declare evidence: any; declare talk: any;
   declare data: any; declare commitments: any[] | null; declare error: string; declare thinking: boolean;
   declare open: Record<string, boolean>;
   private poll: number | undefined;
@@ -38,6 +42,7 @@ export class AthenaThoughts extends HestiaElement {
     .score { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
     .gauge { position: relative; flex: 1; height: 8px; border-radius: 4px; background: var(--surface-2); }
     .gauge i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+    .gauge.ev { flex: 0 0 90px; align-self: center; overflow: hidden; }
     .gauge .thr { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-2); }
     .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
     .muted2 { color: var(--text-2); font-size: 13px; }
@@ -51,7 +56,7 @@ export class AthenaThoughts extends HestiaElement {
     .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 12.5px; }
   `];
 
-  constructor() { super(); this.data = null; this.commitments = null; this.error = ''; this.thinking = false; this.open = {}; this.track = 'vita'; }
+  constructor() { super(); this.data = null; this.commitments = null; this.error = ''; this.thinking = false; this.open = {}; this.track = 'vita'; this.evidence = null; this.talk = null; }
 
   connectedCallback() {
     super.connectedCallback();
@@ -62,16 +67,45 @@ export class AthenaThoughts extends HestiaElement {
   disconnectedCallback() { super.disconnectedCallback(); window.clearTimeout(this.poll); }
 
   private async load(): Promise<any> {
-    const [t, c] = await Promise.all([
+    if (this.track === 'parla') return this.loadTalk();
+    const [t, c, e] = await Promise.all([
       this.host.api('GET', `${API}/thinking/summary`, { query: { limit: 15, track: this.track } }),
       this.host.api('GET', `${API}/commitments`, { query: { limit: 20 } }),
+      this.track === 'sistema' ? this.host.api('GET', `${API}/evidence`) : Promise.resolve({ ok: false } as any),
     ]);
+    this.evidence = e.ok ? e.data : null;
     if (!t.ok) { this.error = t.status === 0 ? 'Athena non raggiungibile' : t.error || 'Athena non raggiungibile'; return null; }
     this.error = '';
     this.data = t.data;
     this.commitments = c.ok ? c.data.commitments || [] : null;
     if (t.data.running && !this.thinking) this.watch(t.data.cycles?.[0]?.record_id);
     return t.data;
+  }
+
+  private async loadTalk(): Promise<any> {
+    const r = await this.host.api('GET', `${API}/talk`, { query: { days: 14 } });
+    if (!r.ok) { this.error = r.status === 0 ? 'Athena non raggiungibile' : r.error || 'Athena non raggiungibile'; return null; }
+    this.error = '';
+    this.talk = r.data;
+    return r.data;
+  }
+
+  private async writeNow() {
+    const before = this.talk?.items?.[0]?.id;
+    const r = await this.host.api('POST', `${API}/think`, { query: { track: 'parla' } });
+    if (!r.ok) { this.host.toast(r.error || 'Athena non raggiungibile', 'danger'); return; }
+    this.host.toast('Ci sta pensando: se ha qualcosa da dirti lo trovi in chat', 'info');
+    this.thinking = true;
+    window.clearTimeout(this.poll);
+    const wait = (tries: number) => {
+      this.poll = window.setTimeout(async () => {
+        const d = await this.loadTalk();
+        if (this.track !== 'parla') { this.thinking = false; return; }
+        if ((d?.items?.[0]?.id ?? before) !== before || tries >= 30) { this.thinking = false; return; }
+        wait(tries + 1);
+      }, 4000);
+    };
+    wait(0);
   }
 
   /** Poll until the running cycle ends, then show it. */
@@ -141,9 +175,75 @@ export class AthenaThoughts extends HestiaElement {
     </div>`;
   }
 
-  private setTrack(t: 'vita' | 'sistema') {
+  private setTrack(t: 'vita' | 'sistema' | 'parla') {
     if (t === this.track) return;
-    this.track = t; this.data = null; this.load();
+    window.clearTimeout(this.poll); this.thinking = false;
+    this.track = t; this.data = null; this.talk = null; this.load();
+  }
+
+  private tabs() {
+    return html`<span class="tabs" role="group" aria-label="Traccia">
+      <button aria-pressed=${String(this.track === 'vita')} @click=${() => this.setTrack('vita')}>Vita</button>
+      <button aria-pressed=${String(this.track === 'sistema')} @click=${() => this.setTrack('sistema')}>Sistema</button>
+      <button aria-pressed=${String(this.track === 'parla')} @click=${() => this.setTrack('parla')}>Ti scrive</button></span>`;
+  }
+
+  /** Sistema: findings she saw but does not propose yet (first observe, then propose). */
+  private renderEvidence() {
+    const e = this.evidence;
+    if (!e) return nothing;
+    const items: any[] = (e.items || []).filter((x: any) => (x.days || []).length);
+    const observing = e.known_days < e.min_days;
+    const subtitle = observing
+      ? `Sta ancora osservando: giorno ${e.known_days} di ${e.min_days}. Prima non propone miglioramenti né modifiche.`
+      : `Propone un miglioramento o una modifica solo dopo averlo visto in ${e.seen_days} giorni diversi.`;
+    return html`<hxk-card heading="Sta raccogliendo prove" subtitle=${subtitle}>
+      ${items.length ? items.map(x => html`<div class="comm"><div class="grow">
+          <div><b>${x.title || String(x.key || '').replace(/^(setting|improvement):/, '')}</b> <span class="chip">${KINDS[x.kind] || x.kind}</span></div>
+          <div class="small muted">visto in ${x.days.length} ${x.days.length === 1 ? 'giorno' : 'giorni'} su ${e.seen_days}
+            · ultima volta ${day(x.days[x.days.length - 1])}</div></div>
+        <span class="gauge ev" title="Giorni in cui l'ha visto"><i style="width:${pct(x.days.length / Math.max(1, e.seen_days))};background:var(--accent)"></i></span></div>`)
+        : html`<div class="small muted">Niente in raccolta adesso.</div>`}
+      <div class="small muted">I guasti te li segnala subito. «Pensa ora» non aspetta.</div>
+    </hxk-card>`;
+  }
+
+  /** «Ti scrive»: her drive to write now, the reasons, what she wrote and how it went. */
+  private renderTalk() {
+    const t = this.talk;
+    if (!t) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
+    const s = t.state;
+    const items: any[] = t.items || [];
+    const answer = (a: any) => a === true ? { label: 'hai risposto', tone: 'success' }
+      : a === false ? { label: 'senza risposta', tone: 'warning' } : { label: 'in attesa', tone: 'neutral' };
+    return html`<div class="page">
+      <div class="head"><h1>Pensieri</h1><span class="sub">Quando e perché ti scrive per prima</span><span class="grow"></span>
+        ${this.tabs()}
+        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>Aggiorna</hxk-button>
+        <hxk-button variant="primary" icon="chat" ?loading=${this.thinking} @click=${() => this.writeNow()}>${this.thinking ? 'Ci sta pensando…' : 'Scrivimi ora'}</hxk-button></div>
+      ${s ? html`<hxk-card heading="Voglia di scriverti adesso" subtitle="Cresce se non vi sentite da un po' e se ha qualcosa di vero da dirti, cala se non le rispondi, è bassa nei primi giorni">
+        <div class="score"><span class="num">${Number(s.drive).toFixed(2)}</span>
+          <span class="gauge" title="Voglia e soglia"><i style="width:${pct(s.drive)};background:${s.wants ? 'var(--success)' : 'var(--text-3)'}"></i>
+            <span class="thr" style="left:${pct(s.bar)}"></span></span>
+          <span class="num muted">soglia ${Number(s.bar).toFixed(2)}</span>
+          <hxk-badge tone=${s.wants ? 'success' : 'neutral'}>${s.wants ? 'ti scriverebbe' : 'per ora tace'}</hxk-badge></div>
+        <div class="line" style="margin-top:8px">
+          ${s.idle_seconds != null ? html`<span class="chip">ultimo tuo messaggio ${hours(s.idle_seconds)}</span>` : nothing}
+          <span class="chip">ti conosce da ${s.known_days} ${s.known_days === 1 ? 'giorno' : 'giorni'}</span>
+          ${s.unanswered ? html`<span class="chip bad">${s.unanswered} senza risposta</span>` : nothing}</div>
+        ${(s.reasons || []).length ? html`<ul class="items small muted">${s.reasons.map((r: string) => html`<li>${r}</li>`)}</ul>`
+          : html`<div class="small muted">Oggi non ha motivi particolari.</div>`}
+      </hxk-card>` : nothing}
+      <hxk-card heading="Cosa ti ha scritto" subtitle="Ultimi 14 giorni">
+        ${items.length ? items.map(x => html`<div class="comm"><div class="grow">
+            <div>${x.text}</div>
+            <div class="small muted">${when(x.at)}${x.trigger === 'manual' ? ' · chiesto da te' : ''}${x.drive != null ? ` · voglia ${Number(x.drive).toFixed(2)}` : ''}</div>
+            ${(x.reasons || []).length ? html`<div class="small muted">Perché: ${x.reasons.join(' · ')}</div>` : nothing}</div>
+          <hxk-badge tone=${answer(x.answered).tone}>${answer(x.answered).label}</hxk-badge></div>`)
+          : html`<div class="small muted">Non ti ha ancora scritto per prima.</div>`}
+      </hxk-card>
+      <p class="small muted">Quante volte al giorno, quanto è loquace e la pausa tra due messaggi si cambiano in Impostazioni → Sistema → Athena. Gli orari sono in Agenda.</p>
+    </div>`;
   }
 
   /** Life cycle: what it read, the links it found, what it asked, what went to the recap. */
@@ -219,15 +319,14 @@ export class AthenaThoughts extends HestiaElement {
 
   render() {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.track === 'parla') return this.renderTalk();
     const d = this.data;
     if (!d) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const cycles: any[] = d.cycles || [];
     const last = cycles[0];
     return html`<div class="page">
       <div class="head"><h1>Pensieri</h1><span class="sub">${this.track === 'vita' ? 'Cosa nota della tua vita: finisce nel recap della sera' : 'Come sta Hestia: servizi, errori, miglioramenti'}</span><span class="grow"></span>
-        <span class="tabs" role="group" aria-label="Traccia">
-          <button aria-pressed=${String(this.track === 'vita')} @click=${() => this.setTrack('vita')}>Vita</button>
-          <button aria-pressed=${String(this.track === 'sistema')} @click=${() => this.setTrack('sistema')}>Sistema</button></span>
+        ${this.tabs()}
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>Aggiorna</hxk-button>
         <hxk-button variant="primary" icon="play" ?loading=${this.thinking} @click=${() => this.thinkNow()}>${this.thinking ? 'Sta pensando…' : 'Pensa ora'}</hxk-button></div>
       <div class="line">
@@ -236,6 +335,7 @@ export class AthenaThoughts extends HestiaElement {
         ${d.strategist_enabled ? nothing : html`<hxk-badge tone="warning">ragionamento spento: nessuna idea</hxk-badge>`}
         <span class="chip">soglia ${Number(d.threshold).toFixed(2)}</span>
         ${last ? html`<span class="small muted">ultimo ciclo ${ago(last.cycle_at)}</span>` : nothing}</div>
+      ${this.track === 'sistema' ? this.renderEvidence() : nothing}
       ${this.track === 'sistema' ? this.renderCommitments() : nothing}
       ${cycles.length ? cycles.map((r, i) => this.cycle(r, i === 0))
         : html`<hxk-state kind="empty" text=${this.track === 'vita'
