@@ -58,7 +58,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
                     logger.debug("event=reaction_only_status_delete_failed error=%s", exc)
                 continue
             # Render the answer immediately; notices may still arrive (memory) and are added after.
-            renderer.on_final(str(data.get("reply") or ""), data.get("origin"))
+            renderer.on_final(str(data.get("reply") or ""), data.get("origin"), str(data.get("model") or ""))
         elif kind == "changes":
             renderer.on_changes(data)
         elif kind == "notice":

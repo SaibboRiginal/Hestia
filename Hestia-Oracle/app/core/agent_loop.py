@@ -65,8 +65,9 @@ _BENCHMARK_TEXT = (
 class TokenCounter:
     """Accurate token estimator backed by Ollama /api/tokenize with fallback."""
 
-    def __init__(self, model: str = ""):
+    def __init__(self, model: str = "", window: int = 0):
         self._model = model
+        self._window = max(0, int(window or 0))
         self._ratio = self._resolve_ratio(model)
 
     @staticmethod
@@ -104,9 +105,15 @@ class TokenCounter:
             return 0
         return max(1, int(len(text) / self._ratio))
 
+    def from_chars(self, chars: int) -> int:
+        """Tokens of *chars* characters (same ratio as ``estimate``, without building a string)."""
+        return int(max(0, int(chars or 0)) / self._ratio)
+
     @property
     def context_window(self) -> int:
-        return _settings().context_window()
+        """Window of the model that answers: the one given by the caller (a cloud model has its own), else the
+        local model's (forced by the setting or read from its program)."""
+        return self._window or _settings().context_window(self._model)
 
     @property
     def compact_threshold(self) -> float:
@@ -384,8 +391,12 @@ def run_agent_loop(
     guard_checker: Callable[[list[str]], str] | None = None,
     prior_actions: list[dict] | None = None,
     trace_out: dict | None = None,
+    context_window: int = 0,
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
+
+    *context_window*: window of the model that answers (0 = the local model's). Budget and compaction follow
+    it: a cloud model with a million tokens must not be compacted at the size of the local one.
 
     OpenClaw pattern: *compact_fn* is called before each turn when the
     estimated token count exceeds the compaction threshold.  It should
@@ -408,7 +419,7 @@ def run_agent_loop(
     tool_names = sorted(tool_map.keys())
 
     # ── Token counter (model-aware, Ollama-calibrated) ───────────────────────
-    _counter = TokenCounter()
+    _counter = TokenCounter(window=context_window)
 
     # ── TRACE: entry ──────────────────────────────────────────────────────────
     _est_tokens = _counter.estimate
@@ -426,6 +437,7 @@ def run_agent_loop(
         for t in tools
     ]
     tools_json = json.dumps(tools_manifest, ensure_ascii=False, indent=2)
+    _tools_native_chars = len(json.dumps(tools_manifest, ensure_ascii=False))
     logger.trace("event=agent_loop_tools_manifest_json_len=%d", len(tools_json))
 
     # When native tool calling is available, the full JSON schemas are sent via
@@ -582,6 +594,22 @@ def run_agent_loop(
             _scratch_chars, _tools_chars,
             _prompt_chars, _prompt_tokens_est, _ctx_pct,
         )
+        # What this prompt is made of, for the context gauge (the schemas of native tools travel beside the
+        # text; without native tools they are inside the system part, so they are taken out of it).
+        try:
+            from core.services import llm_stats
+            _native_now = _has_native and not is_last_turn
+            _tool_part = _tools_native_chars if _native_now else (0 if _has_native else _tools_chars)
+            _sys_part = max(0, _sys_chars - (0 if _has_native else _tools_chars))
+            _known = _sys_chars + _hist_chars + _user_chars + _scratch_chars
+            llm_stats.note_breakdown({
+                "system": _counter.from_chars(_sys_part), "tools": _counter.from_chars(_tool_part),
+                "history": _counter.from_chars(_hist_chars), "message": _counter.from_chars(_user_chars),
+                "results": _counter.from_chars(_scratch_chars),
+                "other": _counter.from_chars(max(0, _prompt_chars - _known)),
+            })
+        except Exception as exc:  # the gauge is never worth failing a turn
+            logger.debug("event=agent_loop_breakdown_failed error=%s", exc)
         logger.trace("event=agent_loop_turn_start turn=%d is_last=%s prompt_chars=%d "
                      "prompt_tokens_est=%d context_pct=%.1f%% ctx_remaining_est=%d "
                      "scratchpad_msgs=%d tools_avail=%d",

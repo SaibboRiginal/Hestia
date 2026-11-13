@@ -115,7 +115,7 @@ class BuiltinEngine(Engine):
         self.cfg = cfg
         self.name = name
         self.use_case = FORGE_USECASE
-        self.context_window = 0    # tokens, of the chain's first usable step (local Ollama: num_ctx setting)
+        self.context_window = 0    # tokens, of the chain's first usable step (local Ollama: read from Ollama, or the num_ctx setting when forced)
         self.group = "cloud"       # permission group: "local" only while every usable step is free
 
     def _route(self, method: str, path: str, body: dict | None, timeout: int) -> tuple[int, Any]:
@@ -237,7 +237,7 @@ class BuiltinEngine(Engine):
         if finish_reason == "length":
             window = f" ({self.context_window} token)" if self.context_window else ""
             return (f"model context full{window}: the answer was cut before finish — raise "
-                    "oracle.provider.ollama.num_ctx or use engine claude")
+                    "the window in the local program (or oracle.provider.ollama.num_ctx) or use engine claude")
         if turn >= max_turns:
             return f"turn limit reached ({max_turns}) without finish"
         return "model stopped calling tools without finish"

@@ -53,6 +53,8 @@ class ChatHistory(Base):
     role = Column(String, nullable=False)
     content = Column(String, nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    # The model that wrote an answer (empty on the owner's messages and on old rows): clients mark where it changes.
+    model = Column(String, nullable=True)
 
 
 class ChatSessionMeta(Base):

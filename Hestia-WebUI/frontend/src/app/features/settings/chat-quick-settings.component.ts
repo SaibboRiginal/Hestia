@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ButtonComponent, PopoverComponent, SegmentedComponent, SpinnerComponent, ToastService } from '../../ui';
+import { ButtonComponent, PopoverComponent, SegmentedComponent, SettingLinkComponent, SpinnerComponent, ToastService } from '../../ui';
 import { SettingsService, THINKING_DISPLAY_OPTIONS } from '../../services/settings.service';
 import { CentralSettingsApi, SettingItem, apiError } from './central-settings.api';
 import { SettingControlComponent } from './setting-control.component';
@@ -15,7 +15,7 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
  */
 @Component({
   selector: 'hx-chat-quick-settings',
-  imports: [RouterLink, ButtonComponent, PopoverComponent, SegmentedComponent, SpinnerComponent, SettingControlComponent],
+  imports: [RouterLink, ButtonComponent, PopoverComponent, SegmentedComponent, SettingLinkComponent, SpinnerComponent, SettingControlComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button hx-btn variant="ghost" size="sm" icon="settings" iconOnly aria-label="Impostazioni di questa chat"
@@ -30,13 +30,14 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
               <span>{{ it.label }}</span>
               @if (it.source === 'session') {
                 <button class="def" (click)="followDefault(it)">Come predefinito</button>
-              } @else { <span class="src">predefinito</span> }
+              } @else { <hx-setting-link [key]="it.key" label="predefinito" title="Cambia il predefinito" (go)="open.set(false)" /> }
             </div>
             <hx-setting-control [item]="it" (commit)="set(it, $event)" />
           </div>
         }
         <div class="row">
-          <div class="lbl"><span>Ragionamento</span><span class="src">su questo browser</span></div>
+          <div class="lbl"><span>Ragionamento</span>
+            <hx-setting-link section="assistente" row="thinking" label="su questo browser" title="Apri in Impostazioni" (go)="open.set(false)" /></div>
           <hx-segmented [options]="thinking" [value]="prefs.settings().thinkingDisplay" (changed)="setThinking($event)" />
         </div>
         <a class="more" routerLink="/settings" (click)="open.set(false)">Predefiniti e altre impostazioni…</a>

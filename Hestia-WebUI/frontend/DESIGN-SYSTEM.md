@@ -168,7 +168,15 @@ history/undo) or just `<hx-setting-control [item] [compact] (commit)>` (the inpu
 `CentralSettingsStore.set(item, value)`. Never build a custom form for a module setting: declare it in the module
 (`hestia_common.settings_client.setting`, optional `row`/`column` for a table) and it appears in Impostazioni → Sistema.
 A setting that lives only in this client uses `<hx-setting-shell label help [wide]>` around its control, so every
-row of Impostazioni looks the same and the page search finds it (add it to `personal-settings.component.ts`).
+row of Impostazioni looks the same and the page search finds it (add it to `personal-rows.ts`, which also feeds
+the Ctrl+K palette).
+
+**Shortcut to a setting.** Wherever a page shows a value that the user changes in Impostazioni, put
+`<hx-setting-link key="oracle.chat.mode" />` next to it (a small gear + «cambia»): it opens Impostazioni already on
+that setting, highlighted. `key` = central setting · `module` = that module's settings · `section` + `row` = a
+personal one · `label=""` = gear alone · `(go)` to close a popover. Never write a sentence that tells the user where
+to go («predefinita in Impostazioni → Personali»): put the link. Module pages (plugins): `host.openSetting(key?)`;
+the gear that opens the module's settings is already drawn on every module page by the shell.
 
 ## 9. Client plugins (`features/plugins/`, contract in `docs/work/2026-10-17-client-plugins/SPEC.md` §4)
 
@@ -187,9 +195,14 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   flex column filling the cell, keep the key line (`.big`, title) from shrinking (`flex-shrink: 0`), or `truncate` hides it whole.
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
-- Sidebar (`layout/shell.component.ts`): fixed top (logo, Crea con Hestia) and bottom (Impostazioni, Esci, state),
-  **one scroll area** in between with sections *Fissati · Generale · Dashboard · Moduli · Sistema* (core modules =
-  manifest `kind: "core"`). Section headers collapse (`webui.sidebar.collapsed`); the pin on hover moves an entry to
+- Sidebar (`layout/shell.component.ts`): fixed top (logo, bell, Chat, Cerca) and bottom (Impostazioni, Esci, state),
+  **one scroll area** in between with sections *Generale · Fissati · Conversazioni · Dashboard · Moduli · Sistema*
+  (core modules = manifest `kind: "core"`, plus Panoramica, Aggiornamenti, Macchine, Download). One rule: every
+  section folds, a module with sub-pages folds (`m:<id>` in the same setting), the page on screen is marked with its
+  parent and its section opens by itself; never add a top-level button for a feature: the two ways to reach the
+  assistant from any page are in the bubble (`layout/quick-bubble.component.ts`). A menu that opens from inside the
+  sidebar or a scrolling list is drawn in the viewport with the global `.hx-ctx` (+ `.hx-ctx-scrim`). A divider inside
+  a conversation is the global `.hx-divider` (label between two wavy lines). Section headers collapse (`webui.sidebar.collapsed`); the pin on hover moves an entry to
   *Fissati* (`webui.sidebar.pinned`, ids `app.<path>` · `dash.<id>` · `<module>.<page>`), drag to reorder there. The
   list is computed, so a pinned entry leaves its section (never shown twice); a pinned parent brings its sub-pages.
   A page with `badge: {source, field}` shows that number (read through the plugin call proxy with the catalog poll).

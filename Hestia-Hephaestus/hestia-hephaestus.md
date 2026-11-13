@@ -383,7 +383,7 @@ Forge reports its work to Chronos presence: each task runs as activity `forge.ta
 ### Engine `oracle` and the context window
 
 The built-in engine reads the model window from Oracle's `/api/llm/usecases/forge.codice`
-(`context_window` of the first usable step, = Themis `oracle.provider.ollama.num_ctx` for an Ollama step) and keeps the
+(`context_window` of the first usable step, for an Ollama step = the window read from Ollama, or Themis `oracle.provider.ollama.num_ctx` when forced) and keeps the
 prompt within ~70% of it (≈3 chars/token): old tool outputs become `[old output trimmed]`, the latest
 one is clipped with a hint to read a smaller range. A stop is reported precisely: `model context full`
 (answer cut, `finish_reason=length` → raise num_ctx or use `claude`), `turn limit reached`, or

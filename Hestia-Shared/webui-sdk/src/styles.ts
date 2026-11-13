@@ -43,7 +43,8 @@ export const kitStyles = css`
     min-height: var(--tap, 0px); }
   @media (max-width: 860px) { .page { padding: 14px 12px; } }
   /* Phone: the WebUI shell's menu button is on the first line (its height, 44px, set as --head-inset). */
-  .page > :first-child { margin-left: var(--head-inset, 0px); min-height: min(var(--head-inset, 0px), 40px); }
+  .page > :first-child { margin-left: var(--head-inset, 0px); min-height: min(var(--head-inset, 0px), 40px);
+    padding-right: var(--head-inset-end, 0px); }   /* room for the shell's settings gear, top right */
 `;
 
 export const toneColor = (tone?: string) => {

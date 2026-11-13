@@ -409,3 +409,14 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
   quick chat; failure → internal loop.
 - `test_oracle_ui.py::TestModelsTab`, `test_oracle_api.py`: Modelli view without keys, writes through Themis with
   validation, quota reset of one pair; `/api/llm/usage` reads the Archive store.
+
+## §Finestra del modello locale (2026-11-12, dossier docs/work/2026-11-12-contesto-e-scorciatoie)
+
+- `test_local_window.py`: the window is read from Ollama `/api/ps` and never overridden on «automatica» (no
+  `num_ctx` sent), `:latest` is the same model, a bare install (4096) gets the 8192 floor without reload ping-pong and
+  is read again later, a forced setting wins, a window loaded by a previous run is used until the first call, an
+  unreachable runtime never raises; LM Studio / llama-server / vLLM windows, cached also when silent;
+  `runtime_info.window_source`; the conversation's breakdown and per-model usage; the counter follows the answering
+  model's window; `/api/chat/context`: rows add up to the measured prompt, `over_window`, cloud model without the
+  local setting, rough estimate before the first turn.
+- `test_local_context.py::TestOllamaOptions`: automatic call sends no window, a forced one sends it on every call.

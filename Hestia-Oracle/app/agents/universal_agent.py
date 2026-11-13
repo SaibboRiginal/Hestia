@@ -89,15 +89,18 @@ class UniversalAgent:
         from core.services import oracle_settings
         return str(oracle_settings.settings.get(oracle_settings.OLLAMA_TOOL_MODE) or "auto").strip().lower()
 
-    @staticmethod
-    def _ollama_options() -> dict:
-        """num_ctx + keep_alive from settings, identical on every call (no model reload)."""
+    def _ollama_options(self) -> dict:
+        """keep_alive, and num_ctx only when the window is forced from Hestia: identical on every call (no model
+        reload). On «automatica» Ollama keeps the window the owner set there (core.services.local_window)."""
         from core.services import oracle_settings
-        return oracle_settings.ollama_request_options()
+        opts = oracle_settings.ollama_request_options(self.model_name)
+        self._sent_num_ctx = int(opts["options"].get("num_ctx") or 0)
+        return opts
 
     def _ollama_stats(self, data: dict, prompt_chars: int) -> None:
         try:
-            from core.services import llm_stats
+            from core.services import llm_stats, local_window
+            local_window.note_call(self.model_name, getattr(self, "_sent_num_ctx", 0), self.ollama_url)
             llm_stats.record_ollama(self.label, self.model_name, data, prompt_chars)
         except Exception as exc:  # stats never break a call
             logger.debug("event=ollama_stats_failed error=%s", exc)

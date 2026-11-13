@@ -7,6 +7,7 @@ export * from './datetime';
 export * from './diff';
 export * from './markdown';
 export * from './resize';
+export * from './setting-link.component';
 
 import { IconComponent } from './icon.component';
 import { ButtonComponent } from './button.component';

@@ -52,25 +52,46 @@ def current_session() -> str:
     return _current_session.get()
 
 
+def _session_totals(sid: str) -> dict:
+    """Totals of one conversation, moved to the fresh end (caller holds ``_lock``)."""
+    tot = _sessions.pop(sid, None) or {
+        "calls": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+        "estimated": False, "by_model": {}}
+    _sessions[sid] = tot
+    while len(_sessions) > _MAX_SESSIONS:
+        _sessions.popitem(last=False)
+    return tot
+
+
 def _add_to_session(row: dict) -> None:
     sid = _current_session.get()
     if not sid:
         return
     with _lock:
-        tot = _sessions.pop(sid, None) or {
-            "calls": 0, "input_tokens": 0, "cached_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
-            "estimated": False}
-        tot["calls"] += 1
-        tot["input_tokens"] += row["prompt_tokens"]
-        tot["cached_tokens"] += row["cached_tokens"]
-        tot["output_tokens"] += row["output_tokens"]
-        tot["cost_usd"] = round(tot["cost_usd"] + float(row.get("cost_usd") or 0), 6)
-        tot["estimated"] = tot["estimated"] or row["estimated"]
+        tot = _session_totals(sid)
+        per = tot.setdefault("by_model", {}).setdefault(f"{row['provider']}/{row['model']}", {
+            "provider": row["provider"], "model": row["model"], "calls": 0, "input_tokens": 0,
+            "cached_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "estimated": False})
+        for target in (tot, per):
+            target["calls"] += 1
+            target["input_tokens"] += row["prompt_tokens"]
+            target["cached_tokens"] += row["cached_tokens"]
+            target["output_tokens"] += row["output_tokens"]
+            target["cost_usd"] = round(target["cost_usd"] + float(row.get("cost_usd") or 0), 6)
+            target["estimated"] = target["estimated"] or row["estimated"]
         tot.update(last_prompt_tokens=row["prompt_tokens"], provider=row["provider"], model=row["model"],
                    last_at=row["at"])
-        _sessions[sid] = tot
-        while len(_sessions) > _MAX_SESSIONS:
-            _sessions.popitem(last=False)
+
+
+def note_breakdown(parts: dict[str, int]) -> None:
+    """What the last prompt of the bound conversation was made of, in tokens (``system``, ``tools``,
+    ``history``, ``message``, ``results``, ``other``): the agent loop knows, the gauge shows it."""
+    sid = _current_session.get()
+    if not sid:
+        return
+    clean = {str(k): max(0, int(v or 0)) for k, v in (parts or {}).items()}
+    with _lock:
+        _session_totals(sid)["breakdown"] = clean
 
 
 def _add_to_day(label: str, row: dict) -> None:
@@ -114,7 +135,19 @@ def daily(days: int = 14, today: date | None = None) -> dict:
 def session_usage(session_id: str) -> dict:
     """Running totals of one conversation ({} before its first counted call)."""
     with _lock:
-        return dict(_sessions.get(session_id or "") or {})
+        tot = dict(_sessions.get(session_id or "") or {})
+    if tot:
+        rows = [dict(r) for r in (tot.get("by_model") or {}).values()]
+        rows.sort(key=lambda r: -r["calls"])
+        tot["by_model"] = rows
+        tot["breakdown"] = dict(tot.get("breakdown") or {})
+    return tot
+
+
+def last_model(session_id: str) -> str:
+    """Name of the model that made the last counted call of this conversation ('' before the first one)."""
+    with _lock:
+        return str((_sessions.get(session_id or "") or {}).get("model") or "")
 
 
 def _ms(ns: Any) -> int:

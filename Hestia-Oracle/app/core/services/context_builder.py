@@ -110,12 +110,35 @@ class ContextBuilder:
                    else history_data[-self.max_history_messages:])
         lines = []
         for message in trimmed:
-            role = "User" if message.get("role") == "user" else "Hestia"
+            is_user = message.get("role") == "user"
+            role = "User" if is_user else "Hestia"
             content = self.truncate(message.get(
                 "content", ""), self.max_history_chars)
-            lines.append(f"{role}: {content}")
+            # Each message of the owner carries when it was written: «yesterday», «this morning», a gap of days
+            # between two messages are then facts the model can see, not guesses.
+            stamp = self.message_stamp(message.get("timestamp")) if is_user else ""
+            lines.append(f"{role}{' ' + stamp if stamp else ''}: {content}")
 
         return "--- PREVIOUS CONVERSATION ---\n" + "\n".join(lines) + "\n\n"
+
+    @staticmethod
+    def message_stamp(timestamp) -> str:
+        """``[Thu 6 Nov 21:14]`` in the owner's time zone (empty when the message has no readable time). Fixed
+        English names: the text is for the model and must not change with the machine's locale."""
+        if not timestamp:
+            return ""
+        try:
+            from datetime import datetime, timezone
+            from core.services.awareness import _tz
+            at = timestamp if isinstance(timestamp, datetime) else datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+            if at.tzinfo is None:
+                at = at.replace(tzinfo=timezone.utc)
+            at = at.astimezone(_tz())
+            days = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+            months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+            return f"[{days[at.weekday()]} {at.day} {months[at.month - 1]} {at:%H:%M}]"
+        except Exception:
+            return ""
 
     def compact_entity(self, entity: dict) -> dict:
         compact = {}
@@ -328,6 +351,9 @@ class ContextBuilder:
                     "session_id": session_id,
                     "role": msg.get("role", "user"),
                     "content": msg.get("content", ""),
+                    # written again, not said again: the message keeps its own time
+                    **({"timestamp": msg["timestamp"]} if msg.get("timestamp") else {}),
+                    **({"model": msg["model"]} if msg.get("model") else {}),
                 })
 
             logger.info(

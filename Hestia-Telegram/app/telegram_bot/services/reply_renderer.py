@@ -33,6 +33,22 @@ EDIT_INTERVAL = 1.2          # Telegram tolerates ~1 edit/s per chat
 MAX_STEP_LINES = 14
 
 
+_last_model: dict[int, str] = {}   # chat → model of its last answer (in memory: after a restart the first answer has no line)
+
+
+def model_changed(chat_id, model: str) -> str:
+    """The model's name when another one than last time answers in this chat ('' otherwise): one line above the
+    answer says it, like the divider of the other clients."""
+    model = str(model or "").strip()
+    if not model:
+        return ""
+    before = _last_model.get(chat_id, "")
+    _last_model[chat_id] = model
+    if len(_last_model) > 500:
+        _last_model.pop(next(iter(_last_model)))
+    return model if before and before != model else ""
+
+
 class ReplyRenderer:
     def __init__(self, chat_id: int, status_message_id: int, settings: dict):
         self.chat_id = chat_id
@@ -99,7 +115,7 @@ class ReplyRenderer:
         if isinstance(frame, dict) and frame.get("items"):
             self.changes = frame
 
-    def on_final(self, reply: str, origin: dict | None = None) -> None:
+    def on_final(self, reply: str, origin: dict | None = None, model: str = "") -> None:
         answer = str(reply or "").strip() or "".join(self.tokens).strip()
         if ui_blocks.has_blocks(answer):
             self.buttons = ui_blocks.buttons(answer)
@@ -113,6 +129,9 @@ class ReplyRenderer:
         html = message_format.render_answer_html(answer)
         if self.origin_label:
             html = f"<i>{escape(self.origin_label)}</i>\n{html}"
+        changed = model_changed(self.chat_id, model)
+        if changed:
+            html = f"<i>〜 {escape(changed)} 〜</i>\n{html}"
         parts = self._split(html)
         head = self._reasoning_block()
         if head:

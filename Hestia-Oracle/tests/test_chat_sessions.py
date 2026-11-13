@@ -36,6 +36,8 @@ class FakeArchive:
             self.meta[sid] = {"title": body.get("title", before["title"]), "tags": tags,
                               "pinned": body.get("pinned", before["pinned"])}
             return {"session_id": sid, **self.meta[sid], "before": before}
+        if endpoint.startswith("/chat/sessions/") and method == "DELETE":
+            return {"status": "success", "session_id": endpoint.split("/")[3], "deleted_messages": 2}
         if endpoint == "/chat/sessions/tags":
             return {"items": [{"name": "casa", "color": "teal", "count": 1}]}
         if endpoint.startswith("/chat/history/"):
@@ -86,6 +88,9 @@ def test_ui_doors_and_tools_registered(client):
         assert http.get("/api/ui/chats/s1/messages").json()["items"][0]["content"] == "ciao"
         r = http.put("/api/ui/chats/s1", json={"pinned": True, "add_tags": [{"name": "gym", "color": ""}]}).json()
         assert r["pinned"] is True and fake.calls[-1][2]["client"] == "webui"
+    with patch.object(main, "_chat_route", fake), patch.object(main.turn_trace, "forget_session") as forget:
+        assert http.delete("/api/ui/chats/s1").status_code == 200
+        assert fake.calls[-1][:2] == ("DELETE", "/chat/sessions/s1") and forget.call_args[0][1] == "s1"
     with patch.object(main, "_chat_route", lambda *a, **k: None):
         assert http.get("/api/ui/chats").status_code == 502
     names = {t.name for t in main._oracle_mcp_tools}

@@ -129,6 +129,10 @@ class ChatMessageCreate(BaseModel):
     session_id: str
     role: str
     content: str
+    # Only for a message written again (history compaction): it keeps the time it was first written.
+    timestamp: Optional[datetime] = None
+    # The model that wrote an answer.
+    model: Optional[str] = None
 
 
 class ChatMessageResponse(BaseModel):
@@ -137,6 +141,7 @@ class ChatMessageResponse(BaseModel):
     role: str
     content: str
     timestamp: datetime
+    model: Optional[str] = None
 
     class Config:
         from_attributes = True

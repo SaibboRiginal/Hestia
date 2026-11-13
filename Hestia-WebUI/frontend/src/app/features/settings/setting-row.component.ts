@@ -103,7 +103,7 @@ const ACTORS: Record<string, string> = {
     .hm { font-size: 11.5px; color: var(--text-3); }
     .pa { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 4px; border-top: 1px solid var(--border); }
   `],
-  host: { '[class.dim]': '!enabled()' },
+  host: { '[class.dim]': '!enabled()', '[attr.data-setting]': 'item().key' },
 })
 export class SettingRowComponent {
   readonly store = inject(CentralSettingsStore);

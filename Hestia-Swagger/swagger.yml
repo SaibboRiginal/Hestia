@@ -2188,7 +2188,7 @@ paths:
   /api/chat/history:
     post:
       tags: [Archive — Chat]
-      summary: Append a chat message
+      summary: "Append a chat message (optional model = who wrote an answer; optional timestamp only for a message written again by compaction)"
       servers:
         - url: http://localhost:19002
       requestBody:
@@ -4456,13 +4456,20 @@ paths:
              history_tokens_est, tool_count, preference_count,
              total_tokens_est, context_used_pct, compaction_available,
              context_used_tokens, context_measured,
-             active: {use_case, provider, provider_label, model, billing, context_window},
+             window_source (provider | runtime | setting | floor | default), window_setting_key
+             (central setting that forces the window, "" for a cloud model), over_window,
+             breakdown: [{id: system|tools|history|message|results|other, label, tokens}] (adds up to
+             context_used_tokens when breakdown_measured), breakdown_measured,
+             active: {use_case, provider, provider_label, model, billing, context_window, window_source},
              session_usage: {calls, input_tokens, cached_tokens, output_tokens, cost_usd, estimated,
-             last_prompt_tokens, provider, model, last_at} ({} before the first counted call),
+             last_prompt_tokens, provider, model, last_at, breakdown,
+             by_model: [{provider, model, calls, input_tokens, cached_tokens, output_tokens, cost_usd,
+             estimated}]} ({} before the first counted call),
              runtime: {<use case>: {calls, provider, model, avg_prompt_tokens, max_prompt_tokens,
              cache_hit_pct, cache_estimated, avg_load_ms, avg_prompt_ms, tokens_per_second, last_at}}}.
-            context_window = window of the chat provider in use (Ollama/OpenAI-compatible: setting
-            oracle.provider.ollama.num_ctx; Gemini 1,048,576; Claude 200,000). context_used_tokens = real
+            context_window = window of the chat provider in use (local Ollama / OpenAI-compatible server:
+            read from the program itself, or forced by the setting oracle.provider.ollama.num_ctx when it is
+            not 0; Gemini 1,048,576; Claude 200,000). context_used_tokens = real
             prompt size of this conversation's last call when measured, else the estimate.
 
   /api/chat/compact:
@@ -4729,9 +4736,19 @@ paths:
         - {name: session_id, in: path, required: true, schema: {type: string}}
         - {name: limit, in: query, schema: {type: integer, default: 200}}
       responses:
-        "200": {description: "{session_id, items: [{role, content, at}]}"}
+        "200": {description: "{session_id, items: [{role, content, at, model}]}"}
 
   /oracle/api/ui/chats/{session_id}:
+    delete:
+      tags: [Oracle]
+      summary: "The owner deletes a conversation: messages, title, tags, pin, saved training turns (real path /api/ui/chats/{id}; Archive DELETE /api/chat/sessions/{id})"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, session_id, deleted_messages}"}
+        "502": {description: Archive not reachable}
     put:
       tags: [Oracle]
       summary: "Title, tags, pinned, training_off of a conversation (real path /api/ui/chats/{id}; client webui; training_off=true also drops its saved turns in Metis)"
@@ -5032,6 +5049,17 @@ paths:
         "200": {description: "Provider chat completion JSON + hestia_step {use_case, chain, step, provider, model}"}
         "400": {description: messages missing}
         "502": {description: "Every step failed (detail names the chain and each step)"}
+
+  /api/chat/sessions/{session_id}:
+    delete:
+      tags: [Archive]
+      summary: "Delete a whole conversation: its messages and its title, tags, pin (DELETE /api/chat/history/{id} only clears the messages)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, session_id, deleted_messages}"}
 
   /api/chat/sessions:
     get:
@@ -12835,7 +12863,7 @@ paths:
       tags: [WebUI]
       summary: Context gauge of the current conversation (→ Oracle /api/chat/context?session_id=<current>)
       responses:
-        "200": {description: Oracle context stats (active provider, session_usage)}
+        "200": {description: "Oracle context stats (active provider, window and where it comes from, breakdown of the last prompt, session_usage with by_model)"}
 
   /api/webui/chat/pending:
     get:

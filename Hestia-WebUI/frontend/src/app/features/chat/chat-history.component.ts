@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { ButtonComponent, IconComponent, SpinnerComponent, ToastService } from '../../ui';
 import { ChatSummary, ChatTag, ChatsService, TAG_COLORS, TAG_CSS } from '../../services/chats.service';
@@ -40,7 +40,7 @@ const PAGE = 30;
               @if (c.tags.length) { <span class="ct">@for (t of c.tags; track t.name) { <span class="chip" [style.--c]="css(t.color)"><i></i>{{ t.name }}</span> }</span> }
             </button>
             <button class="mini" [class.on]="c.pinned" (click)="pin(c)" [attr.aria-label]="c.pinned ? 'Sblocca' : 'Fissa'" [attr.title]="c.pinned ? 'Togli da fissate' : 'Fissa in cima'"><hx-icon name="pin" [size]="13" /></button>
-            <button class="mini" (click)="edit.set(edit() === c.session_id ? '' : c.session_id)" aria-label="Etichette e titolo" title="Etichette e titolo"><hx-icon name="tag" [size]="13" /></button>
+            <button class="mini" [class.on]="edit() === c.session_id" (click)="edit.set(edit() === c.session_id ? '' : c.session_id)" aria-label="Altro: titolo, etichette, elimina" title="Altro: titolo, etichette, elimina"><hx-icon name="more" [size]="13" /></button>
           </div>
           @if (edit() === c.session_id) {
             <div class="ed">
@@ -57,6 +57,7 @@ const PAGE = 30;
                 <input type="checkbox" [checked]="!!c.training_off" (change)="trainingOff(c, $any($event.target).checked)">
                 <hx-icon name="eye-off" [size]="13" /> Non usare per l'allenamento
               </label>
+              <button hx-btn variant="ghost" size="sm" icon="trash" class="del" (click)="remove(c)">Elimina conversazione</button>
             </div>
           }
         } @empty {
@@ -94,6 +95,7 @@ const PAGE = 30;
     .ed { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 10px; border-bottom: 1px solid var(--border); }
     .ed .row { display: flex; gap: 6px; } .ed .row input { flex: 1; min-width: 0; }
     .train { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); cursor: pointer; }
+    .del { align-self: flex-start; color: var(--danger); }
     .colors { display: flex; gap: 5px; } .sw { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; }
     .sw.on { border-color: var(--text); }
     .none { text-align: center; color: var(--text-3); font-size: 13px; padding: 18px 0; display: grid; place-items: center; }
@@ -126,6 +128,12 @@ export class ChatHistoryComponent implements OnInit {
     this.q.set(v);
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.reload(), 350);
+  }
+
+  constructor() {
+    // Renamed, pinned or deleted from the sidebar: this list follows.
+    let seen = this.chats.changed();
+    effect(() => { const n = this.chats.changed(); if (n !== seen) { seen = n; untracked(() => void this.reload()); } });
   }
 
   ngOnInit(): void { void this.reload(); void this.chats.loadTags(); }
@@ -161,6 +169,7 @@ export class ChatHistoryComponent implements OnInit {
     this.items.update(x => x.map(i => i.session_id === c.session_id ? { ...i, title: r.data.title || i.title, tags: r.data.tags, pinned: r.data.pinned, training_off: r.data.training_off } : i));
   }
 
+  async remove(c: ChatSummary) { if (await this.chats.confirmRemove(c)) this.edit.set(''); }
   pin(c: ChatSummary) { void this.save(c, { pinned: !c.pinned }); }
   trainingOff(c: ChatSummary, off: boolean) { void this.save(c, { training_off: off }); }
   rename(c: ChatSummary, title: string) { if (title.trim() && title.trim() !== c.title) void this.save(c, { title: title.trim() }); }

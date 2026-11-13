@@ -70,11 +70,14 @@ def emit_thinking(
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 
-def emit_final(reply: str, domain: str = "none", origin: dict | None = None, trace_id: str = "") -> str:
+def emit_final(reply: str, domain: str = "none", origin: dict | None = None, trace_id: str = "",
+               model: str = "") -> str:
     """Return the terminal final-type NDJSON line. ``origin`` (Cindy 6) is set when the turn was not typed by the
     owner: clients show its ``label`` as a small tag («Da una tua routine»). ``trace_id`` names the turn: clients
     send it back with a 👍/👎 so the vote lands on this turn (docs/work/2026-10-30-dataset-allenamento)."""
     payload = {"type": "final", "reply": reply, "domain": domain}
+    if model:
+        payload["model"] = model          # who answered: clients mark where it changes inside a conversation
     if trace_id:
         payload["trace_id"] = trace_id
     if origin:

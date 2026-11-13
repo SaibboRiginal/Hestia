@@ -119,10 +119,23 @@ export class CentralSettingsStore {
   }
 
   // ── loading ───────────────────────────────────────────────────────────
+  private starting: Promise<void> | null = null;
   async init(): Promise<void> {
     if (this.timer) return;                            // already live (page re-opened)
-    await Promise.all([this.loadModules(), this.loadItems(), this.loadProposals()]);
-    this.startPolling();
+    this.starting ??= (async () => {
+      try {
+        await Promise.all([this.loadModules(), this.loadItems(), this.loadProposals()]);
+        this.startPolling();
+      } finally { this.starting = null; }
+    })();
+    return this.starting;
+  }
+
+  /** Makes one setting visible whatever the filters say (a shortcut from another page points at it). */
+  reveal(item: SettingItem): void {
+    this.query.set('');
+    this.onlyModified.set(false);
+    if (item.advanced) this.showAdvanced.set(true);
   }
 
   async loadModules(): Promise<void> {

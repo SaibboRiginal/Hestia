@@ -46,7 +46,8 @@ Any tech that outputs custom elements is allowed, always with these shared style
 
 ## Host API (`el.host`)
 
-`api` · `image` · `upload` (resized on device, base64) · `navigate` / `link` · `toast` (with Annulla) · `confirm` ·
+`api` · `image` · `upload` (resized on device, base64) · `navigate` / `link` · `openSetting(key?)` (Impostazioni on one
+setting, or on the module's own; the shell already draws a gear to the module's settings on every page) · `toast` (with Annulla) · `confirm` ·
 `assistant` ("Crea con Hestia") · `notify` (browser notification) · `config` (per-client prefs) · `store(name)`
 (IndexedDB per module, offline) · `online` · `on('refresh'|'theme'|'visible'|'hidden'|'online'|'offline')`.
 Types: `src/types.ts`. Context (`el.ctx`): module, surface, id, route/widget params, query, size, theme, phone.

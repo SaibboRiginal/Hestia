@@ -257,3 +257,24 @@ class TestTruncate:
     def test_exact_length_not_truncated(self, builder):
         text = "x" * 100
         assert builder.truncate(text, 100) == text
+
+
+@pytest.mark.unit
+class TestMessageTime:
+    """Each message of the owner carries when it was written (dossier 2026-11-13-sidebar-e-chat §3.7)."""
+
+    def test_owner_messages_carry_date_and_time_in_local_zone(self, builder, monkeypatch):
+        monkeypatch.setenv("TZ", "Europe/Rome")
+        history = [
+            {"role": "user", "content": "Domanda", "timestamp": "2026-11-06T20:14:00+00:00"},
+            {"role": "assistant", "content": "Risposta", "timestamp": "2026-11-06T20:14:09+00:00"},
+        ]
+        result = builder.compact_history(history)
+        assert "User [Fri 6 Nov 21:14]: Domanda" in result
+        assert "Hestia: Risposta" in result
+
+    def test_naive_time_is_utc_and_bad_time_is_left_out(self, builder, monkeypatch):
+        monkeypatch.setenv("TZ", "Europe/Rome")
+        assert builder.message_stamp("2026-07-01T10:00:00") == "[Wed 1 Jul 12:00]"
+        assert builder.message_stamp("ieri") == "" and builder.message_stamp(None) == ""
+        assert "User: Ciao" in builder.compact_history([{"role": "user", "content": "Ciao", "timestamp": "boh"}])

@@ -37,7 +37,7 @@ export function bytes(n: number): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header title="Download" subtitle="Modelli e voci che Hestia scarica: avanzamento, pausa, riprova, spazio">
-      <button hx-btn size="sm" icon="volume" [loading]="busy() === 'voice'" (click)="prefetchVoice()" title="Scarica le voci"><span class="lbl">Scarica le voci</span></button>
+      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voce" title="Prepara la voce: si fa dalla pagina Voce"><span class="lbl">Voce</span></a>
       <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup" title="Scegli il cervello"><span class="lbl">Scegli il cervello</span></a>
     </hx-page-header>
     <div class="body">
@@ -163,16 +163,4 @@ export class DownloadsPageComponent {
     await this.op(d, 'remove');
   }
 
-  async prefetchVoice() {
-    this.busy.set('voice');
-    try {
-      const r = await firstValueFrom(this.http.post<{ queued: string[] }>('/api/webui/voice/models/prefetch', {}));
-      this.toasts.success(r.queued?.length ? 'Scarico le voci.' : 'Le voci non hanno niente da scaricare.');
-    } catch (e: any) {
-      this.toasts.error(e?.error?.detail || 'La voce non risponde ora.');
-    } finally {
-      this.busy.set('');
-    }
-    await this.load();
-  }
 }

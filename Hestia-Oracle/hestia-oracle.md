@@ -261,7 +261,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
   (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
   unsure or unknown domain → every domain. Every tool of every module was ~250 tools / 30k tokens per call, more
-  than a local model's context (`oracle.provider.ollama.num_ctx` 8192): Ollama cut the start of the prompt (rules
+  than a small local model's context (8192 on a bare Ollama): Ollama cut the start of the prompt (rules
   and tools).
 - **No replay** (Cindy 2): when the external brain fails after it already ran tools, its tool log
   (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
@@ -381,7 +381,8 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `PATCH` | `/api/ui/documents/{id}/permanent` | `{is_permanent}`: keep for good (never pruned) or temporary |
 | `DELETE` | `/api/ui/documents/{id}` | Delete document and passages (404 unknown) |
 | `GET` | `/api/ui/chats` · `/api/ui/chats/tags` | WebUI history sidebar: conversations (`q`, `tag`, `since`, `until`, `pinned`, `limit`, `offset`, pinned first) · tags in use; 502 Archive down |
-| `GET` | `/api/ui/chats/{id}/messages?limit=200` | One conversation oldest first `{items: [{role, content, at}]}` to open it again |
+| `GET` | `/api/ui/chats/{id}/messages?limit=200` | One conversation oldest first `{items: [{role, content, at, model}]}` to open it again (`model` = who wrote an answer, '' when not known) |
+| `DELETE` | `/api/ui/chats/{id}` | The owner deletes a conversation: messages, title, tags, pin (Archive `DELETE /chat/sessions/{id}`) and its saved training turns |
 | `PUT` | `/api/ui/chats/{id}` | Title, tags (`tags` replace · `add_tags` · `remove_tags`), `pinned` → meta + `before` |
 | `GET` | `/api/ui/memory` | Memoria page: active user memories `{memories: [{id, fact, domains, source, access, topic, created_at}]}` |
 | `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
@@ -529,7 +530,7 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 | POST | `/api/llm/code` | "code" use case: run Claude Code (Pro/Max) in a Forge worktree `{workdir, prompt, append_system_prompt, max_turns, timeout_seconds}` → `{ok, summary, turns, cost_usd, transcript_path}`. Runs `claude -p --output-format stream-json --verbose`; every line is written live to `<ORACLE_CODE_WORKDIR_ROOT>/.transcripts/<task>.jsonl` (outside the worktree) for the WebUI Sviluppo page |
 
 `/api/llm/chat` walks the chain like every other call (quota skip, next step on error). An Ollama step is served
-through Ollama's native `/api/chat` with the same `num_ctx` + `keep_alive` as every other Oracle call (Ollama's `/v1`
+through Ollama's native `/api/chat` with the same window (`num_ctx` only when forced) + `keep_alive` as every other Oracle call (Ollama's `/v1`
 ignores `num_ctx`: long Forge prompts were cut silently); request/response are translated to the OpenAI shape
 (`reasoning_content`, `tool_calls`, `finish_reason=length` when the window is full). Other steps go to the provider's
 OpenAI-compatible endpoint (Gemini `…/v1beta/openai`, Anthropic `…/v1`, any `openai` provider) with its
@@ -600,11 +601,27 @@ Put them as steps of a chain (Cervello → Modelli); skipped while not configure
 ### Local models: real context window, prompt cache, OpenAI-compatible servers
 
 Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto** (Themis, no env):
-- `oracle.provider.ollama.num_ctx` (8192) and `oracle.provider.ollama.keep_alive` (`30m`, `always` = -1) are sent
-  on **every** Ollama call (generate, chat/tools, stream, vision; embeddings get keep_alive only). Before, Ollama ran
-  at its server default (often 4096) and silently cut the start of longer prompts. The same value drives
-  `TokenCounter`, `/api/chat/context` and auto-compaction (`oracle.context.compact_threshold`, 0.8). Startup logs
-  `event=ollama_context_config` and warns `ollama_context_smaller` when `/api/ps` shows a model loaded smaller.
+- **Window of the local model = the one set in its program** (`core/services/local_window.py`, dossier
+  `docs/work/2026-11-12-contesto-e-scorciatoie/`). `oracle.provider.ollama.num_ctx` defaults to **0 = automatica**:
+  Oracle sends **no** `num_ctx`, so Ollama keeps the window the owner set there, and Oracle reads it back from
+  `GET /api/ps` (`context_length` of the loaded model) after its calls (background, at most every 30 s; never
+  blocks a call). Only when Ollama's own window is under 8192 (a bare install: 4096) Oracle asks for 8192 on every
+  call, because an assistant with tools never fits under it and a cut prompt loses its rules without any error;
+  it reads Ollama's own value again every 6 h, in case the owner raised it. A number in the setting forces that
+  window from Hestia (sent on every call, as before). Before 2026-11-12 the setting defaulted to 8192 and was
+  always sent: it silently replaced a larger window set in Ollama (64k → 8k) and prompts were cut.
+  OpenAI-compatible local servers are read too: LM Studio `/api/v0/models` (`loaded_context_length`),
+  llama-server `/props` (`n_ctx`), vLLM `/v1/models` (`max_model_len`).
+  `oracle.provider.ollama.keep_alive` (`30m`, `always` = -1) is still sent on every Ollama call (embeddings too).
+  The window drives `TokenCounter`, `/api/chat/context` and auto-compaction (`oracle.context.compact_threshold`,
+  0.8); the agent loop takes the window of the model that **answers** (`run_agent_loop(context_window=…)`), so a
+  cloud model is no longer compacted at the size of the local one. Startup logs `event=ollama_context_config
+  mode=automatic|forced`; every read logs `event=local_window_read`.
+- **Context gauge** (`/api/chat/context`): `window_source` (`provider` · `runtime` · `setting` · `floor` ·
+  `default`), `window_setting_key`, `over_window`, and `breakdown` = what the last prompt was made of (system,
+  tools of this turn, history, message, tool results), noted by the agent loop (`llm_stats.note_breakdown`) and
+  scaled to the size the provider reported, so the rows add up to the total; `session_usage.by_model` = the
+  conversation's calls per model, each with its own `estimated` flag.
 - **Telemetry**: every call logs `event=llm_call_stats agent=<use case> prompt_tokens cached_tokens cache_hit_pct
   load_ms prompt_ms output_tokens tok_per_s`; `/api/chat/context` returns `runtime` = per-agent averages of the
   last 50 calls. Ollama reports only the tokens it had to evaluate (`prompt_eval_count`), so its cache share is an
@@ -749,3 +766,14 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
   «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own
   (infrastructure env). The chains do not change: the same local models now run on that video card.
+
+## Who answered and when you wrote (dossier `docs/work/2026-11-13-sidebar-e-chat`)
+
+- The `final` frame carries `model`: the model of the last counted call of the conversation (`llm_stats.last_model`).
+  It is saved with the answer in Archive (`chat_history.model`) and returned by `/api/ui/chats/{id}/messages`; clients
+  mark where it changes (WebUI divider, Telegram line).
+- In the history the model reads, every message of the owner starts with when it was written:
+  `User [Thu 6 Nov 21:14]: …` (`ContextBuilder.message_stamp`: owner's time zone, fixed English names). The answers
+  carry no time. History compaction writes the recent messages again with their own time and model.
+- `DELETE /api/ui/chats/{id}`: the owner deletes a conversation (Archive `DELETE /chat/sessions/{id}`) and its saved
+  training turns are dropped (`turn_trace.forget_session`).

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { PluginsService } from '../features/plugins/plugins.service';
 import { ChatService } from './chat.service';
 import { SessionService } from './session.service';
+import { DialogService, ToastService } from '../ui';
 
 export interface ChatTag { name: string; color: string; }
 export interface ChatSummary {
@@ -31,6 +32,8 @@ export class ChatsService {
   private chat = inject(ChatService);
   private session = inject(SessionService);
   private router = inject(Router);
+  private dialogs = inject(DialogService);
+  private toasts = inject(ToastService);
 
   /** Sidebar: pinned conversations, or the 3 most recent. */
   readonly recent = signal<ChatSummary[]>([]);
@@ -57,13 +60,40 @@ export class ChatsService {
 
   async setMeta(sessionId: string, body: { title?: string; tags?: ChatTag[]; add_tags?: ChatTag[]; remove_tags?: string[]; pinned?: boolean; training_off?: boolean }) {
     const r = await this.plugins.call<ChatSummary & { before: Partial<ChatSummary> }>('oracle', 'PUT', `/api/ui/chats/${encodeURIComponent(sessionId)}`, { body });
-    if (r.ok) { void this.refreshRecent(); void this.loadTags(); }
+    if (r.ok) { void this.refreshRecent(); void this.loadTags(); this.changed.update(n => n + 1); }
     return r;
+  }
+
+  /** Bumped when a conversation is deleted or renamed, so every list of them reloads. */
+  readonly changed = signal(0);
+
+  /** Deletes a conversation for good. The one on screen is closed: the chat starts a new one. */
+  async remove(sessionId: string): Promise<boolean> {
+    const r = await this.plugins.call('oracle', 'DELETE', `/api/ui/chats/${encodeURIComponent(sessionId)}`);
+    if (!r.ok) return false;
+    if (sessionId === this.session.sessionId()) {
+      try { await this.session.clear(); } catch { /* the next message opens a new one */ }
+      this.chat.clearMessages();
+    }
+    this.recent.update(x => x.filter(c => c.session_id !== sessionId));
+    this.changed.update(n => n + 1);
+    void this.refreshRecent();
+    return true;
+  }
+
+  /** «Elimina» from any list of conversations: asks first, then tells how it went. */
+  async confirmRemove(c: ChatSummary): Promise<boolean> {
+    const ok = await this.dialogs.confirm('Eliminare la conversazione?',
+      `«${c.title}» viene eliminata per sempre con tutti i suoi messaggi. Quello che l'assistente ha imparato su di te resta.`, 'Elimina', true);
+    if (!ok) return false;
+    if (!(await this.remove(c.session_id))) { this.toasts.error('Non eliminata: riprova tra poco'); return false; }
+    this.toasts.success('Conversazione eliminata');
+    return true;
   }
 
   /** Opens a conversation: its messages in the chat, the next message continues it. */
   async open(sessionId: string): Promise<boolean> {
-    const r = await this.plugins.call<{ items?: Array<{ role: string; content: string; at?: string }> }>(
+    const r = await this.plugins.call<{ items?: Array<{ role: string; content: string; at?: string; model?: string }> }>(
       'oracle', 'GET', `/api/ui/chats/${encodeURIComponent(sessionId)}/messages`, { query: { limit: 200 } });
     if (!r.ok) return false;
     this.session.sessionId.set(sessionId);

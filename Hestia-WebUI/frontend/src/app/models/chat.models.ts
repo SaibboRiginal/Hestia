@@ -30,6 +30,8 @@ export interface ChatMessage {
   /** Emoji reaction on this bubble, like any chat (docs/work/2026-11-06-hestia-viva F4): on the owner's message it
    *  is Hestia's, on Hestia's message it is the owner's. */
   reaction?: string;
+  /** The model that wrote this answer (the chat marks where it changes inside a conversation). */
+  model?: string;
 }
 
 /** One write of an answer: `undo` runs a tool through Hestia-MCP («Annulla»); `done` once undone. */
@@ -133,6 +135,8 @@ export interface ServerEvent {
   trace_id?: string;
   /** final: the answer is only Hestia's reaction (no text bubble). */
   reaction_only?: boolean;
+  /** final: the model that answered. */
+  model?: string;
 }
 
 /** Interactive question asked by Oracle mid-stream (answered via SignalR question_answer). */

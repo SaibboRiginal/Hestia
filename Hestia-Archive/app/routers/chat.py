@@ -159,6 +159,15 @@ def set_chat_session_meta(session_id: str, body: dict = Body(...), db: Session =
     return {"session_id": session_id, **_meta_out(m), "before": before}
 
 
+@router.delete("/sessions/{session_id}")
+def delete_chat_session(session_id: str, db: Session = Depends(database.get_db)):
+    """Delete a whole conversation: its messages and what the owner set on it (title, tags, pinned)."""
+    deleted = db.query(models.ChatHistory).filter(models.ChatHistory.session_id == session_id).delete()
+    db.query(models.ChatSessionMeta).filter(models.ChatSessionMeta.session_id == session_id).delete()
+    db.commit()
+    return {"status": "success", "session_id": session_id, "deleted_messages": deleted}
+
+
 @router.delete("/history/all")
 def nuke_all_chat_history(db: Session = Depends(database.get_db)):
     """Delete all chat history records."""
@@ -172,7 +181,7 @@ def save_chat_message(
     message: schemas.ChatMessageCreate, db: Session = Depends(database.get_db)
 ):
     """Persist a single chat message."""
-    db_msg = models.ChatHistory(**message.model_dump())
+    db_msg = models.ChatHistory(**message.model_dump(exclude_none=True))
     db.add(db_msg)
     db.commit()
     db.refresh(db_msg)

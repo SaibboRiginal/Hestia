@@ -178,5 +178,8 @@ public record OracleEvent(
     string? TraceId = null,
     // final: the answer is only Hestia's emoji reaction (no text bubble, docs/work/2026-11-06-hestia-viva F4)
     [property: JsonPropertyName("reaction_only")]
-    bool? ReactionOnly = null
+    bool? ReactionOnly = null,
+    // final: the model that answered; the chat marks where it changes inside a conversation
+    [property: JsonPropertyName("model")]
+    string? Model = null
 );

@@ -149,3 +149,28 @@ kbd { border: 1px solid var(--border-strong); border-bottom-width: 2px; border-r
 /* While a panel is being resized (<hx-resize>): no text selection, no width transitions lagging behind the pointer. */
 body.hx-resizing { cursor: col-resize; user-select: none; }
 body.hx-resizing * { transition: none !important; }
+
+/* A setting reached through a shortcut (<hx-setting-link>, the palette): marked for a moment so the eye lands on it. */
+.hx-flash { border-radius: var(--radius-md, 8px); animation: hx-flash 3.6s ease-out; }
+@keyframes hx-flash {
+  0%, 55% { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent); }
+  100% { background: transparent; box-shadow: 0 0 0 2px transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-flash { animation: none; background: color-mix(in srgb, var(--accent) 16%, transparent); }
+}
+
+/* Context menu drawn in the viewport (a sidebar or a scrolling list would clip it): scrim + menu at fixed coordinates. */
+.hx-ctx-scrim { position: fixed; inset: 0; z-index: 940; }
+.hx-ctx { position: fixed; z-index: 950; min-width: 190px; padding: 5px; background: var(--surface); border: 1px solid var(--border);
+          border-radius: var(--radius-md); box-shadow: var(--shadow-2); display: flex; flex-direction: column; }
+.hx-ctx button { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: var(--radius-sm); font-size: 13.5px; color: var(--text); text-align: left; }
+.hx-ctx button:hover { background: var(--surface-2); }
+.hx-ctx button.danger { color: var(--danger); }
+
+/* Divider inside a conversation (a new day, another model answering): a short label between two wavy lines. */
+.hx-divider { display: flex; align-items: center; gap: 10px; color: var(--text-3); font-size: 12px; white-space: nowrap; user-select: none; }
+.hx-divider::before, .hx-divider::after { content: ''; flex: 1; height: 6px; background: currentColor; opacity: .45;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='6'%3E%3Cpath d='M0 3 Q4 0 8 3 T16 3' fill='none' stroke='black' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='6'%3E%3Cpath d='M0 3 Q4 0 8 3 T16 3' fill='none' stroke='black' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x center; }
+.hx-divider hx-icon { margin-right: -4px; }

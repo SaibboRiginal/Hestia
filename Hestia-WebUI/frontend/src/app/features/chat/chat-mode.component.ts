@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, model, signal, untracked } from '@angular/core';
 import { CentralSettingsApi, apiError } from '../settings/central-settings.api';
 import { SessionService } from '../../services/session.service';
-import { IconComponent, PopoverComponent, ToastService } from '../../ui';
+import { IconComponent, PopoverComponent, SettingLinkComponent, ToastService } from '../../ui';
 
 export const MODE_KEY = 'oracle.chat.mode';
 
@@ -20,7 +20,7 @@ export const CHAT_MODES = [
  */
 @Component({
   selector: 'hx-chat-mode',
-  imports: [IconComponent, PopoverComponent],
+  imports: [IconComponent, PopoverComponent, SettingLinkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button class="pick" (click)="toggle($event)" title="Modalità di conversazione" aria-label="Modalità di conversazione">
@@ -35,7 +35,8 @@ export const CHAT_MODES = [
             @if (m.value === mode()) { <hx-icon name="check" [size]="14" /> }
           </button>
         }
-        <div class="foot">Vale per questa conversazione · predefinita in Impostazioni → Personali</div>
+        <div class="foot"><span>Vale per questa conversazione</span>
+          <hx-setting-link [key]="key" label="predefinita" title="Cambia la modalità predefinita" (go)="open.set(false)" /></div>
       </div>
     </hx-popover>`,
   styles: [`
@@ -51,10 +52,12 @@ export const CHAT_MODES = [
     .t { display: flex; flex-direction: column; gap: 2px; flex: 1; }
     .t b { font-weight: 600; font-size: 13.5px; }
     .t small { font-size: 12px; color: var(--text-3); line-height: 1.35; }
-    .foot { font-size: 11.5px; color: var(--text-3); padding: 6px 8px 2px; border-top: 1px solid var(--border); margin-top: 4px; }
+    .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--text-3);
+            padding: 6px 2px 2px 8px; border-top: 1px solid var(--border); margin-top: 4px; }
   `],
 })
 export class ChatModeComponent {
+  readonly key = MODE_KEY;
   private api = inject(CentralSettingsApi);
   private session = inject(SessionService);
   private toast = inject(ToastService);

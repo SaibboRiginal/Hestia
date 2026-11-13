@@ -286,6 +286,7 @@ export class ChatService {
           this.finalizeStreaming(streamId, event.reply, event.domain, event.session_id);
           if (event.origin?.label) this.patch(streamId, { origin: event.origin });
           if (event.trace_id) this.patch(streamId, { traceId: event.trace_id });
+          if (event.model) this.patch(streamId, { model: event.model });
         }
         break;
 
@@ -441,7 +442,7 @@ export class ChatService {
   }
 
   /** Shows a past conversation (oldest first) instead of the current one; answers continue in it. */
-  showHistory(items: Array<{ role: string; content: string; at?: string }>, sessionId: string): void {
+  showHistory(items: Array<{ role: string; content: string; at?: string; model?: string }>, sessionId: string): void {
     this.clearMessages();
     this.messages.set(items.filter(i => i.role === 'user' || i.role === 'assistant').map(i => ({
       id: uid(), role: i.role as 'user' | 'assistant', sessionId,
@@ -449,6 +450,7 @@ export class ChatService {
       content: i.role === 'assistant' && !/<[a-z][^>]*>/i.test(i.content || '')
         ? marked.parse(i.content || '', { gfm: true, async: false }) as string : i.content || '',
       timestamp: i.at ? new Date(i.at) : new Date(),
+      ...(i.model ? { model: i.model } : {}),
     })));
   }
 

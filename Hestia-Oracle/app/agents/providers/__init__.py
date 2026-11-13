@@ -46,9 +46,12 @@ _INLINE = {
 }
 
 
-def runtime_info(name: str, local_window: int) -> dict:
-    """Label, context window and billing kind of a named provider (chat context gauge)."""
+def runtime_info(name: str, local_window: int, model: str = "") -> dict:
+    """Label, context window (with where it comes from) and billing kind of a named provider (chat context
+    gauge). ``window_source``: ``provider`` (fixed by the service) · ``runtime`` (read from the local program) ·
+    ``setting`` (forced in Hestia) · ``floor`` (the program's own is too small) · ``default`` (not read yet)."""
     from core.services import llm_providers
+    from core.services import local_window as _lw
     name = str(name or "").strip().lower()
     ptype = llm_providers.type_of(name) or name
     if ptype in PROVIDER_TYPES:
@@ -63,5 +66,10 @@ def runtime_info(name: str, local_window: int) -> dict:
         billing = "Server locale · gratis"
     elif ptype == "openai":
         billing = "API · a consumo"
-    return {"provider": name, "provider_label": label, "context_window": int(window or local_window),
+    source = "provider"
+    if not window:
+        window, source = _lw.window_of(name, model)
+        if not window:
+            window, source = local_window, "default"
+    return {"provider": name, "provider_label": label, "context_window": int(window), "window_source": source,
             "billing": billing}

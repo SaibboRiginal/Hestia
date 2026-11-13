@@ -15,16 +15,19 @@ from agents.providers import PROVIDER_TYPES, get_provider
 from agents.providers.openai_compat import OpenAICompatProvider
 from agents.universal_agent import UniversalAgent
 from core.agent_loop import ScratchMessage, _stub_old_tool_results
-from core.services import llm_stats, oracle_settings, prompt_config
+from core.services import llm_stats, local_window, oracle_settings, prompt_config
 from core.services.context_builder import ContextBuilder
 
 
 @pytest.fixture(autouse=True)
 def _clean_stats():
     llm_stats.reset()
+    local_window.reset()
     al._token_ratio_cache["m1"] = 3.0  # no Ollama /api/tokenize calibration
-    yield
+    with patch("core.services.local_window.requests.get", side_effect=OSError("no runtime in tests")):
+        yield
     llm_stats.reset()
+    local_window.reset()
 
 
 def _resp(payload: dict) -> MagicMock:
@@ -38,27 +41,36 @@ def _resp(payload: dict) -> MagicMock:
 @pytest.mark.unit
 class TestOllamaOptions:
     def test_defaults(self):
-        assert oracle_settings.ollama_request_options() == {"options": {"num_ctx": 8192}, "keep_alive": "30m"}
+        # «automatica»: no num_ctx, Ollama keeps the window the owner set there
+        assert oracle_settings.ollama_request_options() == {"options": {}, "keep_alive": "30m"}
 
     def test_settings_and_always(self, monkeypatch):
         monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
         monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.KEEP_ALIVE, "always")
         assert oracle_settings.ollama_request_options() == {"options": {"num_ctx": 16384}, "keep_alive": -1}
 
-    def test_every_ollama_call_sends_them(self):
+    def test_automatic_call_sends_no_window(self):
         agent = UniversalAgent("SYS", "ollama", "m1", thinking=False)
         with patch("agents.universal_agent.requests.post", return_value=_resp({"response": "ok"})) as post:
             agent.ask("ciao")
         body = post.call_args.kwargs["json"]
-        assert body["options"]["num_ctx"] == 8192 and body["keep_alive"] == "30m"
+        assert "num_ctx" not in body["options"] and body["keep_alive"] == "30m"
 
-    def test_tool_call_sends_them(self):
+    def test_every_forced_call_sends_it(self, monkeypatch):
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
+        agent = UniversalAgent("SYS", "ollama", "m1", thinking=False)
+        with patch("agents.universal_agent.requests.post", return_value=_resp({"response": "ok"})) as post:
+            agent.ask("ciao")
+        assert post.call_args.kwargs["json"]["options"]["num_ctx"] == 16384
+
+    def test_tool_call_sends_them(self, monkeypatch):
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
         agent = UniversalAgent("SYS", "ollama", "m1", thinking=False)
         data = {"message": {"content": "", "tool_calls": [{"function": {"name": "t", "arguments": {}}}]}}
         with patch("agents.universal_agent.requests.post", return_value=_resp(data)) as post:
             out = agent.ask_with_tools("q", [{"name": "t", "description": "d"}])
         assert out["tool_call"]["name"] == "t"
-        assert post.call_args.kwargs["json"]["options"]["num_ctx"] == 8192
+        assert post.call_args.kwargs["json"]["options"]["num_ctx"] == 16384
 
 
 # ── B: stats ────────────────────────────────────────────────────────────────
@@ -211,7 +223,7 @@ class TestGatewayOllamaNative:
             out = llm_gateway.chat(self._body())
         url, sent = post.call_args.args[0], post.call_args.kwargs["json"]
         assert url == "http://ollama:11434/api/chat"
-        assert sent["options"]["num_ctx"] == oracle_settings.context_window()
+        assert "num_ctx" not in sent["options"]          # automatic: Ollama's own window
         assert sent["options"]["temperature"] == 0.2
         assert sent["messages"][2]["tool_calls"][0]["function"]["arguments"] == {"path": "a.py"}
         msg = out["choices"][0]["message"]

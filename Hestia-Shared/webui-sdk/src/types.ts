@@ -68,6 +68,9 @@ export interface HestiaHost {
   /** Navigate inside the plugin ('case/123') or to another module's page ({module, page}). */
   navigate(page: string, params?: Record<string, string>, module?: string): void;
   link(page: string, params?: Record<string, string>, module?: string): string;
+  /** Opens Impostazioni on one central setting (its key, highlighted), or on this module's settings (no key):
+   *  the shortcut to put next to a value the user can change there. */
+  openSetting(key?: string): void;
   toast(text: string, tone?: Tone, action?: { label: string; run: () => void }): void;
   confirm(title: string, text: string, opts?: { label?: string; danger?: boolean }): Promise<boolean>;
   assistant(open: AssistantOpen): void;

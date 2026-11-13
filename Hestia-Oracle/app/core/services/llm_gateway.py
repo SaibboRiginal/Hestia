@@ -72,7 +72,10 @@ def usecase_status(use_case: str) -> dict[str, Any]:
     window = 0
     if llm_providers.type_of(first["provider"]) == "ollama":
         from core.services import oracle_settings
-        window = oracle_settings.context_window()
+        window = oracle_settings.context_window(first["model"])
+    elif llm_providers.is_local(first["provider"]):
+        from core.services import local_window
+        window = local_window.window_of(first["provider"], first["model"])[0]
     return {"use_case": use_case, "chain": cfg["chain"], "available": True, "detail": "ok",
             "provider": first["provider"], "model": first["model"], "context_window": window,
             "billed": any(billed(step["provider"]) for _, step in steps),
@@ -209,7 +212,7 @@ def _openai_response(data: dict, model: str) -> dict[str, Any]:
 def _chat_ollama(provider: str, model: str, body: dict[str, Any]) -> dict[str, Any]:
     from core.services import oracle_settings
     request = {"model": model, "messages": _ollama_messages(body["messages"]), "stream": False,
-               **oracle_settings.ollama_request_options()}
+               **oracle_settings.ollama_request_options(model)}
     request["options"] = dict(request.get("options") or {})
     if body.get("tools"):
         request["tools"] = body["tools"]
@@ -225,12 +228,14 @@ def _chat_ollama(provider: str, model: str, body: dict[str, Any]) -> dict[str, A
     if resp.status_code >= 400:
         raise _StepError(f"error {resp.status_code}: {resp.text[:300]}", resp.status_code, resp)
     data = resp.json() or {}
-    num_ctx = request["options"].get("num_ctx")
+    from core.services import local_window
+    local_window.note_call(model, int(request["options"].get("num_ctx") or 0), llm_providers.url(provider))
+    num_ctx = request["options"].get("num_ctx") or local_window.ollama_window(model)
     prompt_tokens = int(data.get("prompt_eval_count") or 0)
     logger.info("event=llm_gateway_chat provider=%s model=%s backend=ollama_native num_ctx=%s "
                 "prompt_tokens=%s completion_tokens=%s done_reason=%s",
                 provider, model, num_ctx, prompt_tokens, data.get("eval_count"), data.get("done_reason"))
     if num_ctx and prompt_tokens >= int(num_ctx) * 0.95:
         logger.warning("[🔄] event=llm_gateway_context_full provider=%s num_ctx=%s prompt_tokens=%s "
-                       "hint=raise oracle.provider.ollama.num_ctx or send a shorter prompt", provider, num_ctx, prompt_tokens)
+                       "hint=raise the window in Ollama (or oracle.provider.ollama.num_ctx) or send a shorter prompt", provider, num_ctx, prompt_tokens)
     return _openai_response(data, model)
