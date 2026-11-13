@@ -98,3 +98,20 @@ def test_no_steps_no_block(bot):
     r = _renderer()
     r.on_thinking({"action": "reasoning", "content": ""})
     assert r._reasoning_block() == ""
+
+
+@pytest.mark.unit
+def test_a_line_says_when_another_model_answers(bot):
+    from telegram_bot.services import reply_renderer
+    reply_renderer._last_model.clear()
+    shown = lambda: bot.edit_message_text.call_args[0][0]  # noqa: E731
+    _renderer().on_final("uno", None, "qwen3:14b")
+    assert "qwen3" not in shown()                       # the first answer: nothing changed
+    _renderer().on_final("due", None, "qwen3:14b")
+    assert "qwen3" not in shown()
+    _renderer().on_final("tre", None, "gemini-2.5-flash")
+    assert "gemini-2.5-flash" in shown() and shown().index("gemini") < shown().index("tre")
+    _renderer().on_final("quattro", None, "")           # model not told: no line, the last one stays
+    assert "〜" not in shown()
+    _renderer().on_final("cinque", None, "gemini-2.5-flash")
+    assert "〜" not in shown()

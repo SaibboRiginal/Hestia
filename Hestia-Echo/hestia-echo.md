@@ -103,6 +103,8 @@ never changes.
   engine), Audio conservati (space by class, listen, download, delete). **La tua voce** (`<echo-your-voice>`, W7): record the voiceprint
   (≥ 6 s, a sentence to read, «Togli l'impronta»), the personal dictionary (sure words and candidates «n di N»,
   add, remove with «Annulla»). In Prova «Correggi la trascrizione» sends `{heard, corrected}` to `/dictionary/learn`.
+  In Prova «Prepara la voce adesso» (`POST /models/prefetch`) downloads at once what listening and speaking need on
+  this computer, with what it does written next to it (it was «Scarica le voci» in the WebUI Download page).
 
 ## Settings (Themis, `echo.*`)
 

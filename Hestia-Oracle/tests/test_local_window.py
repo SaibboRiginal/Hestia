@@ -217,3 +217,12 @@ class TestContextStats:
         stats = self._engine("ollama", "m").estimate_context_stats("new")
         assert stats["breakdown_measured"] is False and stats["context_measured"] is False
         assert {r["id"] for r in stats["breakdown"]} == {"system", "tools", "history"}
+
+
+@pytest.mark.unit
+def test_final_frame_and_session_name_the_model_that_answered():
+    import json
+    from core.services import stream_emitter
+    assert "model" not in json.loads(stream_emitter.emit_final("ciao"))
+    assert json.loads(stream_emitter.emit_final("ciao", model="qwen3:14b"))["model"] == "qwen3:14b"
+    assert llm_stats.last_model("nessuna") == ""

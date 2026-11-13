@@ -144,6 +144,12 @@ def session_usage(session_id: str) -> dict:
     return tot
 
 
+def last_model(session_id: str) -> str:
+    """Name of the model that made the last counted call of this conversation ('' before the first one)."""
+    with _lock:
+        return str((_sessions.get(session_id or "") or {}).get("model") or "")
+
+
 def _ms(ns: Any) -> int:
     try:
         return int(int(ns or 0) / 1_000_000)

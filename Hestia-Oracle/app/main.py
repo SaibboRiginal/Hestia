@@ -600,6 +600,14 @@ def ui_chats_meta(session_id: str, body: dict = Body(...)):
     return _forget_if_excluded(session_id, body, _chats(chat_sessions.set_meta, session_id, {**body, "client": "webui"}))
 
 
+@app.delete("/api/ui/chats/{session_id}")
+def ui_chats_delete(session_id: str):
+    """The owner deletes a conversation (messages, title, tags, pin); its saved training turns are dropped too."""
+    out = _chats(chat_sessions.delete, session_id)
+    turn_trace.forget_session(engine._hub, session_id)
+    return out
+
+
 @app.get("/api/ui/documents")
 def ui_documents_list(limit: int = 100, domain: str = "", permanent: Optional[bool] = None):
     """Documents Hestia keeps (newest first), with domain / permanent filters."""

@@ -2188,7 +2188,7 @@ paths:
   /api/chat/history:
     post:
       tags: [Archive — Chat]
-      summary: Append a chat message
+      summary: "Append a chat message (optional model = who wrote an answer; optional timestamp only for a message written again by compaction)"
       servers:
         - url: http://localhost:19002
       requestBody:
@@ -4735,9 +4735,19 @@ paths:
         - {name: session_id, in: path, required: true, schema: {type: string}}
         - {name: limit, in: query, schema: {type: integer, default: 200}}
       responses:
-        "200": {description: "{session_id, items: [{role, content, at}]}"}
+        "200": {description: "{session_id, items: [{role, content, at, model}]}"}
 
   /oracle/api/ui/chats/{session_id}:
+    delete:
+      tags: [Oracle]
+      summary: "The owner deletes a conversation: messages, title, tags, pin, saved training turns (real path /api/ui/chats/{id}; Archive DELETE /api/chat/sessions/{id})"
+      servers:
+        - url: http://localhost:19004
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, session_id, deleted_messages}"}
+        "502": {description: Archive not reachable}
     put:
       tags: [Oracle]
       summary: "Title, tags, pinned, training_off of a conversation (real path /api/ui/chats/{id}; client webui; training_off=true also drops its saved turns in Metis)"
@@ -5038,6 +5048,17 @@ paths:
         "200": {description: "Provider chat completion JSON + hestia_step {use_case, chain, step, provider, model}"}
         "400": {description: messages missing}
         "502": {description: "Every step failed (detail names the chain and each step)"}
+
+  /api/chat/sessions/{session_id}:
+    delete:
+      tags: [Archive]
+      summary: "Delete a whole conversation: its messages and its title, tags, pin (DELETE /api/chat/history/{id} only clears the messages)"
+      servers:
+        - url: http://localhost:19002
+      parameters:
+        - {name: session_id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: "{status, session_id, deleted_messages}"}
 
   /api/chat/sessions:
     get:

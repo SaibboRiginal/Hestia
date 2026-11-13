@@ -23,6 +23,7 @@ ADDITIVE_COLUMNS = [
     ("mcp_accesses", "refresh_hash", "VARCHAR"),
     ("mcp_accesses", "prev_refresh_hash", "VARCHAR"),
     ("mcp_accesses", "token_expires_at", "TIMESTAMPTZ"),
+    ("chat_history", "model", "VARCHAR"),
 ]
 
 

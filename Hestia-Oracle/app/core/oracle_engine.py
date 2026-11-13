@@ -1081,7 +1081,7 @@ class OracleEngine:
                 len(answer or ""),
                 trace_id,
             )
-            yield stream_emitter.emit_final(answer, "general", trace_id=trace_id)
+            yield stream_emitter.emit_final(answer, "general", trace_id=trace_id, model=llm_stats.last_model(session_id))
             _record_turn("quick_chat", ["general"], answer=answer, trace_parts=_quick_trace)
             _mem_waiter = self._phase_background_memory(
                 user_message, session_id, notify_target,
@@ -1390,6 +1390,7 @@ class OracleEngine:
             intent.valid_domains[0] if intent.valid_domains else "general",
             origin=origin if origin.get("level") != "utente" or origin.get("kind") == "esterno" else None,
             trace_id=trace_id,
+            model=llm_stats.last_model(session_id),
         )
         # «Cosa ho cambiato» with Annulla per item (Cindy 13): clients draw it under the answer.
         _changes = stream_emitter.changes_from_log(tool_log)
@@ -3379,7 +3380,8 @@ class OracleEngine:
             )
             self._hub.post(
                 "/chat/history",
-                {"session_id": session_id, "role": "assistant", "content": answer},
+                {"session_id": session_id, "role": "assistant", "content": answer,
+                 **({"model": llm_stats.last_model(session_id)} if llm_stats.last_model(session_id) else {})},
                 headers=headers,
             )
         except Exception as exc:

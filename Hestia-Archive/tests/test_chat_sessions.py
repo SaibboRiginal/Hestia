@@ -84,3 +84,30 @@ def test_search_dates_tags_and_pinned_first(ctx):
     tags = ctx.get("/api/chat/sessions/tags").json()["items"]
     assert tags == [{"name": "salute", "color": "green", "count": 1}]
     assert [i["session_id"] for i in ctx.get("/api/chat/sessions/list", params={"q": "allenam"}).json()["items"]] == ["a"]
+
+
+@pytest.mark.api
+def test_delete_conversation_drops_messages_and_meta(ctx):
+    ctx.put("/api/chat/sessions/a/meta", json={"title": "Palestra", "pinned": True})
+    out = ctx.delete("/api/chat/sessions/a").json()
+    assert out["deleted_messages"] == 2
+    ids = [i["session_id"] for i in ctx.get("/api/chat/sessions/list").json()["items"]]
+    assert "a" not in ids and len(ids) == 2
+    assert ctx.get("/api/chat/sessions/a/meta").json()["pinned"] is False
+
+
+@pytest.mark.api
+def test_clearing_history_keeps_title_and_pin(ctx):
+    """Compaction clears the messages and writes them again: what the owner set must stay."""
+    ctx.put("/api/chat/sessions/b/meta", json={"title": "Spese", "pinned": True})
+    ctx.delete("/api/chat/history/b")
+    assert ctx.get("/api/chat/sessions/b/meta").json()["title"] == "Spese"
+
+
+@pytest.mark.api
+def test_a_message_written_again_keeps_its_time(ctx):
+    sent = ctx.post("/api/chat/history", json={"session_id": "z", "role": "user", "content": "di ieri",
+                                               "timestamp": "2026-10-01T08:30:00+00:00"}).json()
+    assert sent["timestamp"].startswith("2026-10-01T08:30")
+    now = ctx.post("/api/chat/history", json={"session_id": "z", "role": "user", "content": "di adesso"}).json()
+    assert now["timestamp"] and not now["timestamp"].startswith("2026-10-01")

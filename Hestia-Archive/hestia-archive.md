@@ -244,6 +244,15 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   mirror. Every module store gains `GET /count?kind=&at_from=` → `{count}` (live rows). Chat meta gains
   `training_off` (additive column; `GET /api/chat/sessions/{id}/meta` reads one, the PUT and the list carry it).
 
+## Delete a conversation, model and time of a message (dossier `docs/work/2026-11-13-sidebar-e-chat`)
+
+- `DELETE /api/chat/sessions/{id}` → `{status, session_id, deleted_messages}`: the whole conversation, messages and
+  what the owner set on it (title, tags, pin). `DELETE /api/chat/history/{id}` still clears the messages only: it is
+  what history compaction uses before writing them again.
+- `chat_history.model` (additive column): the model that wrote an answer. `POST /api/chat/history` accepts `model` and,
+  for a message written again by compaction, `timestamp` (so it keeps the time it was first written); the history
+  rows return `model`.
+
 ## Wave 3 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
 - `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals
   (kind `memory_proposal`), generic module-store rows.

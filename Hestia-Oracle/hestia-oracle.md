@@ -381,7 +381,8 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `PATCH` | `/api/ui/documents/{id}/permanent` | `{is_permanent}`: keep for good (never pruned) or temporary |
 | `DELETE` | `/api/ui/documents/{id}` | Delete document and passages (404 unknown) |
 | `GET` | `/api/ui/chats` · `/api/ui/chats/tags` | WebUI history sidebar: conversations (`q`, `tag`, `since`, `until`, `pinned`, `limit`, `offset`, pinned first) · tags in use; 502 Archive down |
-| `GET` | `/api/ui/chats/{id}/messages?limit=200` | One conversation oldest first `{items: [{role, content, at}]}` to open it again |
+| `GET` | `/api/ui/chats/{id}/messages?limit=200` | One conversation oldest first `{items: [{role, content, at, model}]}` to open it again (`model` = who wrote an answer, '' when not known) |
+| `DELETE` | `/api/ui/chats/{id}` | The owner deletes a conversation: messages, title, tags, pin (Archive `DELETE /chat/sessions/{id}`) and its saved training turns |
 | `PUT` | `/api/ui/chats/{id}` | Title, tags (`tags` replace · `add_tags` · `remove_tags`), `pinned` → meta + `before` |
 | `GET` | `/api/ui/memory` | Memoria page: active user memories `{memories: [{id, fact, domains, source, access, topic, created_at}]}` |
 | `DELETE` | `/api/ui/memory/{id}` | Forget a memory (Archive `is_active=false`); 502 Archive refused |
@@ -765,3 +766,14 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
   «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own
   (infrastructure env). The chains do not change: the same local models now run on that video card.
+
+## Who answered and when you wrote (dossier `docs/work/2026-11-13-sidebar-e-chat`)
+
+- The `final` frame carries `model`: the model of the last counted call of the conversation (`llm_stats.last_model`).
+  It is saved with the answer in Archive (`chat_history.model`) and returned by `/api/ui/chats/{id}/messages`; clients
+  mark where it changes (WebUI divider, Telegram line).
+- In the history the model reads, every message of the owner starts with when it was written:
+  `User [Thu 6 Nov 21:14]: …` (`ContextBuilder.message_stamp`: owner's time zone, fixed English names). The answers
+  carry no time. History compaction writes the recent messages again with their own time and model.
+- `DELETE /api/ui/chats/{id}`: the owner deletes a conversation (Archive `DELETE /chat/sessions/{id}`) and its saved
+  training turns are dropped (`turn_trace.forget_session`).

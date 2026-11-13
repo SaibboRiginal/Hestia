@@ -126,6 +126,9 @@ subscription compile), `pausa_voto`.
   skipped); `final.reaction_only` → no text, the «Sto pensando…» message is deleted. The owner's reactions on her
   messages (`message_reaction` updates, asked for in `ALLOWED_UPDATES`) → Oracle `POST /api/chat/reaction` with the
   reacted text when the bot still has it.
+- Another model answering (dossier `docs/work/2026-11-13-sidebar-e-chat`): Oracle's `final.model` is remembered per
+  chat (in memory); when it differs from the last answer's, one line `〜 <model> 〜` opens the answer. No line for
+  the first answer after a restart or when Oracle does not name the model.
 - Hermes `update` with `voice.audio_b64` → voice message replying to the notification.
 
 ### Settings (`services/chat_settings.py`)

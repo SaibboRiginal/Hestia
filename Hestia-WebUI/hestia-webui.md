@@ -608,3 +608,24 @@ Elimina (to free space, asks first); «Scarica le voci» (→ Echo `/api/voice/m
 something moves, every 10 s otherwise. Backend `DownloadsController`: `GET /api/webui/downloads` (asks each module
 through the Hub; one not answering is listed as offline, never named to the user) and `POST
 /api/webui/downloads/{module}/{op}` with body `{id}` (ids carry «:»).
+
+### Sidebar with one rule, conversations, bubble, microphone, dividers (2026-11-13, dossier `docs/work/2026-11-13-sidebar-e-chat`)
+
+Replaces what the 2026-10-29 section says about the sidebar's top and the «Sistema» entry.
+
+- **Sidebar** (`layout/shell.component.ts`): top = logo, bell with the unread notifications (→ Notifiche), collapse,
+  then **Chat** and **Cerca**. Sections, all foldable: *Generale* (Home, Scopri) · *Fissati* · *Conversazioni* ·
+  *Dashboard* · *Moduli* · **Sistema** (Panoramica = `/sistema`, the system modules' pages, Aggiornamenti, Macchine,
+  Download). A module with sub-pages folds too (`webui.sidebar.collapsed`, key `m:<entry id>`). The page on screen is
+  marked with its parent, a folded section or module opens by itself around it, and `Sezione › Modulo › Pagina` is
+  written above pages of Fissati, Dashboard, Moduli and Sistema. On phones the menu button shows the unread count.
+- **Conversations**: «…» on each one in the sidebar (rename in place, pin, delete after a confirmation) and the same
+  in «Cronologia»; `ChatsService.remove` → Oracle `DELETE /api/ui/chats/{id}`. Deleting the one on screen starts a new one.
+- **Bubble** (`layout/quick-bubble.component.ts`), bottom right of every page except Chat: «Scrivi qui» (the side
+  panel, Ctrl+J) and «Parla» (continuous voice, Ctrl+Shift+Space), each with a line that says what it does. They are
+  no longer sidebar entries.
+- **Chat**: one microphone, always visible (tap = dictation into the box, hold = voice message, release sends, slide
+  left cancels; keyboard = dictation). «Ascolta» shows a spinner while the voice is prepared and, when there is no
+  sound, the reason with «Apri Voce» (`VoiceService.failed`, `listenError`). Wavy dividers (`.hx-divider`) for a new
+  day (Oggi, Ieri, «mer 5 nov») and for another model answering (`final.model`, kept with the message).
+- **Download**: «Scarica le voci» moved to the Voce page as «Prepara la voce adesso»; the page is listed in Sistema.

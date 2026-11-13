@@ -195,9 +195,14 @@ Module UI is **not** written in this Angular app. A module ships Web Components 
   flex column filling the cell, keep the key line (`.big`, title) from shrinking (`flex-shrink: 0`), or `truncate` hides it whole.
 - Quick actions are declared, not drawn: the Home strip, the Ctrl/⌘+K palette and `<hxk-quicklog>` render them.
 - In Angular, show a plugin element with `<hx-plugin-outlet [module] [element] [ctx]>` (loading/offline/error states built in).
-- Sidebar (`layout/shell.component.ts`): fixed top (logo, Crea con Hestia) and bottom (Impostazioni, Esci, state),
-  **one scroll area** in between with sections *Fissati · Generale · Dashboard · Moduli · Sistema* (core modules =
-  manifest `kind: "core"`). Section headers collapse (`webui.sidebar.collapsed`); the pin on hover moves an entry to
+- Sidebar (`layout/shell.component.ts`): fixed top (logo, bell, Chat, Cerca) and bottom (Impostazioni, Esci, state),
+  **one scroll area** in between with sections *Generale · Fissati · Conversazioni · Dashboard · Moduli · Sistema*
+  (core modules = manifest `kind: "core"`, plus Panoramica, Aggiornamenti, Macchine, Download). One rule: every
+  section folds, a module with sub-pages folds (`m:<id>` in the same setting), the page on screen is marked with its
+  parent and its section opens by itself; never add a top-level button for a feature: the two ways to reach the
+  assistant from any page are in the bubble (`layout/quick-bubble.component.ts`). A menu that opens from inside the
+  sidebar or a scrolling list is drawn in the viewport with the global `.hx-ctx` (+ `.hx-ctx-scrim`). A divider inside
+  a conversation is the global `.hx-divider` (label between two wavy lines). Section headers collapse (`webui.sidebar.collapsed`); the pin on hover moves an entry to
   *Fissati* (`webui.sidebar.pinned`, ids `app.<path>` · `dash.<id>` · `<module>.<page>`), drag to reorder there. The
   list is computed, so a pinned entry leaves its section (never shown twice); a pinned parent brings its sub-pages.
   A page with `badge: {source, field}` shows that number (read through the plugin call proxy with the catalog poll).

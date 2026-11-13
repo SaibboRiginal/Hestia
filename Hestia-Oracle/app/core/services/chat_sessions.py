@@ -75,7 +75,8 @@ def tags(route: Route) -> dict:
 def messages(route: Route, session_id: str, limit: int = 200) -> dict:
     rows = _need(route("GET", f"/chat/history/{session_id}", query={"limit": max(1, min(int(limit), 500))}))
     return {"session_id": session_id, "items": [
-        {"role": r.get("role"), "content": r.get("content"), "at": r.get("timestamp")} for r in rows or []]}
+        {"role": r.get("role"), "content": r.get("content"), "at": r.get("timestamp"), "model": r.get("model") or ""}
+        for r in rows or []]}
 
 
 def set_meta(route: Route, session_id: str, body: dict) -> dict:
@@ -84,6 +85,15 @@ def set_meta(route: Route, session_id: str, body: dict) -> dict:
     allowed = {k: body[k] for k in ("title", "tags", "add_tags", "remove_tags", "pinned", "training_off", "client")
                if k in body}
     return _need(route("PUT", f"/chat/sessions/{session_id}/meta", body=allowed))
+
+
+def delete(route: Route, session_id: str) -> dict:
+    """The owner deletes a conversation: messages and its title, tags, pin."""
+    if not str(session_id or "").strip():
+        raise ChatSessionsError(422, "conversazione mancante")
+    out = _need(route("DELETE", f"/chat/sessions/{session_id}"))
+    logger.info("event=chat_deleted session_id=%s messages=%s", session_id, (out or {}).get("deleted_messages"))
+    return out
 
 
 def _current(route: Route) -> str:

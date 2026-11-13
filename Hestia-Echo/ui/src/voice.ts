@@ -152,7 +152,25 @@ export class EchoVoice extends HestiaElement {
         </div>
         ${this.meta(this.said)}
       </hxk-card>
-    </div>`;
+    </div>
+    <hxk-card heading="Prepara la voce adesso" subtitle="Per non aspettare alla prima frase" style="margin-top:16px">
+      <p class="small muted" style="margin:0 0 10px">La prima volta che ti ascolto o ti parlo su questo computer devo scaricare quello che serve,
+        e quella frase aspetta. Qui lo scarico subito. Se è già tutto pronto, o usi una voce in cloud, non scarico niente.
+        L'avanzamento lo vedi in Sistema › Download.</p>
+      <div class="actions" style="justify-content:flex-start;margin:0">
+        <hxk-button icon="download" ?loading=${this.busy === 'prepara'} @click=${() => this.prepare()}>Prepara la voce adesso</hxk-button>
+      </div>
+    </hxk-card>`;
+  }
+
+  /** Queues the local models of the listening and speaking chains in use (nothing for cloud steps). */
+  private async prepare() {
+    this.busy = 'prepara';
+    const r = await this.host.api('POST', `${API}/models/prefetch`, { body: {} });
+    this.busy = '';
+    if (!r.ok) { this.host.toast(r.error || 'La voce non risponde ora', 'danger'); return; }
+    this.host.toast((r.data?.queued || []).length ? 'Sto scaricando: segui l\'avanzamento in Sistema › Download'
+      : 'È già tutto pronto, non c\'è niente da scaricare', 'success');
   }
 
   // ── Uso ────────────────────────────────────────────────────────────────

@@ -83,6 +83,17 @@ export class MicRecorder {
   }
 }
 
+/** Why «Ascolta» gave no sound, in words for the owner (the cause the server gave, when it gave one). */
+export function listenError(err: unknown, stage: 'speak' | 'play'): string {
+  if (stage === 'play') return 'Non riesco a far partire l\'audio in questo browser.';
+  const e = err as { status?: number; error?: { detail?: unknown; error?: unknown } } | null;
+  if (!e || e.status === 0) return 'Non riesco a leggerlo: il sito non raggiunge il server.';
+  const detail = e.error?.detail ?? e.error?.error;
+  if (typeof detail === 'string' && detail.trim()) return `Non riesco a leggerlo: ${detail.trim().slice(0, 160)}`;
+  if (e.status === 502 || e.status === 503 || e.status === 504) return 'Non riesco a leggerlo: la voce non è pronta o non risponde.';
+  return 'Non riesco a leggerlo ora.';
+}
+
 @Injectable({ providedIn: 'root' })
 export class VoiceService {
   private http = inject(HttpClient);
@@ -91,6 +102,9 @@ export class VoiceService {
   /** Id of the message whose audio is playing (or loading), for the play/stop toggle. */
   playing = signal<string | null>(null);
   loading = signal<string | null>(null);
+  /** The last «Ascolta» that gave no sound, with the reason (the page shows it; `n` tells two failures apart). */
+  failed = signal<{ id: string; text: string; n: number } | null>(null);
+  private fails = 0;
 
   post<T = any>(path: string, body: unknown): Promise<T> {
     return firstValueFrom(this.http.post<T>(`${VOICE_API}/${path}`, body));
@@ -124,7 +138,12 @@ export class VoiceService {
       const out = await this.post<any>('speak', { text, format: PLAY_FORMAT, use_case: 'webui.ascolta',
                                                  keep: { kind: 'generated', message_id: messageId } });
       if (this.loading() !== messageId) return;          // stopped meanwhile
-      this.play(messageId, b64ToBlob(out.audio_b64, out.mime_type || 'audio/mpeg'));
+      if (!out?.audio_b64) throw { status: 502 };
+      this.play(messageId, b64ToBlob(out.audio_b64, out.mime_type || 'audio/mpeg'),
+                err => this.failed.set({ id: messageId, text: listenError(err, 'play'), n: ++this.fails }));
+    } catch (err) {
+      // never silent: a reading that does not start says why
+      if (this.loading() === messageId) this.failed.set({ id: messageId, text: listenError(err, 'speak'), n: ++this.fails });
     } finally {
       if (this.loading() === messageId) this.loading.set(null);
     }

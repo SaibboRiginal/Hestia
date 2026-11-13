@@ -1,5 +1,5 @@
 import {
-  AfterViewChecked, ChangeDetectionStrategy, OnDestroy, Component, ElementRef, computed, inject, signal, viewChild,
+  AfterViewChecked, ChangeDetectionStrategy, OnDestroy, Component, ElementRef, computed, effect, inject, signal, untracked, viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ChatService } from '../../services/chat.service';
@@ -11,7 +11,8 @@ import { ChatChange, ChatMessage } from '../../models/chat.models';
 import { AssistantTextComponent } from './assistant-text.component';
 import { ChatsService } from '../../services/chats.service';
 import { PluginsService } from '../plugins/plugins.service';
-import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, ToastService } from '../../ui';
+import { Router } from '@angular/router';
+import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, SpinnerComponent, ToastService } from '../../ui';
 import { ThinkingStepsComponent } from './thinking-steps.component';
 import { ChatModeComponent } from './chat-mode.component';
 import { ChatContextComponent } from './chat-context.component';
@@ -28,10 +29,24 @@ const LIVE_LABELS: Record<string, string> = {
   starting: 'Accendo il microfono…', listening: 'Ti ascolto', hearing: 'Ti sento…', thinking: 'Ci penso…', speaking: 'Sto parlando',
 };
 
+function dayKey(d: Date | undefined): string {
+  return d && !isNaN(+d) ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : '';
+}
+
+/** «Oggi», «Ieri», «mer 5 nov» (with the year when it is not this one). */
+export function dayLabel(d: Date, now = new Date()): string {
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((start(now) - start(d)) / 86400000);
+  if (diff === 0) return 'Oggi';
+  if (diff === 1) return 'Ieri';
+  return new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short',
+    ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).format(d);
+}
+
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
   selector: 'app-chat-page',
-  imports: [FormsModule, ButtonComponent, IconComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
+  imports: [FormsModule, ButtonComponent, IconComponent, SpinnerComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
             ChatModeComponent, ChatContextComponent, QuestionCardComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -62,6 +77,10 @@ const LIVE_LABELS: Record<string, string> = {
           </div>
         }
         @for (m of chat.messages(); track m.id) {
+          @if (marks()[m.id]; as k) {
+            @if (k.day) { <div class="hx-divider" role="separator">{{ k.day }}</div> }
+            @if (k.model) { <div class="hx-divider" role="separator" title="Da qui risponde un altro modello"><hx-icon name="brain" [size]="12" />{{ k.model }}</div> }
+          }
           @if (m.role === 'user') {
             @if (m.audio) {
               <div class="msg user hx-fade-in"><div class="bubble voice">
@@ -126,9 +145,11 @@ const LIVE_LABELS: Record<string, string> = {
                   <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)" title="Utile"><hx-icon name="thumb-up" [size]="15" /></button>
                   <button class="fb" [class.on]="rated()[m.id] === 'bad'" (click)="feedback('bad', m)" title="Non utile"><hx-icon name="thumb-down" [size]="15" /></button>
                   <button class="fb" (click)="copy(m)" title="Copia"><hx-icon name="copy" [size]="15" /></button>
-                  <button class="fb" [class.on]="voice.playing() === m.id" (click)="voice.toggle(m.id, m.content)"
-                          [title]="voice.playing() === m.id || voice.loading() === m.id ? 'Ferma' : 'Ascolta'">
-                    <hx-icon [name]="voice.playing() === m.id || voice.loading() === m.id ? 'stop' : 'volume'" [size]="15" /></button>
+                  <button class="fb" [class.on]="voice.playing() === m.id" [class.busy]="voice.loading() === m.id" (click)="voice.toggle(m.id, m.content)"
+                          [title]="voice.loading() === m.id ? 'Preparo la voce… (clic per fermare)' : voice.playing() === m.id ? 'Ferma' : 'Ascolta'"
+                          [attr.aria-label]="voice.loading() === m.id ? 'Preparo la voce' : voice.playing() === m.id ? 'Ferma' : 'Ascolta'">
+                    @if (voice.loading() === m.id) { <hx-spinner [size]="14" /> }
+                    @else { <hx-icon [name]="voice.playing() === m.id ? 'stop' : 'volume'" [size]="15" /> }</button>
                   @if ($last) { <button class="fb" (click)="chat.retry()" [disabled]="chat.isStreaming()" title="Rigenera"><hx-icon name="refresh" [size]="15" /></button> }
                 </div>
               }
@@ -164,13 +185,7 @@ const LIVE_LABELS: Record<string, string> = {
         @if (recording()) {
           <div class="rec" role="status">
             <span class="rdot"></span><span class="rtime">{{ duration(recSeconds()) }}</span>
-            @if (recLocked()) {
-              <div class="hx-grow"></div>
-              <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly aria-label="Annulla il vocale" (click)="finishRec(true)"></button>
-              <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia il vocale" (click)="finishRec(false)"></button>
-            } @else {
-              <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? 'Rilascia per annullare' : '‹ Scorri per annullare' }}</span>
-            }
+            <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? 'Rilascia per annullare' : 'Rilascia per inviare · scorri a sinistra per annullare' }}</span>
           </div>
         }
         <textarea #ta [hidden]="recording()" [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="1"
@@ -178,24 +193,22 @@ const LIVE_LABELS: Record<string, string> = {
         <div class="tools">
           <input #file type="file" hidden (change)="onFile($event)" />
           <button hx-btn variant="ghost" size="sm" icon="paperclip" iconOnly aria-label="Allega" (click)="file.click()" [disabled]="chat.isStreaming()"></button>
-          <button hx-btn [variant]="dictating() ? 'primary' : 'ghost'" size="sm" [icon]="dictating() ? 'stop' : 'note'" iconOnly
-                  [loading]="dictBusy()" (click)="toggleDictation()" [attr.aria-pressed]="dictating()"
-                  [attr.aria-label]="dictating() ? 'Ferma la dettatura' : 'Detta'" title="Detta: quello che dici diventa testo da rileggere"></button>
           <hx-chat-mode [(mode)]="mode" />
           <div class="hx-grow"></div>
           @if (chat.isStreaming()) {
             <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly aria-label="Stop" (click)="chat.cancelStream()"></button>
-          } @else if (text.trim() || recLocked()) {
-            @if (!recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia" (click)="send()" [disabled]="!text.trim()"></button> }
           } @else {
-            <button hx-btn [variant]="recording() ? 'primary' : 'ghost'" size="sm" icon="mic" iconOnly class="micbtn"
-                    aria-label="Tieni premuto per registrare un vocale" title="Vocale: tieni premuto (o clic per registrare)"
-                    (pointerdown)="micDown($event)" (pointermove)="micMove($event)" (pointerup)="micUp($event)"
-                    (pointercancel)="finishRec(true)" (contextmenu)="$event.preventDefault()"></button>
+            @if (dictating()) { <span class="dhint" role="status">Ti ascolto: tocca di nuovo per scrivere il testo</span> }
+            <!-- One microphone, always here: a tap dictates into the box, holding it records a voice message. -->
+            <button hx-btn [variant]="dictating() || recording() ? 'primary' : 'ghost'" size="sm" [icon]="dictating() ? 'stop' : 'mic'" iconOnly class="micbtn"
+                    [loading]="dictBusy()" [attr.aria-pressed]="dictating()" [attr.aria-label]="micLabel()" [title]="micLabel()"
+                    (pointerdown)="micDown($event)" (pointermove)="micMove($event)" (pointerup)="micUp()"
+                    (pointercancel)="micCancel()" (contextmenu)="$event.preventDefault()" (click)="micKey($event)"></button>
+            @if (text.trim() && !recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia" (click)="send()"></button> }
           }
         </div>
       </div>
-      <p class="disc">Invio per mandare · Shift+Invio per andare a capo · tieni premuto il microfono per un vocale</p>
+      <p class="disc">Invio per mandare · Shift+Invio per andare a capo · microfono: tocca per dettare, tieni premuto per un messaggio vocale</p>
     </div>
   `,
   styles: [`
@@ -267,6 +280,8 @@ const LIVE_LABELS: Record<string, string> = {
     .rtime { font-variant-numeric: tabular-nums; font-size: 14px; }
     .rhint { color: var(--text-3); font-size: 13px; margin-left: auto; }
     .rhint.cancel { color: var(--danger); }
+    .dhint { font-size: 12.5px; color: var(--text-3); margin-right: 4px; }
+    .fb.busy { color: var(--accent); }
     .micbtn { touch-action: none; user-select: none; -webkit-user-select: none; }
     .live { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--accent);
             border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 10px; box-shadow: var(--shadow-1); }
@@ -302,11 +317,18 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   voice = inject(VoiceService);
   live = inject(LiveVoiceService);
 
-  // voice message: hold to record, release to send, slide left to cancel; mouse: click, then bin or send
+  // one microphone: a tap dictates (text in the box, to read again), holding it records a voice message
+  // (release to send, slide left to cancel); with the keyboard it dictates
   private mic = new MicRecorder();
+  private router = inject(Router);
   recording = signal(false);
-  recLocked = signal(false);
   recCancel = signal(false);
+  private holdTimer: number | undefined;
+  private held = false;
+  /** Set when the button is released before the microphone has started: null = still held. */
+  private released: boolean | null = null;
+  micLabel = computed(() => this.dictating() ? 'Ferma la dettatura: il testo va nella casella'
+    : 'Microfono: tocca per dettare, tieni premuto per un messaggio vocale');
   recSeconds = signal(0);
   private recX = 0;
   private recTimer: number | undefined;
@@ -334,6 +356,25 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     { id: 'clear', label: 'Pulisci schermo', icon: 'trash' },
   ];
 
+  /** Dividers of the conversation: the day when it changes (always before the first message of another day than
+   *  today) and the model when another one starts answering. */
+  marks = computed(() => {
+    const out: Record<string, { day?: string; model?: string }> = {};
+    let day = '', model = '';
+    for (const m of this.chat.messages()) {
+      const d = dayKey(m.timestamp);
+      if (d && d !== day) {
+        if (day || d !== dayKey(new Date())) out[m.id] = { day: dayLabel(m.timestamp) };
+        day = d;
+      }
+      if (m.role === 'assistant' && m.model) {
+        if (model && m.model !== model) out[m.id] = { ...out[m.id], model: m.model };
+        model = m.model;
+      }
+    }
+    return out;
+  });
+
   thinkingMode = computed(() => this.settings.settings().thinkingDisplay || 'compact');
   greeting = computed(() => {
     const h = new Date().getHours();
@@ -344,6 +385,14 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     // After a reload: queued messages keep their hourglass and an open question comes back (oracle-offline v3).
     void this.chat.restorePending();
     void this.identity.load();
+    // «Ascolta» that gives no sound says why, with the way to the voice page.
+    let seen = this.voice.failed()?.n ?? 0;
+    effect(() => {
+      const f = this.voice.failed();
+      if (!f || f.n === seen) return;
+      seen = f.n;
+      untracked(() => this.toast.show(f.text, 'danger', { label: 'Apri Voce', run: () => void this.router.navigateByUrl('/p/echo/voce') }, 9000));
+    });
   }
 
   ngOnDestroy() {
@@ -435,13 +484,19 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     return `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`;
   }
 
-  async micDown(e: PointerEvent) {
-    if (this.recording() || this.chat.isStreaming()) return;
+  micDown(e: PointerEvent) {
+    if (this.recording() || this.chat.isStreaming() || this.dictBusy()) return;
     e.preventDefault();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     this.recX = e.clientX;
     this.recCancel.set(false);
-    this.recLocked.set(e.pointerType === 'mouse');
+    this.held = false;
+    if (this.dictating()) return;                       // the tap that stops the dictation
+    this.holdTimer = window.setTimeout(() => { this.held = true; void this.startVoice(); }, 350);
+  }
+
+  private async startVoice() {
+    this.released = null;
     try { await this.mic.start(); }
     catch { this.toast.error('Il browser non mi dà il microfono'); return; }
     this.voice.stop();
@@ -449,22 +504,34 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     this.recSeconds.set(0);
     const t0 = performance.now();
     this.recTimer = window.setInterval(() => this.recSeconds.set((performance.now() - t0) / 1000), 250);
+    if (this.released !== null) void this.finishRec(this.released);
   }
 
   micMove(e: PointerEvent) {
-    if (!this.recording() || this.recLocked()) return;
+    if (!this.recording()) return;
     this.recCancel.set(this.recX - e.clientX > 80);
   }
 
-  micUp(_e: PointerEvent) {
-    if (!this.recording() || this.recLocked()) return;
-    void this.finishRec(this.recCancel());
+  micUp() {
+    window.clearTimeout(this.holdTimer);
+    if (!this.held) { if (!this.chat.isStreaming() && !this.dictBusy()) void this.toggleDictation(); return; }
+    this.held = false;
+    if (this.recording()) void this.finishRec(this.recCancel()); else this.released = this.recCancel();
   }
+
+  micCancel() {
+    window.clearTimeout(this.holdTimer);
+    if (!this.held) return;
+    this.held = false;
+    if (this.recording()) void this.finishRec(true); else this.released = true;
+  }
+
+  /** Enter or Space on the microphone (no pointer): dictation. */
+  micKey(e: MouseEvent) { if (e.detail === 0) void this.toggleDictation(); }
 
   async finishRec(cancel: boolean) {
     window.clearInterval(this.recTimer);
     this.recording.set(false);
-    this.recLocked.set(false);
     this.recCancel.set(false);
     const out = await this.mic.stop(cancel);
     if (!out) return;
