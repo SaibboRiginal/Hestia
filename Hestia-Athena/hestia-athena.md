@@ -208,7 +208,9 @@ Third output, next to the system briefs and the life observations (those stay in
    go back to Oracle as «already written».
 `POST /api/athena/think?track=parla` = «Scrivimi ora» (past the drive, the limit and the pause);
 `GET /api/athena/talk?days=` lists what she wrote with the reasons, the drive and whether he answered, plus `state`
-(her drive now).
+(her drive now); the reasons come back in Italian for the owner (`talk.shown`), the hidden `past` lines do not.
+Shown in the page **Pensieri**, third tab «Ti scrive» (drive against the bar, reasons, what she wrote, answered or
+not, button «Scrivimi ora»). No new page.
 
 ### First observe, then propose (`app/core/evidence.py`, dossier `docs/work/2026-11-13-prima-osserva-poi-propone`)
 One sighting is not enough to judge, and on the first day she does not know how the system normally behaves. For
@@ -222,6 +224,7 @@ accepted candidates of kind `improvement` (→ Forge) and `setting` (→ Themis 
 - ledger in Archive `signals-store` (`kind=evidence`, `ref_id=athena`; row `_start` = first day). Not readable →
   nothing proposed in that cycle (`[🔄] event=evidence_read_failed`). Log `event=evidence_weighed`.
 The life reflection has its own wait (`athena.reflection.min_weeks`).
+Shown in the page **Pensieri**, tab Sistema, card «Sta raccogliendo prove» (`GET /api/athena/evidence`).
 
 ### «Pensa ora» (one cycle now)
 `POST /api/athena/think` runs one full cycle (observe → think → gate → act → archive, `trigger=manual`) in the
@@ -243,7 +246,7 @@ Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_pr
 | quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
 | page (order 133) | `imparato` → `<athena-learning>` | «Cosa ho imparato»: the learning log (added, merged, let go, weaker) with the owner's quote and «Annulla» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Applica» / «Lascia») and «Rivedi cosa sai di me» (`POST /memory/review`); proposal notifications link here |
 
-Pensieri has a **Vita / Sistema** switch (default Vita): a life cycle shows 1 Legge i segnali · 2 Collega · 3
+Pensieri has a **Vita / Sistema / Ti scrive** switch (default Vita; «Ti scrive» and the card «Sta raccogliendo prove» in Sistema: see above): a life cycle shows 1 Legge i segnali · 2 Collega · 3
 Approfondisce · 4 Pensa e filtra · 5 Per il recap; «Pensa ora» runs the selected track.
 
 ### MCP tool `athena_signals(domain?, limit?)`
@@ -280,7 +283,7 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/athena/status` | Runtime status (ticks, emissions, strategist state) |
 | POST | `/api/athena/trigger` | Manual trigger with custom signals |
 | POST | `/api/athena/think?track=parla` | «Scrivimi ora»: she writes first now (background) |
-| GET | `/api/athena/talk?days=7` | What she wrote first, newest first: `{items: [{id, day, at, text, reasons, trigger, drive, answered}], state: {drive, bar, wants, reasons, past, …}}` |
+| GET | `/api/athena/talk?days=7` | What she wrote first, newest first: `{items: [{id, day, at, text, reasons, trigger, drive, answered}], state: {drive, bar, wants, idle_seconds, known_days, unanswered, reasons}}` (reasons in Italian) |
 | GET | `/api/athena/evidence` | What she is still collecting proof for: `{known_days, min_days, seen_days, window_days, items: [{key, kind, title, days[], first_day, proposed_day}]}` |
 | GET | `/api/athena/tasks` | Task lifecycle records |
 | GET | `/api/athena/tasks/{task_id}` | Single task detail |

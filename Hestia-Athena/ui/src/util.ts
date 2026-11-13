@@ -44,6 +44,20 @@ export function ago(iso?: string | null): string {
   return `${Math.floor(s / 86400)} giorni fa`;
 }
 
+/** «12 nov» from an ISO day. */
+export function day(iso?: string | null): string {
+  if (!iso) return '–';
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+}
+
+/** «3 ore fa» / «2 giorni fa» from seconds. */
+export function hours(seconds: number): string {
+  const s = Math.max(0, Number(seconds) || 0);
+  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min fa`;
+  if (s < 172800) return `${Math.round(s / 3600)} ore fa`;
+  return `${Math.round(s / 86400)} giorni fa`;
+}
+
 export function secs(ms?: number): string {
   const v = Number(ms || 0);
   return v < 1000 ? `${v} ms` : `${(v / 1000).toFixed(1).replace('.', ',')} s`;

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (thread «Rendere Hestia viva come Verity», Marko 2026-11-13: «non deve essere a caso solo per essere a caso… che aspettino di accumulare un po' di dati»; proposal approved with «si») |
 | **Status** | Implemented; real run by Marko pending |
 
@@ -58,8 +58,15 @@ Marko's points after the first PR:
   he is chatting» stay as caps.
 - `GET /api/athena/talk` adds `state` (drive, bar, reasons, last days) and, per message, `drive` and `answered`.
 
+### D — Where the owner sees it (v1.1, Marko: «useful, but not too many pages; look for a fitting place»)
+No new page: both go in the existing page **Pensieri** of Athena.
+- Tab Sistema, new card «Sta raccogliendo prove»: the days of observation so far, and each finding with on how
+  many days it was seen out of the days needed.
+- Third tab «Ti scrive»: her drive now against the bar, the reasons of today, what she wrote in the last 14 days
+  with why and whether you answered, and the button «Scrivimi ora».
+- `GET /api/athena/talk` returns the reasons in Italian for the owner and no longer the hidden `past` lines.
+
 ## 4. Out of scope
-- No new page: the Pensieri page shows `collecting` with its reason; the two GET endpoints are there for a page.
 - The life reflection and the evening recap are unchanged.
 
 ## 5. Acceptance criteria
@@ -69,6 +76,7 @@ Marko's points after the first PR:
 - [x] Same state gives the same decision to write (no randomness); first day she does not write by herself.
 - [x] Unanswered messages lower the drive and reach Oracle as «do not insist».
 - [x] Unit tests for A, B, C; Athena and Oracle suites green.
+- [x] D: bundle builds, typechecks, rendered with mocked data at desktop and phone width.
 
 ## 6. New-feature checklist
 - Settings in Themis (`athena.evidence.*`, `athena.talk.eagerness`), no env var, no on/off switch.
