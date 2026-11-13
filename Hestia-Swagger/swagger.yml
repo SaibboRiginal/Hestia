@@ -12719,7 +12719,7 @@ paths:
       parameters:
         - {name: days, in: query, schema: {type: integer, default: 7, maximum: 30}}
       responses:
-        "200": {description: "{items: [{id, day, at, text, reasons[], trigger (periodic|manual), drive, answered (true|false|null)}], state: {drive, bar, wants, idle_seconds, known_days, unanswered, reasons[], past[]} | null}"}
+        "200": {description: "{items: [{id, day, at, text, reasons[], trigger (periodic|manual), drive, answered (true|false|null)}], state: {drive, bar, wants, idle_seconds, known_days, unanswered, reasons[]} | null}; reasons are in Italian for the owner"}
 
   /api/athena/evidence:
     get:

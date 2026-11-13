@@ -179,11 +179,16 @@ def test_write_now_and_history_endpoints():
     with patch.object(main.runtime, "talk_now", return_value={"status": "started", "track": "parla"}) as now:
         assert http.post("/api/athena/think", params={"track": "parla"}).json()["track"] == "parla"
         now.assert_called_once()
-    with patch.object(main.runtime.talk, "recent", return_value=[{"id": "1", "text": "Ehi.", "reasons": [], "x": 1}]):
-        with patch.object(main.runtime.talk, "weigh", return_value={"drive": 0.4, "bar": 0.5, "wants": False}):
-            assert http.get("/api/athena/talk").json() == {"items": [
-                {"id": "1", "day": None, "at": None, "text": "Ehi.", "reasons": [], "trigger": None, "drive": None,
-                 "answered": None}], "state": {"drive": 0.4, "bar": 0.5, "wants": False}}
+    row = {"id": "1", "text": "Ehi.", "reasons": ["How they feel today: giù, energy 2/5 (because of lavoro)"], "x": 1}
+    state = {"drive": 0.4, "bar": 0.5, "wants": False, "past": ["hidden"],
+             "reasons": ["You two have not talked for about 30 hours"]}
+    with patch.object(main.runtime.talk, "recent", return_value=[row]), \
+            patch.object(main.runtime.talk, "weigh", return_value=state):
+        out = http.get("/api/athena/talk").json()
+    assert out["items"] == [{"id": "1", "day": None, "at": None, "text": "Ehi.", "trigger": None, "drive": None,
+                             "answered": None, "reasons": ["Come ti senti oggi: giù, energia 2/5 (per lavoro)"]}]
+    assert out["state"]["reasons"] == ["Non vi sentite da circa 30 ore"] and "past" not in out["state"]
+    assert out["state"]["drive"] == 0.4 and out["state"]["wants"] is False
     with patch.object(main.runtime.evidence, "known_days", return_value=2), \
             patch.object(main.runtime.evidence, "list", return_value=[{"key": "setting:x", "days": ["2026-11-12"]}]):
         out = http.get("/api/athena/evidence").json()
