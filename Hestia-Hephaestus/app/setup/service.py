@@ -227,7 +227,7 @@ class SetupService:
     def brain_hello(self) -> dict[str, Any]:
         """«I modelli sono pronti»: the assistant writes its first message with the models just chosen, so the user
         sees them answer (Oracle's general chain through the use case ``hephaestus.setup``)."""
-        prompt = ("This is your very first message to the owner: you have just been set up. Italian, 2 short warm "
+        prompt = ("This is your very first message to the owner: you have just been set up. 2 short warm "
                   "sentences: you are there, ask where to start. No emoji, no lists.")
         try:
             out = self.oracle("POST", "/api/llm/generate", body={"prompt": prompt, "use_case": "hephaestus.setup",

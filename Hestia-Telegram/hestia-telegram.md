@@ -184,13 +184,14 @@ Env keeps only secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, 
 |---|---|
 | `telegram.feedback.prompt_rate` | 0.15 |
 | `telegram.feedback.snooze_days` | 7 |
-| `telegram.chat.locale` | `it` |
 | `telegram.chat.client_instructions` | Telegram format contract (no emoji, HTML), in English like every text the model reads. Telegram owns it: Oracle carries no format rule |
 | `telegram.oracle.stream_timeout` | 600 s |
 | `telegram.menu.layout` | `{}` (system scope; see Navigation) |
 | `telegram.log.level` | `LOG_LEVEL` at boot |
 
 Removed with the redesign: `telegram.alerts.buffer_window`, `telegram.commands.hidden*`, `telegram.signals.*`.
+Removed 2026-11-14: `telegram.chat.locale` (read by nobody): the language of notifications and formatted results is
+the personal setting `themis.personal.language` (`docs/work/2026-11-14-lingua-personale`).
 
 ## API Endpoints (control server, `services/control_service.py`)
 

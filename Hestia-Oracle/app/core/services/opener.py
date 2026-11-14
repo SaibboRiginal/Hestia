@@ -61,7 +61,9 @@ def build_prompt(reasons: list[str], avoid: list[str], memories: list[str], awar
     parts.append("WHAT YOU KNOW ABOUT THEM:\n" + ("\n".join(memories) or "- almost nothing yet"))
     if avoid:
         parts.append("YOU ALREADY WROTE THEM (do not repeat, do not insist):\n" + "\n".join(_lines(avoid, 6)))
-    parts.append("Your message, in the language of what you know about them (Italian if unsure), or NIENTE:")
+    from hestia_common import identity
+    language = identity.LANGUAGES[prompt_config.owner_language()]
+    parts.append(f"Your message, in {language} (their language setting), or NIENTE:")
     return "\n\n".join(parts)
 
 

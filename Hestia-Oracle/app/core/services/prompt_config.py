@@ -146,8 +146,8 @@ _DEFAULT_PROMPTS: dict[str, str] = {
     # `system_identity()`, the module's prompt carries only the data and what to say.
     "module_voice_instruction": (
         "You are writing to the owner yourself, on your own initiative (a notification, a recap, a plan). Use "
-        "only the data below; never invent. No filler opening or closing. Write in the language the request "
-        "asks for; if it asks for none, the language of the data below."
+        "only the data below; never invent. No filler opening or closing. Write in {owner_language} (the owner's "
+        "language setting), whatever the language of the data, unless the request names another language."
     ),
     # ── Notifications formatted by Oracle (`/api/format`) ─────────────────────────────────────────────────────
     "formatter_alert_template": (
@@ -413,6 +413,12 @@ def prompt(key: str, **kwargs: Any) -> str:
             exc,
         )
         return template
+
+
+def owner_language() -> str:
+    """The owner's language setting as a code (``it``, ``en``…): what she writes on her own follows it."""
+    from hestia_common import identity
+    return identity.language_code((_identity() or {}).get("language"))
 
 
 def voice_turn_contract() -> str:

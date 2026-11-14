@@ -70,10 +70,6 @@ def client_instructions() -> str:
     return str(settings.get(tg_settings.CHAT_CLIENT_INSTRUCTIONS) or "")
 
 
-def locale() -> str:
-    return str(settings.get(tg_settings.CHAT_LOCALE) or "it")
-
-
 # ── Feedback prompting ──────────────────────────────────────────────────────
 FEEDBACK_ARCHIVE_URL = os.getenv(
     "FEEDBACK_ARCHIVE_URL",

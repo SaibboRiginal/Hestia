@@ -130,3 +130,17 @@ def test_identity_render_name_gender_owner():
     he = identity.render(template, identity.read(values.get))
     assert he.startswith("Sei Leo, amico di Marco. Their name is Marco: use it now and then")
     assert identity.read(lambda key: None) == identity.default()
+
+
+@pytest.mark.unit
+def test_language_is_personal_and_fills_owner_language():
+    """One language setting for everything she writes on her own (docs/work/2026-11-14-lingua-personale)."""
+    from hestia_common import identity
+    from hestia_common.settings_client import PERSONAL
+    spec = PERSONAL[identity.LANGUAGE]
+    assert spec["default"] == "it" and spec["group"] == "Tu e l'assistente"
+    assert [o["value"] for o in spec["options"]] == list(identity.LANGUAGES)
+    assert identity.render("Write in {owner_language}.", identity.default()) == "Write in Italian."
+    values = {identity.LANGUAGE: "EN"}
+    assert identity.render("Write in {owner_language}.", identity.read(values.get)) == "Write in English."
+    assert identity.read({identity.LANGUAGE: "klingon"}.get)["language"] == "it"     # unknown → default

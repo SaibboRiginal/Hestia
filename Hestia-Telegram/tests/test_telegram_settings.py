@@ -20,7 +20,6 @@ class TestDeclaredSettings:
         expected = {
             "telegram.feedback.prompt_rate": 0.15,              # TELEGRAM_FEEDBACK_PROMPT_RATE
             "telegram.feedback.snooze_days": 7,                 # FEEDBACK_SNOOZE_DEFAULT_DAYS
-            "telegram.chat.locale": "it",                       # TELEGRAM_LOCALE
             "telegram.chat.client_instructions": ts.DEFAULT_CLIENT_INSTRUCTIONS,
             "telegram.oracle.stream_timeout": 600,              # TELEGRAM_ORACLE_STREAM_TIMEOUT
             "telegram.menu.layout": {},                         # menus as configuration (telegram-da-zero §5.11)
@@ -36,7 +35,8 @@ class TestDeclaredSettings:
     def test_removed_keys_are_gone(self):
         defs = ts.settings._defs
         for key in ("telegram.alerts.buffer_window", "telegram.commands.hidden", "telegram.commands.hidden_services",
-                    "telegram.signals.style", "telegram.signals.style_memory", "telegram.signals.style_action"):
+                    "telegram.signals.style", "telegram.signals.style_memory", "telegram.signals.style_action",
+                    "telegram.chat.locale"):   # language = the personal setting themis.personal.language
             assert key not in defs, key
 
     def test_client_instructions_ask_for_no_emoji(self):
@@ -49,12 +49,10 @@ class TestDeclaredSettings:
 
 @pytest.mark.unit
 class TestLiveValues:
-    def test_locale_and_instructions_follow_setting(self):
+    def test_instructions_follow_setting(self):
         from telegram_bot import core
-        assert core.locale() == "it"
         assert core.client_instructions() == ts.DEFAULT_CLIENT_INSTRUCTIONS
-        ts.settings.apply({"telegram.chat.locale": "en", "telegram.chat.client_instructions": "breve"})
-        assert core.locale() == "en"
+        ts.settings.apply({"telegram.chat.client_instructions": "breve"})
         assert core.client_instructions() == "breve"
 
     def test_reload_payload_applies_values(self):

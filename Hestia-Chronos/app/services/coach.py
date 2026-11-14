@@ -512,7 +512,7 @@ def fixed_text(plan: dict, past: list[dict]) -> str:
 
 
 def _prompt(plan: dict, past: list[dict]) -> str:
-    lines = ["Write the owner the message with the plan of the week, in Italian, 6 lines at most, practical.",
+    lines = ["Write the owner the message with the plan of the week, 6 lines at most, practical.",
              "No emoji, no names of modules or systems. Format: plain text. (NON ENTRA = does not fit.)",
              "PIANO:"]
     for d in plan["days"]:

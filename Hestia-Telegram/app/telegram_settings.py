@@ -25,7 +25,6 @@ except ModuleNotFoundError:
 
 FEEDBACK_PROMPT_RATE = "telegram.feedback.prompt_rate"
 FEEDBACK_SNOOZE_DAYS = "telegram.feedback.snooze_days"
-CHAT_LOCALE = "telegram.chat.locale"
 CHAT_CLIENT_INSTRUCTIONS = "telegram.chat.client_instructions"
 ORACLE_STREAM_TIMEOUT = "telegram.oracle.stream_timeout"
 MENU_LAYOUT = "telegram.menu.layout"
@@ -46,10 +45,6 @@ settings.declare([
     setting(FEEDBACK_SNOOZE_DAYS, "Pausa voto predefinita", "int", 7, group="Voto risposte",
             min=1, max=365, unit="giorni",
             help="Per quanti giorni smetto di chiederti il voto quando metti in pausa senza dire quanto."),
-    setting(CHAT_LOCALE, "Lingua dei messaggi formattati", "enum", "it", group="Chat",
-            options=[("it", "Italiano"), ("en", "English"), ("de", "Deutsch"), ("fr", "Français"),
-                     ("es", "Español")],
-            help="Lingua in cui scrivo date e numeri nei risultati."),
     setting(CHAT_CLIENT_INSTRUCTIONS, "Istruzioni di formato per Telegram", "text", DEFAULT_CLIENT_INSTRUCTIONS,
             group="Chat", advanced=True,
             help="Regole di formato mandate all'assistente con ogni messaggio da Telegram. "

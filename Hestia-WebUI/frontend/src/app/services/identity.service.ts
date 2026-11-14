@@ -1,14 +1,22 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { CentralSettingsApi } from '../features/settings/central-settings.api';
 
-/** Who the assistant is and whose it is: four personal settings (Themis `themis.personal.*`, dossier
+/** Who the assistant is and whose it is, and the owner's language: five personal settings (Themis `themis.personal.*`, dossier
  * docs/work/2026-11-12-identita-e-proattivita). The pages that talk to the owner show the chosen name; the product
  * stays «Hestia». Settings unreachable → the defaults, nothing breaks. */
-export interface Identity { assistant: string; gender: 'lei' | 'lui'; ownerName: string; ownerCall: string; }
+export interface Identity { assistant: string; gender: 'lei' | 'lui'; ownerName: string; ownerCall: string; language: string; }
+
+/** The languages of `themis.personal.language` (notifications, recaps, messages she writes on her own). */
+export const LANGUAGES: { value: string; label: string }[] = [
+  { value: 'it', label: 'Italiano' }, { value: 'en', label: 'English' }, { value: 'de', label: 'Deutsch' },
+  { value: 'fr', label: 'Français' }, { value: 'es', label: 'Español' },
+];
+const DEFAULT_LANGUAGE = 'it';
 
 const KEYS = {
   assistant: 'themis.personal.assistant_name', gender: 'themis.personal.assistant_gender',
   ownerName: 'themis.personal.owner_name', ownerCall: 'themis.personal.owner_call',
+  language: 'themis.personal.language',
 } as const;
 export const DEFAULT_ASSISTANT = 'Hestia';
 
@@ -21,6 +29,7 @@ export class IdentityService {
   readonly gender = signal<'lei' | 'lui'>('lei');
   readonly ownerName = signal('');
   readonly ownerCall = signal('');
+  readonly language = signal(DEFAULT_LANGUAGE);
 
   /** Read once (pages call it freely); `force` after a change made elsewhere. */
   async load(force = false): Promise<void> {
@@ -33,6 +42,8 @@ export class IdentityService {
       this.gender.set(value(KEYS.gender) === 'lui' ? 'lui' : 'lei');
       this.ownerName.set(value(KEYS.ownerName));
       this.ownerCall.set(value(KEYS.ownerCall));
+      const lang = value(KEYS.language);
+      this.language.set(LANGUAGES.some(l => l.value === lang) ? lang : DEFAULT_LANGUAGE);
     } catch { this.asked = false; /* defaults stay; the next page tries again */ }
   }
 
@@ -44,10 +55,12 @@ export class IdentityService {
     if (next.gender !== this.gender()) jobs.push(this.api.set(KEYS.gender, next.gender));
     if (next.ownerName.trim() !== this.ownerName()) jobs.push(this.api.set(KEYS.ownerName, next.ownerName.trim()));
     if (next.ownerCall.trim() !== this.ownerCall()) jobs.push(this.api.set(KEYS.ownerCall, next.ownerCall.trim()));
+    if (next.language !== this.language()) jobs.push(this.api.set(KEYS.language, next.language));
     await Promise.all(jobs);
     this.assistant.set(assistant);
     this.gender.set(next.gender);
     this.ownerName.set(next.ownerName.trim());
     this.ownerCall.set(next.ownerCall.trim());
+    this.language.set(next.language);
   }
 }

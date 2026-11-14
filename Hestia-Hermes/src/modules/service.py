@@ -80,7 +80,7 @@ def _entity_message(payload: dict[str, Any], domain: str) -> str:
     facts = "\n".join(f"{k}: {v}" for k, v in payload.items()
                       if not str(k).startswith("_") and isinstance(v, (str, int, float)) and str(v).strip())[:1500]
     text = narrate(
-        f"Write a short notification in Italian about this item ({domain}). Start from the information. "
+        f"Write a short notification about this item ({domain}). Start from the information. "
         f"Format: simple HTML only (<b>, <a href>).\n\n{facts}")
     if text:
         return text
