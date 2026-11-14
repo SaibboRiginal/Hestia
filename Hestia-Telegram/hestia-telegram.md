@@ -38,7 +38,7 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
   leaves it.
 - **`/` menu** (10): `oggi`, `aree`, `adesso`, `scopri`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`,
   `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_adesso`, `metis_scopri`). Old names keep
-  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`…); any tool name typed as `/name k=v free text`
+  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
 - **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
   `GET /api/metis/adesso?client=telegram`, each with its reason and a button; the fixed «Oggi» actions when Metis has

@@ -122,7 +122,8 @@ Single database gateway.
 Conversational reasoning layer with unified agentic tool calling.
 - **Single tool-calling path:** all Hub commands + domain tools + memory tools flow through one ReAct agent loop (no separate pre-check or heuristic routing).
 - **Visible thinking:** emits `thinking` NDJSON events during the agent loop (reasoning, tool_call, tool_result) and a `tool.summary` signal after the answer. A `reasoning` frame is sent only when the model returned reasoning text, and clients title the block by what it holds: «Ragionamento» with at least one reasoning frame, «Strumenti usati» with tool frames alone (`docs/work/2026-11-11-ragionamento-vuoto`).
-- **Memory tools:** `memory.save` and `memory.search` are first-class agent loop tools — the LLM decides when to persist or recall facts.
+- **Memory tools:** `memory.save` and `memory.search` are first-class agent loop tools — the LLM decides when to persist or recall facts. Outside the chat (Telegram, site, other AIs) the doors are `memory_note` / `memory_recall` only.
+- **One tool per job:** two tools that do the same thing confuse the model; a double is removed, its endpoint stays (other modules call endpoints through Hub, not tools). Dossier `docs/work/2026-11-14-doppioni-strumenti`.
 - **Single classify call:** mode + domain + action_intent detected in one LLM call (no separate action intent detection).
 - Handles chat sessions and long-term preferences via background memory extraction as safety net.
 - Uses Hub discovery + module tools for domain retrieval. Agent loop handles up to 25 turns with early exit for simple tasks.
