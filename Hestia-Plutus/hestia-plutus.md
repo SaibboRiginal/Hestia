@@ -24,7 +24,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
   the user confirms or dismisses (dismissed ones are not proposed again).
 - Does not read mail itself (Iris pushes it), does not call models directly (Oracle `/api/llm/chat` with use case
   `plutus.lettura`, chain chosen in Oracle → Cervello → Modelli, only as a fallback; the monthly summary text is asked
-  with `/api/llm/generate` and `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format), has no database (Archive `finance-store` + blobs).
+  with `/api/llm/generate` and `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Lingua»), has no database (Archive `finance-store` + blobs).
 
 ## Inputs (every input works automatic and manual)
 
