@@ -105,15 +105,16 @@ def _soften(word: str) -> str:
     return word if word in _KEEP_CAPS else word.lower()
 
 
-def for_people(tool: dict | str, limit: int = 160, lang: str = "it") -> str:
+def for_people(tool: dict | str, limit: int = 160, lang: str | None = None) -> str:
     """A short text for people: the tool's own ``summary``, else its text in the people catalog
     (``hestia_common.i18n``, by ``name``/``command``, in ``lang``), else its description cleaned of model notes
     (descriptions are English, written for the model)."""
+    from hestia_common import i18n
+    lang = lang or i18n.current()
     if isinstance(tool, dict):
         own = str(tool.get("summary") or "").strip()
         if own:
-            return own[:limit]
-        from hestia_common import i18n
+            return i18n.t(own, lang=lang)[:limit]
         listed = i18n.tool_summary(str(tool.get("name") or tool.get("command") or ""), lang)
         if listed:
             return listed[:limit]

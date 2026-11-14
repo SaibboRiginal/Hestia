@@ -155,4 +155,4 @@ Every tool call carries the origin of the turn: external AIs are stamped `estern
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English
 (for the model); the `summary` of `/api/mcp/ui/tools` comes from the tool's own `summary` or the people catalog
-`hestia_common/locales/<lang>/tools.json` (by tool name), so «Comandi» and «Scopri» stay in the owner's language.
+`hestia_common/locales/<lang>/tools.json` (by tool name), so «Comandi» and «Scopri» stay in the owner's language; tool titles go through `i18n.t` as well.

@@ -57,7 +57,7 @@ _AUTH_ON = {"key": AUTH_CHECK_ENABLED, "equals": True}
 _FORGE_ON = {"key": FORGE_ENABLED, "equals": True}
 _DOCKER = {"key": LOG_SOURCE, "equals": "docker"}
 
-settings = SettingsClient("argus")
+settings = SettingsClient("argus").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
     # ── Controlli ───────────────────────────────────────────────────────────
     setting(POLL_INTERVAL, "Intervallo controlli", "int", 60, group="Controlli", min=10, max=3600, unit="s",

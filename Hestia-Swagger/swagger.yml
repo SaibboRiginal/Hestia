@@ -9155,7 +9155,7 @@ paths:
         - {name: session, in: query, schema: {type: string}}
         - {name: status, in: query, schema: {type: boolean, default: true}, description: "ask modules their effective values"}
       responses:
-        "200": {description: "{revision, items[definition + value, source, status, updated_by, updated_at], presets[{module, group, active (preset id | custom), presets[]}]}"}
+        "200": {description: "{revision, items[definition + value, source, status, updated_by, updated_at], presets[{module, group, active (preset id | custom), presets[]}]}. label, help, group, unit and option labels come in the owner's language (themis.personal.language, hestia_common.locales/<lang>/messages.json); keys and values never change"}
 
   /api/settings/search:
     get:

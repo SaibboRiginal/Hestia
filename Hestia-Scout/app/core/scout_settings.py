@@ -31,7 +31,7 @@ NOTIFY_VOICE = "scout.notifiche.voce"
 
 DEFAULT_SENDERS = ["nonrispondere@idealista.it", "noreply@notifiche.immobiliare.it"]
 
-settings = SettingsClient("scout")
+settings = SettingsClient("scout").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
     setting(MAIL_SENDERS, "Mittenti degli annunci", "list", list(DEFAULT_SENDERS), group="Controllo email",
             order=1,

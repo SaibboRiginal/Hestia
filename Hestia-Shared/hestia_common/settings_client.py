@@ -91,6 +91,22 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
     return out
 
 
+def translated(definition: dict, lang: str) -> dict:
+    """A copy of a declared setting (or preset) with the texts people read in ``lang`` (``hestia_common.i18n``):
+    label, help, group, unit and the labels of static options. Keys and values never change."""
+    from hestia_common import i18n
+    if not lang or lang == i18n.FALLBACK:
+        return definition
+    out = dict(definition)
+    for name in ("label", "help", "group", "unit"):
+        if isinstance(out.get(name), str) and out[name]:
+            out[name] = i18n.t(out[name], lang=lang)
+    if isinstance(out.get("options"), list):
+        out["options"] = [dict(o, label=i18n.t(o["label"], lang=lang)) if isinstance(o, dict) and
+                          isinstance(o.get("label"), str) else o for o in out["options"]]
+    return out
+
+
 def preset(id: str, label: str, *, group: str, values: dict, help: str = "") -> dict:
     """A named bundle of values for one group (e.g. Economico / Qualità)."""
     return {"id": id, "label": label, "group": group, "values": dict(values), "help": help}

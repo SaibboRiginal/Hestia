@@ -167,9 +167,18 @@ class Themis:
                     layers[scope][row["key"]] = row.get("value")
         return layers
 
+    def owner_language(self) -> str:
+        """``themis.personal.language`` as a code, read without translating (it decides the translation)."""
+        from hestia_common import identity
+        for item in self.list(module=SELF_OWNER, include_status=False, translate=False)["items"]:
+            if item["key"] == identity.LANGUAGE:
+                return identity.language_code(item.get("value"))
+        return identity.language_code(None)
+
     def list(self, *, module: str | None = None, q: str = "", client: str = "", session: str = "",
-             include_status: bool = True) -> dict:
-        """Settings with their current value, where it comes from and its state."""
+             include_status: bool = True, translate: bool = True) -> dict:
+        """Settings with their current value, where it comes from and its state. Labels, help, groups and option
+        labels are in the owner's language (``translate``); keys and values never change."""
         defs = self.registry.definitions(module, q)
         system_rows = {r["key"]: r for r in self._stored(scope="system")}
         user_keys = {d["key"] for d in defs if d.get("scope") == "user"}
@@ -200,7 +209,13 @@ class Themis:
                     else:
                         item["status"] = "ok"
             items.append(item)
-        return {"revision": self.revision, "items": items, "presets": self.preset_states(module, items)}
+        presets = self.preset_states(module, items)
+        if translate:
+            from hestia_common.settings_client import translated
+            lang = self.owner_language()
+            items = [translated(i, lang) for i in items]
+            presets = [translated(p, lang) for p in presets]
+        return {"revision": self.revision, "items": items, "presets": presets}
 
     def preset_states(self, module: str | None, items: list[dict]) -> list[dict]:
         """Presets per group with the one matching the current values (else ``custom``)."""
@@ -233,7 +248,8 @@ class Themis:
         if not d:
             raise ThemisError(f"impostazione {key} sconosciuta", 404)
         if d.get("options"):
-            return {"key": key, "options": d["options"], "source": "static"}
+            from hestia_common.settings_client import translated
+            return {"key": key, "options": translated(d, self.owner_language())["options"], "source": "static"}
         source = str(d.get("options_source") or "")
         if not source:
             return {"key": key, "options": [], "source": "none"}

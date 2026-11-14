@@ -42,4 +42,19 @@ def test_every_english_text_keeps_its_placeholders():
     for source, text in i18n.catalog("messages", "en").items():
         if source.startswith("• {0} notific"):
             continue
-        assert sorted(re.findall(r"\{[^}]*\}", source)) == sorted(re.findall(r"\{[^}]*\}", text)), source
+        fields = r"\{\d+[^{}]*\}|\{[a-z_]+\}"     # str.format fields, not JSON examples in help texts
+        assert sorted(re.findall(fields, source)) == sorted(re.findall(fields, text)), source
+
+
+@pytest.mark.unit
+def test_english_tools_catalog_covers_every_italian_tool():
+    from hestia_common import i18n
+    it, en = i18n.catalog("tools", "it"), i18n.catalog("tools", "en")
+    for name, entry in it.items():
+        if name == "_about":
+            continue
+        assert name in en, name
+        assert bool(en[name].get("summary")) == bool(entry.get("summary")), name
+        assert set(en[name].get("params") or {}) == set(entry.get("params") or {}), name
+    assert i18n.tool_summary("agenda", "en").startswith("Shows")
+    assert i18n.tool_summary("agenda", "de").startswith("Shows")  # no German catalog yet → English

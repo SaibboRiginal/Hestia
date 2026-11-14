@@ -11,6 +11,8 @@
 - [x] Docs: hestia-shared.md, ARCHITECTURE rule 13, telegram, mcp, root CHANGELOG
 - [x] Phase 2a: `i18n.t` + `locales/en/messages.json`; Telegram texts wrapped (codemod on function-body literals,
       edge translation in `ui`, keyboard, commands, labels, dates); test `Hestia-Telegram/tests/test_language.py`
-- [ ] Phase 2b: settings labels/help where Themis serves them, tool titles, notices and errors of the modules
-- [ ] Phase 2c: WebUI
+- [x] Phase 2b: settings labels/help/groups/options translated by Themis (`settings_client.translated`), tool titles
+      (MCP `ui_tools`), English `locales/en/tools.json` (276 tools), `follow_personal()` in every module showing texts
+- [ ] Phase 2c: notices and errors of the modules, Oracle warnings, llm_setup details
+- [ ] Phase 2d: WebUI
 - [ ] German, French, Spanish catalogs

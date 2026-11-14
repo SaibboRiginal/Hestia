@@ -47,6 +47,9 @@ DATA_DIR = Path(os.getenv("THEMIS_DATA_DIR", "/code/data"))
 hub = Hub(HUB_API_URL)
 registry = Registry(DATA_DIR / "schema_cache.json")
 themis = Themis(hub, registry)
+# Themis owns the personal settings: its own fixed texts follow the language it stores (hestia_common.i18n).
+from hestia_common import i18n as _i18n  # noqa: E402
+_i18n.use(lambda key: themis.owner_language())
 # export / import: every module's settings, one section per module (hestia_common.transfer)
 transfer = Transfer("themis", hub, sections=lambda: settings_sections(themis))
 # Personal settings shared by every module (week start, currency): Themis owns them, modules follow them.
