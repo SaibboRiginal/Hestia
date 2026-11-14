@@ -194,7 +194,9 @@ in background and notifies success/failure/timeout on Telegram. Google rejects i
 **Poll**: `GET /api/gateway/auth/poll/{provider}` → `authorized | pending | no_pending_flow | error`.
 
 MCP/Hub tools: `gateway_auth_status`, `gateway_auth_verify`, `gateway_auth_initiate_google`,
-`gateway_auth_complete`, `gateway_auth_initiate_microsoft`, `gateway_auth_poll`.
+`gateway_auth_complete_google`, `gateway_auth_initiate_microsoft`, `gateway_auth_poll` (the generic
+`gateway_auth_complete` tool was a double of the Google one, removed 2026-11-14; the endpoint
+`/api/gateway/auth/complete/{provider}` stays).
 
 ### Token Refresh
 

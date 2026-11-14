@@ -396,10 +396,6 @@ if _HAS_MCP:
         )
         return {"domain": TARGET_DOMAIN, "items": retrieval_service.search(req)}
 
-    def _mcp_scout_listings(query: str = "", limit: int = 50) -> dict:
-        req = RealEstateSearchRequest(domain=TARGET_DOMAIN, query=query, limit=limit)
-        return {"text": retrieval_service.search_formatted(req)}
-
     def _mcp_scout_reconcile(dry_run: bool = False) -> dict:
         if dry_run:
             return {"status": "dry_run", "message": "Dry run requested — no changes made."}
@@ -446,7 +442,7 @@ if _HAS_MCP:
         return display("Case", subtitle=f"{total} annunci", footer=f"Ultimo arrivato il {when[8:10]}/{when[5:7]}" if when else "",
                        items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
                                                                                          key=lambda kv: -kv[1])],
-                       actions=[action("Case disponibili", "scout_listings", style="primary"), action("Cerca", "scout.search")])
+                       actions=[action("Cerca case", "scout.search", style="primary")])
 
     mcp_tools = [
         MCPTool(name="scout.search",
@@ -467,20 +463,6 @@ if _HAS_MCP:
                 clients=["*"], response_mode="oracle_natural", response_prompt="",
                 telegram_visible=True, telegram_group="case",
                 telegram={"section": "Case", "primary": 2}),
-        MCPTool(name="scout_listings",
-                description="Show available real estate listings. Use when user wants to browse listings.",
-                parameters={
-                    "type": "object",
-                    "properties": {
-                        "query": {"type": "string", "description": "Search query (city, neighborhood)"},
-                        "limit": {"type": "integer", "description": "Max results (default 50)"},
-                    },
-                }, handler=_mcp_scout_listings,
-                title="Case disponibili", method="POST", path="/api/tools/real_estate/search",
-                clients=["telegram", "ui"], response_mode="oracle_natural",
-                response_prompt="Mostra una lista breve e leggibile delle case trovate con punti chiave e link.",
-                telegram_visible=True, telegram_group="case",
-                telegram={"section": "Case", "primary": 1}),
         MCPTool(name="scout_reconcile",
                 description="Run Scout data reconciliation maintenance.",
                 parameters={

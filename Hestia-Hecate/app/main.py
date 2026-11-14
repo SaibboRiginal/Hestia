@@ -170,36 +170,6 @@ try:
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Account collegati"}),
         MCPTool(
-            name="gateway_auth_complete",
-            description=(
-                "Completa l'autenticazione Google inviando il codice "
-                "di autorizzazione copiato dal browser. "
-                "Usa questo comando DOPO aver aperto il link di auth "
-                "SUL TELEFONO e aver copiato il codice 'code=' "
-                "dalla barra degli indirizzi del browser."
-            ),
-            parameters={
-                "type": "object",
-                "properties": {
-                    "provider": {"type": "string", "description": "Provider: google"},
-                    "code": {"type": "string", "description": "Codice di autorizzazione dalla barra degli indirizzi del browser"},
-                },
-                "required": ["provider", "code"],
-            },
-            handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_complete", "params": kw},
-            title="Completa collegamento",
-            method="POST",
-            path="/api/gateway/auth/complete/{provider}",
-            clients=["telegram", "ui"],
-            response_mode="oracle_natural",
-            response_prompt=(
-                "Conferma se l'autenticazione è riuscita o se il codice "
-                "non è valido. Se riuscita, indica che Calendar e Gmail "
-                "sono ora operativi."
-            ),
-            telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Avanzate"}),
-        MCPTool(
             name="gateway_auth_poll",
             description="Controlla se l'utente ha completato il flusso OAuth",
             parameters={

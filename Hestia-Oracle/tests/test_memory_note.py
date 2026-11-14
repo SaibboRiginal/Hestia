@@ -143,7 +143,9 @@ class TestMemoryNoteApi:
         tools = {t["name"]: t for t in TestClient(main_mod.app).post("/mcp", json={"method": "tools/list", "id": 1}).json()["result"]["tools"]}
         assert "external" in tools["memory_note"]["clients"] and tools["memory_note"]["method"] == "POST"
         assert tools["memory_note"]["path"] == "/api/memory/note" and "external" in tools["memory_recall"]["clients"]
-        assert "external" not in (tools["memory.save"].get("clients") or [])
+        # One door per job (2026-11-14): the old memory.save / memory.search doubles of these two are gone; the chat's
+        # own memory.save / memory.search / memory.forget stay inside the agent loop.
+        assert "memory.save" not in tools and "memory.search" not in tools
 
     def test_manifest_has_memoria_page(self, main_mod):
         m = TestClient(main_mod.app).get("/api/ui/manifest").json()

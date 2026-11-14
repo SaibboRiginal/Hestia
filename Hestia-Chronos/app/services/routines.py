@@ -62,7 +62,7 @@ TEMPLATES: list[dict] = [
      "help": "Quando ci sono annunci nuovi, i migliori con il motivo.",
      "fields": {"query": {"label": "Zona", "required": False}},
      "recurrence": "FREQ=DAILY;BYHOUR=19;BYMINUTE=0", "deliver": "hermes",
-     "precheck": {"tool": "scout_listings", "args": {"query": "{query}", "limit": 10}},
+     "precheck": {"tool": "scout.search", "args": {"query": "{query}", "limit": 10}},
      "instruction": "Tra gli annunci qui sotto indicami i 3 più adatti a me e perché, in breve."},
     {"id": "spese", "label": "Spese da rivedere", "icon": "wallet",
      "help": "Ogni domenica le spese della settimana da sistemare.",

@@ -166,27 +166,6 @@ try:
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Salute e log", "label": "Analisi"}),
         MCPTool(
-            name="system_remediate",
-            description="Invia un remediation intent ad Hephaestus",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "service": {"type": "string", "description": "Service target remediation"},
-                    "issue": {"type": "string", "description": "Issue summary"},
-                    "severity": {"type": "string", "description": "warning|error|critical"},
-                    "requested_action": {"type": "string", "description": "Requested remediation action"},
-                    "environment": {"type": "string", "description": "dev|staging|prod"},
-                    "dry_run": {"type": "boolean", "description": "Remediation in dry-run mode"},
-                    "auto_approve": {"type": "boolean", "description": "Allow policy auto-approval"},
-                },
-                "required": ["service", "issue"],
-            },
-            handler=lambda **kw: {"status": "ok", "tool": "system_remediate", "params": kw},
-            title="Ripara un servizio", method="POST", path="/api/argus/remediate",
-            clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni"}),
-        MCPTool(
             name="system_performance",
             description="Prestazioni dei moduli: memoria, processore, tempi di risposta, dimensione dei dati",
             parameters={"type": "object", "properties": {}},

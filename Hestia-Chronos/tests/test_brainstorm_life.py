@@ -132,7 +132,7 @@ class TestRoutines:
     def test_empty_precheck_stops_without_the_model(self, store):
         from services import routines
         item = routines.create(title="Case", instruction="Le migliori", recurrence="FREQ=DAILY",
-                               precheck={"tool": "scout_listings", "args": {}})
+                               precheck={"tool": "scout.search", "args": {}})
         with patch.object(routines, "_mcp") as mcp, patch.object(routines, "_ask_oracle") as ask:
             mcp.return_value.call.return_value = (True, {"items": []})
             out = routines.run(item["key"])
