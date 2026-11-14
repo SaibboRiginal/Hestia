@@ -12,6 +12,7 @@ import message_format
 import session_store
 import telegram_settings as tg_settings
 from telegram_settings import settings
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import setup_service_logging
@@ -378,7 +379,7 @@ def send_user_message(
                 err_text,
             )
             fallback_text = message_format.html_to_plain_text(
-                part) or "[contenuto non visualizzabile]"
+                part) or tr("[contenuto non visualizzabile]")
             msg = bot.send_message(
                 chat_id,
                 fallback_text,

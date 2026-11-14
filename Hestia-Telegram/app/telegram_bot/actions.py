@@ -17,6 +17,7 @@ from typing import Any
 from telegram_bot import catalog, core, inputs, store, ui, usage
 from telegram_bot.menu import model
 from telegram_bot.render import Rendered, render
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.actions")
 
@@ -78,7 +79,7 @@ def _human_problem(payload: Any) -> str:
     text = str(detail or "").strip()
     if 6 <= len(text) <= 140 and not _TECH.search(text):
         return text if text.endswith(".") else text + "."
-    return "Riprova tra poco."
+    return tr("Riprova tra poco.")
 
 
 # ── start ────────────────────────────────────────────────────────────────────
@@ -89,7 +90,7 @@ def start(chat_id, name: str, message_id: int | None = None, preset: dict | None
     tool = catalog.get(name)
     if not tool:
         from telegram_bot import nav
-        nav.place(chat_id, ui.card("Azione non disponibile", [ui.note("Questa azione non c'è più. Ecco le aree.")]),
+        nav.place(chat_id, ui.card(tr("Azione non disponibile"), [ui.note(tr("Questa azione non c'è più. Ecco le aree."))]),
                   None, message_id)
         nav.aree(chat_id)
         return
@@ -154,7 +155,7 @@ def _picker_values(chat_id, tool: catalog.Tool, f: inputs.Field) -> list[tuple[s
                 v = ", ".join(str(x) for x in v.values() if str(x).strip())
             if str(v or "").strip():
                 parts.append(str(v).strip())
-        out.append((" · ".join(parts[:2]) or f"Voce {len(out) + 1}", str(row[value_field])))
+        out.append((" · ".join(parts[:2]) or tr("Voce {0}", len(out) + 1), str(row[value_field])))
     return out
 
 
@@ -166,20 +167,20 @@ def _ask(chat_id, flow: dict, tool: catalog.Tool, f: inputs.Field, problem: str 
     lines: list[str] = []
     question = f.label + ("?" if f.kind in ("bool",) else "")
     if time_step:
-        question = f"{f.label}: a che ora?"
+        question = tr("{0}: a che ora?", f.label)
     lines.append(f"<b>{ui.esc(question)}</b>")
     if f.help and not time_step:
         lines.append(ui.esc(f.help))
     if f.kind == "file":
-        lines.append(ui.note("Mandami un vocale qui in chat." if f.media.startswith("audio")
-                             else "Mandami la foto o il file qui in chat."))
+        lines.append(ui.note(tr("Mandami un vocale qui in chat.") if f.media.startswith("audio")
+                             else tr("Mandami la foto o il file qui in chat.")))
     elif f.placeholder and not time_step:
-        lines.append(ui.note(f"Es. {f.placeholder}"))
+        lines.append(ui.note(tr("Es. {0}", f.placeholder)))
     elif f.kind == "datetime" and not time_step:
-        lines.append(ui.note("Scegli il giorno o scrivi «domani 18:30»."))
+        lines.append(ui.note(tr("Scegli il giorno o scrivi «domani 18:30».")))
     if problem:
         lines.append(f"{ui.tone_dot('warning')} {ui.esc(problem)}")
-    subtitle = f"Passo {flow['pos'] + 1} di {total}" if total > 1 else ""
+    subtitle = tr("Passo {0} di {1}", flow['pos'] + 1, total) if total > 1 else ""
 
     if time_step:
         choices = inputs.time_values()
@@ -243,20 +244,20 @@ def _confirm(chat_id, flow: dict, tool: catalog.Tool, fields: dict[str, inputs.F
     menu = _menu()
     area = _area(menu, tool)
     title = _title(menu, tool)
-    lines = _summary(fields, flow["values"]) or [ui.note("Nessun dato da aggiungere.")]
+    lines = _summary(fields, flow["values"]) or [ui.note(tr("Nessun dato da aggiungere."))]
     if tool.destructive:
-        ok_label = "Elimina" if _DELETE.search(tool.name + " " + tool.title) else title
+        ok_label = tr("Elimina") if _DELETE.search(tool.name + " " + tool.title) else title
         ok_button = ui.button(ok_label, "f:ok", style="danger")
-        lines.append(ui.note("Non si può annullare."))
+        lines.append(ui.note(tr("Non si può annullare.")))
     else:
         ok_button = ui.button(ui.CONFIRM, "f:ok", style="success")
     rows = [[ok_button, ui.button(ui.CANCEL, "f:cancel")]]
     optional = [n for n, f in fields.items() if not f.required and n not in flow["values"]]
     if optional and not flow.get("extra"):
-        rows.append([ui.button("Altri dettagli", "f:more")])
+        rows.append([ui.button(tr("Altri dettagli"), "f:more")])
     if flow["queue"]:
         rows.append([ui.button(ui.BACK, "f:back")])
-    html = ui.card(title, lines, subtitle="Confermi?", marker=area.emoji if area else "",
+    html = ui.card(title, lines, subtitle=tr("Confermi?"), marker=area.emoji if area else "",
                    crumbs=[area.label] if area else [])
     from telegram_bot import nav
     flow["message_id"] = nav.place(chat_id, html, ui.keyboard(rows), flow.get("message_id"))
@@ -270,7 +271,7 @@ def _run(chat_id, flow: dict, tool: catalog.Tool) -> None:
     title = _title(menu, tool)
     marker = area.emoji if area else ""
     if flow.get("message_id"):
-        nav.place(chat_id, ui.card(title, [ui.note("Un attimo…")], marker=marker), None, flow["message_id"])
+        nav.place(chat_id, ui.card(title, [ui.note(tr("Un attimo…"))], marker=marker), None, flow["message_id"])
     try:
         core.bot.send_chat_action(chat_id, "typing")
     except Exception:  # noqa: BLE001
@@ -280,7 +281,7 @@ def _run(chat_id, flow: dict, tool: catalog.Tool) -> None:
     rows: list = []
     if not ok:
         html = ui.error(f"Non sono riuscita: {title}", _human_problem(payload))
-        rows.append([ui.button("Riprova", "f:retry")])
+        rows.append([ui.button(tr("Riprova"), "f:retry")])
     else:
         result = payload if isinstance(payload, Rendered) else render(payload, title, marker)
         html = result.html
@@ -288,14 +289,14 @@ def _run(chat_id, flow: dict, tool: catalog.Tool) -> None:
         rows += ui.grid([tool_button(menu, a.tool, args=a.args, text=a.label, style=a.style) for a in acts])
         rows += [list(r) for r in result.rows]
         if not tool.writes and any(not f.required for f in inputs.fields(tool)):
-            rows.append([ui.button("Cambia", "f:edit")])
+            rows.append([ui.button(tr("Cambia"), "f:edit")])
         if result.image or result.images or result.document or result.files:
             _media(chat_id, result)
     back = []
     if area:
         back.append(ui.button(f"‹ {area.label}", f"n:a:{area.key}"))
     if ok and tool.writes:
-        back.append(ui.button("Di nuovo", f"t:{store.sid(tool.name)}"))
+        back.append(ui.button(tr("Di nuovo"), f"t:{store.sid(tool.name)}"))
     rows.append(back)
     nav.place(chat_id, html, ui.keyboard(rows), flow.get("message_id"), live=False,
               preview=ok and html.count("<a href") == 1)
@@ -347,7 +348,7 @@ def on_text(chat_id, text: str) -> bool:
         return False
     if flow["mode"] == "confirm":
         low = text.strip().casefold()
-        if low in ("sì", "si", "ok", "conferma", "vai", "yes"):
+        if low in (tr("sì"), "si", "ok", "conferma", "vai", "yes"):
             _run(chat_id, flow, tool)
             return True
         if low in ("no", "annulla", "lascia stare"):
@@ -361,14 +362,14 @@ def on_text(chat_id, text: str) -> bool:
         if not t:
             if _looks_like_chat(text):
                 return _offer_quit(chat_id, flow, tool, text)
-            _ask(chat_id, flow, tool, f, "Non capisco l'ora: prova «18:30».")
+            _ask(chat_id, flow, tool, f, tr("Non capisco l'ora: prova «18:30»."))
             return True
         _set_value(chat_id, flow, f, t)
         return True
     if f.kind == "file":
         if _looks_like_chat(text):
             return _offer_quit(chat_id, flow, tool, text)
-        _ask(chat_id, flow, tool, f, "Aspetto un vocale." if f.media.startswith("audio") else "Aspetto una foto o un file.")
+        _ask(chat_id, flow, tool, f, tr("Aspetto un vocale.") if f.media.startswith("audio") else tr("Aspetto una foto o un file."))
         return True
     ok, value, problem = inputs.parse(f, text)
     if not ok:
@@ -389,8 +390,8 @@ def _offer_quit(chat_id, flow: dict, tool: catalog.Tool, text: str) -> bool:
     flow["pending_text"] = text[:3000]
     store.set_flow(chat_id, flow)
     title = _title(_menu(), tool)
-    rows = [[ui.button("Sì, esci", "f:quit"), ui.button("No, continuo", "f:stay")]]
-    core.bot.send_message(chat_id, ui.card(f"Vuoi uscire da {title}?", [ui.note("Il tuo messaggio va in chat.")]),
+    rows = [[ui.button(tr("Sì, esci"), "f:quit"), ui.button(tr("No, continuo"), "f:stay")]]
+    core.bot.send_message(chat_id, ui.card(tr("Vuoi uscire da {0}?", title), [ui.note(tr("Il tuo messaggio va in chat."))]),
                           parse_mode="HTML", reply_markup=ui.keyboard(rows))
     return True
 
@@ -407,7 +408,7 @@ def on_file(chat_id, message) -> bool:
         data = core.bot.download_file(info.file_path)
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=telegram_action_file_failed action=%s error=%s", flow["tool"], exc)
-        _ask(chat_id, flow, tool, f, "Non riesco a leggere il file, riprova.")
+        _ask(chat_id, flow, tool, f, tr("Non riesco a leggere il file, riprova."))
         return True
     b64 = base64.b64encode(data).decode()
     if f.name == "blob_id":
@@ -415,7 +416,7 @@ def on_file(chat_id, message) -> bool:
             "owner_module": "chat", "content_type": mime, "data_base64": b64, "meta": {"filename": name}},
             timeout=60)
         if not ok or not isinstance(saved, dict) or not saved.get("blob_id"):
-            _ask(chat_id, flow, tool, f, "Non riesco a salvare il file, riprova tra poco.")
+            _ask(chat_id, flow, tool, f, tr("Non riesco a salvare il file, riprova tra poco."))
             return True
         value: Any = saved["blob_id"]
     else:
@@ -476,7 +477,7 @@ def cancel(chat_id, message_id: int | None = None) -> None:
     from telegram_bot import nav
     area = _area(_menu(), tool) if tool else None
     rows = [[ui.button(f"‹ {area.label}", f"n:a:{area.key}")]] if area else []
-    nav.place(chat_id, ui.note(f"Ho lasciato perdere: {title}."), ui.keyboard(rows), mid, live=False)
+    nav.place(chat_id, ui.note(tr("Ho lasciato perdere: {0}.", title)), ui.keyboard(rows), mid, live=False)
 
 
 def handle_tool(call) -> None:
@@ -500,7 +501,7 @@ def handle_flow(call) -> None:
     op = parts[1] if len(parts) > 1 else ""
     flow = store.get_flow(chat_id)
     if not flow or flow.get("kind") != "action":
-        _answer(call, "Questa azione è già chiusa")
+        _answer(call, tr("Questa azione è già chiusa"))
         from telegram_bot import nav
         nav.stale(chat_id, mid)
         return

@@ -14,6 +14,7 @@ import requests
 
 from telegram_bot import catalog, core, ui
 from telegram_bot.render import Action, Rendered
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.local_actions")
 
@@ -37,34 +38,34 @@ def _nuova(chat_id, args):
     if not ok:
         logger.info("[🔄] event=chat_history_purge_failed session=%s fallback=new_session_only", old)
     core.reset_session(str(chat_id))
-    return Rendered(ui.outcome("Nuova conversazione") + "\n" + ui.note("Ripartiamo da zero: scrivimi pure."))
+    return Rendered(ui.outcome(tr("Nuova conversazione")) + "\n" + ui.note(tr("Ripartiamo da zero: scrivimi pure.")))
 
 
 def _voce(chat_id, args, on: bool | None = None):
     from telegram_bot.services import voice_service
     value = (not voice_service.is_live(chat_id)) if on is None else on
     voice_service.set_live(chat_id, value)
-    text = ("Ai tuoi vocali rispondo anche a voce." if value
-            else "Rispondo solo in testo; sotto ogni risposta c'è «Ascolta».")
-    return Rendered(ui.card("Risposte a voce: " + ("sì" if value else "no"), [ui.esc(text)]),
-                    rows=[[ui.button("Spegni" if value else "Accendi", "n:voce")]])
+    text = (tr("Ai tuoi vocali rispondo anche a voce.") if value
+            else tr("Rispondo solo in testo; sotto ogni risposta c'è «Ascolta»."))
+    return Rendered(ui.card(tr("Risposte a voce: ") + (tr("sì") if value else "no"), [ui.esc(text)]),
+                    rows=[[ui.button(tr("Spegni") if value else tr("Accendi"), "n:voce")]])
 
 
 def _aiuto(chat_id, args):
     from telegram_bot.menu import model
     menu = model.current()
     lines = [
-        "Scrivimi come a una persona: capisco frasi, vocali, foto e file.",
-        "• <b>Oggi</b>: la tua giornata",
-        "• <b>Aree</b>: ogni cosa che so fare, divisa per argomento",
-        "• <b>Notifiche</b>: cosa aspetta una risposta",
+        tr("Scrivimi come a una persona: capisco frasi, vocali, foto e file."),
+        tr("• <b>Oggi</b>: la tua giornata"),
+        tr("• <b>Aree</b>: ogni cosa che so fare, divisa per argomento"),
+        tr("• <b>Notifiche</b>: cosa aspetta una risposta"),
         "• <b>Impostazioni</b>: chat, menu, voce",
-        ui.note("Rispondi a un mio messaggio per parlarmi proprio di quello."),
+        ui.note(tr("Rispondi a un mio messaggio per parlarmi proprio di quello.")),
     ]
     shortcuts = "\n".join(f"/{t.command} — {ui.esc(menu.label(t.name))}"
                           for t in sorted(catalog.all_tools(), key=lambda t: t.command) if t.name in menu.tool_area)
-    return Rendered(ui.card("Come si usa", lines, detail=f"<b>Scorciatoie da scrivere</b>\n{shortcuts}"),
-                    rows=[[ui.button("Aree", "n:aree"), ui.button("Impostazioni", "n:imp")]])
+    return Rendered(ui.card(tr("Come si usa"), lines, detail=tr("<b>Scorciatoie da scrivere</b>\n{0}", shortcuts)),
+                    rows=[[ui.button(tr("Aree"), "n:aree"), ui.button(tr("Impostazioni"), "n:imp")]])
 
 
 # ── WebUI access (Telegram → WebUI admin API: the one guarded exception to Hub-only) ──
@@ -86,7 +87,7 @@ def _webui(method: str, path: str) -> dict:
         return resp.json() if resp.content else {}
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=webui_admin_failed path=%s error=%s", path, exc)
-        raise ActionError("La pagina web non risponde, riprova tra poco.") from exc
+        raise ActionError(tr("La pagina web non risponde, riprova tra poco.")) from exc
 
 
 def public_webui_url() -> str:
@@ -108,31 +109,31 @@ def _webui_token(chat_id, args):
         hours = 72
     base = os.getenv("WEBUI_PUBLIC_URL", "").rstrip("/") or str(data.get("public_url") or "").rstrip("/") \
         or public_webui_url()
-    lines = [f"Valido {hours} ore; il codice precedente non vale più."]
+    lines = [tr("Valido {0} ore; il codice precedente non vale più.", hours)]
     rows = []
     if base:
-        rows.append([ui.button("Apri la pagina web", url=f"{base}?token={token}")])
+        rows.append([ui.button(tr("Apri la pagina web"), url=f"{base}?token={token}")])
     else:
-        lines.append(ui.note("Indirizzo pubblico non attivo: apri la pagina dal computer di casa."))
-    rows.append([ui.button("Copia il codice", copy=token)])
+        lines.append(ui.note(tr("Indirizzo pubblico non attivo: apri la pagina dal computer di casa.")))
+    rows.append([ui.button(tr("Copia il codice"), copy=token)])
     logger.info("event=webui_token_generated chat_id=%s", chat_id)
-    return Rendered(ui.card("Accesso alla pagina web", [ui.esc(lines[0]), *lines[1:]]), rows=rows)
+    return Rendered(ui.card(tr("Accesso alla pagina web"), [ui.esc(lines[0]), *lines[1:]]), rows=rows)
 
 
 def _webui_revoke(chat_id, args):
     _webui("POST", "revoke-token")
     logger.info("event=webui_token_revoked chat_id=%s", chat_id)
-    return Rendered(ui.outcome("Accesso revocato") + "\n" + ui.note("Per entrare di nuovo serve un codice nuovo."))
+    return Rendered(ui.outcome(tr("Accesso revocato")) + "\n" + ui.note(tr("Per entrare di nuovo serve un codice nuovo.")))
 
 
 def _webui_status(chat_id, args):
     data = _webui("GET", "token-status")
     active = bool(data.get("active"))
-    lines = [f"{ui.tone_dot('success' if active else 'warning')} {'Attivo' if active else 'Nessun accesso attivo'}"]
+    lines = [f"{ui.tone_dot('success' if active else 'warning')} {tr('Attivo') if active else tr('Nessun accesso attivo')}"]
     if active and data.get("remaining_hours") is not None:
-        lines.append(f"Scade tra {ui.esc(data.get('remaining_hours'))} ore")
-    return Rendered(ui.card("Accesso alla pagina web", lines),
-                    actions=[Action("Nuovo codice", "webui_token")] + ([Action("Revoca", "webui_revoke",
+        lines.append(tr("Scade tra {0} ore", ui.esc(data.get('remaining_hours'))))
+    return Rendered(ui.card(tr("Accesso alla pagina web"), lines),
+                    actions=[Action(tr("Nuovo codice"), "webui_token")] + ([Action(tr("Revoca"), "webui_revoke",
                                                                               style="danger")] if active else []))
 
 
@@ -141,37 +142,37 @@ def _webui_status(chat_id, args):
 def _documenti(chat_id, args):
     ok, docs = catalog.route("archive", "api/documents", query={"chat_id": str(chat_id), "limit": 20}, timeout=10)
     if not ok:
-        raise ActionError("Non riesco a leggere i documenti adesso.")
+        raise ActionError(tr("Non riesco a leggere i documenti adesso."))
     docs = docs if isinstance(docs, list) else (docs or {}).get("items", []) if isinstance(docs, dict) else []
     if not docs:
-        return Rendered(ui.card("Documenti salvati", [ui.note("Nessun documento: mandami un file per salvarlo.")]))
+        return Rendered(ui.card(tr("Documenti salvati"), [ui.note(tr("Nessun documento: mandami un file per salvarlo."))]))
     lines, actions = [], []
     for d in docs[:12]:
-        title = d.get("title") or d.get("filename") or "Documento"
+        title = d.get("title") or d.get("filename") or tr("Documento")
         meta = ["fisso" if d.get("is_permanent") else "", str(d.get("created_at") or "")[:10]]
         lines.append(ui.item(title, [m for m in meta if m]))
-        actions.append(Action(f"Elimina {ui.label(title, 14)}", "documento_elimina",
+        actions.append(Action(tr("Elimina {0}", ui.label(title, 14)), "documento_elimina",
                               {"document_id": str(d.get("document_id"))}))
         if not d.get("is_permanent"):
-            actions.append(Action(f"Tieni {ui.label(title, 14)}", "documento_fissa",
+            actions.append(Action(tr("Tieni {0}", ui.label(title, 14)), "documento_fissa",
                                   {"document_id": str(d.get("document_id"))}))
-    return Rendered(ui.card("Documenti salvati", lines, subtitle=f"{len(docs)} in memoria"), actions=actions[:12])
+    return Rendered(ui.card(tr("Documenti salvati"), lines, subtitle=f"{len(docs)} in memoria"), actions=actions[:12])
 
 
 def _documento_fissa(chat_id, args):
     doc_id = str(args.get("document_id") or "")
     ok, _ = catalog.route("archive", f"api/documents/{doc_id}/permanent", "PATCH", body={"is_permanent": True})
     if not ok:
-        raise ActionError("Non sono riuscita a tenerlo.")
-    return Rendered(ui.outcome("Lo tengo per sempre"), actions=[Action("Documenti", "documenti")])
+        raise ActionError(tr("Non sono riuscita a tenerlo."))
+    return Rendered(ui.outcome(tr("Lo tengo per sempre")), actions=[Action(tr("Documenti"), "documenti")])
 
 
 def _documento_elimina(chat_id, args):
     doc_id = str(args.get("document_id") or "")
     ok, _ = catalog.route("archive", f"api/documents/{doc_id}", "DELETE")
     if not ok:
-        raise ActionError("Non sono riuscita a eliminarlo.")
-    return Rendered(ui.outcome("Documento eliminato"), actions=[Action("Documenti", "documenti")])
+        raise ActionError(tr("Non sono riuscita a eliminarlo."))
+    return Rendered(ui.outcome(tr("Documento eliminato")), actions=[Action(tr("Documenti"), "documenti")])
 
 
 # ── quick reminder / task / alert ────────────────────────────────────────────
@@ -187,20 +188,20 @@ def _calendar_item(kind: str, args: dict) -> dict:
             "location": None, "status": "confirmed", "nag_enabled": True}
     ok, result = catalog.route("archive", "api/calendar/items", "POST", body=body)
     if not ok:
-        raise ActionError("Non sono riuscita a salvarlo, riprova tra poco.")
+        raise ActionError(tr("Non sono riuscita a salvarlo, riprova tra poco."))
     return result if isinstance(result, dict) else {}
 
 
 def _nuovo_promemoria(chat_id, args):
     _calendar_item("reminder", args)
     from telegram_bot.inputs import human_datetime
-    return Rendered(ui.outcome("Promemoria salvato") + "\n" + ui.item(
+    return Rendered(ui.outcome(tr("Promemoria salvato")) + "\n" + ui.item(
         str(args.get("title") or ""), [human_datetime(str(args.get("start_at") or ""))]))
 
 
 def _nuova_attivita(chat_id, args):
     _calendar_item("task", args)
-    return Rendered(ui.outcome("Attività salvata") + "\n" + ui.item(str(args.get("title") or "")))
+    return Rendered(ui.outcome(tr("Attività salvata")) + "\n" + ui.item(str(args.get("title") or "")))
 
 
 def _nuovo_avviso(chat_id, args):
@@ -208,17 +209,17 @@ def _nuovo_avviso(chat_id, args):
         "message": str(args.get("request") or ""), "session_id": core.get_session(str(chat_id)),
         "notify_target": str(chat_id)}, timeout=30)
     if not ok:
-        raise ActionError("Non sono riuscita a creare l'avviso, riprova tra poco.")
-    text = str((payload or {}).get("message") or "Avviso creato.") if isinstance(payload, dict) else "Avviso creato."
-    return Rendered(ui.outcome("Avviso automatico") + "\n" + ui.esc(ui.strip_emoji(text)),
-                    actions=[Action("Avvisi attivi", "notifiche_attive")])
+        raise ActionError(tr("Non sono riuscita a creare l'avviso, riprova tra poco."))
+    text = str((payload or {}).get("message") or tr("Avviso creato.")) if isinstance(payload, dict) else tr("Avviso creato.")
+    return Rendered(ui.outcome(tr("Avviso automatico")) + "\n" + ui.esc(ui.strip_emoji(text)),
+                    actions=[Action(tr("Avvisi attivi"), "notifiche_attive")])
 
 
 def _pausa_voto(chat_id, args):
     until = core.snooze_feedback(str(chat_id))
     if not until:
-        raise ActionError("Non sono riuscita, riprova tra poco.")
-    return Rendered(ui.outcome("Niente richieste di voto") + "\n" + ui.note(f"Fino al {until[:10]}."))
+        raise ActionError(tr("Non sono riuscita, riprova tra poco."))
+    return Rendered(ui.outcome(tr("Niente richieste di voto")) + "\n" + ui.note(tr("Fino al {0}.", until[:10])))
 
 
 def tools() -> list[catalog.Tool]:

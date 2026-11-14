@@ -14,6 +14,7 @@ from typing import Any
 
 from telegram_bot import ui
 from telegram_bot.inputs import human_datetime
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 MAX_CHARS = 3600
 MAX_ITEMS = 15
@@ -65,14 +66,14 @@ class Rendered:
 
 
 def _label_of(key: str) -> str:
-    return FIELD_LABELS.get(key, re.sub(r"[_.]+", " ", key).strip().capitalize())
+    return tr(FIELD_LABELS.get(key, re.sub(r"[_.]+", " ", key).strip().capitalize()))
 
 
 def value_text(value: Any, key: str = "") -> str:
     if value is None or value == "" or value == [] or value == {}:
         return ""
     if isinstance(value, bool):
-        return "Sì" if value else "No"
+        return tr("Sì") if value else "No"
     if isinstance(value, float):
         text = f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         text = text.rstrip("0").rstrip(",")
@@ -195,7 +196,7 @@ def _cap(html: str) -> str:
     if len(html) <= MAX_CHARS:
         return html
     cut = html[:MAX_CHARS].rsplit("\n", 1)[0]
-    return cut + "\n" + ui.note("… continua: chiedimelo in chat per il resto.")
+    return cut + "\n" + ui.note(tr("… continua: chiedimelo in chat per il resto."))
 
 
 def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
@@ -211,7 +212,7 @@ def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
         return Rendered(ui.card(title, [body], marker=marker))
     if isinstance(payload, list):
         if not payload:
-            return Rendered(ui.card(title, [ui.note("Niente da mostrare.")], marker=marker))
+            return Rendered(ui.card(title, [ui.note(tr("Niente da mostrare."))], marker=marker))
         return Rendered(_cap(ui.card(title, _items(payload), marker=marker)))
     if not isinstance(payload, dict):
         return Rendered(ui.card(title, [ui.esc(value_text(payload) or "Fatto.")], marker=marker))
@@ -231,7 +232,7 @@ def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
         skip.add(key)
         scalar = _fields(payload, skip)
         lines.extend(scalar[:6])
-        lines.extend(_items(rows) if rows else [ui.note("Niente da mostrare.")])
+        lines.extend(_items(rows) if rows else [ui.note(tr("Niente da mostrare."))])
     else:
         lines.extend(_fields(payload, skip))
     if not lines:

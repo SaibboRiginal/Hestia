@@ -15,6 +15,7 @@ from telegram_bot.services.notifications import handle_callback as handle_notifi
 from telegram_bot.services.notifications import answer_by_reply as answer_notification_by_reply
 from telegram_bot.services.notifications import mark_seen_on_activity as mark_notifications_seen
 from telegram_bot.services.presence import touch as presence_touch
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram")
 
@@ -66,7 +67,7 @@ def _route_callback(call) -> None:
         core.bot.answer_callback_query(call.id)
     else:
         try:
-            core.bot.answer_callback_query(call.id, "Questo menu è vecchio")
+            core.bot.answer_callback_query(call.id, tr("Questo menu è vecchio"))
         except Exception:  # noqa: BLE001
             pass
         nav.stale(call.message.chat.id, call.message.message_id)
@@ -80,7 +81,7 @@ def on_callback(call):
     except Exception as exc:  # noqa: BLE001 — a button never leaves the spinner turning
         logger.warning("event=telegram_callback_failed data=%s error=%s", call.data, exc)
         try:
-            core.bot.answer_callback_query(call.id, "Non riuscito, riprova")
+            core.bot.answer_callback_query(call.id, tr("Non riuscito, riprova"))
         except Exception:  # noqa: BLE001
             pass
 
@@ -144,7 +145,7 @@ def on_message(message):
         _end_flow_for_navigation(chat_id)
         if open_command(chat_id, name, args):
             return
-        core.bot.reply_to(message, "Non conosco questo comando. Scrivimi cosa ti serve, oppure tocca «Aree».")
+        core.bot.reply_to(message, tr("Non conosco questo comando. Scrivimi cosa ti serve, oppure tocca «Aree»."))
         return
     if actions.on_text(chat_id, text):
         return
@@ -179,7 +180,7 @@ def setup_bot_profile() -> None:
     """`/` menu (8 entries, owner's chat only, set once at boot), bot description in Italian, menu button."""
     from telebot.types import BotCommand, BotCommandScopeChat
     menu = model.current()
-    commands = [BotCommand(name, desc) for name, desc in menu.commands]
+    commands = [BotCommand(name, tr(desc)) for name, desc in menu.commands]
     owner = core.resolve_notify_target("owner")
     try:
         core.bot.set_my_commands(commands)
@@ -187,8 +188,8 @@ def setup_bot_profile() -> None:
             core.bot.set_my_commands(commands, scope=BotCommandScopeChat(int(owner)))
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=telegram_set_commands_failed error=%s", exc)
-    for call, value in ((core.bot.set_my_description, BOT_DESCRIPTION),
-                        (core.bot.set_my_short_description, BOT_SHORT_DESCRIPTION)):
+    for call, value in ((core.bot.set_my_description, tr(BOT_DESCRIPTION)),
+                        (core.bot.set_my_short_description, tr(BOT_SHORT_DESCRIPTION))):
         try:
             call(value, language_code="it")
         except Exception as exc:  # noqa: BLE001

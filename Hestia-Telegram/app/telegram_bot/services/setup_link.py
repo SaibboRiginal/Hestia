@@ -13,6 +13,7 @@ import re
 import requests
 
 from .. import core
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.setup_link")
 
@@ -35,14 +36,13 @@ def try_claim(message) -> bool:
         payload = (resp.json() or {}).get("payload") or {}
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=setup_claim_unreachable error=%s", exc)
-        core.bot.reply_to(message, "Non riesco a parlare con Hestia adesso. Riprova tra un minuto.")
+        core.bot.reply_to(message, tr("Non riesco a parlare con Hestia adesso. Riprova tra un minuto."))
         return True
     if payload.get("ok"):
         logger.info("event=setup_owner_claimed")
-        core.bot.reply_to(message, "Fatto, ti riconosco! Tra pochi secondi riparto e sono tutta tua: scrivimi "
-                                   "pure.")
+        core.bot.reply_to(message, tr("Fatto, ti riconosco! Tra pochi secondi riparto e sono tutta tua: scrivimi pure."))
     elif payload.get("reason") == "wrong_code":
-        core.bot.reply_to(message, "Il codice non è giusto. Controlla quello sullo schermo del setup.")
+        core.bot.reply_to(message, tr("Il codice non è giusto. Controlla quello sullo schermo del setup."))
     else:
-        core.bot.reply_to(message, "Nessun codice attivo: apri il setup di Hestia e chiedine uno nuovo.")
+        core.bot.reply_to(message, tr("Nessun codice attivo: apri il setup di Hestia e chiedine uno nuovo."))
     return True

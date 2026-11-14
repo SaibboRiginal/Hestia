@@ -14,6 +14,7 @@ from typing import Any
 import requests
 
 from telegram_bot import core
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.chat_queue")
 
@@ -57,7 +58,7 @@ def enqueue(chat_id, session_id: str, text: str, message_id: int | None, error: 
 def queued_text(item: dict) -> str:
     position = int(item.get("position") or 1)
     where = f" (n° {position})" if position > 1 else ""
-    return f"🟠 <b>Non disponibile</b>\n<i>Messaggio in coda{where}: ti rispondo appena possibile.</i>"
+    return tr("🟠 <b>Non disponibile</b>\n<i>Messaggio in coda{0}: ti rispondo appena possibile.</i>", where)
 
 
 def drain_async(reason: str = "") -> bool:
@@ -113,7 +114,7 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
     last = items[-1]
     chat_id = int(last["target"])
     ref = last.get("client_ref")
-    what = "al messaggio in coda" if len(items) == 1 else f"ai {len(items)} messaggi in coda"
+    what = tr("al messaggio in coda") if len(items) == 1 else f"ai {len(items)} messaggi in coda"
     try:
         status_msg = core.bot.send_message(
             chat_id, f"<i>Rispondo {what}…</i>", parse_mode="HTML",
@@ -127,11 +128,11 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
         send_oracle_questions(chat_id, str(last["session_id"]), result.signals, result.questions)
         return True, ""
     except OracleUnavailable as exc:
-        core.bot.edit_message_text("<i>Non posso ancora rispondere: resta in coda.</i>",
+        core.bot.edit_message_text(tr("<i>Non posso ancora rispondere: resta in coda.</i>"),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]
     except Exception as exc:
         logger.warning("event=chat_queue_answer_failed chat=%s error=%s", chat_id, exc)
-        core.bot.edit_message_text("🔴 <b>Non sono riuscita a rispondere</b>\nRiscrivimi tra poco.",
+        core.bot.edit_message_text(tr("🔴 <b>Non sono riuscita a rispondere</b>\nRiscrivimi tra poco."),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]

@@ -15,6 +15,7 @@ import re
 
 from telegram_bot import core, store, ui
 from telegram_bot.menu import model
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.menu_editor")
 
@@ -29,7 +30,7 @@ def _layout() -> dict:
 
 def save(layout: dict) -> bool:
     import telegram_settings as ts
-    ok = ts.settings.put(ts.MENU_LAYOUT, layout, actor="user", reason="Telegram · Impostazioni › Menu")
+    ok = ts.settings.put(ts.MENU_LAYOUT, layout, actor="user", reason=tr("Telegram · Impostazioni › Menu"))
     if ok:
         try:  # use it at once; Themis pushes the same value back
             ts.settings.apply({**ts.settings._stored, ts.MENU_LAYOUT: layout})
@@ -59,10 +60,10 @@ def root(chat_id, message_id=None) -> None:
     menu = model.current()
     rows = ui.grid([ui.button(a.button_text, f"m:a:{a.key}", icon=a.icon) for a in menu.all_areas
                     if a.sections or a.key != "altro"])
-    rows.append([ui.button("Nuova area", "m:new"), ui.button("Ripristina tutto", "m:reset")])
+    rows.append([ui.button(tr("Nuova area"), "m:new"), ui.button(tr("Ripristina tutto"), "m:reset")])
     rows.append([ui.button("‹ Impostazioni", "n:imp")])
-    lines = [ui.note("Scegli un'area per cambiare nome, emoji, ordine e azioni principali.")]
-    _place(chat_id, ui.card("Menu", lines, crumbs=["Impostazioni"]), rows, message_id)
+    lines = [ui.note(tr("Scegli un'area per cambiare nome, emoji, ordine e azioni principali."))]
+    _place(chat_id, ui.card(tr("Menu"), lines, crumbs=[tr("Impostazioni")]), rows, message_id)
 
 
 def area(chat_id, key: str, message_id=None) -> None:
@@ -70,15 +71,15 @@ def area(chat_id, key: str, message_id=None) -> None:
     a = menu.area(key)
     if not a:
         return root(chat_id, message_id)
-    lines = [f"Azioni: {len(a.names)}", "Principali: " + (", ".join(ui.esc(menu.label(n)) for n in a.primary)
+    lines = [tr("Azioni: {0}", len(a.names)), tr("Principali: ") + (", ".join(ui.esc(menu.label(n)) for n in a.primary)
                                                        or "nessuna")]
-    rows = [[ui.button("Azioni principali", f"m:p:{key}")],
-            [ui.button("Rinomina", f"m:rn:{key}"), ui.button("Emoji", f"m:em:{key}")],
-            [ui.button("Più su", f"m:ou:{key}"), ui.button("Più giù", f"m:od:{key}")],
-            [ui.button("Sposta un'azione", f"m:mv:{key}:0")],
-            [ui.button("Ripristina quest'area", f"m:ra:{key}")],
+    rows = [[ui.button(tr("Azioni principali"), f"m:p:{key}")],
+            [ui.button(tr("Rinomina"), f"m:rn:{key}"), ui.button(tr("Emoji"), f"m:em:{key}")],
+            [ui.button(tr("Più su"), f"m:ou:{key}"), ui.button(tr("Più giù"), f"m:od:{key}")],
+            [ui.button(tr("Sposta un'azione"), f"m:mv:{key}:0")],
+            [ui.button(tr("Ripristina quest'area"), f"m:ra:{key}")],
             [ui.button("‹ Menu", "m:root")]]
-    _place(chat_id, ui.card(a.label, lines, marker=a.emoji, crumbs=["Menu"]), rows, message_id)
+    _place(chat_id, ui.card(a.label, lines, marker=a.emoji, crumbs=[tr("Menu")]), rows, message_id)
 
 
 def primary(chat_id, key: str, message_id=None) -> None:
@@ -89,13 +90,13 @@ def primary(chat_id, key: str, message_id=None) -> None:
     rows = []
     for i, name in enumerate(a.primary):
         rows.append([ui.button(menu.label(name), "x:noop", limit=20), ui.button("Su", f"m:pu:{key}:{i}"),
-                     ui.button("Giù", f"m:pd:{key}:{i}"), ui.button("Togli", f"m:px:{key}:{i}")])
-    rows.append([ui.button("Aggiungi", f"m:pa:{key}:0")])
+                     ui.button(tr("Giù"), f"m:pd:{key}:{i}"), ui.button(tr("Togli"), f"m:px:{key}:{i}")])
+    rows.append([ui.button(tr("Aggiungi"), f"m:pa:{key}:0")])
     rows.append([ui.button(f"‹ {a.label}", f"m:a:{key}")])
-    lines = [ui.note("Sono i pulsanti in cima alla card dell'area, in quest'ordine.")]
+    lines = [ui.note(tr("Sono i pulsanti in cima alla card dell'area, in quest'ordine."))]
     if not a.primary:
-        lines.append(ui.note("Nessuna: aggiungine una."))
-    _place(chat_id, ui.card("Azioni principali", lines, marker=a.emoji, crumbs=["Menu", a.label]), rows,
+        lines.append(ui.note(tr("Nessuna: aggiungine una.")))
+    _place(chat_id, ui.card(tr("Azioni principali"), lines, marker=a.emoji, crumbs=[tr("Menu"), a.label]), rows,
            message_id)
 
 
@@ -104,7 +105,7 @@ def _paged(names: list[str], page: int, make, more: str, back: str) -> list:
     rows = [[make(n)] for n in chunk]
     nav_row = []
     if page > 0:
-        nav_row.append(ui.button("‹ Prima", more.format(page - 1)))
+        nav_row.append(ui.button(tr("‹ Prima"), more.format(page - 1)))
     if (page + 1) * PAGE < len(names):
         nav_row.append(ui.button(ui.MORE, more.format(page + 1)))
     if nav_row:
@@ -121,7 +122,7 @@ def add_list(chat_id, key: str, page: int, message_id=None) -> None:
     names = [n for n in a.names if n not in a.primary]
     rows = _paged(names, page, lambda n: ui.button(menu.label(n), f"m:pp:{key}:{store.sid(n)}", limit=40),
                   f"m:pa:{key}:{{}}", f"m:p:{key}")
-    _place(chat_id, ui.card("Aggiungi alle principali", [], marker=a.emoji, crumbs=["Menu", a.label]), rows,
+    _place(chat_id, ui.card(tr("Aggiungi alle principali"), [], marker=a.emoji, crumbs=[tr("Menu"), a.label]), rows,
            message_id)
 
 
@@ -132,7 +133,7 @@ def move_list(chat_id, key: str, page: int, message_id=None) -> None:
         return root(chat_id, message_id)
     rows = _paged(a.names, page, lambda n: ui.button(menu.label(n), f"m:mt:{store.sid(n)}", limit=40),
                   f"m:mv:{key}:{{}}", f"m:a:{key}")
-    _place(chat_id, ui.card("Quale azione sposto?", [], marker=a.emoji, crumbs=["Menu", a.label]), rows,
+    _place(chat_id, ui.card(tr("Quale azione sposto?"), [], marker=a.emoji, crumbs=[tr("Menu"), a.label]), rows,
            message_id)
 
 
@@ -145,17 +146,17 @@ def move_target(chat_id, short: str, message_id=None) -> None:
     rows = ui.grid([ui.button(a.button_text, f"m:mto:{short}:{a.key}") for a in menu.all_areas
                     if a.key not in (current.key, "altro")])
     rows.append([ui.button(ui.BACK, f"m:mv:{current.key}:0")])
-    _place(chat_id, ui.card(f"Dove sposto «{menu.label(name)}»?", []), rows, message_id)
+    _place(chat_id, ui.card(tr("Dove sposto «{0}»?", menu.label(name)), []), rows, message_id)
 
 
 def ask_text(chat_id, op: str, key: str, message_id=None) -> None:
     menu = model.current()
     a = menu.area(key) if key else None
-    question = {"rn": f"Nuovo nome per {a.label if a else 'l area'}?", "em": "Quale emoji? Mandamene una.",
-                "new": "Come si chiama la nuova area?"}[op]
+    question = {"rn": tr("Nuovo nome per {0}?", a.label if a else 'l area'), "em": tr("Quale emoji? Mandamene una."),
+                "new": tr("Come si chiama la nuova area?")}[op]
     store.set_flow(chat_id, {"kind": "menu", "op": op, "area": key, "message_id": message_id})
     rows = [[ui.button(ui.CANCEL, f"m:a:{key}" if key else "m:root")]]
-    _place(chat_id, ui.card(question, [ui.note("Scrivilo qui in chat.")], crumbs=["Menu"]), rows, message_id)
+    _place(chat_id, ui.card(question, [ui.note(tr("Scrivilo qui in chat."))], crumbs=[tr("Menu")]), rows, message_id)
 
 
 # ── edits ────────────────────────────────────────────────────────────────────
@@ -212,19 +213,19 @@ def on_text(chat_id, text: str) -> bool:
         emoji = "".join(ch for ch in value if ui._is_emoji_char(ch))[:8]
         if not emoji:
             _place(chat_id, ui.error("Non è un'emoji", "Manda una sola emoji."),
-                   [[ui.button("Riprova", f"m:em:{key}")]], mid)
+                   [[ui.button(tr("Riprova"), f"m:em:{key}")]], mid)
             return True
         _area_over(layout, key)["emoji"] = emoji
     elif op == "new":
         label = ui.strip_emoji(value)[:24]
         key = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:20] or "nuova"
-        _area_over(layout, key).update({"label": label or "Nuova area", "emoji": "•", "order": 800})
+        _area_over(layout, key).update({"label": label or tr("Nuova area"), "emoji": "•", "order": 800})
     if not save(layout):
         _failed(chat_id, mid, "m:root")
         return True
     if op == "new":
-        _place(chat_id, ui.card(f"Area «{label}» creata", [ui.note(
-            "Comparirà nelle Aree appena le sposti dentro un'azione.")], crumbs=["Menu"]),
+        _place(chat_id, ui.card(tr("Area «{0}» creata", label), [ui.note(
+            tr("Comparirà nelle Aree appena le sposti dentro un'azione."))], crumbs=[tr("Menu")]),
             [[ui.button("‹ Menu", "m:root")]], mid)
         return True
     area(chat_id, key, mid)
@@ -301,7 +302,7 @@ def handle(call) -> None:
             if not save({}):
                 return _failed(chat_id, mid, "m:root")
             return root(chat_id, mid)
-        return _place(chat_id, ui.card("Ripristino il menu predefinito?", [ui.note(
-            "Nomi, emoji, ordine e azioni principali tornano come all'inizio.")], crumbs=["Menu"]),
-            [[ui.button("Ripristina", "m:reset:ok", style="danger"), ui.button(ui.CANCEL, "m:root")]], mid)
+        return _place(chat_id, ui.card(tr("Ripristino il menu predefinito?"), [ui.note(
+            tr("Nomi, emoji, ordine e azioni principali tornano come all'inizio."))], crumbs=[tr("Menu")]),
+            [[ui.button(tr("Ripristina"), "m:reset:ok", style="danger"), ui.button(ui.CANCEL, "m:root")]], mid)
     return root(chat_id, mid)

@@ -3,6 +3,7 @@ from html import escape as html_escape
 from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import urlparse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 _ALLOWED_TELEGRAM_HTML_TAGS = {"b", "i", "u", "s", "code", "pre", "a", "br", "blockquote"}
@@ -137,7 +138,7 @@ def prettify_link_label(label: str, url: str) -> str:
             return f"{domain} / {' / '.join(path_parts[:2])}"
         return domain
     except Exception:
-        return "Apri link"
+        return tr("Apri link")
 
 
 def sanitize_telegram_html(text: str) -> str:

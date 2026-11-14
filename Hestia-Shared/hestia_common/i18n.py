@@ -56,3 +56,47 @@ def tool_summary(tool: str, lang: str = FALLBACK) -> str:
 def param_help(tool: str, param: str, lang: str = FALLBACK) -> str:
     params = tool_text(tool, lang).get("params")
     return str(params.get(param) or "") if isinstance(params, dict) else ""
+
+
+# ── fixed texts (catalog ``messages``: ``{italian source text: translation}``) ─────────────────────────────────
+# The Italian text in the code is the key: a language without a translation shows English when there is one,
+# else the Italian source. The language reader is registered once per process by
+# ``SettingsClient.follow_personal()``; a caller may pass ``lang`` explicitly.
+_reader: Callable[[str], Any] | None = None
+_CHAIN_TAIL = ("en",)
+
+
+def use(get: Callable[[str], Any] | None) -> None:
+    """Register the ``settings.get`` that answers ``themis.personal.language`` for this process."""
+    global _reader
+    _reader = get
+
+
+def current() -> str:
+    """The owner's language for this process (Italian when no reader is registered)."""
+    return language(_reader)
+
+
+def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
+    """``text`` (Italian source) in the owner's language; with arguments it is then ``str.format``-ed.
+
+    ``t("Ciao {name}", name=n)`` · ``t("{0} file", count)``. Never raises: a broken translation falls back to the
+    source text."""
+    source = "" if text is None else str(text)
+    code = str(lang or current())[:2]
+    out = source
+    if code != FALLBACK and source:
+        for c in dict.fromkeys((code, *_CHAIN_TAIL)):
+            hit = catalog("messages", c).get(source)
+            if isinstance(hit, str) and hit:
+                out = hit
+                break
+    if not (args or kwargs):
+        return out
+    try:
+        return out.format(*args, **kwargs)
+    except (IndexError, KeyError, ValueError):
+        try:
+            return source.format(*args, **kwargs)
+        except (IndexError, KeyError, ValueError):
+            return source

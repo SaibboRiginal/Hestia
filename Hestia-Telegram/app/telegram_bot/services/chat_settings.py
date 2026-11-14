@@ -10,6 +10,7 @@ Callback data ``set:menu`` · ``set:param:<key>`` · ``set:v:<key>:<value>`` · 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 @dataclass(frozen=True)
@@ -87,17 +88,17 @@ def panel(chat_id, message_id=None) -> None:
     from telegram_bot import nav
     from telegram_bot.services import voice_service
     st = core.get_session_settings(str(chat_id))
-    lines = [f"{ui.esc(s.label)}: <b>{ui.esc(label_of(s.key, value(st, s.key)).split(' · ')[0])}</b>"
+    lines = [f"{ui.esc(tr(s.label))}: <b>{ui.esc(tr(label_of(s.key, value(st, s.key))).split(' · ')[0])}</b>"
              for s in SETTINGS]
-    lines.append(f"Risposte a voce: <b>{'sì' if voice_service.is_live(chat_id) else 'no'}</b>")
+    lines.append(f"Risposte a voce: <b>{tr('sì') if voice_service.is_live(chat_id) else 'no'}</b>")
     custom = str(st.get("custom_prompt") or "").strip()
-    lines.append("Istruzioni personali: " + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
+    lines.append(tr("Istruzioni personali: ") + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
                                             if custom else "<i>nessuna</i>"))
     buttons = [ui.button(s.label, f"set:param:{s.key}") for s in SETTINGS]
-    buttons += [ui.button("Risposte a voce", "set:voce"), ui.button("Istruzioni personali", "set:param:custom_prompt")]
+    buttons += [ui.button(tr("Risposte a voce"), "set:voce"), ui.button(tr("Istruzioni personali"), "set:param:custom_prompt")]
     rows = ui.grid(buttons)
-    rows.append([ui.button("Ripristina", "set:reset"), ui.button("‹ Impostazioni", "n:imp")])
-    nav.place(chat_id, ui.card("Chat", lines, crumbs=["Impostazioni"]), ui.keyboard(rows), message_id)
+    rows.append([ui.button(tr("Ripristina"), "set:reset"), ui.button("‹ Impostazioni", "n:imp")])
+    nav.place(chat_id, ui.card(tr("Chat"), lines, crumbs=[tr("Impostazioni")]), ui.keyboard(rows), message_id)
 
 
 def option_view(chat_id, key: str, message_id=None) -> None:
@@ -105,9 +106,9 @@ def option_view(chat_id, key: str, message_id=None) -> None:
     from telegram_bot import nav
     s = BY_KEY[key]
     current = value(core.get_session_settings(str(chat_id)), key)
-    rows = [[ui.button(("• " if v == current else "") + lbl, f"set:v:{key}:{v}", limit=40)] for v, lbl in s.options]
+    rows = [[ui.button(("• " if v == current else "") + tr(lbl), f"set:v:{key}:{v}", limit=40)] for v, lbl in s.options]
     rows.append([ui.button(ui.BACK, "set:menu")])
-    nav.place(chat_id, ui.card(s.label, [ui.note(s.help)] if s.help else [], crumbs=["Impostazioni", "Chat"]),
+    nav.place(chat_id, ui.card(s.label, [ui.note(s.help)] if s.help else [], crumbs=[tr("Impostazioni"), tr("Chat")]),
               ui.keyboard(rows), message_id)
 
 
@@ -115,10 +116,10 @@ def ask_custom_prompt(chat_id, message_id=None) -> None:
     core, ui = _ui()
     from telegram_bot import nav, store
     store.set_flow(chat_id, {"kind": "chat_setting", "key": "custom_prompt", "message_id": message_id})
-    rows = [[ui.button("Togli le istruzioni", "set:v:custom_prompt:-")], [ui.button(ui.CANCEL, "set:menu")]]
-    nav.place(chat_id, ui.card("Istruzioni personali", [
-        "Scrivi qui in chat come vuoi che ti risponda.", ui.note("Es. dammi del tu e vai dritta al punto.")],
-        crumbs=["Impostazioni", "Chat"]), ui.keyboard(rows), message_id)
+    rows = [[ui.button(tr("Togli le istruzioni"), "set:v:custom_prompt:-")], [ui.button(ui.CANCEL, "set:menu")]]
+    nav.place(chat_id, ui.card(tr("Istruzioni personali"), [
+        tr("Scrivi qui in chat come vuoi che ti risponda."), ui.note(tr("Es. dammi del tu e vai dritta al punto."))],
+        crumbs=[tr("Impostazioni"), tr("Chat")]), ui.keyboard(rows), message_id)
 
 
 def on_text(chat_id, text: str) -> bool:
@@ -155,7 +156,7 @@ def handle(call) -> None:
             core.set_session_setting(str(chat_id), key, "")
             from telegram_bot import store
             store.clear_flow(chat_id)
-            note = "Istruzioni tolte"
+            note = tr("Istruzioni tolte")
         elif key in BY_KEY and val in dict(BY_KEY[key].options):
             core.set_session_setting(str(chat_id), key, val)
             note = label_of(key, val).split(" · ")[0]
@@ -166,7 +167,7 @@ def handle(call) -> None:
         panel(chat_id, mid)
     elif action == "reset":
         core.reset_session_settings(str(chat_id))
-        note = "Impostazioni predefinite"
+        note = tr("Impostazioni predefinite")
         panel(chat_id, mid)
     else:
         panel(chat_id, mid)
