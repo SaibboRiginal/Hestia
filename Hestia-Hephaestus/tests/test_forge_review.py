@@ -121,7 +121,7 @@ def test_reviewer_unreachable_never_blocks(monkeypatch):
 
 
 def test_review_prompt_marks_the_engine_story_as_unverified():
-    assert "autodichiarazione non verificata" in forge_review.REVIEW_PROMPT
+    assert "Unverified self-declaration" in forge_review.REVIEW_PROMPT
 
 
 def test_blocking_issues_get_one_round_of_fixes(monkeypatch, tmp_path):
@@ -134,7 +134,7 @@ def test_blocking_issues_get_one_round_of_fixes(monkeypatch, tmp_path):
     engine = _Engine("oracle")
     task = _task(forge)
     forge._review(task, tmp_path, "base", "sha1", "fatto", True, engine=engine, test_runner=None)
-    assert "revisione automatica" in engine.prompts[0] and "bug" in engine.prompts[0]
+    assert "automatic review" in engine.prompts[0] and "bug" in engine.prompts[0]
     assert task["state"] == "awaiting_review" and task["commit_sha"] == "fix-sha"
     assert task["review"]["rounds"] == 1 and task["review"]["verdict"] == "ok"
     assert "Revisione automatica" in forge.notified[-1]

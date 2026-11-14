@@ -121,7 +121,7 @@ class TestLifeCycle:
         with patch.object(life.reflection, "_ask_oracle", return_value=ORACLE_OK) as ask:
             rec = life._life_cycle("manual", "t1")
         prompt = ask.call_args[0][0]
-        assert "COLLEGAMENTO" in prompt and "Budget del mese" in prompt and "dettaglio" in prompt
+        assert "LINK:" in prompt and "Budget del mese" in prompt and "dettaglio" in prompt
         assert "Servizi" not in prompt                         # no system data in the life track
         assert rec["track"] == "vita" and rec["emitted_count"] == 1 and not sent
         obs = life._stored[0]

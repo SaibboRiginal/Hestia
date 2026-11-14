@@ -551,8 +551,8 @@ class TestStrategistParsing:
         obs = "Servizi: hub, archive\nDominio real_estate: 10 entità"
         prompt = _build_strategist_prompt(obs)
         assert obs in prompt
-        assert "AZIONE:" in prompt
-        assert "NESSUNA_AZIONE" in prompt
+        assert "ACTION:" in prompt
+        assert "NO_ACTION" in prompt
         assert "Markdown" in prompt or "markdown" in prompt.lower()
 
 
