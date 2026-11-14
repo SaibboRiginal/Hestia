@@ -26,10 +26,8 @@ from .core.service import CLIENTS, EFFECTS, POSES, Appearance
 
 API = "/api/appearance"
 kit = ModuleKit("aphrodite", port=19023, api=API, domain="appearance", title="Aspetto", store="appearance-store",
-                when_to_use="aspetto del sito: temi delle feste e delle stagioni, effetti, animaletto da compagnia",
-                manual="L'aspetto cambia da solo (compleanno, feste, stagioni): aspetto_adesso dice cosa si vede e "
-                       "perché. aspetto_scelta spegne i temi (torna lo standard) o sceglie l'animaletto. "
-                       "aspetto_animale crea un animaletto; aspetto_genera chiede le sue immagini o lo sfondo.")
+                when_to_use="site look: holiday and season themes, effects, companion pet",
+                manual="The look changes by itself (birthday, holidays, seasons): aspetto_adesso says what is shown and why. aspetto_scelta turns themes off (back to standard) or picks the pet. aspetto_animale creates a pet; aspetto_genera asks for its images or the background.")
 app = kit.app
 look = Appearance(kit.store, kit.hub, tz_name=kit.tz)
 
@@ -159,31 +157,30 @@ S, B = {"type": "string"}, {"type": "boolean"}
 CL = {"type": "string", "enum": list(CLIENTS), "description": "dove (default webui)"}
 G = "aspetto"
 kit.tools([
-    MCPTool(name="aspetto_adesso", description="Che aspetto ha adesso il sito e perché (festa, stagione, compleanno).",
+    MCPTool(name="aspetto_adesso", description="How the site looks now and why (holiday, season, birthday).",
             parameters={"type": "object", "properties": {"client": CL}}, handler=_now, title="Aspetto adesso",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto", "primary": 3}),
-    MCPTool(name="aspetto_scelta", description="Per un client: auto=false spegne i temi (aspetto standard), true li "
-            "riaccende; pet = id o nome dell'animaletto, vuoto per nessuno.",
+    MCPTool(name="aspetto_scelta", description=("For a client: auto=false turns the themes off (standard look), true turns them back on; pet = "
+                                                "id or name of the pet, empty for none."),
             parameters={"type": "object", "properties": {"client": CL, "auto": B, "pet": S}},
             handler=_choice, title="Scegli aspetto", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Aspetto", "primary": 4}),
-    MCPTool(name="aspetto_prossimi", description="I temi dei prossimi giorni (days, default 60).",
+    MCPTool(name="aspetto_prossimi", description="The themes of the next days (days, default 60).",
             parameters={"type": "object", "properties": {"days": {"type": "integer"}}},
             handler=lambda days=60: (lambda rows: {"items": rows, "display": display("Prossimi temi", items=[
                 item(r["why"], [r["date"][8:10] + "/" + r["date"][5:7]]) for r in rows[:15]])})(look.upcoming(days)),
             title="Prossimi temi", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
-    MCPTool(name="aspetto_animale", description="Crea un animaletto da compagnia (name, species, look = com'è fatto) "
-            "e ne chiede le immagini.",
+    MCPTool(name="aspetto_animale", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
             parameters={"type": "object", "properties": {"name": S, "species": S, "look": S}, "required": ["name"]},
             handler=lambda name, species="gatto", look="": _pet(name, species, look), title="Nuovo animaletto",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
-    MCPTool(name="aspetto_animali", description="Gli animaletti creati.", parameters={"type": "object", "properties": {}},
+    MCPTool(name="aspetto_animali", description="The pets created.", parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": rows, "display": display("Animaletti", items=[
                 item(p["name"], [p["species"], f"{len(p.get('images') or {})}/3 immagini"]) for p in rows],
                 lines=[] if rows else ["Nessun animaletto."])})(look.pets()),
             title="Animaletti", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
-    MCPTool(name="aspetto_genera", description="Chiedi di nuovo le immagini: target profile (sfondo) o pet; ref = "
-            "chiave del profilo o id/nome dell'animaletto.",
+    MCPTool(name="aspetto_genera", description=("Ask for the images again: target profile (background) or pet; ref = profile key or the pet's "
+                                                "id/name."),
             parameters={"type": "object", "properties": {"target": {"type": "string", "enum": ["profile", "pet"]},
                                                          "ref": S}, "required": ["target", "ref"]},
             handler=lambda target, ref: look.generate(target, look.pet(ref)["id"] if target == "pet" else ref),

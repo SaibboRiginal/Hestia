@@ -27,11 +27,8 @@ from .core.service import People
 
 API = "/api/people"
 kit = ModuleKit("hera", port=19025, api=API, domain="people", title="Persone", store="people-store",
-                when_to_use="persone importanti: compleanni, anniversari, gusti, idee regalo, quando sentirle",
-                manual="Schede delle persone (people_list, people_get): relazione, date importanti (vanno nel "
-                       "calendario con preavviso), cosa piace e non piace, idee regalo. Quando l'utente nomina un "
-                       "regalo o un gusto di una persona salvalo (people_gift_idea, people_like). people_contact "
-                       "segna che l'ha sentita.")
+                when_to_use="important people: birthdays, anniversaries, tastes, gift ideas, when to reach out",
+                manual="People cards (people_list, people_get): relationship, important dates (go to the calendar with notice), likes and dislikes, gift ideas. When the user mentions a gift or a taste of a person save it (people_gift_idea, people_like). people_contact marks that they were in touch.")
 app = kit.app
 people = People(kit.store, kit.settings.get, tz_name=kit.tz, hub=kit.hub)
 
@@ -157,49 +154,46 @@ S, I, L = {"type": "string"}, {"type": "integer"}, {"type": "array", "items": {"
 P = {"type": "string", "description": "nome o id della persona"}
 G = "persone"
 kit.tools([
-    MCPTool(name="people_list", description="Le persone importanti salvate (query = parte del nome o relazione).",
+    MCPTool(name="people_list", description="The important people saved (query = part of the name or relation).",
             parameters={"type": "object", "properties": {"query": S}}, handler=_list, title="Persone",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Persone", "primary": 1}),
-    MCPTool(name="people_get", description="Scheda di una persona: date, gusti, idee regalo, ultimo contatto.",
+    MCPTool(name="people_get", description="A person's card: dates, likes, gift ideas, last contact.",
             parameters={"type": "object", "properties": {"person": P}, "required": ["person"]}, handler=_get,
             title="Scheda persona", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Persone"}),
-    MCPTool(name="people_add", description="Aggiungi una persona. relation: partner|famiglia|amico|collega|altro; "
-            "birthday GG/MM o AAAA-MM-GG (va nel calendario con preavviso).",
+    MCPTool(name="people_add", description=("Add a person. relation: partner|famiglia|amico|collega|altro; birthday DD/MM or YYYY-MM-DD "
+                                            "(goes into the calendar with a reminder)."),
             parameters={"type": "object", "properties": {"name": S, "relation": {"type": "string", "enum": [
                 "partner", "famiglia", "amico", "collega", "altro"]}, "birthday": S, "likes": L, "notes": S,
                 "contact_every_days": I}, "required": ["name"]},
             handler=_add, title="Aggiungi persona", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Persone", "primary": 2}),
-    MCPTool(name="people_update", description="Modifica una persona; date_label + date_day aggiungono una data "
-            "(es. «Anniversario» 14/02).",
+    MCPTool(name="people_update", description="Edit a person; date_label + date_day add a date (e.g. «Anniversario» 14/02).",
             parameters={"type": "object", "properties": {"person": P, "relation": S, "birthday": S, "notes": S,
                                                          "contact_every_days": I, "date_label": S, "date_day": S},
                         "required": ["person"]},
             handler=_update, title="Modifica persona", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Persone"}),
-    MCPTool(name="people_delete", description="Elimina la scheda di una persona (e le sue date dal calendario).",
+    MCPTool(name="people_delete", description="Delete a person's card (and their dates from the calendar).",
             parameters={"type": "object", "properties": {"person": P}, "required": ["person"]},
             handler=lambda person: people.delete(person), title="Elimina persona", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Persone"}),
-    MCPTool(name="people_gift_idea", description="Salva un'idea regalo per una persona (anche detta di passaggio "
-            "in chat: «a Anna piacerebbe…»).",
+    MCPTool(name="people_gift_idea", description="Save a gift idea for a person (also said in passing in chat: «a Anna piacerebbe…»).",
             parameters={"type": "object", "properties": {"person": P, "idea": S}, "required": ["person", "idea"]},
             handler=lambda person, idea: {"saved": True, **_short(people.gift_idea(person, idea))},
             title="Idea regalo", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Regali", "primary": 3}),
-    MCPTool(name="people_like", description="Salva un gusto (o con dislike=true qualcosa che non piace).",
+    MCPTool(name="people_like", description="Save a like (or with dislike=true something they do not like).",
             parameters={"type": "object", "properties": {"person": P, "text": S, "dislike": {"type": "boolean"}},
                         "required": ["person", "text"]},
             handler=lambda person, text, dislike=False: {"saved": True, **_short(people.like(person, text, dislike))},
             title="Gusto di una persona", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Persone"}),
-    MCPTool(name="people_contact", description="Segna che l'utente ha sentito/visto una persona (note facoltative).",
+    MCPTool(name="people_contact", description="Mark that the user heard from/saw a person (optional notes).",
             parameters={"type": "object", "properties": {"person": P, "note": S}, "required": ["person"]},
             handler=lambda person, note="": {"saved": True, **_short(people.contact(person, note))},
             title="L'ho sentita", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Persone"}),
-    MCPTool(name="people_upcoming", description="Compleanni e date importanti dei prossimi giorni (days, default 30) "
-            "con le idee regalo.",
+    MCPTool(name="people_upcoming", description="Birthdays and important dates of the next days (days, default 30) with gift ideas.",
             parameters={"type": "object", "properties": {"days": I}},
             handler=lambda days=30: {"items": people.upcoming(days),
                                      "display": display("Prossime date", items=[

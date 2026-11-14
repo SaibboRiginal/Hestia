@@ -110,23 +110,21 @@ try:
     _argus_mcp_tools = [
         MCPTool(
             name="system_status",
-            description="Mostra lo stato di salute di tutti i servizi Hestia",
+            description="Show the health of all the assistant's services",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_status", "params": kw},
             title="Stato del sistema", method="GET", path="/api/argus/status",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
-                "Sii ESTREMAMENTE conciso. "
-                "Una riga introduttiva con il conteggio (es. '9/9 servizi online'). "
-                "Poi una lista puntata • con ogni servizio: ✅ nome se up, ❌ nome — motivo se down/degraded. "
-                "Se tutto funziona scrivi solo la riga introduttiva senza lista. "
-                "Nessun paragrafo aggiuntivo, nessuna conclusione."
+                ("Be VERY brief. One opening line with the count (e.g. '9/9 servizi online'). Then a bullet list "
+                 "• per service: name if up, name — reason if down/degraded. If everything works write only the "
+                 "opening line, no list. No extra paragraph, no conclusion.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Salute e log", "summary": True}),
         MCPTool(
             name="system_log",
-            description="Mostra gli errori e warning recenti dei servizi",
+            description="Show the recent errors and warnings of the services",
             parameters={
                 "type": "object",
                 "properties": {
@@ -139,57 +137,53 @@ try:
             title="Log di sistema", method="GET", path="/api/argus/logs",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
-                "Sii ESTREMAMENTE conciso. "
-                "Se non ci sono eventi: una sola frase '✅ Nessun warning recente.' "
-                "Altrimenti: una riga con il totale, poi lista puntata • per ogni problema "
-                "nel formato '• [LIVELLO] servizio — messaggio breve'. "
-                "Raggruppa per servizio se ci sono più eventi dallo stesso. "
-                "Nessun paragrafo introduttivo, nessuna conclusione."
+                ("Be VERY brief. No events: one sentence 'Nessun warning recente.' Otherwise: one line with the "
+                 "total, then a bullet • per problem as '• [LEVEL] service — short message'. Group by service "
+                 "when several come from the same one. No intro, no conclusion.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Salute e log", "label": "Log"}),
         MCPTool(
             name="system_analysis",
-            description="Esegui un'analisi completa dei servizi con AI",
+            description="Run a full AI analysis of the services",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_analysis", "params": kw},
             title="Analisi del sistema", method="POST", path="/api/argus/analyze",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Sii conciso e diretto. Struttura SEMPRE così: "
-                "1) Una riga di stato globale (es. '✅ Sistema sano' o '⚠️ X problemi rilevati'). "
-                "2) Se ci sono problemi: lista puntata • con ogni issue — servizio, sintomo, causa probabile. "
-                "3) Se necessario: lista puntata • con azioni suggerite, massimo 3. "
-                "Preferisci liste puntate a paragrafi. Nessun testo introduttivo o di chiusura. "
-                "Usa il campo 'summary' come base per l'analisi AI già elaborata."
+                ("Be brief and direct. ALWAYS this structure: 1) One line of overall state (e.g. 'Sistema sano' "
+                 "or 'X problemi rilevati'). 2) If there are problems: a bullet list • per issue — service, "
+                 "symptom, likely cause. 3) If needed: a bullet list • of suggested actions, max 3. Prefer "
+                 "bullets to paragraphs. No opening or closing text. Use the 'summary' field as the base (the AI "
+                 "analysis already done).")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Salute e log", "label": "Analisi"}),
         MCPTool(
             name="system_performance",
-            description="Prestazioni dei moduli: memoria, processore, tempi di risposta, dimensione dei dati",
+            description="Module performance: memory, CPU, response times, data size",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_performance", "params": kw},
             title="Prestazioni", method="GET", path="/api/argus/performance",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
-                "Sii conciso. Una riga di sintesi (es. 'Tutto nella norma'). Poi solo i moduli sopra o vicini ai "
-                "limiti in 'thresholds': '• nome — memoria MB · processore % · risposta ms'. Poi una riga sui "
-                "dati salvati (GB e crescita del giorno) se 'storage' c'è. Nessuna conclusione."
+                ("Be brief. One summary line (e.g. 'Tutto nella norma'). Then only the modules above or near the "
+                 "limits in 'thresholds': '• name — memory MB · CPU % · response ms'. Then one line on stored "
+                 "data (GB and growth of the day) if 'storage' is there. No conclusion.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Salute e log", "label": "Prestazioni"}),
         MCPTool(
             name="system_incidents",
-            description="Storico dei problemi e di cosa è stato fatto per ripararli (avvisi, riavvii, ricontrolli)",
+            description="History of the problems and of what was done to fix them (alerts, restarts, re-checks)",
             parameters={"type": "object", "properties": {
-                "limit": {"type": "integer", "description": "Problemi chiusi da mostrare (default 10)"}}},
+                "limit": {"type": "integer", "description": "Closed problems to show (default 10)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "system_incidents", "params": kw},
             title="Storico riparazioni", method="GET", path="/api/argus/incidents",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
-                "Sii conciso. Prima i problemi aperti, poi quelli chiusi più recenti: '• servizio — quando — "
-                "cosa è stato fatto — com'è finita'. Se non ce ne sono: una frase."
+                ("Be brief. First the open problems, then the most recent closed ones: '• service — when — what "
+                 "was done — how it ended'. If none: one sentence.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Riparazioni", "label": "Storico"}),

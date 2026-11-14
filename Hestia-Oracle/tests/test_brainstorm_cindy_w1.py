@@ -64,7 +64,7 @@ class TestLoopGuard:
 
         def ask(prompt):
             prompts.append(prompt)
-            return "Risposta con quello che ho." if "stai ripetendo" in prompt else _xml("spin", {"q": 1})
+            return "Risposta con quello che ho." if "repeating the same calls" in prompt else _xml("spin", {"q": 1})
         answer, _, log = run_agent_loop(user_message="x", history_text="", preference_facts=[], tools=[tool],
                                         ask_fn=ask)
         assert len(calls) == 4 and answer == "Risposta con quello che ho."
@@ -80,7 +80,7 @@ def test_prior_actions_are_in_the_scratchpad():
         return "Fatto."
     run_agent_loop(user_message="spesa", history_text="", preference_facts=[], tools=[tool], ask_fn=ask,
                    prior_actions=[{"tool": "finance_add", "ok": True, "result_preview": "saved id=1"}])
-    assert "GIÀ FATTO" in seen[0] and "finance_add" in seen[0] and not calls
+    assert "ALREADY DONE" in seen[0] and "finance_add" in seen[0] and not calls
 
 
 def test_agent_error_carries_the_log():

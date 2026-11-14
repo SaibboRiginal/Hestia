@@ -40,3 +40,6 @@ Page **Aspetto** (`aphrodite-look`: the look now and why, automatic themes on or
 ## Tests
 
 `Hestia-Aphrodite/tests/test_aphrodite.py` and `tests/test_webui_plugin.py` (FakeArchive with a fake image module).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

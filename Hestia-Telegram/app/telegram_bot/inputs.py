@@ -109,12 +109,16 @@ def _kind(name: str, spec: dict) -> str:
 
 def fields(tool) -> list[Field]:
     """Fields of a tool: required ones first, in schema order."""
+    from hestia_common import i18n
+    from telegram_settings import settings
+    lang = i18n.language(settings.get)
     props = tool.properties()
     required = set(tool.required())
     out: list[Field] = []
     for name, spec in props.items():
         kind = _kind(name, spec)
-        desc = str(spec.get("description") or "")
+        # the schema's description is English, for the model; people read the help of the people catalog
+        desc = i18n.param_help(getattr(tool, "name", ""), name, lang) or str(spec.get("description") or "")
         label = str(spec.get("title") or LABELS.get(name) or _short_help(desc) or _humanize(name))
         options: list[tuple[str, str]] = []
         if kind == "choice":

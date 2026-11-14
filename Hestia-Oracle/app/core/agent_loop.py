@@ -310,7 +310,7 @@ def _python_style_call(text: str) -> dict | None:
     return {"name": ".".join([func.id, *parts]), "params": params}
 
 
-ALREADY_DONE = "GIÀ FATTO in questo turno (stesso titolo): non ripeterlo, rispondi all'utente."
+ALREADY_DONE = "ALREADY DONE this turn (same title): don't repeat it, answer the user."
 _WRITE_KEY_PARAMS = ("title", "name", "titolo", "nome", "text", "fact")
 
 
@@ -340,7 +340,7 @@ def _resolve_tool_name(name: str, tool_map: dict) -> str:
     return matches[0] if len(matches) == 1 else name
 
 
-ALREADY_FAILED = "GIÀ FALLITO con gli stessi dati: non riprovarlo uguale, cambia dati o di' all'utente cosa non va."
+ALREADY_FAILED = "ALREADY FAILED with the same data: don't retry it unchanged, change the data or tell the user what is wrong."
 
 
 def _call_key(call: dict) -> tuple[str, str]:
@@ -349,8 +349,8 @@ def _call_key(call: dict) -> tuple[str, str]:
 
 # A write that failed and was never redone: the model must not tell the user it is done (bench with a real
 # model, 2026-10-30: five failed create_event calls, answer «Dentista fissato per giovedì»).
-_FAILED_WRITES_NOTE = ("AZIONI NON RIUSCITE: {titles}. Non dire che sono fatte: di' all'utente in una riga che non "
-                       "è riuscito e perché, e cosa può fare.")
+_FAILED_WRITES_NOTE = ("FAILED ACTIONS: {titles}. Don't say they are done: tell the user in one line that it "
+                       "failed and why, and what they can do.")
 
 
 def _failed_writes(tool_log: list[dict]) -> list[str]:
@@ -498,8 +498,8 @@ def run_agent_loop(
     scratchpad: list[ScratchMessage] = []
     for _done in prior_actions or []:
         scratchpad.append(ScratchMessage(
-            "tool", f"[{_done.get('tool')}] → {'✅' if _done.get('ok') else '❌'} GIÀ FATTO in questo turno da un "
-                    f"tentativo precedente, non ripeterlo: {str(_done.get('result_preview') or '')[:300]}", -1))
+            "tool", f"[{_done.get('tool')}] → {'✅' if _done.get('ok') else '❌'} ALREADY DONE this turn by an "
+                    f"earlier attempt, don't repeat it: {str(_done.get('result_preview') or '')[:300]}", -1))
     if prior_actions:
         logger.info("[🔄] event=agent_loop_resumed_after_fallback done=%d", len(prior_actions))
     from core.services.loop_guard import STOP_MESSAGE, LoopGuard
@@ -882,7 +882,7 @@ def run_agent_loop(
                                       and (result_raw.get("unchanged") or result_raw.get("already_known"))),
                     # Refused by the turn guards (turn_guards.py): the model was told why; not a failure
                     # to show the user, nothing was tried.
-                    "refused": bool(not ok and str(result_raw or "").startswith("BLOCCATO")),
+                    "refused": bool(not ok and str(result_raw or "").startswith("BLOCKED")),
                 })
 
             # (A RESULTS_DICT block used to repeat every result already in the

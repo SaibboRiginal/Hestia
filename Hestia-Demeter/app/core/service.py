@@ -109,7 +109,7 @@ class Nutrition:
         if meal.get("kcal") is not None or not self.hub:
             return {**meal, "id": mid}
         out = parse_estimate(self.hub.llm(
-            f"Pasto: {meal['text']}. Stima porzioni normali. Rispondi SOLO JSON {{\"kcal\": n, \"protein\": g}}.",
+            f"Meal: {meal['text']}. Estimate normal portions. Answer ONLY JSON {{\"kcal\": n, \"protein\": g}}.",
             use_case=ESTIMATE_USE, max_tokens=60, temperature=0))
         if not out:
             return {**meal, "id": mid}

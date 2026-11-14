@@ -394,8 +394,8 @@ class Themis:
         if not found:   # English guess, Italian labels: the personal settings are what a chat usually means
             found = sorted((d["key"] for d in self.registry.definitions(None, "") if d.get("scope") == "user"),
                            key=lambda k: ".chat." not in k)
-        tail = f" Chiavi vicine: {', '.join(found[:8])}." if found else ""
-        return f"impostazione {key} sconosciuta: cerca la chiave esatta con settings_search.{tail}"
+        tail = f" Nearby keys: {', '.join(found[:8])}." if found else ""
+        return f"unknown setting {key}: find the exact key with settings_search.{tail}"
 
     def propose(self, key: str, value: Any, *, proposer: str, reason: str = "",
                 scope: str | None = None, scope_id: str | None = None, origin: dict | None = None) -> dict:

@@ -109,27 +109,26 @@ def mcp_tools() -> list:
                        telegram_group=group, telegram={"section": section, **({"label": label} if label else {})})
 
     return [
-        tool("memory_rivedi", "«Rivedi cosa sai di me»: cerca doppioni, contraddizioni e cose vecchie nella memoria "
-             "e le propone (l'utente conferma ognuna). Non cancella niente da solo.", "POST",
+        tool("memory_rivedi", ("«Rivedi cosa sai di me»: look for duplicates, contradictions and old things in the memory and "
+                               "propose them (the user confirms each). It deletes nothing by itself."), "POST",
              "/api/athena/memory/review", "Rivedi cosa sai di me", label="Rivedi memoria"),
-        tool("memory_learning", "Cosa ha imparato l'assistente di recente (memorie aggiunte, tolte, rinforzate), con "
-             "le parole esatte dell'utente da cui viene ogni cosa.", "GET", "/api/athena/learning",
+        tool("memory_learning", ("What the assistant learned recently (memories added, removed, reinforced), with the user's "
+                                 "exact words each one comes from."), "GET", "/api/athena/learning",
              "Cosa ho imparato", params={"limit": {"type": "integer"}}, label="Cosa ho imparato",
-             prompt="Elenco breve: cosa, quando, la frase da cui viene. Niente id."),
-        tool("memory_learning_undo", "Annulla una cosa imparata (id da memory_learning).", "POST",
+             prompt="Short list: what, when, the sentence it comes from. No ids."),
+        tool("memory_learning_undo", "Undo something learned (id from memory_learning).", "POST",
              "/api/athena/learning/{entry_id}/undo", "Annulla cosa imparata", params={"entry_id": {"type": "string"}},
              required=["entry_id"]),
-        tool("memory_proposals", "Le pulizie della memoria proposte da «Rivedi cosa sai di me» che aspettano ancora "
-             "una risposta (doppioni, contraddizioni, cose vecchie).", "GET", "/api/athena/memory/proposals",
+        tool("memory_proposals", ("The memory cleanups proposed by «Rivedi cosa sai di me» still waiting for an answer "
+                                  "(duplicates, contradictions, old things)."), "GET", "/api/athena/memory/proposals",
              "Pulizie da decidere", label="Pulizie da decidere",
-             prompt="Elenco breve: cosa propone e perché. Niente id."),
-        tool("memory_proposal_apply", "Applica una pulizia proposta (id da memory_proposals): solo se l'utente dice sì.",
+             prompt="Short list: what it proposes and why. No ids."),
+        tool("memory_proposal_apply", "Apply a proposed cleanup (id from memory_proposals): only if the user says yes.",
              "POST", "/api/athena/memory/proposals/{pid}/apply", "Applica pulizia", params={"pid": {"type": "string"}},
              required=["pid"]),
-        tool("memory_proposal_dismiss", "Scarta una pulizia proposta (id da memory_proposals).", "POST",
+        tool("memory_proposal_dismiss", "Drop a proposed cleanup (id from memory_proposals).", "POST",
              "/api/athena/memory/proposals/{pid}/dismiss", "Scarta pulizia", params={"pid": {"type": "string"}},
              required=["pid"]),
-        tool("docs_check", "Controlla se la documentazione del repo segue il codice e propone le correzioni allo "
-             "sviluppo.", "POST", "/api/athena/docs/check", "Controlla i documenti", section="Sviluppo",
+        tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Controlla i documenti", section="Sviluppo",
              group="sviluppo", label="Controlla documenti"),
     ]

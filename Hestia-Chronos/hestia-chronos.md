@@ -530,3 +530,6 @@ as `/api/agenda/routines` (GET/POST), `/api/agenda/routines/templates`, `/api/ag
 MCP tools (all on Telegram through the dynamic menus): `routine_list`, `routine_templates`, `routine_create`,
 `routine_from_template`, `routine_run`, `special_list`, `special_add`, `special_remove`, `special_propose`,
 `calendar_check`, `presence_set`, `presence_clear`, `presence_history`.
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the agenda parse prompt and the routine wrapper are English; the routine instruction stays the owner's text and the answer follows its language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

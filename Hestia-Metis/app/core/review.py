@@ -37,36 +37,36 @@ STATUSES = ("accepted", "pending", "rejected", "edited")
 VERDICTS = ("keep", "fix", "drop")
 MIN_AGE = timedelta(minutes=30)      # the next turns must have had the time to signal this one
 
-RULES = """REGOLE HESTIA (assistente personale di un solo utente, italiano):
-R1 breve, diretto, italiano; niente saluti a ogni risposta.
-R2 mai dire «fatto/ho registrato/ho salvato» senza uno strumento riuscito in questo turno; mai promettere «riproverò».
-R3 un fatto si salva una volta sola: una persona (nome, parente, compleanno) va in Persone, non anche in memoria;
-   promemoria/compleanni/routine non in memoria.
-R4 una domanda o un consiglio («mi consigli…», «cosa mi metto») non è una scrittura: nessuno strumento che scrive.
-R5 usa il contesto e i risultati degli strumenti; non inventare dati; se manca un dato dillo o chiedi.
-R6 non ripetere uguale uno strumento fallito; dì che non è riuscito.
-R7 se esiste lo strumento giusto usalo invece di rispondere a memoria; stato di Hestia → strumenti di sistema.
-R8 rispetta le richieste esplicite dell'utente (formato, lunghezza, lingua)."""
+RULES = """ASSISTANT RULES (personal assistant of one user; answers in the user's language):
+R1 short, direct, in the language of the user's message; no greeting on every answer.
+R2 never say «done/logged/saved» without a tool that succeeded in this turn; never promise «I will try again».
+R3 a fact is saved once: a person (name, relative, birthday) goes to People, not also to memory;
+   reminders/birthdays/routines not in memory.
+R4 a question or an advice («mi consigli…», «cosa mi metto») is not a write: no tool that writes.
+R5 use the context and the tool results; never invent data; if a value is missing say it or ask.
+R6 do not repeat a failed tool unchanged; say it did not work.
+R7 if the right tool exists use it instead of answering from memory; the assistant's own state → system tools.
+R8 follow the user's explicit requests (format, length, language)."""
 
-PROMPT = """Sei il revisore del dataset di allenamento di Hestia. Giudica UN turno.
+PROMPT = """You review the assistant's training dataset. Judge ONE turn.
 {rules}
 
-SEGNALI del turno (voti e reazioni dell'utente): {signals}
+SIGNALS of the turn (the user's grades and reactions): {signals}
 
-TURNO
-utente: {user}
-strumenti chiamati (indice: nome, argomenti, ok, risultato):
+TURN
+user: {user}
+tools called (index: name, arguments, ok, result):
 {steps}
-risposta: {answer}
+answer: {answer}
 
-CONTESTO che il modello aveva (istruzioni e cronologia, tagliati):
+CONTEXT the model had (instructions and history, cut):
 {context}
 
-Rispondi SOLO JSON:
-{{"verdict":"keep|fix|drop","confidence":0.0-1.0,"answer":"risposta corretta (solo se fix, altrimenti vuoto)",
-"remove_steps":[indici degli strumenti sbagliati da togliere],"reasons":["R2", ...],"needs_owner":false}}
-Vincoli: non inventare risultati di strumenti non chiamati; se la correzione giusta richiede un altro strumento di
-scrittura metti needs_owner=true. I segnaposto <PERSONA_1>, <EMAIL_1>… restano identici."""
+Answer ONLY JSON:
+{{"verdict":"keep|fix|drop","confidence":0.0-1.0,"answer":"corrected answer, in the language of the user's message (only if fix, else empty)",
+"remove_steps":[indexes of the wrong tools to remove],"reasons":["R2", ...],"needs_owner":false}}
+Constraints: never invent results of tools not called; if the right fix needs another writing tool set
+needs_owner=true. The placeholders <PERSONA_1>, <EMAIL_1>… stay identical."""
 
 
 # ── masking ─────────────────────────────────────────────────────────────────
@@ -255,9 +255,9 @@ class Review:
             logger.warning("[🔄] event=review_mask_failed trace_id=%s error=%s", row["id"], exc)
             return None
         prompt = PROMPT.format(
-            rules=RULES, signals=json.dumps(m["signals"], ensure_ascii=False) or "nessuno", user=m["user"],
+            rules=RULES, signals=json.dumps(m["signals"], ensure_ascii=False) or "none", user=m["user"],
             steps="\n".join(f"{s['i']}: {s['tool']} {json.dumps(s['params'], ensure_ascii=False)} ok={s['ok']} → "
-                            f"{s['result']}" for s in m["steps"]) or "nessuno",
+                            f"{s['result']}" for s in m["steps"]) or "none",
             answer=m["answer"], context=m["context"])
         verdict = parse_verdict(self.llm(prompt, use_case=USE_CASE, max_tokens=1200, temperature=0.1), len(steps))
         if verdict is None:

@@ -57,7 +57,7 @@ def build_question(prompt: str = "", kind: str = "confirm", options: list | None
         opts = [{"value": label, "label": label} for label in labels]
     ask = {"question_id": f"ask_{uuid.uuid4().hex[:12]}", "header": _HEADERS[kind], "prompt": prompt,
            "kind": kind, "options": opts, "allow_other": bool(allow_other) or kind == "free_text"}
-    return True, {"ask": ask, "status": "asked", "note": "Domanda inviata. Fermati: la risposta arriva come prossimo messaggio."}
+    return True, {"ask": ask, "status": "asked", "note": "Question sent. Stop: the answer arrives as the next message."}
 
 
 def resume_message(entry: dict, answer: str) -> str:
@@ -70,8 +70,8 @@ def resume_message(entry: dict, answer: str) -> str:
         parts = [p.strip() for p in answer.split("\n") if p.strip()]
         answer = ", ".join(parts) if parts else answer
     if not answer:
-        return f"(Nessuna risposta alla domanda «{prompt}»: decidi tu la cosa più sicura.)"
-    return f"Risposta alla tua domanda «{prompt}»: {answer}"
+        return f"(No answer to the question «{prompt}»: choose the safest option yourself.)"
+    return f"Answer to your question «{prompt}»: {answer}"
 
 
 def expires_at(hours: int) -> str:

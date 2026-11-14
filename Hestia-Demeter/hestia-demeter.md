@@ -40,3 +40,6 @@ Pages **Alimentazione** (`demeter-today`: day by day, kcal and protein against t
 ## Tests
 
 `Hestia-Demeter/tests/test_demeter.py` and `tests/test_webui_plugin.py` (FakeArchive with a fake model answer).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the meal estimate prompt are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

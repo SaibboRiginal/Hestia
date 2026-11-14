@@ -264,6 +264,13 @@ settings.declare([
     setting(RECAP_PIECE_TIMEOUT, "Attesa per ogni area", "float", 5.0, group=_G_RECAP, min=1, max=30, unit="s",
             advanced=True, help="Quanto aspettare ogni area (allenamento, spese…) prima di fare il recap senza."),
 ]).declare_log_level()
+settings.follow_personal()      # the owner's language: texts for people written by the model
+
+
+def owner_language() -> str:
+    """The owner's language in English («Italian»…) for hidden prompts (hestia_common.identity)."""
+    from hestia_common import i18n, identity
+    return identity.LANGUAGES[i18n.language(settings.get)]
 
 
 def get_int(key: str) -> int:

@@ -570,9 +570,9 @@ class Plutus:
         if not self.llm:
             return None
         flat = re.sub(r"\s+", " ", body)[:2500]
-        prompt = ("Email PayPal. Estrai SOLO JSON {\"kind\": payment|refund|received|other, \"amount\": numero positivo, "
-                  "\"currency\": EUR|USD|..., \"merchant\": chi, \"txn_id\": id transazione o \"\"}. "
-                  f"Oggetto: {subject[:200]}\nTesto: {flat}")
+        prompt = ("PayPal email. Extract ONLY JSON {\"kind\": payment|refund|received|other, \"amount\": positive number, "
+                  "\"currency\": EUR|USD|..., \"merchant\": who, \"txn_id\": transaction id or \"\"}. "
+                  f"Subject: {subject[:200]}\nText: {flat}")
         data = _json_from(self.llm(prompt))
         if not isinstance(data, dict) or data.get("kind") not in ("payment", "refund", "received"):
             return None
@@ -589,8 +589,8 @@ class Plutus:
         if not self.llm or not merchants:
             return {}
         cats = [c for c in self.categories() if c.get("kind") != "transfer"]
-        prompt = ("Categorie spese: " + ", ".join(f"{c['id']}={c['label']}" for c in cats)
-                  + ". Per ogni esercente dai la categoria (id). SOLO JSON {\"esercente\": \"id\"}. Esercenti: "
+        prompt = ("Expense categories: " + ", ".join(f"{c['id']}={c['label']}" for c in cats)
+                  + ". Give each merchant its category (id). ONLY JSON {\"merchant\": \"id\"}. Merchants: "
                   + json.dumps(merchants[:60], ensure_ascii=False))
         data = _json_from(self.llm(prompt))
         valid = {c["id"] for c in cats}

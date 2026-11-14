@@ -31,10 +31,8 @@ from .core.service import ESTIMATE_USE, SLOTS, TIMES, Nutrition
 API = "/api/food"
 kit = ModuleKit("demeter", port=19026, api=API, domain="food", title="Alimentazione", store="food-store",
                 tags=("coach",),
-                when_to_use="alimentazione: dieta, pasti mangiati, calorie, integratori da prendere",
-                manual="Dieta (cibo_dieta: kcal e proteine al giorno, regole), pasti (cibo_pasto registra cosa ha "
-                       "mangiato; se non dice le kcal le stima l'assistente), riepilogo del giorno (cibo_oggi), "
-                       "integratori con momento della giornata (cibo_integratori, cibo_preso).")
+                when_to_use="nutrition: diet, meals eaten, calories, supplements to take",
+                manual="Diet (cibo_dieta: daily kcal and protein, rules), meals (cibo_pasto logs what was eaten; if no kcal given the assistant estimates them), day summary (cibo_oggi), supplements with time of day (cibo_integratori, cibo_preso).")
 app = kit.app
 coach = CoachClient("demeter", kit.hub_url)
 
@@ -181,36 +179,35 @@ S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 SUP = {"type": "string", "description": "id o nome dell'integratore"}
 G = "alimentazione"
 kit.tools([
-    MCPTool(name="cibo_oggi", description="Riepilogo di oggi: pasti, kcal e proteine rispetto alla dieta, integratori.",
+    MCPTool(name="cibo_oggi", description="Today's summary: meals, kcal and protein against the diet, supplements.",
             parameters={"type": "object", "properties": {"date": S}},
             handler=lambda date="": (lambda t: {**t, "display": _today_display(t)})(
                 food.day_summary(__import__("datetime").date.fromisoformat(date) if date else None)),
             title="Oggi", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Pasti", "primary": 1}),
-    MCPTool(name="cibo_pasto", description="Registra un pasto: text (cosa), slot colazione|pranzo|cena|spuntino, "
-            "kcal e protein se note (altrimenti le stima l'assistente).",
+    MCPTool(name="cibo_pasto", description=("Log a meal: text (what), slot colazione|pranzo|cena|spuntino, kcal and protein if known "
+                                            "(otherwise the assistant estimates them)."),
             parameters={"type": "object", "properties": {"text": S, "slot": {"type": "string", "enum": list(SLOTS)},
                                                          "kcal": I, "protein": I, "date": S}, "required": ["text"]},
             handler=_meal, title="Registra pasto", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Pasti", "primary": 2}),
-    MCPTool(name="cibo_pasti", description="Pasti degli ultimi giorni (days, default 7).",
+    MCPTool(name="cibo_pasti", description="Meals of the last days (days, default 7).",
             parameters={"type": "object", "properties": {"days": I}},
             handler=lambda days=7: {"items": food.meals("", days)}, title="Pasti", clients=["telegram", "ui"],
             telegram_group=G, telegram={"section": "Pasti"}),
-    MCPTool(name="cibo_pasto_elimina", description="Elimina un pasto registrato.",
+    MCPTool(name="cibo_pasto_elimina", description="Delete a logged meal.",
             parameters={"type": "object", "properties": {"meal": S}, "required": ["meal"]},
             handler=lambda meal: food.delete_meal(meal), title="Elimina pasto", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Pasti"}),
-    MCPTool(name="cibo_dieta", description="La dieta: senza argomenti la mostra; kcal, protein (g), rules (una per "
-            "riga) e notes la modificano.",
+    MCPTool(name="cibo_dieta", description=("The diet: with no arguments it shows it; kcal, protein (g), rules (one per line) and notes "
+                                            "change it."),
             parameters={"type": "object", "properties": {"kcal": I, "protein": I, "rules": S, "notes": S}},
             handler=_diet, title="Dieta", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Dieta", "primary": 3}),
-    MCPTool(name="cibo_integratori", description="Gli integratori che l'utente prende.",
+    MCPTool(name="cibo_integratori", description="The supplements the user takes.",
             parameters={"type": "object", "properties": {}}, handler=_supplements, title="Integratori",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Integratori", "primary": 4}),
-    MCPTool(name="cibo_integratore", description="Aggiungi o modifica un integratore: name, dose, time_of_day "
-            "morning|midday|afternoon|evening|any, days (0=lun..6=dom, vuoto = ogni giorno), training_days_only, "
-            "with_food, status active|paused.",
+    MCPTool(name="cibo_integratore", description=("Add or edit a supplement: name, dose, time_of_day morning|midday|afternoon|evening|any, days "
+                                                  "(0=Mon..6=Sun, empty = every day), training_days_only, with_food, status active|paused."),
             parameters={"type": "object", "properties": {
                 "supplement": SUP, "name": S, "dose": S, "time_of_day": {"type": "string", "enum": list(TIMES)},
                 "days": {"type": "array", "items": I}, "training_days_only": B, "with_food": B,
@@ -219,11 +216,11 @@ kit.tools([
                 kw, food.find_supplement(supplement)["id"] if supplement else None),
             title="Integratore", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Integratori"}),
-    MCPTool(name="cibo_preso", description="Segna preso un integratore (oggi o date).",
+    MCPTool(name="cibo_preso", description="Mark a supplement as taken (today or date).",
             parameters={"type": "object", "properties": {"supplement": SUP, "date": S}, "required": ["supplement"]},
             handler=lambda supplement, date="": food.take(supplement, date), title="Preso", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Integratori", "primary": 5}),
-    MCPTool(name="cibo_integratore_elimina", description="Elimina un integratore.",
+    MCPTool(name="cibo_integratore_elimina", description="Delete a supplement.",
             parameters={"type": "object", "properties": {"supplement": SUP}, "required": ["supplement"]},
             handler=lambda supplement: food.delete_supplement(supplement), title="Elimina integratore",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Integratori"}),

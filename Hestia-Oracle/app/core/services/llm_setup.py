@@ -375,7 +375,7 @@ def _tiny_call(provider: str, model: str) -> dict[str, Any]:
     started = time.monotonic()
     try:
         answer = UniversalAgent(role_prompt="", provider=provider, model_name=model, thinking=False,
-                                label="oracle.setup").ask("Rispondi solo con: ok")
+                                label="oracle.setup").ask("Reply only with: ok")
     except Exception as exc:
         text = str(exc)
         logger.info("[🔄] event=llm_setup_test_failed provider=%s model=%s error=%s", provider, model, text[:200])

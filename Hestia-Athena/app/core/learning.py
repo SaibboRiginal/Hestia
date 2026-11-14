@@ -19,6 +19,8 @@ from typing import Any
 
 import requests
 
+from . import athena_settings as S
+
 logger = logging.getLogger("hestia_athena.learning")
 
 _STORE = "api/athena-store/records"
@@ -134,12 +136,13 @@ class Learning:
         return out
 
     def _model_findings(self, memories: list[dict]) -> list[dict]:
-        listing = "\n".join(f"[{m['id']}] {str(m.get('fact'))[:200]} (aggiornata {str(m.get('updated_at') or m.get('created_at'))[:10]})"
+        listing = "\n".join(f"[{m['id']}] {str(m.get('fact'))[:200]} (updated {str(m.get('updated_at') or m.get('created_at'))[:10]})"
                             for m in memories[:150])
-        prompt = ("Rivedi queste memorie su una persona. Trova SOLO: contraddizioni, doppioni con parole diverse, "
-                  "cose probabilmente vecchie. Non inventare. Rispondi SOLO JSON: {\"findings\": [{\"kind\": "
-                  "\"contraddizione\"|\"doppione\"|\"vecchia\", \"keep\": id da tenere o null, \"retire\": [id da "
-                  "togliere], \"merged\": \"testo unito se doppione, altrimenti vuoto\", \"why\": \"una riga\"}]}\n\n"
+        prompt = ("Review these memories about one person. Find ONLY: contradictions, duplicates in other words, "
+                  "things probably outdated. Never invent. Answer ONLY JSON: {\"findings\": [{\"kind\": "
+                  "\"contraddizione\"|\"doppione\"|\"vecchia\", \"keep\": id to keep or null, \"retire\": [ids to "
+                  "remove], \"merged\": \"merged text if duplicate (same language as the memories), else empty\", "
+                  f"\"why\": \"one line, in {S.owner_language()}\"}}]}}\n\n"
                   + listing)
         status, payload = self._route("oracle", "POST", "api/llm/generate",
                                       {"prompt": prompt, "use_case": "athena.strategia"}, timeout=180)

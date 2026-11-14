@@ -88,13 +88,13 @@ def findings(route: Route, list_tools: Callable[[], list[dict]]) -> list[dict]:
 
 def request_text(f: dict) -> str:
     if f["missing_doc"]:
-        return f"Scrivi la documentazione mancante {f['doc']} del modulo {f['module']} seguendo il codice."
+        return f"Write the missing doc {f['doc']} of the module {f['module']} following the code."
     parts = []
     if f["tools"]:
-        parts.append("tool non descritti: " + ", ".join(f["tools"]))
+        parts.append("tools not described: " + ", ".join(f["tools"]))
     if f["settings"]:
-        parts.append("impostazioni non descritte: " + ", ".join(f["settings"]))
+        parts.append("settings not described: " + ", ".join(f["settings"]))
     if f["swagger"]:
-        parts.append("endpoint mancanti in Hestia-Swagger/swagger.yml: " + ", ".join(f["swagger"]))
-    return (f"Aggiorna la documentazione del modulo {f['module']} ({f['doc']}) perché segua il codice: "
-            + "; ".join(parts) + ". Solo documenti, nessun cambio di comportamento.")
+        parts.append("endpoints missing in Hestia-Swagger/swagger.yml: " + ", ".join(f["swagger"]))
+    return (f"Update the docs of the module {f['module']} ({f['doc']}) so they follow the code: "
+            + "; ".join(parts) + ". Docs only, no behaviour change.")

@@ -57,7 +57,7 @@ def sanitize_email_for_ai(raw_html: str) -> str:
 # ─────────────────────────────────────────────────────────────────────
 
 _EXTRACTION_SYSTEM_PROMPT = """\
-You are Hestia, an advanced real estate data extraction AI.
+You extract real estate data.
 Extract ALL property details into a STRICT JSON ARRAY.
 
 CRITICAL:

@@ -108,10 +108,10 @@ class TestConversationAuditor:
 
     def test_judge_prompt_contains_key_elements(self):
         """Judge prompt should include scoring dimensions and format."""
-        assert "stile" in _JUDGE_PROMPT
-        assert "accuratezza" in _JUDGE_PROMPT
-        assert "utilita" in _JUDGE_PROMPT
-        assert "CONVERSAZIONE DA VALUTARE" in _JUDGE_PROMPT
+        assert "style" in _JUDGE_PROMPT
+        assert "accuracy" in _JUDGE_PROMPT
+        assert "usefulness" in _JUDGE_PROMPT
+        assert "CONVERSATION TO RATE" in _JUDGE_PROMPT
         assert "{conversation_text}" in _JUDGE_PROMPT
 
     def test_submit_score_calls_archive(self, auditor):

@@ -41,10 +41,10 @@ _oracle_mcp_tools = [
     # ── Memory from external AIs (docs/work/2026-10-20-memory-note) ────────
     MCPTool(
         name="memory_note",
-        description=("Save in Hestia's long-term memory the durable facts about the user that came out of this "
-                     "conversation: preferences, constraints, decisions, personal details, plans. Send them already "
-                     "distilled, one short sentence per line, max 10 lines; never a transcript or temporary chatter. "
-                     "Facts Hestia already knows are skipped. Hestia uses them from then on in every client."),
+        description=(("Save in the assistant's long-term memory the durable facts about the user that came out of this "
+                      "conversation: preferences, constraints, decisions, personal details, plans. Send them already "
+                      "distilled, one short sentence per line, max 10 lines; never a transcript or temporary chatter. "
+                      "Facts already known are skipped. They are used from then on in every client.")),
         parameters={
             "type": "object",
             "properties": {
@@ -61,8 +61,8 @@ _oracle_mcp_tools = [
                 telegram={"section": "Note e preferenze", "primary": 1}),
     MCPTool(
         name="memory_recall",
-        description=("What Hestia already knows about the user on a topic (keywords), so your answer and Hestia's "
-                     "memory agree. Empty query = the most recent memories. Max 20 rows."),
+        description=(("What the assistant already knows about the user on a topic (keywords), so your answer and its "
+                      "memory agree. Empty query = the most recent memories. Max 20 rows.")),
         parameters={
             "type": "object",
             "properties": {
@@ -77,9 +77,9 @@ _oracle_mcp_tools = [
     # ── Hestia inside another AI (docs/work/2026-10-30-hestia-in-claude) ────
     MCPTool(
         name="assistant_profile",
-        description=("Hestia's persona, the user's tone and instructions, and what Hestia remembers about the "
-                     "user, as one block to follow when the user switches Hestia on inside another AI. Same pieces "
-                     "Hestia uses itself; `revision` changes when any of them changes."),
+        description=(("The assistant's persona, the user's tone and instructions, and what it remembers about the "
+                      "user, as one block to follow when the user switches the assistant on inside another AI. Same "
+                      "pieces the assistant uses itself; `revision` changes when any of them changes.")),
         parameters={
             "type": "object",
             "properties": {
@@ -1145,13 +1145,16 @@ async def chat_document_endpoint(
         resolved_filename = filename or file.filename or None
 
         # Infer a sensible default message per file category
-        default_message = "Analizza questo file."
+        default_message = "Analyse this file."
         if content_type.startswith("audio/") or content_type.startswith("video/"):
-            default_message = "Trascrivi e riassumi questo file audio/video."
+            default_message = "Transcribe and summarise this audio/video file."
         elif content_type.startswith("image/"):
-            default_message = "Descrivi questa immagine."
+            default_message = "Describe this image."
         elif content_type == "application/pdf":
-            default_message = "Riassumi e analizza questo documento."
+            default_message = "Summarise and analyse this document."
+        if not message.strip():  # no words from the owner: the answer follows the language setting
+            from hestia_common import identity as _identity
+            default_message += f" Answer in {_identity.LANGUAGES.get(_prompt_config.owner_language(), 'Italian')}."
 
         return StreamingResponse(
             engine.analyze_document(

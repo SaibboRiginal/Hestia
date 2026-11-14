@@ -753,80 +753,78 @@ try:
     L = {"type": "array", "items": {"type": "string"}}
     G = "guardaroba"
     _tools = [
-        MCPTool(name="wardrobe_summary", description="Guardaroba a colpo d'occhio: quanti capi/outfit, stile, in "
-                "lavanderia, dimenticati, ultimo outfit indossato, obiettivo. Usalo prima di altro per domande sul "
-                "guardaroba o sui vestiti.", parameters={"type": "object", "properties": {}}, handler=_t(_summary),
+        MCPTool(name="wardrobe_summary", description=("Wardrobe at a glance: how many garments/outfits, style, in the laundry, forgotten, last outfit "
+                                                      "worn, goal. Use it first for questions about the wardrobe or clothes."), parameters={"type": "object", "properties": {}}, handler=_t(_summary),
                 title="Riepilogo guardaroba", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Capi", "summary": True}),
-        MCPTool(name="wardrobe_search", description="Cerca capi, scarpe e accessori che possiedo (testo libero: nome, "
-                "colore, materiale, marca; filtri kind garment|shoes|accessory, season spring|summer|autumn|winter, status "
-                "active|laundry|lent|to_repair|to_donate|wishlist, not_worn_days).",
+        MCPTool(name="wardrobe_search", description=("Search the garments, shoes and accessories the user owns (free text: name, color, material, "
+                                                     "brand; filters kind garment|shoes|accessory, season spring|summer|autumn|winter, status "
+                                                     "active|laundry|lent|to_repair|to_donate|wishlist, not_worn_days)."),
                 parameters={"type": "object", "properties": {"query": S, "kind": S, "category": S, "season": S, "status": S,
                                                              "color": S, "not_worn_days": I, "limit": I}},
                 handler=_t(_search), title="Cerca nel guardaroba", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Capi", "primary": 3, "label": "Cerca"}),
-        MCPTool(name="wardrobe_piece", description="Dettaglio di un capo (per nome o id): taglia, materiali, acquisto, "
-                "outfit in cui è, quante volte segnato indossato.", parameters={"type": "object", "properties": {"piece": S},
+        MCPTool(name="wardrobe_piece", description=("Detail of a garment (by name or id): size, materials, purchase, outfits it is in, how many "
+                                                    "times marked worn."), parameters={"type": "object", "properties": {"piece": S},
                                                                                 "required": ["piece"]},
                 handler=_t(_piece), title="Dettaglio capo", clients=["ui"], telegram_visible=False, telegram_group="guardaroba",
                 telegram={"section": "Capi"}),
-        MCPTool(name="wardrobe_add", description="Aggiungi un capo che l'utente dice di avere/aver comprato. "
-                "category: chiave o nome (camicia, jeans, sneakers, giacca, orologio…). colors: nomi (blu navy, bianco). "
-                "warmth/formality 1-5 se li sai.",
+        MCPTool(name="wardrobe_add", description=("Add a garment the user says they have/bought. category: key or name (shirt, jeans, sneakers, "
+                                                  "jacket, watch…). colors: names (navy blue, white). warmth/formality 1-5 if known."),
                 parameters={"type": "object", "properties": {"name": S, "category": S, "colors": L, "brand": S, "size": S,
                                                              "seasons": L, "styles": L, "materials": L, "price": N,
                                                              "purchase_date": S, "store_name": S, "notes": S, "status": S,
                                                              "warmth": I, "formality": I}, "required": ["name", "category"]},
                 handler=_t(_add), title="Aggiungi capo", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Capi", "primary": 4}),
-        MCPTool(name="wardrobe_update", description="Modifica un capo: status (laundry = in lavanderia, active = di "
-                "nuovo nell'armadio, lent, to_repair, to_donate, donated), favorite, location o altri campi in changes.",
+        MCPTool(name="wardrobe_update", description=("Edit a garment: status (laundry = in the laundry, active = back in the wardrobe, lent, "
+                                                     "to_repair, to_donate, donated), favorite, location or other fields in changes."),
                 parameters={"type": "object", "properties": {"piece": S, "status": S, "favorite": B, "location": S,
                                                              "changes": {"type": "object"}}, "required": ["piece"]},
                 handler=_t(_edit), title="Modifica capo", method="PATCH", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Capi"}),
-        MCPTool(name="wardrobe_outfits", description="I miei outfit salvati (filtri: testo, stagione, occasione, preferiti).",
+        MCPTool(name="wardrobe_outfits", description="The user's saved outfits (filters: text, season, occasion, favourites).",
                 parameters={"type": "object", "properties": {"query": S, "season": S, "occasion": S, "favorite": B,
                                                              "limit": I}},
                 handler=_t(_outfits), title="Outfit", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Outfit", "primary": 5}),
-        MCPTool(name="wardrobe_create_outfit", description="Salva un outfit dai capi (nomi o id). Usalo quando l'utente "
-                "chiede di salvare una combinazione o ne approva una suggerita.",
+        MCPTool(name="wardrobe_create_outfit", description=("Save an outfit from garments (names or ids). Use it when the user asks to save a combination or "
+                                                            "approves a suggested one."),
                 parameters={"type": "object", "properties": {"name": S, "pieces": L, "occasions": L, "styles": L,
                                                              "favorite": B}, "required": ["pieces"]},
                 handler=_t(_create_outfit), title="Crea outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Outfit"}),
-        MCPTool(name="wardrobe_suggest", description="«Cosa mi metto»: outfit dai capi disponibili (non in "
-                "lavanderia, giusta stagione e temperatura, non messi di recente) con i motivi. occasion: work, office, "
-                "evening, date, travel, home, sport, ceremony, weekend, party. temp_c/rain: lasciali vuoti e uso la "
-                "previsione del giorno (place = luogo, vuoto = casa); mettili solo se l'utente li dice. Aggiungi tu "
-                "gusto e spiegazione.",
+        MCPTool(name="wardrobe_suggest", description=("«Cosa mi metto»: outfits from the available garments (not in the laundry, right season and "
+                                                      "temperature, not worn recently) with the reasons. occasion: work, office, evening, date, "
+                                                      "travel, home, sport, ceremony, weekend, party. temp_c/rain: leave them empty to use the day's "
+                                                      "forecast (place = place, empty = home); set them only if the user says them. Add your own taste "
+                                                      "and explanation."),
                 parameters={"type": "object", "properties": {"occasion": S, "temp_c": N, "rain": B, "date": S,
                                                              "styles": L, "count": I, "place": S}},
                 handler=_t(_suggest), title="Cosa mi metto", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Outfit", "primary": 1}),
-        MCPTool(name="wardrobe_log_worn", description="Segna cosa ho indossato (outfit per nome, oppure capi), "
-                "default oggi. Facoltativo: l'utente lo fa solo quando vuole.",
+        MCPTool(name="wardrobe_log_worn", description=("Mark what the user wore (outfit by name, or garments), default today. Optional: the user does "
+                                                       "it only when they want."),
                 parameters={"type": "object", "properties": {"outfit": S, "pieces": L, "date": S, "note": S}},
                 handler=_t(_worn), title="Indossato", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Outfit", "primary": 2}),
-        MCPTool(name="wardrobe_stats", description="Statistiche: composizione per categoria/colore/stagione, "
-                "valore, capi dimenticati, lacune; uso (più messi, costo per utilizzo) solo come indicazione.",
+        MCPTool(name="wardrobe_stats", description=("Statistics: composition by category/color/season, value, forgotten garments, gaps; use (most "
+                                                    "worn, cost per wear) only as an indication."),
                 parameters={"type": "object", "properties": {}}, handler=_t(_stats), title="Statistiche guardaroba",
                 clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Statistiche", "label": "Statistiche"}),
-        MCPTool(name="wardrobe_packing", description="Prepara una lista valigia per un viaggio (date YYYY-MM-DD, luogo, "
-                "occasione): un outfit al giorno dai capi disponibili. temp_c/rain vuoti = previsione del luogo per quei "
-                "giorni (entro 16 giorni).",
+        MCPTool(name="wardrobe_packing", description=("Prepare a packing list for a trip (dates YYYY-MM-DD, place, occasion): one outfit a day from "
+                                                      "the available garments. temp_c/rain empty = the place's forecast for those days (within 16 "
+                                                      "days)."),
                 parameters={"type": "object", "properties": {"place": S, "date_from": S, "date_to": S, "occasion": S,
                                                              "temp_c": N, "rain": B}, "required": ["date_from"]},
                 handler=_t(_packing), title="Valigia", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Viaggi"}),
-        MCPTool(name="wardrobe_delete", description="Elimina un capo o un outfit: NON elimina subito, manda all'utente "
-                "una richiesta di conferma con i pulsanti Elimina / Archivia / Tieni.",
+        MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation "
+                                                     "with the buttons Elimina / Archivia / Tieni."),
                 parameters={"type": "object", "properties": {"piece": S, "outfit": S}},
                 handler=_t(_delete), title="Elimina capo o outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
@@ -879,7 +877,7 @@ LLM_USECASES = [llm_usecase("wardrobe.foto", "Guardaroba · foto dei capi", chai
 
 
 def _registration() -> dict:
-    caps = {"when_to_use": 'vestiti, guardaroba, outfit, cosa mettersi', "manual": 'Capi del guardaroba con foto, outfit, suggerimenti in base al meteo e agli impegni.',
+    caps = {"when_to_use": "clothes, wardrobe, outfits, what to wear", "manual": "Wardrobe items with photos, outfits, suggestions based on weather and plans.",
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["wardrobe"],
             "context_endpoint": "/api/module/context", "attachment_handlers": ATTACHMENT_HANDLERS, **recap.capabilities(), **llm_capabilities(LLM_USECASES)}
     try:

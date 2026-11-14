@@ -42,3 +42,6 @@ Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by 
 `Hestia-Lares/tests/test_lares.py` (fake Home Assistant, no network).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Casa widget no longer repeats «Casa» under the frame title and calls `markEmpty()` when there is nothing to show.
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

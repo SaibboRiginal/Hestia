@@ -39,7 +39,7 @@ def as_command(tool: dict) -> dict:
         "command": name,
         "title": str(tool.get("title") or name),
         "description": str(tool.get("description") or ""),
-        "summary": for_people({"summary": meta.get("summary"), "description": tool.get("description")}),
+        "summary": for_people({"name": name, "summary": meta.get("summary"), "description": tool.get("description")}),
         "area": area["key"], "area_label": area["label"], "area_order": area["order"],
         "service": str(meta.get("service") or ""),
         "method": str(meta.get("method") or "GET"),

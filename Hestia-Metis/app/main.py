@@ -453,9 +453,9 @@ try:
                 record = {
                     "messages": [
                         {"role": "system", "content": (
-                            "Sei Hestia. Rispondi in modo diretto, concreto. "
-                            "Niente chiusure pushy, niente offerte di aiuto non richieste. "
-                            "Vai al punto e fermati."
+                            "You are the user's personal assistant. Answer directly and concretely, in the "
+                            "user's language. No pushy closings, no unrequested offers of help. "
+                            "Get to the point and stop."
                         )},
                         {"role": "user", "content": ex["user"]},
                         {"role": "assistant", "content": ex["assistant"]},
@@ -691,8 +691,8 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                "Riporta il numero di esempi raccolti, distribuzione per "
-                "dominio e per qualità. Eventuali esempi scartati. Conciso."
+                ("Report the number of examples collected, distribution by domain and quality, any examples "
+                 "dropped. Brief.")
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
@@ -744,8 +744,8 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                "Elenca i dataset disponibili con numero di esempi, "
-                "distribuzione qualità, domini coperti. Tabellare e conciso."
+                ("List the available datasets with number of examples, quality distribution, domains covered. "
+                 "Tabular and brief.")
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
@@ -779,8 +779,7 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                "Riporta i risultati del benchmark: punteggi su stile, "
-                "accuratezza, concisione. Indica il vincitore o se è pareggio."
+                "Report the benchmark results: scores on style, accuracy, brevity. Say the winner or a tie."
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
@@ -807,8 +806,7 @@ try:
                     },
                     "schedule": {
                         "type": "string", "enum": ["auto", "now", "window"],
-                        "description": "now = subito; window = nella finestra notturna dell'agenda; "
-                                       "auto = subito se lo chiede l'utente",
+                        "description": "now = at once; window = in the agenda's night window; auto = at once if the user asks",
                     },
                     "requested_by": {"type": "string", "description": "user | athena | ..."},
                 },
@@ -821,16 +819,16 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                "Conferma l'avvio del training: dataset, modello base, "
-                "nome adapter. Indica il job ID. Il training è asincrono."
+                ("Confirm the training started: dataset, base model, adapter name. Give the job ID. Training is "
+                 "asynchronous.")
             ),
             telegram_visible=True,
             telegram_group="sviluppo",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_rivedi",
-            description="Le correzioni notturne delle risposte che aspettano te prima di entrare nel dataset di "
-                        "allenamento: risposta originale, correzione, Accetta / Scarta / Correggi io.",
+            description=("The nightly corrections of answers waiting for the user before entering the training dataset: "
+                         "original answer, correction, Accetta / Scarta / Correggi io."),
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: _traces_call(_review_card),
             title="Da rivedere", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
@@ -838,12 +836,12 @@ try:
             telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_rivedi_decidi",
-            description="Decidi una correzione del dataset di allenamento: accept (va bene), reject (scarta il "
-                        "turno), edit (la risposta giusta la scrivi tu in answer).",
+            description=("Decide a correction of the training dataset: accept (fine), reject (drop the turn), edit (you "
+                         "write the right answer in answer)."),
             parameters={"type": "object", "properties": {
-                "trace_id": {"type": "string", "description": "Turno da decidere"},
+                "trace_id": {"type": "string", "description": "Turn to decide"},
                 "decision": {"type": "string", "enum": ["accept", "reject", "edit"]},
-                "answer": {"type": "string", "description": "Con edit: la risposta giusta"}},
+                "answer": {"type": "string", "description": "With edit: the right answer"}},
                 "required": ["trace_id", "decision"]},
             handler=lambda trace_id="", decision="", answer="": {
                 **_traces_call(review.decide, trace_id, decision, answer),
@@ -853,13 +851,13 @@ try:
             telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_dataset_esporta",
-            description="Esporta il dataset di allenamento (file JSONL zippati: sft, dpo, eval, scheda) da scaricare. "
-                        "in_chiaro=false (predefinito) oscura nomi delle persone, e-mail, telefoni, IBAN e "
-                        "indirizzi; in_chiaro=true lascia i dati veri.",
+            description=("Export the training dataset (zipped JSONL files: sft, dpo, eval, card) to download. "
+                         "in_chiaro=false (default) masks people's names, e-mails, phones, IBAN and addresses; "
+                         "in_chiaro=true keeps the real data."),
             parameters={"type": "object", "properties": {
-                "in_chiaro": {"type": "boolean", "description": "true = dati veri, false = oscurati (predefinito)"},
+                "in_chiaro": {"type": "boolean", "description": "true = real data, false = masked (default)"},
                 "include_unreviewed": {"type": "boolean",
-                                       "description": "true = anche i turni non ancora riletti"}},
+                                       "description": "true = also the turns not yet re-read"}},
                 "required": []},
             handler=lambda in_chiaro=False, include_unreviewed=False: _traces_call(
                 _export_card, bool(in_chiaro), bool(include_unreviewed)),
@@ -868,10 +866,10 @@ try:
             telegram={"section": "Dataset e training", "label": "Esporta"}),
         MCPTool(
             name="metis_adesso",
-            description="Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle "
-                        "prossime ore e qualche idea dell'assistente, ognuna con il perché.",
+            description=("What the user needs now: actions they usually use at this hour, those in the agenda in the next "
+                         "hours and a few ideas of the assistant, each with the reason."),
             parameters={"type": "object", "properties": {
-                "client": {"type": "string", "enum": list(CLIENTS), "description": "Dove le mostri"}},
+                "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
             handler=lambda client="telegram": _adesso_card(client),
             title="Adesso", method="GET", path="/api/metis/tools/adesso", clients=["telegram", "ui"],
@@ -879,9 +877,10 @@ try:
             telegram={"section": "Adesso", "primary": 1}),
         MCPTool(
             name="metis_scopri",
-            description="Funzioni di Hestia che non hai mai usato o quasi, con cosa fanno e un pulsante per provarle.",
+            description=("Functions of the assistant the user never or hardly used, with what they do and a button to try "
+                         "them."),
             parameters={"type": "object", "properties": {
-                "client": {"type": "string", "enum": list(CLIENTS), "description": "Dove le mostri"}},
+                "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
             handler=lambda client="telegram": _scopri_card(client),
             title="Scopri", method="GET", path="/api/metis/tools/scopri", clients=["telegram", "ui"],
@@ -916,9 +915,8 @@ _HUB_REGISTRATION_PAYLOAD = {
     "tags": SERVICE_TAGS,
     "topology_tags": SERVICE_TOPOLOGY_TAGS,
     "capabilities": {
-        "when_to_use": "cosa fare adesso, funzioni da scoprire, come migliora l'assistente (voti, dataset, training)",
-        "manual": "Adesso: metis_adesso (abitudini, agenda, idee). Scopri: metis_scopri (funzioni mai usate). "
-                  "Miglioramento: dataset dai voti, benchmark e training LoRA.",
+        "when_to_use": "what to do now, features to discover, how the assistant improves (ratings, dataset, training)",
+        "manual": "Now: metis_adesso (habits, agenda, ideas). Discover: metis_scopri (features never used). Improvement: dataset from ratings, benchmark and LoRA training.",
         "usage": "/api/metis/usage",
         "adesso": "/api/metis/adesso",
         "scopri": "/api/metis/scopri",

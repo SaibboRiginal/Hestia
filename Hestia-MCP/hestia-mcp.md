@@ -152,3 +152,7 @@ Every tool call carries the origin of the turn: external AIs are stamped `estern
 (set by Oracle from the chat's `X-Hestia-Origin`). Modules may read it; Oracle uses it to gate writes.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: `/api/mcp/ui/tools` commands carry `summary` (for people), `area`, `area_label`, `area_order`; the «Comandi» page groups by area and shows the model text only under «Istruzioni per l'assistente»; `summary` is a tool meta key.
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English
+(for the model); the `summary` of `/api/mcp/ui/tools` comes from the tool's own `summary` or the people catalog
+`hestia_common/locales/<lang>/tools.json` (by tool name), so «Comandi» and «Scopri» stay in the owner's language.

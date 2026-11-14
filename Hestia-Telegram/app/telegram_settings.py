@@ -57,6 +57,7 @@ settings.declare([
                  "nomi ed emoji. Vuoto = disposizione predefinita. Si cambia anche da Telegram: Impostazioni › Menu. "
                  "Un'azione che qui non compare resta comunque nella sua area."),
 ]).declare_log_level()
+settings.follow_personal()      # the owner's language (people texts of the tools, hestia_common.i18n)
 
 
 # ── Themis endpoints on the control server (plain http.server, no FastAPI) ──

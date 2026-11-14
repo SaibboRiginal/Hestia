@@ -289,36 +289,36 @@ try:
 
     _themis_mcp_tools = [
         MCPTool(name="settings_search",
-                description="Cerca impostazioni di Hestia (tutti i moduli) per parole: cosa fanno, valore attuale.",
+                description="Search the assistant's settings (all modules) by words: what they do, current value.",
                 parameters={"type": "object", "properties": {
-                    "query": {"type": "string", "description": "parole da cercare (es. modello codice)"},
-                    "module": {"type": "string", "description": "modulo opzionale (oracle, argus…)"},
+                    "query": {"type": "string", "description": "words to search (e.g. modello codice)"},
+                    "module": {"type": "string", "description": "optional module (oracle, argus…)"},
                     "limit": {"type": "integer"}}},
                 handler=_tool_search, title="Cerca impostazioni", method="GET",
                 path="/api/settings/search", clients=["telegram", "ui", "external"], response_mode="oracle_natural",
                 telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "Impostazioni", "primary": 5, "label": "Impostazioni"}),
         MCPTool(name="settings_get",
-                description="Dettaglio di un'impostazione: descrizione, valori ammessi, valore attuale, stato.",
+                description="Detail of a setting: description, allowed values, current value, state.",
                 parameters={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]},
                 handler=_tool_get, title="Dettaglio impostazione", method="GET",
                 path="/api/settings/key/{key}", clients=["telegram", "ui", "external"], telegram_visible=False,
                 telegram_group="sistema",
                 telegram={"section": "Impostazioni"}),
         MCPTool(name="settings_propose",
-                description="Proponi all'utente di cambiare un'impostazione. NON la applica: l'utente "
-                            "conferma o rifiuta dalla notifica. Dopo, di' all'utente che la proposta è inviata. "
-                            "key esatta: se non la sai, prima settings_search (es. tono → oracle.chat.tone).",
+                description=("Propose to the user a change of a setting. It does NOT apply it: the user confirms or refuses "
+                             "from the notification. Then tell the user the proposal was sent. Exact key: if unknown, first "
+                             "settings_search (e.g. tone → oracle.chat.tone)."),
                 parameters={"type": "object", "properties": {
-                    "key": {"type": "string"}, "value": {"description": "nuovo valore (tipo dell'impostazione)"},
-                    "reason": {"type": "string", "description": "perché, in una frase"}},
+                    "key": {"type": "string"}, "value": {"description": "new value (the setting's type)"},
+                    "reason": {"type": "string", "description": "why, in one sentence"}},
                     "required": ["key", "value"]},
                 handler=_tool_propose, title="Cambia un'impostazione", method="POST",
                 path="/api/settings/proposals", clients=["ui", "external"], telegram_visible=False,
                 telegram_group="sistema",
                 telegram={"section": "Impostazioni"}),
         MCPTool(name="settings_undo",
-                description="Proponi di annullare l'ultima modifica di un'impostazione (conferma dell'utente).",
+                description="Propose to undo the last change of a setting (the user confirms).",
                 parameters={"type": "object", "properties": {
                     "key": {"type": "string"}, "reason": {"type": "string"}}, "required": ["key"]},
                 handler=_tool_undo, title="Annulla una modifica", method="POST",
@@ -327,14 +327,14 @@ try:
                 telegram={"section": "Impostazioni"}),
         # Telegram parity (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F): proposals waiting for the owner.
         MCPTool(name="settings_proposals",
-                description="Proposte di modifica delle impostazioni in attesa della tua conferma (o tutte).",
+                description="Setting change proposals waiting for the user's confirmation (or all).",
                 parameters={"type": "object", "properties": {
                     "status": {"type": "string", "description": "pending (default) · approved · rejected · all"}}},
                 handler=lambda status="pending", **_kw: {"proposals": themis.proposals(
                     status=None if status in (None, "", "all") else status)},
                 title="Proposte in attesa", method="GET", path="/api/settings/proposals",
                 clients=["telegram", "ui", "external"], response_mode="oracle_natural",
-                response_prompt="Elenco breve: '• impostazione — valore proposto — perché'. Nessuna: una frase.",
+                response_prompt="Short list: '• setting — proposed value — why'. None: one sentence.",
                 telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Impostazioni", "label": "Proposte"}),
     ]
@@ -350,7 +350,7 @@ _REGISTRATION = {
     "name": SERVICE_NAME, "base_url": SERVICE_BASE_URL, "health_endpoint": "/health",
     "service_type": SERVICE_TYPE, "service_version": SERVICE_VERSION, "tags": SERVICE_TAGS,
     "topology_tags": SERVICE_TOPOLOGY_TAGS,
-    "capabilities": {"when_to_use": "impostazioni dell'assistente e dei moduli", "manual": "Legge le impostazioni e propone cambi: l'utente conferma ogni proposta.",
+    "capabilities": {"when_to_use": "settings of the assistant and its modules", "manual": "Reads settings and proposes changes: the user confirms each proposal.",
                      "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
                      # Assistant tools appear when the chat is about Hestia itself / its settings.
                      "module_tool_domains": ["system", "settings"],

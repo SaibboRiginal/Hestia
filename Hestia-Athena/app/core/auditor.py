@@ -28,16 +28,16 @@ logger = logging.getLogger("hestia_athena.auditor")
 AUDITOR_USE_CASE = "athena.revisione"
 
 _JUDGE_PROMPT = (
-    "Sei un valutatore di qualità per un assistente AI chiamato Hestia.\n"
-    "Valuta OGNI risposta dell'assistente qui sotto su tre dimensioni (1-5):\n"
-    "1. stile: niente chiusure pushy, niente offerte di aiuto non richieste, conciso\n"
-    "2. accuratezza: i fatti corrispondono ai dati forniti, nessuna allucinazione\n"
-    "3. utilita: risponde direttamente alla domanda dell'utente\n\n"
-    "Rispondi SOLO con un array JSON di oggetti con questa struttura:\n"
-    '{{"turn": <indice 0-based>, "style": <1-5>, "accuracy": <1-5>, '
+    "You rate the quality of a personal AI assistant.\n"
+    "Score EVERY assistant reply below on three axes (1-5):\n"
+    "1. style: no pushy closings, no unrequested offers of help, concise\n"
+    "2. accuracy: facts match the given data, no hallucination\n"
+    "3. usefulness: answers the user's question directly\n\n"
+    "Reply ONLY with a JSON array of objects shaped like:\n"
+    '{{"turn": <0-based index>, "style": <1-5>, "accuracy": <1-5>, '
     '"usefulness": <1-5>, "overall": "<excellent|good|mixed|poor|rejected>", '
-    '"notes": "<breve nota>"}}\n\n'
-    "CONVERSAZIONE DA VALUTARE:\n"
+    '"notes": "<short note>"}}\n\n'
+    "CONVERSATION TO RATE:\n"
     "{conversation_text}"
 )
 

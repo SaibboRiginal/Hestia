@@ -10,10 +10,11 @@ from datetime import datetime, timezone
 
 # Caveman style: paid every queued turn.
 INSTRUCTIONS = (
-    "MESSAGGI IN CODA: l'utente li ha scritti mentre non potevi rispondere (ora e testo sotto). Decidi tu: "
-    "argomenti diversi → rispondi a ciascuno (titoletto breve per uno); collegati → una risposta unica; "
-    "alcuni vecchi o superati dai successivi → chiedi con ask_user multi_choice quali tengo (opzioni = messaggi "
-    "brevi), poi rispondi solo a quelli. Non scartare nulla senza chiedere. Niente scuse lunghe per il ritardo.")
+    "QUEUED MESSAGES: the user wrote them while you could not answer (time and text below). You decide: "
+    "different topics → answer each (short heading each); related → one answer; "
+    "some old or overtaken by later ones → ask with ask_user multi_choice which to keep (options = short "
+    "messages), then answer only those. Drop nothing without asking. No long apologies for the delay. "
+    "Answer in the language of the messages.")
 
 
 def _when(value: str | None, now: datetime) -> str:
@@ -24,8 +25,8 @@ def _when(value: str | None, now: datetime) -> str:
     if at.tzinfo is None:
         at = at.replace(tzinfo=timezone.utc)
     minutes = int((now - at).total_seconds() // 60)
-    ago = f"{minutes} min fa" if minutes < 120 else (f"{minutes // 60} h fa" if minutes < 48 * 60
-                                                     else f"{minutes // 1440} giorni fa")
+    ago = f"{minutes} min ago" if minutes < 120 else (f"{minutes // 60} h ago" if minutes < 48 * 60
+                                                      else f"{minutes // 1440} days ago")
     return f"{at.astimezone().strftime('%d/%m %H:%M')}, {ago}"
 
 
@@ -39,11 +40,11 @@ def compose(items: list[dict], now: datetime | None = None) -> str:
                      else f"{i}. {str(item.get('text') or '').strip()}")
     if len(lines) == 1:
         return lines[0].split(") ", 1)[-1] if lines[0].startswith("1. (") else lines[0][3:]
-    return "Messaggi che ti ho scritto mentre non potevi rispondere:\n" + "\n".join(lines)
+    return "[Messages written while you could not answer]\n" + "\n".join(lines)
 
 
 def instructions(items: list[dict], client_instructions: str | None) -> str:
     extra = INSTRUCTIONS if len(items) > 1 else (
-        "MESSAGGIO IN CODA: scritto " + (_when(items[0].get("written_at"), datetime.now(timezone.utc)) or "prima")
-        + " mentre non potevi rispondere. Rispondi ora tenendo conto del tempo passato.")
+        "QUEUED MESSAGE: written " + (_when(items[0].get("written_at"), datetime.now(timezone.utc)) or "earlier")
+        + " while you could not answer. Answer now, minding the time passed.")
     return "\n\n".join(p for p in (client_instructions or "", extra) if p)

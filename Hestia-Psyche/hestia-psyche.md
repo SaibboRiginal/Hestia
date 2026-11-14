@@ -64,3 +64,6 @@ shows the quote) and «Togli». Widget «Umore» (`psyche-widget`, s/m): today's
 
 `Hestia-Psyche/tests/test_psyche.py` and `tests/test_webui_plugin.py` (FakeArchive, no network). The capture gate
 and prompt are tested in `Hestia-Oracle/tests/test_mood_capture.py`.
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

@@ -294,13 +294,13 @@ _atlas_mcp_tools = [
                 telegram={"section": "Web", "primary": 4}),
     MCPTool(
         name="atlas_ricetta",
-        description=("Usa una ricetta per un sito (passi già scritti, niente esplorazione della pagina): "
-                     "ricetta + parametri → campi estratti. Senza nome elenca le ricette disponibili."),
+        description=(("Use a recipe for a site (steps already written, no page exploration): recipe + parameters → "
+                      "extracted fields. Without a name it lists the available recipes.")),
         parameters={
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Nome della ricetta (es. duckduckgo, pagina)"},
-                "params": {"type": "object", "description": "Parametri della ricetta (es. {\"q\": \"...\"})"},
+                "name": {"type": "string", "description": "Recipe name (e.g. duckduckgo, pagina)"},
+                "params": {"type": "object", "description": "Recipe parameters (e.g. {\"q\": \"...\"})"},
             },
         },
         handler=lambda **kw: _recipe_mcp_handler(str(kw.get("name") or ""), kw.get("params") or {}),

@@ -186,21 +186,21 @@ class MemoryConsolidator:
                              existing_memories: list[dict]) -> dict | None:
         """Call Oracle LLM to extract facts, detect conflicts, identify patterns."""
         history_text = "\n".join(
-            f"{'User' if m.get('role') == 'user' else 'Hestia'}: {str(m.get('content', ''))[:300]}"
+            f"{'User' if m.get('role') == 'user' else 'Assistant'}: {str(m.get('content', ''))[:300]}"
             for m in messages[-50:]  # Last 50 messages
         )
         existing_text = "\n".join(
             f"[ID:{m.get('id')}] {m.get('fact', '')}" for m in existing_memories[:30]
-        ) or "(nessuna memoria esistente)"
+        ) or "(no existing memories)"
 
         prompt = (
-            "You are Hestia's memory consolidator. Analyze the conversation and extract "
+            "You are the assistant's memory consolidator. Analyze the conversation and extract "
             "durable facts, detect conflicts with existing memories, and identify "
             "reinforced patterns. Output ONLY valid JSON.\n\n"
             "CONVERSATION:\n{history}\n\n"
             "EXISTING MEMORIES:\n{existing}\n\n"
             "Return JSON with:\n"
-            '{{"facts": [{{"fact": "...", "quote": "parole esatte dell\'utente", "domain": "general", "confidence": 0.8}}],\n'
+            '{{"facts": [{{"fact": "...", "quote": "the user\'s exact words", "domain": "general", "confidence": 0.8}}],\n'
             ' "conflicts": [{{"old_id": 1, "new_fact": "...", "resolution": "replace_new"}}],\n'
             ' "patterns": [{{"fact": "...", "occurrences": 3, "domains": ["scout"]}}],\n'
             ' "summary": "one-line summary of what changed"}}\n\n'
@@ -209,6 +209,7 @@ class MemoryConsolidator:
             "EXACT words it comes from, copied from a User line (no quote = no fact)\n"
             "- conflicts: when new info contradicts an existing memory ID\n"
             "- patterns: facts mentioned multiple times across sessions\n"
+            "- write each fact in the language of the user's words\n"
             "- If nothing new, return empty arrays\n"
         ).format(history=history_text, existing=existing_text)
 

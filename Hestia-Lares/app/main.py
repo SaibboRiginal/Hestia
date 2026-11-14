@@ -31,10 +31,8 @@ from .core.service import COMMANDS, DOMAINS, LABELS, Home
 
 API = "/api/home"
 kit = ModuleKit("lares", port=19024, api=API, domain="home", title="Casa", store="home-store",
-                when_to_use="casa: luci, prese, tapparelle, clima, sensori, scene, chi è a casa",
-                manual="La casa (casa_stato): luci accese, temperature, porte aperte. casa_comando accende/spegne/apre "
-                       "un dispositivo per nome; casa_scena attiva una scena; casa_dispositivi elenca per tipo; "
-                       "casa_preferito salva un'azione rapida.")
+                when_to_use="home: lights, plugs, blinds, climate, sensors, scenes, who is home",
+                manual="The home (casa_stato): lights on, temperatures, open doors. casa_comando turns on/off/opens a device by name; casa_scena runs a scene; casa_dispositivi lists by type; casa_preferito saves a quick action.")
 app = kit.app
 kit.settings.declare([
     setting("lares.persona", "Tu in Home Assistant", "enum", "", group="Casa", order=0,
@@ -141,25 +139,24 @@ S, N = {"type": "string"}, {"type": "number"}
 DEV = {"type": "string", "description": "nome o entity_id del dispositivo"}
 G = "casa"
 kit.tools([
-    MCPTool(name="casa_stato", description="Com'è la casa adesso: luci accese, temperature, porte/finestre aperte, "
-            "azioni rapide.", parameters={"type": "object", "properties": {}}, handler=_status, title="Casa adesso",
+    MCPTool(name="casa_stato", description="How the house is now: lights on, temperatures, open doors/windows, quick actions.", parameters={"type": "object", "properties": {}}, handler=_status, title="Casa adesso",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Casa", "primary": 1}),
     MCPTool(name="casa_dispositivi", description="Dispositivi di un tipo (domain: " + ", ".join(DOMAINS) + ").",
             parameters={"type": "object", "properties": {"domain": {"type": "string", "enum": list(DOMAINS)},
                                                          "query": S}},
             handler=_devices, title="Dispositivi", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Casa", "primary": 2}),
-    MCPTool(name="casa_comando", description="Comanda un dispositivo: command on|off|toggle|open|close|lock|unlock; "
-            "value = luminosità % per le luci o gradi per il clima.",
+    MCPTool(name="casa_comando", description=("Command a device: command on|off|toggle|open|close|lock|unlock; value = brightness % for lights "
+                                              "or degrees for climate."),
             parameters={"type": "object", "properties": {"device": DEV, "command": {"type": "string", "enum": list(
                 COMMANDS)}, "value": N}, "required": ["device"]},
             handler=_command, title="Comanda", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Casa", "primary": 3}),
-    MCPTool(name="casa_scena", description="Attiva una scena o un'azione di Home Assistant (per nome).",
+    MCPTool(name="casa_scena", description="Run a Home Assistant scene or action (by name).",
             parameters={"type": "object", "properties": {"scene": S}, "required": ["scene"]},
             handler=lambda scene: home.scene(scene), title="Scena", method="POST", clients=["telegram", "ui"],
             telegram_group=G, telegram={"section": "Scene", "primary": 4}),
-    MCPTool(name="casa_preferito", description="Salva un'azione rapida: device, label, room, command (default toggle).",
+    MCPTool(name="casa_preferito", description="Save a quick action: device, label, room, command (default toggle).",
             parameters={"type": "object", "properties": {"device": DEV, "label": S, "room": S, "command": {
                 "type": "string", "enum": list(COMMANDS)}}, "required": ["device"]},
             handler=lambda device, label="", room="", command="toggle": (lambda f: {
@@ -167,11 +164,11 @@ kit.tools([
                 home.add_favorite(device, label, room, command)),
             title="Azione rapida", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Scene"}),
-    MCPTool(name="casa_preferito_esegui", description="Esegui un'azione rapida salvata.",
+    MCPTool(name="casa_preferito_esegui", description="Run a saved quick action.",
             parameters={"type": "object", "properties": {"favorite": S}, "required": ["favorite"]},
             handler=lambda favorite: home.run_favorite(favorite), title="Esegui azione rapida", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Scene"}),
-    MCPTool(name="casa_preferito_elimina", description="Elimina un'azione rapida.",
+    MCPTool(name="casa_preferito_elimina", description="Delete a quick action.",
             parameters={"type": "object", "properties": {"favorite": S}, "required": ["favorite"]},
             handler=lambda favorite: home.delete_favorite(favorite), title="Elimina azione rapida", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Scene"}),

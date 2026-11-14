@@ -479,12 +479,12 @@ try:
     _athena_mcp_tools = [
         MCPTool(
             name="recap_today",
-            description=("Recap della giornata: com'è andata (allenamento, routine, spese, agenda, notifiche "
-                         "aperte…) e cosa c'è dopo. 'momento': sera = oggi + domani, mattina = ieri + oggi "
-                         "(default secondo l'ora). Restituisce il testo pronto."),
+            description=(("Recap of the day: how it went (training, routines, expenses, agenda, open notifications…) and "
+                          "what comes next. 'momento': sera = today + tomorrow, mattina = yesterday + today (default by "
+                          "the hour). Returns the ready text.")),
             parameters={"type": "object", "properties": {
                 "momento": {"type": "string", "enum": ["sera", "mattina"],
-                            "description": "sera = oggi e domani; mattina = ieri e oggi"}}},
+                            "description": "sera = today and tomorrow; mattina = yesterday and today"}}},
             handler=_recap_today_handler,
             title="Recap della giornata",
             method="POST",
@@ -498,15 +498,16 @@ try:
         MCPTool(
             name="athena_thinking",
             description=(
-                "Ultimi cicli di pensiero di Athena (la parte proattiva di Hestia): cosa ha osservato, le azioni "
-                "candidate con i 5 fattori del punteggio (urgenza, utilità, novità, sicurezza, disturbo), soglia, "
-                "accettate o scartate con il motivo, e cosa ne ha fatto (inviata, Forge, proposta impostazione)."
+                ("Last thinking cycles of Athena (the assistant's proactive part): what it observed, the "
+                 "candidate actions with the 5 score factors (urgency, usefulness, novelty, confidence, "
+                 "disturbance), threshold, accepted or dropped with the reason, and what it did with them (sent, "
+                 "Forge, setting proposal).")
             ),
             parameters={
                 "type": "object",
                 "properties": {
                     "limit": {"type": "integer", "minimum": 1, "maximum": 50,
-                              "description": "Quanti cicli (default 10, più recenti prima)"},
+                              "description": "How many cycles (default 10, newest first)"},
                 },
             },
             handler=lambda limit=10, **_kw: runtime.thinking_summary(limit=int(limit or 10)),
@@ -520,21 +521,21 @@ try:
                 telegram={"section": "Assistente"}),
         MCPTool(
             name="athena_commitments",
-            description="Gli impegni presi dall'assistente (cose promesse o da seguire) ancora aperti.",
+            description="The commitments the assistant made (things promised or to follow up) still open.",
             parameters={"type": "object", "properties": {
-                "include_resolved": {"type": "boolean", "description": "Anche quelli chiusi"}}},
+                "include_resolved": {"type": "boolean", "description": "Closed ones too"}}},
             handler=lambda **kw: {"status": "ok", "tool": "athena_commitments", "params": kw},
             title="Impegni aperti",
             method="GET",
             path="/api/athena/commitments",
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
-            response_prompt="Elenco breve: cosa, da quando. Niente id.",
+            response_prompt="Short list: what, since when. No ids.",
             telegram_group="sistema",
                 telegram={"section": "Assistente"}),
         MCPTool(
             name="athena_commitment_resolve",
-            description="Chiude un impegno dell'assistente (id da athena_commitments): fatto o non serve più.",
+            description="Close a commitment of the assistant (id from athena_commitments): done or no longer needed.",
             parameters={"type": "object", "properties": {
                 "brief_id": {"type": "string"},
                 "status": {"type": "string", "enum": ["resolved", "dismissed"]},
@@ -550,16 +551,16 @@ try:
         MCPTool(
             name="athena_signals",
             description=(
-                "Segnali brevi che ogni area (allenamento, cura di sé, spese, guardaroba…) pubblica sui suoi dati, "
-                "i numeri settimanali, i collegamenti trovati tra le settimane e le osservazioni recenti della "
-                "riflessione. Utile per «com'è andata la settimana?» o «cosa noti di me?»."
+                ("Short signals each area (training, self care, expenses, wardrobe…) publishes on its data, the "
+                 "weekly numbers, links found across weeks and the recent observations of the reflection. Useful "
+                 "for «com'è andata la settimana?» or «cosa noti di me?».")
             ),
             parameters={
                 "type": "object",
                 "properties": {
-                    "domain": {"type": "string", "description": "Solo un'area (es. fitness, finance)"},
+                    "domain": {"type": "string", "description": "Only one area (e.g. fitness, finance)"},
                     "limit": {"type": "integer", "minimum": 1, "maximum": 200,
-                              "description": "Quanti segnali (default 50, i più importanti prima)"},
+                              "description": "How many signals (default 50, most important first)"},
                 },
             },
             handler=lambda domain=None, limit=50, **_kw: athena_signals(domain=domain or None,
@@ -575,10 +576,9 @@ try:
         MCPTool(
             name="athena_audit_conversation",
             description=(
-                "Run a quality audit on recent conversation turns using the "
-                "26B reasoning model. Scores style adherence, accuracy, and "
-                "usefulness for each assistant turn. Persists scores via "
-                "Archive's feedback_submit. On-demand only — no automated loop."
+                ("Run a quality audit on recent conversation turns with the reasoning model. Scores style "
+                 "adherence, accuracy and usefulness for each assistant turn. Persists scores via Archive's "
+                 "feedback_submit. On demand only — no automated loop.")
             ),
             parameters={
                 "type": "object",
@@ -603,9 +603,8 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                "Riporta i risultati dell'audit in modo chiaro: numero di "
-                "risposte valutate e distribuzione dei punteggi per stile, "
-                "accuratezza e utilità. Sii conciso."
+                ("Report the audit results clearly: number of answers graded and score distribution for style, "
+                 "accuracy and usefulness. Be brief.")
             ),
             telegram_visible=True,
             telegram_group="sistema",

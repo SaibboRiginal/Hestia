@@ -35,11 +35,8 @@ DOMAIN = "mood"
 
 kit = ModuleKit("psyche", port=19029, api=API, domain=DOMAIN, title="Umore", store="mood-store",
                 tags=("context",),
-                when_to_use="umore: come si sente l'utente, energia, stress, giornate buone e no, andamento",
-                manual="Umore (mood_today, mood_history, mood_insights): come sta l'utente nel tempo. mood_log quando "
-                       "chiede di segnare come si sente (mood 1-5, energy, stress, labels, causes). Le frasi in chat "
-                       "come «oggi sono stanco» sono già segnate da sole dopo la risposta: non chiamare mood_log per "
-                       "quelle e non dire di averle segnate. mood_delete per togliere una voce.")
+                when_to_use="mood: how the user feels, energy, stress, good and bad days, trend",
+                manual="Mood (mood_today, mood_history, mood_insights): how the user is over time. mood_log when they ask to record how they feel (mood 1-5, energy, stress, labels, causes). Chat phrases like «I'm tired today» are already recorded by themselves after the answer: don't call mood_log for those and don't say you recorded them. mood_delete to remove an entry.")
 app = kit.app
 kit.settings.declare([
     setting("psyche.capture.merge_minutes", "Unisci frasi vicine", "int", 120, group="Umore", min=0, max=720, order=0,
@@ -217,8 +214,8 @@ S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 LV = {"type": "integer", "minimum": 1, "maximum": 5}
 G = "umore"
 kit.tools([
-    MCPTool(name="mood_log", description="Segna come si sente l'utente: mood 1-5 (1 a terra, 3 così così, 5 "
-            "benissimo), energy e stress 1-5, labels, causes, note, date (AAAA-MM-GG o ieri). Solo se lo chiede.",
+    MCPTool(name="mood_log", description=("Log how the user feels: mood 1-5 (1 very low, 3 so-so, 5 great), energy and stress 1-5, labels, "
+                                          "causes, note, date (YYYY-MM-DD or ieri). Only if they ask."),
             summary="Segna come stai.",
             parameters={"type": "object", "properties": {
                 "mood": LV, "energy": LV, "stress": LV,
@@ -227,18 +224,17 @@ kit.tools([
                 "note": S, "date": S}, "required": ["mood"]},
             handler=_log, title="Come stai?", method="POST", clients=["telegram", "ui", "external"], telegram_group=G,
             telegram={"section": "Umore", "primary": 1, "label": "Come stai?"}),
-    MCPTool(name="mood_today", description="L'umore di oggi: le voci e il riassunto.", summary="L'umore di oggi.",
+    MCPTool(name="mood_today", description="Today's mood: the entries and the summary.", summary="L'umore di oggi.",
             parameters={"type": "object", "properties": {}}, handler=_today, title="Umore di oggi",
             clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Umore", "primary": 2}),
-    MCPTool(name="mood_history", description="L'umore degli ultimi giorni (days, default 30): un riassunto per "
-            "giorno, medie, giorni buoni e no.", summary="Com'è andato l'umore negli ultimi giorni.",
+    MCPTool(name="mood_history", description="Mood of the last days (days, default 30): a summary per day, averages, good and bad days.", summary="Com'è andato l'umore negli ultimi giorni.",
             parameters={"type": "object", "properties": {"days": I}}, handler=_history, title="Storico umore",
             clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Umore", "primary": 3}),
-    MCPTool(name="mood_insights", description="Andamento dell'umore in frasi semplici: media, confronto col mese "
-            "prima, giorno della settimana, parole e cause più frequenti.", summary="L'andamento in poche frasi.",
+    MCPTool(name="mood_insights", description=("Mood trend in plain sentences: average, compared with the month before, weekday, most frequent "
+                                               "words and causes."), summary="L'andamento in poche frasi.",
             parameters={"type": "object", "properties": {}}, handler=_insights, title="Andamento",
             clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Umore", "primary": 4}),
-    MCPTool(name="mood_delete", description="Togli una voce dell'umore (id) o l'ultima di oggi (last=true).",
+    MCPTool(name="mood_delete", description="Remove a mood entry (id) or today's last one (last=true).",
             summary="Togli una voce dell'umore.",
             parameters={"type": "object", "properties": {"id": S, "last": B}}, handler=_delete,
             title="Togli voce", method="POST", clients=["telegram", "ui", "external"], telegram_group=G,

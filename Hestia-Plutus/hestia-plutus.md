@@ -151,3 +151,6 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Counts through the SDK `plural()` («1 movimento»).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the PayPal, category and statement prompts are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

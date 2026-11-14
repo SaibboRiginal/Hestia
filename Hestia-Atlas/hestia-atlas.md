@@ -100,3 +100,6 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   `event=atlas_recipe_broken` (WARNING): Argus alerts on it and, when it repeats, proposes the fix to Forge.
 - Shipped: `duckduckgo` (q → titles, links, snippets), `pagina` (url → title, description, headings, text).
 
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

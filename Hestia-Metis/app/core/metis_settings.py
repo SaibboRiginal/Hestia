@@ -50,6 +50,7 @@ settings.declare([
     setting(REVIEW_BATCH, "Risposte rilette per notte", "int", 30, group=_GROUP, min=1, max=500, order=6,
             advanced=True, help="Quante risposte il revisore rilegge a ogni giro notturno."),
 ]).declare_log_level()
+settings.follow_personal()      # the owner's language (texts the model writes for people)
 
 
 def labels(key: str) -> list[str]:

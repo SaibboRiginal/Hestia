@@ -44,3 +44,6 @@ Pages **Persone** (`hera-people`: list, search, new person, upcoming dates) and 
 `Hestia-Hera/tests/test_hera.py` and `tests/test_webui_plugin.py` (FakeArchive, no network).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Persone widget calls `markEmpty()` when there is nothing coming up, so the Home cell shrinks.
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

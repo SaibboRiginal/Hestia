@@ -45,12 +45,12 @@ try:
     _iris_mcp_tools = [
         MCPTool(
             name="email_search",
-            description="Cerca messaggi email per testo",
+            description="Search email messages by text",
             parameters={
                 "type": "object",
                 "properties": {
-                    "q": {"type": "string", "description": "Testo da cercare"},
-                    "limit": {"type": "integer", "description": "Numero massimo risultati (max 200)"},
+                    "q": {"type": "string", "description": "Text to search"},
+                    "limit": {"type": "integer", "description": "Max results (max 200)"},
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_search", "params": kw},
@@ -60,14 +60,14 @@ try:
                 telegram={"section": "Messaggi", "primary": 1}),
         MCPTool(
             name="email_send",
-            description="Invia una email",
+            description="Send an email",
             parameters={
                 "type": "object",
                 "properties": {
-                    "to": {"type": "string", "description": "Destinatario"},
-                    "subject": {"type": "string", "description": "Oggetto"},
-                    "body": {"type": "string", "description": "Corpo del messaggio"},
-                    "thread_id": {"type": "string", "description": "ID thread per rispondere in un thread esistente"},
+                    "to": {"type": "string", "description": "Recipient"},
+                    "subject": {"type": "string", "description": "Subject"},
+                    "body": {"type": "string", "description": "Message body"},
+                    "thread_id": {"type": "string", "description": "Thread ID to reply in an existing thread"},
                 },
                 "required": ["to", "subject", "body"],
             },
@@ -78,11 +78,11 @@ try:
                 telegram={"section": "Messaggi", "primary": 2, "label": "Scrivi"}),
         MCPTool(
             name="email_thread",
-            description="Mostra un thread email",
+            description="Show an email thread",
             parameters={
                 "type": "object",
                 "properties": {
-                    "id": {"type": "string", "description": "ID del thread"},
+                    "id": {"type": "string", "description": "Thread ID"},
                 },
                 "required": ["id"],
             },
@@ -93,7 +93,7 @@ try:
                 telegram={"section": "Messaggi"}),
         MCPTool(
             name="email_subscriptions",
-            description="Mostra quali moduli ricevono quali email (iscrizioni a Iris) e le ultime consegne",
+            description="Show which modules receive which emails (subscriptions to Iris) and the last deliveries",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "email_subscriptions", "params": kw},
             title="Iscrizioni email", method="GET", path="/api/email/dispatch",
@@ -102,17 +102,17 @@ try:
                 telegram={"section": "Iscrizioni", "primary": 3, "label": "Iscrizioni"}),
         MCPTool(
             name="iris_reconcile",
-            description="Esegue manutenzione di riconciliazione nel modulo Iris",
+            description="Run reconciliation maintenance in the Iris module",
             parameters={
                 "type": "object",
                 "properties": {
-                    "dry_run": {"type": "boolean", "description": "Se true esegue solo simulazione senza modifiche"},
+                    "dry_run": {"type": "boolean", "description": "If true only simulates, without changes"},
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "iris_reconcile", "params": kw},
             title="Riconcilia posta", method="POST", path="/api/module/maintenance/reconcile",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="Riassumi l'esito della riconciliazione Iris, indicando lo stato del modulo email.",
+            response_prompt="Summarise the Iris reconciliation result: the state of the email module.",
             telegram_visible=True, telegram_group="posta",
                 telegram={"section": "Avanzate"}),
     ]
@@ -214,7 +214,7 @@ def register_on_hub_startup() -> None:
         "tags": ["module", "integration"],
         "topology_tags": ["layer:domain", "domain:email", "status:experimental"],
         "capabilities": {
-            "when_to_use": 'mail in arrivo smistate ai moduli', "manual": 'Smista le mail nuove ai moduli interessati (push). Di solito non serve chiamarla direttamente.',
+            "when_to_use": "incoming mail routed to modules", "manual": "Routes new mail to the interested modules (push). Usually no need to call it directly.",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["email"],
             "mail_dispatch": "/api/email/incoming",

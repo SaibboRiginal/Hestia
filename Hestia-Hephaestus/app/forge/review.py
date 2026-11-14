@@ -28,37 +28,51 @@ BLOCKING = ("alta", "media")
 MAX_PIECES = 4
 _DIFF_CHARS = 40000
 
-REVIEW_PROMPT = """Sei un revisore di codice indipendente. Non hai scritto tu questo codice.
-Controlla SOLO con le prove qui sotto. Il riassunto di chi ha scritto il codice è un'autodichiarazione non verificata.
-Cerca: bug, requisiti non soddisfatti, test mancanti per il comportamento nuovo, regole del repo violate
-(nessun URL diretto tra servizi, niente nuove variabili env per valori regolabili, niente dati personali).
-Rispondi SOLO JSON: {"verdict": "ok" | "problemi", "issues": [{"priority": "alta"|"media"|"bassa",
-"file": "...", "problem": "...", "evidence": "riga o test che lo prova"}]}. Nessun problema = verdict ok, issues [].
+REVIEW_PROMPT = """You are an independent code reviewer. You did not write this code.
+Check ONLY against the evidence below. The author's summary is an unverified self-declaration.
+Look for: bugs, unmet requirements, missing tests for new behaviour, broken repo rules
+(no direct service-to-service URL, no new env vars for tunables, no personal data).
+Reply ONLY JSON: {"verdict": "ok" | "issues", "issues": [{"priority": "high"|"medium"|"low",
+"file": "...", "problem": "...", "evidence": "line or test that proves it"}]}. No problem = verdict ok, issues [].
+Write problem and evidence in {owner_language}.
 
-## Richiesta
+## Request
 {request}
 
-## Criteri di accettazione (SPEC)
+## Acceptance criteria (SPEC)
 {acceptance}
 
-## Test (risultato vero)
+## Tests (real result)
 {tests}
 
-## Autodichiarazione non verificata di chi ha scritto il codice
+## Unverified self-declaration of the author
 {summary}
 
 ## Diff
 {diff}
 """
 
-PLAN_PROMPT = """Dividi questo lavoro di sviluppo in 2-4 pezzi da fare uno dopo l'altro nello stesso repository.
-Ogni pezzo: titolo breve, cosa fare (istruzioni complete), difficoltà "semplice" o "difficile", servizi toccati.
-Se il lavoro è piccolo rispondi con un solo pezzo. Rispondi SOLO JSON:
-{"pieces": [{"title": "...", "request": "...", "difficulty": "semplice"|"difficile", "services": ["..."]}]}
+PLAN_PROMPT = """Split this development work into 2-4 pieces done one after the other in the same repository.
+Each piece: short title, what to do (complete instructions), difficulty "easy" or "hard", services touched.
+If the work is small reply with one piece. Reply ONLY JSON:
+{"pieces": [{"title": "...", "request": "...", "difficulty": "easy"|"hard", "services": ["..."]}]}
 
-Lavoro: {request}
-Servizi: {services}
+Work: {request}
+Services: {services}
 """
+
+# Model answers in English; stored values stay the ones the rest of Forge (and its cards) already use.
+_PRIORITY = {"high": "alta", "medium": "media", "low": "bassa", "alta": "alta", "media": "media", "bassa": "bassa"}
+_HARD = ("hard", "difficile")
+
+
+def _owner_language() -> str:
+    try:
+        from hestia_common import identity, i18n
+        from .forge_settings import settings as hs
+        return identity.LANGUAGES[i18n.language(hs.get)]
+    except Exception:  # noqa: BLE001
+        return "the owner's language"
 
 
 def parse_json(text: str) -> dict | None:
@@ -81,9 +95,9 @@ def acceptance_from_workdoc(worktree: Path, workdoc: str) -> str:
     try:
         text = spec.read_text(encoding="utf-8")
     except OSError:
-        return "(nessuna SPEC trovata)"
+        return "(no SPEC found)"
     match = re.search(r"^#+\s*(acceptance|criteri)[^\n]*\n(.*?)(?=^#+\s|\Z)", text, re.I | re.M | re.S)
-    return (match.group(2) if match else text)[:4000].strip() or "(vuota)"
+    return (match.group(2) if match else text)[:4000].strip() or "(empty)"
 
 
 class ForgeReviewer:
@@ -110,8 +124,8 @@ class ForgeReviewer:
 
     # ── review ──────────────────────────────────────────────────────────────
     def review(self, *, request: str, acceptance: str, diff: str, tests: str, summary: str) -> dict[str, Any]:
-        prompt = (REVIEW_PROMPT.replace("{request}", request[:3000]).replace("{acceptance}", acceptance[:4000])
-                  .replace("{tests}", (tests or "(nessun test)")[-4000:]).replace("{summary}", summary[:2000])
+        prompt = (REVIEW_PROMPT.replace("{owner_language}", _owner_language()).replace("{request}", request[:3000]).replace("{acceptance}", acceptance[:4000])
+                  .replace("{tests}", (tests or "(no tests)")[-4000:]).replace("{summary}", summary[:2000])
                   .replace("{diff}", diff[:_DIFF_CHARS]))
         answer = self._generate(REVIEW_USECASE, prompt)
         data = parse_json(answer or "")
@@ -120,8 +134,8 @@ class ForgeReviewer:
         issues = []
         for i in data.get("issues") or []:
             if isinstance(i, dict) and str(i.get("problem") or "").strip():
-                prio = str(i.get("priority") or "media").lower()
-                issues.append({"priority": prio if prio in ("alta", "media", "bassa") else "media",
+                prio = _PRIORITY.get(str(i.get("priority") or "medium").lower(), "media")
+                issues.append({"priority": prio,
                                "file": str(i.get("file") or "")[:200], "problem": str(i["problem"])[:600],
                                "evidence": str(i.get("evidence") or "")[:400]})
         blocking = sum(1 for i in issues if i["priority"] in BLOCKING)
@@ -139,17 +153,17 @@ class ForgeReviewer:
             if isinstance(p, dict) and str(p.get("request") or "").strip():
                 pieces.append({"title": str(p.get("title") or p["request"])[:120],
                                "request": str(p["request"])[:4000],
-                               "difficulty": "semplice" if p.get("difficulty") == "semplice" else "difficile",
+                               "difficulty": "difficile" if str(p.get("difficulty") or "hard").lower() in _HARD else "semplice",
                                "services": [str(s) for s in p.get("services") or []][:10]})
         return pieces[:MAX_PIECES]
 
 
 def fix_prompt(issues: list[dict]) -> str:
-    lines = [f"- [{i['priority']}] {i['file']}: {i['problem']}" + (f" (prova: {i['evidence']})" if i['evidence'] else "")
+    lines = [f"- [{i['priority']}] {i['file']}: {i['problem']}" + (f" (evidence: {i['evidence']})" if i['evidence'] else "")
              for i in issues]
-    return ("Una revisione automatica indipendente ha trovato questi problemi nel lavoro di questo task. "
-            "Correggi quelli veri; se uno è un falso allarme lascia il codice com'è e spiegalo nel riassunto finale. "
-            "Poi rilancia i test.\n" + "\n".join(lines))
+    return ("An independent automatic review found these issues in this task's work. "
+            "Fix the real ones; if one is a false alarm leave the code as it is and say why in the final summary. "
+            "Then run the tests again.\n" + "\n".join(lines))
 
 
 def card(review: dict) -> str:

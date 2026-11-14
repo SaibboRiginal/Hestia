@@ -112,8 +112,8 @@ class Statements:
         out: list[dict] = []
         chunk = 6000
         for i in range(0, min(len(text), 60000), chunk):
-            prompt = ("Estratto conto bancario. Elenca i movimenti. SOLO JSON [{\"date\": \"YYYY-MM-DD\", "
-                      "\"description\": testo, \"amount\": numero con segno (uscite negative)}]. Niente saldi o totali.\n"
+            prompt = ("Bank statement. List the transactions. ONLY JSON [{\"date\": \"YYYY-MM-DD\", "
+                      "\"description\": text, \"amount\": signed number (outgoing negative)}]. No balances or totals.\n"
                       + text[i:i + chunk])
             data = _json_from(self.p.llm(prompt))
             for r in data if isinstance(data, list) else []:

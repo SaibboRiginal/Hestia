@@ -140,3 +140,6 @@ Tool `settings_proposals(status?)` → `GET /api/settings/proposals` (pending by
 what the assistant proposed and confirms from the notification as usual.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Registro impostazioni».
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the unknown-key hint are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

@@ -478,30 +478,27 @@ def _t(name, title, description, method, path, props=None, required=None, label=
 
 
 _echo_tools = [
-    _t("voce_download", "Download della voce", "Le voci e l'ascolto che sto scaricando o ho scaricato, con "
-       "l'avanzamento.", "GET", "/api/downloads", label="Download"),
-    _t("voce_scarica", "Scarica le voci", "Scarica adesso (o riprova) le voci e l'ascolto locali delle catene "
-       "in uso, così la prima frase non aspetta.", "POST", f"{API}/models/prefetch", label="Scarica voci"),
-    _t("voce_dizionario", "Dizionario della voce", "Le parole tue (nomi, termini) che passo al riconoscimento "
-       "della voce, e quelle che sto imparando dalle tue correzioni.", "GET", f"{API}/dictionary",
+    _t("voce_download", "Download della voce", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="Download"),
+    _t("voce_scarica", "Scarica le voci", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
+                                           "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Scarica voci"),
+    _t("voce_dizionario", "Dizionario della voce", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
+                                                    "their corrections."), "GET", f"{API}/dictionary",
        label="Dizionario"),
-    _t("voce_parola", "Aggiungi una parola", "Aggiungi una parola al dizionario della voce (un nome, un termine "
-       "che non capisco bene).", "POST", f"{API}/dictionary",
-       {"word": {"type": "string", "description": "La parola, scritta giusta"}}, ["word"]),
-    _t("voce_parola_togli", "Togli una parola", "Togli una parola dal dizionario della voce.", "DELETE",
-       API + "/dictionary/{word}", {"word": {"type": "string", "description": "La parola da togliere"}}, ["word"]),
-    _t("voce_correzione", "Correggi una trascrizione", "Quando l'utente corregge un vocale trascritto male "
-       "(«volevo dire …»): testo sentito e testo giusto; le parole nuove entrano nel dizionario dopo qualche "
-       "correzione.", "POST", f"{API}/dictionary/learn",
-       {"heard": {"type": "string", "description": "Cosa avevo trascritto"},
-        "corrected": {"type": "string", "description": "Il testo giusto"}}, ["heard", "corrected"]),
-    _t("voce_impronta", "La tua voce", "Se ho la tua impronta della voce e dove riconosco solo te.", "GET",
+    _t("voce_parola", "Aggiungi una parola", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
+       {"word": {"type": "string", "description": "The word, spelled right"}}, ["word"]),
+    _t("voce_parola_togli", "Togli una parola", "Remove a word from the voice dictionary.", "DELETE",
+       API + "/dictionary/{word}", {"word": {"type": "string", "description": "The word to remove"}}, ["word"]),
+    _t("voce_correzione", "Correggi una trascrizione", ("When the user corrects a badly transcribed voice message («volevo dire …»): text heard and "
+                                                        "right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
+       {"heard": {"type": "string", "description": "What was transcribed"},
+        "corrected": {"type": "string", "description": "The right text"}}, ["heard", "corrected"]),
+    _t("voce_impronta", "La tua voce", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
        f"{API}/voiceprint"),
-    _t("voce_impronta_registra", "Registra la tua voce", "Registra almeno 10 secondi della tua voce: poi le "
-       "altre voci (TV, persone) non finiscono nei tuoi messaggi dove lo hai scelto.", "POST", f"{API}/voiceprint",
+    _t("voce_impronta_registra", "Registra la tua voce", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
+                                                          "their messages where they chose so."), "POST", f"{API}/voiceprint",
        {"audio": {"type": "string", "contentMediaType": "audio/*",
-                  "description": "Un vocale di almeno 10 secondi in cui parli tu"}}, ["audio"]),
-    _t("voce_impronta_togli", "Togli l'impronta della voce", "Dimentica la tua impronta: ascolto tutte le voci.",
+                  "description": "A voice message of at least 10 seconds where the user speaks"}}, ["audio"]),
+    _t("voce_impronta_togli", "Togli l'impronta della voce", "Forget the user's voiceprint: listen to every voice.",
        "DELETE", f"{API}/voiceprint"),
 ]
 app.include_router(create_mcp_router(_echo_tools, service_name="echo"))

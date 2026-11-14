@@ -173,3 +173,6 @@ MCP tools (Telegram + WebUI, section «Voce»): `voce_dizionario`, `voce_parola`
 `voce_correzione`, `voce_impronta`, `voce_impronta_registra` (a voice note), `voce_impronta_togli`.
 Echo's Hub capabilities declare `owns_tool_domains: ["voice"]`, so Oracle's domain gate keeps these tools in chat
 (without it they never reached the assistant; found on the real-model bench, 2026-10-30).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
