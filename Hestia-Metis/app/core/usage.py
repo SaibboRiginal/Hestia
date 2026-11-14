@@ -204,12 +204,18 @@ class Usage:
         habits = [r for r, _, _ in self.habits(client, now)[:6]]
         used = Counter(t["ref"] for t in self.taps(30, client) if t["kind"] == "tool")
         menu = "\n".join(f"{n}: {t.get('title') or ''}" for n, t in sorted(tools.items())[:150])
-        agenda = "; ".join(f"{a['at']} {a['title']}" for a in self._agenda_items(now)) or "niente"
-        prompt = (f"Ora: {WEEKDAYS[now.weekday()]} {now:%H:%M}. Abitudini: {', '.join(habits) or 'nessuna'}. "
-                  f"Agenda prossime ore: {agenda}. Strumenti:\n{menu}\n"
-                  "Scegli 3 strumenti utili ADESSO diversi dalle abitudini, meglio se poco usati "
+        agenda = "; ".join(f"{a['at']} {a['title']}" for a in self._agenda_items(now)) or "nothing"
+        from hestia_common import i18n, identity
+        try:
+            from core.metis_settings import settings as _settings
+            language = identity.LANGUAGES[i18n.language(_settings.get)]
+        except Exception:  # noqa: BLE001 - outside the service (tests): the default language
+            language = identity.LANGUAGES[i18n.FALLBACK]
+        prompt = (f"Now: {WEEKDAYS[now.weekday()]} {now:%H:%M}. Habits: {', '.join(habits) or 'none'}. "
+                  f"Agenda of the next hours: {agenda}. Tools:\n{menu}\n"
+                  "Pick 3 tools useful NOW, other than the habits, better if rarely used "
                   f"({', '.join(n for n in tools if not used[n])[:600]}). "
-                  'Rispondi SOLO JSON: [{"tool":"nome","reason":"perché, max 60 caratteri, italiano"}]')
+                  'Answer ONLY JSON: [{"tool":"name","reason":"why, max 60 characters, in ' + language + '"}]')
         text = self.hub.llm(prompt, use_case=IDEAS_USE, max_tokens=300, temperature=0.4) if self.hub else None
         ideas = []
         try:

@@ -23,16 +23,16 @@ logger = logging.getLogger("hestia_chronos.agenda_parse")
 _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 _TZ_DEFAULT = os.getenv("TZ") or "Europe/Rome"     # infrastructure: container timezone
 _TYPES = {"event", "task", "job", "window"}
-_DAYS_IT = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 # Caveman prompt: paid every call by the local model.
-_PROMPT = """Estrai voce agenda. Rispondi SOLO JSON.
-Ora: {now} ({weekday}), tz {tz}.
-Testo: "{text}"
+_PROMPT = """Extract one agenda item. Reply ONLY JSON.
+Now: {now} ({weekday}), tz {tz}.
+Text: "{text}"
 JSON: {{"title":str,"type":"event|task|job|window","start_at":"YYYY-MM-DDTHH:MM","end_at":"YYYY-MM-DDTHH:MM"|null,"recurrence":"RRULE"|null,"description":str|null}}
-Regole: ora locale tz. Niente ora -> 09:00. Durata non detta: event 60 min, altri null.
-Ripetizione (ogni giorno/lunedì/settimana) -> RRULE es FREQ=WEEKLY;BYDAY=MO, type job se azione periodica.
-Finestra/intervallo permesso -> window con end_at. Titolo breve, senza data/ora."""
+Rules: local time in tz. No time -> 09:00. Unstated duration: event 60 min, others null.
+Repetition (every day/Monday/week) -> RRULE e.g. FREQ=WEEKLY;BYDAY=MO, type job if periodic action.
+Allowed window/interval -> window with end_at. Short title in the text's language, no date/time."""
 
 
 class ParseError(Exception):
@@ -120,7 +120,7 @@ def parse(text: str, now: datetime | None = None, tz_name: str | None = None) ->
     except Exception:
         tz = ZoneInfo(_TZ_DEFAULT)
     now = (now or datetime.now(timezone.utc)).astimezone(tz)
-    prompt = _PROMPT.format(now=now.strftime("%Y-%m-%dT%H:%M"), weekday=_DAYS_IT[now.weekday()], tz=tz.key,
+    prompt = _PROMPT.format(now=now.strftime("%Y-%m-%dT%H:%M"), weekday=_DAYS[now.weekday()], tz=tz.key,
                             text=text[:400].replace('"', "'"))
     try:
         raw = _generate(prompt)

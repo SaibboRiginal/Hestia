@@ -29,10 +29,8 @@ from .core.service import PURPOSES, Images
 
 API = "/api/images"
 kit = ModuleKit("apollo", port=19022, api=API, domain="images", title="Immagini", store="images-store",
-                when_to_use="creare immagini (ritratti, sfondi, mascotte, icone, illustrazioni)",
-                manual="immagine_crea: descrivi l'immagine in inglese nel prompt, scegli purpose; se è pronta entro "
-                       "poco la ricevi subito, altrimenti arriva un avviso (immagine_stato per vederla). I flussi "
-                       "(immagine_flussi) li carica l'utente da ComfyUI.")
+                when_to_use="create images (portraits, backgrounds, mascots, icons, illustrations)",
+                manual="immagine_crea: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (immagine_stato to see it). Workflows (immagine_flussi) are uploaded by the user from ComfyUI.")
 app = kit.app
 comfy = ComfyUI(os.getenv("APOLLO_COMFYUI_URL", ""), os.getenv("APOLLO_COMFYUI_KEY", ""))
 images = Images(kit.store, comfy, kit.hub)
@@ -124,12 +122,12 @@ kit.tools([
                 PURPOSES)}, "negative": S, "width": I, "height": I}, "required": ["prompt"]},
             handler=_create, title="Crea immagine", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Immagini", "primary": 1}),
-    MCPTool(name="immagine_stato", description="Stato di un'immagine richiesta (e l'immagine se pronta).",
+    MCPTool(name="immagine_stato", description="State of a requested image (and the image if ready).",
             parameters={"type": "object", "properties": {"job": S}, "required": ["job"]},
             handler=lambda job: (lambda j: {"id": j["id"], "status": j["status"], "display": _job_display(j)})(
                 images.job(job)),
             title="Stato immagine", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Immagini"}),
-    MCPTool(name="immagine_lista", description="Le ultime immagini richieste.",
+    MCPTool(name="immagine_lista", description="The last images requested.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": [{"id": j["id"], "status": j["status"], "purpose": j["purpose"],
                                                       "prompt": j["prompt"][:80]} for j in rows],
@@ -139,7 +137,7 @@ kit.tools([
                 images.jobs(20)),
             title="Immagini recenti", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Immagini", "primary": 2}),
-    MCPTool(name="immagine_flussi", description="I flussi caricati (uno per scopo) e se il generatore è collegato.",
+    MCPTool(name="immagine_flussi", description="The loaded flows (one per purpose) and whether the generator is connected.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda fl: {"configured": comfy.configured, "items": fl, "display": display(
                 "Flussi immagini", items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],

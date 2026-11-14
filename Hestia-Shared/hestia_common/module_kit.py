@@ -356,6 +356,7 @@ class ModuleKit:
         self.hub = Hub(self.hub_url)
         self.store = Store(self.hub, store, name=name)
         self.settings = SettingsClient(name)
+        self.settings.follow_personal()     # owner, assistant, language (hestia_common.identity / i18n)
         self.caps: dict[str, Any] = {}
         self._rules: Callable[[], list[dict]] | None = None
         self._warm: list[Callable[[], Any]] = []

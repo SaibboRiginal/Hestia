@@ -251,9 +251,9 @@ def run(key: str, *, by: str = "agenda", context: str = "") -> dict:
         else:
             pre_text = json.dumps(payload, ensure_ascii=False, default=str)[:6000]
     message = (f"[ROUTINE «{item['title']}»] {r['instruction']}\n"
-               + (f"Cosa l'ha fatta partire:\n{context[:3000]}\n" if context else "")
-               + (f"Dati del controllo:\n{pre_text}\n" if pre_text else "")
-               + f"Se non c'è niente di utile da dire rispondi solo {NOTHING}.")
+               + (f"What started it:\n{context[:3000]}\n" if context else "")
+               + (f"Check data:\n{pre_text}\n" if pre_text else "")
+               + f"Answer in the language of the instruction. If there is nothing useful to say reply only {NOTHING}.")
     out = _ask_oracle(key, "Da una tua routine", message)
     return _deliver(key, item, r, out, by)
 

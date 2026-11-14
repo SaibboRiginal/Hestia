@@ -49,14 +49,14 @@ class TestBuildQuestion:
 class TestResumeMessage:
     def test_confirm_answer_readable(self):
         msg = user_questions.resume_message({"prompt": "Procedo?", "kind": "confirm"}, "si")
-        assert msg == "Risposta alla tua domanda «Procedo?»: Sì"
+        assert msg == "Answer to your question «Procedo?»: Sì"
 
     def test_multi_choice_joined(self):
         msg = user_questions.resume_message({"prompt": "Quali?", "kind": "multi_choice"}, "A\nC")
         assert msg.endswith(": A, C")
 
     def test_empty_answer_asks_for_safest_default(self):
-        assert "decidi tu" in user_questions.resume_message({"prompt": "X?", "kind": "free_text"}, "")
+        assert "safest option" in user_questions.resume_message({"prompt": "X?", "kind": "free_text"}, "")
 
 
 @pytest.mark.unit
@@ -101,8 +101,8 @@ class TestQueuedChat:
         now = datetime(2026, 10, 22, 10, 0, tzinfo=timezone.utc)
         text = queued_chat.compose([{"text": "che tempo fa?", "written_at": "2026-10-21T09:00:00+00:00"},
                                     {"text": "lascia stare", "written_at": "2026-10-22T09:50:00+00:00"}], now)
-        assert text.startswith("Messaggi che ti ho scritto")
-        assert "1. (" in text and "h fa) che tempo fa?" in text and "10 min fa) lascia stare" in text
+        assert text.startswith("[Messages written while you could not answer]")
+        assert "1. (" in text and "h ago) che tempo fa?" in text and "10 min ago) lascia stare" in text
 
     def test_single_message_kept_plain(self):
         from core.services import queued_chat
@@ -112,7 +112,7 @@ class TestQueuedChat:
         from core.services import queued_chat
         many = queued_chat.instructions([{"text": "a"}, {"text": "b"}], "personal")
         assert many.startswith("personal") and "ask_user" in many
-        assert "MESSAGGIO IN CODA" in queued_chat.instructions([{"text": "a"}], None)
+        assert "QUEUED MESSAGE" in queued_chat.instructions([{"text": "a"}], None)
 
 
 @pytest.mark.api

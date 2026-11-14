@@ -31,7 +31,7 @@ class OracleEvaluator(BaseEvaluator):
 
     def evaluate(self, text_to_evaluate: str) -> dict:
         prompt = (f"{self.system_prompt}\n\nINPUT:\n{text_to_evaluate}\n\n"
-                  "Output SOLO JSON valido. Niente testo fuori dal JSON.")
+                  "Output ONLY valid JSON. No text outside the JSON.")
         timeout = self.timeout
         try:
             resp = requests.post(

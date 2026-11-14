@@ -111,23 +111,23 @@ def budget() -> tuple[int, int]:
 def continuation_message(goal: dict) -> str:
     notes = "\n".join(f"- {n}" for n in (goal.get("notes") or [])[-3:])
     total, _ = budget()
-    return (f"[OBIETTIVO della conversazione, giro {int(goal.get('rounds') or 0) + 1}/{total}] {goal['text']}\n"
-            + (f"Fatto finora:\n{notes}\n" if notes else "")
-            + "Fai il prossimo passo con gli strumenti. Se l'obiettivo è raggiunto chiama goal_done con un riepilogo; "
-              "se ti serve l'utente chiedi con ask_user. Rispondi breve: cosa hai fatto in questo giro.")
+    return (f"[Conversation GOAL, round {int(goal.get('rounds') or 0) + 1}/{total}] {goal['text']}\n"
+            + (f"Done so far:\n{notes}\n" if notes else "")
+            + "Do the next step with the tools. If the goal is reached call goal_done with a summary; "
+              "if you need the user ask with ask_user. Answer briefly: what you did this round.")
 
 
 # ── tools for the agent loop ─────────────────────────────────────────────────
 def tool_specs() -> list[dict[str, Any]]:
     return [
-        {"name": "goal_set", "description": "Fissa un obiettivo per questa conversazione quando l'utente chiede un "
-                                            "lavoro lungo su più passi: dopo ogni risposta ci lavori ancora qualche "
-                                            "giro e lo aggiorni.",
-         "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "L'obiettivo"}},
+        {"name": "goal_set", "description": "Set a goal for this conversation when the user asks for "
+                                            "long multi-step work: after each answer you keep working on it for a few "
+                                            "rounds and update it.",
+         "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "The goal"}},
                         "required": ["text"]}, "title": "Obiettivo"},
-        {"name": "goal_done", "description": "L'obiettivo della conversazione è raggiunto: chiudilo con un riepilogo.",
+        {"name": "goal_done", "description": "The conversation goal is reached: close it with a summary.",
          "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": []},
          "title": "Obiettivo raggiunto"},
-        {"name": "goal_stop", "description": "Ferma l'obiettivo della conversazione (l'utente lo chiede).",
+        {"name": "goal_stop", "description": "Stop the conversation goal (the user asks so).",
          "parameters": {"type": "object", "properties": {}}, "title": "Ferma obiettivo"},
     ]

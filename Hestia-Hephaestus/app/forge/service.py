@@ -830,8 +830,8 @@ class Forge:
                f"-> Forge task {task['id']} [forge:{task['id']}]")
         context = str(task.get("context") or "") + notes_text(task)
         if resume_from:
-            context += ("\n\nRIPRESA: il lavoro era stato fermato dal limite di Claude; quello già fatto è nel "
-                        "commit corrente. Continua da lì, non ricominciare.")
+            context += ("\n\nRESUME: the work was stopped by Claude's limit; what is done is in the "
+                        "current commit. Continue from there, don't start over.")
         t0 = time.perf_counter()
         pieces = self._team_plan(task) if not resume_from else []
         if len(pieces) >= 2:

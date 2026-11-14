@@ -554,15 +554,15 @@ class TestFailedWritesNote:
         tool = _make_tool("create_event", (False, {"detail": "event: Field required"}))
         tool.writes, tool.title = True, "Nuovo evento"
         prompts = self._run(tool)
-        assert "AZIONI NON RIUSCITE: Nuovo evento" in prompts[-1]
-        assert "AZIONI NON RIUSCITE" not in prompts[0]
+        assert "FAILED ACTIONS: Nuovo evento" in prompts[-1]
+        assert "FAILED ACTIONS" not in prompts[0]
 
     def test_failed_read_or_successful_write_adds_no_note(self):
         read = _make_tool("calendar_list_events", (False, "timeout"))
-        assert not any("AZIONI NON RIUSCITE" in p for p in self._run(read))
+        assert not any("FAILED ACTIONS" in p for p in self._run(read))
         write = _make_tool("create_event", (True, {"ok": True}))
         write.writes = True
-        assert not any("AZIONI NON RIUSCITE" in p for p in self._run(write))
+        assert not any("FAILED ACTIONS" in p for p in self._run(write))
 
 
 @pytest.mark.unit

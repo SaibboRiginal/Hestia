@@ -34,7 +34,7 @@ def test_a_question_writes_nothing():
     meal, read = _tool("cibo_pasto"), _tool("cibo_pasti", writes=False)
     _turn("stasera voglio mangiare una pizza, mi consigli qualcosa?", meal, read)
     ok, why = meal.handler(text="pizza")
-    assert not ok and why.startswith("BLOCCATO")
+    assert not ok and why.startswith("BLOCKED")
     assert read.handler()[0]
 
 

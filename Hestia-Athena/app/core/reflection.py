@@ -126,35 +126,36 @@ def _prompt(topics: list[dict], info: list[dict], details: dict[str, str], setti
     lines = []
     for i, t in enumerate(topics, 1):
         if t["type"] == "link":
-            lines.append(f"T{i} COLLEGAMENTO: {link_text(t['link'])}")
+            lines.append(f"T{i} LINK: {link_text(t['link'])}")
         else:
             s = t["signal"]
-            lines.append(f"T{i} SEGNALE [{DOMAIN_WORDS.get(s.get('domain'), s.get('domain'))}, {s.get('severity')}]: "
+            lines.append(f"T{i} SIGNAL [{DOMAIN_WORDS.get(s.get('domain'), s.get('domain'))}, {s.get('severity')}]: "
                          f"{s.get('text')}")
         if details.get(t["key"]):
-            lines.append(f"   dettagli: {details[t['key']]}")
+            lines.append(f"   details: {details[t['key']]}")
     ctx = "; ".join(f"{DOMAIN_WORDS.get(s.get('domain'), s.get('domain'))}: {s.get('text')}" for s in info[:6])
     return (
-        "Sei Athena, mente proattiva di Hestia. Rifletti sulla VITA dell'utente (non sul sistema).\n"
-        "Hai solo segnali delle aree e collegamenti calcolati sui numeri. Non inventare numeri.\n"
-        f"TEMI:\n" + "\n".join(lines) + "\n"
-        + (f"ALTRO: {ctx}\n" if ctx else "")
-        + (f"IMPOSTAZIONI (chiave=valore [scelte]): {'; '.join(settings_lines)}\n" if settings_lines else "")
-        + f"\nScrivi max {max_items} osservazioni utili, solo se i dati le giustificano.\n"
-        "Formato ESATTO per ognuna:\n"
-        "AZIONE: <titolo breve>\n"
-        "TIPO: observation|setting\n"
-        "PRIORITA: low|normal|elevated|high\n"
-        "DOMINIO: <area principale, es. fitness>\n"
-        "TEMA: T<n>\n"
-        "MOTIVO: <perché conta, 1 frase, coi numeri dati>\n"
-        "RIASSUNTO: <l'osservazione per l'utente, 1-2 frasi, tono amichevole, dai del tu, mai ordini>\n"
-        "Solo per setting (CHIAVE da IMPOSTAZIONI):\nCHIAVE: <chiave>\nVALORE: <nuovo valore>\n\n"
-        "Regole:\n"
-        "- observation = un fatto + perché conta. Un collegamento non è una causa: dillo con prudenza.\n"
-        "- Mai nomi di moduli o servizi: parla di allenamento, spese, cura di sé, guardaroba.\n"
-        "- Niente da dire -> scrivi solo: NESSUNA_AZIONE\n"
-        "- No testo fuori formato. No markdown. No HTML."
+        "You are Athena, the assistant's proactive mind. Reflect on the user's LIFE (not on the system).\n"
+        "You only have signals of the areas and links computed on the numbers. Never invent numbers.\n"
+        f"TOPICS:\n" + "\n".join(lines) + "\n"
+        + (f"OTHER: {ctx}\n" if ctx else "")
+        + (f"SETTINGS (key=value [choices]): {'; '.join(settings_lines)}\n" if settings_lines else "")
+        + f"\nWrite at most {max_items} useful observations, only if the data justifies them.\n"
+        "EXACT format for each:\n"
+        "ACTION: <short title>\n"
+        "TYPE: observation|setting\n"
+        "PRIORITY: low|normal|elevated|high\n"
+        "DOMAIN: <main area, e.g. fitness>\n"
+        "TOPIC: T<n>\n"
+        "REASON: <why it matters, 1 sentence, with the numbers given>\n"
+        "SUMMARY: <the observation for the user, 1-2 sentences, friendly, informal, never orders>\n"
+        "Only for setting (KEY from SETTINGS):\nKEY: <key>\nVALUE: <new value>\n\n"
+        "Rules:\n"
+        f"- Write ACTION, REASON and SUMMARY in {S.owner_language()}: the owner reads them.\n"
+        "- observation = a fact + why it matters. A link is not a cause: say it carefully.\n"
+        "- Never names of modules or services: talk about training, expenses, self care, wardrobe.\n"
+        "- Nothing to say -> write only: NO_ACTION\n"
+        "- No text outside the format. No markdown. No HTML."
     )
 
 

@@ -444,7 +444,7 @@ class MemoryService:
         if known:
             logger.info("event=memory_tool_already_known id=%s fact_preview=%s", known.get("id"), clean_fact[:120])
             return (True, {"already_known": True, "id": known.get("id"), "fact": known.get("fact"),
-                           "note": "Già in memoria: niente salvato, non dirlo come nuovo."})
+                           "note": "Already in memory: nothing saved, don't present it as new."})
 
         # ── Auto-classify domains via embedding (bypass LLM) ──────────────
         if self.pref_domain_classifier is not None:

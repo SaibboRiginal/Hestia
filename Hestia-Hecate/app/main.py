@@ -61,7 +61,7 @@ try:
     _hecate_mcp_tools = [
         MCPTool(
             name="sync_calendar",
-            description="Sincronizza gli eventi del calendario da Google e Outlook in Hestia",
+            description="Sync the calendar events from Google and Outlook into the assistant",
             parameters={
                 "type": "object",
                 "properties": {
@@ -73,32 +73,29 @@ try:
             title="Sincronizza calendario", method="POST", path="/api/ingest/calendar/trigger",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Conferma la sincronizzazione del calendario. Indica quanti eventi "
-                "sono stati trovati per ogni provider (Google, Outlook). "
-                "Sii conciso e usa un tono da assistente."
+                ("Confirm the calendar sync: how many events were found for each provider (Google, Outlook). Be "
+                 "brief.")
             ),
             telegram_visible=True, telegram_group="giornata",
                 telegram={"section": "Calendario"}),
         MCPTool(
             name="gateway_auth_status",
-            description="Verifica quali provider (Google, Outlook) sono autenticati e attivi",
+            description="Check which providers (Google, Outlook) are signed in and active",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_status", "params": kw},
             title="Account collegati", method="GET", path="/api/gateway/auth/status",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Elenca i provider configurati e il loro stato di autenticazione. "
-                "Sii diretto e usa un tono da assistente."
+                "List the configured providers and their sign-in state. Be direct."
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Account collegati"}),
         MCPTool(
             name="gateway_auth_verify",
             description=(
-                "Verifica lo stato di autenticazione di tutti i provider "
-                "(Google, Outlook) e INVIA notifiche Telegram per quelli "
-                "che richiedono riautenticazione. Usa questo comando quando "
-                "l'utente chiede di controllare se i provider funzionano."
+                ("Check the sign-in of all providers (Google, Outlook) and SEND the owner a notification for "
+                 "those that need signing in again. Use it when the user asks to check whether the providers "
+                 "work.")
             ),
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_verify", "params": kw},
@@ -108,41 +105,38 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                "Elenca lo stato di ogni provider e indica chiaramente "
-                "se sono state inviate notifiche per quelli non funzionanti. "
-                "Se il provider Google non è autenticato, ricorda all'utente "
-                "di usare il pulsante 'Riautentica Google' nel messaggio "
-                "di notifica che ha ricevuto."
+                ("List the state of each provider and say clearly whether notifications were sent for the broken "
+                 "ones. If Google is not signed in, remind the user to use the 'Riautentica Google' button in the "
+                 "notification they received.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Account collegati"}),
         MCPTool(
             name="gateway_auth_initiate_google",
-            description="Avvia il flusso OAuth per Google Calendar",
+            description="Start the OAuth flow for Google Calendar",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_initiate_google", "params": kw},
             title="Collega Google", method="POST", path="/api/gateway/auth/initiate/google",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Mostra il link auth_url (cliccabile). Se mode=device_code mostra invece "
-                "verification_url e user_code. Se public_redirect=true: basta aprire il link da "
-                "qualsiasi dispositivo e concedere Calendar+Gmail, si completa da solo. "
-                "Se public_redirect=false: dal PC di Hestia si completa da solo; da telefono la "
-                "pagina finale localhost non si carica (normale): copiare l'URL intero dalla "
-                "barra e incollarlo qui in chat."
+                ("Show the auth_url link (clickable). If mode=device_code show verification_url and user_code "
+                 "instead. If public_redirect=true: just open the link from any device and grant Calendar+Gmail, "
+                 "it completes by itself. If public_redirect=false: from the assistant's PC it completes by "
+                 "itself; from a phone the final localhost page does not load (normal): copy the whole URL from "
+                 "the address bar and paste it here in chat.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Account collegati", "primary": 4}),
         MCPTool(
             name="gateway_auth_complete_google",
             description=(
-                "Completa il collegamento Google Calendar. Usa quando l'utente incolla un URL "
-                "che contiene 'code=' (es. http://localhost.../callback/google?code=...) o un codice OAuth."
+                ("Complete the Google Calendar link. Use when the user pastes a URL containing 'code=' (e.g. "
+                 "http://localhost.../callback/google?code=...) or an OAuth code.")
             ),
             parameters={
                 "type": "object",
                 "properties": {
-                    "code": {"type": "string", "description": "URL completo incollato dall'utente, oppure il solo codice"},
+                    "code": {"type": "string", "description": "Full URL pasted by the user, or just the code"},
                 },
                 "required": ["code"],
             },
@@ -150,32 +144,30 @@ try:
             title="Completa collegamento Google", method="POST", path="/api/gateway/auth/complete/google",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Se status=authorized conferma che Google Calendar è collegato. "
-                "Altrimenti riporta errore e hint in breve."
+                "If status=authorized confirm Google Calendar is linked. Otherwise report error and hint briefly."
             ),
             telegram_visible=False, telegram_group="sistema",
                 telegram={"section": "Avanzate"}),
         MCPTool(
             name="gateway_auth_initiate_microsoft",
-            description="Avvia il flusso device-code OAuth per Outlook/Microsoft",
+            description="Start the device-code OAuth flow for Outlook/Microsoft",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_initiate_microsoft", "params": kw},
             title="Collega Outlook", method="POST", path="/api/gateway/auth/initiate/microsoft",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Presenta il codice device e l'URL di verifica Microsoft all'utente. "
-                "Invita l'utente ad aprire l'URL e inserire il codice. "
-                "Poi usa GET /api/gateway/auth/poll/microsoft per verificare il completamento."
+                ("Show the user the Microsoft device code and verification URL. Ask them to open the URL and "
+                 "enter the code. Then use GET /api/gateway/auth/poll/microsoft to check completion.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Account collegati"}),
         MCPTool(
             name="gateway_auth_poll",
-            description="Controlla se l'utente ha completato il flusso OAuth",
+            description="Check whether the user completed the OAuth flow",
             parameters={
                 "type": "object",
                 "properties": {
-                    "provider": {"type": "string", "description": "Provider da verificare (google, microsoft)"},
+                    "provider": {"type": "string", "description": "Provider to check (google, microsoft)"},
                 },
                 "required": ["provider"],
             },
@@ -183,40 +175,39 @@ try:
             title="Controlla collegamento", method="GET", path="/api/gateway/auth/poll/{provider}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
-                "Comunica all'utente se l'autenticazione Google/Microsoft "
-                "è stata completata con successo o se è ancora in attesa. "
-                "Se completata, informa che Calendar e Gmail sono ora operativi."
+                ("Tell the user whether the Google/Microsoft sign-in completed or is still pending. If completed, "
+                 "say Calendar and Gmail now work.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Avanzate"}),
         MCPTool(
             name="weather_now",
-            description=("Meteo adesso e oggi in un luogo: temperatura, percepita, condizioni, vento, ore di pioggia. "
-                         "place: nome di un luogo salvato (casa, lavoro, palestra…), indirizzo o città; vuoto = Casa."),
+            description=(("Weather now and today in a place: temperature, feels like, conditions, wind, hours of rain. "
+                          "place: name of a saved place (casa, lavoro, palestra…), address or city; empty = Casa.")),
             parameters={"type": "object", "properties": {
-                "place": {"type": "string", "description": "Luogo salvato, indirizzo o città (vuoto = Casa)"}}},
+                "place": {"type": "string", "description": "Saved place, address or city (empty = Casa)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "weather_now", "params": kw},
             title="Meteo adesso", method="GET", path="/api/gateway/weather/now",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt=("Rispondi in una o due frasi: luogo, temperatura, condizioni e se pioverà oggi "
-                             "(con le ore). Se status è needs_place o place_not_found spiega cosa serve."),
+            response_prompt=(("Answer in one or two sentences: place, temperature, conditions and whether it will rain today "
+                              "(with hours). If status is needs_place or place_not_found explain what is needed.")),
             telegram_visible=True, telegram_group="giornata",
                 telegram={"section": "Meteo", "primary": 2, "label": "Meteo"}),
         MCPTool(
             name="weather_forecast",
-            description=("Previsione meteo per giorni (fino a 16 giorni avanti): minima/massima, condizioni, "
-                         "probabilità e ore di pioggia, vento, alba/tramonto. date_from/date_to YYYY-MM-DD "
-                         "(vuoto = oggi + 2 giorni); hourly=true aggiunge le ore. place come in weather_now."),
+            description=(("Weather forecast by day (up to 16 days ahead): min/max, conditions, chance and hours of rain, "
+                          "wind, sunrise/sunset. date_from/date_to YYYY-MM-DD (empty = today + 2 days); hourly=true adds "
+                          "the hours. place as in weather_now.")),
             parameters={"type": "object", "properties": {
-                "place": {"type": "string", "description": "Luogo salvato, indirizzo o città (vuoto = Casa)"},
-                "date_from": {"type": "string", "description": "Primo giorno YYYY-MM-DD"},
-                "date_to": {"type": "string", "description": "Ultimo giorno YYYY-MM-DD"},
-                "hourly": {"type": "boolean", "description": "Includi le ore"}}},
+                "place": {"type": "string", "description": "Saved place, address or city (empty = Casa)"},
+                "date_from": {"type": "string", "description": "First day YYYY-MM-DD"},
+                "date_to": {"type": "string", "description": "Last day YYYY-MM-DD"},
+                "hourly": {"type": "boolean", "description": "Include the hours"}}},
             handler=lambda **kw: {"status": "ok", "tool": "weather_forecast", "params": kw},
             title="Previsioni meteo", method="GET", path="/api/gateway/weather/forecast",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt=("Riassumi la previsione giorno per giorno in modo breve (min–max, condizioni, pioggia "
-                             "con le ore). Se status non è ok spiega cosa serve."),
+            response_prompt=(("Summarise the forecast day by day, briefly (min–max, conditions, rain with hours). If status is "
+                              "not ok explain what is needed.")),
             telegram_visible=True, telegram_group="giornata",
                 telegram={"section": "Meteo", "label": "Previsioni"}),
         *devices_api.tools(MCPTool),
@@ -544,7 +535,7 @@ def register_on_hub_startup():
         "tags": ["core", "connector"],
         "topology_tags": ["layer:gateway", "domain:auth_api", "status:stable"],
         "capabilities": {
-            "when_to_use": 'calendario, eventi, mail Gmail, meteo e luoghi', "manual": 'Account Google/Microsoft: eventi del calendario (crea, sposta, cerca), mail Gmail, meteo dei luoghi salvati.',
+            "when_to_use": "calendar, events, Gmail mail, weather and places", "manual": "Google/Microsoft accounts: calendar events (create, move, search), Gmail mail, weather of saved places.",
             "ingest_trigger": "/api/ingest/trigger",
             "calendar_sync": "/api/ingest/calendar/trigger",
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",

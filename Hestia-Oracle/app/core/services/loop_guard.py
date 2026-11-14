@@ -28,8 +28,8 @@ GUARD_WAIT = "oracle.agent.giri.attesa_secondi"
 GUARD_CHECKS = "oracle.agent.giri.verifiche"
 CHECK_USECASE = "oracle.controllo_giri"
 
-STOP_MESSAGE = ("[SYSTEM]: stai ripetendo le stesse chiamate senza progressi. Non chiamare altri strumenti: "
-                "rispondi ora con quello che hai, e di' cosa non sei riuscito a ottenere.")
+STOP_MESSAGE = ("[SYSTEM]: you are repeating the same calls with no progress. Call no more tools: "
+                "answer now with what you have, and say what you could not get.")
 
 
 def fingerprint(name: str, params: dict | None) -> str:
@@ -127,9 +127,9 @@ class LoopGuard:
 def check_prompt(recent: list[str]) -> str:
     """Caveman prompt for the light check."""
     lines = "\n".join(f"- {fp[:200]}" for fp in recent[-12:])
-    return ("Ultime chiamate strumenti di un agente:\n" + lines +
-            "\nSta ASPETTANDO qualcosa che cambia (es. stato di un lavoro) o GIRA a vuoto? "
-            "Rispondi solo: aspetta | gira")
+    return ("Last tool calls of an agent:\n" + lines +
+            "\nIs it WAITING for something that changes (e.g. a job status) or LOOPING for nothing? "
+            "Reply only: wait | loop")
 
 
 def llm_checker(recent: list[str]) -> str:

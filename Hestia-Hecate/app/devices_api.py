@@ -268,18 +268,16 @@ def tools(MCPTool) -> list:
                        clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="sistema",
                        telegram={"section": "Dispositivi", **({"label": label} if label else {})})
     return [
-        t("garmin_stato", "Garmin", "Se l'orologio Garmin è collegato e quando ho letto gli ultimi dati.", "GET",
+        t("garmin_stato", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
           "/api/gateway/garmin/status", label="Garmin"),
-        t("garmin_collega", "Collega Garmin", "Manda all'utente il modulo per collegare Garmin Connect "
-          "(email e password non passano dalla chat).", "POST", "/api/gateway/garmin/connect"),
-        t("garmin_sincronizza", "Leggi Garmin ora", "Legge adesso sonno, passi, battito e attività degli ultimi "
-          "giorni (days, default 2) e li passa ad allenamento e cura di sé.", "POST", "/api/gateway/garmin/sync",
+        t("garmin_collega", "Collega Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
+        t("garmin_sincronizza", "Leggi Garmin ora", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
+                                                     "them to training and self care."), "POST", "/api/gateway/garmin/sync",
           {"days": {"type": "integer", "minimum": 1, "maximum": 14}}),
-        t("garmin_giorno", "Dati Garmin di un giorno", "Sonno, passi, battito a riposo, body battery, HRV, "
-          "prontezza e attività di un giorno (day YYYY-MM-DD, vuoto = oggi).", "GET", "/api/gateway/garmin/day",
+        t("garmin_giorno", "Dati Garmin di un giorno", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
+                                                        "YYYY-MM-DD, empty = today)."), "GET", "/api/gateway/garmin/day",
           {"day": {"type": "string", "format": "date", "title": "Giorno"}}),
-        t("garmin_scollega", "Scollega Garmin", "Toglie l'accesso a Garmin (cancella i token).", "DELETE",
+        t("garmin_scollega", "Scollega Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
           "/api/gateway/garmin"),
-        t("telefono_stato", "Telefono", "Ultimo stato mandato dal telefono (a casa, in carica, batteria) e se il "
-          "collegamento è configurato.", "GET", "/api/gateway/phone/status", label="Telefono"),
+        t("telefono_stato", "Telefono", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Telefono"),
     ]

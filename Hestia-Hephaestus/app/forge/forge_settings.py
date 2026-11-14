@@ -43,7 +43,7 @@ _FORGE = "Sviluppo (Forge)"
 _REPAIR = "Riparazioni"
 _UPDATE = "Aggiornamenti"
 
-settings = SettingsClient("hephaestus")
+settings = SettingsClient("hephaestus").follow_personal()
 settings.declare([
     # Manual brake, user only: the assistant can read it but never propose a change.
     setting(PAUSED, "Sviluppo in pausa", "bool", False, group=_FORGE, order=-1, oracle="read",

@@ -817,10 +817,13 @@ class Wardrobe:
             "style": [c["key"] for c in self.vocab("style", hidden=False)],
             "fit": [c["key"] for c in self.vocab("fit", hidden=False)],
         }
-        prompt = ("Capo d'abbigliamento in foto. Rispondi SOLO JSON: {\"name\": nome breve italiano (es. \"Camicia Oxford azzurra\"), "
-                  "\"kind\": garment|shoes|accessory, \"category\": chiave (sottocategoria se c'è), \"colors\": [chiavi, principale prima], "
-                  "\"pattern\", \"materials\": [nomi], \"styles\": [chiavi], \"seasons\": [spring|summer|autumn|winter], "
-                  "\"warmth\": 1-5, \"formality\": 1-5, \"fit\", \"brand\": se leggibile o \"\"}. Valori ammessi: "
+        from hestia_common import i18n, identity
+        language = identity.LANGUAGES[i18n.language(lambda k: self._cfg(k, None))]
+        prompt = ("Clothing item in the photo. Reply ONLY JSON: {\"name\": short name in " + language
+                  + " (e.g. \"Light blue Oxford shirt\"), "
+                  "\"kind\": garment|shoes|accessory, \"category\": key (subcategory if any), \"colors\": [keys, main first], "
+                  "\"pattern\", \"materials\": [names], \"styles\": [keys], \"seasons\": [spring|summer|autumn|winter], "
+                  "\"warmth\": 1-5, \"formality\": 1-5, \"fit\", \"brand\": if readable or \"\"}. Allowed values: "
                   + json.dumps(catalog, ensure_ascii=False))
         body = {"use_case": "wardrobe.foto", "temperature": 0.1, "max_tokens": 500,
                 "messages": [{"role": "user", "content": [

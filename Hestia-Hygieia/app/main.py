@@ -869,79 +869,76 @@ try:
     O = {"type": "object"}
     G = "selfcare"
     _tools = [
-        MCPTool(name="selfcare_summary", description="Self care dell'utente: routine (con passi e frequenza), prodotti in "
-                "uso, avvisi (scadenze, da ricomprare) e cosa resta oggi. Usalo per primo per qualsiasi domanda su "
-                "skincare, capelli, corpo, cosmetici.", parameters={"type": "object", "properties": {}},
+        MCPTool(name="selfcare_summary", description=("The user's self care: routines (with steps and frequency), products in use, warnings (expiry, "
+                                                      "to buy again) and what is left today. Use it first for any question on skincare, hair, body, "
+                                                      "cosmetics."), parameters={"type": "object", "properties": {}},
                 handler=_t(_overview), title="Riepilogo cura di sé", path=f"{API}/overview", clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Oggi", "summary": True}),
-        MCPTool(name="selfcare_today", description="Cosa fare oggi (o in 'date'): routine con stato (due = da fare, "
-                "suggested = consigliata, blocked = non oggi e perché, done), passi da fare stasera, passi esclusi oggi "
-                "(es. retinolo vs acido).", parameters={"type": "object", "properties": {"date": S}},
+        MCPTool(name="selfcare_today", description=("What to do today (or on 'date'): routines with state (due = to do, suggested, blocked = not "
+                                                    "today and why, done), steps for tonight, steps excluded today (e.g. retinol vs acid)."), parameters={"type": "object", "properties": {"date": S}},
                 handler=_t(_today), title="Cura di sé oggi", path=f"{API}/today", clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Oggi", "primary": 1, "label": "Oggi"}),
-        MCPTool(name="selfcare_log", description="Registra: routine fatta (status done|partial|skipped, skipped_steps = "
-                "passi saltati per nome) oppure uso extra di un prodotto (product, es. 'maschera'). date YYYY-MM-DD, "
-                "default oggi.", parameters={"type": "object", "properties": {
+        MCPTool(name="selfcare_log", description=("Log: routine done (status done|partial|skipped, skipped_steps = skipped steps by name) or an "
+                                                  "extra use of a product (product, e.g. 'maschera'). date YYYY-MM-DD, default today."), parameters={"type": "object", "properties": {
                     "routine": S, "status": S, "skipped_steps": L, "product": S, "date": S, "note": S}},
                 handler=_t(_log), title="Segna fatto", method="POST", path=f"{API}/log", clients=["telegram", "ui"],
                 telegram_group="selfcare",
                 telegram={"section": "Oggi", "primary": 2}),
-        MCPTool(name="selfcare_products", description="Cerca i prodotti (query nome/marca, area viso|capelli|corpo…, "
-                "status current (default) | all | in_use | stock | wishlist | finished, active es. retinolo).",
+        MCPTool(name="selfcare_products", description=("Search products (query name/brand, area viso|capelli|corpo…, status current (default) | all | "
+                                                       "in_use | stock | wishlist | finished, active e.g. retinolo)."),
                 parameters={"type": "object", "properties": {"query": S, "area": S, "status": S, "active": S, "category": S}},
                 handler=_t(_products), title="Prodotti", path=f"{API}/products", clients=["telegram", "ui"],
                 telegram_group="selfcare",
                 telegram={"section": "Prodotti", "primary": 4}),
-        MCPTool(name="selfcare_product_get", description="Dettaglio di un prodotto: utilizzi, scadenza, stima di quando "
-                "finisce, routine che lo usano, storia, confezioni precedenti.",
+        MCPTool(name="selfcare_product_get", description=("Detail of a product: uses, expiry, estimate of when it runs out, routines using it, history, "
+                                                          "previous packs."),
                 parameters={"type": "object", "properties": {"product": S}, "required": ["product"]},
                 handler=_t(_product_get), title="Dettaglio prodotto", path=f"{API}/products/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Prodotti"}),
-        MCPTool(name="selfcare_product_add", description="Aggiungi un prodotto (es. 'ho comprato il siero X 30ml'). "
-                "status in_use (aperto, default) | stock (chiuso) | wishlist. actives = slug (retinolo, niacinamide, "
-                "aha_glicolico, bha_salicilico, vitamina_c…). category es. detergente, siero, crema, spf, shampoo.",
+        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'ho comprato il siero X 30ml'). status in_use (open, default) | stock "
+                                                          "(closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glicolico, bha_salicilico, "
+                                                          "vitamina_c…). category e.g. detergente, siero, crema, spf, shampoo."),
                 parameters={"type": "object", "properties": {"name": S, "brand": S, "category": S, "areas": L, "actives": L,
                                                              "size": N, "unit": S, "price": N, "status": S, "pao_months": I,
                                                              "notes": S, "favorite": B}, "required": ["name"]},
                 handler=_t(_product_add), title="Aggiungi prodotto", method="POST", path=f"{API}/products",
                 clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Prodotti"}),
-        MCPTool(name="selfcare_product_update", description="Aggiorna un prodotto: status in_use (aperto) | finished | "
-                "discarded | paused | stock, level full|3/4|half|1/4|almost_empty, rating 1-5, verdict "
-                "repurchase|maybe|never, repurchased=true se l'ha ricomprato (nuova confezione).",
+        MCPTool(name="selfcare_product_update", description=("Update a product: status in_use (open) | finished | discarded | paused | stock, level "
+                                                             "full|3/4|half|1/4|almost_empty, rating 1-5, verdict repurchase|maybe|never, repurchased=true if "
+                                                             "bought again (new pack)."),
                 parameters={"type": "object", "properties": {"product": S, "status": S, "level": S, "rating": I, "verdict": S,
                                                              "favorite": B, "notes": S, "price": N, "opened_at": S,
                                                              "expires_at": S, "repurchased": B}, "required": ["product"]},
                 handler=_t(_product_update), title="Aggiorna prodotto", method="PUT", path=f"{API}/products/{{id}}",
                 clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Prodotti"}),
-        MCPTool(name="selfcare_routines", description="Le routine con frequenza, stato di oggi e obiettivo (es. 1/2 sett.).",
+        MCPTool(name="selfcare_routines", description="The routines with frequency, today's state and goal (e.g. 1/2 a week).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_routines), title="Routine",
                 path=f"{API}/routines", clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Routine", "primary": 3}),
-        MCPTool(name="selfcare_routine_get", description="Una routine: passi in ordine con quantità, attese e frequenza "
-                "propria, statistiche, storia delle versioni, avvisi di compatibilità.",
+        MCPTool(name="selfcare_routine_get", description=("One routine: steps in order with amounts, waits and own frequency, statistics, version history, "
+                                                          "compatibility warnings."),
                 parameters={"type": "object", "properties": {"routine": S}, "required": ["routine"]},
                 handler=_t(_routine_get), title="Dettaglio routine", path=f"{API}/routines/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
-        MCPTool(name="selfcare_routine_create", description="Crea una routine. steps = nomi di prodotti (cercati "
-                "nell'inventario) o descrizioni. cadence_mode daily | fixed_days (days lun..dom) | target (times per "
-                "week|month, default) | as_needed. Solo dopo il sì dell'utente.",
+        MCPTool(name="selfcare_routine_create", description=("Create a routine. steps = product names (looked up in the inventory) or descriptions. "
+                                                             "cadence_mode daily | fixed_days (days Mon..Sun) | target (times per week|month, default) | "
+                                                             "as_needed. Only after the user's yes."),
                 parameters={"type": "object", "properties": {"name": S, "slot": S, "areas": L, "steps": L, "cadence_mode": S,
                                                              "times": I, "per": S, "days": L, "reminder": B, "favorite": B},
                             "required": ["name"]},
                 handler=_t(_routine_create), title="Crea routine", method="POST", path=f"{API}/routines",
                 clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
-        MCPTool(name="selfcare_routine_edit", description="Modifica una routine (crea una nuova versione, annullabile): "
-                "add_step (+position, amount, wait_minutes), remove_step, step + step_times/step_per (frequenza propria "
-                "del passo, 0 = sempre) o pause_days (es. 'niente retinolo per una settimana' = step retinolo, "
-                "pause_days 7; 0 = riprendi), cadence_mode/times/per/days della routine, status active|paused, "
-                "reminder, favorite, plan_with = metti la routine nel piano della settimana solo nei giorni con "
-                "questa cosa (es. 'workout' = giorni di allenamento; 'nessuno' toglie). reason = perché (finisce "
-                "nella storia).",
+        MCPTool(name="selfcare_routine_edit", description=("Edit a routine (creates a new version, undoable): add_step (+position, amount, wait_minutes), "
+                                                           "remove_step, step + step_times/step_per (the step's own frequency, 0 = always) or pause_days "
+                                                           "(e.g. 'niente retinolo per una settimana' = step retinolo, pause_days 7; 0 = resume), "
+                                                           "cadence_mode/times/per/days of the routine, status active|paused, reminder, favorite, plan_with "
+                                                           "= put the routine in the week plan only on days with this thing (e.g. 'workout' = training "
+                                                           "days; 'nessuno' removes it). reason = why (goes into the history)."),
                 parameters={"type": "object", "properties": {
                     "routine": S, "reason": S, "add_step": S, "position": I, "remove_step": S, "step": S, "step_times": I,
                     "step_per": S, "pause_days": I, "amount": S, "wait_minutes": I, "name": S, "cadence_mode": S,
@@ -950,49 +947,49 @@ try:
                 handler=_t(_routine_edit), title="Modifica routine", method="PUT", path=f"{API}/routines/{{id}}",
                 clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
-        MCPTool(name="selfcare_undo_routine", description="Annulla l'ultima modifica dei passi di una routine.",
+        MCPTool(name="selfcare_undo_routine", description="Undo the last change to the steps of a routine.",
                 parameters={"type": "object", "properties": {"routine": S}, "required": ["routine"]},
                 handler=_t(_undo_routine), title="Annulla modifica routine", method="POST",
                 path=f"{API}/routines/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
-        MCPTool(name="selfcare_journal_add", description="Diario (se attivo): voti 1-5 per area, es. area viso scores "
-                "{brufoli: 2, idratazione: 4}, capelli {caduta: 3}; note e tags (stress, sole, ciclo…).",
+        MCPTool(name="selfcare_journal_add", description=("Diary (if active): scores 1-5 per area, e.g. area viso scores {brufoli: 2, idratazione: 4}, "
+                                                          "capelli {caduta: 3}; notes and tags (stress, sole, ciclo…)."),
                 parameters={"type": "object", "properties": {"area": S, "scores": O, "note": S, "tags": L, "date": S},
                             "required": ["area"]},
                 handler=_t(_journal_add), title="Scrivi nel diario", method="POST", path=f"{API}/journal", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diario"}),
-        MCPTool(name="selfcare_diario_voce", description="Diario a voce: l'utente racconta la giornata con un vocale; "
-                "viene trascritto e salvato nel diario (area giornata). Proposto dopo il recap della sera.",
+        MCPTool(name="selfcare_diario_voce", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
+                                                          "diary (area giornata). Offered after the evening recap."),
                 parameters={"type": "object", "properties": {
                     "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Il tuo vocale"},
                     "date": S}, "required": ["audio"]},
                 handler=_t(lambda audio, date="": {"item": _diary_voice(audio, date)}), title="Racconta la giornata",
                 method="POST", path=f"{API}/journal/voice", clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Diario"}),
-        MCPTool(name="selfcare_stats", description="Statistiche: costanza per routine (streak, % periodi rispettati), "
-                "prodotti più usati, spesa per mese.", parameters={"type": "object", "properties": {"days": I}},
+        MCPTool(name="selfcare_stats", description=("Statistics: consistency per routine (streak, % of periods kept), most used products, spending "
+                                                    "per month."), parameters={"type": "object", "properties": {"days": I}},
                 handler=_t(_stats), title="Statistiche cura di sé", path=f"{API}/stats", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Statistiche", "label": "Statistiche"}),
-        MCPTool(name="selfcare_timeline", description="Cosa è cambiato nel tempo: versioni delle routine, prodotti "
-                "aperti/finiti/sostituiti, diario. since/until YYYY-MM-DD.",
+        MCPTool(name="selfcare_timeline", description=("What changed over time: routine versions, products opened/finished/replaced, diary. since/until "
+                                                       "YYYY-MM-DD."),
                 parameters={"type": "object", "properties": {"days": I, "since": S, "until": S}}, handler=_t(_timeline),
                 title="Storia cura di sé", path=f"{API}/timeline", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diario", "label": "Storia"}),
-        MCPTool(name="selfcare_period", description="Routine e prodotti in uso in una certa data (es. 'cosa usavo a marzo').",
+        MCPTool(name="selfcare_period", description="Routines and products in use on a given date (e.g. 'cosa usavo a marzo').",
                 parameters={"type": "object", "properties": {"date": S}, "required": ["date"]}, handler=_t(_period),
                 title="Cura di sé in una data", path=f"{API}/period", clients=["ui"], telegram_visible=False,
                 telegram_group="selfcare",
                 telegram={"section": "Diario", "label": "In una data"}),
-        MCPTool(name="selfcare_check", description="Compatibilità degli attivi (consiglio, mai blocco): di una routine, "
-                "o di un prodotto / lista di attivi rispetto a quelli in uso.",
+        MCPTool(name="selfcare_check", description=("Compatibility of actives (advice, never a block): of a routine, or of a product / list of "
+                                                    "actives against those in use."),
                 parameters={"type": "object", "properties": {"routine": S, "product": S, "actives": L}},
                 handler=_t(_check), title="Compatibilità", path=f"{API}/check", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Prodotti"}),
-        MCPTool(name="selfcare_shopping", description="Lista spesa self care: desideri, da ricomprare (sta finendo, "
-                "finito in una routine), finiti col giudizio 'lo ricompro'.", parameters={"type": "object", "properties": {}},
+        MCPTool(name="selfcare_shopping", description=("Self care shopping list: wishes, to buy again (running out, finished in a routine), finished "
+                                                       "with the verdict 'lo ricompro'."), parameters={"type": "object", "properties": {}},
                 handler=_t(_shopping), title="Lista spesa", path=f"{API}/shopping", clients=["telegram", "ui"],
                 telegram_group="selfcare",
                 telegram={"section": "Prodotti", "primary": 5}),
@@ -1039,7 +1036,7 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps = {"when_to_use": 'cura di sé: skincare, routine, diario del benessere, sonno, umore', "manual": 'Routine di cura di sé, prodotti, diario del benessere (sempre attivo), note su sonno e umore.',
+    caps = {"when_to_use": "self care: skincare, routines, wellbeing diary, sleep, mood", "manual": "Self-care routines, products, wellbeing diary (always on), notes on sleep and mood.",
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["selfcare"],
             "context_endpoint": "/api/module/context", **recap.capabilities(), **voice_capabilities(VOICE_USECASES),
             **feed_capabilities({"wearable.daily": f"{API}/wearable"})}

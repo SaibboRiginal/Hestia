@@ -1089,159 +1089,154 @@ try:
     I = {"type": "integer"}
     L = {"type": "array", "items": {"type": "string"}}
     _tools = [
-        MCPTool(name="fitness_summary", description="Allenamento a colpo d'occhio: prossimo allenamento, obiettivo "
-                "(es. 2/3 settimana), record recenti, stalli, giorni saltati, segnali di energia bassa. Usalo per "
-                "qualsiasi domanda su palestra/allenamento prima di altro.", parameters={"type": "object", "properties": {}},
+        MCPTool(name="fitness_summary", description=("Training at a glance: next workout, goal (e.g. 2/3 this week), recent records, plateaus, "
+                                                     "skipped days, low-energy signals. Use it first for any question about gym/training."), parameters={"type": "object", "properties": {}},
                 handler=_t(_summary), title="Riepilogo allenamento", path=f"{API}/summary", clients=["telegram", "ui"],
                 telegram_group="allenamento",
                 telegram={"section": "Oggi", "summary": True}),
-        MCPTool(name="fitness_next_workout", description="Il prossimo allenamento con esercizi e pesi suggeriti "
-                "(progressione automatica) e il motivo.", parameters={"type": "object", "properties": {}},
+        MCPTool(name="fitness_next_workout", description="The next workout with exercises and suggested weights (automatic progression) and the reason.", parameters={"type": "object", "properties": {}},
                 handler=_t(_next), title="Allenamento di oggi", path=f"{API}/next", clients=["telegram", "ui"],
                 telegram_group="allenamento",
                 telegram={"section": "Oggi", "primary": 2}),
-        MCPTool(name="fitness_history", description="Allenamenti passati (giorni indietro, filtro esercizio).",
+        MCPTool(name="fitness_history", description="Past workouts (days back, exercise filter).",
                 parameters={"type": "object", "properties": {"days": I, "exercise": S, "limit": I}},
                 handler=_t(_history), title="Storico allenamenti", path=f"{API}/sessions", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Storico e statistiche", "label": "Storico"}),
-        MCPTool(name="fitness_exercise_stats", description="Record e andamento di un esercizio (massimale stimato, "
-                "peso massimo, ultime sedute, stallo).", parameters={"type": "object", "properties": {"exercise": S},
+        MCPTool(name="fitness_exercise_stats", description="Records and trend of an exercise (estimated max, top weight, last sessions, plateau).", parameters={"type": "object", "properties": {"exercise": S},
                                                                        "required": ["exercise"]},
                 handler=_t(_exercise_stats), title="Statistiche esercizio", path=f"{API}/records", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Storico e statistiche"}),
-        MCPTool(name="fitness_search_exercises", description="Cerca esercizi nel catalogo (nome o muscolo: petto, "
-                "spalle, braccia, schiena, core, gambe).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
+        MCPTool(name="fitness_search_exercises", description="Search exercises in the catalogue (name or muscle: petto, spalle, braccia, schiena, core, gambe).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
                 handler=_t(_search), title="Cerca esercizi", path=f"{API}/exercises", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Schede"}),
-        MCPTool(name="fitness_templates", description="Le mie schede di allenamento con esercizi e durata.",
+        MCPTool(name="fitness_templates", description="The user's workout templates with exercises and duration.",
                 parameters={"type": "object", "properties": {}}, handler=_t(_templates), title="Schede",
                 path=f"{API}/templates", clients=["telegram", "ui"], telegram_group="allenamento",
                 telegram={"section": "Schede", "primary": 5}),
-        MCPTool(name="fitness_start_session", description="Inizia un allenamento (scheda per nome, vuoto = quella di oggi).",
+        MCPTool(name="fitness_start_session", description="Start a workout (template by name, empty = today's).",
                 parameters={"type": "object", "properties": {"template": S}}, handler=_t(_start),
                 title="Inizia allenamento", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
                 telegram_group="allenamento",
                 telegram={"section": "Oggi", "primary": 1}),
-        MCPTool(name="fitness_log_sets", description="Registra serie nell'allenamento in corso dal testo: "
-                "'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. Peso x ripetizioni (x serie), @RPE opzionale.",
+        MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. "
+                                                      "Weight x reps (x sets), optional @RPE."),
                 parameters={"type": "object", "properties": {"text": S}, "required": ["text"]}, handler=_t(_log),
                 title="Registra serie", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
                 telegram_group="allenamento",
                 telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_finish_session", description="Concludi l'allenamento in corso: riepilogo e nuovi record.",
+        MCPTool(name="fitness_finish_session", description="Finish the workout in progress: summary and new records.",
                 parameters={"type": "object", "properties": {"notes": S, "effort": I}}, handler=_t(_finish),
                 title="Fine allenamento", method="POST", path=f"{API}/sessions/{{id}}/finish",
                 clients=["telegram", "ui"], telegram_group="allenamento",
                 telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_checkin", description="Salva come mi sento oggi: energia 1-5, sonno 1-5, indolenzimenti, "
-                "dolori (spalla, ginocchio, schiena…), minuti a disposizione.",
+        MCPTool(name="fitness_checkin", description=("Save how the user feels today: energy 1-5, sleep 1-5, soreness, pain (spalla, ginocchio, "
+                                                     "schiena…), minutes available."),
                 parameters={"type": "object", "properties": {"energy": I, "sleep": I, "soreness": L, "pain_areas": L,
                                                              "time_minutes": I, "free_text": S}},
                 handler=_t(_checkin), title="Come stai oggi", method="POST", path=f"{API}/checkin", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Oggi", "label": "Check-in"}),
-        MCPTool(name="fitness_adapt_today", description="Proponi l'allenamento di oggi adattato a come sto (energia "
-                "1-5, minuti, dolori, indolenzimenti, attrezzi mancanti, intent lighter|shorter|harder). NON lo applica: "
-                "mostra all'utente 'trace' e chiedi se va bene; se dice sì chiama fitness_apply_adaptation. "
-                "Mai consigliare di allenarsi sul dolore.",
+        MCPTool(name="fitness_adapt_today", description=("Propose today's workout adapted to how the user feels (energy 1-5, minutes, pain, soreness, "
+                                                         "missing equipment, intent lighter|shorter|harder). It does NOT apply it: show the user 'trace' "
+                                                         "and ask if it is fine; on yes call fitness_apply_adaptation. Never advise training through "
+                                                         "pain."),
                 parameters={"type": "object", "properties": {"energy": I, "time_minutes": I, "pain_areas": L,
                                                              "soreness": L, "equipment_missing": L, "intent": S,
                                                              "free_text": S}},
                 handler=_t(_adapt), title="Adatta allenamento", method="POST", path=f"{API}/adapt", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_apply_adaptation", description="Applica l'adattamento proposto (solo dopo il sì dell'utente).",
+        MCPTool(name="fitness_apply_adaptation", description="Apply the proposed adaptation (only after the user's yes).",
                 parameters={"type": "object", "properties": {"adaptation_id": S}, "required": ["adaptation_id"]},
                 handler=_t(_apply), title="Applica adattamento", method="POST", path=f"{API}/adapt/{{adaptation_id}}/apply",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_restore_today", description="Ripristina la scheda originale di oggi (annulla l'adattamento).",
+        MCPTool(name="fitness_restore_today", description="Restore today's original workout template (undo the adaptation).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_restore), title="Ripristina scheda di oggi",
                 method="POST", path=f"{API}/restore", clients=["ui"], telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_skip_day", description="Segna saltato l'allenamento di un giorno (default oggi).",
+        MCPTool(name="fitness_skip_day", description="Mark a day's workout as skipped (default today).",
                 parameters={"type": "object", "properties": {"date": S, "note": S}}, handler=_t(_skip),
                 title="Salta allenamento", method="POST", path=f"{API}/days/skip", clients=["telegram", "ui"],
                 telegram_group="allenamento",
                 telegram={"section": "Oggi", "primary": 6, "label": "Salta oggi"}),
-        MCPTool(name="fitness_postpone", description="Sposta l'allenamento di oggi (o di date_from) al giorno 'to' (YYYY-MM-DD).",
+        MCPTool(name="fitness_postpone", description="Move today's workout (or date_from's) to the day 'to' (YYYY-MM-DD).",
                 parameters={"type": "object", "properties": {"to": S, "date_from": S}, "required": ["to"]},
                 handler=_t(_postpone), title="Sposta allenamento", method="POST", path=f"{API}/days/postpone",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_feedback", description="Salva un feedback sull'allenamento o su un esercizio. tags: "
-                "too_heavy, too_light, pain, great, tired, bored, short_time, technique. Le regole lo usano la volta dopo.",
+        MCPTool(name="fitness_feedback", description=("Save feedback on the workout or an exercise. tags: too_heavy, too_light, pain, great, tired, "
+                                                      "bored, short_time, technique. The rules use it next time."),
                 parameters={"type": "object", "properties": {"text": S, "tags": L, "exercise": S}}, handler=_t(_feedback),
                 title="Com'è andato l'allenamento", method="POST", path=f"{API}/feedback", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Oggi", "label": "Feedback"}),
-        MCPTool(name="fitness_edit_template", description="Modifica una scheda: togli/aggiungi esercizio, serie e "
-                "ripetizioni. Solo dopo che l'utente ha detto sì in chat. Annullabile con fitness_undo_template.",
+        MCPTool(name="fitness_edit_template", description=("Edit a workout template: remove/add an exercise, sets and reps. Only after the user said yes in "
+                                                           "chat. Undoable with fitness_undo_template."),
                 parameters={"type": "object", "properties": {"template": S, "remove_exercise": S, "add_exercise": S,
                                                              "sets": I, "reps_min": I, "reps_max": I,
                                                              "changes": {"type": "object"}}, "required": ["template"]},
                 handler=_t(_edit_template), title="Modifica scheda", method="PUT", path=f"{API}/templates/{{id}}",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Schede"}),
-        MCPTool(name="fitness_undo_template", description="Annulla l'ultima modifica di una scheda.",
+        MCPTool(name="fitness_undo_template", description="Undo the last change to a workout template.",
                 parameters={"type": "object", "properties": {"template": S}, "required": ["template"]},
                 handler=_t(_undo_template), title="Annulla modifica scheda", method="POST",
                 path=f"{API}/templates/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Schede"}),
-        MCPTool(name="fitness_log_measurement", description="Registra peso corporeo (kg) o una misura (kind: waist, "
-                "chest, arm, thigh, body_fat…).", parameters={"type": "object", "properties": {
+        MCPTool(name="fitness_log_measurement", description="Log body weight (kg) or a measurement (kind: waist, chest, arm, thigh, body_fat…).", parameters={"type": "object", "properties": {
                     "value": {"type": "number"}, "kind": S}, "required": ["value"]},
                 handler=_t(_measure), title="Registra peso", method="POST", path=f"{API}/measurements",
                 clients=["telegram", "ui"], telegram_group="allenamento",
                 telegram={"section": "Obiettivi e corpo", "primary": 3}),
-        MCPTool(name="fitness_set_goal", description="Imposta un obiettivo di allenamento: times per day|week|month; "
-                "scope any (qualsiasi), template (target = nome scheda) o muscle (petto, spalle, braccia, schiena, core, gambe).",
+        MCPTool(name="fitness_set_goal", description=("Set a training goal: times per day|week|month; scope any, template (target = template name) or "
+                                                      "muscle (petto, spalle, braccia, schiena, core, gambe)."),
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
                 handler=_t(_goal), title="Obiettivo allenamento", method="POST", path=f"{API}/goals", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Obiettivi e corpo"}),
-        MCPTool(name="fitness_plan_activity", description="Intenzione di attività all'aperto («ho voglia di correre 2 "
-                "volte questa settimana»): kind corsa|bici|camminata|nuoto|altro, times, place (nome di un luogo salvato "
-                "o città; vuoto = Casa), minutes, week (vuoto = questa, 'next' = prossima). Propone i momenti migliori "
-                "da meteo e impegni; NON scrive nel calendario: mostra i momenti e chiedi conferma.",
+        MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («ho voglia di correre 2 volte questa settimana»): kind "
+                                                           "corsa|bici|camminata|nuoto|altro, times, place (name of a saved place or a city; empty = Casa), "
+                                                           "minutes, week (empty = this one, 'next' = next). Proposes the best moments from weather and "
+                                                           "commitments; does NOT write the calendar: show the moments and ask for confirmation."),
                 parameters={"type": "object", "properties": {"kind": S, "times": I, "place": S, "minutes": I, "week": S}},
                 handler=_t(_plan_activity), title="Pianifica attività", method="POST",
                 path=f"{API}/activities/propose", clients=["telegram", "ui"], telegram_group="allenamento",
                 telegram={"section": "Attività"}),
-        MCPTool(name="fitness_confirm_activity", description="Conferma l'intenzione proposta (dopo il sì dell'utente): "
-                "slots = numeri dei momenti da tenere o orari ISO scelti dall'utente (vuoto = tutti). Crea gli eventi "
-                "nel calendario «Allenamenti» e dopo ogni uscita chiede se è stata fatta.",
+        MCPTool(name="fitness_confirm_activity", description=("Confirm the proposed intention (after the user's yes): slots = numbers of the moments to keep "
+                                                              "or ISO times the user chose (empty = all). Creates the events in the «Allenamenti» calendar and "
+                                                              "asks after each outing whether it was done."),
                 parameters={"type": "object", "properties": {"plan_id": S, "slots": L}, "required": ["plan_id"]},
                 handler=_t(_confirm_activity), title="Conferma attività", method="POST",
                 path=f"{API}/activities/{{plan_id}}/confirm", clients=["ui"], telegram_visible=False,
                 telegram_group="allenamento",
                 telegram={"section": "Attività"}),
-        MCPTool(name="fitness_log_activity", description="Registra un'attività fatta («ho corso 5 km»): kind, date "
-                "(vuoto = oggi), minutes, km, note. Chiude il momento pianificato di quel giorno se c'è.",
+        MCPTool(name="fitness_log_activity", description=("Log an activity done («ho corso 5 km»): kind, date (empty = today), minutes, km, note. Closes "
+                                                          "the planned moment of that day if there is one."),
                 parameters={"type": "object", "properties": {"kind": S, "date": S, "minutes": I,
                                                              "km": {"type": "number"}, "note": S}},
                 handler=_t(_log_activity), title="Registra attività", method="POST", path=f"{API}/activities/log",
                 clients=["telegram", "ui"], telegram_group="allenamento",
                 telegram={"section": "Attività", "primary": 4}),
-        MCPTool(name="fitness_activities", description="Attività all'aperto di questa settimana: intenzioni con "
-                "progresso (es. Corsa 1/2), momenti pianificati e attività fatte.",
+        MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Corsa 1/2), planned moments and "
+                                                        "activities done."),
                 parameters={"type": "object", "properties": {}}, handler=_t(_activities_week),
                 title="Attività della settimana", path=f"{API}/activities", clients=["telegram", "ui"],
                 telegram_group="allenamento",
                 telegram={"section": "Attività"}),
-        MCPTool(name="fitness_activity_outcome", description="Esito di un momento pianificato: outcome done|missed|"
-                "moved (to = nuovo orario ISO; vuoto = il migliore rimasto nella settimana).",
+        MCPTool(name="fitness_activity_outcome", description=("Outcome of a planned moment: outcome done|missed|moved (to = new ISO time; empty = the best one "
+                                                              "left in the week)."),
                 parameters={"type": "object", "properties": {"plan_id": S, "slot_id": S, "outcome": S, "to": S},
                             "required": ["plan_id", "slot_id"]},
                 handler=_t(_activity_outcome), title="Esito attività", method="POST",
                 path=f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/done", clients=["ui"], telegram_visible=False,
                 telegram_group="allenamento",
                 telegram={"section": "Attività"}),
-        MCPTool(name="fitness_cancel_activity", description="Annulla un'intenzione (toglie gli eventi futuri dal calendario).",
+        MCPTool(name="fitness_cancel_activity", description="Cancel an intention (removes its future events from the calendar).",
                 parameters={"type": "object", "properties": {"plan_id": S}, "required": ["plan_id"]},
                 handler=_t(_cancel_activity), title="Annulla attività", method="DELETE",
                 path=f"{API}/activities/{{plan_id}}", clients=["ui"], telegram_visible=False,
@@ -1289,7 +1284,7 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps = {"when_to_use": "palestra, allenamenti, schede, esercizi e attività all'aperto", "manual": "Schede e sessioni di allenamento, progressi sugli esercizi, attività all'aperto col meteo. Il piano della settimana lo propone il coach.",
+    caps = {"when_to_use": "gym, workouts, plans, exercises and outdoor activities", "manual": "Workout plans and sessions, exercise progress, outdoor activities with weather. The weekly plan comes from the coach.",
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["fitness"],
             "context_endpoint": "/api/module/context", **recap.capabilities(),
             **feed_capabilities({"wearable.daily": f"{API}/wearable"})}

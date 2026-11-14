@@ -12,6 +12,7 @@ Design goals for local/resource-constrained execution:
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -76,50 +77,57 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
 def _build_strategist_prompt(observation_text: str) -> str:
     """Build the Oracle prompt for strategist reasoning.
 
-    The prompt is in Italian (Hestia's persona language), requests
-    structured key:value output for easier parsing from local models,
-    and strictly limits output size.
+    English like every hidden text; the fields people read (ACTION, SUMMARY) come in the owner's language.
+    Structured key:value output for easier parsing from local models, strictly limited in size.
     """
     # Caveman style: short lines, zero filler. Local models = small context.
     return (
-        "Sei Athena, mente proattiva di Hestia. Retrospettiva: cosa va male, cosa migliorare.\n"
-        f"OSSERVAZIONI:\n{observation_text}\n\n"
-        f"Proponi max {get_int(S.STRATEGIST_MAX_CANDIDATES)} azioni. Solo se dati lo giustificano.\n"
-        "Formato ESATTO per ogni azione:\n"
-        "AZIONE: <titolo breve>\n"
-        "TIPO: advisory|remediation|notification|maintenance|improvement|setting\n"
-        "PRIORITA: low|normal|elevated|high\n"
-        "DOMINIO: cognition|system|<dominio osservato>\n"
-        "MOTIVO: <1 frase>\n"
-        "RIASSUNTO: <1 frase>\n"
-        "Solo per setting (CHIAVE da IMPOSTAZIONI):\nCHIAVE: <chiave>\nVALORE: <nuovo valore>\n\n"
-        "Regole:\n"
-        "- improvement = cambio a codice/prompt di Hestia (errori ricorrenti, dominio con feedback negativi). "
-        "RIASSUNTO = cosa cambiare, concreto, quale servizio.\n"
-        "- remediation = servizio giù/rotto ora.\n"
-        "- setting = cambiare UNA impostazione elencata (es. errori/costi da modello o livello log). Solo chiavi "
-        "e scelte elencate; l'utente conferma.\n"
-        "- Tutto normale -> scrivi solo: NESSUNA_AZIONE\n"
-        "- No testo fuori formato. No markdown. No HTML."
+        "You are Athena, the assistant's proactive mind. Retrospective: what goes wrong, what to improve.\n"
+        f"OBSERVATIONS:\n{observation_text}\n\n"
+        f"Propose at most {get_int(S.STRATEGIST_MAX_CANDIDATES)} actions. Only if the data justifies them.\n"
+        "EXACT format for each action:\n"
+        "ACTION: <short title>\n"
+        "TYPE: advisory|remediation|notification|maintenance|improvement|setting\n"
+        "PRIORITY: low|normal|elevated|high\n"
+        "DOMAIN: cognition|system|<observed domain>\n"
+        "REASON: <1 sentence>\n"
+        "SUMMARY: <1 sentence>\n"
+        "Only for setting (KEY from SETTINGS):\nKEY: <key>\nVALUE: <new value>\n\n"
+        "Rules:\n"
+        f"- Write ACTION, REASON and SUMMARY in {S.owner_language()}: the owner reads them.\n"
+        "- improvement = a change to the assistant's code/prompts (recurring errors, a domain with negative "
+        "feedback). SUMMARY = what to change, concrete, which service.\n"
+        "- remediation = a service down/broken now.\n"
+        "- setting = change ONE listed setting (e.g. errors/costs of a model or the log level). Only listed keys "
+        "and choices; the user confirms.\n"
+        "- All normal -> write only: NO_ACTION\n"
+        "- No text outside the format. No markdown. No HTML."
     )
+
+
+# English field names of the prompt → the internal keys (the Italian ones are still read: older models, tests).
+_FIELDS = {"type": "tipo", "priority": "priorita", "domain": "dominio", "reason": "motivo", "summary": "riassunto",
+           "key": "chiave", "value": "valore", "topic": "tema",
+           **{k: k for k in ("tipo", "priorita", "dominio", "motivo", "riassunto", "chiave", "valore", "tema")}}
+_ACTION = re.compile(r"(?:ACTION|AZIONE):")
 
 
 def _parse_candidates(raw: str) -> list[dict[str, str]]:
     """Parse Oracle's response into candidate dicts.
 
-    Uses a simple state-machine parser that splits on AZIONE: markers.
+    Uses a simple state-machine parser that splits on ACTION: markers (AZIONE: still read).
     Robust against local model formatting inconsistencies.
     """
     if not raw or not raw.strip():
         return []
 
     text = raw.strip()
-    if "NESSUNA_AZIONE" in text.upper():
+    if "NO_ACTION" in text.upper() or "NESSUNA_AZIONE" in text.upper():
         return []
 
     candidates: list[dict[str, str]] = []
-    blocks = text.split("AZIONE:")
-    for block in blocks[1:]:  # Skip text before first AZIONE:
+    blocks = _ACTION.split(text)
+    for block in blocks[1:]:  # Skip text before the first ACTION:
         candidate: dict[str, str] = {}
         candidate["title"] = block.split("\n")[0].strip()[:100]
 
@@ -127,10 +135,9 @@ def _parse_candidates(raw: str) -> list[dict[str, str]]:
             line = line.strip()
             if ":" in line:
                 key, _, value = line.partition(":")
-                key_lower = key.strip().lower()
-                val = value.strip()[:200]
-                if key_lower in ("tipo", "priorita", "dominio", "motivo", "riassunto", "chiave", "valore", "tema"):
-                    candidate[key_lower] = val
+                field = _FIELDS.get(key.strip().lower())
+                if field:
+                    candidate[field] = value.strip()[:200]
 
         if candidate.get("title"):
             candidates.append(candidate)

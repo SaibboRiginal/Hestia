@@ -11,7 +11,7 @@ do not depend on the model (bench with real and small models, 2026-10-30, docs/w
 4. forge_develop starts only when the user asked to build something or said yes to the proposal.
 5. At most ``MAX_WRITES`` writes per turn: more is a runaway loop, the model asks first.
 
-A refused call returns ``(False, "BLOCCATO: …")``: the model reads why and answers the user. The tool log marks
+A refused call returns ``(False, "BLOCKED: …")``: the model reads why and answers the user. The tool log marks
 it ``refused``: no «Non riuscito» notice to the user, nothing was tried. On a question a write tool called with no
 values passes: on read-or-write tools (cibo_dieta) that is a read.
 """
@@ -68,20 +68,20 @@ class TurnGuards:
         if not getattr(tool, "writes", False) and name != "forge_develop":
             return None
         if name == "forge_develop" and not self.build_ok:
-            return ("BLOCCATO: prima chiedi all'utente se vuole davvero sviluppare questa funzione (ask_user, "
-                    "confirm) e chiama forge_develop solo dopo il sì.")
+            return ("BLOCKED: first ask the user if they really want this feature built (ask_user, "
+                    "confirm) and call forge_develop only after yes.")
         if name in PROPOSE_ONLY:
             return None
         if self.question and _has_values(params):   # a write tool with no values only reads (cibo_dieta)
-            return ("BLOCCATO: l'utente ha fatto una domanda o chiesto un consiglio, non ha chiesto di salvare o "
-                    "cambiare nulla. Rispondi senza scrivere.")
+            return ("BLOCKED: the user asked a question or advice, not to save or change "
+                    "anything. Answer without writing.")
         if _DESTRUCTIVE_NAME.search(name) and name != "memory.forget" and not self.delete_ok:
-            return "BLOCCATO: l'utente non ha chiesto di cancellare o annullare nulla. Non farlo."
+            return "BLOCKED: the user did not ask to delete or cancel anything. Don't."
         if name == "memory.save" and self.module_writes and not self.remember:
-            return ("GIÀ SALVATO dall'azione di questo turno: non copiarlo anche in memoria. Rispondi all'utente.")
+            return ("ALREADY SAVED by this turn's action: don't copy it into memory too. Answer the user.")
         if self.writes >= MAX_WRITES:
-            return (f"BLOCCATO: già {MAX_WRITES} modifiche in questo turno. Fermati e chiedi all'utente se "
-                    "continuare.")
+            return (f"BLOCKED: already {MAX_WRITES} changes this turn. Stop and ask the user whether "
+                    "to go on.")
         return None
 
     def done(self, tool, ok: bool) -> None:
@@ -102,7 +102,7 @@ class TurnGuards:
             reason = self.check(tool, kw)
             if reason:
                 logger.info("[🔄] event=turn_guard_refused tool=%s reason=%s", tool.name, reason[:60])
-                if reason.startswith("GIÀ"):   # nothing to do, not a failure: no «Fatto», no «non riuscito»
+                if reason.startswith("ALREADY"):   # nothing to do, not a failure: no «Fatto», no «non riuscito»
                     return True, {"already_known": True, "note": reason}
                 return False, reason
             ok, out = handler(**kw)

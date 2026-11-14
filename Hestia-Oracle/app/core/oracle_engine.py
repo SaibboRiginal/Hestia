@@ -174,25 +174,25 @@ def _build_alert_payload_context(payload: Any) -> str:
             surfaces.append(float(surface_val))
 
     lines: list[str] = []
-    lines.append(f"Totale elementi nel payload: {len(records)}")
+    lines.append(f"Total items in payload: {len(records)}")
 
     if cities:
         unique_cities = list(dict.fromkeys(cities))
         preview = ", ".join(unique_cities[:4])
         suffix = "" if len(unique_cities) <= 4 else ", ..."
-        lines.append(f"Aree principali: {preview}{suffix}")
+        lines.append(f"Main areas: {preview}{suffix}")
 
     if prices:
         lines.append(
-            f"Range prezzi stimato: {int(min(prices))} - {int(max(prices))}")
+            f"Estimated price range: {int(min(prices))} - {int(max(prices))}")
 
     if surfaces:
         lines.append(
-            f"Range superfici stimato (m2): {int(min(surfaces))} - {int(max(surfaces))}")
+            f"Estimated surface range (m2): {int(min(surfaces))} - {int(max(surfaces))}")
 
     if isinstance(payload.get("count"), int):
         lines.append(
-            f"Conteggio dichiarato dal sorgente: {int(payload.get('count'))}")
+            f"Count declared by source: {int(payload.get('count'))}")
 
     return "\n".join(lines).strip()
 
@@ -2618,8 +2618,8 @@ class OracleEngine:
 
         tools = [ToolDefinition(
             name="module_manual", title="Manuale del modulo",
-            description="Manuale breve di un modulo (cosa sa fare, come usarne gli strumenti). Usalo quando non sai "
-                        "quale strumento di quel modulo serve.",
+            description="Short manual of a module (what it can do, how to use its tools). Use it when you don't know "
+                        "which tool of that module you need.",
             parameters={"type": "object", "properties": {"module": {"type": "string"}}, "required": ["module"]},
             handler=_manual)]
         if origin.get("level") != "utente":

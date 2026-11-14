@@ -272,3 +272,8 @@ Hephaestus (`POST /route/hephaestus/api/setup/telegram/claim {code, user_id}`); 
 setup in the browser) makes the sender the owner («Fatto, ti riconosco!»), a wrong one says so, no active code says
 to open the setup. Hephaestus then writes `ALLOWED_USER_ID` and re-creates the bot. The guided setup itself stays in
 the browser on purpose: tokens and keys must not travel in a chat.
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool and field descriptions are
+English (for the model); the help under each form field comes from the field `title`, then the people catalog
+`hestia_common/locales/<lang>/tools.json` (`i18n.param_help`, language `themis.personal.language` via
+`settings.follow_personal()`), then the description.

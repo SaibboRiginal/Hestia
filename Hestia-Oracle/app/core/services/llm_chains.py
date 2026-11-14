@@ -52,8 +52,8 @@ DEFAULT_CHAINS: dict[str, dict] = {
 }
 EMBEDDING_CHAIN = "embedding"
 DESCRIBE_USECASE = "oracle.descrivi_immagine"
-DESCRIBE_PROMPT = ("Descrivi questa immagine in italiano per chi non può vederla: cosa c'è, testo leggibile "
-                   "(trascrivilo), numeri, colori e dettagli utili. Niente commenti.")
+DESCRIBE_PROMPT = ("Describe this image for someone who cannot see it: what is in it, readable text "
+                   "(transcribe it as written), numbers, colours and useful details. No comments.")
 
 # Oracle's own use cases: id → (label, chain, thinking, help). Internal slot names (AgentBundle) in SLOTS.
 ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
@@ -519,7 +519,7 @@ class ChainAgent:
                         result = agent.ask_with_attachment(file_bytes, mime_type, user_message)
                     else:
                         logger.info("event=vision_bridge_used use_case=%s model=%s", self.use_case, step["model"])
-                        result = agent.ask(f"[Immagine allegata, descritta da un modello che vede]\n{description}\n\n"
+                        result = agent.ask(f"[Attached image, described by a model that sees]\n{description}\n\n"
                                            f"{user_message}")
                 except Exception as exc:
                     self._failed(step, exc, errors, usage)

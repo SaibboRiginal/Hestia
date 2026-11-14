@@ -76,12 +76,12 @@ def prompt_line(origin: Mapping[str, str]) -> str:
     if level == "utente" and origin.get("kind") != "esterno":
         return ""
     if level == "routine":
-        return (f"[Origine] routine dell'utente ({origin.get('label') or origin.get('ref')}), non scritta ora da lui. "
-                "Agisci solo dentro l'istruzione della routine; niente cancellazioni.")
+        return (f"[Origin] the user's routine ({origin.get('label') or origin.get('ref')}), not written by them now. "
+                "Act only within the routine's instruction; no deletions.")
     if level == "autonomo":
-        return ("[Origine] iniziativa automatica, non un messaggio dell'utente. Puoi solo leggere, proporre e "
-                "avvisare; per cambiare dati serve che lo chieda l'utente.")
-    return f"[Origine] {origin.get('label') or 'altra AI collegata'} per conto dell'utente."
+        return ("[Origin] automatic initiative, not a message from the user. You may only read, propose and "
+                "notify; changing data needs the user to ask.")
+    return f"[Origin] {origin.get('label') or 'another connected AI'} on behalf of the user."
 
 
 def blocks_write(origin: Mapping[str, str], *, method: str = "POST", name: str = "") -> str:
@@ -91,9 +91,9 @@ def blocks_write(origin: Mapping[str, str], *, method: str = "POST", name: str =
     if any(w in lname for w in ("propose", "proposta", "proponi", "suggest", "notify", "ask_user")):
         return ""
     if level == "autonomo":
-        return "Iniziativa automatica: per cambiare dati serve che lo chieda Marko. Proponilo invece di farlo."
+        return "Automatic initiative: changing data needs the owner to ask. Propose it instead of doing it."
     destructive = str(method or "").upper() == "DELETE" or any(
         w in lname for w in ("delete", "remove", "elimina", "cancella", "rimuovi", "purge", "restore", "rollback"))
     if level == "routine" and destructive:
-        return "Una routine non cancella né ripristina dati: chiedilo a Marko."
+        return "A routine does not delete or restore data: ask the owner."
     return ""

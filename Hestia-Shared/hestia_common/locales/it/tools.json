@@ -1,0 +1,1125 @@
+{
+ "_about": "Owner-facing Italian texts of the tools (hestia_common.i18n): summary = what a person reads about the tool, params = the help of each field. The model reads the English descriptions in the code.",
+ "agenda": {
+  "summary": "Mostra gli eventi in agenda nei prossimi 7 giorni."
+ },
+ "agenda_assistente": {
+  "params": {
+   "days": "giorni avanti (default 7)",
+   "owner": "modulo: hephaestus, scout, athena..."
+  },
+  "summary": "Agenda di Hestia stessa: cosa l'assistente e i suoi moduli hanno pianificato — finestre, job periodici, task di riparazione, eventi."
+ },
+ "agenda_assistente_aggiungi": {
+  "params": {
+   "title": "titolo",
+   "start_at": "inizio ISO 8601",
+   "end_at": "fine ISO (obbligatoria per window)",
+   "recurrence": "RRULE se periodico, es. FREQ=WEEKLY;BYDAY=SA",
+   "description": "dettagli",
+   "parent": "chiave voce collegata (annullo a cascata)"
+  },
+  "summary": "Aggiunge alla agenda di Hestia un evento/task/finestra/job."
+ },
+ "agenda_assistente_annulla": {
+  "params": {
+   "ref": "id o chiave della voce"
+  },
+  "summary": "Annulla definitivamente una voce dell'agenda di Hestia."
+ },
+ "agenda_assistente_collega": {
+  "params": {
+   "ref": "id o chiave della voce figlia",
+   "parent": "chiave del padre (vuoto = scollega)"
+  },
+  "summary": "Collega una voce a una voce padre: annullare il padre annulla la figlia, l'errore della figlia segna il padre."
+ },
+ "agenda_assistente_da_modello": {
+  "params": {
+   "owner": "modulo del modello",
+   "template_id": "id modello",
+   "values": "campi del modello",
+   "start_at": "inizio ISO",
+   "end_at": "fine ISO (finestre)",
+   "recurrence": "RRULE se periodico"
+  },
+  "summary": "Crea una voce dell'agenda di Hestia da un modello di un modulo."
+ },
+ "agenda_assistente_esegui": {
+  "params": {
+   "ref": "id o chiave della voce"
+  },
+  "summary": "Esegue subito l'azione di un job/task dell'agenda di Hestia."
+ },
+ "agenda_assistente_modelli": {
+  "summary": "Modelli che i moduli offrono per creare voci."
+ },
+ "agenda_assistente_ripristina": {
+  "params": {
+   "ref": "id o chiave della voce",
+   "occurrence": "occorrenza ISO saltata"
+  },
+  "summary": "Ripristina un'occorrenza saltata di una voce dell'agenda di Hestia."
+ },
+ "agenda_assistente_salta": {
+  "params": {
+   "ref": "id o chiave della voce",
+   "occurrence": "occorrenza ISO (vuoto = prossima)"
+  },
+  "summary": "Salta la prossima occorrenza di una voce dell'agenda di Hestia, senza cancellare la regola."
+ },
+ "agenda_assistente_sposta": {
+  "params": {
+   "ref": "id o chiave della voce",
+   "start_at": "nuovo inizio ISO",
+   "end_at": "nuova fine ISO",
+   "recurrence": "nuova RRULE"
+  },
+  "summary": "Sposta/modifica una voce dell'agenda di Hestia."
+ },
+ "agenda_assistente_sposta_occorrenza": {
+  "params": {
+   "ref": "id o chiave della voce",
+   "occurrence": "occorrenza ISO originale",
+   "start_at": "nuovo inizio ISO",
+   "end_at": "nuova fine ISO",
+   "reset": "ripristina orario originale"
+  },
+  "summary": "Sposta solo un'occorrenza di una voce ricorrente; reset=true la riporta all'orario originale."
+ },
+ "agenda_standard": {
+  "params": {
+   "owner": "solo le attività di questa area (vuoto = tutte)"
+  },
+  "summary": "Attività standard di Hestia con lo stato: attiva, modificata, in pausa, eliminata, fallita; più i modelli per aggiungerne."
+ },
+ "agenda_standard_ripristina": {
+  "params": {
+   "key": "chiave dell'attività standard"
+  },
+  "summary": "Rimette un'attività standard come la prevede il suo modulo."
+ },
+ "agenda_today": {
+  "summary": "Mostra gli eventi di oggi."
+ },
+ "aggiornamenti_indietro": {
+  "summary": "Torna alla versione di Hestia di prima dell'ultimo aggiornamento."
+ },
+ "aggiornamenti_installa": {
+  "summary": "Installa la versione nuova di Hestia; solo su richiesta esplicita."
+ },
+ "aggiornamenti_stato": {
+  "summary": "Versione di Hestia installata, se ce n'è una nuova e cosa porta."
+ },
+ "aspetto_adesso": {
+  "summary": "Che aspetto ha adesso il sito e perché."
+ },
+ "aspetto_animale": {
+  "summary": "Crea un animaletto da compagnia e ne chiede le immagini."
+ },
+ "aspetto_animali": {
+  "summary": "Gli animaletti creati."
+ },
+ "aspetto_genera": {
+  "summary": "Chiedi di nuovo le immagini: target profile o pet; ref = chiave del profilo o id/nome dell'animaletto."
+ },
+ "aspetto_prossimi": {
+  "summary": "I temi dei prossimi giorni."
+ },
+ "aspetto_scelta": {
+  "summary": "Per un client: auto=false spegne i temi, true li riaccende; pet = id o nome dell'animaletto, vuoto per nessuno."
+ },
+ "assistant_profile": {
+  "summary": "Hestia's persona, the user's tone and instructions, and what Hestia remembers about the user, as one block to follow when the user switches Hestia on inside…"
+ },
+ "athena_audit_conversation": {
+  "summary": "Run a quality audit on recent conversation turns using the 26B reasoning model."
+ },
+ "athena_commitment_resolve": {
+  "summary": "Chiude un impegno dell'assistente: fatto o non serve più."
+ },
+ "athena_commitments": {
+  "params": {
+   "include_resolved": "Anche quelli chiusi"
+  },
+  "summary": "Gli impegni presi dall'assistente ancora aperti."
+ },
+ "athena_signals": {
+  "params": {
+   "domain": "Solo un'area (es. fitness, finance)",
+   "limit": "Quanti segnali (default 50, i più importanti prima)"
+  },
+  "summary": "Segnali brevi che ogni area pubblica sui suoi dati, i numeri settimanali, i collegamenti trovati tra le settimane e le osservazioni recenti della riflessione."
+ },
+ "athena_thinking": {
+  "params": {
+   "limit": "Quanti cicli (default 10, più recenti prima)"
+  },
+  "summary": "Ultimi cicli di pensiero di Athena."
+ },
+ "atlas_ricetta": {
+  "params": {
+   "name": "Nome della ricetta (es. duckduckgo, pagina)",
+   "params": "Parametri della ricetta (es. {\"q\": \"...\"})"
+  },
+  "summary": "Usa una ricetta per un sito: ricetta + parametri → campi estratti."
+ },
+ "backup_list": {
+  "summary": "Elenco dei backup su Google Drive."
+ },
+ "backup_run": {
+  "summary": "Fai subito un backup cifrato di tutti i dati su Google Drive."
+ },
+ "backup_status": {
+  "summary": "Stato dei backup: ultimo backup, ultima verifica, problemi, Google Drive collegato."
+ },
+ "calendar_check": {
+  "summary": "Controlla i prossimi giorni del calendario: se due impegni si sovrappongono propone dove spostarne uno."
+ },
+ "calendar_delete_event": {
+  "params": {
+   "event_id": "ID evento",
+   "provider": "Provider calendario",
+   "calendar_id": "ID calendario"
+  },
+  "summary": "Elimina un evento calendario esistente."
+ },
+ "calendar_list_events": {
+  "params": {
+   "start_datetime": "Inizio intervallo ISO 8601",
+   "end_datetime": "Fine intervallo ISO 8601",
+   "target_providers": "Provider destinazione",
+   "calendar_id": "ID calendario",
+   "max_results": "Numero massimo risultati"
+  },
+  "summary": "Elenca gli eventi in un intervallo temporale per provider calendario."
+ },
+ "calendar_update_event": {
+  "params": {
+   "event_id": "ID evento",
+   "provider": "Provider calendario",
+   "calendar_id": "ID calendario",
+   "updates": "Campi da aggiornare"
+  },
+  "summary": "Aggiorna campi di un evento calendario esistente."
+ },
+ "casa_comando": {
+  "summary": "Comanda un dispositivo: command on|off|toggle|open|close|lock|unlock; value = luminosità % per le luci o gradi per il clima."
+ },
+ "casa_preferito": {
+  "summary": "Salva un'azione rapida: device, label, room, command."
+ },
+ "casa_preferito_elimina": {
+  "summary": "Elimina un'azione rapida."
+ },
+ "casa_preferito_esegui": {
+  "summary": "Esegui un'azione rapida salvata."
+ },
+ "casa_scena": {
+  "summary": "Attiva una scena o un'azione di Home Assistant."
+ },
+ "casa_stato": {
+  "summary": "Com'è la casa adesso: luci accese, temperature, porte/finestre aperte, azioni rapide."
+ },
+ "chronos_reconcile": {
+  "params": {
+   "dry_run": "Se true esegue solo simulazione senza avviare i worker tick",
+   "requested_action": "Azione opzionale: reconcile_calendar|sync|notify|full"
+  },
+  "summary": "Esegue manutenzione di riconciliazione nel modulo Chronos."
+ },
+ "cibo_dieta": {
+  "summary": "La dieta: senza argomenti la mostra; kcal, protein, rules e notes la modificano."
+ },
+ "cibo_integratore": {
+  "summary": "Aggiungi o modifica un integratore: name, dose, time_of_day morning|midday|afternoon|evening|any, days, training_days_only, with_food, status active|paused."
+ },
+ "cibo_integratore_elimina": {
+  "summary": "Elimina un integratore."
+ },
+ "cibo_integratori": {
+  "summary": "Gli integratori che l'utente prende."
+ },
+ "cibo_oggi": {
+  "summary": "Riepilogo di oggi: pasti, kcal e proteine rispetto alla dieta, integratori."
+ },
+ "cibo_pasti": {
+  "summary": "Pasti degli ultimi giorni."
+ },
+ "cibo_pasto": {
+  "summary": "Registra un pasto: text, slot colazione|pranzo|cena|spuntino, kcal e protein se note."
+ },
+ "cibo_pasto_elimina": {
+  "summary": "Elimina un pasto registrato."
+ },
+ "cibo_preso": {
+  "summary": "Segna preso un integratore."
+ },
+ "coach_add_busy": {
+  "params": {
+   "start_at": "inizio ISO 8601",
+   "end_at": "fine ISO 8601",
+   "title": "es. Trasferta"
+  },
+  "summary": "Segna un periodo in cui l'utente non c'è o è occupato, così il piano lo lascia libero."
+ },
+ "coach_move": {
+  "params": {
+   "ref": "chiave della voce del piano",
+   "start_at": "nuovo inizio ISO 8601",
+   "end_at": "nuova fine ISO 8601 (vuoto = stessa durata)"
+  },
+  "summary": "Sposta una voce del piano della settimana a un altro giorno/ora."
+ },
+ "coach_replan": {
+  "params": {
+   "date": "primo giorno YYYY-MM-DD (vuoto = oggi)",
+   "busy": "periodi occupati",
+   "start_at": "inizio ISO 8601",
+   "end_at": "fine ISO 8601",
+   "title": "es. Trasferta"
+  },
+  "summary": "Rifà il piano dal giorno indicato a fine settimana."
+ },
+ "coach_review": {
+  "params": {
+   "date": "un giorno della settimana DOPO quella da rivedere"
+  },
+  "summary": "Com'è andata la settimana scorsa secondo il piano: fatti, saltati, note di ogni ambito."
+ },
+ "coach_skip": {
+  "params": {
+   "ref": "chiave della voce del piano",
+   "reason": "perché (facoltativo)"
+  },
+  "summary": "Salta una voce del piano della settimana; il resto della settimana viene ripianificato."
+ },
+ "coach_week": {
+  "params": {
+   "date": "un giorno della settimana voluta YYYY-MM-DD (vuoto = questa)"
+  },
+  "summary": "Piano della settimana dell'utente: allenamenti, routine e il resto messi nel suo tempo libero, obiettivi, cosa non entra e perché."
+ },
+ "create_event": {
+  "params": {
+   "title": "Titolo o nome dell'evento",
+   "start_datetime": "Data e ora di inizio nel formato ISO 8601 (YYYY-MM-DDTHH:MM:SS)",
+   "end_datetime": "Data e ora di fine nel formato ISO 8601",
+   "description": "Descrizione o note aggiuntive dell'evento",
+   "location": "Luogo fisico o virtuale dell'evento",
+   "provider": "Calendario: google, outlook (vuoto = predefinito)",
+   "calendar_id": "ID del calendario (vuoto = principale)"
+  },
+  "summary": "Crea un nuovo evento nel calendario connesso."
+ },
+ "disturbami": {
+  "summary": "Disattiva «Non disturbare»."
+ },
+ "docs_check": {
+  "summary": "Controlla se la documentazione del repo segue il codice e propone le correzioni allo sviluppo."
+ },
+ "documento_crea": {
+  "params": {
+   "html": "contenuto in HTML semplice"
+  },
+  "summary": "Crea un PDF, Word o Excel: title, html, format pdf|docx|xlsx, theme classico|moderno|sobrio, must_contain."
+ },
+ "documento_creati": {
+  "summary": "I documenti creati di recente."
+ },
+ "documento_creato_elimina": {
+  "summary": "Elimina un documento creato."
+ },
+ "documento_creato_invia": {
+  "summary": "Manda di nuovo il file di un documento creato."
+ },
+ "documents.search": {
+  "summary": "Search through uploaded documents and files for relevant content."
+ },
+ "email_search": {
+  "params": {
+   "q": "Testo da cercare",
+   "limit": "Numero massimo risultati (max 200)"
+  },
+  "summary": "Cerca messaggi email per testo."
+ },
+ "email_send": {
+  "params": {
+   "to": "Destinatario",
+   "subject": "Oggetto",
+   "body": "Corpo del messaggio",
+   "thread_id": "ID thread per rispondere in un thread esistente"
+  },
+  "summary": "Invia una email."
+ },
+ "email_subscriptions": {
+  "summary": "Mostra quali moduli ricevono quali email e le ultime consegne."
+ },
+ "email_thread": {
+  "params": {
+   "id": "ID del thread"
+  },
+  "summary": "Mostra un thread email."
+ },
+ "feedback_submit": {
+  "summary": "Store a quality grade for a chat interaction."
+ },
+ "fetch_url": {
+  "summary": "Fetch web page content from a URL via host browser."
+ },
+ "finance_add": {
+  "summary": "Registra una spesa o un'entrata."
+ },
+ "finance_budget": {
+  "summary": "Budget del mese per categoria e totale, con lo speso."
+ },
+ "finance_categories": {
+  "summary": "Le categorie di spesa."
+ },
+ "finance_delete": {
+  "summary": "Elimina un movimento."
+ },
+ "finance_import_statement": {
+  "summary": "Estratto conto PDF mandato in chat: prima anteprima, poi, dopo il sì dell'utente, import_id + commit=true."
+ },
+ "finance_recurring": {
+  "summary": "Pagamenti ricorrenti e abbonamenti riconosciuti."
+ },
+ "finance_search": {
+  "summary": "Cerca movimenti: query, category, month o since/until yyyy-mm-dd, account, to_review."
+ },
+ "finance_set_budget": {
+  "summary": "Imposta il budget mensile di una categoria."
+ },
+ "finance_stats": {
+  "summary": "Andamento degli ultimi mesi: totali, per categoria, esercenti."
+ },
+ "finance_summary": {
+  "summary": "Spese del mese: speso, entrate, budget, ritmo, categorie, esercenti principali, pagamenti ricorrenti in arrivo."
+ },
+ "finance_update": {
+  "summary": "Correggi un movimento: category, amount, date, merchant, note."
+ },
+ "fitness_activities": {
+  "summary": "Attività all'aperto di questa settimana: intenzioni con progresso, momenti pianificati e attività fatte."
+ },
+ "fitness_activity_outcome": {
+  "summary": "Esito di un momento pianificato: outcome done|missed|moved."
+ },
+ "fitness_adapt_today": {
+  "summary": "Proponi l'allenamento di oggi adattato a come sto."
+ },
+ "fitness_apply_adaptation": {
+  "summary": "Applica l'adattamento proposto."
+ },
+ "fitness_cancel_activity": {
+  "summary": "Annulla un'intenzione."
+ },
+ "fitness_checkin": {
+  "summary": "Salva come mi sento oggi: energia 1-5, sonno 1-5, indolenzimenti, dolori, minuti a disposizione."
+ },
+ "fitness_confirm_activity": {
+  "summary": "Conferma l'intenzione proposta: slots = numeri dei momenti da tenere o orari iso scelti dall'utente."
+ },
+ "fitness_edit_template": {
+  "summary": "Modifica una scheda: togli/aggiungi esercizio, serie e ripetizioni."
+ },
+ "fitness_exercise_stats": {
+  "summary": "Record e andamento di un esercizio."
+ },
+ "fitness_feedback": {
+  "summary": "Salva un feedback sull'allenamento o su un esercizio."
+ },
+ "fitness_finish_session": {
+  "summary": "Concludi l'allenamento in corso: riepilogo e nuovi record."
+ },
+ "fitness_history": {
+  "summary": "Allenamenti passati."
+ },
+ "fitness_log_activity": {
+  "summary": "Registra un'attività fatta: kind, date, minutes, km, note."
+ },
+ "fitness_log_measurement": {
+  "summary": "Registra peso corporeo o una misura."
+ },
+ "fitness_log_sets": {
+  "summary": "Registra serie nell'allenamento in corso dal testo: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'."
+ },
+ "fitness_next_workout": {
+  "summary": "Il prossimo allenamento con esercizi e pesi suggeriti e il motivo."
+ },
+ "fitness_plan_activity": {
+  "summary": "Intenzione di attività all'aperto: kind corsa|bici|camminata|nuoto|altro, times, place, minutes, week."
+ },
+ "fitness_postpone": {
+  "summary": "Sposta l'allenamento di oggi al giorno 'to'."
+ },
+ "fitness_restore_today": {
+  "summary": "Ripristina la scheda originale di oggi."
+ },
+ "fitness_search_exercises": {
+  "summary": "Cerca esercizi nel catalogo."
+ },
+ "fitness_set_goal": {
+  "summary": "Imposta un obiettivo di allenamento: times per day|week|month; scope any, template o muscle."
+ },
+ "fitness_skip_day": {
+  "summary": "Segna saltato l'allenamento di un giorno."
+ },
+ "fitness_start_session": {
+  "summary": "Inizia un allenamento."
+ },
+ "fitness_summary": {
+  "summary": "Allenamento a colpo d'occhio: prossimo allenamento, obiettivo, record recenti, stalli, giorni saltati, segnali di energia bassa."
+ },
+ "fitness_templates": {
+  "summary": "Le mie schede di allenamento con esercizi e durata."
+ },
+ "fitness_undo_template": {
+  "summary": "Annulla l'ultima modifica di una scheda."
+ },
+ "forge_approve": {
+  "params": {
+   "task_id": "Id task (anche i primi 6 caratteri)",
+   "now": "true solo se l'utente dice 'subito'/'ora' (salta la finestra notturna Claude)",
+   "engine": "Solo se l'utente sceglie chi lo sviluppa: local | cloud | claude"
+  },
+  "summary": "Approva un task Forge: se 'proposed' lo avvia, se 'awaiting_review' applica la modifica."
+ },
+ "forge_develop": {
+  "params": {
+   "request": "Cosa sviluppare, dettagliato, in parole dell'utente",
+   "services": "Servizi coinvolti se noti (es. hecate, oracle)",
+   "engine": "Solo se l'utente lo chiede: local | cloud | claude. Vuoto = default",
+   "workdoc": "Per CONTINUARE un lavoro precedente: nome cartella docs/work/<...> (dal task precedente)",
+   "agenda_parent": "Chiave voce agenda che questo sviluppo serve (annullarla annulla il task)"
+  },
+  "summary": "Hestia sviluppa se stessa: crea/modifica/corregge codice di Hestia."
+ },
+ "forge_dossier": {
+  "params": {
+   "name": "Nome cartella in docs/work (campo workdoc del task)"
+  },
+  "summary": "Spec, progress e changelog di un dossier di lavoro, es."
+ },
+ "forge_pause": {
+  "params": {
+   "paused": "true = pausa, false = riprendi"
+  },
+  "summary": "Mette in pausa o riprende lo sviluppo automatico."
+ },
+ "forge_reject": {
+  "params": {
+   "task_id": "Id task",
+   "reason": "Motivo"
+  },
+  "summary": "Scarta un task Forge proposto o in revisione."
+ },
+ "forge_rollback": {
+  "params": {
+   "task_id": "Id task",
+   "reason": "Motivo"
+  },
+  "summary": "Annulla una modifica Forge già applicata."
+ },
+ "forge_set_claude_schedule": {
+  "params": {
+   "reset_day": "giorno reset: lun..dom",
+   "reset_time": "ora reset HH:MM",
+   "window_hours": "ore prima del reset in cui usare Claude di notte (default 48)",
+   "night": "fascia notturna HH:MM-HH:MM (default 00:00-07:00)",
+   "night_max_tasks": "task massimi per notte (default 3)",
+   "final_hours": "ultime ore in cui usare tutto (default 6)"
+  },
+  "summary": "Configura quando Hestia può usare Claude Pro in automatico."
+ },
+ "forge_settings": {
+  "summary": "Mostra impostazioni sviluppo: motore default, fallback, modalità permessi local/cloud."
+ },
+ "forge_status": {
+  "summary": "Stato del motore Forge: repo, motori disponibili, coda."
+ },
+ "forge_submit_branch": {
+  "params": {
+   "task_id": "Id task (crealo prima con forge_develop se non esiste)",
+   "branch": "Nome del branch su origin con la correzione",
+   "summary": "Cosa cambia il branch e perché"
+  },
+  "summary": "Consegna una correzione già fatta su un branch del repo."
+ },
+ "forge_task": {
+  "params": {
+   "task_id": "Id task (anche i primi 6 caratteri)"
+  },
+  "summary": "Dettaglio di un task di sviluppo: richiesta, stato, motore, errore, test, dossier, branch, note, storia degli stati."
+ },
+ "forge_task_diff": {
+  "params": {
+   "task_id": "Id task"
+  },
+  "summary": "Diff completo prodotto da un task di sviluppo."
+ },
+ "forge_task_note": {
+  "params": {
+   "task_id": "Id task",
+   "text": "Analisi, causa trovata, file da toccare, come verificare"
+  },
+  "summary": "Aggiunge un'analisi o un'indicazione a un task di sviluppo."
+ },
+ "forge_tasks": {
+  "params": {
+   "state": "Filtro stato: proposed, running, awaiting_review, deployed...",
+   "limit": "Quanti task al massimo (default 50)"
+  },
+  "summary": "Elenca i task di auto-sviluppo e il loro stato."
+ },
+ "fuori_casa_attiva": {
+  "summary": "Accende o spegne l'indirizzo per usare Hestia da fuori casa; solo su richiesta esplicita dell'utente."
+ },
+ "fuori_casa_stato": {
+  "summary": "Hestia è raggiungibile da fuori casa?"
+ },
+ "garmin_collega": {
+  "summary": "Manda all'utente il modulo per collegare Garmin Connect."
+ },
+ "garmin_giorno": {
+  "summary": "Sonno, passi, battito a riposo, body battery, hrv, prontezza e attività di un giorno."
+ },
+ "garmin_scollega": {
+  "summary": "Toglie l'accesso a Garmin."
+ },
+ "garmin_sincronizza": {
+  "summary": "Legge adesso sonno, passi, battito e attività degli ultimi giorni e li passa ad allenamento e cura di sé."
+ },
+ "garmin_stato": {
+  "summary": "Se l'orologio Garmin è collegato e quando ho letto gli ultimi dati."
+ },
+ "gateway_auth_complete_google": {
+  "params": {
+   "code": "URL completo incollato dall'utente, oppure il solo codice"
+  },
+  "summary": "Completa il collegamento Google Calendar."
+ },
+ "gateway_auth_initiate_google": {
+  "summary": "Avvia il flusso OAuth per Google Calendar."
+ },
+ "gateway_auth_initiate_microsoft": {
+  "summary": "Avvia il flusso device-code OAuth per Outlook/Microsoft."
+ },
+ "gateway_auth_poll": {
+  "params": {
+   "provider": "Provider da verificare (google, microsoft)"
+  },
+  "summary": "Controlla se l'utente ha completato il flusso OAuth."
+ },
+ "gateway_auth_status": {
+  "summary": "Verifica quali provider sono autenticati e attivi."
+ },
+ "gateway_auth_verify": {
+  "summary": "Verifica lo stato di autenticazione di tutti i provider e invia notifiche Telegram per quelli che richiedono riautenticazione."
+ },
+ "hephaestus_approve": {
+  "params": {
+   "approved_by": "Attore approvatore",
+   "note": "Nota approvazione"
+  },
+  "summary": "Approva ed esegue un task remediation pendente."
+ },
+ "hephaestus_remediate": {
+  "params": {
+   "source": "Origine richiesta (argus/oracle/user)",
+   "service": "Servizio target",
+   "issue": "Incidente rilevato",
+   "requested_action": "Azione richiesta",
+   "dry_run": "Esecuzione dry-run",
+   "auto_approve": "Auto-approvazione policy-gated"
+  },
+  "summary": "Crea un task remediation policy-gated."
+ },
+ "hephaestus_rollback": {
+  "params": {
+   "requested_by": "Attore rollback",
+   "reason": "Motivazione rollback"
+  },
+  "summary": "Annulla una riparazione: se non era partita la ferma; se ha cambiato dati il modulo li ripristina; altrimenti risponde che non c'è niente da ripristinare."
+ },
+ "hephaestus_status": {
+  "summary": "Mostra lo stato del motore di remediation."
+ },
+ "hephaestus_tasks": {
+  "summary": "Lista task remediation recenti."
+ },
+ "immagine_flussi": {
+  "summary": "I flussi caricati e se il generatore è collegato."
+ },
+ "immagine_lista": {
+  "summary": "Le ultime immagini richieste."
+ },
+ "immagine_stato": {
+  "summary": "Stato di un'immagine richiesta."
+ },
+ "iris_reconcile": {
+  "params": {
+   "dry_run": "Se true esegue solo simulazione senza modifiche"
+  },
+  "summary": "Esegue manutenzione di riconciliazione nel modulo Iris."
+ },
+ "macchine_cervello": {
+  "summary": "Fai girare i modelli locali sulla scheda video di un satellite; indirizzo vuoto = di nuovo su questa."
+ },
+ "macchine_codice": {
+  "summary": "Un codice di collegamento per aggiungere un satellite: si scrive nell'installazione dell'altra macchina."
+ },
+ "macchine_elenco": {
+  "summary": "Le macchine di Hestia: questa e i satelliti, accesi o spenti, con i moduli che ci girano."
+ },
+ "macchine_scollega": {
+  "summary": "Scollega un satellite: i suoi moduli escono."
+ },
+ "memory_learning": {
+  "summary": "Cosa ha imparato l'assistente di recente, con le parole esatte dell'utente da cui viene ogni cosa."
+ },
+ "memory_learning_undo": {
+  "summary": "Annulla una cosa imparata."
+ },
+ "memory_note": {
+  "summary": "Save in Hestia's long-term memory the durable facts about the user that came out of this conversation."
+ },
+ "memory_proposal_apply": {
+  "summary": "Applica una pulizia proposta: solo se l'utente dice sì."
+ },
+ "memory_proposal_dismiss": {
+  "summary": "Scarta una pulizia proposta."
+ },
+ "memory_proposals": {
+  "summary": "Le pulizie della memoria proposte da «Rivedi cosa sai di me» che aspettano ancora una risposta."
+ },
+ "memory_recall": {
+  "summary": "What Hestia already knows about the user on a topic, so your answer and Hestia's memory agree."
+ },
+ "memory_rivedi": {
+  "summary": "«Rivedi cosa sai di me»: cerca doppioni, contraddizioni e cose vecchie nella memoria e le propone."
+ },
+ "metis_adesso": {
+  "params": {
+   "client": "Dove le mostri"
+  },
+  "summary": "Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle prossime ore e qualche idea dell'assistente, ognuna con il perché."
+ },
+ "metis_benchmark_run": {
+  "summary": "Run a benchmark evaluation comparing a candidate model against the current baseline on a held-out test set."
+ },
+ "metis_dataset_build": {
+  "summary": "Build a cleaned, deduplicated, balanced dataset from graded feedback records."
+ },
+ "metis_dataset_esporta": {
+  "params": {
+   "in_chiaro": "true = dati veri, false = oscurati (predefinito)",
+   "include_unreviewed": "true = anche i turni non ancora riletti"
+  },
+  "summary": "Esporta il dataset di allenamento da scaricare."
+ },
+ "metis_dataset_export": {
+  "summary": "Export a built dataset as jsonl for LoRA fine-tuning."
+ },
+ "metis_dataset_status": {
+  "summary": "Show statistics for built datasets: example count, quality distribution, domain coverage, last build date."
+ },
+ "metis_loRA_train": {
+  "params": {
+   "schedule": "now = subito; window = nella finestra notturna dell'agenda; auto = subito se lo chiede l'utente"
+  },
+  "summary": "Orchestrate a LoRA fine-tuning run on the built dataset."
+ },
+ "metis_rivedi": {
+  "summary": "Le correzioni notturne delle risposte che aspettano te prima di entrare nel dataset di allenamento."
+ },
+ "metis_rivedi_decidi": {
+  "params": {
+   "trace_id": "Turno da decidere",
+   "answer": "Con edit: la risposta giusta"
+  },
+  "summary": "Decidi una correzione del dataset di allenamento: accept, reject, edit."
+ },
+ "metis_scopri": {
+  "params": {
+   "client": "Dove le mostri"
+  },
+  "summary": "Funzioni di Hestia che non hai mai usato o quasi, con cosa fanno e un pulsante per provarle."
+ },
+ "modelli_download": {
+  "summary": "The brain's model downloads: what is downloading, done or failed, with progress and time left."
+ },
+ "modelli_scarica": {
+  "summary": "Download a local model for the brain, by its Ollama name, e.g."
+ },
+ "nondisturbare": {
+  "params": {
+   "minutes": "Durata in minuti (vuoto = predefinita)",
+   "until": "Fino a quando, ISO 8601"
+  },
+  "summary": "Attiva «Non disturbare»: passano solo le notifiche urgenti."
+ },
+ "oracle.compact": {
+  "summary": "Force-compact conversation history for a session via LLM summarisation."
+ },
+ "oracle.context_stats": {
+  "summary": "Return token breakdown and context-window usage for a session."
+ },
+ "oracle.logs_query": {
+  "summary": "Query Oracle's in-memory log buffer by level and text filter."
+ },
+ "oracle.session_info": {
+  "summary": "Return global Oracle state: active sessions, uptime, model in use, Hub connection."
+ },
+ "people_add": {
+  "summary": "Aggiungi una persona."
+ },
+ "people_contact": {
+  "summary": "Segna che l'utente ha sentito/visto una persona."
+ },
+ "people_delete": {
+  "summary": "Elimina la scheda di una persona."
+ },
+ "people_get": {
+  "summary": "Scheda di una persona: date, gusti, idee regalo, ultimo contatto."
+ },
+ "people_gift_idea": {
+  "summary": "Salva un'idea regalo per una persona."
+ },
+ "people_like": {
+  "summary": "Salva un gusto."
+ },
+ "people_list": {
+  "summary": "Le persone importanti salvate."
+ },
+ "people_upcoming": {
+  "summary": "Compleanni e date importanti dei prossimi giorni con le idee regalo."
+ },
+ "people_update": {
+  "summary": "Modifica una persona; date_label + date_day aggiungono una data."
+ },
+ "presence_clear": {
+  "summary": "Toglie lo stato messo a mano: l'assistente torna a decidere da solo."
+ },
+ "presence_history": {
+  "summary": "Gli ultimi cambi di stato dell'assistente, con il motivo."
+ },
+ "presence_set": {
+  "summary": "Cambia a mano lo stato dell'assistente per un tempo o finché l'utente lo toglie."
+ },
+ "recap_today": {
+  "params": {
+   "momento": "sera = oggi e domani; mattina = ieri e oggi"
+  },
+  "summary": "Recap della giornata: com'è andata e cosa c'è dopo."
+ },
+ "routine_create": {
+  "params": {
+   "instruction": "cosa fare, in parole",
+   "recurrence": "RRULE, es. FREQ=DAILY;BYHOUR=8;BYMINUTE=0"
+  },
+  "summary": "Crea una routine a parole: un'istruzione che l'assistente esegue a un orario o quando succede qualcosa."
+ },
+ "routine_from_template": {
+  "summary": "Crea una routine da un modello con i suoi campi."
+ },
+ "routine_list": {
+  "summary": "Le routine dell'utente."
+ },
+ "routine_run": {
+  "summary": "Esegue subito una routine."
+ },
+ "routine_templates": {
+  "summary": "I modelli di routine pronti."
+ },
+ "scadenze_add": {
+  "summary": "Nuova scadenza: title, due aaaa-mm-gg, category, amount €, recurrence, lead_days di preavviso."
+ },
+ "scadenze_consiglio": {
+  "summary": "Un consiglio pratico su questa scadenza."
+ },
+ "scadenze_delete": {
+  "summary": "Elimina una scadenza."
+ },
+ "scadenze_done": {
+  "summary": "Segna pagata/fatta: le ricorrenti passano alla prossima data."
+ },
+ "scadenze_get": {
+  "summary": "Una scadenza con consiglio e importo."
+ },
+ "scadenze_list": {
+  "summary": "Le scadenze aperte."
+ },
+ "scadenze_snooze": {
+  "summary": "Rimanda l'avviso di qualche giorno."
+ },
+ "scadenze_update": {
+  "summary": "Modifica una scadenza."
+ },
+ "scout.search": {
+  "summary": "Search real estate listings by query, city, price range, surface, rooms."
+ },
+ "scout_fetch": {
+  "summary": "Check listing emails now: Iris passes the last day's listing mails again and Scout parses and extracts them."
+ },
+ "scout_reconcile": {
+  "summary": "Run Scout data reconciliation maintenance."
+ },
+ "scout_stats": {
+  "summary": "Return real_estate domain statistics: total entities, breakdown by listing status, and date range of when listings were added."
+ },
+ "selfcare_check": {
+  "summary": "Compatibilità degli attivi: di una routine, o di un prodotto / lista di attivi rispetto a quelli in uso."
+ },
+ "selfcare_diario_voce": {
+  "summary": "Diario a voce: l'utente racconta la giornata con un vocale; viene trascritto e salvato nel diario."
+ },
+ "selfcare_journal_add": {
+  "summary": "Diario: voti 1-5 per area, es."
+ },
+ "selfcare_log": {
+  "summary": "Registra: routine fatta oppure uso extra di un prodotto."
+ },
+ "selfcare_period": {
+  "summary": "Routine e prodotti in uso in una certa data."
+ },
+ "selfcare_product_add": {
+  "summary": "Aggiungi un prodotto."
+ },
+ "selfcare_product_get": {
+  "summary": "Dettaglio di un prodotto: utilizzi, scadenza, stima di quando finisce, routine che lo usano, storia, confezioni precedenti."
+ },
+ "selfcare_product_update": {
+  "summary": "Aggiorna un prodotto."
+ },
+ "selfcare_products": {
+  "summary": "Cerca i prodotti."
+ },
+ "selfcare_routine_create": {
+  "summary": "Crea una routine."
+ },
+ "selfcare_routine_edit": {
+  "summary": "Modifica una routine."
+ },
+ "selfcare_routine_get": {
+  "summary": "Una routine: passi in ordine con quantità, attese e frequenza propria, statistiche, storia delle versioni, avvisi di compatibilità."
+ },
+ "selfcare_routines": {
+  "summary": "Le routine con frequenza, stato di oggi e obiettivo."
+ },
+ "selfcare_shopping": {
+  "summary": "Lista spesa self care: desideri, da ricomprare, finiti col giudizio 'lo ricompro'."
+ },
+ "selfcare_stats": {
+  "summary": "Statistiche: costanza per routine, prodotti più usati, spesa per mese."
+ },
+ "selfcare_summary": {
+  "summary": "Self care dell'utente: routine, prodotti in uso, avvisi e cosa resta oggi."
+ },
+ "selfcare_timeline": {
+  "summary": "Cosa è cambiato nel tempo: versioni delle routine, prodotti aperti/finiti/sostituiti, diario."
+ },
+ "selfcare_today": {
+  "summary": "Cosa fare oggi: routine con stato, passi da fare stasera, passi esclusi oggi."
+ },
+ "selfcare_undo_routine": {
+  "summary": "Annulla l'ultima modifica dei passi di una routine."
+ },
+ "settings_get": {
+  "summary": "Dettaglio di un'impostazione: descrizione, valori ammessi, valore attuale, stato."
+ },
+ "settings_proposals": {
+  "summary": "Proposte di modifica delle impostazioni in attesa della tua conferma."
+ },
+ "settings_propose": {
+  "params": {
+   "value": "nuovo valore (tipo dell'impostazione)",
+   "reason": "perché, in una frase"
+  },
+  "summary": "Proponi all'utente di cambiare un'impostazione."
+ },
+ "settings_search": {
+  "params": {
+   "query": "parole da cercare (es. modello codice)",
+   "module": "modulo opzionale (oracle, argus…)"
+  },
+  "summary": "Cerca impostazioni di Hestia per parole: cosa fanno, valore attuale."
+ },
+ "settings_undo": {
+  "summary": "Proponi di annullare l'ultima modifica di un'impostazione."
+ },
+ "special_add": {
+  "params": {
+   "day": "AAAA-MM-GG"
+  },
+  "summary": "Aggiunge un evento speciale chiesto dall'utente, con quanti giorni prima avvisare."
+ },
+ "special_list": {
+  "summary": "Compleanni, anniversari e date importanti, con quanti giorni mancano."
+ },
+ "special_propose": {
+  "params": {
+   "evidence": "dove l'hai trovata, una riga"
+  },
+  "summary": "Quando trovi una data importante che l'utente non ha chiesto di salvare: proponila, l'utente conferma con un tocco."
+ },
+ "special_remove": {
+  "summary": "Toglie un evento speciale."
+ },
+ "stato": {
+  "summary": "Stato di attività dell'assistente: sveglio, in attesa, pisolino, sonno profondo, non disturbare, ultima interazione, lavori in corso ed effetti."
+ },
+ "sync_calendar": {
+  "summary": "Sincronizza gli eventi del calendario da Google e Outlook in Hestia."
+ },
+ "system_analysis": {
+  "summary": "Esegui un'analisi completa dei servizi con AI."
+ },
+ "system_incidents": {
+  "params": {
+   "limit": "Problemi chiusi da mostrare (default 10)"
+  },
+  "summary": "Storico dei problemi e di cosa è stato fatto per ripararli."
+ },
+ "system_log": {
+  "summary": "Mostra gli errori e warning recenti dei servizi."
+ },
+ "system_performance": {
+  "summary": "Prestazioni dei moduli: memoria, processore, tempi di risposta, dimensione dei dati."
+ },
+ "system_status": {
+  "summary": "Mostra lo stato di salute di tutti i servizi Hestia."
+ },
+ "telefono_stato": {
+  "summary": "Ultimo stato mandato dal telefono e se il collegamento è configurato."
+ },
+ "voce_correzione": {
+  "params": {
+   "heard": "Cosa avevo trascritto",
+   "corrected": "Il testo giusto"
+  },
+  "summary": "Quando l'utente corregge un vocale trascritto male: testo sentito e testo giusto; le parole nuove entrano nel dizionario dopo qualche correzione."
+ },
+ "voce_dizionario": {
+  "summary": "Le parole tue che passo al riconoscimento della voce, e quelle che sto imparando dalle tue correzioni."
+ },
+ "voce_download": {
+  "summary": "Le voci e l'ascolto che sto scaricando o ho scaricato, con l'avanzamento."
+ },
+ "voce_impronta": {
+  "summary": "Se ho la tua impronta della voce e dove riconosco solo te."
+ },
+ "voce_impronta_registra": {
+  "params": {
+   "audio": "Un vocale di almeno 10 secondi in cui parli tu"
+  },
+  "summary": "Registra almeno 10 secondi della tua voce: poi le altre voci non finiscono nei tuoi messaggi dove lo hai scelto."
+ },
+ "voce_impronta_togli": {
+  "summary": "Dimentica la tua impronta: ascolto tutte le voci."
+ },
+ "voce_parola": {
+  "params": {
+   "word": "La parola, scritta giusta"
+  },
+  "summary": "Aggiungi una parola al dizionario della voce."
+ },
+ "voce_parola_togli": {
+  "params": {
+   "word": "La parola da togliere"
+  },
+  "summary": "Togli una parola dal dizionario della voce."
+ },
+ "voce_scarica": {
+  "summary": "Scarica adesso le voci e l'ascolto locali delle catene in uso, così la prima frase non aspetta."
+ },
+ "wardrobe_add": {
+  "summary": "Aggiungi un capo che l'utente dice di avere/aver comprato."
+ },
+ "wardrobe_create_outfit": {
+  "summary": "Salva un outfit dai capi."
+ },
+ "wardrobe_delete": {
+  "summary": "Elimina un capo o un outfit: non elimina subito, manda all'utente una richiesta di conferma con i pulsanti Elimina / Archivia / Tieni."
+ },
+ "wardrobe_log_worn": {
+  "summary": "Segna cosa ho indossato, default oggi."
+ },
+ "wardrobe_outfits": {
+  "summary": "I miei outfit salvati."
+ },
+ "wardrobe_packing": {
+  "summary": "Prepara una lista valigia per un viaggio: un outfit al giorno dai capi disponibili."
+ },
+ "wardrobe_piece": {
+  "summary": "Dettaglio di un capo: taglia, materiali, acquisto, outfit in cui è, quante volte segnato indossato."
+ },
+ "wardrobe_search": {
+  "summary": "Cerca capi, scarpe e accessori che possiedo."
+ },
+ "wardrobe_stats": {
+  "summary": "Statistiche: composizione per categoria/colore/stagione, valore, capi dimenticati, lacune; uso solo come indicazione."
+ },
+ "wardrobe_suggest": {
+  "summary": "«Cosa mi metto»: outfit dai capi disponibili con i motivi."
+ },
+ "wardrobe_summary": {
+  "summary": "Guardaroba a colpo d'occhio: quanti capi/outfit, stile, in lavanderia, dimenticati, ultimo outfit indossato, obiettivo."
+ },
+ "wardrobe_update": {
+  "summary": "Modifica un capo: status, favorite, location o altri campi in changes."
+ },
+ "weather_forecast": {
+  "params": {
+   "place": "Luogo salvato, indirizzo o città (vuoto = Casa)",
+   "date_from": "Primo giorno YYYY-MM-DD",
+   "date_to": "Ultimo giorno YYYY-MM-DD",
+   "hourly": "Includi le ore"
+  },
+  "summary": "Previsione meteo per giorni: minima/massima, condizioni, probabilità e ore di pioggia, vento, alba/tramonto."
+ },
+ "weather_now": {
+  "params": {
+   "place": "Luogo salvato, indirizzo o città (vuoto = Casa)"
+  },
+  "summary": "Meteo adesso e oggi in un luogo: temperatura, percepita, condizioni, vento, ore di pioggia."
+ },
+ "web_search": {
+  "summary": "Search the web via DuckDuckGo Instant Answer api."
+ },
+ "preferenze_attive": {
+  "summary": "Mostra le preferenze utente attive"
+ },
+ "notifiche_attive": {
+  "summary": "Mostra le notifiche automatiche attive"
+ },
+ "avvisi_recenti": {
+  "summary": "Mostra gli ultimi avvisi inviati"
+ },
+ "notifica_disattiva": {
+  "summary": "Disattiva una notifica tramite subscription_id"
+ },
+ "notifica_attiva": {
+  "summary": "Riattiva una notifica tramite subscription_id"
+ },
+ "iscriviti_calendario": {
+  "summary": "Ricevi promemoria automatici per eventi del calendario"
+ },
+ "disiscriviti_calendario": {
+  "summary": "Smetti di ricevere promemoria automatici del calendario"
+ },
+ "iscriviti_sistema": {
+  "summary": "Ricevi notifiche sullo stato dei servizi Hestia"
+ },
+ "disiscriviti_sistema": {
+  "summary": "Smetti di ricevere notifiche sullo stato dei servizi Hestia"
+ },
+ "archive_reconcile": {
+  "summary": "Esegue una manutenzione di riconciliazione sui record entita in Archive",
+  "params": {
+   "dry_run": "Se true esegue solo simulazione senza cancellazioni",
+   "domain": "Dominio opzionale su cui limitare la riconciliazione"
+  }
+ }
+}

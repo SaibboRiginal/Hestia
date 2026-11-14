@@ -350,6 +350,18 @@ WebUI «Comandi» page and «Scopri» share. `area_of(tool, module)` = the tool'
 sentence of its description without parentheses and ALL-CAPS model notes. `module_label(name)` = what people call a
 module («scout» → «Immobili»), for texts such as agenda titles («Ricontrolla Immobili»).
 
+## Translations for people (`hestia_common.i18n`, dossier `docs/work/2026-11-14-backend-inglese`)
+
+What the model reads is English in the code (tool and field descriptions, `response_prompt`, prompts, module
+`manual`). What a person reads about a tool comes from `hestia_common/locales/<lang>/tools.json`
+(`{tool: {summary, params: {field: help}}}`, Italian today; other languages fall back to Italian).
+`i18n.language(settings.get)` = the owner's language code from `themis.personal.language` (after
+`settings.follow_personal()`), `i18n.tool_summary(name, lang)`, `i18n.param_help(name, field, lang)`,
+`i18n.catalog(name, lang)` for other catalogs. `areas.for_people(tool, lang=…)` reads the tool's own `summary`,
+then the catalog, then the first sentence of the description. A new tool adds its people texts to the catalog;
+a model text that a person will read (a proposal, a name) asks the model to write in
+`identity.LANGUAGES[i18n.language(settings.get)]`.
+
 ## Encryption (`hestia_common.crypto`)
 
 One format for every encrypted file Hestia writes (backup, later export files): passphrase → scrypt (N=2^16) →
