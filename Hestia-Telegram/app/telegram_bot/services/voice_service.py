@@ -18,6 +18,7 @@ from telebot import types
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import capabilities as voice_capabilities, usecase as voice_usecase
 from telegram_bot import core
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.voice")
 
@@ -62,8 +63,8 @@ def is_live(chat_id) -> bool:
 
 def set_live(chat_id, on: bool) -> str:
     core.set_session_setting(str(chat_id), LIVE_KEY, "on" if on else "")
-    return ("<b>Risposte a voce: sì</b>\nAi tuoi vocali rispondo anche a voce."
-            if on else "<b>Risposte a voce: no</b>\nRispondo in testo; sotto ogni risposta c'è «Ascolta».")
+    return (tr("<b>Risposte a voce: sì</b>\nAi tuoi vocali rispondo anche a voce.")
+            if on else tr("<b>Risposte a voce: no</b>\nRispondo in testo; sotto ogni risposta c'è «Ascolta»."))
 
 
 # ── listening ────────────────────────────────────────────────────────────────
@@ -98,7 +99,7 @@ def answer_text(chat_id, message_id) -> str:
 def listen_keyboard(feedback: bool = False, trace_id: str = "") -> types.InlineKeyboardMarkup:
     """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons). ``trace_id``
     (Oracle's id of the turn) rides in the callback so the vote lands on this answer (training dataset)."""
-    row = [types.InlineKeyboardButton("Ascolta", callback_data=LISTEN_CALLBACK)]
+    row = [types.InlineKeyboardButton(tr("Ascolta"), callback_data=LISTEN_CALLBACK)]
     if feedback:
         tail = f":{trace_id}" if trace_id else ""
         row += [types.InlineKeyboardButton("👍", callback_data=f"fb:good{tail}"),
@@ -146,8 +147,8 @@ def handle_listen_callback(call) -> None:
         text = _answers.get((int(chat_id), int(message_id)))
     text = text or str(call.message.text or "")
     try:
-        core.bot.answer_callback_query(call.id, "Preparo l'audio…")
+        core.bot.answer_callback_query(call.id, tr("Preparo l'audio…"))
     except Exception:
         pass
     if not text.strip() or not send_spoken(chat_id, text, message_id):
-        core.bot.send_message(chat_id, CANT_SPEAK, reply_to_message_id=message_id)
+        core.bot.send_message(chat_id, tr(CANT_SPEAK), reply_to_message_id=message_id)

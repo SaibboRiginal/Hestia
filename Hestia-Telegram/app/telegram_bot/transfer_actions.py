@@ -26,6 +26,7 @@ import requests
 
 from telegram_bot import catalog, core, ui
 from telegram_bot.render import Action, Rendered
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.transfer")
 
@@ -45,7 +46,7 @@ def modules() -> dict[str, dict]:
         services = (resp.json() or {}).get("services") or []
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=transfer_registry_failed error=%s", exc)
-        raise TransferError("Non riesco a vedere i moduli adesso, riprova tra poco.") from exc
+        raise TransferError(tr("Non riesco a vedere i moduli adesso, riprova tra poco.")) from exc
     return {s["name"]: s["capabilities"]["transfer"] for s in services
             if isinstance(s, dict) and isinstance((s.get("capabilities") or {}).get("transfer"), dict)}
 
@@ -71,9 +72,9 @@ def decode(raw: bytes) -> dict:
     try:
         data = json.loads(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
     except (OSError, ValueError) as exc:
-        raise TransferError("Questo file non è un file di Hestia.") from exc
+        raise TransferError(tr("Questo file non è un file di Hestia.")) from exc
     if not isinstance(data, dict) or data.get("hestia") != "transfer" or (data.get("format") or 1) > FORMAT:
-        raise TransferError("Questo file non è di Hestia, o è di una versione più recente.")
+        raise TransferError(tr("Questo file non è di Hestia, o è di una versione più recente."))
     return data
 
 
@@ -98,10 +99,10 @@ def _lines(reports: dict, labels: dict) -> list[str]:
     for owner, rep in reports.items():
         name = labels.get(owner) or owner.title()
         if rep.get("missing"):
-            lines.append(ui.item(name, ["non presente qui, saltato"]))
+            lines.append(ui.item(name, [tr("non presente qui, saltato")]))
             continue
         if rep.get("error"):
-            lines.append(ui.item(name, ["non risponde"]))
+            lines.append(ui.item(name, [tr("non risponde")]))
             continue
         totals = {k: 0 for k in ("added", "updated", "unchanged", "skipped", "problems")}
         for r in (rep.get("sections") or {}).values():
@@ -110,7 +111,7 @@ def _lines(reports: dict, labels: dict) -> list[str]:
         parts = [f"{totals[k]} {label}" for k, label in (("added", "nuovi"), ("updated", "aggiornati"),
                                                          ("skipped", "ignorati"), ("problems", "problemi"))
                  if totals[k]]
-        lines.append(ui.item(name, parts or ["nessuna modifica"]))
+        lines.append(ui.item(name, parts or [tr("nessuna modifica")]))
     return lines
 
 
@@ -122,13 +123,13 @@ def _labels(available: dict) -> dict:
 def esporta(chat_id, args):
     available = modules()
     if not available:
-        raise TransferError("Nessun modulo ha dati da esportare adesso.")
+        raise TransferError(tr("Nessun modulo ha dati da esportare adesso."))
     data = build(sorted(available))
     name = f"hestia-{datetime.now().strftime('%Y-%m-%d')}.hestia"
     logger.info("event=telegram_transfer_export modules=%d records=%d", len(data["modules"]), _count(data))
-    return Rendered(ui.card("Dati esportati", [
-        f"{_count(data)} elementi da {len(data['modules'])} aree, senza foto.",
-        ui.note("Il file contiene dati personali: tienilo per te. Per riportarli: «Importa dati».")]),
+    return Rendered(ui.card(tr("Dati esportati"), [
+        tr("{0} elementi da {1} aree, senza foto.", _count(data), len(data['modules'])),
+        ui.note(tr("Il file contiene dati personali: tienilo per te. Per riportarli: «Importa dati»."))]),
         document=(name, encode(data)))
 
 
@@ -136,7 +137,7 @@ def importa(chat_id, args):
     f = args.get("file") or {}
     raw = base64.b64decode(f.get("data_b64") or "") if isinstance(f, dict) else b""
     if not raw:
-        raise TransferError("Mandami il file .hestia.")
+        raise TransferError(tr("Mandami il file .hestia."))
     data = decode(raw)
     available = modules()
     reports = run(data, dry_run=True, available=available)
@@ -146,31 +147,31 @@ def importa(chat_id, args):
     token = uuid.uuid4().hex[:10]
     _pending[token] = {"data": data, "chat_id": str(chat_id), "at": time.time()}
     logger.info("event=telegram_transfer_preview modules=%d records=%d", len(data["modules"]), _count(data))
-    return Rendered(ui.card("Anteprima dell'importazione", [
+    return Rendered(ui.card(tr("Anteprima dell'importazione"), [
         *_lines(reports, _labels(available)),
-        ui.note("Unisci: aggiunge e aggiorna, non elimina nulla. Prima ti mando una copia di come è adesso.")],
-        subtitle=f"file del {str(data.get('exported_at') or '')[:10]}"),
-        actions=[Action("Importa", "importa_conferma", {"token": token}, style="primary"),
-                 Action("Annulla", "importa_annulla", {"token": token})])
+        ui.note(tr("Unisci: aggiunge e aggiorna, non elimina nulla. Prima ti mando una copia di come è adesso."))],
+        subtitle=tr("file del {0}", str(data.get('exported_at') or '')[:10])),
+        actions=[Action(tr("Importa"), "importa_conferma", {"token": token}, style="primary"),
+                 Action(tr("Annulla"), "importa_annulla", {"token": token})])
 
 
 def importa_conferma(chat_id, args):
     p = _pending.pop(str(args.get("token") or ""), None)
     if not p or p["chat_id"] != str(chat_id):
-        raise TransferError("Questa anteprima è scaduta: mandami di nuovo il file.")
+        raise TransferError(tr("Questa anteprima è scaduta: mandami di nuovo il file."))
     available = modules()
     owners = [o for o in p["data"]["modules"] if o in available]
     before = build(owners)
     reports = run(p["data"], dry_run=False, available=available)
     logger.info("event=telegram_transfer_import modules=%d", len(owners))
-    return Rendered(ui.outcome("Dati importati") + "\n" + "\n".join(_lines(reports, _labels(available))) + "\n"
-                    + ui.note("Il file qui sotto è com'era prima: importalo per tornare indietro."),
+    return Rendered(ui.outcome(tr("Dati importati")) + "\n" + "\n".join(_lines(reports, _labels(available))) + "\n"
+                    + ui.note(tr("Il file qui sotto è com'era prima: importalo per tornare indietro.")),
                     document=(f"hestia-prima-{datetime.now().strftime('%Y-%m-%d-%H%M')}.hestia", encode(before)))
 
 
 def importa_annulla(chat_id, args):
     _pending.pop(str(args.get("token") or ""), None)
-    return Rendered(ui.outcome("Importazione annullata"))
+    return Rendered(ui.outcome(tr("Importazione annullata")))
 
 
 # ── restore a Drive backup (owner only: no assistant tool restores) ───────────
@@ -178,18 +179,18 @@ def ripristina(chat_id, args):
     ok, hist = catalog.route("archive", "api/backup/list", timeout=30)
     items = (hist or {}).get("items") or [] if ok and isinstance(hist, dict) else []
     if not ok:
-        raise TransferError("Non riesco a leggere i backup adesso, riprova tra poco.")
+        raise TransferError(tr("Non riesco a leggere i backup adesso, riprova tra poco."))
     if not items:
-        return Rendered(ui.card("Ripristina un backup", [ui.note("Nessun backup su Google Drive.")]))
+        return Rendered(ui.card(tr("Ripristina un backup"), [ui.note(tr("Nessun backup su Google Drive."))]))
     lines, actions = [], []
     for b in items[:6]:
         when = str(b.get("created_at") or "")[:16].replace("T", " ")
         meta = [f"{int(b.get('size') or 0) / 1048576:.0f} MB"] + (["verificato"] if b.get("verified_at") else [])
         lines.append(ui.item(when, meta))
-        actions.append(Action(f"Ripristina {when[:10]}", "ripristina_conferma", {"file_id": str(b["id"])},
+        actions.append(Action(tr("Ripristina {0}", when[:10]), "ripristina_conferma", {"file_id": str(b["id"])},
                               style="danger"))
-    return Rendered(ui.card("Ripristina un backup", [*lines, ui.note(
-        "Tutti i dati tornano come in quel momento; quelli di adesso si possono riavere con «Annulla ripristino».")]),
+    return Rendered(ui.card(tr("Ripristina un backup"), [*lines, ui.note(
+        tr("Tutti i dati tornano come in quel momento; quelli di adesso si possono riavere con «Annulla ripristino»."))]),
         actions=actions)
 
 
@@ -199,20 +200,20 @@ def ripristina_conferma(chat_id, args):
     if not ok:
         detail = (out or {}).get("detail") if isinstance(out, dict) else None
         message = detail.get("message") if isinstance(detail, dict) else None
-        raise TransferError(f"Ripristino non avviato: {message}." if message else "Ripristino non avviato, riprova.")
+        raise TransferError(tr("Ripristino non avviato: {0}.", message) if message else tr("Ripristino non avviato, riprova."))
     logger.info("event=telegram_backup_restore_started")
-    return Rendered(ui.outcome("Ripristino avviato") + "\n" + ui.note(
-        "Dura qualche minuto: ti avviso quando ha finito."),
-        actions=[Action("Stato dei backup", "backup_status"), Action("Annulla ripristino", "ripristina_annulla",
+    return Rendered(ui.outcome(tr("Ripristino avviato")) + "\n" + ui.note(
+        tr("Dura qualche minuto: ti avviso quando ha finito.")),
+        actions=[Action(tr("Stato dei backup"), "backup_status"), Action(tr("Annulla ripristino"), "ripristina_annulla",
                                                                      style="danger")])
 
 
 def ripristina_annulla(chat_id, args):
     ok, out = catalog.route("archive", "api/backup/undo", "POST", body={"confirm": True}, timeout=30)
     if not ok:
-        raise TransferError("Non c'è un ripristino da annullare." if "nothing_to_undo" in str(out)
-                            else "Non riesco ad annullare adesso, riprova.")
-    return Rendered(ui.outcome("Torno ai dati di prima del ripristino"))
+        raise TransferError(tr("Non c'è un ripristino da annullare.") if "nothing_to_undo" in str(out)
+                            else tr("Non riesco ad annullare adesso, riprova."))
+    return Rendered(ui.outcome(tr("Torno ai dati di prima del ripristino")))
 
 
 def tools() -> list[catalog.Tool]:

@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.0 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1 done |
+| 1.1 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1 done, phase 2a (Telegram) done |
 
 ## Goal
 Every text the model reads is English; every fixed text a person reads comes from translation files in the
@@ -24,9 +24,18 @@ what the assistant writes on its own follows the language setting (dossier `2026
   the owner's language. Fallback Italian.
 - `areas.for_people(tool, lang)` and Telegram `inputs.fields` read the catalog first.
 
-## Phase 2 (next PR)
-Translation files for the other fixed people texts (WebUI, Telegram, settings labels and help, tool titles,
-error messages, notices), following `themis.personal.language`.
+## Phase 2 (fixed people texts)
+- `i18n.t(text, *args, **kw)` (imported as `tr`): the Italian text in the code is the key of catalog
+  `locales/<lang>/messages.json`; missing → English → the Italian source; with arguments it is `str.format`-ed.
+  `SettingsClient.follow_personal()` registers the process language reader (`i18n.use`).
+- **2a Telegram** (done): every literal people read in function bodies goes through `tr(...)`; the `ui` helpers
+  (button, card title/subtitle/footer, note, outcome, error), the bottom keyboard (shown and matched in both
+  languages), bot commands and description, field labels and dates translate at the edge; English catalog
+  for all Telegram texts. A file sent without a caption asks the model in English and to answer in the owner's
+  language.
+- **2b** settings labels/help (translated where Themis serves them), tool titles, notices and errors of the modules.
+- **2c** WebUI (Angular): same catalogs, language from the identity service.
+- German, French and Spanish catalogs (until then they show English).
 
 ## Acceptance criteria
 - No Italian sentence in a prompt, tool description, parameter description or `response_prompt`.

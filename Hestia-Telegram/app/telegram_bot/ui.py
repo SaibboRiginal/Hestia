@@ -12,6 +12,7 @@ from html import escape
 from typing import Any, Iterable
 
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 # The same ``tone`` the WebUI colours its icons with.
 TONE_DOT = {"danger": "🔴", "error": "🔴", "warning": "🟠", "success": "🟢", "ok": "🟢", "info": "🔵"}
@@ -53,7 +54,8 @@ def strip_emoji(text: Any) -> str:
 
 
 def label(text: Any, limit: int = LABEL_MAX) -> str:
-    """Button text: no emoji, cut on a word with «…»."""
+    """Button text in the owner's language: no emoji, cut on a word with «…»."""
+    text = tr(text) if isinstance(text, str) else text
     clean = strip_emoji(text) or str(text or "").strip()
     if len(clean) <= limit:
         return clean
@@ -67,7 +69,7 @@ def esc(text: Any) -> str:
 
 def title_line(text: str, *, marker: str = "", tone: str | None = None, crumbs: Iterable[str] = ()) -> str:
     """``🔵 <b>Title</b>`` or ``🏋️ <b>Aree › Allenamento</b>``."""
-    parts = [p for p in [*crumbs, text] if p]
+    parts = [tr(p) for p in [*crumbs, text] if p]
     body = " › ".join(esc(strip_emoji(p) or p) for p in parts)
     mark = tone_dot(tone) or marker
     return f"{mark} <b>{body}</b>".strip()
@@ -78,14 +80,14 @@ def card(title: str, lines: Iterable[str] = (), *, subtitle: str = "", marker: s
     """One message body. ``lines`` are already HTML (use :func:`item` / :func:`esc`)."""
     out = [title_line(title, marker=marker, tone=tone, crumbs=crumbs)] if title else []
     if subtitle:
-        out.append(f"<i>{esc(subtitle)}</i>")
+        out.append(f"<i>{esc(tr(subtitle))}</i>")
     body = [ln for ln in lines if ln]
     if body:
         out.append("\n".join(body))
     if detail:
         out.append(f"<blockquote expandable>{detail}</blockquote>")
     if footer:
-        out.append(f"<i>{esc(footer)}</i>")
+        out.append(f"<i>{esc(tr(footer))}</i>")
     return "\n".join(out)
 
 
@@ -99,16 +101,16 @@ def item(title: str, meta: Iterable[str] = (), url: str = "") -> str:
 
 
 def outcome(text: str, tone: str = "success") -> str:
-    return f"{tone_dot(tone)} <b>{esc(text)}</b>".strip()
+    return f"{tone_dot(tone)} <b>{esc(tr(text))}</b>".strip()
 
 
 def note(text: str) -> str:
-    return f"<i>{esc(text)}</i>"
+    return f"<i>{esc(tr(text))}</i>"
 
 
 def error(what: str, hint: str = "Riprova tra poco.") -> str:
     """Never the exception: what failed in words + what to do."""
-    return f"{TONE_DOT['danger']} <b>{esc(what)}</b>" + (f"\n{esc(hint)}" if hint else "")
+    return f"{TONE_DOT['danger']} <b>{esc(tr(what))}</b>" + (f"\n{esc(tr(hint))}" if hint else "")
 
 
 # ── keyboards ────────────────────────────────────────────────────────────────

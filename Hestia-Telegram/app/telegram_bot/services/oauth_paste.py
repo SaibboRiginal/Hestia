@@ -10,6 +10,7 @@ from __future__ import annotations
 import html
 import logging
 import re
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 _CALLBACK_RE = re.compile(
     r"(https?://\S*/api/gateway/auth/callback/(?P<provider>[a-z]+)\?\S*(?:code|error)=\S+)",
@@ -31,7 +32,7 @@ def complete_oauth_from_paste(provider: str, url: str) -> str:
     ok, payload = catalog.route("hecate", f"api/gateway/auth/complete/{provider}", "POST", body={"code": url})
     name = html.escape(provider.capitalize())
     if ok and isinstance(payload, dict) and payload.get("status") == "authorized":
-        return f"🟢 <b>{name} collegato</b>\nIl calendario è attivo."
+        return tr("🟢 <b>{0} collegato</b>\nIl calendario è attivo.", name)
     detail = payload.get("detail") if isinstance(payload, dict) else payload
     if isinstance(detail, dict):
         msg = str(detail.get("error") or detail)
@@ -40,6 +41,6 @@ def complete_oauth_from_paste(provider: str, url: str) -> str:
         msg, hint = str(detail or "errore sconosciuto"), ""
     logging.getLogger("hestia_telegram.oauth").warning("event=oauth_paste_failed provider=%s detail=%s", provider,
                                                          msg[:300])
-    reply = f"🔴 <b>Collegamento {name} non riuscito</b>"
-    reply += f"\n{html.escape(hint[:300])}" if hint else "\nRiprova dall'inizio: il link vale pochi minuti."
+    reply = tr("🔴 <b>Collegamento {0} non riuscito</b>", name)
+    reply += f"\n{html.escape(hint[:300])}" if hint else tr("\nRiprova dall'inizio: il link vale pochi minuti.")
     return reply

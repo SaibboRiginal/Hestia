@@ -177,6 +177,8 @@ class SettingsClient:
 
     def follow_personal(self) -> "SettingsClient":
         """The personal settings every module shares (week start, currency…), owned by Themis."""
+        from hestia_common import i18n
+        i18n.use(self.get)       # fixed texts of this process follow the owner's language (i18n.t)
         return self.follow({k: d["default"] for k, d in PERSONAL.items()})
 
     def _shared_changed(self, shared: dict | None) -> dict[str, Any]:

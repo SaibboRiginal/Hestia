@@ -7325,7 +7325,7 @@ paths:
       servers:
         - url: http://localhost:19013
       responses:
-        "200": {description: "{commands: [{command, title, description (for the model, English), summary (for people in the owner's language: tool summary or hestia_common/locales/<lang>/tools.json, hestia_common.areas.for_people), area, area_label, area_order, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
+        "200": {description: "{commands: [{command, title, description (for the model, English), summary (for people in the owner's language: tool summary or hestia_common/locales/<lang>/tools.json, hestia_common.areas.for_people); fixed Telegram and module texts follow themis.personal.language through hestia_common.i18n.t (locales/<lang>/messages.json), area, area_label, area_order, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
 
   /api/mcp/ui/tools/call:
     post:

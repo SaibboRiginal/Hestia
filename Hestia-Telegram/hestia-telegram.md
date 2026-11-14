@@ -277,3 +277,9 @@ the browser on purpose: tokens and keys must not travel in a chat.
 English (for the model); the help under each form field comes from the field `title`, then the people catalog
 `hestia_common/locales/<lang>/tools.json` (`i18n.param_help`, language `themis.personal.language` via
 `settings.follow_personal()`), then the description.
+
+**2026-11-14 (Telegram in the owner's language, same dossier, phase 2a)**: every fixed text goes through
+`hestia_common.i18n.t` (`tr`): the `ui` helpers translate button labels, card titles, subtitles, footers, notes,
+outcomes and errors; the bottom keyboard is shown translated and `Menu.door_for_text` matches both the Italian and
+the translated label; bot commands and description, form field labels, result field labels and dates too.
+A file sent without a caption asks the model in English and to answer in the owner's language.

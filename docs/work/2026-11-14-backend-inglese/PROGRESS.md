@@ -9,4 +9,8 @@
 - [x] Module manuals and `when_to_use` in English
 - [x] Tests updated where they pinned Italian prompt text; all module suites green
 - [x] Docs: hestia-shared.md, ARCHITECTURE rule 13, telegram, mcp, root CHANGELOG
-- [ ] Phase 2: translation files for WebUI, Telegram, settings labels/help, tool titles, errors and notices
+- [x] Phase 2a: `i18n.t` + `locales/en/messages.json`; Telegram texts wrapped (codemod on function-body literals,
+      edge translation in `ui`, keyboard, commands, labels, dates); test `Hestia-Telegram/tests/test_language.py`
+- [ ] Phase 2b: settings labels/help where Themis serves them, tool titles, notices and errors of the modules
+- [ ] Phase 2c: WebUI
+- [ ] German, French, Spanish catalogs

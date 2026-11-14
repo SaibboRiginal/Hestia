@@ -12,6 +12,7 @@ import logging
 from html import escape
 
 from telegram_bot import core, store, ui
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.answer_extras")
 
@@ -42,7 +43,7 @@ def changes_view(frame: dict) -> tuple[str, object]:
         title = str(item.get("title") or item.get("tool"))
         rows.append([actions.tool_button(menu, str(undo["tool"]), args=dict(undo.get("args") or {}),
                                          text=f"{undo.get('label') or ui.CANCEL}: {title}", limit=40)])
-    return "<b>Ho fatto</b>\n" + "\n".join(_line(i) for i in items), ui.keyboard(rows)
+    return tr("<b>Ho fatto</b>\n") + "\n".join(_line(i) for i in items), ui.keyboard(rows)
 
 
 def send_changes(chat_id, frame: dict) -> None:
@@ -70,7 +71,7 @@ def handle_callback(call) -> None:
     raw = store.resolve(call.data[len(SEND_PREFIX):]) or ""
     chat_id = call.message.chat.id
     if not raw.startswith("send:"):
-        core.bot.answer_callback_query(call.id, "Questo menu è vecchio")
+        core.bot.answer_callback_query(call.id, tr("Questo menu è vecchio"))
         return
     core.bot.answer_callback_query(call.id)
     text = raw[5:]

@@ -14,6 +14,7 @@ from typing import Any
 
 from telegram_bot import ui
 from telegram_bot.menu import defaults as D
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.menu")
 
@@ -59,12 +60,12 @@ class Menu:
         return self.area(self.tool_area.get(tool_name, ""))
 
     def label(self, tool_name: str) -> str:
-        return self.labels.get(tool_name, tool_name)
+        return tr(self.labels.get(tool_name, tool_name))
 
     def door_for_text(self, text: str) -> str | None:
         """Exact, whole-message match of a bottom keyboard button."""
         wanted = str(text or "").strip().casefold()
-        return next((k for k, v in self.doors.items() if v.casefold() == wanted), None)
+        return next((k for k, v in self.doors.items() if wanted in (v.casefold(), tr(v).casefold())), None)
 
 
 def _as_int(value: Any, default: int) -> int:

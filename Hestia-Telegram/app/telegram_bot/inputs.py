@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 LABELS = {
     "title": "Titolo", "name": "Nome", "q": "Cosa cerchi", "query": "Cosa cerchi", "text": "Testo",
@@ -119,7 +120,7 @@ def fields(tool) -> list[Field]:
         kind = _kind(name, spec)
         # the schema's description is English, for the model; people read the help of the people catalog
         desc = i18n.param_help(getattr(tool, "name", ""), name, lang) or str(spec.get("description") or "")
-        label = str(spec.get("title") or LABELS.get(name) or _short_help(desc) or _humanize(name))
+        label = tr(str(spec.get("title") or LABELS.get(name) or _short_help(desc) or _humanize(name)))
         options: list[tuple[str, str]] = []
         if kind == "choice":
             names = spec.get("enumNames") or spec.get("x-labels") or []
@@ -142,10 +143,10 @@ def quick_values(f: Field, today: date | None = None) -> list[tuple[str, str]]:
     if f.kind == "choice":
         return [(lbl, v) for v, lbl in f.options][:12]
     if f.kind == "bool":
-        return [("Sì", "true"), ("No", "false")]
+        return [(tr("Sì"), "true"), ("No", "false")]
     if f.kind in ("date", "datetime"):
-        return [("Oggi", today.isoformat()), ("Domani", (today + timedelta(days=1)).isoformat()),
-                ("Dopodomani", (today + timedelta(days=2)).isoformat())]
+        return [(tr("Oggi"), today.isoformat()), (tr("Domani"), (today + timedelta(days=1)).isoformat()),
+                (tr("Dopodomani"), (today + timedelta(days=2)).isoformat())]
     if f.kind == "time":
         return [(t, t) for t in ("08:00", "09:00", "12:30", "18:00", "20:00")]
     if f.kind == "int":
@@ -235,38 +236,38 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
     """``(ok, value, problem)`` — ``problem`` is a short sentence for the user."""
     s = str(text or "").strip()
     if not s:
-        return False, None, "Scrivi qualcosa, oppure Annulla."
+        return False, None, tr("Scrivi qualcosa, oppure Annulla.")
     if f.kind == "choice":
         for v, lbl in f.options:
             if s.casefold() in (v.casefold(), lbl.casefold()):
                 return True, v, ""
-        return False, None, "Scegli una delle opzioni."
+        return False, None, tr("Scegli una delle opzioni.")
     if f.kind == "bool":
         low = s.casefold()
-        if low in ("sì", "si", "s", "yes", "true", "1", "vero"):
+        if low in (tr("sì"), "si", "s", "yes", "true", "1", "vero"):
             return True, True, ""
         if low in ("no", "n", "false", "0", "falso"):
             return True, False, ""
-        return False, None, "Rispondi sì o no."
+        return False, None, tr("Rispondi sì o no.")
     if f.kind in ("int", "number"):
         m = re.fullmatch(r"[-+]?\d+(?:[.,]\d+)?", s.replace("€", "").replace(" ", ""))
         if not m:
-            return False, None, "Scrivi un numero."
+            return False, None, tr("Scrivi un numero.")
         num = float(m[0].replace(",", "."))
         if f.minimum is not None and num < f.minimum or f.maximum is not None and num > f.maximum:
-            return False, None, f"Un numero tra {f.minimum:g} e {f.maximum:g}." if f.minimum is not None \
+            return False, None, tr("Un numero tra {0:g} e {1:g}.", f.minimum, f.maximum) if f.minimum is not None \
                 and f.maximum is not None else "Numero fuori dai limiti."
         return True, (int(num) if f.kind == "int" else num), ""
     if f.kind == "date":
         d = parse_date(s)
-        return (True, d.isoformat(), "") if d else (False, None, "Non capisco la data: prova «domani» o «25/10».")
+        return (True, d.isoformat(), "") if d else (False, None, tr("Non capisco la data: prova «domani» o «25/10»."))
     if f.kind == "time":
         t = parse_time(s)
-        return (True, t, "") if t else (False, None, "Non capisco l'ora: prova «18:30».")
+        return (True, t, "") if t else (False, None, tr("Non capisco l'ora: prova «18:30»."))
     if f.kind == "datetime":
         value, full = parse_datetime(s)
         if not value:
-            return False, None, "Non capisco: prova «domani 18:30» o «25/10 9:00»."
+            return False, None, tr("Non capisco: prova «domani 18:30» o «25/10 9:00».")
         return True, value, "" if full else "time"
     if f.kind == "list":
         return True, [p.strip() for p in re.split(r"[,;\n]", s) if p.strip()], ""
@@ -280,7 +281,7 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
         pairs = [p.split("=", 1) for p in re.split(r"[;\n]", s) if "=" in p]
         if pairs:
             return True, {k.strip(): v.strip() for k, v in pairs}, ""
-        return False, None, "Scrivi le modifiche come «campo=valore; campo=valore»."
+        return False, None, tr("Scrivi le modifiche come «campo=valore; campo=valore».")
     return True, s, ""
 
 
@@ -289,7 +290,7 @@ def shown_value(f: Field, value: Any) -> str:
     if value is None or value == "":
         return "—"
     if f.kind == "bool":
-        return "Sì" if value in (True, "true") else "No"
+        return tr("Sì") if value in (True, "true") else "No"
     if f.kind == "choice":
         return dict(f.options).get(str(value), str(value))
     if f.kind in ("date", "datetime"):
@@ -319,7 +320,7 @@ def human_datetime(value: str, today: date | None = None) -> str:
     elif d == today - timedelta(days=1):
         day = "ieri"
     else:
-        day = f"{WEEKDAYS[d.weekday()][:3]} {d.day} {MONTHS[d.month - 1][:3]}" + (
+        day = f"{tr(WEEKDAYS[d.weekday()])[:3]} {d.day} {tr(MONTHS[d.month - 1])[:3]}" + (
             f" {d.year}" if d.year != today.year else "")
     has_time = "T" in s or " " in s.strip()
     return f"{day} {dt:%H:%M}" if has_time and (dt.hour or dt.minute) else day
