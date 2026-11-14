@@ -42,4 +42,5 @@ def test_every_english_text_keeps_its_placeholders():
     for source, text in i18n.catalog("messages", "en").items():
         if source.startswith("• {0} notific"):
             continue
-        assert sorted(re.findall(r"\{[^}]*\}", source)) == sorted(re.findall(r"\{[^}]*\}", text)), source
+        fields = r"\{\d+[^{}]*\}|\{[a-z_]+\}"     # str.format fields, not JSON examples in help texts
+        assert sorted(re.findall(fields, source)) == sorted(re.findall(fields, text)), source
