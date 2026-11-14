@@ -258,3 +258,6 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
   Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Salute e log» / «Riparazioni»).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Salute»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «Salute del sistema non raggiungibile».
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and answer instructions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

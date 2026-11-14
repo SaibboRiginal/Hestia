@@ -260,3 +260,6 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 - `GET /api/blobs/usage`: `{database_bytes, blob_bytes, blob_count, blobs_by_module}` for Argus growth alerts.
 - Backup tools `backup_status`, `backup_list`, `backup_run` (Telegram «Dati e backup»). Restore is deliberately no tool:
   only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: the command manifest (descriptions, `response_prompt`) is English; people texts of those commands are in the shared catalog. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

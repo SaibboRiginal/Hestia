@@ -38,3 +38,6 @@ Page **Documenti creati** (`calliope-docs`: list, download, delete, new document
 ## Tests
 
 `Hestia-Calliope/tests/test_calliope.py` (every format × theme, check, blobs, endpoints).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

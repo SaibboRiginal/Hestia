@@ -485,3 +485,6 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   restart; health through the Hub; any error/unhealthy → previous commit and previous images, restart, notice.
   Hephaestus restarts itself last; its own image change is left to the installer. MCP tools `aggiornamenti_stato`,
   `aggiornamenti_installa`, `aggiornamenti_indietro` (Telegram «Aggiornamenti»).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: Forge review, plan, fix and resume prompts are English; review issues are asked in the owner's language; stored values (`alta/media/bassa`, `semplice/difficile`) do not change. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

@@ -783,3 +783,6 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   carry no time. History compaction writes the recent messages again with their own time and model.
 - `DELETE /api/ui/chats/{id}`: the owner deletes a conversation (Archive `DELETE /chat/sessions/{id}`) and its saved
   training turns are dropped (`turn_trace.forget_session`).
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: every hidden line is English: turn guards, loop guard and its check, conversation goal and its tools, queued messages, agent loop notes, question resume, memory notes, image description, payload summary, module manual tool and the default file messages (with no words from the owner the answer follows «Lingua»). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

@@ -44,3 +44,6 @@ Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, ne
 `Hestia-Kairos/tests/test_kairos.py` and `tests/test_webui_plugin.py` (FakeArchive + fake agenda, no network).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Scadenze widget calls `markEmpty()` when there is no deadline, so the Home cell shrinks.
+
+
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the advice prompt are English; the advice is written in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
