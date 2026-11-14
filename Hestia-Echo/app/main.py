@@ -65,7 +65,7 @@ FALLBACKS = [("interna", "Torna alle catene interne"), ("nessuno", "Nessuno: dim
 LANGUAGES = [("auto", "Segui la conversazione"), ("it", "Italiano"), ("en", "Inglese"), ("es", "Spagnolo"),
              ("fr", "Francese"), ("de", "Tedesco")]
 
-settings = SettingsClient("echo")
+settings = SettingsClient("echo").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
     setting(PROVIDERS_KEY, "Fornitori della voce", "object", DEFAULT_PROVIDERS, group="Voce", order=0,
             editor="voice_providers",

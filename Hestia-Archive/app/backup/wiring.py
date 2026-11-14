@@ -27,7 +27,7 @@ TZ = os.getenv("TZ") or "Europe/Rome"
 UI_DIST = os.getenv("ARCHIVE_UI_DIST", "/ui/dist")
 SERVICE_VERSION = os.getenv("ARCHIVE_SERVICE_VERSION", "1.0.0")
 
-settings = SettingsClient("archive")
+settings = SettingsClient("archive").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
     setting("archive.backup.keep_daily", "Backup recenti da tenere", "int", 3, group="Backup", min=1, max=60,
             unit="giorni", help="Un backup al giorno: quanti degli ultimi restano su Google Drive."),

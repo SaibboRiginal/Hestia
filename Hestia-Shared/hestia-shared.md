@@ -354,7 +354,7 @@ module («scout» → «Immobili»), for texts such as agenda titles («Ricontro
 
 What the model reads is English in the code (tool and field descriptions, `response_prompt`, prompts, module
 `manual`). What a person reads about a tool comes from `hestia_common/locales/<lang>/tools.json`
-(`{tool: {summary, params: {field: help}}}`, Italian today; other languages fall back to Italian).
+(`{tool: {summary, params: {field: help}}}`, Italian and English; other languages fall back to English, then Italian).
 `i18n.language(settings.get)` = the owner's language code from `themis.personal.language` (after
 `settings.follow_personal()`), `i18n.tool_summary(name, lang)`, `i18n.param_help(name, field, lang)`,
 `i18n.catalog(name, lang)` for other catalogs. `areas.for_people(tool, lang=…)` reads the tool's own `summary`,
@@ -367,6 +367,12 @@ Italian source is the key of `locales/<lang>/messages.json`; a missing language 
 then to the source. `SettingsClient.follow_personal()` registers the language reader of the process
 (`i18n.use`); `i18n.current()` is the code. A module-level constant is translated where it is used
 (`tr(CONST)`), never at import.
+
+Settings: `settings_client.translated(definition, lang)` returns a setting definition with `label`, `help`,
+`group`, `unit` and option labels in `lang` (keys and values never change); Themis applies it to everything it
+serves (`/api/settings`, presets, options), so WebUI and Telegram show settings in the owner's language. Tool titles
+shown by MCP/«Comandi» go through `tr` too, and `areas.for_people` translates a tool's own `summary` with the
+process language when no `lang` is given. Every module that shows fixed texts calls `settings.follow_personal()`.
 
 ## Encryption (`hestia_common.crypto`)
 

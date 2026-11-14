@@ -143,3 +143,5 @@ what the assistant proposed and confirms from the notification as usual.
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the unknown-key hint are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+
+**2026-11-14 (settings in the owner's language)**: every label, help, group, unit and option label Themis serves (list, presets, options) is translated into «Lingua» (`themis.personal.language`) with `settings_client.translated`; the Italian text in the definition is the key of `locales/<lang>/messages.json`. Keys and values never change.

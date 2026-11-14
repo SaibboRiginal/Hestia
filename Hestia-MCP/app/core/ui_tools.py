@@ -18,6 +18,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from hestia_common.areas import area_of, for_people
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 from core.mcp_server import MCPServer, RpcError
 
@@ -37,7 +38,7 @@ def as_command(tool: dict) -> dict:
     area = area_of(meta, str(meta.get("service") or ""))
     return {
         "command": name,
-        "title": str(tool.get("title") or name),
+        "title": tr(str(tool.get("title") or name)),
         "description": str(tool.get("description") or ""),
         "summary": for_people({"name": name, "summary": meta.get("summary"), "description": tool.get("description")}),
         "area": area["key"], "area_label": area["label"], "area_order": area["order"],

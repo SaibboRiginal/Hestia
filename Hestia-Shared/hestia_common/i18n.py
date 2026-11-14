@@ -2,7 +2,7 @@
 
 Everything the model reads is English and lives in the code (tool descriptions, prompts). Everything a person
 reads comes from ``hestia_common/locales/<lang>/<catalog>.json``; a missing language or key falls back to
-Italian, then to what the caller passes. The language is the personal setting ``themis.personal.language``
+English, then Italian, then to what the caller passes. The language is the personal setting ``themis.personal.language``
 (``identity.LANGUAGE``): a module reads it with its own ``SettingsClient`` after ``follow_personal()``.
 
 Catalog ``tools``: ``{tool_name: {"summary": "...", "params": {param: "help"}}}``.
@@ -16,6 +16,7 @@ from typing import Any, Callable
 
 LOCALES = Path(__file__).parent / "locales"
 FALLBACK = "it"
+_CHAIN_TAIL = ("en",)  # a language without its own catalog reads English before the Italian source
 
 
 @lru_cache(maxsize=32)
@@ -41,8 +42,9 @@ def language(get: Callable[[str], Any] | None = None) -> str:
 
 
 def tool_text(tool: str, lang: str = FALLBACK) -> dict:
-    """The people texts of a tool: ``{"summary"?, "params"?}`` in ``lang``, else Italian, else ``{}``."""
-    for code in dict.fromkeys((str(lang or FALLBACK)[:2], FALLBACK)):
+    """The people texts of a tool: ``{"summary"?, "params"?}`` in ``lang``, else English, else Italian, else ``{}``."""
+    code = str(lang or FALLBACK)[:2]
+    for code in dict.fromkeys((code, *(() if code == FALLBACK else _CHAIN_TAIL), FALLBACK)):
         entry = catalog("tools", code).get(str(tool or ""))
         if isinstance(entry, dict):
             return entry
@@ -63,7 +65,6 @@ def param_help(tool: str, param: str, lang: str = FALLBACK) -> str:
 # else the Italian source. The language reader is registered once per process by
 # ``SettingsClient.follow_personal()``; a caller may pass ``lang`` explicitly.
 _reader: Callable[[str], Any] | None = None
-_CHAIN_TAIL = ("en",)
 
 
 def use(get: Callable[[str], Any] | None) -> None:

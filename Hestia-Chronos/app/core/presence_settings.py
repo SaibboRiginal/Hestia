@@ -134,7 +134,7 @@ BUILTIN_STATES: dict[str, dict] = {
 CORE_STATES = tuple(k for k, v in BUILTIN_STATES.items() if v.get("core"))
 
 _G = "Presenza"
-settings = SettingsClient("chronos")
+settings = SettingsClient("chronos").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
     setting(ENABLED, "Stato di attività dell'assistente", "bool", True, group=_G, oracle="read", order=1,
             help="Se spento resta sempre «Sveglio» senza effetti: i moduli usano solo le loro finestre."),

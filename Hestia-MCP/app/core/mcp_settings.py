@@ -21,7 +21,7 @@ SERVER_TIMEOUT = "mcp.calls.timeout"
 EXTERNAL_RATE = "mcp.external.max_calls_per_min"
 OAUTH_TOKEN_MINUTES = "mcp.oauth.access_token_minutes"
 
-settings = SettingsClient("mcp")
+settings = SettingsClient("mcp").follow_personal()
 settings.declare([
     setting(TOOLS_CACHE_TTL, "Durata cache degli strumenti", "int", 60, group="Strumenti", min=5, max=3600,
             unit="s", help="Per quanto tengo in memoria l'elenco degli strumenti dei moduli prima di "
