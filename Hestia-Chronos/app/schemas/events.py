@@ -46,7 +46,7 @@ _EVENT_FIELDS = set(CalendarEvent.model_fields)
 class CreateEventRequest(BaseModel):
     """Request body for POST /api/calendar/events.
 
-    Also takes the flat shape of the ``create_event`` / ``calendar_create_event`` tools ({title, start_datetime,
+    Also takes the flat shape of the ``create_event`` tool ({title, start_datetime,
     …, provider}): the assistant sends that, and every call was a 422 «event: Field required» (bench with a
     real model, 2026-10-30). No end = one hour after the start."""
 

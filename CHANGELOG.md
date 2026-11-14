@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-14
+- Fewer doubles among the tools the assistant can use: five tools that did exactly what another one does are gone (a second «new event», a second houses search, a second Google sign-in step, a second «repair» and two old memory doors); the endpoints stay, so nothing else changes. Seven other suspected pairs were checked and kept because they do different things → `docs/work/2026-11-14-doppioni-strumenti/` [ext-chat]
 - One language for what the assistant writes on its own: new personal setting «Lingua» (Impostazioni → Personali and the setup step «Tu e io»); notifications, alerts, recaps, the weekly plan, the expense summary, update notes and the messages it writes first follow it instead of being always Italian, while in chat it keeps answering in the language you write in. Telegram's own unused language setting is gone → `docs/work/2026-11-14-lingua-personale/` [ext-chat]
 
 ## 2026-11-13

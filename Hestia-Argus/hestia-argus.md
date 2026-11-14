@@ -92,7 +92,8 @@ cycle (`record_cycle`, `note_unhealthy`/`note_action`/`note_recovered`) and by `
 - **Tags**: `core`, `monitoring`
 - **Topology tags**: `layer:foundation`, `domain:observability`, `status:stable`
 - **Capabilities**: `argus.status`, `argus.logs`, `argus.analyze`
-- **Telegram commands**: `system_status`, `system_log`, `system_analysis`, `system_remediate`
+- **Telegram commands**: `system_status`, `system_log`, `system_analysis` (a repair is `hephaestus_remediate`: the
+  `system_remediate` tool was its double and was removed on 2026-11-14; the endpoint `/api/argus/remediate` stays)
 - **External AIs** (MCP access, 2026-10-18): `system_status` and `system_log` are marked `"external"` (read only)
 
 ## Environment Variables

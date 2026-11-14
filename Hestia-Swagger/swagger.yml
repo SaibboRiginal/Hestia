@@ -7249,7 +7249,8 @@ paths:
         JSON-RPC 2.0, one message or a batch. Notifications (no id) → 202. Internal clients call it through Hub
         (`POST /api/route/mcp/mcp`) and name themselves with header `X-Hestia-Client` (oracle, telegram, webui).
         Hestia details travel in `_meta.hestia`:
-        - tools/list → each tool has `name, title, description, inputSchema, annotations.readOnlyHint` and
+        - tools/list → one tool per job (doubles removed 2026-11-14: calendar_create_event, scout_listings,
+          gateway_auth_complete, system_remediate, Oracle memory.save/memory.search); each tool has `name, title, description, inputSchema, annotations.readOnlyHint` and
           `_meta.hestia {service, method, path, response_mode, response_prompt, clients, telegram_*…}`;
           `params._meta.hestia.services` narrows the list. A client sees tools whose `clients` is empty, `*` or its own.
         - tools/call → `params {name, arguments, _meta.hestia {session_id, notify_target, trace_id, client, service,

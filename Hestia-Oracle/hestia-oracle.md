@@ -409,11 +409,13 @@ Exposed via `/mcp` endpoint, registered with Hestia-MCP:
 
 | Tool | Description |
 |------|-------------|
-| `memory.save` | Save a durable user preference |
-| `memory.search` | Search saved preferences |
 | `memory_note` | Save facts from an external AI's conversation (clients ui, telegram, external) |
 | `memory_recall` | What Hestia knows on a topic (clients ui, telegram, external) |
 | `assistant_profile` | Persona + user's instructions + memory digest for another AI (client external only) |
+
+The MCP doubles `memory.save` / `memory.search` were removed on 2026-11-14 (`memory_note` / `memory_recall` do the
+same for Telegram, the site and other AIs). Inside the chat the agent loop keeps its own `memory.save`,
+`memory.search` and `memory.forget` (with the turn guards). Dossier `docs/work/2026-11-14-doppioni-strumenti`.
 | `documents.search` | Search uploaded documents |
 | `oracle.context_stats` | Session context breakdown |
 | `oracle.compact` | Force context compaction |

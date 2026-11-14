@@ -38,41 +38,6 @@ engine = OracleEngine()
 # ── MCP tools — Oracle's own agent tools exposed via MCP standard ─────────
 
 _oracle_mcp_tools = [
-    MCPTool(
-        name="memory.save",
-        description="Save a durable fact or preference about the user for future reference. Use when the user expresses a preference, constraint, or personal detail.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "fact": {"type": "string", "description": "The fact or preference to remember"},
-                "domain": {"type": "string", "description": "Domain category (default 'general')"},
-            },
-            "required": ["fact"],
-        },
-        handler=lambda **kw: engine._memory_service.save_memory(
-            fact=str(kw.get("fact", "")),
-            domain=str(kw.get("domain", "general")),
-        ),
-        title="Salva preferenza", method="POST", path="/api/memory",
-        clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
-                telegram={"section": "Note e preferenze"}),
-    MCPTool(
-        name="memory.search",
-        description="Search saved memories and preferences about the user.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Keywords to search for in memories"},
-            },
-        },
-        handler=lambda **kw: engine._memory_service.search_memories(
-            query=str(kw.get("query", "")),
-        ),
-        title="Cerca ricordi", method="GET", path="/api/memory",
-        clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
-                telegram={"section": "Note e preferenze"}),
     # ── Memory from external AIs (docs/work/2026-10-20-memory-note) ────────
     MCPTool(
         name="memory_note",
