@@ -7250,7 +7250,7 @@ paths:
         (`POST /api/route/mcp/mcp`) and name themselves with header `X-Hestia-Client` (oracle, telegram, webui).
         Hestia details travel in `_meta.hestia`:
         - tools/list → one tool per job (doubles removed 2026-11-14: calendar_create_event, scout_listings,
-          gateway_auth_complete, system_remediate, Oracle memory.save/memory.search); each tool has `name, title, description, inputSchema, annotations.readOnlyHint` and
+          gateway_auth_complete, system_remediate, Oracle memory.save/memory.search); each tool has `name, title, description (English, for the model), inputSchema, annotations.readOnlyHint` and
           `_meta.hestia {service, method, path, response_mode, response_prompt, clients, telegram_*…}`;
           `params._meta.hestia.services` narrows the list. A client sees tools whose `clients` is empty, `*` or its own.
         - tools/call → `params {name, arguments, _meta.hestia {session_id, notify_target, trace_id, client, service,
@@ -7325,7 +7325,7 @@ paths:
       servers:
         - url: http://localhost:19013
       responses:
-        "200": {description: "{commands: [{command, title, description (for the model), summary (for people, hestia_common.areas.for_people), area, area_label, area_order, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
+        "200": {description: "{commands: [{command, title, description (for the model, English), summary (for people in the owner's language: tool summary or hestia_common/locales/<lang>/tools.json, hestia_common.areas.for_people), area, area_label, area_order, service, method, path, response_mode, response_prompt, writes, arguments_schema (JSON schema)}], count, services}"}
 
   /api/mcp/ui/tools/call:
     post:
