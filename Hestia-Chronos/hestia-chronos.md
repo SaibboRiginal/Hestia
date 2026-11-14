@@ -533,3 +533,5 @@ MCP tools (all on Telegram through the dynamic menus): `routine_list`, `routine_
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the agenda parse prompt and the routine wrapper are English; the routine instruction stays the owner's text and the answer follows its language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
