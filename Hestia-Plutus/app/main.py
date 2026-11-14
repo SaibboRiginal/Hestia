@@ -562,7 +562,7 @@ def alerts_run():
 
 def _review_text(r: dict) -> str:
     cur = r["currency"]
-    prompt = ("Write the owner the summary of the month's expenses, in Italian, 3-5 short concrete sentences. "
+    prompt = ("Write the owner the summary of the month's expenses, 3-5 short concrete sentences. "
               "No generic advice. Format: plain text. JSON data: " + str(r))
     text = (_voice(prompt) or "").strip()
     if text:

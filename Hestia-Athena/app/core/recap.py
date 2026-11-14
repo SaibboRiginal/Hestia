@@ -111,7 +111,7 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
     tone = ("friendly, warm, one short opening sentence" if style == "amichevole"
             else "dry, facts only, no courtesy phrases")
     return (
-        f"Write the owner the {'evening' if momento == 'sera' else 'morning'} recap, in Italian.\n"
+        f"Write the owner the {'evening' if momento == 'sera' else 'morning'} recap.\n"
         f"{when}\n"
         f"Parts: 1) how it went ({'today' if momento == 'sera' else 'yesterday'}): done/skipped by area; "
         f"2) {'tomorrow' if momento == 'sera' else 'today'}: what is planned, in time order.\n"

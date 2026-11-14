@@ -9,7 +9,7 @@ import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys,
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
 import { AssistantTextComponent } from '../chat/assistant-text.component';
 import { MicRecorder, VoiceService, b64ToBlob, blobToB64 } from '../../services/voice.service';
-import { DEFAULT_ASSISTANT, IdentityService } from '../../services/identity.service';
+import { DEFAULT_ASSISTANT, IdentityService, LANGUAGES } from '../../services/identity.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 
 type Screen = 'benvenuto' | 'chi' | 'modelli' | 'memoria' | 'cervello' | 'ascolto' | 'voce' | 'telegram' | 'backup' | 'esterni' | 'fuori' | 'pronto';
@@ -138,6 +138,13 @@ function store(key: string, value: string): void {
               </hx-field>
               <hx-field label="Sono">
                 <hx-segmented [options]="genderOptions" [value]="assistantGender()" (changed)="assistantGender.set($event)" />
+              </hx-field>
+              <hx-field label="La tua lingua" hint="Per le notifiche e i messaggi che ti scrivo io. In chat ti rispondo nella lingua in cui scrivi.">
+                <select class="hx-select" [value]="language()" (change)="language.set($any($event.target).value)">
+                  @for (l of languages; track l.value) {
+                    <option [value]="l.value" [selected]="l.value === language()">{{ l.label }}</option>
+                  }
+                </select>
               </hx-field>
             }
 
@@ -502,6 +509,8 @@ export class SetupPageComponent {
   ownerCall = '';
   assistantName = DEFAULT_ASSISTANT;
   assistantGender = signal<'lei' | 'lui'>('lei');
+  language = signal('it');
+  readonly languages = LANGUAGES;
   readonly genderOptions: { value: 'lei' | 'lui'; label: string }[] = [{ value: 'lei', label: 'Una lei' }, { value: 'lui', label: 'Un lui' }];
 
   screen = signal<Screen>('benvenuto');
@@ -718,6 +727,7 @@ export class SetupPageComponent {
         this.ownerCall = this.identity.ownerCall();
         this.assistantName = this.identity.assistant();
         this.assistantGender.set(this.identity.gender());
+        this.language.set(this.identity.language());
       });
     } catch (e) {
       this.loadError.set(setupError(e));
@@ -914,7 +924,7 @@ export class SetupPageComponent {
     this.busy.set(true);
     try {
       if (screen === 'chi') {
-        await this.identity.save({ assistant: this.assistantName, gender: this.assistantGender(), ownerName: this.ownerName, ownerCall: this.ownerCall });
+        await this.identity.save({ assistant: this.assistantName, gender: this.assistantGender(), ownerName: this.ownerName, ownerCall: this.ownerCall, language: this.language() });
         this.assistantName = this.identity.assistant();
       }
       if (following === 'cervello') { await this.applyBrain(); return; }

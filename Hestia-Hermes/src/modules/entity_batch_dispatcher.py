@@ -220,7 +220,7 @@ def _narrate_entities(entry: _BatchEntry) -> str:
 
     noun = "annuncio immobiliare" if n == 1 else "annunci immobiliari"
     prompt = (
-        f"You found {n} new real estate listing{'' if n == 1 else 's'}{filters_desc}. Tell the owner, in Italian.\n"
+        f"You found {n} new real estate listing{'' if n == 1 else 's'}{filters_desc}. Tell the owner.\n"
         f"- Concise but informative: price, location and the most relevant features of each listing.\n"
         f"- Natural flowing text, no bulleted or numbered lists.\n"
         f"- Several listings: group them briefly by area or price range if it makes sense.\n"

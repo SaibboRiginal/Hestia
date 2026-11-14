@@ -1523,10 +1523,11 @@ class OracleEngine:
         client_instructions: str | None = None,
         thinking: bool = False,
         max_length: int | None = None,
-        locale: str = "it",
+        locale: str = "",
         variant_seed: str | None = None,
     ) -> str:
-        """Ask the analyst to format a structured service payload as human text."""
+        """Ask the analyst to format a structured service payload as human text (in ``locale``; empty → the
+        owner's language setting)."""
         t0 = time.perf_counter()
         payload_text = json.dumps(payload, ensure_ascii=False, indent=2)
         is_alert = str(command or "").startswith("alert:")
@@ -1565,10 +1566,10 @@ class OracleEngine:
         # (``client_instructions``): Oracle does not know where the text will be shown.
         static_sections = [base_prompt]
         dynamic_sections: list[str] = []
-        if locale and str(locale).strip():
-            dynamic_sections.append(
-                f"LANGUAGE: ALWAYS answer in language '{str(locale).strip()}'. Translate any payload text into it."
-            )
+        locale = str(locale or "").strip() or prompt_config.owner_language()
+        dynamic_sections.append(
+            f"LANGUAGE: ALWAYS answer in language '{locale}'. Translate any payload text into it."
+        )
         if response_prompt and str(response_prompt).strip():
             dynamic_sections.append(
                 f"SERVICE_RESPONSE_PROMPT:\n{str(response_prompt).strip()}"

@@ -573,7 +573,8 @@ components:
           type: integer
         locale:
           type: string
-          default: it
+          default: ""
+          description: "Language code of the text (it, en…). Empty = the owner's personal language (themis.personal.language)"
 
     ActionApprovalResponseRequest:
       type: object

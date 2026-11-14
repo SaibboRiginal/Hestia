@@ -280,7 +280,8 @@ flowchart LR
 - Telegram export/import: Telegram → Hub → each module `/api/transfer/*` (the client orchestrates, like the WebUI).
 
 ### LLM access rule
-Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate`, Forge and Wardrobe use
+Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate` (`voice: true` for a text to
+the owner: Oracle adds who speaks and the personal «Lingua»), Forge and Wardrobe use
 `/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.annunci`, `athena.strategia`,
 `forge.codice`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
 Oracle maps each use case to a named chain of provider/model steps (quota skip) and a brain mode (interna / esterna =
@@ -390,7 +391,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 
 ### Update flow («Aggiorna Hestia»)
 1. Chronos job `hephaestus.update_check` → Hephaestus `/api/setup/update/daily` → `git fetch` → newer tag (or
-   `origin/main`) → Oracle `/api/llm/generate` (notes in Italian) → Hermes event with `_question` «Installo?».
+   `origin/main`) → Oracle `/api/llm/generate` (`voice: true`, notes in the owner's «Lingua») → Hermes event with `_question` «Installo?».
 2. «Sì» (notification, page `/aggiornamenti` → WebUI → Hub, or Telegram tool) → `/api/setup/update/apply` → git
    checkout → per changed service: restart, or new image (GHCR pull / SDK build) + re-create → Hub health → on
    failure checkout back + previous images → Hermes notice.

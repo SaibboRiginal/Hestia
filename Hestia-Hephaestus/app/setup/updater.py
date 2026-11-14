@@ -149,9 +149,9 @@ class Updater:
             notes = changelog_notes(diff)[:NOTES_MAX]
             same = self._load().get("available") or {}
             if same.get("ref") == available["ref"] and same.get("notes_source") == notes:
-                available["notes"] = same.get("notes") or notes     # already in Italian: no new model call
+                available["notes"] = same.get("notes") or notes     # already rewritten: no new model call
             else:
-                available["notes"] = self._italian(notes)
+                available["notes"] = self._for_owner(notes)
             available["notes_source"] = notes
         data = self._patch(checked_at=time.time(), available=available, check_error="")
         logger.info("event=update_checked channel=%s current=%s available=%s", channel, current["label"],
@@ -161,8 +161,8 @@ class Updater:
             self._patch(notified=available["label"])
         return data
 
-    def _italian(self, notes: list[str]) -> list[str]:
-        """The CHANGELOG is written in English: the brain rewrites the lines in plain Italian (same count, same
+    def _for_owner(self, notes: list[str]) -> list[str]:
+        """The CHANGELOG is written in English: the brain rewrites the lines in the owner's language (same count, same
         order); brain off or a wrong answer → the lines as they are."""
         if not notes or not self.translate:
             return notes

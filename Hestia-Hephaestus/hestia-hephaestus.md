@@ -441,7 +441,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   the memory's `embedding`; an Ollama model named there is downloaded too) and `order` (the «Scelti» list in the
   user's order, local and cloud mixed: passed to Oracle and kept in the brain state, so the setup shows it again);
   a mode in `modes` can carry its own `steps` list (Ollama models in it are pulled, kept in the state too).
-  `POST /api/setup/brain/hello`: the assistant's first message for «I modelli sono pronti», asked to Oracle (`voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format)
+  `POST /api/setup/brain/hello`: the assistant's first message for «I modelli sono pronti», asked to Oracle (`voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Lingua»)
   `/api/llm/generate` with the use case `hephaestus.setup` (chain veloce) → `{ok, text, model, provider}`.
   `voice/preview` and `voice/hear` pass the setup's «Ascolta» / «Prova a parlare» to Echo `/api/voice/setup/*`.
 - `recreate_with_env`: `env_file` is read only when a container is created, so a restart would not see a new key.
@@ -477,7 +477,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   channel, available with notes, job, history, previous, blocked) · `POST update/check` · `POST update/apply {ref?}` ·
   `POST update/back` · `POST update/answer {answer}` (the Hermes question «Installo?») · `POST update/daily` (agenda
   job `hephaestus.update_check`, daily 11:00, asks once per version). Notes = root `CHANGELOG.md` lines added between
-  the versions, rewritten in Italian by Oracle use case `hephaestus.aggiornamenti` (English when the brain is off).
+  the versions, rewritten in the owner's «Lingua» by Oracle use case `hephaestus.aggiornamenti` (`voice: true`) (English when the brain is off).
   Apply (thread, state `data/update.json`): refused with a reason when tracked files are modified or HEAD has commits
   not on GitHub; `git checkout <tag>` / `merge --ff-only origin/main`; `forge.deployer.plan` on the diff; only running
   containers: image change → pull `ghcr.io/saibboriginal/hestia:<svc>-<ver>` when the container runs a ready-made

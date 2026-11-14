@@ -844,7 +844,7 @@ class FormatRequest(BaseModel):
     client: Optional[str] = None          # personal chat settings (tone…) of this client
     thinking: bool = False
     max_length: Optional[int] = None
-    locale: str = "it"
+    locale: str = ""   # empty → the owner's language setting (themis.personal.language)
 
 
 class FormatResponse(BaseModel):

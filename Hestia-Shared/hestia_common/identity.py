@@ -1,13 +1,15 @@
 """Who the assistant is and whose it is (docs/work/2026-11-12-identita-e-proattivita).
 
-Four personal settings owned by Themis (``settings_client.PERSONAL``): the owner's name, how to call him, the
-assistant's name (default «Hestia») and whether it is a she or a he. Every prompt that speaks to the owner is
+Five personal settings owned by Themis (``settings_client.PERSONAL``): the owner's name, how to call him, the
+assistant's name (default «Hestia»), whether it is a she or a he, and the language of what she writes on her own. Every prompt that speaks to the owner is
 written once with tokens and rendered with :func:`render`:
 
 - ``{assistant}``         → the assistant's name
 - ``{owner}``             → how to call the owner (``the person writing to you`` while unknown)
 - ``{owner_rule}``        → one sentence: his name, or «ask him» while unknown
 - ``{g:amica|amico}``     → the first form for a she, the second for a he
+- ``{owner_language}``    → the owner's language in English («Italian», «English»…): notifications, recaps and
+  every text she writes on her own use it. In chat she answers in the language the owner just wrote in.
 
 A module reads the values with its own ``SettingsClient`` after ``follow_personal()``::
 
@@ -25,6 +27,11 @@ OWNER_NAME = "themis.personal.owner_name"
 OWNER_CALL = "themis.personal.owner_call"
 ASSISTANT_NAME = "themis.personal.assistant_name"
 ASSISTANT_GENDER = "themis.personal.assistant_gender"
+LANGUAGE = "themis.personal.language"
+
+# Language code → its English name, as the hidden prompt text says it. Same codes as the setting's options.
+LANGUAGES = {"it": "Italian", "en": "English", "de": "German", "fr": "French", "es": "Spanish"}
+DEFAULT_LANGUAGE = "it"
 
 DEFAULT_NAME = "Hestia"
 UNKNOWN_OWNER = "the person writing to you"
@@ -39,7 +46,7 @@ def _clean(value: Any) -> str:
 
 
 def read(get: Callable[[str], Any]) -> dict[str, str]:
-    """``{assistant, gender, owner_name, owner}`` from a ``settings.get``-like reader (missing → defaults)."""
+    """``{assistant, gender, owner_name, owner, language}`` from a ``settings.get``-like reader (missing → defaults)."""
     def value(key: str) -> str:
         try:
             return _clean(get(key))
@@ -49,11 +56,23 @@ def read(get: Callable[[str], Any]) -> dict[str, str]:
     return {"assistant": value(ASSISTANT_NAME) or DEFAULT_NAME,
             "gender": "lui" if value(ASSISTANT_GENDER).lower() == "lui" else "lei",
             "owner_name": owner_name,
-            "owner": value(OWNER_CALL) or owner_name}
+            "owner": value(OWNER_CALL) or owner_name,
+            "language": language_code(value(LANGUAGE))}
 
 
 def default() -> dict[str, str]:
-    return {"assistant": DEFAULT_NAME, "gender": "lei", "owner_name": "", "owner": ""}
+    return {"assistant": DEFAULT_NAME, "gender": "lei", "owner_name": "", "owner": "", "language": DEFAULT_LANGUAGE}
+
+
+def language_code(value: Any) -> str:
+    """A known language code (``it``, ``en``…); anything else → the default."""
+    code = str(value or "").strip().lower()[:2]
+    return code if code in LANGUAGES else DEFAULT_LANGUAGE
+
+
+def language_name(ident: dict[str, str] | None) -> str:
+    """The owner's language in English, for hidden prompt text («Italian»)."""
+    return LANGUAGES[language_code((ident or {}).get("language"))]
 
 
 def owner_rule(ident: dict[str, str]) -> str:
@@ -74,4 +93,5 @@ def render(text: str, ident: dict[str, str] | None = None) -> str:
     raw = _GENDERED.sub(lambda m: m.group(index), raw)
     return (raw.replace("{assistant}", ident.get("assistant") or DEFAULT_NAME)
                .replace("{owner_rule}", owner_rule(ident))
+               .replace("{owner_language}", language_name(ident))
                .replace("{owner}", ident.get("owner") or UNKNOWN_OWNER))

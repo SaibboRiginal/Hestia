@@ -121,7 +121,7 @@ def _flush_batch() -> None:
 
 
 def _narrate_batch(alerts: list[ServiceAlert]) -> str:
-    """Ask Oracle for a natural Italian summary; fall back to compact plain text."""
+    """Ask Oracle for a natural summary in the owner's language; fall back to compact plain text."""
     lines = []
     for a in alerts:
         if a.kind == "health":
@@ -137,7 +137,7 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
     raw = "\n".join(lines)
 
     prompt = (
-        f"You noticed these problems in your own system. Tell the owner, in Italian, 4-5 lines at most.\n"
+        f"You noticed these problems in your own system. Tell the owner, 4-5 lines at most.\n"
         f"- Which services are involved and what seems to be happening.\n"
         f"- A short excerpt of the raw error only if it helps.\n"
         f"- Format: HTML <b> and <i> only. No Markdown, no JSON, no bulleted lists.\n\n"
@@ -202,7 +202,7 @@ def send_recovery(service: str) -> None:
         _clear(_health_fingerprint(service, status))
 
     prompt = (
-        f"The service '{service}' of your own system is back online. Tell the owner in one short line, in Italian."
+        f"The service '{service}' of your own system is back online. Tell the owner in one short line."
     )
     narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():

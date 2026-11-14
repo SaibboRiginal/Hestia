@@ -265,7 +265,10 @@ ident = identity.read(settings.get)            # after settings.follow_personal(
 text = identity.render("You are {assistant}, {g:a woman|a man}, a friend of {owner}. {owner_rule}", ident)
 ```
 `{assistant}` name · `{owner}` how to call him (`the person writing to you` while unknown) · `{owner_rule}` one
-English sentence (his name, or «ask») · `{g:lei|lui}` gendered words. Other braces are untouched, so the template
+English sentence (his name, or «ask») · `{g:lei|lui}` gendered words · `{owner_language}` the English name of the
+personal language `themis.personal.language` (it/en/de/fr/es, default it; `identity.language_code()`,
+`language_name()`, dossier `docs/work/2026-11-14-lingua-personale`): what she writes on her own follows it, the chat
+follows the language of the owner's last message. Other braces are untouched, so the template
 can be formatted after. The rendered text is English like every text the model reads
 (`docs/work/2026-11-12-prompt-ogni-situazione`). A module rarely needs this: a text for the owner is asked to Oracle
 with `/api/llm/generate {voice: true}` and Oracle adds who speaks. The product and modules stay Hestia.

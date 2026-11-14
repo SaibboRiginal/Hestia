@@ -141,3 +141,19 @@ def test_generate_voice_flag_reaches_the_chain(monkeypatch):
     assert calls["prompt"].startswith("You are writing to the owner yourself") and calls["prompt"].endswith("FACTS: x")
     TestClient(main.app).post("/api/llm/generate", json={"prompt": "x"})
     assert calls["voice"] is False and calls["prompt"] == "x"
+
+
+@pytest.mark.unit
+def test_texts_she_writes_on_her_own_follow_the_language_setting(engine, monkeypatch):  # noqa: F811
+    """Notifications, recaps and formatted results use the owner's language setting, never the data's language;
+    the chat keeps following the language of the owner's last message (docs/work/2026-11-14-lingua-personale)."""
+    monkeypatch.setattr(prompt_config, "_identity", lambda: {"assistant": "Hestia", "gender": "lei",
+                                                            "owner_name": "", "owner": "", "language": "en"})
+    assert "Write in English" in prompt_config.prompt("module_voice_instruction")
+    assert prompt_config.owner_language() == "en"
+    engine._ask_analyst = MagicMock(return_value="ok")
+    engine.format_payload("alert:scout", {"title": "Casa"})
+    assert "language 'en'" in engine._ask_analyst.call_args[0][0]
+    engine.format_payload("alert:scout", {"title": "Casa"}, locale="de")          # a caller may still ask one
+    assert "language 'de'" in engine._ask_analyst.call_args[0][0]
+    assert "LATEST message" in prompt_config.prompt("language_rule")

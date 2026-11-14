@@ -118,17 +118,19 @@ def hermes_notifier(hub_api_url: str):
     return send
 
 
-NOTES_PROMPT = ("Riscrivi ogni riga in italiano semplice, breve, al «tu», senza nomi di moduli. Una riga per riga, "
-                "stesso ordine, niente numeri né elenchi puntati, niente altro.\n\n{lines}")
+NOTES_PROMPT = ("Rewrite each line of what is new in this update for the owner: plain short words, speak to them "
+                "directly, no module names. One line per line, same order, no numbers or bullets, nothing else."
+                "\n\n{lines}")
 
 
 def notes_translator(hub_api_url: str):
-    """What's new of an update, in Italian (Oracle use case ``hephaestus.aggiornamenti``)."""
+    """What's new of an update, in the owner's language (Oracle use case ``hephaestus.aggiornamenti``, ``voice``:
+    Oracle adds who speaks and the language setting)."""
     def translate(notes: list[str]) -> list[str] | None:
         resp = requests.post(f"{hub_api_url}/route/oracle/api/llm/generate",
                              json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 90,
                                    "body": {"prompt": NOTES_PROMPT.replace("{lines}", "\n".join(notes)),
-                                            "use_case": "hephaestus.aggiornamenti"}}, timeout=95)
+                                            "use_case": "hephaestus.aggiornamenti", "voice": True}}, timeout=95)
         routed = resp.json() if resp.content else {}
         if resp.status_code != 200 or int(routed.get("status_code", 500)) >= 400:
             return None

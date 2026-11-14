@@ -94,7 +94,11 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   with `hestia_common.identity` from the personal settings `themis.personal.assistant_name` (default Hestia),
   `assistant_gender` (lei/lui), `owner_name`, `owner_call` (Oracle follows them, live). The persona opens «You are
   <name>, the personal assistant of <owner>: theirs and nobody else's»; name unknown → she asks. The chains read the
-  persona at every call (`ChainAgent` takes a function), so a change needs no restart. Internal extractors
+  persona at every call (`ChainAgent` takes a function), so a change needs no restart.
+- **Language** (dossier `docs/work/2026-11-14-lingua-personale`): the chat answers in the language of the owner's
+  last message (`language_rule`). What she writes on her own follows the personal setting `themis.personal.language`:
+  `module_voice_instruction` (`/api/llm/generate {voice:true}`) says «Write in {owner_language}», the opener uses it,
+  and `/api/format` without `locale` uses `prompt_config.owner_language()`. Module prompts never name a language. Internal extractors
   («compilatore di Hestia»…) and the product keep the name Hestia.
 - **Style contract** (`conversation_style_contract`): forbids bot closings and status lines («sono qui, pronta»),
   not the personality: on small talk she answers warmly and may ask ONE real question; on a task she goes to the
