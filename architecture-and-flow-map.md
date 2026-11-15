@@ -464,4 +464,5 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 3. Language (dossier `docs/work/2026-11-14-backend-inglese`): Themis `themis.personal.language` → every module's
    `SettingsClient.follow_personal()` → `hestia_common.i18n` (process reader) → `tr("Testo")` looks up
    `locales/<lang>/messages.json` (fallback English, then the Italian source) → Telegram buttons, cards, keyboard,
-   commands. Model text stays English in code; tool people texts come from `locales/<lang>/tools.json`.
+   commands, and every module's notices, error details and cards; Themis serves setting texts translated. Model
+   text stays English in code; tool people texts come from `locales/<lang>/tools.json`.
