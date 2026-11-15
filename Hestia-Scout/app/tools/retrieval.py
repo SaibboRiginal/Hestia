@@ -4,6 +4,7 @@ import requests
 
 from tools.geocoding import GeocodingService, extract_city_from_text, haversine_km
 from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 class ScoutRetrievalService:
@@ -276,24 +277,24 @@ class ScoutRetrievalService:
         rows = []
         for it in items[:20]:
             specs = it.get("specs") if isinstance(it.get("specs"), dict) else {}
-            rows.append(item(str(it.get("title") or "Casa").strip(),
+            rows.append(item(str(it.get("title") or tr("Casa")).strip(),
                              [self._fmt_price(it.get("price")), self._fmt_surface(specs.get("surface_m2")),
                               self._fmt_rooms(specs.get("rooms")), str(it.get("address") or "").strip()],
                              url=str(it.get("url") or "").strip()))
-        return display("Case disponibili", subtitle=f"{len(items)} trovate" if items else "", items=rows,
-                       lines=[] if rows else ["Nessuna casa trovata."],
+        return display(tr("Case disponibili"), subtitle=f"{len(items)} trovate" if items else "", items=rows,
+                       lines=[] if rows else [tr("Nessuna casa trovata.")],
                        footer=f"e altre {len(items) - 20}" if len(items) > 20 else "",
-                       actions=[action("Cerca", "scout.search", style="primary"), action("Controlla email", "scout_fetch")])
+                       actions=[action(tr("Cerca"), "scout.search", style="primary"), action(tr("Controlla email"), "scout_fetch")])
 
     def search_formatted(self, req: RealEstateSearchRequest, items: list[dict] | None = None) -> str:
         """Return pre-formatted markdown with one [title](url) bullet per listing.
         The LLM can pass this through directly without needing to format links."""
         items = self.search(req) if items is None else items
         if not items:
-            return "Nessuna casa trovata."
+            return tr("Nessuna casa trovata.")
         lines = []
         for item in items:
-            title = str(item.get("title") or "Casa").strip()
+            title = str(item.get("title") or tr("Casa")).strip()
             url = str(item.get("url") or "").strip()
             price = self._fmt_price(item.get("price"))
             address = str(item.get("address") or "").strip()

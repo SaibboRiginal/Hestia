@@ -20,6 +20,7 @@ from typing import Any
 
 
 from .standards import MODELS_DIR
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.voiceprint")
 
@@ -120,7 +121,7 @@ class SpeakerEngine:
                 if not path.exists():
                     from .standards import EngineError, fetch
                     try:
-                        fetch("impronta:resnet34", "Riconoscere la tua voce", MODEL_URL, path, 27)
+                        fetch("impronta:resnet34", tr("Riconoscere la tua voce"), MODEL_URL, path, 27)
                     except EngineError as exc:
                         raise VoiceprintError(f"download modello voce: {exc}")
                     logger.info("event=voiceprint_model_downloaded")
@@ -169,7 +170,7 @@ class Voiceprint:
         samples = _samples(wav16k)
         seconds = len(samples) / RATE
         if seconds < MIN_ENROLL_S:
-            raise VoiceprintError(f"serve almeno {int(MIN_ENROLL_S)} secondi di voce")
+            raise VoiceprintError(tr("serve almeno {0} secondi di voce", int(MIN_ENROLL_S)))
         emb = self.engine.embed(samples)
         from .keep import now
         stamp = now().isoformat()

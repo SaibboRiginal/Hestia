@@ -39,6 +39,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hecate.google_oauth")
 
@@ -158,14 +159,14 @@ def parse_client(client_id: str = "", client_secret: str = "", raw_json: str = "
         try:
             data = json.loads(raw_json)
         except ValueError:
-            raise GoogleOAuthError("Il file non è un JSON valido.")
+            raise GoogleOAuthError(tr("Il file non è un JSON valido."))
         inner = data.get("installed") or data.get("web") or data if isinstance(data, dict) else {}
         client_id, client_secret = str(inner.get("client_id") or ""), str(inner.get("client_secret") or "")
     client_id, client_secret = client_id.strip(), client_secret.strip()
     if not client_id.endswith(".apps.googleusercontent.com") or len(client_id) > 200:
-        raise GoogleOAuthError("L'ID client finisce con .apps.googleusercontent.com: copialo da Google Cloud.")
+        raise GoogleOAuthError(tr("L'ID client finisce con .apps.googleusercontent.com: copialo da Google Cloud."))
     if not (8 <= len(client_secret) <= 200) or any(c.isspace() for c in client_secret):
-        raise GoogleOAuthError("Il segreto del client non sembra giusto: copialo da Google Cloud.")
+        raise GoogleOAuthError(tr("Il segreto del client non sembra giusto: copialo da Google Cloud."))
     return client_id, client_secret
 
 

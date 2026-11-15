@@ -21,6 +21,7 @@ from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
 from worker.runner import ScoutWorker
 from core import scout_settings
 from core.scout_settings import settings as scout_central_settings
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -127,7 +128,7 @@ _cycle_state: dict[str, Any] = {"running": False, "last_started": None, "last_fi
 
 def _mail_rules() -> list[dict]:
     senders, queries = scout_settings.mail_rule_parts()
-    return [mail_rule(MAIL_KEY, "Annunci immobiliari", path="/api/scout/mail", domain=TARGET_DOMAIN,
+    return [mail_rule(MAIL_KEY, tr("Annunci immobiliari"), path="/api/scout/mail", domain=TARGET_DOMAIN,
                       senders=senders, queries=queries,
                       description="Email dei portali immobiliari: Scout estrae e aggiorna gli immobili.")]
 
@@ -237,7 +238,7 @@ api_app.include_router(ui_plugin.router())
 api_app.include_router(build_ui_router(
     ui_store, run_cycle=check_now, cycle_status=scout_cycle_status))
 api_app.include_router(recap.recap_router(
-    "scout", lambda day, nxt: recap.piece("scout", "Case", icon="home", emoji="🏠", order=20,
+    "scout", lambda day, nxt: recap.piece("scout", tr("Case"), icon="home", emoji="🏠", order=20,
                                          **recap_facts(ui_store.views(), day))))
 
 # ── export / import (hestia_common.transfer): the listings with the user's own marks ─────────────────────
@@ -250,7 +251,7 @@ class ListingsSection(Section):
     deletes: listings come back from the mail cycle anyway."""
 
     def __init__(self, store: ListingStore):
-        super().__init__("annunci", "Annunci", icon="home", deletes=False)
+        super().__init__("annunci", tr("Annunci"), icon="home", deletes=False)
         self.store = store
 
     def records(self, *, deleted: bool = False) -> list[dict]:
@@ -273,7 +274,7 @@ class ListingsSection(Section):
             if not self.store.archive.upsert_entity({"entity_id": r["key"], "domain": self.store.domain,
                                                      "status": r.get("status") or "active",
                                                      "payload": r.get("payload") or {}}):
-                raise RuntimeError("archivio non raggiungibile")
+                raise RuntimeError(tr("archivio non raggiungibile"))
         self.store.records(fresh=True)
 
 
@@ -405,8 +406,7 @@ if _HAS_MCP:
     def _mcp_scout_fetch() -> dict:
         """Trigger a full email fetch + parse + extract cycle on demand."""
         check_now()
-        return {"status": "ok", "message": "Controllo avviato: le email annunci dell'ultimo giorno vengono "
-                                           "ripassate e lette."}
+        return {"status": "ok", "message": tr("Controllo avviato: le email annunci dell'ultimo giorno vengono ripassate e lette.")}
 
     def _mcp_scout_stats() -> dict:
         """Return real_estate domain summary: counts, statuses, date ranges."""
@@ -439,10 +439,10 @@ if _HAS_MCP:
         names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
                  "unknown": "senza stato"}
         when = str(newest or "")[:10]
-        return display("Case", subtitle=f"{total} annunci", footer=f"Ultimo arrivato il {when[8:10]}/{when[5:7]}" if when else "",
+        return display(tr("Case"), subtitle=f"{total} annunci", footer=tr("Ultimo arrivato il {0}/{1}", when[8:10], when[5:7]) if when else "",
                        items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
                                                                                          key=lambda kv: -kv[1])],
-                       actions=[action("Cerca case", "scout.search", style="primary")])
+                       actions=[action(tr("Cerca case"), "scout.search", style="primary")])
 
     mcp_tools = [
         MCPTool(name="scout.search",

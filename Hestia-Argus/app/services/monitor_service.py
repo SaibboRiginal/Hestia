@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from core import argus_settings as cfg
 from core import docker_client, forge_proposer, health_poller, hub_client
 from services import oracle_watch, health_history, immune, performance
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.agenda_client import AgendaClient, template as agenda_template
@@ -95,7 +96,7 @@ def recheck(service: str) -> dict:
         report = health_poller.poll_service(target)
         report_status, error = report.status, report.error
     health_history.record(service, report_status, error)
-    health_history.note_action(service, "recheck", f"Ricontrollato: {report_status}", ok=report_status == "up")
+    health_history.note_action(service, "recheck", tr("Ricontrollato: {0}", report_status), ok=report_status == "up")
     if report_status == "up":
         health_history.note_recovered(service)
         _close_repair(service)
@@ -117,7 +118,7 @@ def recheck(service: str) -> dict:
             requested_action="auto_health_recovery", environment=cfg.get_str(cfg.REMEDIATE_ENVIRONMENT),
             dry_run=cfg.get_bool(cfg.REMEDIATE_DRY_RUN), auto_approve=False,
             metadata={"status": report_status, "error": error, "recheck_attempt": _repair_attempts.get(service, 0)})
-        health_history.note_action(service, "remediation", "Riparazione richiesta di nuovo a Hephaestus", ok=ok)
+        health_history.note_action(service, "remediation", tr("Riparazione richiesta di nuovo a Hephaestus"), ok=ok)
     _plan_recheck(service, report_status, error)
     logger.info("[🔄] event=argus_recheck_still_unhealthy service=%s status=%s remediation_ok=%s next_attempt=%d",
                 service, report_status, ok, _repair_attempts.get(service, 0))
@@ -355,8 +356,8 @@ def _run_once() -> None:
             with _unhealthy_lock:
                 _unhealthy[name] = report.status
             if health_history.note_unhealthy(name, report.status, report.error):
-                health_history.note_action(name, "alert", "Avviso a Hermes" if name != oracle_watch.ORACLE
-                                           else "Stato «Non disponibile» dopo l'attesa")
+                health_history.note_action(name, "alert", tr("Avviso a Hermes") if name != oracle_watch.ORACLE
+                                           else tr("Stato «Non disponibile» dopo l'attesa"))
             if name != oracle_watch.ORACLE:
                 send_alert(
                     ServiceAlert(
@@ -442,10 +443,10 @@ def start() -> None:
                      name="argus-journal-load").start()
     if _agenda is not None and agenda_template is not None:
         _agenda.register_async([], templates=[agenda_template(
-            "recheck", "Ricontrolla un servizio", service="argus", path="/api/argus/recheck/{service}",
+            "recheck", tr("Ricontrolla un servizio"), service="argus", path="/api/argus/recheck/{service}",
             type="task", types=["task", "job"], icon="refresh",
-            fields={"service": {"type": "string", "label": "Servizio", "in": "path", "description": "Nome del servizio (es. hecate)"}},
-            required=["service"], title="Ricontrolla {service}",
+            fields={"service": {"type": "string", "label": tr("Servizio"), "in": "path", "description": tr("Nome del servizio (es. hecate)")}},
+            required=["service"], title=tr("Ricontrolla {service}"),
             description="Argus verifica la salute del servizio all'orario scelto e avvia la riparazione se serve.")])
     thread = threading.Thread(
         target=_monitor_loop,

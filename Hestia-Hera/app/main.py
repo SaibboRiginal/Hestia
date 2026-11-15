@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -96,7 +97,7 @@ def daily():
     return people.daily()
 
 
-app.include_router(recap.recap_router("hera", lambda d, n: recap.piece("hera", "Persone", icon="user", order=25,
+app.include_router(recap.recap_router("hera", lambda d, n: recap.piece("hera", tr("Persone"), icon="user", order=25,
                                                                        **people.recap(d, n)),
                                       today=people.today))
 
@@ -105,25 +106,25 @@ app.include_router(recap.recap_router("hera", lambda d, n: recap.piece("hera", "
 def _card(p: dict) -> dict:
     lines = [f"{d['label']}: {d['day'][-5:][3:]}/{d['day'][-5:][:2]} (tra {d['in_days']} giorni)" for d in p["dates"]]
     if p.get("likes"):
-        lines.append("Piace: " + ", ".join(p["likes"][:8]))
+        lines.append(tr("Piace: ") + ", ".join(p["likes"][:8]))
     if p.get("dislikes"):
-        lines.append("Non piace: " + ", ".join(p["dislikes"][:8]))
+        lines.append(tr("Non piace: ") + ", ".join(p["dislikes"][:8]))
     if p.get("gift_ideas"):
-        lines.append("Idee regalo: " + "; ".join(g["text"] for g in p["gift_ideas"][:6]))
+        lines.append(tr("Idee regalo: ") + "; ".join(g["text"] for g in p["gift_ideas"][:6]))
     if p.get("last_contact"):
-        lines.append(f"Sentita l'ultima volta: {p['last_contact']}")
+        lines.append(tr("Sentita l'ultima volta: {0}", p['last_contact']))
     return display(p["name"], subtitle=p.get("relation") or "", lines=lines,
-                   actions=[action("Idea regalo", "people_gift_idea", {"person": p["id"]}),
-                            action("L'ho sentita", "people_contact", {"person": p["id"]}, style="primary")])
+                   actions=[action(tr("Idea regalo"), "people_gift_idea", {"person": p["id"]}),
+                            action(tr("L'ho sentita"), "people_contact", {"person": p["id"]}, style="primary")])
 
 
 def _list(query: str = "") -> dict:
     items = people.list(query)
     return {"count": len(items), "items": [{"id": p["id"], "name": p["name"], "relation": p.get("relation")}
                                            for p in items],
-            "display": display("Persone", items=[item(p["name"], [p.get("relation") or ""]) for p in items[:30]],
-                               lines=[] if items else ["Nessuna persona salvata."],
-                               actions=[action("Aggiungi", "people_add", style="primary")])}
+            "display": display(tr("Persone"), items=[item(p["name"], [p.get("relation") or ""]) for p in items[:30]],
+                               lines=[] if items else [tr("Nessuna persona salvata.")],
+                               actions=[action(tr("Aggiungi"), "people_add", style="primary")])}
 
 
 def _get(person: str) -> dict:
@@ -196,8 +197,8 @@ kit.tools([
     MCPTool(name="people_upcoming", description="Birthdays and important dates of the next days (days, default 30) with gift ideas.",
             parameters={"type": "object", "properties": {"days": I}},
             handler=lambda days=30: {"items": people.upcoming(days),
-                                     "display": display("Prossime date", items=[
-                                         item(f"{u['label']} di {u['person']}", [u["next"][8:10] + "/" + u["next"][5:7],
+                                     "display": display(tr("Prossime date"), items=[
+                                         item(tr("{0} di {1}", u['label'], u['person']), [u["next"][8:10] + "/" + u["next"][5:7],
                                                                                 f"tra {u['in_days']} g"])
                                          for u in people.upcoming(days)[:20]])},
             title="Prossime date", clients=["telegram", "ui"], telegram_group=G,
@@ -216,7 +217,7 @@ transfer = Transfer("hera", kit.hub, sections=[
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment", **recap.capabilities()})
 kit.capabilities(transfer.capabilities)
-kit.agenda_rules(lambda: [job_rule("hera.daily", "Persone: chi sentire", service="hera", path=f"{API}/daily",
+kit.agenda_rules(lambda: [job_rule("hera.daily", tr("Persone: chi sentire"), service="hera", path=f"{API}/daily",
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T18:00:00", tz=kit.tz,
                                    description="Un avviso per chi non senti da più del tempo che hai scelto.")])
 kit.on_warm(lambda: [people.sync_calendar(p) for p in people.store.items("person")])

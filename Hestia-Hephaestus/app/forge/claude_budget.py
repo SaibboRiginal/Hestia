@@ -21,6 +21,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 _DAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
          "lun": 0, "mar": 1, "mer": 2, "gio": 3, "ven": 4, "sab": 5, "dom": 6}
@@ -104,16 +105,16 @@ class ClaudeBudget:
         used_tonight = self.state.night_starts.get(night_key, 0)
 
         if self.state.blocked_until and now < datetime.fromisoformat(self.state.blocked_until):
-            phase, allowed, reason = "exhausted", False, "quota esaurita: attendo il reset settimanale"
+            phase, allowed, reason = "exhausted", False, tr("quota esaurita: attendo il reset settimanale")
         elif hours_left <= self.schedule.final_hours:
-            phase, allowed, reason = "final", True, "ultime ore prima del reset: uso tutto il residuo"
+            phase, allowed, reason = "final", True, tr("ultime ore prima del reset: uso tutto il residuo")
         elif hours_left <= self.schedule.window_hours and in_night:
             allowed = used_tonight < self.schedule.night_max_tasks
             phase = "night"
             reason = ("finestra notturna" if allowed
                       else f"tetto notturno raggiunto ({used_tonight}/{self.schedule.night_max_tasks})")
         else:
-            phase, allowed, reason = "closed", False, "fuori finestra (notti prima del reset)"
+            phase, allowed, reason = "closed", False, tr("fuori finestra (notti prima del reset)")
         return {
             "phase": phase, "allowed": allowed, "reason": reason,
             "next_reset": reset.isoformat(), "hours_to_reset": round(hours_left, 1),

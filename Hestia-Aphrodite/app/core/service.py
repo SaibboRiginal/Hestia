@@ -14,6 +14,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_aphrodite.service")
 
@@ -106,21 +107,21 @@ class Appearance:
     def profile(self, key: str) -> dict:
         p = next((p for p in self.profiles() if p["id"] == key), None)
         if not p:
-            raise NotFound(f"nessun profilo «{key}»")
+            raise NotFound(tr("nessun profilo «{0}»", key))
         return p
 
     def save_profile(self, body: dict, key: str | None = None) -> dict:
         old = self.profile(key) if key else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:40]
         if not name:
-            raise Invalid("serve un nome")
+            raise Invalid(tr("serve un nome"))
         effect = body.get("effect") or old.get("effect") or "none"
         if effect not in EFFECTS:
             raise Invalid("effetto: " + ", ".join(EFFECTS))
         palette = body.get("palette") if isinstance(body.get("palette"), dict) else old.get("palette") or {}
         when = body.get("when") if isinstance(body.get("when"), dict) else old.get("when")
         if when and not all(isinstance(when.get(k), str) and len(when[k]) == 5 for k in ("from", "to")):
-            raise Invalid("quando: {from: MM-GG, to: MM-GG}")
+            raise Invalid(tr("quando: {from: MM-GG, to: MM-GG}"))
         data = {"name": name, "palette": {k: str(v)[:9] for k, v in palette.items() if k in ("accent", "accent2")},
                 "effect": effect, "prompt": str(body.get("prompt", old.get("prompt") or ""))[:400], "when": when,
                 "background": old.get("background"), "updated_at": now_iso()}
@@ -174,7 +175,7 @@ class Appearance:
 
     def now(self, client: str = "webui") -> dict:
         c = self.choice(client)
-        key, why = self.active() if c["auto"] else ("standard", "scelto da te")
+        key, why = self.active() if c["auto"] else ("standard", tr("scelto da te"))
         p = self.profile(key)
         pet = None
         if c["pet"]:
@@ -197,14 +198,14 @@ class Appearance:
         p = self.store.data("pet", ref) or next((p for p in self.store.items("pet")
                                                   if p["name"].casefold() == str(ref).casefold()), None)
         if not p:
-            raise NotFound(f"nessun animaletto «{ref}»")
+            raise NotFound(tr("nessun animaletto «{0}»", ref))
         return p
 
     def save_pet(self, body: dict, pid: str | None = None) -> dict:
         old = self.pet(pid) if pid else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:30]
         if not name:
-            raise Invalid("come si chiama?")
+            raise Invalid(tr("come si chiama?"))
         data = {"name": name, "species": str(body.get("species", old.get("species") or "gatto"))[:30],
                 "look": str(body.get("look", old.get("look") or ""))[:300], "images": old.get("images") or {},
                 "updated_at": now_iso()}
@@ -227,7 +228,7 @@ class Appearance:
         if target == "profile":
             p = self.profile(ref)
             if not p.get("prompt"):
-                raise Invalid("questo profilo non ha una descrizione per lo sfondo")
+                raise Invalid(tr("questo profilo non ha una descrizione per lo sfondo"))
             asks.append((f"profile:{p['id']}:background", p["prompt"], "sfondo", 1536, 864))
         elif target == "pet":
             p = self.pet(ref)

@@ -17,6 +17,7 @@ No header: a client name (telegram, webui) means the owner, nothing means autono
 from __future__ import annotations
 
 from typing import Any, Mapping
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 HEADER = "X-Hestia-Origin"
 LABEL_HEADER = "X-Hestia-Origin-Label"
@@ -62,11 +63,11 @@ def parse(hdrs: Mapping[str, Any] | None = None, client: str = "") -> dict[str, 
 def default_label(kind: str, ref: str = "") -> str:
     """Short user-facing label (never a module name: R5)."""
     if kind == "routine":
-        return "Da una tua routine"
+        return tr("Da una tua routine")
     if kind == "esterno":
-        return "Da un'altra AI collegata"
+        return tr("Da un'altra AI collegata")
     if kind in ("autonomo", "modulo"):
-        return "Iniziativa dell'assistente"
+        return tr("Iniziativa dell'assistente")
     return ""
 
 

@@ -82,7 +82,7 @@ def test_awareness_lines_from_three_sources():
     }
     lines = awareness.build_lines(lambda service, path, query: payloads[service], limit=3)
     assert len(lines) == 3 and all(line.startswith(awareness.PREFIX) for line in lines)
-    assert "giù, energia 2/5, stress 4/5, per lavoro" in lines[0]
+    assert "giù, energy 2/5, stress 4/5, because of lavoro" in lines[0]
     assert "«Allenamento di oggi»" in lines[1] and "Vecchia" not in lines[1]
     assert "Spese (website" in lines[2]
 
@@ -156,9 +156,9 @@ def test_owner_reaction_saves_one_history_line(client):
     assert res.status_code == 200
     body = main.engine._hub.post.call_args[0][1]
     assert body["role"] == "user" and body["session_id"] == "s1"
-    assert body["content"] == "(reazione 👍 al tuo messaggio «Domani piove.»)"
+    assert body["content"] == "(the owner reacted 👍 to your message «Domani piove.»)"
     res = http.post("/api/chat/reaction", json={"session_id": "s1", "emoji": ""})
-    assert "tolto la reazione" in res.json()["line"]
+    assert "removed the reaction" in res.json()["line"]
 
 
 @pytest.mark.api

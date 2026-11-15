@@ -25,6 +25,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge.transcript")
 
@@ -152,7 +153,7 @@ class TaskArtifacts:
         d = self.dir(task_id)
         d.mkdir(parents=True, exist_ok=True)
         (d / "transcript.jsonl").unlink(missing_ok=True)
-        self.append(task_id, {"kind": "system", "text": f"Motore: {engine}", "meta": {"engine": engine}})
+        self.append(task_id, {"kind": "system", "text": tr("Motore: {0}", engine), "meta": {"engine": engine}})
         self.append(task_id, {"kind": "user", "text": _clip(prompt, 60_000), "meta": {"role": "task_prompt"}})
 
     def append(self, task_id: str, event: dict) -> None:

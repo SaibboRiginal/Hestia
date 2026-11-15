@@ -12,6 +12,7 @@ from agents.providers.base import LLMProvider
 from agents.providers.claude_cli import ClaudeCliProvider
 from agents.providers.llamacpp import LlamaCppProvider
 from agents.providers.openai_compat import OpenAICompatProvider
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 PROVIDER_TYPES: dict[str, type[LLMProvider]] = {
     AnthropicProvider.TYPE: AnthropicProvider,
@@ -63,9 +64,9 @@ def runtime_info(name: str, local_window: int, model: str = "") -> dict:
     if prov:
         label = prov["label"]
     if ptype in ("openai", "llamacpp") and not llm_providers.api_key(name):
-        billing = "Server locale · gratis"
+        billing = tr("Server locale · gratis")
     elif ptype == "openai":
-        billing = "API · a consumo"
+        billing = tr("API · a consumo")
     source = "provider"
     if not window:
         window, source = _lw.window_of(name, model)

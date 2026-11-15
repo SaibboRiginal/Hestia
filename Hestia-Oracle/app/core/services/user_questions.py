@@ -14,6 +14,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ def build_question(prompt: str = "", kind: str = "confirm", options: list | None
     if kind in ("single_choice", "multi_choice") and len(labels) < 2:
         return False, "single_choice / multi_choice need at least 2 options"
     if kind == "confirm":
-        opts = [{"value": "si", "label": "Sì"}, {"value": "no", "label": "No"}]
+        opts = [{"value": "si", "label": tr("Sì")}, {"value": "no", "label": "No"}]
     else:
         opts = [{"value": label, "label": label} for label in labels]
     ask = {"question_id": f"ask_{uuid.uuid4().hex[:12]}", "header": _HEADERS[kind], "prompt": prompt,

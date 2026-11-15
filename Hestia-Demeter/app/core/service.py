@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_demeter.service")
 
@@ -75,7 +76,7 @@ class Nutrition:
                 "rules": [str(r)[:200] for r in rules][:30], "notes": str(body.get("notes", old["notes"]))[:2000],
                 "updated_at": now_iso()}
         if data["kcal"] is not None and not 800 <= data["kcal"] <= 6000:
-            raise Invalid("kcal al giorno tra 800 e 6000")
+            raise Invalid(tr("kcal al giorno tra 800 e 6000"))
         self.store.upsert("diet", "current", data)
         self.on_event("changed", {})
         return data
@@ -85,7 +86,7 @@ class Nutrition:
                  source: str = "manual") -> dict:
         text = str(text or "").strip()[:500]
         if not text:
-            raise Invalid("cosa hai mangiato?")
+            raise Invalid(tr("cosa hai mangiato?"))
         now = self.now()
         try:
             d = date.fromisoformat(day[:10]) if day else now.date()
@@ -105,7 +106,7 @@ class Nutrition:
         """Oracle writes kcal/protein of a meal without numbers (marked ``estimated``); the owner's numbers win."""
         meal = self.store.data("meal", mid)
         if not meal:
-            raise NotFound("pasto non trovato")
+            raise NotFound(tr("pasto non trovato"))
         if meal.get("kcal") is not None or not self.hub:
             return {**meal, "id": mid}
         out = parse_estimate(self.hub.llm(
@@ -120,7 +121,7 @@ class Nutrition:
     def update_meal(self, mid: str, body: dict) -> dict:
         meal = self.store.data("meal", mid)
         if not meal:
-            raise NotFound("pasto non trovato")
+            raise NotFound(tr("pasto non trovato"))
         for k in ("text", "slot"):
             if body.get(k):
                 meal[k] = str(body[k])[:500]
@@ -133,7 +134,7 @@ class Nutrition:
 
     def delete_meal(self, mid: str) -> dict:
         if not self.store.delete("meal", mid):
-            raise NotFound("pasto non trovato")
+            raise NotFound(tr("pasto non trovato"))
         return {"deleted": True}
 
     def meals(self, day: str = "", days: int = 1) -> list[dict]:
@@ -171,14 +172,14 @@ class Nutrition:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(f"nessun integratore «{ref}»")
-        raise Invalid("più integratori corrispondono: " + ", ".join(h["name"] for h in hits[:5]))
+            raise NotFound(tr("nessun integratore «{0}»", ref))
+        raise Invalid(tr("più integratori corrispondono: ") + ", ".join(h["name"] for h in hits[:5]))
 
     def save_supplement(self, body: dict, sid: str | None = None) -> dict:
         old = self.find_supplement(sid) if sid else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:80]
         if not name:
-            raise Invalid("serve il nome")
+            raise Invalid(tr("serve il nome"))
         tod = body.get("time_of_day") or old.get("time_of_day") or "morning"
         if tod not in TIMES:
             raise Invalid("momento: " + ", ".join(TIMES))
@@ -231,7 +232,7 @@ class Nutrition:
                 n["with"] = {"tag": "workout", "relation": "same_day"}
             out.append(n)
         t = self.day_summary()
-        state = f"oggi {t['kcal']}" + (f"/{t['kcal_target']}" if t["kcal_target"] else "") + " kcal"
+        state = tr("oggi {0}", t['kcal']) + (f"/{t['kcal_target']}" if t["kcal_target"] else "") + " kcal"
         return {"state": state, "needs": out}
 
     def review(self, start: date, end: date) -> dict:
@@ -257,4 +258,4 @@ class Nutrition:
                 text += f" ({y['unknown']} senza numeri)"
             done.append({"text": text})
         todo = [s for s in self.supplements_today(nxt)]
-        return {"done": done, "next": [{"text": "Integratori: " + ", ".join(s["name"] for s in todo[:6])}] if todo else []}
+        return {"done": done, "next": [{"text": tr("Integratori: ") + ", ".join(s["name"] for s in todo[:6])}] if todo else []}

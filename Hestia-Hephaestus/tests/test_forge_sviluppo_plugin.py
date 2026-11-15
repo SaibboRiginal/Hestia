@@ -54,10 +54,10 @@ def test_export_markdown_says_how_to_submit_a_fix():
          "error": "pytest: 2 failed", "source": "athena", "notes": [{"ts": "t", "by": "x", "text": "vedi tz"}]}
     md = export_markdown([t], ["abcdef · failed · Correggi"], BRANCH_SUBMIT_STATES, USER_SOURCES)
     assert "Correggi l'export ICS" in md and "pytest: 2 failed" in md
-    assert "docs/work/2026-10-01-ics/" in md and "proposto da athena" in md and "vedi tz" in md
+    assert "docs/work/2026-10-01-ics/" in md and "proposed by athena" in md and "vedi tz" in md
     assert 'forge_submit_branch(task_id="abcdef"' in md and "forge_task_note" in md
     closed = export_markdown([{**t, "state": "deployed"}], [], BRANCH_SUBMIT_STATES, USER_SOURCES)
-    assert "forge_submit_branch(" not in closed and "non accetta un branch" in closed
+    assert "forge_submit_branch(" not in closed and "does not accept a branch" in closed
 
 
 @pytest.mark.api

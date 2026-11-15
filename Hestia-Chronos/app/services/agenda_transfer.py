@@ -9,6 +9,7 @@ from __future__ import annotations
 from hestia_common.transfer import Section
 
 from services import agenda
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 FIELDS = ("type", "owner", "title", "description", "start_at", "end_at", "recurrence", "tz", "status", "action",
           "params", "skips", "overrides", "parent", "created_by", "user_modified")
@@ -21,8 +22,8 @@ def _mine(item: dict) -> bool:
 
 class AgendaSection(Section):
     def __init__(self):
-        super().__init__("agenda", "Agenda", icon="calendar",
-                         help="Le voci create da te e le regole dei moduli che hai cambiato (orari, pause, annullate).")
+        super().__init__("agenda", tr("Agenda"), icon="calendar",
+                         help=tr("Le voci create da te e le regole dei moduli che hai cambiato (orari, pause, annullate)."))
 
     def records(self, *, deleted: bool = False) -> list[dict]:
         out = []

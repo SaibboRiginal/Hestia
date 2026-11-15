@@ -22,6 +22,7 @@ from core.document.archiver import DocumentArchiver
 from core.document.extractor import extract_text
 from core.document.handoff import AttachmentHandoff
 from core.services.hub_client import HubClient
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -170,7 +171,7 @@ class DocumentAnalyser:
         yield stream_emitter.emit_status("🔊 Trascrizione...")
         transcript = transcription.transcribe_audio(file_bytes, mime_type)
         if not transcript:
-            return "⚠️ Non riesco a trascrivere l'audio. Prova a inviare un file in un formato supportato (mp3, wav, ogg, m4a)."
+            return tr("⚠️ Non riesco a trascrivere l'audio. Prova a inviare un file in un formato supportato (mp3, wav, ogg, m4a).")
 
         text_prompt = (
             f"{self._style_contract()}\n\n"
@@ -209,7 +210,7 @@ class DocumentAnalyser:
             except Exception:
                 pass
 
-        return "⚠️ Non riesco ad analizzare il documento in questo momento."
+        return tr("⚠️ Non riesco ad analizzare il documento in questo momento.")
 
     def _save_history(self, session_id: str, file_label: str, user_message: str, answer: str) -> None:
         try:

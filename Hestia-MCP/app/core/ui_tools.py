@@ -89,7 +89,7 @@ class UiTools:
                "response_mode": str(cmd.get("response_mode") or "oracle_natural")}
         if not ok:
             res["error"] = payload if isinstance(payload, str) else (
-                (payload or {}).get("detail") if isinstance(payload, dict) else None) or "Comando non riuscito"
+                (payload or {}).get("detail") if isinstance(payload, dict) else None) or tr("Comando non riuscito")
         logger.info("event=ui_tool_run tool=%s ok=%s", name, ok)
         return res
 

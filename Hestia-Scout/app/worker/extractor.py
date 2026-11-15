@@ -19,6 +19,7 @@ from core.atlas_client import AtlasClient
 from evaluators.oracle_evaluator import OracleEvaluator
 from tools.geocoding import GeocodingService
 from worker.sites.registry import SiteHandlerRegistry
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 logger = logging.getLogger("hestia_scout.extractor")
@@ -300,7 +301,7 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
     # ── Content-based availability check ─────────────────────────────
     _html_lower = result.html.lower()
     _sold_signals = [
-        "non più disponibile", "annuncio rimosso", "immobile venduto",
+        tr("non più disponibile"), "annuncio rimosso", "immobile venduto",
         "property sold", "no longer available", "listing removed",
         "this property is no longer", "venduta", "venduto",
     ]

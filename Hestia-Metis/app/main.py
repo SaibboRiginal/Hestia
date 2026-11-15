@@ -26,6 +26,7 @@ from .core.export import Exporter
 from .core.review import USE_CASE as REVIEW_USE, Review
 from .core.traces import Traces
 from .core.usage import CLIENTS, IDEAS_USE, Usage
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 # ── Shared imports ────────────────────────────────────────────────────────────
 try:
@@ -125,14 +126,14 @@ def _agenda_rules() -> list[dict]:
     # (Chronos owns scheduling; user edits win), so it is neither env nor a Themis setting.
     tz = os.getenv("TZ") or "Europe/Rome"
     return [daily_window(
-        WINDOW_TRAINING, "Finestra per allenare i modelli", 1, 6,
+        WINDOW_TRAINING, tr("Finestra per allenare i modelli"), 1, 6,
         description="Training LoRA pianificati (non richiesti da te) partono qui. "
                     "Sposta/salta la finestra per rimandarli.")] + [
-        job_rule(f"metis.adesso.{at.replace(':', '')}", "Idee per «Adesso»", service="metis",
+        job_rule(f"metis.adesso.{at.replace(':', '')}", tr("Idee per «Adesso»"), service="metis",
                  path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
                  description="L'assistente pensa a tre cose utili per le prossime ore (e pulisce i tocchi vecchi).")
         for at in IDEAS_AT] + [
-        job_rule("metis.dataset.review", "Rilettura delle risposte per l'allenamento", service="metis",
+        job_rule("metis.dataset.review", tr("Rilettura delle risposte per l'allenamento"), service="metis",
                  path="/api/metis/review/run", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{REVIEW_AT}:00", tz=tz,
                  description="Un modello più forte rilegge le risposte del giorno (con i tuoi dati oscurati) e "
                              "corregge quelle sbagliate; i casi dubbi aspettano te in «Da rivedere».")]
@@ -218,7 +219,7 @@ async def _invalid(_, exc: Invalid):
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_, exc: StoreUnavailable):
     from fastapi.responses import JSONResponse
-    return JSONResponse(status_code=503, content={"detail": "registro non raggiungibile, riprova"})
+    return JSONResponse(status_code=503, content={"detail": tr("registro non raggiungibile, riprova")})
 
 
 @app.post("/api/metis/usage")
@@ -267,7 +268,7 @@ def _traces_call(fn, *args):
     except Exception as exc:  # noqa: BLE001 — Archive away
         from fastapi import HTTPException
         logger.warning("[🔄] event=traces_archive_failed fn=%s error=%s", fn.__name__, str(exc)[:200])
-        raise HTTPException(status_code=503, detail="archivio non raggiungibile, riprova")
+        raise HTTPException(status_code=503, detail=tr("archivio non raggiungibile, riprova"))
 
 
 @app.post("/api/metis/traces")
@@ -316,22 +317,21 @@ def _review_card(limit: int = 1) -> dict:
     out = review.pending(limit)
     items = out["items"]
     if not items:
-        return {**out, "display": display("Da rivedere", lines=["Niente da rivedere: le correzioni della notte sono "
-                                                                "tutte sicure o non ce ne sono."])}
+        return {**out, "display": display(tr("Da rivedere"), lines=[tr("Niente da rivedere: le correzioni della notte sono tutte sicure o non ce ne sono.")])}
     i = items[0]
-    lines = [f"Tu: {i['user'][:300]}", f"Risposta: {i['answer'][:400]}"]
+    lines = [tr("Tu: {0}", i['user'][:300]), tr("Risposta: {0}", i['answer'][:400])]
     if i["fixed"]:
-        lines.append(f"Correzione: {i['fixed'][:400]}")
+        lines.append(tr("Correzione: {0}", i['fixed'][:400]))
     if i["remove"]:
-        lines.append("Da togliere: " + ", ".join(t for t in i["remove"] if t))
+        lines.append(tr("Da togliere: ") + ", ".join(t for t in i["remove"] if t))
     if i["needs_owner"]:
-        lines.append("Il revisore non sa correggerla da solo: scrivi tu la risposta giusta.")
-    acts = [action("Scarta", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
-            action("Correggi io", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
+        lines.append(tr("Il revisore non sa correggerla da solo: scrivi tu la risposta giusta."))
+    acts = [action(tr("Scarta"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
+            action(tr("Correggi io"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
     if not i["needs_owner"]:
-        acts.insert(0, action("Accetta", "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
+        acts.insert(0, action(tr("Accetta"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
                               style="primary"))
-    return {**out, "display": display("Da rivedere", subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
+    return {**out, "display": display(tr("Da rivedere"), subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
                                       lines=lines, actions=acts)}
 
 
@@ -355,15 +355,15 @@ def metis_export_b64(export_id: str):
         return _traces_call(exporter.file_b64, export_id)
     except KeyError:
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="esportazione non trovata")
+        raise HTTPException(status_code=404, detail=tr("esportazione non trovata"))
 
 
 def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> dict:
     out = exporter.build(not in_chiaro, include_unreviewed)
-    lines = [f"{out['sft']} esempi per l'allenamento, {out['eval']} per la prova, {out['dpo']} coppie corretta/originale",
-             f"{out['skipped']} turni lasciati fuori (non riletti, scartati o in attesa)",
-             "Nomi e contatti oscurati" if out["masked"] else "Dati in chiaro: non condividere il file"]
-    return {**out, "display": display("Dataset esportato", subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
+    lines = [tr("{0} esempi per l'allenamento, {1} per la prova, {2} coppie corretta/originale", out['sft'], out['eval'], out['dpo']),
+             tr("{0} turni lasciati fuori (non riletti, scartati o in attesa)", out['skipped']),
+             "Nomi e contatti oscurati" if out["masked"] else tr("Dati in chiaro: non condividere il file")]
+    return {**out, "display": display(tr("Dataset esportato"), subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
                                       lines=lines, files=[file(out["blob_id"], out["name"], "application/zip")])}
 
 
@@ -377,7 +377,7 @@ def _adesso_card(client: str = "telegram") -> dict:
     out = usage.adesso(client if client in CLIENTS else "telegram")
     items = out["items"]
     return {**out, "display": display(
-        "Adesso", lines=[] if items else ["Ancora niente da suggerire: più usi Hestia, più impara cosa ti serve."],
+        tr("Adesso"), lines=[] if items else [tr("Ancora niente da suggerire: più usi Hestia, più impara cosa ti serve.")],
         items=[item(i["title"], [i["reason"]]) for i in items],
         actions=[action(i["title"], i["tool"], i["args"] or None) for i in items])}
 
@@ -386,8 +386,8 @@ def _scopri_card(client: str = "telegram") -> dict:
     out = usage.scopri(client if client in CLIENTS else "telegram", limit=8)
     items = out["items"]
     return {**out, "display": display(
-        "Scopri", subtitle=f"{out['total']} funzioni poco usate su {out['tools']}",
-        lines=[] if items else ["Hai già provato tutto."],
+        tr("Scopri"), subtitle=f"{out['total']} funzioni poco usate su {out['tools']}",
+        lines=[] if items else [tr("Hai già provato tutto.")],
         items=[item(i["title"], [i["description"][:90], i["reason"]]) for i in items],
         actions=[action(i["title"], i["tool"]) for i in items[:6]])}
 
@@ -560,7 +560,7 @@ try:
                 # the key that is completing); it fires with schedule=window so the checks run again.
                 agenda_key = f"metis.train.{job_id}.{int(time.time())}"
                 planned = agenda.plan(
-                    agenda_key, f"Allena il modello: {ds_name or '?'}", start_at,
+                    agenda_key, tr("Allena il modello: {0}", ds_name or '?'), start_at,
                     action={"service": "metis", "path": "/api/metis/lora/train", "method": "POST",
                             "body": {"dataset_name": ds_name, "base_model": base_model,
                                      "adapter_name": adapter_name, "schedule": "window",
@@ -574,8 +574,8 @@ try:
                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
                 return {"status": "scheduled" if planned else "schedule_failed", "job_id": job_id,
                         "start_at": start_at, "agenda_key": agenda_key,
-                        "message": "Training pianificato nella finestra notturna dell'agenda di Hestia."
-                        if planned else "Agenda non raggiungibile: riprova o usa schedule=now."}
+                        "message": tr("Training pianificato nella finestra notturna dell'agenda di Hestia.")
+                        if planned else tr("Agenda non raggiungibile: riprova o usa schedule=now.")}
         examples = dataset_builder.get_dataset_examples(ds_name)
 
         if not examples:

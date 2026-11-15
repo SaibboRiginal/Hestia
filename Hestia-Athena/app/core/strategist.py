@@ -21,6 +21,7 @@ import requests
 from . import athena_settings as S
 from .athena_settings import get_bool, get_float, get_int
 from .schemas import ActionCandidate, ObservationSnapshot, RelevanceSignals
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_athena.strategist")
 
@@ -38,30 +39,30 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
     # Service health (most important signal)
     if snapshot.unhealthy_services:
         lines.append(
-            f"Servizi non sani: {', '.join(snapshot.unhealthy_services)}."
+            tr("Servizi non sani: {0}.", ', '.join(snapshot.unhealthy_services))
         )
     else:
         svc_names = [s.name for s in snapshot.services[:8]] if snapshot.services else []
         if svc_names:
-            lines.append(f"Servizi attivi ({len(svc_names)}): {', '.join(svc_names)}.")
+            lines.append(tr("Servizi attivi ({0}): {1}.", len(svc_names), ', '.join(svc_names)))
         else:
-            lines.append("Nessun servizio registrato su Hub.")
+            lines.append(tr("Nessun servizio registrato su Hub."))
 
     # Life domains are not here: they reach the «Vita» track as module signals (reflection.py).
 
     # Self state
     self_parts = [f"{snapshot.active_commitments} impegni attivi"]
     if snapshot.unresolved_commitments:
-        self_parts.append(f"{snapshot.unresolved_commitments} non risolti")
+        self_parts.append(tr("{0} non risolti", snapshot.unresolved_commitments))
     if snapshot.failure_streak:
         self_parts.append(f"{snapshot.failure_streak} fallimenti consecutivi")
-    lines.append("Stato Athena: " + ", ".join(self_parts))
+    lines.append(tr("Stato Athena: ") + ", ".join(self_parts))
 
     if snapshot.recent_errors:
-        lines.append("Errori ultima ora: " + "; ".join(snapshot.recent_errors[:4]))
+        lines.append(tr("Errori ultima ora: ") + "; ".join(snapshot.recent_errors[:4]))
 
     if snapshot.quality_issues:
-        lines.append("Qualità risposte: " + "; ".join(snapshot.quality_issues[:4]))
+        lines.append(tr("Qualità risposte: ") + "; ".join(snapshot.quality_issues[:4]))
 
     if snapshot.settings:
         lines.append("IMPOSTAZIONI (chiave=valore [scelte]): " + "; ".join(snapshot.settings))
@@ -69,7 +70,7 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
         lines.append(snapshot.presence)
 
     if snapshot.raw_errors:
-        lines.append(f"Errori osservazione: {', '.join(snapshot.raw_errors[:3])}")
+        lines.append(tr("Errori osservazione: {0}", ', '.join(snapshot.raw_errors[:3])))
 
     return "\n".join(lines)
 

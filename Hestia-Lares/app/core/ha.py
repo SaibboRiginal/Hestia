@@ -11,6 +11,7 @@ import threading
 from typing import Any, Callable
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_lares.ha")
 
@@ -31,16 +32,16 @@ class HomeAssistant:
 
     def _req(self, method: str, path: str, body: Any = None, timeout: float = 10) -> Any:
         if not self.configured:
-            raise HAError("casa non collegata")
+            raise HAError(tr("casa non collegata"))
         try:
             resp = self.http.request(method, f"{self.url}{path}", json=body, timeout=timeout,
                                      headers={"Authorization": f"Bearer {self.token}"})
         except requests.RequestException as exc:
-            raise HAError(f"casa non raggiungibile: {exc}") from exc
+            raise HAError(tr("casa non raggiungibile: {0}", exc)) from exc
         if resp.status_code == 401:
-            raise HAError("token della casa non valido")
+            raise HAError(tr("token della casa non valido"))
         if resp.status_code >= 400:
-            raise HAError(f"la casa ha risposto {resp.status_code}")
+            raise HAError(tr("la casa ha risposto {0}", resp.status_code))
         return resp.json() if resp.content else None
 
     def states(self) -> list[dict]:
@@ -69,7 +70,7 @@ class HomeAssistant:
                     json.loads(ws.recv())                                    # auth_required
                     ws.send(json.dumps({"type": "auth", "access_token": self.token}))
                     if json.loads(ws.recv()).get("type") != "auth_ok":
-                        raise HAError("token della casa non valido")
+                        raise HAError(tr("token della casa non valido"))
                     ws.send(json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"}))
                     logger.info("event=lares_ws_connected")
                     delay = 5

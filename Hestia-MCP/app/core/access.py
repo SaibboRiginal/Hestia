@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_mcp.access")
 
@@ -109,7 +110,7 @@ class AccessStore:
                expires_days: int | None = None) -> tuple[dict, str]:
         name = " ".join(str(name or "").split())[:80]
         if not name:
-            raise AccessError("Dai un nome all'accesso (es. Claude Code PC)")
+            raise AccessError(tr("Dai un nome all'accesso (es. Claude Code PC)"))
         if scope not in SCOPES:
             raise AccessError(f"Scope sconosciuto '{scope}': usa read o write")
         token = new_token()

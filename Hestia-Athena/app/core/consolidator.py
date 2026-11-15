@@ -24,6 +24,7 @@ import requests
 from . import athena_settings as S
 from .athena_settings import get_int
 from .learning import Learning, quote_found
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_athena.consolidator")
 
@@ -273,7 +274,7 @@ class MemoryConsolidator:
                     timeout=8,
                 )
                 self.learning.record("retire", old_id, before={"is_active": True}, after={"is_active": False},
-                                     session_id=self._session, fact=f"sostituita da: {conflict.get('new_fact', '')}")
+                                     session_id=self._session, fact=tr("sostituita da: {0}", conflict.get('new_fact', '')))
             except Exception:
                 pass
 

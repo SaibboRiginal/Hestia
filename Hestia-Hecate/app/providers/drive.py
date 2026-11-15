@@ -15,6 +15,7 @@ import threading
 import time
 import uuid
 from typing import Any, Callable
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hecate.drive")
 
@@ -63,14 +64,14 @@ class DriveFiles:
         if resp.status_code in (401, 403):
             text = getattr(resp, "text", "")[:300]
             if "insufficient" in text.lower() or "scope" in text.lower():
-                raise DriveError("Google Drive non autorizzato: ricollega Google", 409, "drive_scope_missing")
+                raise DriveError(tr("Google Drive non autorizzato: ricollega Google"), 409, "drive_scope_missing")
             if "accessNotConfigured" in text or "has not been used" in text or "disabled" in text:
-                raise DriveError("Google Drive API non abilitata nel progetto Google", 409, "drive_api_disabled")
+                raise DriveError(tr("Google Drive API non abilitata nel progetto Google"), 409, "drive_api_disabled")
             raise DriveError(f"{what}: accesso negato ({resp.status_code})", 409, "drive_forbidden")
         if resp.status_code == 404:
-            raise DriveError(f"{what}: non trovato", 404, "not_found")
+            raise DriveError(tr("{0}: non trovato", what), 404, "not_found")
         if resp.status_code >= 400:
-            raise DriveError(f"{what}: Google ha risposto {resp.status_code} {getattr(resp, 'text', '')[:200]}")
+            raise DriveError(tr("{0}: Google ha risposto {1} {2}", what, resp.status_code, getattr(resp, 'text', '')[:200]))
         return resp
 
     def reset(self) -> None:
@@ -99,7 +100,7 @@ class DriveFiles:
     def folder_id(self, folder: str) -> str:
         folder = (folder or "").strip().lower()
         if not _FOLDER_RE.match(folder):
-            raise DriveError(f"cartella non valida: {folder!r}", 422, "bad_folder")
+            raise DriveError(tr("cartella non valida: {0!r}", folder), 422, "bad_folder")
         with self._lock:
             if folder in self._folders:
                 return self._folders[folder]
@@ -171,7 +172,7 @@ class DriveFiles:
                                     headers={"X-Upload-Content-Type": mime, "X-Upload-Content-Length": str(size)})
         url = self._check(resp, "avvia caricamento").headers.get("Location")
         if not url:
-            raise DriveError("Google non ha dato l'indirizzo di caricamento")
+            raise DriveError(tr("Google non ha dato l'indirizzo di caricamento"))
         upload_id = uuid.uuid4().hex
         now = time.time()
         with self._lock:
@@ -191,7 +192,7 @@ class DriveFiles:
             raise DriveError(f"posizione attesa {up['received']}, ricevuta {offset}", 409, "bad_offset")
         last = offset + len(data) >= up["size"]
         if not data or (not last and len(data) % (256 * 1024)):
-            raise DriveError("i pezzi devono essere multipli di 256 KiB (tranne l'ultimo)", 422, "bad_chunk")
+            raise DriveError(tr("i pezzi devono essere multipli di 256 KiB (tranne l'ultimo)"), 422, "bad_chunk")
         end = offset + len(data) - 1
         resp = self._session().put(up["url"], data=data, headers={
             "Content-Length": str(len(data)), "Content-Range": f"bytes {offset}-{end}/{up['size']}"})
@@ -210,10 +211,10 @@ def google_session_factory():
     from providers.google import load_google_credentials
     creds, error = load_google_credentials()
     if creds is None:
-        raise DriveError(error or "Google non collegato", 409, "no_token")
+        raise DriveError(error or tr("Google non collegato"), 409, "no_token")
     scopes = set(getattr(creds, "scopes", None) or getattr(creds, "granted_scopes", None) or [])
     if scopes and DRIVE_FILE_SCOPE not in scopes and "https://www.googleapis.com/auth/drive" not in scopes:
-        raise DriveError("Google Drive non autorizzato: ricollega Google", 409, "drive_scope_missing")
+        raise DriveError(tr("Google Drive non autorizzato: ricollega Google"), 409, "drive_scope_missing")
     from google.auth.transport.requests import AuthorizedSession
     return AuthorizedSession(creds)
 

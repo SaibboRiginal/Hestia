@@ -12,6 +12,7 @@ from typing import Any, Callable
 
 from hestia_common.display import display, item
 from hestia_common.mcp_helpers import undo
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class ChatSessionsError(Exception):
 
 def _need(out: Any) -> Any:
     if out is None:
-        raise ChatSessionsError(502, "archivio non raggiungibile")
+        raise ChatSessionsError(502, tr("archivio non raggiungibile"))
     return out
 
 
@@ -120,7 +121,7 @@ def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pi
     exactly (used by «Annulla»); returns ``undo`` back to the previous ones."""
     sid = str(session_id or "").strip() or _current(route)
     if not sid:
-        raise ChatSessionsError(404, "nessuna conversazione da etichettare")
+        raise ChatSessionsError(404, tr("nessuna conversazione da etichettare"))
     body: dict[str, Any] = {"client": "assistant"}
     add = _words(tags)
     if add:
@@ -139,9 +140,9 @@ def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pi
     names = ", ".join(t["name"] for t in out.get("tags") or []) or "nessuna"
     logger.info("event=chat_tagged session_id=%s tags=%d", sid, len(out.get("tags") or []))
     before = out.get("before") or {}
-    text = f"Etichette della conversazione: {names}."
+    text = tr("Etichette della conversazione: {0}.", names)
     if "training_off" in body:
-        text += (" Non la userò per allenarmi." if body["training_off"] else " La userò di nuovo per allenarmi.")
+        text += (tr(" Non la userò per allenarmi.") if body["training_off"] else tr(" La userò di nuovo per allenarmi."))
     return {**out, "text": text,
             "undo": undo("chat_tag", session_id=sid, replace=before.get("tags") or [],
                          title=before.get("title") or "", pinned=bool(before.get("pinned")))}
@@ -151,8 +152,8 @@ def tool_list(route: Route, tag: str = "", query: str = "", limit: int = 10) -> 
     """``chat_list``: the conversations (newest first), filtered by tag and words, as a card."""
     out = list_chats(route, q=str(query or ""), tag=str(tag or ""), limit=max(1, min(int(limit or 10), 30)))
     items = out.get("items") or []
-    sub = f"{out.get('total', len(items))} conversazioni" + (f" con «{tag}»" if tag else "")
+    sub = f"{out.get('total', len(items))} conversazioni" + (tr(" con «{0}»", tag) if tag else "")
     return {**out, "display": display(
-        "Conversazioni", subtitle=sub, lines=[] if items else ["Nessuna conversazione."],
+        tr("Conversazioni"), subtitle=sub, lines=[] if items else [tr("Nessuna conversazione.")],
         items=[item(i["title"], [", ".join(t["name"] for t in i.get("tags") or []) or "senza etichette",
                                  str(i.get("last_at") or "")[:16].replace("T", " ")]) for i in items])}

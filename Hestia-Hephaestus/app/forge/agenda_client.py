@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 
 from ..core.shared_imports import import_shared_symbol
 from .claude_budget import ClaudeSchedule, _DAYS, _parse_hhmm
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 _SharedAgendaClient = import_shared_symbol("hestia_common.agenda_client", "AgendaClient")
 
@@ -54,16 +55,16 @@ class AgendaClient(_SharedAgendaClient):
         first_night = datetime.combine(ref_monday.date(), n_start)
         final_start = reset - timedelta(hours=s.final_hours)
         rules = [{
-            "key": KEY_NIGHTS, "type": "window", "title": "Claude Pro: notti prima del reset",
-            "description": f"Lavoro automatico su Claude Pro (max {s.night_max_tasks}/notte). Salta una notte per bloccarla.",
+            "key": KEY_NIGHTS, "type": "window", "title": tr("Claude Pro: notti prima del reset"),
+            "description": tr("Lavoro automatico su Claude Pro (max {0}/notte). Salta una notte per bloccarla.", s.night_max_tasks),
             "start_at": first_night.isoformat(), "end_at": (first_night + timedelta(minutes=night_len_min)).isoformat(),
             "recurrence": f"FREQ=WEEKLY;BYDAY={','.join(days) or 'SU'}", "tz": s.tz,
             "params": {"night_max_tasks": s.night_max_tasks},
         }]
         if s.final_hours > 0:
             rules.append({
-                "key": KEY_FINAL, "type": "window", "title": "Claude Pro: ultime ore prima del reset",
-                "description": "Usa tutto il residuo settimanale.",
+                "key": KEY_FINAL, "type": "window", "title": tr("Claude Pro: ultime ore prima del reset"),
+                "description": tr("Usa tutto il residuo settimanale."),
                 "start_at": (final_start - timedelta(days=7)).isoformat(),
                 "end_at": (reset - timedelta(days=7)).isoformat(),
                 "recurrence": "FREQ=WEEKLY", "tz": s.tz,
@@ -97,7 +98,7 @@ class AgendaClient(_SharedAgendaClient):
 
     def show_task(self, task_id: str, title: str, start_at: str, description: str = "",
                   parent: str | None = None) -> None:
-        self.show(self.task_key(task_id), f"Forge: {title[:80]}", start_at, description=description[:500],
+        self.show(self.task_key(task_id), tr("Forge: {0}", title[:80]), start_at, description=description[:500],
                   params={"task_id": task_id}, parent=parent or None)
 
     def hide_task(self, task_id: str) -> None:

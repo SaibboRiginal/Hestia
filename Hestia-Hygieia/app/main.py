@@ -17,6 +17,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -126,7 +127,7 @@ async def _conflict(_: Request, exc: Conflict):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": "archivio non raggiungibile, riprova tra poco"})
+    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
 
 
 @app.get("/health")
@@ -297,24 +298,24 @@ def today_display(plan: dict) -> dict:
             continue
         label, tone = _STATE.get(p.get("state"), ("", ""))
         steps = [x["label"] for x in p.get("steps") or [] if x.get("include")]
-        rows.append(item(p.get("name") or "Routine", [label, p.get("reason") or p.get("hint"),
+        rows.append(item(p.get("name") or tr("Routine"), [label, p.get("reason") or p.get("hint"),
                                                       ", ".join(steps[:4]) + ("…" if len(steps) > 4 else "")], tone=tone))
     due = next((p for p in plan.get("routines") or [] if p.get("state") == "due"), None)
     acts = [action(f"Fatta: {due['name']}"[:24], "selfcare_log", {"routine": due["name"], "status": "done"}, style="primary")] if due else []
-    return display("Cura di sé oggi", items=rows, lines=[] if rows else ["Niente in programma oggi."],
-                   actions=acts + [action("Registra", "selfcare_log"), action("Lista spesa", "selfcare_shopping")])
+    return display(tr("Cura di sé oggi"), items=rows, lines=[] if rows else [tr("Niente in programma oggi.")],
+                   actions=acts + [action(tr("Registra"), "selfcare_log"), action(tr("Lista spesa"), "selfcare_shopping")])
 
 
 def overview_display(o: dict) -> dict:
     lines = list(o.get("alerts") or [])
     if o.get("in_use"):
-        lines.append("In uso: " + ", ".join(o["in_use"][:6]) + ("…" if len(o["in_use"]) > 6 else ""))
+        lines.append(tr("In uso: ") + ", ".join(o["in_use"][:6]) + ("…" if len(o["in_use"]) > 6 else ""))
     rows = [item(r["name"], [r.get("slot"), r.get("cadence"), "in pausa" if r.get("status") == "paused" else ""])
             for r in o.get("routines") or []]
-    return display("Cura di sé", subtitle=o.get("text") or "", lines=lines, items=rows,
+    return display(tr("Cura di sé"), subtitle=o.get("text") or "", lines=lines, items=rows,
                    tone="warning" if o.get("alerts") else "",
-                   actions=[action("Oggi", "selfcare_today", style="primary"), action("Prodotti", "selfcare_products"),
-                            action("Statistiche", "selfcare_stats")])
+                   actions=[action(tr("Oggi"), "selfcare_today", style="primary"), action(tr("Prodotti"), "selfcare_products"),
+                            action(tr("Statistiche"), "selfcare_stats")])
 
 
 # ── logs, journal ────────────────────────────────────────────────────────────
@@ -351,12 +352,12 @@ def _diary_voice(audio: Any, date: str = "") -> dict:
     except (ValueError, TypeError):
         raw = b""
     if not raw:
-        raise Invalid("manca il vocale")
+        raise Invalid(tr("manca il vocale"))
     heard = voice.transcribe(raw, a.get("mime") or a.get("mime_type") or "audio/ogg", use_case=DIARY_VOICE_USE,
                              keep={"kind": "recording", "client": "hygieia"})
     if not heard:
         logger.warning("[🔄] event=diary_voice_not_heard fallback=ask_again")
-        raise Invalid("non sono riuscita a capire il vocale, riprova o scrivilo")
+        raise Invalid(tr("non sono riuscita a capire il vocale, riprova o scrivilo"))
     row = hygieia.journal_voice(heard, date or None)
     signals.changed()
     logger.info("event=diary_voice_saved chars=%d audio=%s", len(row.get("note") or ""), bool(row.get("audio_id")))
@@ -436,7 +437,7 @@ def export():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("hygieia", "Cura di sé", icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
+    return recap.piece("hygieia", tr("Cura di sé"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("hygieia", _recap_piece, today=lambda: hygieia.today()))
@@ -506,11 +507,11 @@ def reminders_run():
             continue
         p, rid = d["plan"], d["routine_id"]
         actions = [
-            {"id": "done", "label": "Fatto", "text": "✅ Fatto", "style": "primary", "service": "hygieia", "method": "POST",
+            {"id": "done", "label": tr("Fatto"), "text": tr("✅ Fatto"), "style": "primary", "service": "hygieia", "method": "POST",
              "path": f"{API}/quick/routine/{rid}", "body": {"source": "reminder_button"}, "resolves": True},
-            {"id": "skip", "label": "Salta", "text": "⏭ Salta", "service": "hygieia", "method": "POST",
+            {"id": "skip", "label": tr("Salta"), "text": "⏭ Salta", "service": "hygieia", "method": "POST",
              "path": f"{API}/routines/{rid}/skip", "body": {"source": "reminder_button"}},
-            {"id": "week", "label": "Non questa settimana", "text": "🌙 Non questa settimana", "service": "hygieia",
+            {"id": "week", "label": tr("Non questa settimana"), "text": tr("🌙 Non questa settimana"), "service": "hygieia",
              "method": "POST", "path": f"{API}/routines/{rid}/snooze", "body": {}, "resolves": True},
         ]
         try:
@@ -539,10 +540,10 @@ def alerts_run():
             continue
         pid = a["product_id"]
         if a["type"] == "expiry":
-            actions = [{"id": "discard", "label": "Buttato", "text": "🗑 Buttato", "service": "hygieia", "method": "POST",
+            actions = [{"id": "discard", "label": tr("Buttato"), "text": "🗑 Buttato", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/status", "body": {"status": "discarded"}, "resolves": True}]
         else:
-            actions = [{"id": "bought", "label": "Ricomprato", "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
+            actions = [{"id": "bought", "label": tr("Ricomprato"), "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
             _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
@@ -564,7 +565,7 @@ def signals_run():
 
 def _agenda_rules() -> list[dict]:
     return [
-        signals_rule("hygieia", "Cura di sé", path=f"{API}/signals/run", tz=TZ),
+        signals_rule("hygieia", tr("Cura di sé"), path=f"{API}/signals/run", tz=TZ),
         job_rule("hygieia.planner", "Promemoria self care (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=TZ,
                  description="Controlla le routine con il promemoria attivo che sono indietro con l'obiettivo. Al massimo "
@@ -651,13 +652,13 @@ try:
     def _need_routine(name: str) -> dict:
         r = hygieia.find_routine(name)
         if not r:
-            raise NotFound(f"routine '{name}' non trovata")
+            raise NotFound(tr("routine '{0}' non trovata", name))
         return r
 
     def _need_product(name: str) -> dict:
         p = hygieia.find_product(name)
         if not p:
-            raise NotFound(f"prodotto '{name}' non trovato")
+            raise NotFound(tr("prodotto '{0}' non trovato", name))
         return p
 
     def _overview() -> dict:
@@ -784,7 +785,7 @@ try:
         if remove_step:
             s = match(remove_step)
             if not s:
-                return {"error": f"passo '{remove_step}' non trovato in {r['name']}"}
+                return {"error": tr("passo '{0}' non trovato in {1}", remove_step, r['name'])}
             steps.remove(s)
         if add_step:
             new = _step_from_text(add_step)
@@ -796,7 +797,7 @@ try:
         if step:
             s = match(step)
             if not s:
-                return {"error": f"passo '{step}' non trovato in {r['name']}"}
+                return {"error": tr("passo '{0}' non trovato in {1}", step, r['name'])}
             if step_times is not None:
                 s["cadence"] = None if step_times == 0 else {"mode": "target", "times": step_times, "per": step_per or "week"}
             if pause_days is not None:
@@ -821,12 +822,12 @@ try:
         if plan_with:
             body["plan_with"] = "" if catalog.slug(plan_with) in ("nessuno", "no", "none") else plan_with
         if not body:
-            return {"error": "nessuna modifica indicata"}
+            return {"error": tr("nessuna modifica indicata")}
         d = hygieia.save_routine(body, id=r["id"], reason=reason or "modificata dall'assistente", source="assistant")
         return {"saved": True, "name": d["name"], "version": d.get("version"), "cadence": d["cadence_label"],
                 "steps": [(s.get("label") or (s.get("product") or {}).get("name"))
                           + (f" [{s['cadence_label']}]" if s.get("cadence_label") else "")
-                          + (f" [pausa fino al {s['paused_until']}]" if s.get("paused_until") else "") for s in d["steps"]],
+                          + (tr(" [pausa fino al {0}]", s['paused_until']) if s.get("paused_until") else "") for s in d["steps"]],
                 "notes": [n["text"] for n in d["check"]], "undo": "selfcare_undo_routine"}
 
     def _undo_routine(routine: str = "") -> dict:

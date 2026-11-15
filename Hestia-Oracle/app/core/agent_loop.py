@@ -34,6 +34,7 @@ import requests
 
 from core.services import prompt_config
 from core.services import stream_emitter as _stream_emitter
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -571,8 +572,7 @@ def run_agent_loop(
                 turn, _cumulative_tokens, max_agent_tokens,
             )
             final_answer = (
-                "⚠️ Ho raggiunto il limite di contesto per questa richiesta. "
-                "Prova a riformulare la domanda in modo più specifico."
+                tr("⚠️ Ho raggiunto il limite di contesto per questa richiesta. Prova a riformulare la domanda in modo più specifico.")
             )
             break
         _ctx_pct = _counter.context_pct(_prompt_tokens_est)
@@ -723,7 +723,7 @@ def run_agent_loop(
             logger.error(
                 "event=agent_loop_llm_call_failed Agent loop LLM call failed at turn %d: %s",
                 turn, exc, exc_info=True)
-            final_answer = "⚠️ Il modello non è disponibile. Riprova tra poco."
+            final_answer = tr("⚠️ Il modello non è disponibile. Riprova tra poco.")
             break
 
         _all_repeated = False

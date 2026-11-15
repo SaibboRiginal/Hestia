@@ -12,6 +12,7 @@ import logging
 import re
 
 from core.services import prompt_config
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -251,6 +252,6 @@ class UserControlService:
 
         return [{
             "event": "user.controls.updated",
-            "message": "Controlli utente aggiornati.",
+            "message": tr("Controlli utente aggiornati."),
             "data": controls,
         }]

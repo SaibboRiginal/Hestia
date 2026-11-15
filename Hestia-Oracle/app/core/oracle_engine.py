@@ -22,6 +22,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Iterator, Optional
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from zoneinfo import ZoneInfo
@@ -1059,7 +1060,7 @@ class OracleEngine:
                     yield stream_emitter.emit_signal(
                         event=str(signal.get("event") or "memory.updated"),
                         message=str(signal.get("message")
-                                    or "Aggiornamento memoria completato."),
+                                    or tr("Aggiornamento memoria completato.")),
                         data=signal.get("data") if isinstance(
                             signal.get("data"), dict) else {},
                     )
@@ -1237,9 +1238,9 @@ class OracleEngine:
         _is_thinking_mode = mode in ("thinking", "cot", "auto")
         if mode == "cot":
             resolved_max_turns = max(resolved_max_turns, 50)
-            yield stream_emitter.emit_status("🧠 Modalità CoT — ragionamento passo passo...")
+            yield stream_emitter.emit_status(tr("🧠 Modalità CoT — ragionamento passo passo..."))
         elif mode == "thinking":
-            yield stream_emitter.emit_status("🧠 Modalità pensata — ragiono prima di rispondere...")
+            yield stream_emitter.emit_status(tr("🧠 Modalità pensata — ragiono prima di rispondere..."))
 
         # Mode controls the think level; model (resolved above) controls the brain.
         # Any mode × any model combination works — mode and model are independent.
@@ -1271,7 +1272,7 @@ class OracleEngine:
         _prior_actions: list[dict] = []
         _loop_trace: dict = {}
         if external:
-            yield stream_emitter.emit_status("🤖 Agente esterno al lavoro...")
+            yield stream_emitter.emit_status(tr("🤖 Agente esterno al lavoro..."))
             try:
                 answer, tool_log = external_agent.run_turn(
                     session_id=session_id, user_message=user_message,
@@ -1282,12 +1283,12 @@ class OracleEngine:
                 # Writes the agent already did must not run twice (Cindy 2): the internal loop continues from them.
                 _prior_actions = [e for e in (getattr(exc, "log", None) or []) if e.get("ok")]
                 if external_agent.brain()["fallback"] != "interna":
-                    answer, tokens, tool_log = ("⚠️ L'agente esterno non ha risposto. Riprova tra poco.",
-                                                ["⚠️ L'agente esterno non ha risposto. Riprova tra poco."], [])
+                    answer, tokens, tool_log = (tr("⚠️ L'agente esterno non ha risposto. Riprova tra poco."),
+                                                [tr("⚠️ L'agente esterno non ha risposto. Riprova tra poco.")], [])
                 else:
                     logger.warning("[🔄] event=chat_external_agent_failed session_id=%s fallback=interna error=%s",
                                    session_id, str(exc)[:200])
-                    yield stream_emitter.emit_status("🔄 Agente esterno non disponibile: rispondo io...")
+                    yield stream_emitter.emit_status(tr("🔄 Agente esterno non disponibile: rispondo io..."))
         if answer is None:
             external_agent.note_internal_turn(session_id)
             answer, tokens, tool_log = run_agent_loop(
@@ -1379,7 +1380,7 @@ class OracleEngine:
                 yield stream_emitter.emit_signal(
                     event=str(signal.get("event") or "memory.updated"),
                     message=str(signal.get("message")
-                                or "Aggiornamento memoria completato."),
+                                or tr("Aggiornamento memoria completato.")),
                     data=signal.get("data") if isinstance(
                         signal.get("data"), dict) else {},
                 )
@@ -1424,7 +1425,7 @@ class OracleEngine:
                 card = entry.get("confirm")
                 if isinstance(card, dict) and card.get("question_id"):
                     yield self.ask_question(
-                        session_id, str(card["question_id"]), str(card.get("header") or "Confermi?"),
+                        session_id, str(card["question_id"]), str(card.get("header") or tr("Confermi?")),
                         str(card.get("prompt") or ""), kind="confirm", options=card.get("options") or None,
                         actions=card.get("actions") if isinstance(card.get("actions"), dict) else None)
             # The model asked the user (tool ask_user): the turn stopped on it, the answer is the next turn.
@@ -1432,7 +1433,7 @@ class OracleEngine:
                 ask = entry.get("ask")
                 if isinstance(ask, dict) and ask.get("question_id"):
                     yield self.ask_question(
-                        session_id, str(ask["question_id"]), str(ask.get("header") or "Rispondi"),
+                        session_id, str(ask["question_id"]), str(ask.get("header") or tr("Rispondi")),
                         str(ask.get("prompt") or ""),
                         kind=str(ask.get("kind") or "confirm"), options=ask.get("options") or None,
                         resume=True, allow_other=bool(ask.get("allow_other")))
@@ -1611,8 +1612,8 @@ class OracleEngine:
         matched = [s for s in (signals or []) if str(
             s.get("event", "")).lower() in notification_events]
         if matched:
-            return {"ok": True, "message": "✅ Notifica elaborata con il comando rapido.", "signals": signals}
-        return {"ok": False, "message": "⚠️ Nessuna notifica creata. Specifica meglio dominio, evento o filtri.", "signals": signals or []}
+            return {"ok": True, "message": tr("✅ Notifica elaborata con il comando rapido."), "signals": signals}
+        return {"ok": False, "message": tr("⚠️ Nessuna notifica creata. Specifica meglio dominio, evento o filtri."), "signals": signals or []}
 
     def delete_chat_history(self, session_id: str):
         """Delete chat history for *session_id* via Hub/Archive (and its training traces in Metis)."""
@@ -1680,9 +1681,9 @@ class OracleEngine:
         part_sum = sum(parts.values())
         if part_sum > 0:
             scale = (used_tokens / part_sum) if measured else 1.0
-            order = [("system", "Istruzioni e preferenze"), ("tools", "Strumenti di questo turno"),
-                     ("history", "Cronologia"), ("message", "Il tuo messaggio"),
-                     ("results", "Risultati degli strumenti"), ("other", "Altro")]
+            order = [("system", tr("Istruzioni e preferenze")), ("tools", tr("Strumenti di questo turno")),
+                     ("history", tr("Cronologia")), ("message", tr("Il tuo messaggio")),
+                     ("results", tr("Risultati degli strumenti")), ("other", tr("Altro"))]
             breakdown = [{"id": pid, "label": label, "tokens": int(round(parts.get(pid, 0) * scale))}
                          for pid, label in order if parts.get(pid, 0) > 0]
             drift = used_tokens - sum(r["tokens"] for r in breakdown) if measured else 0
@@ -1690,9 +1691,9 @@ class OracleEngine:
                 biggest = max(breakdown, key=lambda r: r["tokens"])
                 biggest["tokens"] = max(0, biggest["tokens"] + drift)
         else:
-            breakdown = [{"id": "system", "label": "Istruzioni e preferenze", "tokens": system_tokens + pref_tokens},
-                         {"id": "tools", "label": "Strumenti (tutti)", "tokens": tools_tokens},
-                         {"id": "history", "label": "Cronologia", "tokens": history_tokens}]
+            breakdown = [{"id": "system", "label": tr("Istruzioni e preferenze"), "tokens": system_tokens + pref_tokens},
+                         {"id": "tools", "label": tr("Strumenti (tutti)"), "tokens": tools_tokens},
+                         {"id": "history", "label": tr("Cronologia"), "tokens": history_tokens}]
 
         return {
             "context_window": _window,
@@ -2216,7 +2217,7 @@ class OracleEngine:
         for signal in waiter.get("signals") or []:
             yield stream_emitter.emit_signal(
                 event=str(signal.get("event") or "memory.updated"),
-                message=str(signal.get("message") or "Memoria aggiornata."),
+                message=str(signal.get("message") or tr("Memoria aggiornata.")),
                 data=signal.get("data") if isinstance(signal.get("data"), dict) else {},
             )
 
@@ -2492,7 +2493,7 @@ class OracleEngine:
             },
             handler=_memory_forget_handler,
             writes=True,
-            title="Memoria dimenticata",
+            title=tr("Memoria dimenticata"),
         ))
 
         def _memory_search_handler(query: str = "") -> tuple[bool, list]:
@@ -2532,10 +2533,10 @@ class OracleEngine:
 
         tools.append(ToolDefinition(
             name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
-            handler=_chat_tag_handler, writes=True, title="Etichetta la conversazione", method="POST"))
+            handler=_chat_tag_handler, writes=True, title=tr("Etichetta la conversazione"), method="POST"))
         tools.append(ToolDefinition(
             name="chat_list", description=chat_sessions.LIST_DESCRIPTION, parameters=chat_sessions.LIST_PARAMETERS,
-            handler=_chat_list_handler, title="Le tue conversazioni", method="GET"))
+            handler=_chat_list_handler, title=tr("Le tue conversazioni"), method="GET"))
 
         # ── Asking the user (always available, v3 A): the turn stops on it ─────
         tools.append(ToolDefinition(
@@ -2613,11 +2614,11 @@ class OracleEngine:
         def _manual(module: str = "") -> tuple[bool, Any]:
             text = registry.manual(module)
             if not text:
-                return False, f"Nessun manuale per «{module}». Moduli: {', '.join(sorted(registry.guides()))}"
+                return False, tr("Nessun manuale per «{0}». Moduli: {1}", module, ', '.join(sorted(registry.guides())))
             return True, text
 
         tools = [ToolDefinition(
-            name="module_manual", title="Manuale del modulo",
+            name="module_manual", title=tr("Manuale del modulo"),
             description="Short manual of a module (what it can do, how to use its tools). Use it when you don't know "
                         "which tool of that module you need.",
             parameters={"type": "object", "properties": {"module": {"type": "string"}}, "required": ["module"]},
@@ -2630,15 +2631,15 @@ class OracleEngine:
             if not str(text or "").strip():
                 return False, "text is required"
             goal = conversation_goal.set_goal(hub, session_id, str(text))
-            return True, {"goal": goal["text"], "note": "Obiettivo fissato: ci lavoro dopo ogni risposta."}
+            return True, {"goal": goal["text"], "note": tr("Obiettivo fissato: ci lavoro dopo ogni risposta.")}
 
         def _goal_done(summary: str = "") -> tuple[bool, Any]:
             goal = conversation_goal.end(hub, session_id, "raggiunto", summary)
-            return (True, {"done": True, "goal": goal["text"]}) if goal else (False, "nessun obiettivo attivo")
+            return (True, {"done": True, "goal": goal["text"]}) if goal else (False, tr("nessun obiettivo attivo"))
 
         def _goal_stop() -> tuple[bool, Any]:
             goal = conversation_goal.end(hub, session_id, "fermato")
-            return (True, {"stopped": True}) if goal else (False, "nessun obiettivo attivo")
+            return (True, {"stopped": True}) if goal else (False, tr("nessun obiettivo attivo"))
 
         handlers = {"goal_set": _goal_set, "goal_done": _goal_done, "goal_stop": _goal_stop}
         for spec in conversation_goal.tool_specs():
@@ -2692,8 +2693,7 @@ class OracleEngine:
                 break
             if int(goal.get("rounds") or 0) >= total:
                 conversation_goal.end(self._hub, session_id, "budget")
-                last = (f"Obiettivo «{goal['text']}»: ho finito i giri a disposizione ({total}). "
-                        "Dimmi se continuo.")
+                last = (tr("Obiettivo «{0}»: ho finito i giri a disposizione ({1}). Dimmi se continuo.", goal['text'], total))
                 break
             try:
                 ans, _toks, round_log = run_agent_loop(
@@ -2716,7 +2716,7 @@ class OracleEngine:
         if not last:
             return "", log, frames
         state = conversation_goal.active(self._hub, session_id)
-        head = "Obiettivo" + (f" (giro {state['rounds']}/{total})" if state else " — fatto")
+        head = tr("Obiettivo") + (f" (giro {state['rounds']}/{total})" if state else tr(" — fatto"))
         return f"**{head}:** {last}", log, frames
 
     # ── Context compaction (REST + MCP) ──────────────────────────────────────
@@ -3077,7 +3077,7 @@ class OracleEngine:
                 "title": matched.get("title") or action_name,
                 "service": matched.get("service") or "",
                 "path": str(matched.get("path") or ""),
-                "text": "⚠️ Parametri azione non validi o incompleti.",
+                "text": tr("⚠️ Parametri azione non validi o incompleti."),
             }
 
         route_results: list[dict] = []
@@ -3118,7 +3118,7 @@ class OracleEngine:
                 "title": matched.get("title") or action_name,
                 "service": matched.get("service") or "",
                 "path": str(matched.get("path") or ""),
-                "text": "⚠️ Non è stato possibile completare l'azione. Uno o più target non sono stati aggiornati.",
+                "text": tr("⚠️ Non è stato possibile completare l'azione. Uno o più target non sono stati aggiornati."),
             }
 
         payload_for_format: Any

@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 
 from .catalog import MUSCLE_GROUPS
 from .records import Data, is_hard, local_date, period_next, period_start
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 PER_LABEL = {"day": "oggi", "week": "questa settimana", "month": "questo mese"}
 
@@ -74,8 +75,8 @@ def label(goal: dict, data: Data | None = None, templates: dict | None = None) -
     times = goal.get("times") or 1
     scope = goal.get("scope") or "any"
     if scope == "any":
-        return f"Allenamento {times} {'volta' if times == 1 else 'volte'} {per}"
+        return tr("Allenamento {0} {1} {2}", times, 'volta' if times == 1 else 'volte', per)
     if scope == "muscle":
         return f"{(goal.get('target_id') or '').capitalize()} {times} {per}"
-    name = (templates or {}).get(goal.get("target_id"), {}).get("name") or "Scheda"
+    name = (templates or {}).get(goal.get("target_id"), {}).get("name") or tr("Scheda")
     return f"{name} {times} {per}"

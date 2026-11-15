@@ -14,6 +14,7 @@ from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 
 from .catalog import NAMESPACE
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 _EQUIP_WORDS = {"barbell": "barbell", "dumbbell": "dumbbell", "machine": "machine", "cable": "cable",
                 "bodyweight": "bodyweight", "smith machine": "smith", "ez bar": "ez_bar", "kettlebell": "kettlebell",
@@ -52,7 +53,7 @@ def detect(text: str) -> str:
         return "hevy"
     if "exercise name" in head and "set order" in head:
         return "strong"
-    raise ValueError("formato non riconosciuto: serve un export CSV di Strong o Hevy")
+    raise ValueError(tr("formato non riconosciuto: serve un export CSV di Strong o Hevy"))
 
 
 def _parse_dt(s: str, tz) -> datetime | None:
@@ -170,7 +171,7 @@ def build(text: str, mapping: dict[str, str], exercises: list[dict], tz, unit: s
             base, equip = _split(name)
             new_ex[eid] = {"id": eid, "name": name, "aliases": [], "primary_muscles": [], "secondary_muscles": [],
                            "equipment": equip or "other", "kind": "weight_reps", "movement_pattern": "isolation",
-                           "stress_joints": [], "is_custom": True, "notes": f"Importato da {parsed['format']}"}
+                           "stress_joints": [], "is_custom": True, "notes": tr("Importato da {0}", parsed['format'])}
             target = eid
         resolved[name] = target
     sessions, sets = [], []

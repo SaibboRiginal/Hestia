@@ -36,6 +36,7 @@ import requests
 
 from core import hermes_client, life_store
 from services import agenda
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.routines")
 
@@ -221,7 +222,7 @@ def _ask_owner(key: str, title: str, reply: str, question: dict) -> None:
     # ask_user frames carry no prompt (the question is the reply text); a module confirmation carries its own.
     text = str(question.get("prompt") or "").strip() or reply
     hermes_client.publish_event("assistant", "routine.question", key, {
-        "_title": title, "_message": text, "_source": "Routine", "_level": "info",
+        "_title": title, "_message": text, "_source": tr("Routine"), "_level": "info",
         "dedupe_key": f"routine:{key}:{qid}", "_link": {"module": "chronos", "page": "routine"},
         "_question": {"kind": question.get("kind") or "confirm", "options": question.get("options") or [],
                       "allow_other": bool(question.get("allow_other")), "service": OWNER, "method": "POST",
@@ -247,14 +248,14 @@ def run(key: str, *, by: str = "agenda", context: str = "") -> dict:
                            key, r["precheck"]["tool"], str(payload)[:160])
         elif _empty(payload):
             logger.info("event=routine_nothing_new key=%s tool=%s", key, r["precheck"]["tool"])
-            return {"ok": True, "ran": False, "reason": "niente di nuovo"}
+            return {"ok": True, "ran": False, "reason": tr("niente di nuovo")}
         else:
             pre_text = json.dumps(payload, ensure_ascii=False, default=str)[:6000]
     message = (f"[ROUTINE «{item['title']}»] {r['instruction']}\n"
                + (f"What started it:\n{context[:3000]}\n" if context else "")
                + (f"Check data:\n{pre_text}\n" if pre_text else "")
                + f"Answer in the language of the instruction. If there is nothing useful to say reply only {NOTHING}.")
-    out = _ask_oracle(key, "Da una tua routine", message)
+    out = _ask_oracle(key, tr("Da una tua routine"), message)
     return _deliver(key, item, r, out, by)
 
 
@@ -269,7 +270,7 @@ def _deliver(key: str, item: dict, r: dict, out: dict, by: str) -> dict:
         return {"ok": True, "ran": True, "delivered": True, "deliver": "question", "text": reply}
     if not reply or reply.strip().strip(".").upper() == NOTHING:
         logger.info("event=routine_quiet key=%s", key)
-        return {"ok": True, "ran": True, "delivered": False, "reason": "niente da dire"}
+        return {"ok": True, "ran": True, "delivered": False, "reason": tr("niente da dire")}
     result = {"key": key, "title": item["title"], "text": reply, "at": _now().isoformat(),
               "changes": out["changes"]}
     if (r.get("deliver") or "hermes") == "recap":
@@ -279,7 +280,7 @@ def _deliver(key: str, item: dict, r: dict, out: dict, by: str) -> dict:
         life_store.put("routine_result", f"{key}:{result['at']}", result, at=result["at"], ref_id=key)
     else:
         hermes_client.publish_event("assistant", "routine.result", key, {
-            "_title": item["title"], "_message": reply, "_source": "Routine", "_level": "info",
+            "_title": item["title"], "_message": reply, "_source": tr("Routine"), "_level": "info",
             "replaces": f"routine.{key}", "dedupe_key": f"routine:{key}:{result['at'][:16]}",
             "_link": {"module": "chronos", "page": "routine"}})
     logger.info("event=routine_delivered key=%s deliver=%s by=%s chars=%d", key, r.get("deliver") or "hermes", by,
@@ -389,19 +390,19 @@ def answer(key: str, question_id: str, answer_text: str, client: str = "") -> di
     status = int(routed.get("status_code", resp.status_code))
     payload = routed.get("payload") if isinstance(routed.get("payload"), dict) else {}
     if status == 404:
-        raise agenda.AgendaError("questa domanda non è più aperta", 409)
+        raise agenda.AgendaError(tr("questa domanda non è più aperta"), 409)
     if status >= 400:
         raise agenda.AgendaError(f"assistant {status}", 502)
     resume = str((payload.get("resume") or {}).get("message") or "")
     if resume:
         def _go_on():
             try:
-                _deliver(key, item, r, _ask_oracle(key, "Da una tua routine", resume), by="answer")
+                _deliver(key, item, r, _ask_oracle(key, tr("Da una tua routine"), resume), by="answer")
             except Exception as exc:
                 logger.warning("[🔄] event=routine_resume_failed key=%s error=%s", key, exc)
         threading.Thread(target=_go_on, daemon=True, name=f"routine-answer-{key}").start()
     logger.info("event=routine_question_answered key=%s question_id=%s resumed=%s", key, question_id, bool(resume))
     action = payload.get("action") if isinstance(payload.get("action"), dict) else None
     if action and not action.get("ok"):
-        raise agenda.AgendaError("l'azione non è riuscita", 502)
-    return {"ok": True, "resumed": bool(resume), "message": "Ricevuto, continuo" if resume else "Fatto"}
+        raise agenda.AgendaError(tr("l'azione non è riuscita"), 502)
+    return {"ok": True, "resumed": bool(resume), "message": tr("Ricevuto, continuo") if resume else tr("Fatto")}

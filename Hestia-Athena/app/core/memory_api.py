@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from . import docs_check
 from .learning import Learning
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_athena.memory_api")
 
@@ -89,7 +90,7 @@ def docs_check_run(propose: bool = True) -> dict[str, Any]:
 
 def agenda_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
-    return [job_rule(DOCS_JOB, "Documenti allineati al codice", service="athena", path="/api/athena/docs/check",
+    return [job_rule(DOCS_JOB, tr("Documenti allineati al codice"), service="athena", path="/api/athena/docs/check",
                      recurrence="FREQ=MONTHLY;BYMONTHDAY=1;BYHOUR=4;BYMINUTE=30", timeout_seconds=180,
                      description="Una volta al mese confronto la documentazione con quello che i moduli fanno "
                                  "davvero e propongo le correzioni allo sviluppo (le approvi tu).")]

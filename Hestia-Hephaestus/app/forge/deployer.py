@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge.deployer")
 
@@ -36,8 +37,8 @@ class DeployPlan:
         if self.restart or self.restart_self:
             parts.append("riavvio: " + ", ".join(self.restart + (["hephaestus"] if self.restart_self else [])))
         if self.rebuild:
-            parts.append("da ricostruire a mano: " + ", ".join(self.rebuild))
-        return "; ".join(parts) or "nessun servizio da riavviare"
+            parts.append(tr("da ricostruire a mano: ") + ", ".join(self.rebuild))
+        return "; ".join(parts) or tr("nessun servizio da riavviare")
 
 
 def all_services(repo: Path) -> list[str]:

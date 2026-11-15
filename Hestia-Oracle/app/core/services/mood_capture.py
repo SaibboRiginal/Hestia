@@ -18,6 +18,7 @@ import time
 from typing import Any, Callable
 
 from core.services import prompt_config
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -250,7 +251,7 @@ class MoodCapture:
                                                          if (out.get("labels") or body["labels"]) else "")
         logger.info("event=mood_capture_saved mood=%s labels=%s merged=%s", body["mood"], body["labels"],
                     out.get("merged"))
-        return [{"event": "mood.logged", "message": f"Umore segnato: {detail}",
+        return [{"event": "mood.logged", "message": tr("Umore segnato: {0}", detail),
                  "data": {"detail": detail, "id": out.get("id"), "merged": bool(out.get("merged"))}}]
 
     def _undo(self) -> list[dict]:
@@ -262,4 +263,4 @@ class MoodCapture:
         if not ok or not (isinstance(out, dict) and out.get("deleted")):
             return []
         logger.info("event=mood_capture_undone id=%s", out.get("id"))
-        return [{"event": "mood.removed", "message": "Umore tolto", "data": {"detail": "l'ultima voce di oggi"}}]
+        return [{"event": "mood.removed", "message": tr("Umore tolto"), "data": {"detail": tr("l'ultima voce di oggi")}}]

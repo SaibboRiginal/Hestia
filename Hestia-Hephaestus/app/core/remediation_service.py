@@ -10,6 +10,7 @@ import requests
 
 from ..forge import forge_settings as fs
 from .models import RemediationApproveRequest, RemediationRequest, RemediationRollbackRequest, RunbookDefinition
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 class RemediationService:
@@ -75,7 +76,7 @@ class RemediationService:
             label = f"{snapshot.get('service')}: {snapshot.get('issue')}"
             try:
                 if state == "pending_approval":
-                    self.agenda.show(key, f"🛠️ Riparazione da approvare — {label}",
+                    self.agenda.show(key, tr("🛠️ Riparazione da approvare — {0}", label),
                                      datetime.now(timezone.utc),
                                      description=f"Runbook {snapshot.get('runbook_id')}. "
                                                  f"Approva: \"approva riparazione {snapshot['task_id'][:8]}\".",
@@ -447,13 +448,13 @@ class RemediationService:
                 return task
             if state in {"pending_approval", "failed"}:
                 # never ran, or failed without changes: undo = stop it (no approval wait, no agenda retry)
-                outcome: dict[str, Any] = {"status": "cancelled", "detail": "Riparazione fermata: non aveva cambiato nulla."}
+                outcome: dict[str, Any] = {"status": "cancelled", "detail": tr("Riparazione fermata: non aveva cambiato nulla.")}
             elif state == "succeeded" and task.get("undoable"):
                 ok, payload = self._undo_on_target(task)
                 outcome = {"status": "restored" if ok else "failed", "response": payload}
             else:
                 outcome = {"status": "nothing_to_undo",
-                           "detail": "Questa riparazione non ha cambiato dati da ripristinare."}
+                           "detail": tr("Questa riparazione non ha cambiato dati da ripristinare.")}
             if outcome["status"] in {"cancelled", "restored"}:
                 task["state"] = "rolled_back"
                 task["undoable"] = False

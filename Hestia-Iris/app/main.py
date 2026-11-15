@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from uuid import uuid4
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -413,7 +414,7 @@ def email_check_now() -> dict[str, Any]:
     status, payload = _hub_call("hecate", "POST", "api/gateway/mail/watch/run", body={"trigger": "webui"},
                                 timeout=100)
     if not status or status >= 400:
-        raise HTTPException(status_code=503, detail="Hecate non raggiungibile")
+        raise HTTPException(status_code=503, detail=tr("Hecate non raggiungibile"))
     return payload if isinstance(payload, dict) else {"status": "ok"}
 
 

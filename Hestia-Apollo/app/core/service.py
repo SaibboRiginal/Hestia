@@ -18,6 +18,7 @@ from typing import Any, Callable
 from hestia_common.module_kit import Invalid, NotFound, StoreUnavailable, new_id, now_iso
 
 from .comfy import ComfyError
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_apollo.service")
 
@@ -53,7 +54,7 @@ def fill(graph: dict, inputs: dict, values: dict) -> dict:
             continue
         node, _, field = where.partition(".inputs.")
         if node not in g:
-            raise Invalid(f"il flusso non ha il nodo {node}")
+            raise Invalid(tr("il flusso non ha il nodo {0}", node))
         g[node].setdefault("inputs", {})[field] = values[name]
     return g
 
@@ -79,13 +80,13 @@ class Images:
             graph = graph["prompt"]
         if not isinstance(graph, dict) or not graph or not all(isinstance(n, dict) and n.get("class_type")
                                                                for n in graph.values()):
-            raise Invalid("serve il flusso in formato API di ComfyUI (Salva → API Format)")
+            raise Invalid(tr("serve il flusso in formato API di ComfyUI (Salva → API Format)"))
         purpose = body.get("purpose") or "generico"
         if purpose not in PURPOSES:
             raise Invalid("scopo: " + ", ".join(PURPOSES))
         inputs = {**detect_inputs(graph), **{k: v for k, v in (body.get("inputs") or {}).items() if k in INPUTS}}
         if "prompt" not in inputs:
-            raise Invalid("non trovo dove va il testo: indica inputs.prompt (es. «6.inputs.text»)")
+            raise Invalid(tr("non trovo dove va il testo: indica inputs.prompt (es. «6.inputs.text»)"))
         fill(graph, inputs, {k: 1 for k in inputs})                     # every target node exists
         data = {"name": str(body.get("name") or PURPOSES[purpose])[:60], "purpose": purpose,
                 "description": str(body.get("description") or "")[:300], "inputs": inputs, "graph": graph,
@@ -102,7 +103,7 @@ class Images:
 
     def delete_flow(self, fid: str) -> dict:
         if not self.store.delete("workflow", fid):
-            raise NotFound("flusso non trovato")
+            raise NotFound(tr("flusso non trovato"))
         return {"deleted": True}
 
     def flow_for(self, purpose: str) -> dict | None:
@@ -137,7 +138,7 @@ class Images:
         self.store.refresh()
         j = self.store.data("job", jid)
         if not j:
-            raise NotFound("lavoro non trovato")
+            raise NotFound(tr("lavoro non trovato"))
         return j
 
     def jobs(self, limit: int = 30) -> list[dict]:
@@ -199,7 +200,7 @@ class Images:
             "owner_module": "apollo", "content_type": mime or "image/png", "data_base64": base64.b64encode(data).decode(),
             "meta": {"name": f"{jid}-{n + 1}.png", "kind": "image", "job": jid}}, timeout=30) or {}
         if not meta.get("blob_id"):
-            raise ComfyError("non riesco a salvare l'immagine")
+            raise ComfyError(tr("non riesco a salvare l'immagine"))
         return meta["blob_id"]
 
     def _finish(self, jid: str, job: dict, *, blob_ids: list[str] | None = None, error: str = "") -> dict:
@@ -220,21 +221,20 @@ class Images:
             self._missing_notice(job["purpose"], error)
         elif job.get("notify"):
             self.hub.notify({"event_type": "service.action_required", "domain": "images", "entity_id": f"apollo-{jid}",
-                             "payload": {"kind": "apollo.job", "service": "apollo", "_source": "Immagini",
-                                         "_title": "Immagine pronta" if not error else "Immagine non riuscita",
+                             "payload": {"kind": "apollo.job", "service": "apollo", "_source": tr("Immagini"),
+                                         "_title": tr("Immagine pronta") if not error else tr("Immagine non riuscita"),
                                          "_message": job["prompt"][:120] if not error else error,
                                          "level": "info" if not error else "warning", "target": "owner",
                                          "icon": "camera", "_link": {"module": "apollo", "page": f"lavoro/{jid}"}}})
         return {**job, "id": jid}
 
     def _missing_notice(self, purpose: str, error: str) -> None:
-        msg = ("Per creare immagini serve il collegamento al generatore (indirizzo nel file .env)."
+        msg = (tr("Per creare immagini serve il collegamento al generatore (indirizzo nel file .env).")
                if error == "not_configured" else
-               f"Non ho un flusso per «{PURPOSES.get(purpose, purpose)}»: caricalo in Immagini → Flussi "
-               "(da ComfyUI: Salva → API Format).")
+               tr("Non ho un flusso per «{0}»: caricalo in Immagini → Flussi (da ComfyUI: Salva → API Format).", PURPOSES.get(purpose, purpose)))
         self.hub.notify({"event_type": "service.action_required", "domain": "images",
                          "entity_id": f"apollo-missing-{purpose}",
-                         "payload": {"kind": "apollo.missing_flow", "service": "apollo", "_source": "Immagini",
-                                     "_title": "Manca un flusso per le immagini", "_message": msg, "level": "warning",
+                         "payload": {"kind": "apollo.missing_flow", "service": "apollo", "_source": tr("Immagini"),
+                                     "_title": tr("Manca un flusso per le immagini"), "_message": msg, "level": "warning",
                                      "target": "owner", "icon": "camera", "replaces": f"apollo.missing.{purpose}",
                                      "_link": {"module": "apollo", "page": "flussi"}}})

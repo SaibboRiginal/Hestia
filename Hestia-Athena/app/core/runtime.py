@@ -39,6 +39,7 @@ from .athena_settings import get_bool, get_float, get_int
 from .shared_imports import import_shared_symbol
 from .strategist import Strategist
 from .recap import EVENING_AT, EVENING_FLEX, JOB_EVENING, RecapComposer
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 TaskLifecycleStore = import_shared_symbol(
     "hestia_common.task_lifecycle", "TaskLifecycleStore"
@@ -356,7 +357,7 @@ class AthenaRuntime:
         now = time.time()
         row = {
             "brief_id": str(brief.get("brief_id") or uuid4()),
-            "title": str(brief.get("title") or "Focus checkpoint"),
+            "title": str(brief.get("title") or tr("Focus checkpoint")),
             "summary": str(brief.get("summary") or "").strip(),
             "domain": str(brief.get("domain") or "cognition"),
             "kind": str(brief.get("kind") or "advisory"),
@@ -699,7 +700,7 @@ class AthenaRuntime:
         return {
             "brief_id": str(uuid4()),
             "created_at": now.isoformat(),
-            "title": "Focus checkpoint",
+            "title": tr("Focus checkpoint"),
             "summary": summary,
             "domain": "cognition",
             "kind": "advisory",
@@ -878,19 +879,19 @@ class AthenaRuntime:
         s_start, s_end = SKILL_CURATION_WINDOW_DEFAULT
         t_start, t_end = THINKING_WINDOW_DEFAULT
         return [
-            daily_window(WINDOW_CONSOLIDATION, "Riordina la memoria",
+            daily_window(WINDOW_CONSOLIDATION, tr("Riordina la memoria"),
                          c_start, c_end,
                          description="Estrae fatti dalle sessioni recenti e risolve conflitti di memoria "
                                      "(una volta al giorno dentro la finestra)."),
-            daily_window(WINDOW_SKILL_CURATION, "Cura delle abilità",
+            daily_window(WINDOW_SKILL_CURATION, tr("Cura delle abilità"),
                          s_start, s_end,
                          description="Crea/aggiorna/depreca skill dalle conversazioni (una volta al giorno)."),
-            daily_window(WINDOW_REFLECTION, "Riflessione sulla tua vita",
+            daily_window(WINDOW_REFLECTION, tr("Riflessione sulla tua vita"),
                          *REFLECTION_WINDOW_DEFAULT,
                          description="Legge i segnali delle aree (allenamento, cura di sé, spese…), cerca i "
                                      "collegamenti tra le settimane e prepara le osservazioni per il recap della "
                                      "sera. Una volta al giorno; in pausa = nessuna riflessione."),
-            daily_window(WINDOW_TALK, "Ti scrive per prima",
+            daily_window(WINDOW_TALK, tr("Ti scrive per prima"),
                          *TALK_WINDOW_DEFAULT,
                          description="Le ore in cui può scriverti lei per prima, per una domanda o due chiacchiere "
                                      "(quante volte: impostazione «Ti scrive per prima»). In pausa = non scrive mai "
@@ -899,7 +900,7 @@ class AthenaRuntime:
                          t_start, t_end,
                          description="Cicli di pensiero (osserva → valuta → proponi) solo quando non stai "
                                      "chattando. Salta/metti in pausa per fermare Athena."),
-            job_rule(JOB_EVENING, "Recap della sera", service="athena", path="/api/athena/recap",
+            job_rule(JOB_EVENING, tr("Recap della sera"), service="athena", path="/api/athena/recap",
                      body={"momento": "sera", "trigger": "agenda"}, recurrence="FREQ=DAILY",
                      start_at=f"2026-01-01T{EVENING_AT}:00", flex=EVENING_FLEX, timeout_seconds=150,
                      description="Com'è andata oggi e cosa c'è domani, in un messaggio. Può anticipare o "
@@ -1002,7 +1003,7 @@ class AthenaRuntime:
         once; the new record appears in /api/athena/thinking."""
         if not self._cycle_lock.acquire(blocking=False):
             logger.info("event=think_now_busy")
-            return {"status": "busy", "detail": "Athena sta già pensando"}
+            return {"status": "busy", "detail": tr("Athena sta già pensando")}
         life = track == "vita"
         trace_id = f"athena-{'vita' if life else 'now'}-{uuid4().hex[:10]}"
 
@@ -1022,7 +1023,7 @@ class AthenaRuntime:
         """«Vita»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
         Separate from the system cycle: no services, errors or Forge here."""
         t0 = time.perf_counter()
-        with self.presence.activity("athena.reflection", label="Hestia riflette", load="light", resource="gpu",
+        with self.presence.activity("athena.reflection", label=tr("Hestia riflette"), load="light", resource="gpu",
                                     ttl_seconds=900):
             out = self.reflection.run(run_trace_id)
         scored = out.get("candidates") or []
@@ -1050,7 +1051,7 @@ class AthenaRuntime:
         observation.presence = self.presence.context_line()
 
         # Phase 2: Think (LLM via Oracle) — reported as a light activity of the assistant
-        with self.presence.activity("athena.thinking", label="Athena pensa", load="light", resource="gpu",
+        with self.presence.activity("athena.thinking", label=tr("Athena pensa"), load="light", resource="gpu",
                                     ttl_seconds=900):
             scored = self._think_all(observation, retrospective)
         candidates = [c for c in scored if c.accepted]
@@ -1353,19 +1354,19 @@ class AthenaRuntime:
             return
         self._stop_event.clear()
         self.agenda.register_async(self._agenda_rules, templates=lambda: [agenda_template(
-            "reflect", "Fai riflettere Athena su un tema", service="athena", path="/api/athena/trigger",
+            "reflect", tr("Fai riflettere Athena su un tema"), service="athena", path="/api/athena/trigger",
             type="task", types=["task", "job"], icon="brain",
-            fields={"title": {"type": "string", "label": "Tema", "description": "Tema (es. 'spese di casa')"},
-                    "summary": {"type": "string", "label": "Dettagli", "format": "textarea", "description": "Cosa deve considerare"}},
-            required=["title"], body={"domain": "cognition"}, title="Athena: {title}",
+            fields={"title": {"type": "string", "label": tr("Tema"), "description": tr("Tema (es. 'spese di casa')")},
+                    "summary": {"type": "string", "label": tr("Dettagli"), "format": "textarea", "description": tr("Cosa deve considerare")}},
+            required=["title"], body={"domain": "cognition"}, title=tr("Athena: {title}"),
             description="Athena analizza il tema all'orario scelto e ti propone idee o azioni."),
             agenda_template(
-            "recap", "Recap della giornata", service="athena", path="/api/athena/recap",
+            "recap", tr("Recap della giornata"), service="athena", path="/api/athena/recap",
             type="job", types=["job", "task"], icon="note", recurrence="FREQ=DAILY",
-            fields={"momento": {"type": "string", "label": "Momento", "enum": ["mattina", "sera"],
+            fields={"momento": {"type": "string", "label": tr("Momento"), "enum": ["mattina", "sera"],
                                 "default": "mattina",
-                                "description": "mattina = ieri in breve + oggi; sera = oggi + domani"}},
-            required=["momento"], body={"trigger": "agenda"}, title="Recap ({momento})",
+                                "description": tr("mattina = ieri in breve + oggi; sera = oggi + domani")}},
+            required=["momento"], body={"trigger": "agenda"}, title=tr("Recap ({momento})"),
             description="Un messaggio con com'è andata e cosa ti aspetta. Aggiungi quello del mattino o un "
                         "secondo recap.")])
         # Wait for Oracle inside the loop thread: blocking here would hold the

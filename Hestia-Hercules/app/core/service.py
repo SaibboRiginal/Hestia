@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 from . import adapt as adapt_engine
 from . import catalog, domain, goals as goals_engine, importer, progression, records
 from .store import Store, StoreUnavailable, now_iso, parse_dt
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hercules.service")
 
@@ -102,7 +103,7 @@ class Hercules:
         self.store.refresh()
         item = self.store.data(kind, id)
         if not item:
-            raise NotFound(f"{kind} {id} non trovato")
+            raise NotFound(tr("{0} {1} non trovato", kind, id))
         return item
 
     def delete(self, kind: str, id: str) -> dict:
@@ -111,7 +112,7 @@ class Hercules:
             for st in self._sets_of(id):
                 self.store.delete("set", st["id"])
         if not self.store.delete(kind, id):
-            raise NotFound(f"{kind} {id} non trovato")
+            raise NotFound(tr("{0} {1} non trovato", kind, id))
         return {"deleted": True, "kind": kind, "id": id}
 
     # ── catalog ─────────────────────────────────────────────────────────────
@@ -242,7 +243,7 @@ class Hercules:
         t = self.get("template", id)
         prev = t.get("previous")
         if not prev:
-            raise Conflict("nessuna versione precedente")
+            raise Conflict(tr("nessuna versione precedente"))
         return self.save("template", {**prev, "revision": int(t.get("revision") or 0) + 1}, id=id)
 
     def active_program(self) -> dict | None:
@@ -267,9 +268,9 @@ class Hercules:
                                "template": None, "reason": "", "program": None, "rest_day": False}
         override = plans.get(day.isoformat())
         if override and override.get("status") == "skipped":
-            out.update(reason="Oggi saltato.", skipped=True)
+            out.update(reason=tr("Oggi saltato."), skipped=True)
         if override and override.get("status") == "planned" and override.get("template_id") in templates:
-            out.update(template=templates[override["template_id"]], reason="Spostato a oggi.")
+            out.update(template=templates[override["template_id"]], reason=tr("Spostato a oggi."))
             return self._with_minutes(out)
         prog = self.active_program()
         if prog and prog.get("days"):
@@ -287,7 +288,7 @@ class Hercules:
                         continue
                     t = templates[todays[0]["template_id"]]
                     out.update(template=t, planned_date=d.isoformat(),
-                               reason="In programma oggi." if offset == 0 else f"Prossimo: {WEEKDAYS[d.weekday()]}.")
+                               reason=tr("In programma oggi.") if offset == 0 else tr("Prossimo: {0}.", WEEKDAYS[d.weekday()]))
                     out["rest_day"] = offset > 0
                     return self._with_minutes(out)
             else:
@@ -299,13 +300,13 @@ class Hercules:
                 idx = (order.index(last["template_id"]) + 1) if last and last.get("template_id") in order else 0
                 if order:
                     t = templates[order[(idx + skips) % len(order)]]
-                    out.update(template=t, reason="Prossima della rotazione.")
+                    out.update(template=t, reason=tr("Prossima della rotazione."))
                     return self._with_minutes(out)
         favs = [t for t in templates.values() if t.get("favorite")] or list(templates.values())
         if favs:
             last_done = {s.get("template_id"): s.get("started_at") for s in data.sessions}
             favs.sort(key=lambda t: last_done.get(t["id"]) or "")
-            out.update(template=favs[0], reason="La scheda che non fai da più tempo.")
+            out.update(template=favs[0], reason=tr("La scheda che non fai da più tempo."))
         return self._with_minutes(out)
 
     def _with_minutes(self, out: dict) -> dict:
@@ -345,11 +346,11 @@ class Hercules:
                       started_at: str | None = None, adaptation_id: str | None = None, readiness: dict | None = None) -> dict:
         current = self.active_session()
         if current:
-            raise Conflict("c'è già un allenamento in corso", {"session_id": current["id"], "name": current.get("name")})
+            raise Conflict(tr("c'è già un allenamento in corso"), {"session_id": current["id"], "name": current.get("name")})
         t = self.get("template", template_id) if template_id else None
         exercises = plan if plan is not None else (self._plan_from_template(t) if t else [])
         prog = self.active_program()
-        body = {"name": name or (t["name"] if t else "Allenamento libero"), "status": "active",
+        body = {"name": name or (t["name"] if t else tr("Allenamento libero")), "status": "active",
                 "started_at": started_at or now_iso(), "template_id": template_id,
                 "program_id": prog["id"] if prog and t and any(d["template_id"] == t["id"] for d in prog["days"]) else None,
                 "exercises": exercises, "adaptation_id": adaptation_id, "readiness": readiness or self._today_checkin() or {}}
@@ -435,7 +436,7 @@ class Hercules:
             se_id = se["id"]
         se = next((e for e in sess.get("exercises") or [] if e["id"] == se_id), None)
         if not se:
-            raise NotFound("esercizio non presente nell'allenamento")
+            raise NotFound(tr("esercizio non presente nell'allenamento"))
         existing = [s for s in self._sets_of(session_id) if s.get("session_exercise_id") == se_id]
         data = {**body, "session_id": session_id, "session_exercise_id": se_id, "exercise_id": se["exercise_id"],
                 "session_at": sess["started_at"]}
@@ -574,9 +575,9 @@ class Hercules:
         nxt = self.next_workout(date.fromisoformat(frm))
         tid = template_id or (nxt.get("template") or {}).get("id")
         if not tid:
-            raise Conflict("niente da spostare")
+            raise Conflict(tr("niente da spostare"))
         plans = {p["date"]: p for p in self.store.items("plan")}
-        self.save("plan", {"date": frm, "status": "moved", "template_id": tid, "note": f"spostato al {to_day}"},
+        self.save("plan", {"date": frm, "status": "moved", "template_id": tid, "note": tr("spostato al {0}", to_day)},
                   id=(plans.get(frm) or {}).get("id"))
         out = self.save("plan", {"date": to_day, "status": "planned", "template_id": tid, "from_date": frm},
                         id=(plans.get(to_day) or {}).get("id"))
@@ -626,7 +627,7 @@ class Hercules:
         else:
             t = self.get("template", template_id) if template_id else (self.next_workout().get("template"))
             if not t:
-                raise Conflict("nessuna scheda da adattare: crea una scheda o un programma")
+                raise Conflict(tr("nessuna scheda da adattare: crea una scheda o un programma"))
             plan = self._plan_from_template(t)
             base = {"session_id": None, "template_id": t["id"], "name": t["name"]}
         catalog_map = {e["id"]: e for e in self.store.items("exercise")}
@@ -636,7 +637,7 @@ class Hercules:
                                     equipment_missing=equipment_missing)
         pain_count = self._recent_pain(readiness)
         if pain_count >= 3:
-            result["warnings"].append(f"È la {pain_count}ª volta in due settimane che segnali dolore: fatti vedere.")
+            result["warnings"].append(tr("È la {0}ª volta in due settimane che segnali dolore: fatti vedere.", pain_count))
         adaptation = self.save("adaptation", {**base, "created_at": now_iso(), "readiness": readiness, "intent": intent,
                                               "original": plan, "result": result, "accepted": False})
         names = {e["id"]: e.get("name") for e in catalog_map.values()}
@@ -669,7 +670,7 @@ class Hercules:
     def restore_today(self, session_id: str | None = None) -> dict:
         sess = self.get("session", session_id) if session_id else self.active_session()
         if not sess or not sess.get("original_plan"):
-            raise Conflict("niente da ripristinare")
+            raise Conflict(tr("niente da ripristinare"))
         logged = {s["session_exercise_id"] for s in self._sets_of(sess["id"])}
         kept = [e for e in sess.get("exercises") or [] if e["id"] in logged]
         done_items = {e.get("template_item_id") for e in kept}
@@ -739,7 +740,7 @@ class Hercules:
         hint = goals[0]["progress"]["hint"] if goals else ""
         chips = []
         if act:
-            chips.append({"id": f"resume:{act['id']}", "label": f"Riprendi {act.get('name')}", "icon": "play",
+            chips.append({"id": f"resume:{act['id']}", "label": tr("Riprendi {0}", act.get('name')), "icon": "play",
                           "state": "todo", "hint": "in corso"})
         favs = [t for t in self.store.items("template") if t.get("favorite") and not t.get("archived")]
         nxt = self.next_workout()
@@ -780,34 +781,34 @@ class Hercules:
             flags.append("stall")
         lines = []
         if act:
-            lines.append(f"In corso: {act.get('name')}")
+            lines.append(tr("In corso: {0}", act.get('name')))
         if nxt.get("template"):
-            lines.append(f"{'Oggi' if not nxt.get('rest_day') else 'Prossimo'}: {nxt['template']['name']}"
+            lines.append(f"{tr('Oggi') if not nxt.get('rest_day') else tr('Prossimo')}: {nxt['template']['name']}"
                          f" · {nxt.get('estimated_minutes', '?')} min")
         if goals:
             g = goals[0]["progress"]
             lines.append(f"{g['label']}: {g['hint']}" + (" (indietro)" if g["behind"] else ""))
         else:
-            lines.append(f"Settimana: {week[-1]['sessions']} allenamenti")
+            lines.append(tr("Settimana: {0} allenamenti", week[-1]['sessions']))
         # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km di corsa» logged, then
         # «come sto andando?» → «nessuna sessione questa settimana»).
         week_start = str(week[-1].get("start") or "")[:10]
         acts = [a for a in self.store.items("activity") if a.get("status", "done") == "done"
                 and str(a.get("date") or "")[:10] >= week_start] if week_start else []
         if acts:
-            lines.append("Attività: " + ", ".join(
+            lines.append(tr("Attività: ") + ", ".join(
                 f"{a.get('kind')}" + (f" {float(a['km']):g} km" if a.get("km") else "") + (f" {a['minutes']} min" if a.get("minutes") else "")
                 for a in acts[-5:]))
         if prs:
-            lines.append("PR: " + ", ".join(f"{p['exercise']} {p['label'].lower()} {progression.fmt_kg(p['value'])}" for p in prs))
+            lines.append(tr("PR: ") + ", ".join(f"{p['exercise']} {p['label'].lower()} {progression.fmt_kg(p['value'])}" for p in prs))
         if stalls:
-            lines.append("Stallo: " + ", ".join(s["exercise"] for s in stalls[:3]))
+            lines.append(tr("Stallo: ") + ", ".join(s["exercise"] for s in stalls[:3]))
         if "deload_suggested" in flags:
-            lines.append("Energia bassa 3+ volte in 7 giorni: valuta una settimana di scarico")
+            lines.append(tr("Energia bassa 3+ volte in 7 giorni: valuta una settimana di scarico"))
         if missed:
-            lines.append("Saltati: " + ", ".join(missed))
+            lines.append(tr("Saltati: ") + ", ".join(missed))
         if last:
-            lines.append(f"Ultimo: {last.get('name')} {records.local_date(last.get('started_at'), self.tz)}")
+            lines.append(tr("Ultimo: {0} {1}", last.get('name'), records.local_date(last.get('started_at'), self.tz)))
         return {"text": " · ".join(lines), "lines": lines, "next": nxt, "week": week[-1], "previous_week": week[0],
                 "activities_week": [{k: a.get(k) for k in ("kind", "date", "km", "minutes")} for a in acts],
                 "goals": [{"label": g["progress"]["label"], **{k: g["progress"][k] for k in ("done", "times", "behind", "streak")}}
@@ -829,10 +830,10 @@ class Hercules:
             parts = [f"{sm['exercises']} esercizi", f"{sm['sets']} serie"]
             if sm.get("duration_min"):
                 parts.append(f"{sm['duration_min']} min")
-            done.append({"text": f"{sm.get('name') or 'Allenamento'}: " + ", ".join(parts), "tone": "success"})
+            done.append({"text": f"{sm.get('name') or tr('Allenamento')}: " + ", ".join(parts), "tone": "success"})
             prs = [p for p in records.session_prs(data, sess, self.formula()) if not p["first"]]
             if prs:
-                done.append({"text": "Record: " + ", ".join(
+                done.append({"text": tr("Record: ") + ", ".join(
                     f"{p['exercise']} {p['label'].lower()} {progression.fmt_kg(p['value'])}" for p in prs[:3]),
                     "tone": "success"})
         plans = {p["date"]: p for p in self.store.items("plan")}
@@ -841,11 +842,11 @@ class Hercules:
         if not sessions:
             plan = plans.get(day.isoformat()) or {}
             if plan.get("status") == "skipped":
-                missed.append({"text": "Allenamento saltato", "tone": "warning"})
+                missed.append({"text": tr("Allenamento saltato"), "tone": "warning"})
             elif prog and prog.get("mode") == "weekly" and plan.get("status") != "moved":
                 todays = [x for x in prog["days"] if x.get("weekday") == day.weekday() and x["template_id"] in templates]
                 if todays:
-                    missed.append({"text": f"{templates[todays[0]['template_id']]['name']} in programma, non fatto",
+                    missed.append({"text": tr("{0} in programma, non fatto", templates[todays[0]['template_id']]['name']),
                                    "tone": "warning"})
         nw = self.next_workout(nxt)
         planned_for_next = nw.get("template") and (nw.get("planned_date") == nxt.isoformat()

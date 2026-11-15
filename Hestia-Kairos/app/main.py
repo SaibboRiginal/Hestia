@@ -11,6 +11,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -117,7 +118,7 @@ def dismiss(did: str):
     return deadlines.dismiss(did)
 
 
-app.include_router(recap.recap_router("kairos", lambda d, n: recap.piece("kairos", "Scadenze", icon="clock", order=15,
+app.include_router(recap.recap_router("kairos", lambda d, n: recap.piece("kairos", tr("Scadenze"), icon="clock", order=15,
                                                                          **deadlines.recap(d, n)),
                                       today=deadlines.today))
 
@@ -150,7 +151,7 @@ def process_pending_mail() -> dict:
 
 def _mail_rules() -> list[dict]:
     words = kit.settings.get("kairos.mail.words", DEFAULT_MAIL_WORDS) or DEFAULT_MAIL_WORDS
-    return [mail_rule(MAIL_KEY, "Email con scadenze", path=f"{API}/mail", domain=DOMAIN, subject_contains=words,
+    return [mail_rule(MAIL_KEY, tr("Email con scadenze"), path=f"{API}/mail", domain=DOMAIN, subject_contains=words,
                       description="Bollette, rinnovi, avvisi: Scadenze propone la scadenza, tu confermi.")]
 
 
@@ -170,26 +171,26 @@ def _when(d: dict) -> str:
 def _card(d: dict) -> dict:
     lines = [f"{d['category_label']} · {d['due'][8:10]}/{d['due'][5:7]}/{d['due'][:4]} ({_when(d)})"]
     if d.get("amount"):
-        lines.append(f"Importo: {d['amount']:.2f} €")
+        lines.append(tr("Importo: {0:.2f} €", d['amount']))
     if d.get("recurrence") and d["recurrence"] != "none":
-        lines.append(f"Ricorrenza: {d['recurrence']}")
+        lines.append(tr("Ricorrenza: {0}", d['recurrence']))
     if d.get("advice"):
         lines.append(d["advice"])
     return display(d["title"], lines=lines,
-                   actions=[action("Fatto", "scadenze_done", {"deadline": d["id"]}, style="primary"),
-                            action("Fra 3 giorni", "scadenze_snooze", {"deadline": d["id"], "days": 3}),
-                            action("Consiglio", "scadenze_consiglio", {"deadline": d["id"]})])
+                   actions=[action(tr("Fatto"), "scadenze_done", {"deadline": d["id"]}, style="primary"),
+                            action(tr("Fra 3 giorni"), "scadenze_snooze", {"deadline": d["id"], "days": 3}),
+                            action(tr("Consiglio"), "scadenze_consiglio", {"deadline": d["id"]})])
 
 
 def _list(days: int | None = None, category: str = "", status: str = "open") -> dict:
     items = deadlines.list(status, days, category)
     return {"count": len(items), "items": [{"id": d["id"], "title": d["title"], "due": d["due"], "in_days": d["in_days"],
                                             "amount": d.get("amount"), "status": d["status"]} for d in items],
-            "display": display("Scadenze", items=[item(d["title"], [_when(d)] + ([f"{d['amount']:.2f} €"]
+            "display": display(tr("Scadenze"), items=[item(d["title"], [_when(d)] + ([f"{d['amount']:.2f} €"]
                                                                                if d.get("amount") else []))
                                                   for d in items[:30]],
-                               lines=[] if items else ["Nessuna scadenza."],
-                               actions=[action("Aggiungi", "scadenze_add", style="primary")])}
+                               lines=[] if items else [tr("Nessuna scadenza.")],
+                               actions=[action(tr("Aggiungi"), "scadenze_add", style="primary")])}
 
 
 def _add(title: str, due: str, category: str = "", amount: float | None = None, recurrence: str = "none",
@@ -277,7 +278,7 @@ app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
     usecase(ADVICE_USE, "Scadenze · consigli", chain="veloce", help="Un consiglio pratico breve su una scadenza.")])})
 kit.capabilities(transfer.capabilities)
-kit.agenda_rules(lambda: [job_rule("kairos.daily", "Scadenze: avvisi", service="kairos", path=f"{API}/daily",
+kit.agenda_rules(lambda: [job_rule("kairos.daily", tr("Scadenze: avvisi"), service="kairos", path=f"{API}/daily",
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=kit.tz,
                                    description="Un avviso al preavviso e uno il giorno della scadenza.")])
 kit.on_warm(lambda: (mail.subscribe_async(_mail_rules), process_pending_mail()))

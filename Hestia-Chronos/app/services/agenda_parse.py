@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 from dateutil.rrule import rrulestr
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.agenda_parse")
 
@@ -54,7 +55,7 @@ def _generate(prompt: str, timeout: float = 45) -> str:
     resp.raise_for_status()
     routed = resp.json() if resp.content else {}
     if int(routed.get("status_code", 500)) >= 400:
-        raise ParseError(f"Oracle: {str(routed.get('payload'))[:200]}", 502)
+        raise ParseError(tr("Oracle: {0}", str(routed.get('payload'))[:200]), 502)
     payload = routed.get("payload") or {}
     return str(payload.get("response") or payload.get("raw") or "") if isinstance(payload, dict) else str(payload)
 
@@ -63,13 +64,13 @@ def _extract_json(raw: str) -> dict:
     raw = re.sub(r"^```[a-zA-Z]*\s*|```\s*$", "", raw.strip())
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
-        raise ParseError("risposta non in JSON", 502)
+        raise ParseError(tr("risposta non in JSON"), 502)
     try:
         data = json.loads(m.group(0))
     except json.JSONDecodeError as exc:
-        raise ParseError(f"JSON non valido: {exc}", 502) from exc
+        raise ParseError(tr("JSON non valido: {0}", exc), 502) from exc
     if not isinstance(data, dict):
-        raise ParseError("JSON non è un oggetto", 502)
+        raise ParseError(tr("JSON non è un oggetto"), 502)
     return data
 
 
@@ -128,7 +129,7 @@ def parse(text: str, now: datetime | None = None, tz_name: str | None = None) ->
         raise
     except Exception as exc:
         logger.warning("[🔄] event=agenda_parse_oracle_failed error=%s", exc)
-        raise ParseError("Oracle non raggiungibile", 503) from exc
+        raise ParseError(tr("Oracle non raggiungibile"), 503) from exc
     draft = normalize(_extract_json(raw), text, now, tz)
     logger.info("event=agenda_parsed type=%s recurring=%s", draft["type"], bool(draft["recurrence"]))
     return draft

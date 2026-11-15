@@ -47,3 +47,5 @@ Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, ne
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the advice prompt are English; the advice is written in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».

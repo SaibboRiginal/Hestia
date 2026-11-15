@@ -17,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_kairos.service")
 
@@ -128,19 +129,19 @@ class Deadlines:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(f"nessuna scadenza «{ref}»")
-        raise Invalid("più scadenze corrispondono: " + ", ".join(h["title"] for h in hits[:5]))
+            raise NotFound(tr("nessuna scadenza «{0}»", ref))
+        raise Invalid(tr("più scadenze corrispondono: ") + ", ".join(h["title"] for h in hits[:5]))
 
     # ── writing ─────────────────────────────────────────────────────────────
     def save(self, body: dict, did: str | None = None, *, source: str = "manual", status: str = "open") -> dict:
         old = self.find(did) if did else {}
         title = str(body.get("title") or old.get("title") or "").strip()[:120]
         if not title:
-            raise Invalid("serve un titolo (es. «Bollo auto»)")
+            raise Invalid(tr("serve un titolo (es. «Bollo auto»)"))
         try:
             due = date.fromisoformat(str(body.get("due") or old.get("due") or "")[:10])
         except ValueError:
-            raise Invalid("data di scadenza AAAA-MM-GG") from None
+            raise Invalid(tr("data di scadenza AAAA-MM-GG")) from None
         category = body.get("category") or old.get("category") or guess_category(title)
         category = category if category in CATEGORIES else "altro"
         recurrence = body.get("recurrence") or old.get("recurrence") or "none"
@@ -166,7 +167,7 @@ class Deadlines:
         if not self.agenda:
             return
         start = datetime.combine(date.fromisoformat(d["due"]), datetime.min.time().replace(hour=9), self.tz)
-        self.agenda.show(f"kairos.{d['id']}", f"Scadenza: {d['title']}", start,
+        self.agenda.show(f"kairos.{d['id']}", tr("Scadenza: {0}", d['title']), start,
                          description=(f"{d['amount']:.2f} €. " if d.get("amount") else "") + (d.get("advice") or ""),
                          end_at=start + timedelta(minutes=30), params={"deadline_id": d["id"]})
 
@@ -237,18 +238,18 @@ class Deadlines:
         due = find_due(text, self.today())
         if not due:
             return {"status": "ignored"}
-        d = self.save({"title": subject[:120] or "Scadenza da email", "due": due.isoformat(),
+        d = self.save({"title": subject[:120] or tr("Scadenza da email"), "due": due.isoformat(),
                        "amount": find_amount(text), "category": guess_category(text), "mail_ref": ref},
                       source="mail", status="proposed")
         if self.hub:
             amount = f" · {d['amount']:.2f} €" if d.get("amount") else ""
             self.hub.notify({"event_type": "service.action_required", "domain": "deadlines",
                              "entity_id": f"kairos-proposal-{d['id']}",
-                             "payload": {"kind": "kairos.proposal", "service": "kairos", "_source": "Scadenze",
-                                         "_title": "Nuova scadenza?", "level": "info", "target": "owner", "icon": "clock",
-                                         "_message": f"<b>{d['title']}</b> entro il {due.strftime('%d/%m/%Y')}{amount}.",
+                             "payload": {"kind": "kairos.proposal", "service": "kairos", "_source": tr("Scadenze"),
+                                         "_title": tr("Nuova scadenza?"), "level": "info", "target": "owner", "icon": "clock",
+                                         "_message": tr("<b>{0}</b> entro il {1}{2}.", d['title'], due.strftime('%d/%m/%Y'), amount),
                                          "_actions": [
-                                             {"id": "si", "label": "Aggiungi", "style": "primary", "service": "kairos",
+                                             {"id": "si", "label": tr("Aggiungi"), "style": "primary", "service": "kairos",
                                               "path": f"/api/deadlines/{d['id']}/confirm", "body": {}, "resolves": True},
                                              {"id": "no", "label": "No", "service": "kairos",
                                               "path": f"/api/deadlines/{d['id']}/dismiss", "body": {}, "resolves": True}]}})
@@ -268,14 +269,14 @@ class Deadlines:
             if self.hub:
                 self.hub.notify({"event_type": "service.action_required", "domain": "deadlines",
                                  "entity_id": f"kairos-{d['id']}",
-                                 "payload": {"kind": "kairos.due", "service": "kairos", "_source": "Scadenze",
+                                 "payload": {"kind": "kairos.due", "service": "kairos", "_source": tr("Scadenze"),
                                              "_title": f"{d['title']} {when}", "target": "owner", "icon": "clock",
                                              "level": "warning" if stage == "today" else "info",
                                              "_message": d.get("advice") or "", "replaces": f"kairos.{d['id']}",
-                                             "_actions": [{"id": "fatto", "label": "Fatto", "style": "primary",
+                                             "_actions": [{"id": "fatto", "label": tr("Fatto"), "style": "primary",
                                                            "service": "kairos", "path": f"/api/deadlines/{d['id']}/done",
                                                            "body": {}, "resolves": True},
-                                                          {"id": "dopo", "label": "Fra 3 giorni", "service": "kairos",
+                                                          {"id": "dopo", "label": tr("Fra 3 giorni"), "service": "kairos",
                                                            "path": f"/api/deadlines/{d['id']}/snooze",
                                                            "body": {"days": 3}}]}})
             raw = self.store.data("deadline", d["id"]) or {}

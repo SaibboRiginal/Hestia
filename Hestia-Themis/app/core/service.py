@@ -19,6 +19,7 @@ from urllib.parse import parse_qsl, quote
 from .hub import Hub, HubError
 from .registry import Registry
 from .validation import SettingValueError, validate
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_themis.service")
 
@@ -118,7 +119,7 @@ class Themis:
             shared = self.shared_values(owner)
         except Exception as exc:
             logger.warning("[🔄] event=themis_archive_unreachable owner=%s error=%s", owner, exc)
-            raise ThemisError("archivio non raggiungibile", 503)
+            raise ThemisError(tr("archivio non raggiungibile"), 503)
         return {"owner": owner, "values": values, "shared": shared, "revision": self.revision}
 
     # ── module state ────────────────────────────────────────────────────────
@@ -282,10 +283,10 @@ class Themis:
                 raise ThemisError("scope ammessi: profile, client, session")
             scope_id = PROFILE_ID if scope == "profile" else (scope_id or "")
             if not scope_id:
-                raise ThemisError(f"scope_id obbligatorio per scope {scope}")
+                raise ThemisError(tr("scope_id obbligatorio per scope {0}", scope))
             return scope, scope_id
         if scope not in (None, "", "system"):
-            raise ThemisError("questa impostazione vale per tutto il sistema (scope system)")
+            raise ThemisError(tr("questa impostazione vale per tutto il sistema (scope system)"))
         return "system", ""
 
     def set(self, key: str, value: Any, *, scope: str | None = None, scope_id: str | None = None,
@@ -294,7 +295,7 @@ class Themis:
         if not d:
             raise ThemisError(f"impostazione {key} sconosciuta", 404)
         if actor in ACTORS_ASSISTANT:
-            raise ThemisError("l'assistente può solo proporre modifiche", 403)
+            raise ThemisError(tr("l'assistente può solo proporre modifiche"), 403)
         try:
             value = validate(d, value)
         except SettingValueError as exc:
@@ -368,7 +369,7 @@ class Themis:
         """Restore the value before the last change (as a new change, so undo is undoable)."""
         rows = self.history(key, scope=scope, scope_id=scope_id, limit=1)
         if not rows:
-            raise ThemisError("niente da annullare", 404)
+            raise ThemisError(tr("niente da annullare"), 404)
         old = rows[0].get("old_value")
         if old is None:
             return self.reset(key, scope=scope, scope_id=scope_id, actor=actor)
@@ -422,7 +423,7 @@ class Themis:
         if not d:
             raise ThemisError(self._unknown_key_hint(key), 404)
         if d.get("oracle", "propose") != "propose":
-            raise ThemisError("questa impostazione può cambiarla solo l'utente", 403)
+            raise ThemisError(tr("questa impostazione può cambiarla solo l'utente"), 403)
         try:
             value = validate(d, value)
         except SettingValueError as exc:
@@ -456,8 +457,7 @@ class Themis:
         who = {"oracle": "Hestia (chat)", "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
         if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
             who = f"{who[len('external:'):]} (AI esterna)"
-        text = (f"⚙️ {who} propone di cambiare «{d.get('label') or d.get('key')}» "
-                f"({d.get('module')}): {_describe(current, d)} → {_describe(row.get('value'), d)}.")
+        text = (tr("⚙️ {0} propone di cambiare «{1}» ({2}): {3} → {4}.", who, d.get('label') or d.get('key'), d.get('module'), _describe(current, d), _describe(row.get('value'), d)))
         if row.get("reason"):
             text += f"\nMotivo: {row['reason']}"
         return text
@@ -465,9 +465,9 @@ class Themis:
     @staticmethod
     def _decision_actions(pid: str) -> list[dict]:
         return [
-            {"id": "approve", "label": "Approva", "text": "✅ Approva", "style": "primary", "service": "themis",
+            {"id": "approve", "label": tr("Approva"), "text": "✅ Approva", "style": "primary", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
-            {"id": "reject", "label": "Rifiuta", "text": "❌ Rifiuta", "style": "danger", "service": "themis",
+            {"id": "reject", "label": tr("Rifiuta"), "text": "❌ Rifiuta", "style": "danger", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
         ]
 
@@ -479,7 +479,7 @@ class Themis:
         if row.get("reason"):
             prompt += f"\n{row['reason']}"
         actions = self._decision_actions(pid)
-        return {"question_id": f"themis:{pid}", "header": "Confermi la modifica?", "prompt": prompt,
+        return {"question_id": f"themis:{pid}", "header": tr("Confermi la modifica?"), "prompt": prompt,
                 "options": [{"label": a["label"], "value": a["id"]} for a in actions],
                 "actions": {a["id"]: {k: a[k] for k in ("service", "method", "path", "body")} for a in actions}}
 
@@ -508,7 +508,7 @@ class Themis:
                               body={"status": status, "decided_by": by, "only_if_status": "pending"})
         except HubError as exc:
             if exc.status == 409:
-                raise ThemisError("proposta già gestita", 409, {"status": "already_decided"})
+                raise ThemisError(tr("proposta già gestita"), 409, {"status": "already_decided"})
             raise
         self._bump(f"proposal_{status}:{proposal['proposal_id']}")
         if notify:
@@ -525,7 +525,7 @@ class Themis:
             raise ThemisError("proposta sconosciuta", 404)
         proposal = found[0]
         if proposal.get("status") != "pending":
-            raise ThemisError(f"proposta già {proposal.get('status')}", 409,
+            raise ThemisError(tr("proposta già {0}", proposal.get('status')), 409,
                               {"status": "already_decided", "decision": proposal.get("status")})
         if not approve:
             self._close(proposal, "rejected", by, notify=True)
@@ -548,7 +548,7 @@ class Themis:
         self._bump(f"approved:{proposal['key']}")
         self._emit("settings.changed", f"settings.changed:{proposal['proposal_id']}",
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),
-                    "title": "Impostazione cambiata", "level": "success",
+                    "title": tr("Impostazione cambiata"), "level": "success",
                     "_message": f"✅ Impostazione cambiata: {d.get('label') or proposal['key']} → "
                                 f"{_describe(proposal.get('value'), d)}"})
         return {"key": proposal["key"], "value": proposal.get("value"), "revision": self.revision}
@@ -561,7 +561,7 @@ class Themis:
                     "event_type": "service.action_required" if kind == "settings.proposal" else kind,
                     "domain": "system", "entity_id": entity_id,
                     "payload": {"kind": kind, "service": "themis", "source": "themis", "domain": "settings",
-                                "_source": "themis", "_title": payload.get("title") or "Impostazioni",
+                                "_source": "themis", "_title": payload.get("title") or tr("Impostazioni"),
                                 "target": "owner", "dedupe_key": entity_id, **payload}}, timeout=8)
             except Exception as exc:
                 logger.warning("[🔄] event=themis_hermes_emit_failed kind=%s error=%s "
@@ -570,7 +570,7 @@ class Themis:
 
     def _notify_proposal(self, d: dict, row: dict, current: Any, origin: dict | None = None) -> None:
         pid = row.get("proposal_id", "")
-        payload = {"proposal_id": pid, "key": d.get("key"), "title": "Proposta di modifica impostazione",
+        payload = {"proposal_id": pid, "key": d.get("key"), "title": tr("Proposta di modifica impostazione"),
                    "level": "warning", "_message": self._proposal_text(d, row, current),
                    "_actions": self._decision_actions(pid)}
         if origin:   # asked in a chat: the card is there; Hermes keeps a quiet inbox copy (no push)

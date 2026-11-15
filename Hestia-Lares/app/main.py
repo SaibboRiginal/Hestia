@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -61,7 +62,7 @@ def persons_options():
         rows = home.list("person")
     except Exception:
         rows = []
-    return {"options": [{"value": "", "label": "Nessuna"}] + [{"value": e["id"], "label": e["name"]} for e in rows]}
+    return {"options": [{"value": "", "label": tr("Nessuna")}] + [{"value": e["id"], "label": e["name"]} for e in rows]}
 
 
 @app.get(f"{API}/entities")
@@ -109,15 +110,15 @@ def delete_favorite(fid: str):
 def _status() -> dict:
     s = home.status()
     if not s["configured"]:
-        return {**s, "display": display("Casa", lines=["La casa non è ancora collegata."])}
+        return {**s, "display": display(tr("Casa"), lines=[tr("La casa non è ancora collegata.")])}
     if not s.get("connected") and s.get("error"):
-        return {**s, "display": display("Casa", lines=[s["error"]])}
-    lines = [("Luci accese: " + ", ".join(s["lights_on"][:8])) if s["lights_on"] else "Tutte le luci spente"]
+        return {**s, "display": display(tr("Casa"), lines=[s["error"]])}
+    lines = [(tr("Luci accese: ") + ", ".join(s["lights_on"][:8])) if s["lights_on"] else tr("Tutte le luci spente")]
     if s["temperatures"]:
-        lines.append("Temperature: " + "; ".join(s["temperatures"]))
+        lines.append(tr("Temperature: ") + "; ".join(s["temperatures"]))
     if s["open"]:
-        lines.append("Aperte: " + ", ".join(s["open"]))
-    return {**s, "display": display("Casa", lines=lines, actions=[
+        lines.append(tr("Aperte: ") + ", ".join(s["open"]))
+    return {**s, "display": display(tr("Casa"), lines=lines, actions=[
         action(f["label"], "casa_preferito_esegui", {"favorite": f["id"]}) for f in s["favorites"][:6]])}
 
 
@@ -125,7 +126,7 @@ def _devices(domain: str = "", query: str = "") -> dict:
     rows = home.list(domain, query)
     return {"count": len(rows), "items": rows[:80], "display": display(
         LABELS.get(domain, "Dispositivi"), items=[item(e["name"], [home.say(e)]) for e in rows[:30]],
-        lines=[] if rows else ["Nessun dispositivo."])}
+        lines=[] if rows else [tr("Nessun dispositivo.")])}
 
 
 def _command(device: str, command: str = "toggle", value: float | None = None) -> dict:

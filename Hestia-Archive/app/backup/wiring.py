@@ -19,6 +19,7 @@ from ..routers.backup import build_router
 from .pg import Pg
 from .remote import DriveRemote
 from .service import BackupService
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_archive.backup")
 
@@ -40,10 +41,10 @@ agenda = AgendaClient("archive", HUB_API_URL)
 
 def agenda_rules() -> list[dict]:
     return [
-        job_rule("archive.backup", "Backup", service="archive", path="/api/backup/run",
+        job_rule("archive.backup", tr("Backup"), service="archive", path="/api/backup/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T03:30:00", tz=TZ,
                  description="Copia cifrata di tutti i dati su Google Drive (cartella .hestia)."),
-        job_rule("archive.backup_verify", "Verifica backup", service="archive", path="/api/backup/verify",
+        job_rule("archive.backup_verify", tr("Verifica backup"), service="archive", path="/api/backup/verify",
                  recurrence="FREQ=MONTHLY;BYMONTHDAY=1", start_at="2026-01-01T04:00:00", tz=TZ,
                  description="Ripristina l'ultimo backup in un database di prova e controlla che sia completo."),
     ]
@@ -88,7 +89,7 @@ def _drive_connect() -> dict:
                 "user_code": payload.get("user_code"), "instructions": payload.get("instructions")}
     except Exception as exc:
         logger.warning("[🔄] event=backup_drive_connect_failed error=%s", exc)
-        return {"ok": False, "message": "collegamento a Google non disponibile ora, riprova"}
+        return {"ok": False, "message": tr("collegamento a Google non disponibile ora, riprova")}
 
 
 def setup(app, engine, database_url: str) -> BackupService | None:

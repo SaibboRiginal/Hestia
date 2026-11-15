@@ -11,6 +11,7 @@ from core import argus_settings as cfg
 from core.ui_plugin import ui
 
 from schemas.reports import LogEvent
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
@@ -66,8 +67,8 @@ def register(*, quiet_success: bool = False) -> bool:
             # WebUI plugin (Salute page, Stato sistema widget): manifest URL + version for the Hub catalog.
             **ui.capabilities(ARGUS_SERVICE_BASE_URL),
             # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Modelli.
-            "llm_usecases": [{"id": "argus.analisi", "label": "Argus · analisi allarmi", "chain": "veloce",
-                              "help": "Racconta e analizza gli allarmi di salute dei servizi.",
+            "llm_usecases": [{"id": "argus.analisi", "label": tr("Argus · analisi allarmi"), "chain": "veloce",
+                              "help": tr("Racconta e analizza gli allarmi di salute dei servizi."),
                               "thinking": "auto", "mode": "segui"}],
         },
     }

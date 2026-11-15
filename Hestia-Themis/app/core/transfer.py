@@ -12,6 +12,7 @@ from typing import Any
 from hestia_common.transfer import Section
 from .service import SELF_OWNER, Themis, ThemisError
 from .validation import SettingValueError, validate
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SCOPES = ("system", "profile", "client")
 ACTOR = "import"
@@ -24,7 +25,7 @@ def _short(value: Any) -> str:
 
 class SettingsSection(Section):
     def __init__(self, themis: Themis, module: str):
-        label = "Impostazioni personali" if module == "themis" else "Impostazioni"
+        label = tr("Impostazioni personali") if module == "themis" else tr("Impostazioni")
         super().__init__(module, label, icon="settings")
         self.themis = themis
         self.module = module
@@ -58,9 +59,9 @@ class SettingsSection(Section):
     def check(self, rec: dict) -> str | None:
         d = self.themis.registry.definition(rec.get("setting") or "")
         if not d:
-            return "impostazione non presente qui"
+            return tr("impostazione non presente qui")
         if rec.get("scope") not in SCOPES:
-            return "livello non importabile"
+            return tr("livello non importabile")
         try:
             validate(d, rec.get("value"))
             self.themis._target(d, rec.get("scope"), rec.get("scope_id") or None)

@@ -26,6 +26,7 @@ from core.catalog import EXTERNAL
 from core.mcp_server import FORBIDDEN, MCPServer
 from core.mcp_settings import EXTERNAL_RATE, settings
 from core.oauth import external_tool_list, public_base, www_authenticate
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_mcp.external")
 
@@ -77,7 +78,7 @@ class ExternalDoor:
         if isinstance(payload, dict):
             task = payload.get("task") if isinstance(payload.get("task"), dict) else payload
             detail = str(task.get("id") or task.get("proposal_id") or "")[:12]
-        text = f"🤖 <b>{access.get('name')}</b> (AI esterna) ha usato <i>{title}</i>" + (f" · {detail}" if detail else "")
+        text = tr("🤖 <b>{0}</b> (AI esterna) ha usato <i>{1}</i>", access.get('name'), title) + (f" · {detail}" if detail else "")
 
         def _run():
             try:
@@ -196,9 +197,9 @@ class ExternalDoor:
                 routed = resp.json() if resp.status_code == 200 else {}
             except Exception as exc:  # noqa: BLE001
                 logger.warning("[🔄] event=mcp_outbound_list_failed error=%s", exc)
-                return JSONResponse({"detail": "Hecate non raggiungibile"}, status_code=503)
+                return JSONResponse({"detail": tr("Hecate non raggiungibile")}, status_code=503)
             if int(routed.get("status_code", 502)) >= 400:
-                return JSONResponse({"detail": "Hecate non raggiungibile"}, status_code=503)
+                return JSONResponse({"detail": tr("Hecate non raggiungibile")}, status_code=503)
             payload = routed.get("payload") or {}
             return {"servers": payload.get("servers") or [], "how_to": payload.get("how_to")}
 

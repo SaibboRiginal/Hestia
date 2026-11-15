@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from .standards import STANDARDS, EngineError
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.blocks")
 
@@ -279,12 +280,12 @@ class Blocks:
                     errors.append(f"{p['name']}: {exc}")
                     logger.warning("[🔄] event=voice_external_failed provider=%s error=%s", p["name"], str(exc)[:200])
             else:
-                errors.append("motore esterno non pronto")
+                errors.append(tr("motore esterno non pronto"))
             if str(self.get(FALLBACK_KEY, "interna") or "interna") != "interna":
                 raise ChainExhausted("; ".join(errors))
         chain = self.chains().get(cfg["chain"])
         if not chain:
-            raise ChainExhausted(f"nessuna catena di {direction}")
+            raise ChainExhausted(tr("nessuna catena di {0}", direction))
         provs = self.providers()
         for i, s in enumerate(chain["steps"]):
             p = provs.get(s["provider"])

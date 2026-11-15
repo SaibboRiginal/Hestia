@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field
 from core.access import (OAUTH_TOKEN_PREFIX, SCOPES, AccessError, AccessStore, RateLimiter, hash_token, usable)
 from core.catalog import EXTERNAL
 from core.mcp_settings import OAUTH_TOKEN_MINUTES, settings
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_mcp.oauth")
 
@@ -190,7 +191,7 @@ class OAuthServer:
         responses = body.get("response_types") or ["code"]
         if responses != ["code"]:
             raise OAuthError("invalid_client_metadata", "response_types: code")
-        name = " ".join(str(body.get("client_name") or "").split())[:80] or urlsplit(uris[0]).hostname or "AI esterna"
+        name = " ".join(str(body.get("client_name") or "").split())[:80] or urlsplit(uris[0]).hostname or tr("AI esterna")
         client_id = CLIENT_PREFIX + secrets.token_urlsafe(18)
         secret = secrets.token_urlsafe(32) if method != "none" else None
         self._archive("POST", "oauth/clients", {
@@ -220,12 +221,12 @@ class OAuthServer:
         No ``redirect`` when the client or its redirect_uri cannot be trusted (the WebUI shows the error)."""
         client = self._client(params.get("client_id"))
         if client is None:
-            return {"status": "error", "error": "invalid_client", "error_description": "Client sconosciuto"}
+            return {"status": "error", "error": "invalid_client", "error_description": tr("Client sconosciuto")}
         redirect_uri = params.get("redirect_uri") or (
             client["redirect_uris"][0] if len(client["redirect_uris"]) == 1 else "")
         if redirect_uri not in client["redirect_uris"]:
             return {"status": "error", "error": "invalid_request",
-                    "error_description": "redirect_uri diverso da quello registrato"}
+                    "error_description": tr("redirect_uri diverso da quello registrato")}
         state = params.get("state")
 
         def fail(error: str, description: str) -> dict:
@@ -266,7 +267,7 @@ class OAuthServer:
             if req and pop:
                 self._pending.pop(request_id, None)
         if req is None:
-            raise AccessError("Richiesta di collegamento scaduta o già usata: ricollega dall'app", 404)
+            raise AccessError(tr("Richiesta di collegamento scaduta o già usata: ricollega dall'app"), 404)
         return req
 
     def pending(self, request_id: str) -> dict:
@@ -298,7 +299,7 @@ class OAuthServer:
         req = self._request(request_id, pop=True)
         logger.info("event=mcp_oauth_consent_denied client=%s", req["client_id"])
         return {"redirect": with_query(req["redirect_uri"], {
-            "error": "access_denied", "error_description": "Rifiutato su Hestia", "state": req["state"],
+            "error": "access_denied", "error_description": tr("Rifiutato su Hestia"), "state": req["state"],
             "iss": req["base"]})}
 
     # ── token endpoint ─────────────────────────────────────────────────────

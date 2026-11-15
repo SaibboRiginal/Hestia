@@ -29,6 +29,7 @@ from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
 from core.mail_watch import MailWatcher
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
                                   PERSONAL_PLACES, WEATHER_CACHE_MINUTES, settings as hecate_settings)
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 load_dotenv()
 
@@ -329,9 +330,7 @@ def _check_auth_and_notify() -> None:
         _notify_action_required(
             "reauth_google_calendar",
             (
-                f"⚠️ <b>Google Calendar</b> non è autenticato.\n\n"
-                f"{reason}\n\n"
-                "Usa il pulsante qui sotto per riautenticarti."
+                tr("⚠️ <b>Google Calendar</b> non è autenticato.\n\n{0}\n\nUsa il pulsante qui sotto per riautenticarti.", reason)
             ),
             actions=_reauth_actions,
         )
@@ -343,9 +342,7 @@ def _check_auth_and_notify() -> None:
         _notify_action_required(
             "reauth_google_gmail",
             (
-                f"⚠️ <b>Gmail</b> non è accessibile.\n\n"
-                f"{mail_error}\n\n"
-                "Usa il pulsante qui sotto per riautenticarti con lo scope gmail.readonly."
+                tr("⚠️ <b>Gmail</b> non è accessibile.\n\n{0}\n\nUsa il pulsante qui sotto per riautenticarti con lo scope gmail.readonly.", mail_error)
             ),
             actions=_reauth_actions,
         )
@@ -962,7 +959,7 @@ def gateway_calendar_ensure(body: dict):
     target = _calendar_registry.get(provider_name)
     if target is None:
         return {"status": "unavailable", "provider": provider_name, "name": name,
-                "error": f"{provider_name} non collegato"}
+                "error": tr("{0} non collegato", provider_name)}
     try:
         calendar_id = target.ensure_calendar(name)
     except NotImplementedError as exc:
@@ -991,7 +988,7 @@ def _recap_piece(day, nxt) -> dict:
     """Daily recap piece: tomorrow's weather at Casa (``hestia_common.recap`` contract)."""
     facts = recap_facts(weather, nxt.isoformat())
     icon = facts.pop("icon", "cloud-sun")
-    return recap_contract.piece("hecate", "Meteo", icon=icon, emoji="🌦️", order=5, **facts)
+    return recap_contract.piece("hecate", tr("Meteo"), icon=icon, emoji="🌦️", order=5, **facts)
 
 
 app.include_router(recap_contract.recap_router(
@@ -1062,7 +1059,7 @@ def _parse_since(since: str | None) -> datetime | None:
 def _mail_unavailable(exc: MailUnavailable, q: str = "") -> dict:
     if exc.auth_required:
         _notify_action_required(
-            "reauth_google_gmail", f"⚠️ <b>Gmail</b> non accessibile: {exc}.", actions=_REAUTH_ACTIONS)
+            "reauth_google_gmail", tr("⚠️ <b>Gmail</b> non accessibile: {0}.", exc), actions=_REAUTH_ACTIONS)
     return {"status": "error", "query": q, "count": 0, "messages": [], "error": str(exc),
             "action_required": "reauth_google" if exc.auth_required else None}
 
@@ -1228,14 +1225,14 @@ def _mail_watch_seconds() -> int:
 def _mail_agenda_rules() -> list[dict]:
     minutes = max(1, _mail_watch_seconds() // 60)
     rules = [job_rule(
-        MAIL_WATCH_JOB, "Controlla le email nuove", service="hecate", path="/api/gateway/mail/watch/run",
+        MAIL_WATCH_JOB, tr("Controlla le email nuove"), service="hecate", path="/api/gateway/mail/watch/run",
         body={"trigger": "agenda"}, recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
         description="Un solo controllo leggero della casella per tutta Hestia: le email nuove vanno a Iris, "
                     "che le passa ai moduli iscritti (Scout, Spese…). Con Gmail push attivo è solo una rete "
                     "di sicurezza.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
     if gmail_pubsub.configured():
         rules.append(job_rule(
-            MAIL_RENEW_JOB, "Rinnova l'avviso di Gmail", service="hecate",
+            MAIL_RENEW_JOB, tr("Rinnova l'avviso di Gmail"), service="hecate",
             path="/api/gateway/mail/watch/renew", body={}, recurrence="FREQ=DAILY",
             start_at="2026-01-01T04:10:00", description="Gmail push scade dopo 7 giorni: lo rinnovo ogni giorno.",
             timeout_seconds=30))
@@ -1392,17 +1389,16 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
         msg = _html.escape(str(detail.get("error", "")))
         hint = _html.escape(str(detail.get("hint", "")))
         return HTMLResponse(
-            _OAUTH_CALLBACK_HTML.format(icon="❌", title="Autorizzazione non riuscita",
+            _OAUTH_CALLBACK_HTML.format(icon="❌", title=tr("Autorizzazione non riuscita"),
                                         detail=f"{msg}<br><br>{hint}"),
             status_code=exc.status_code)
     if result["status"] == "authorized":
         scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "nessuno"
         return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
-            icon="✅", title="Autorizzazione completata!",
-            detail=f"Google è connesso a Hestia (scope: {_html.escape(scopes)}). "
-                   "Puoi chiudere questa pagina e tornare su Telegram."))
+            icon="✅", title=tr("Autorizzazione completata!"),
+            detail=tr("Google è connesso a Hestia (scope: {0}). Puoi chiudere questa pagina e tornare su Telegram.", _html.escape(scopes))))
     return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
-        icon="⚠️", title="Token salvato, provider non attivo",
+        icon="⚠️", title=tr("Token salvato, provider non attivo"),
         detail=_html.escape(str(result.get("unavailable")))))
 
 
@@ -1557,16 +1553,10 @@ def _initiate_google_redirect_flow() -> dict:
                                "redirect_uri": redirect}
     if public:
         instructions = (
-            "Apri il link da qualsiasi dispositivo (telefono, PC) e concedi l'accesso a "
-            "Calendar e Gmail: il ritorno passa dal tunnel pubblico e l'autenticazione "
-            "si completa da sola (riceverai conferma su Telegram).")
+            tr("Apri il link da qualsiasi dispositivo (telefono, PC) e concedi l'accesso a Calendar e Gmail: il ritorno passa dal tunnel pubblico e l'autenticazione si completa da sola (riceverai conferma su Telegram)."))
     else:
         instructions = (
-            "DA PC (dove gira Hestia): apri il link, concedi l'accesso — si completa da solo.\n"
-            "DA TELEFONO: apri il link, concedi l'accesso; la pagina finale (localhost) NON "
-            "si carica: è normale. Copia l'URL intero dalla barra degli indirizzi (o solo il "
-            "valore di code=) e incollalo qui in chat.\n"
-            "Per completare da telefono senza copia-incolla avvia cloudflare-tunnel.bat.")
+            tr("DA PC (dove gira Hestia): apri il link, concedi l'accesso — si completa da solo.\nDA TELEFONO: apri il link, concedi l'accesso; la pagina finale (localhost) NON si carica: è normale. Copia l'URL intero dalla barra degli indirizzi (o solo il valore di code=) e incollalo qui in chat.\nPer completare da telefono senza copia-incolla avvia cloudflare-tunnel.bat."))
     logger.info("event=google_oauth_redirect_initiated redirect_uri=%s public=%s", redirect, public)
     return {
         "status": "initiated",
@@ -1634,10 +1624,7 @@ def _initiate_google_device_flow() -> dict:
         "verification_url": verification_url,
         "expires_in": expires_in,
         "instructions": (
-            f"1. Apri {verification_url} sul tuo telefono o computer\n"
-            f"2. Inserisci questo codice: {user_code}\n"
-            "3. Concedi l'accesso a Calendar e Gmail\n"
-            "4. Hestia completa da sola (o usa 'Verifica completamento')."
+            tr("1. Apri {0} sul tuo telefono o computer\n2. Inserisci questo codice: {1}\n3. Concedi l'accesso a Calendar e Gmail\n4. Hestia completa da sola (o usa 'Verifica completamento').", verification_url, user_code)
         ),
     }
 
@@ -1708,8 +1695,7 @@ def _start_google_device_auto_poll() -> None:
             if status == "error":
                 _notify_action_required(
                     "google_reauth_failed",
-                    f"❌ <b>Autenticazione Google fallita:</b> {result.get('error', 'unknown')}\n\n"
-                    "Riprova con il pulsante qui sotto.",
+                    tr("❌ <b>Autenticazione Google fallita:</b> {0}\n\nRiprova con il pulsante qui sotto.", result.get('error', 'unknown')),
                     actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
                 )
                 return
@@ -1721,7 +1707,7 @@ def _start_google_device_auto_poll() -> None:
         logger.warning("event=google_auto_poll_timeout")
         _notify_action_required(
             "google_reauth_timeout",
-            "⏰ <b>Autenticazione Google scaduta.</b>\n\nRiavviala con il pulsante qui sotto.",
+            tr("⏰ <b>Autenticazione Google scaduta.</b>\n\nRiavviala con il pulsante qui sotto."),
             actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
         )
 
@@ -1745,9 +1731,9 @@ def _apply_google_token(token_data: dict) -> dict:
         gmail_ok = "https://www.googleapis.com/auth/gmail.readonly" in granted
         _notify_action_required(
             "google_reauth_complete",
-            "✅ <b>Google</b> è connesso a Hestia.\n\n"
+            tr("✅ <b>Google</b> è connesso a Hestia.\n\n")
             + ("Calendar e Gmail operativi." if gmail_ok
-               else "Calendar operativo. Gmail NON autorizzato: riautentica concedendo la lettura email."),
+               else tr("Calendar operativo. Gmail NON autorizzato: riautentica concedendo la lettura email.")),
         )
     return {
         "status": "authorized" if ok else "token_saved_provider_unavailable",
@@ -1755,7 +1741,7 @@ def _apply_google_token(token_data: dict) -> dict:
         "granted_scopes": granted,
         "active_providers": active,
         "unavailable": refreshed.get("unavailable", {}),
-        "note": "Token salvato in data/google_token.json: sopravvive ai riavvii del container.",
+        "note": tr("Token salvato in data/google_token.json: sopravvive ai riavvii del container."),
     }
 
 
@@ -1888,7 +1874,7 @@ def _google_words(fn):
             d = exc.detail
             if isinstance(d, dict):
                 d = " ".join(str(d.get(k) or "") for k in ("error", "hint")).strip()
-            raise connections.ConnectError(str(d or "Google non ha accettato.")[:300])
+            raise connections.ConnectError(str(d or tr("Google non ha accettato."))[:300])
     return run
 
 

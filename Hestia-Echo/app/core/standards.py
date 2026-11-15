@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 import requests
 
 from . import audio
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.standards")
 
@@ -50,7 +51,7 @@ def fetch(job_id: str, what: str, url: str, dest: Path, size_mb: int = 0) -> Pat
     DOWNLOADS.file(job_id, what, url, dest, size_hint=size_mb * 1_000_000)
     job = DOWNLOADS.wait(job_id, 1800)
     if job.get("state") != "fatto" or not dest.exists():
-        raise EngineError(job.get("error") or f"{what}: download non finito")
+        raise EngineError(job.get("error") or tr("{0}: download non finito", what))
     return dest
 
 
@@ -67,7 +68,7 @@ def prefetch(provider_type: str, model: str = "", voice: str = "") -> list[str]:
         return []
     if provider_type == "whisper_local":
         size = model or "small"
-        DOWNLOADS.add(f"whisper:{size}", f"Ascolto ({size})", "whisper", {"size": size},
+        DOWNLOADS.add(f"whisper:{size}", tr("Ascolto ({0})", size), "whisper", {"size": size},
                       size_hint=WHISPER_MB.get(size, 0) * 1_000_000)
         return [f"whisper:{size}"]
     if provider_type == "piper":
@@ -144,10 +145,10 @@ class Standard:
         return []
 
     def transcribe(self, provider: dict, model: str, data: bytes, mime: str, language: str, opts: dict) -> dict:
-        raise EngineError(f"{self.label} non ascolta")
+        raise EngineError(tr("{0} non ascolta", self.label))
 
     def speak(self, provider: dict, model: str, voice: str, text: str, language: str, opts: dict) -> tuple[bytes, str]:
-        raise EngineError(f"{self.label} non parla")
+        raise EngineError(tr("{0} non parla", self.label))
 
     def voice_language(self, voice: str) -> str:
         """The language a voice speaks ('' = any: a multilingual cloud voice reads every language itself)."""
@@ -209,7 +210,7 @@ class WhisperLocal(Standard):
 
     def transcribe(self, provider, model, data, mime, language, opts):
         if not self._installed():
-            raise EngineError("faster-whisper non installato")
+            raise EngineError(tr("faster-whisper non installato"))
         m = self._model(model or "small", str(opts.get("device") or "auto"))
         segments, info = m.transcribe(_whisper_samples(data), language=None if language in ("", "auto") else language,
                                       beam_size=int(opts.get("beam_size") or 5),
@@ -270,7 +271,7 @@ class Piper(Standard):
     def title(name: str, suffix: str = ".onnx") -> str:
         """«Voce Paola» for it_IT-paola-medium (the small .json is its settings)."""
         speaker = name.split("-")[1].capitalize() if name.count("-") >= 2 else name
-        return f"Voce {speaker}" + (" · impostazioni" if suffix.endswith(".json") else "")
+        return tr("Voce {0}", speaker) + (" · impostazioni" if suffix.endswith(".json") else "")
 
     @staticmethod
     def files(name: str) -> list[tuple[str, str, int]]:
@@ -278,7 +279,7 @@ class Piper(Standard):
         try:
             locale, speaker, quality = name.split("-")
         except ValueError:
-            raise EngineError(f"voce Piper {name!r} non valida (es. it_IT-paola-medium)")
+            raise EngineError(tr("voce Piper {0!r} non valida (es. it_IT-paola-medium)", name))
         base = (f"https://huggingface.co/rhasspy/piper-voices/resolve/main/{locale.split('_')[0]}/{locale}/"
                 f"{speaker}/{quality}/{name}")
         size = {"x_low": 21, "low": 63, "medium": 63, "high": 114}.get(quality, 63) * 1_000_000
@@ -309,13 +310,13 @@ class Piper(Standard):
             return voice
         pair = PIPER_BY_LANG.get(lang)
         if not pair:
-            raise EngineError(f"Piper non ha una voce in {lang}")
+            raise EngineError(tr("Piper non ha una voce in {0}", lang))
         male = voice.split("-")[1] in PIPER_MALE if voice.count("-") >= 2 else False
         return pair[1] if male else pair[0]
 
     def speak(self, provider, model, voice, text, language, opts):
         if not self._installed():
-            raise EngineError("piper-tts non installato")
+            raise EngineError(tr("piper-tts non installato"))
         v = self._voice(self.for_language(voice or model or PIPER_ITALIAN[0], language))
         import wave
         buf = tempfile.SpooledTemporaryFile()
@@ -392,7 +393,7 @@ class Kokoro(Standard):
             return voice
         pair = KOKORO_BY_LANG.get(lang)
         if not pair:
-            raise EngineError(f"Kokoro non ha una voce in {lang}")
+            raise EngineError(tr("Kokoro non ha una voce in {0}", lang))
         return pair[1] if voice[1:2] == "m" else pair[0]
 
     def _load(self):
@@ -408,7 +409,7 @@ class Kokoro(Standard):
 
     def speak(self, provider, model, voice, text, language, opts):
         if not self._installed():
-            raise EngineError("kokoro-onnx non installato")
+            raise EngineError(tr("kokoro-onnx non installato"))
         name = self.for_language(voice or model or "if_sara", language)
         engine = self._load()
         samples, rate = engine.create(text, voice=name, speed=float(opts.get("speed") or 1.0),
@@ -582,7 +583,7 @@ class ElevenLabs(Standard):
 
     def speak(self, provider, model, voice, text, language, opts):
         if not voice:
-            raise EngineError("ElevenLabs: scegli una voce")
+            raise EngineError(tr("ElevenLabs: scegli una voce"))
         body = {"text": text, "model_id": model or "eleven_multilingual_v2",
                 "voice_settings": {"stability": float(opts.get("stability", 0.5)),
                                    "similarity_boost": float(opts.get("similarity", 0.75)),
@@ -615,7 +616,7 @@ class Wyoming(Standard):
     def _read(f) -> tuple[str, dict, bytes]:
         line = f.readline()
         if not line:
-            raise EngineError("Wyoming: connessione chiusa")
+            raise EngineError(tr("Wyoming: connessione chiusa"))
         header = json.loads(line)
         data = header.get("data") or {}
         if header.get("data_length"):

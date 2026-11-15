@@ -14,6 +14,7 @@ import requests
 from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -82,13 +83,13 @@ async def _themis_error(_: Request, exc: ThemisError):
 @app.exception_handler(HubError)
 async def _hub_error(_: Request, exc: HubError):
     logger.warning("[🔄] event=themis_archive_error status=%s payload=%s", exc.status, str(exc.payload)[:200])
-    return JSONResponse(status_code=502, content={"detail": "archivio non disponibile", "upstream": exc.status})
+    return JSONResponse(status_code=502, content={"detail": tr("archivio non disponibile"), "upstream": exc.status})
 
 
 @app.exception_handler(requests.RequestException)
 async def _transport_error(_: Request, exc: requests.RequestException):
     logger.warning("[🔄] event=themis_hub_unreachable error=%s", exc)
-    return JSONResponse(status_code=503, content={"detail": "hub non raggiungibile"})
+    return JSONResponse(status_code=503, content={"detail": tr("hub non raggiungibile")})
 
 
 @app.get("/health")
@@ -263,12 +264,12 @@ def settings_undo_propose(key: str, body: dict | None = None):
     """Assistant undo: proposes the value before the last change (still confirmed by the user)."""
     rows = themis.history(key, limit=1)
     if not rows:
-        raise ThemisError("niente da annullare", 404)
+        raise ThemisError(tr("niente da annullare"), 404)
     d = registry.definition(key) or {}
     old = rows[0].get("old_value")
     return themis.propose(key, d.get("default") if old is None else old,
                           proposer=str((body or {}).get("proposer") or "oracle"),
-                          reason=str((body or {}).get("reason") or "annulla l'ultima modifica"))
+                          reason=str((body or {}).get("reason") or tr("annulla l'ultima modifica")))
 
 
 # ── MCP tools (aggregated by Hestia-MCP; the assistant uses them on demand) ──
@@ -288,7 +289,7 @@ try:
         return themis.propose(key, value, proposer="oracle", reason=reason)
 
     def _tool_undo(key: str = "", reason: str = "") -> dict:
-        return settings_undo_propose(key, {"proposer": "oracle", "reason": reason or "annulla l'ultima modifica"})
+        return settings_undo_propose(key, {"proposer": "oracle", "reason": reason or tr("annulla l'ultima modifica")})
 
     _themis_mcp_tools = [
         MCPTool(name="settings_search",

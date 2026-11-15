@@ -20,6 +20,7 @@ import time
 from pathlib import Path
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 API = os.getenv("ARCHIVE_LOCAL_API", "http://localhost:19002/api/backup")
 CONFIRM_WORD = "RIPRISTINA"
@@ -31,7 +32,7 @@ def _call(method: str, path: str, body: dict | None = None) -> dict:
     if resp.status_code >= 400:
         detail = data.get("detail") if isinstance(data, dict) else data
         msg = detail.get("message") if isinstance(detail, dict) else detail
-        raise SystemExit(f"Errore {resp.status_code}: {msg}")
+        raise SystemExit(tr("Errore {0}: {1}", resp.status_code, msg))
     return data
 
 
@@ -54,24 +55,24 @@ def _confirm(what: str, assume_yes: bool) -> None:
     if assume_yes:
         return
     try:
-        answer = input(f"Scrivi {CONFIRM_WORD} per continuare: ").strip()
+        answer = input(tr("Scrivi {0} per continuare: ", CONFIRM_WORD)).strip()
     except EOFError:
         answer = ""
     if answer != CONFIRM_WORD:
-        raise SystemExit("Annullato, nessun dato è cambiato.")
+        raise SystemExit(tr("Annullato, nessun dato è cambiato."))
 
 
 def cmd_list(_args) -> None:
     data = _call("GET", "/list")
     if data.get("error"):
-        print(f"Google Drive: {data['error']}")
+        print(tr("Google Drive: {0}", data['error']))
     for p in data.get("pending") or []:
-        print(f"  {p['created_at']}  {p.get('size', 0):>12}  in attesa di Drive  {p.get('name', '')}")
+        print(tr("  {0}  {1:>12}  in attesa di Drive  {2}", p['created_at'], p.get('size', 0), p.get('name', '')))
     for it in data.get("items") or []:
         mark = {"ok": "verificato", "fail": "verifica fallita"}.get(it.get("verify") or "", "")
         print(f"  {it['name']}  {it.get('size', 0):>12}  {'mensile ' if it.get('monthly') else ''}{mark}")
     if not (data.get("items") or data.get("pending")):
-        print("Nessun backup.")
+        print(tr("Nessun backup."))
 
 
 def cmd_status(_args) -> None:
@@ -84,24 +85,24 @@ def cmd_status(_args) -> None:
 def _report_restore(st: dict) -> None:
     r = st.get("last_restore") or {}
     if r.get("ok"):
-        print(f"Fatto: dati ripristinati da {r.get('name')}. «undo» li riporta a prima.")
+        print(tr("Fatto: dati ripristinati da {0}. «undo» li riporta a prima.", r.get('name')))
     else:
-        raise SystemExit(f"Ripristino non riuscito: {r.get('error')}. I dati non sono cambiati.")
+        raise SystemExit(tr("Ripristino non riuscito: {0}. I dati non sono cambiati.", r.get('error')))
 
 
 def cmd_restore(args) -> None:
     if args.local:
         name = Path(args.local).name
         body = {"local": name, "confirm": True}
-        label = f"del file {name}"
+        label = tr("del file {0}", name)
     else:
         items = _call("GET", "/list").get("items") or []
         match = [it for it in items if it["name"] == args.name or it["id"] == args.name]
         if not match:
-            raise SystemExit(f"Backup {args.name} non trovato su Google Drive (vedi «list»).")
+            raise SystemExit(tr("Backup {0} non trovato su Google Drive (vedi «list»).", args.name))
         body = {"file_id": match[0]["id"], "confirm": True}
-        label = f"di {match[0]['name']}"
-    _confirm(f"Ripristino {label}: tutti i dati tornano a quel momento, quello cambiato dopo viene sostituito.",
+        label = tr("di {0}", match[0]['name'])
+    _confirm(tr("Ripristino {0}: tutti i dati tornano a quel momento, quello cambiato dopo viene sostituito.", label),
              args.yes)
     _call("POST", "/restore", body)
     _report_restore(_wait())
@@ -109,12 +110,12 @@ def cmd_restore(args) -> None:
 
 def cmd_undo(args) -> None:
     before = (_call("GET", "/status").get("last_restore") or {}).get("undo_at")
-    _confirm("Annullo l'ultimo ripristino: i dati tornano com'erano subito prima.", args.yes)
+    _confirm(tr("Annullo l'ultimo ripristino: i dati tornano com'erano subito prima."), args.yes)
     _call("POST", "/undo", {"confirm": True})
     r = _wait().get("last_restore") or {}
     if r.get("undo_at") == before:
-        raise SystemExit("Annullamento non riuscito: vedi i log (docker logs hestia_archive).")
-    print("Fatto: dati di prima del ripristino." if r.get("undone") else "Fatto: di nuovo i dati del backup ripristinato.")
+        raise SystemExit(tr("Annullamento non riuscito: vedi i log (docker logs hestia_archive)."))
+    print(tr("Fatto: dati di prima del ripristino.") if r.get("undone") else tr("Fatto: di nuovo i dati del backup ripristinato."))
 
 
 def cmd_decrypt(args) -> None:
@@ -126,7 +127,7 @@ def cmd_decrypt(args) -> None:
     if not pw:
         raise SystemExit("Manca HESTIA_BACKUP_PASSPHRASE.")
     if not src.is_file():
-        raise SystemExit(f"{src} non esiste.")
+        raise SystemExit(tr("{0} non esiste.", src))
     out = src.with_name(src.name + ".dump")
     manifest = unseal(src, out, pw)
     print(f"{out} (pg_restore) — creato {manifest.get('created_at')}, {len(manifest.get('counts') or {})} tabelle")

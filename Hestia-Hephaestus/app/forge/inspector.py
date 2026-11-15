@@ -117,7 +117,7 @@ class TaskInspector:
                 "engine": a.read_text(task["id"], "engine.log") or str(task.get("engine_log_tail") or ""),
                 "deploy": a.read_text(task["id"], "deploy.log") or str((task.get("deploy") or {}).get("output_tail") or ""),
                 "error": task.get("error"),
-                "hint": f"Log dei container: docker logs hestia_hephaestus / hestia_oracle (event=forge_* task_id={task['id']})"}
+                "hint": f"Container logs: docker logs hestia_hephaestus / hestia_oracle (event=forge_* task_id={task['id']})"}
 
     def events(self, task_id: str) -> dict[str, Any]:
         task = self._task(task_id)
