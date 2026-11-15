@@ -4,6 +4,7 @@ import { PluginsService } from '../features/plugins/plugins.service';
 import { ChatService } from './chat.service';
 import { SessionService } from './session.service';
 import { DialogService, ToastService } from '../ui';
+import { tr } from '../core/i18n';
 
 export interface ChatTag { name: string; color: string; }
 export interface ChatSummary {
@@ -83,11 +84,11 @@ export class ChatsService {
 
   /** «Elimina» from any list of conversations: asks first, then tells how it went. */
   async confirmRemove(c: ChatSummary): Promise<boolean> {
-    const ok = await this.dialogs.confirm('Eliminare la conversazione?',
-      `«${c.title}» viene eliminata per sempre con tutti i suoi messaggi. Quello che l'assistente ha imparato su di te resta.`, 'Elimina', true);
+    const ok = await this.dialogs.confirm(tr('Eliminare la conversazione?'),
+      tr("«{0}» viene eliminata per sempre con tutti i suoi messaggi. Quello che l'assistente ha imparato su di te resta.", c.title), tr('Elimina'), true);
     if (!ok) return false;
     if (!(await this.remove(c.session_id))) { this.toasts.error('Non eliminata: riprova tra poco'); return false; }
-    this.toasts.success('Conversazione eliminata');
+    this.toasts.success(tr('Conversazione eliminata'));
     return true;
   }
 

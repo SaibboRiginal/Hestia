@@ -3,7 +3,7 @@
  * workout (sets, rest timer, warm-ups, plates). The live workout reads/writes only the local mirror, so it works
  * offline in the gym and syncs later (data.ts).
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Local, local, nowIso, uuid } from './data';
 import {
   FEEDBACK_TAGS, PAIN_AREAS, SET_TYPES, SET_TYPE_LABEL, dur, e1rm, herculesStyles, kg, minutes, muscleText,
@@ -102,7 +102,7 @@ export class HerculesToday extends HestiaElement {
     if (rest.until && !rest.notified && Date.now() >= rest.until) {
       rest.notified = true;
       try { navigator.vibrate?.([200, 100, 200]); } catch { /* not supported */ }
-      if (document.hidden) this.host.notify('Recupero finito', rest.label || 'Prossima serie', { tag: 'hercules-rest' });
+      if (document.hidden) this.host.notify(tr('Recupero finito'), rest.label || tr('Prossima serie'), { tag: 'hercules-rest' });
     }
   }
 
@@ -132,7 +132,7 @@ export class HerculesToday extends HestiaElement {
   }
 
   private start(t: any | null) {
-    if (this.L.activeSession()) { this.host.toast('C\'è già un allenamento in corso', 'warning'); return; }
+    if (this.L.activeSession()) { this.host.toast(tr('C\'è già un allenamento in corso'), 'warning'); return; }
     const c = this.todayCheckin();
     this.L.put('session', uuid(), {
       name: t ? t.name : 'Allenamento libero', status: 'active', started_at: nowIso(), template_id: t?.id ?? null, program_id: null,
@@ -212,7 +212,7 @@ export class HerculesToday extends HestiaElement {
     const w = work?.weight_kg ?? this.value(sess, block, (block.planned || []).findIndex((p: any) => p.type !== 'warmup'), 'weight_kg');
     const inc = this.L.settings.increments[ex?.equipment] || 2.5;
     const ws = warmups(w, this.L.settings.warmup, inc, ex?.equipment === 'barbell' ? this.L.settings.bar_weight : 0);
-    if (!ws.length) { this.host.toast('Serve un peso di lavoro per calcolare il riscaldamento', 'info'); return; }
+    if (!ws.length) { this.host.toast(tr('Serve un peso di lavoro per calcolare il riscaldamento'), 'info'); return; }
     const kept = (block.planned || []).filter((p: any) => p.type !== 'warmup');
     // logged sets keep their position: shift them after the new warm-ups
     const sets = this.L.setsOf(sess.id).filter(s => s.session_exercise_id === block.id);
@@ -296,7 +296,7 @@ export class HerculesToday extends HestiaElement {
       const best = (arr: any[], f: (s: any) => number | null) => Math.max(0, ...arr.map(s => f(s) || 0));
       const name = exs.get(exId)?.name || '?';
       const w = best(mine.filter(s => s.exercise_id === exId), s => s.weight_kg), wh = best(hist, s => s.weight_kg);
-      if (w > wh) out.push({ exercise: name, label: 'Peso massimo', value: w });
+      if (w > wh) out.push({ exercise: name, label: tr('Peso massimo'), value: w });
       const e = best(mine.filter(s => s.exercise_id === exId), s => e1rm(s.weight_kg, s.reps)), eh = best(hist, s => e1rm(s.weight_kg, s.reps));
       if (e > eh) out.push({ exercise: name, label: '1RM stimato', value: Math.round(e * 10) / 10 });
     }
@@ -306,7 +306,7 @@ export class HerculesToday extends HestiaElement {
   private async discard() {
     const sess = this.L.activeSession();
     if (!sess) return;
-    if (!(await this.host.confirm('Annullare l\'allenamento?', 'Le serie registrate verranno scartate.', { label: 'Scarta', danger: true }))) return;
+    if (!(await this.host.confirm(tr('Annullare l\'allenamento?'), tr('Le serie registrate verranno scartate.'), { label: tr('Scarta'), danger: true }))) return;
     this.saveSession(sess, { status: 'discarded', ended_at: nowIso() });
     rest.until = 0;
   }
@@ -317,14 +317,14 @@ export class HerculesToday extends HestiaElement {
   }
 
   private async adapt(templateId: string | null) {
-    if (!this.host.online) { this.host.toast('Per adattare serve la connessione: puoi comunque iniziare la scheda', 'warning'); return; }
+    if (!this.host.online) { this.host.toast(tr('Per adattare serve la connessione: puoi comunque iniziare la scheda'), 'warning'); return; }
     this.busy = 'adapt';
     this.saveCheckin();
     await this.L.sync();
     const c = this.check;
     const r = await this.host.api('POST', `${API}/adapt`, { body: { energy: c.energy, time_minutes: c.time, pain_areas: c.pain, free_text: c.text, template_id: templateId } });
     this.busy = '';
-    if (r.ok) this.adapted = r.data; else this.host.toast(r.error || 'Adattamento non riuscito', 'danger');
+    if (r.ok) this.adapted = r.data; else this.host.toast(r.error || tr('Adattamento non riuscito'), 'danger');
   }
 
   private async applyAdapted() {
@@ -332,7 +332,7 @@ export class HerculesToday extends HestiaElement {
     this.busy = 'apply';
     const r = await this.host.api('POST', `${API}/adapt/${this.adapted.adaptation_id}/apply`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
     this.adapted = null;
     await this.L.sync();
   }
@@ -340,10 +340,10 @@ export class HerculesToday extends HestiaElement {
   private async restore() {
     const sess = this.L.activeSession();
     if (!sess?.original_plan) return;
-    if (!this.host.online) { this.host.toast('Serve la connessione', 'warning'); return; }
+    if (!this.host.online) { this.host.toast(tr('Serve la connessione'), 'warning'); return; }
     await this.L.sync();
     const r = await this.host.api('POST', `${API}/restore`, { body: { session_id: sess.id } });
-    if (r.ok) await this.L.sync(); else this.host.toast(r.error || 'Non riuscito', 'danger');
+    if (r.ok) await this.L.sync(); else this.host.toast(r.error || tr('Non riuscito'), 'danger');
   }
 
   private async quickDone(t: any) {
@@ -356,36 +356,36 @@ export class HerculesToday extends HestiaElement {
       plan.forEach((b: any) => (b.planned || []).forEach((p: any, i: number) => this.L.put('set', uuid(), {
         session_id: sid, session_exercise_id: b.id, exercise_id: b.exercise_id, session_at: start, position: i, type: p.type,
         weight_kg: p.weight_kg, reps: p.reps_target ?? p.reps_max, completed: true, completed_at: start })));
-      this.host.toast(`${t.name} segnato fatto`, 'success', { label: 'Annulla', run: () => {
+      this.host.toast(tr("{0} segnato fatto", t.name), 'success', { label: tr('Annulla'), run: () => {
         for (const s of this.L.setsOf(sid)) this.L.remove('set', s.id);
         this.L.remove('session', sid);
       } });
       return;
     }
     const r = await this.host.api('POST', `${API}/quick/${t.id}`, { body: {} });
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
     await this.L.sync();
     this.loadNext();
-    this.host.toast(r.data.label || 'Fatto', 'success', { label: 'Annulla', run: async () => {
+    this.host.toast(r.data.label || tr('Fatto'), 'success', { label: tr('Annulla'), run: async () => {
       await this.host.api('DELETE', `${API}/quick/${t.id}`); await this.L.sync(); this.loadNext();
     } });
   }
 
   private async skipToday() {
     const r = await this.host.api('POST', `${API}/days/skip`, { body: {} });
-    if (!r.ok) { this.host.toast(r.error === 'offline' ? 'Serve la connessione' : (r.error || 'Non riuscito'), 'warning'); return; }
+    if (!r.ok) { this.host.toast(r.error === 'offline' ? tr('Serve la connessione') : (r.error || tr('Non riuscito')), 'warning'); return; }
     await this.L.sync();
     this.loadNext();
-    this.host.toast('Oggi saltato', 'info', { label: 'Annulla', run: async () => { await this.host.api('DELETE', `${API}/days/skip`); this.loadNext(); } });
+    this.host.toast(tr('Oggi saltato'), 'info', { label: tr('Annulla'), run: async () => { await this.host.api('DELETE', `${API}/days/skip`); this.loadNext(); } });
   }
 
   private talk(extra?: Record<string, string | number>) {
     const act = this.L.activeSession();
     this.host.assistant({
-      label: act ? `Allenamento in corso: ${act.name}` : 'Allenamento di oggi',
+      label: act ? tr("Allenamento in corso: {0}", act.name) : tr('Allenamento di oggi'),
       hints: { session_id: act?.id || '', template_id: act?.template_id || this.next?.template?.id || '', ...(extra || {}) },
-      prompt: act ? 'Sto facendo questo allenamento: aiutami ad adattarlo se serve.' : 'Parliamo dell\'allenamento di oggi.',
-      suggestions: ['Oggi sono stanco', 'Ho male alla spalla', 'Ho solo 30 minuti', 'La panca è occupata', 'Voglio spingere di più'],
+      prompt: act ? tr('Sto facendo questo allenamento: aiutami ad adattarlo se serve.') : tr('Parliamo dell\'allenamento di oggi.'),
+      suggestions: [tr('Oggi sono stanco'), tr('Ho male alla spalla'), tr('Ho solo 30 minuti'), tr('La panca è occupata'), tr('Voglio spingere di più')],
     });
   }
 
@@ -395,8 +395,8 @@ export class HerculesToday extends HestiaElement {
     if (!L) return nothing;
     if (!L.loaded) {
       return html`<div class="page">${this.host.online
-        ? html`<hxk-state kind="loading" text="Scarico schede ed esercizi…"></hxk-state>`
-        : html`<hxk-state kind="offline" text="Apri Allenamento una volta online: poi funziona anche senza rete." @retry=${() => L.sync()}></hxk-state>`}</div>`;
+        ? html`<hxk-state kind="loading" text=${tr("Scarico schede ed esercizi…")}></hxk-state>`
+        : html`<hxk-state kind="offline" text=${tr("Apri Allenamento una volta online: poi funziona anche senza rete.")} @retry=${() => L.sync()}></hxk-state>`}</div>`;
     }
     const act = L.activeSession();
     return html`<div class="page">
@@ -409,7 +409,7 @@ export class HerculesToday extends HestiaElement {
     const L = this.L;
     if (this.host.online && !L.pending) return nothing;
     return html`<div class="offline"><hxk-icon name="offline" size="14"></hxk-icon>
-      ${this.host.online ? `${L.pending} modifiche da sincronizzare…` : `Offline · ${L.pending ? L.pending + ' modifiche salvate sul dispositivo' : 'i dati restano sul dispositivo'}`}</div>`;
+      ${this.host.online ? tr("{0} modifiche da sincronizzare…", L.pending) : tr("Offline · {0}", L.pending ? L.pending + ' modifiche salvate sul dispositivo' : 'i dati restano sul dispositivo')}</div>`;
   }
 
   private renderPlan() {
@@ -420,39 +420,39 @@ export class HerculesToday extends HestiaElement {
     const exs = L.exercises();
     const doneToday = (n?.done_today || []).length > 0 || L.doneSessions().some(s => s.started_at && new Date(s.started_at).toDateString() === new Date().toDateString());
     return html`
-      <div class="head"><h1>Allenamento</h1><span class="sub">${new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+      <div class="head"><h1>${tr("Allenamento")}</h1><span class="sub">${new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         <span class="grow"></span>
-        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>Parla con l'assistente</hxk-button></div>
+        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>${tr("Parla con l'assistente")}</hxk-button></div>
 
       ${t ? html`<hxk-card heading=${t.name} subtitle=${[n?.reason, n?.estimated_minutes ? `circa ${minutes(n.estimated_minutes)}` : ''].filter(Boolean).join(' · ')}>
-        ${doneToday ? html`<div class="pill" style="margin-bottom:8px"><hxk-icon name="check" size="12"></hxk-icon> Già fatto oggi</div>` : nothing}
+        ${doneToday ? html`<div class="pill" style="margin-bottom:8px"><hxk-icon name="check" size="12"></hxk-icon> ${tr("Già fatto oggi")}</div>` : nothing}
         <div class="plan">${(t.items || []).map((it: any) => {
           const ex = exs.get(it.exercise_id); const sug = L.suggestions[it.id];
           const sets = (sug?.sets || it.sets || []).filter((p: any) => p.type !== 'warmup');
           return html`<div class="it"><span class="truncate">${ex?.name || '?'}</span>
-            <span class="x tnum">${sets.length} serie · ${plannedLabel(sets[0] || {}, ex?.kind)}${sug?.action === 'weight' ? html` <hxk-badge tone="success">+</hxk-badge>` : nothing}</span></div>
+            <span class="x tnum">${sets.length} ${tr("serie ·")} ${plannedLabel(sets[0] || {}, ex?.kind)}${sug?.action === 'weight' ? html` <hxk-badge tone="success">+</hxk-badge>` : nothing}</span></div>
             ${sug?.reason && sug.action !== 'plan' ? html`<div class="reason">${sug.reason}</div>` : nothing}`;
         })}</div>
         <div class="row wrap" style="margin-top:12px">
-          <hxk-button variant="primary" size="lg" icon="play" @click=${() => this.start(t)}>Inizia</hxk-button>
-          <hxk-button icon="check" @click=${() => this.quickDone(t)}>Segna fatto</hxk-button>
-          ${n?.rest_day ? nothing : html`<hxk-button variant="ghost" @click=${() => this.skipToday()}>Salta oggi</hxk-button>`}
+          <hxk-button variant="primary" size="lg" icon="play" @click=${() => this.start(t)}>${tr("Inizia")}</hxk-button>
+          <hxk-button icon="check" @click=${() => this.quickDone(t)}>${tr("Segna fatto")}</hxk-button>
+          ${n?.rest_day ? nothing : html`<hxk-button variant="ghost" @click=${() => this.skipToday()}>${tr("Salta oggi")}</hxk-button>`}
         </div>
-      </hxk-card>` : html`<hxk-card heading="Nessuna scheda">
-        <div class="muted">Crea la tua prima scheda (es. Push, Pull, Gambe) o inizia un allenamento libero.</div>
+      </hxk-card>` : html`<hxk-card heading=${tr("Nessuna scheda")}>
+        <div class="muted">${tr("Crea la tua prima scheda (es. Push, Pull, Gambe) o inizia un allenamento libero.")}</div>
         <div class="row wrap" style="margin-top:10px">
-          <hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('schede')}>Crea una scheda</hxk-button>
-          <hxk-button icon="play" @click=${() => this.start(null)}>Allenamento libero</hxk-button>
+          <hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('schede')}>${tr("Crea una scheda")}</hxk-button>
+          <hxk-button icon="play" @click=${() => this.start(null)}>${tr("Allenamento libero")}</hxk-button>
         </div></hxk-card>`}
 
       ${this.renderCheckin(t)}
 
-      ${others.length ? html`<div class="card col"><h3>Altre schede</h3><div class="list">
+      ${others.length ? html`<div class="card col"><h3>${tr("Altre schede")}</h3><div class="list">
         ${others.map(o => html`<div class="li" @click=${() => this.host.navigate('schede/' + o.id)}>
           <div class="grow"><div class="truncate">${o.favorite ? html`<hxk-icon name="star" size=${13} tone="warning"></hxk-icon> ` : ''}${o.name}</div>
             <div class="small muted truncate">${(o.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ')}</div></div>
-          <hxk-button size="sm" icon="play" @click=${(e: Event) => { e.stopPropagation(); this.start(o); }}>Inizia</hxk-button></div>`)}
-        <div class="li" @click=${() => this.start(null)}><div class="grow muted">Allenamento libero</div><hxk-icon name="play"></hxk-icon></div>
+          <hxk-button size="sm" icon="play" @click=${(e: Event) => { e.stopPropagation(); this.start(o); }}>${tr("Inizia")}</hxk-button></div>`)}
+        <div class="li" @click=${() => this.start(null)}><div class="grow muted">${tr("Allenamento libero")}</div><hxk-icon name="play"></hxk-icon></div>
       </div></div>` : nothing}`;
   }
 
@@ -462,30 +462,30 @@ export class HerculesToday extends HestiaElement {
     const a = this.adapted;
     const exs = this.L.exercises();
     return html`<div class="card col">
-      <div class="between"><h2>Come stai oggi?</h2><span class="small muted">facoltativo</span></div>
-      <div class="col"><span class="small muted">Energia</span><div class="chips">
-        ${[1, 2, 3, 4, 5].map(v => html`<button class="chip" aria-pressed=${c.energy === v} @click=${() => set({ energy: c.energy === v ? null : v })} title=${['Esausto', 'Stanco', 'Normale', 'Bene', 'Al top'][v - 1]}>${v === 1 ? html`<hxk-icon name="battery-low" size=${14}></hxk-icon> ` : ''}${v}</button>`)}</div></div>
-      <div class="col"><span class="small muted">Tempo a disposizione</span><div class="chips">
-        ${[20, 30, 45, 60, 90].map(v => html`<button class="chip" aria-pressed=${c.time === v} @click=${() => set({ time: c.time === v ? null : v })}>${v} min</button>`)}</div></div>
-      <div class="col"><span class="small muted">Fastidi o dolori</span><div class="chips">
+      <div class="between"><h2>${tr("Come stai oggi?")}</h2><span class="small muted">${tr("facoltativo")}</span></div>
+      <div class="col"><span class="small muted">${tr("Energia")}</span><div class="chips">
+        ${[1, 2, 3, 4, 5].map(v => html`<button class="chip" aria-pressed=${c.energy === v} @click=${() => set({ energy: c.energy === v ? null : v })} title=${[tr('Esausto'), tr('Stanco'), tr('Normale'), tr('Bene'), tr('Al top')][v - 1]}>${v === 1 ? html`<hxk-icon name="battery-low" size=${14}></hxk-icon> ` : ''}${v}</button>`)}</div></div>
+      <div class="col"><span class="small muted">${tr("Tempo a disposizione")}</span><div class="chips">
+        ${[20, 30, 45, 60, 90].map(v => html`<button class="chip" aria-pressed=${c.time === v} @click=${() => set({ time: c.time === v ? null : v })}>${v} ${tr("min")}</button>`)}</div></div>
+      <div class="col"><span class="small muted">${tr("Fastidi o dolori")}</span><div class="chips">
         ${PAIN_AREAS.map(p => html`<button class="chip warn" aria-pressed=${c.pain.includes(p)} @click=${() => set({ pain: c.pain.includes(p) ? c.pain.filter(x => x !== p) : [...c.pain, p] })}>${p}</button>`)}</div></div>
-      <input class="in" placeholder="Altro? (es. dormito poco, panca occupata)" .value=${c.text} @input=${(e: any) => set({ text: e.target.value })}>
+      <input class="in" placeholder=${tr("Altro? (es. dormito poco, panca occupata)")} .value=${c.text} @input=${(e: any) => set({ text: e.target.value })}>
       <div class="row wrap">
         <hxk-button variant="primary" icon="refresh" ?loading=${this.busy === 'adapt'} ?disabled=${!t}
-          @click=${() => this.adapt(t?.id || null)}>Adatta l'allenamento</hxk-button>
-        <hxk-button variant="ghost" icon="check" @click=${() => { this.saveCheckin(); this.host.toast('Salvato', 'success'); }}>Salva e basta</hxk-button>
-        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk({ energy: c.energy ?? '', time_minutes: c.time ?? '', pain: c.pain.join(',') })}>Parlane</hxk-button>
+          @click=${() => this.adapt(t?.id || null)}>${tr("Adatta l'allenamento")}</hxk-button>
+        <hxk-button variant="ghost" icon="check" @click=${() => { this.saveCheckin(); this.host.toast(tr('Salvato'), 'success'); }}>${tr("Salva e basta")}</hxk-button>
+        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk({ energy: c.energy ?? '', time_minutes: c.time ?? '', pain: c.pain.join(',') })}>${tr("Parlane")}</hxk-button>
       </div>
       ${a ? html`<div class="sep"></div>
-        <div class="between"><h2>Piano adattato: ${a.name}</h2><span class="pill tnum">${minutes(a.minutes_before)} → ${minutes(a.minutes_after)}</span></div>
+        <div class="between"><h2>${tr("Piano adattato:")} ${a.name}</h2><span class="pill tnum">${minutes(a.minutes_before)} → ${minutes(a.minutes_after)}</span></div>
         <ul style="margin:0;padding-left:18px">${(a.trace || []).map((x: string) => html`<li class="small">${x}</li>`)}</ul>
         ${(a.warnings || []).map((w: string) => html`<div class="warn"><hxk-icon name="alert" size=${13} tone="warning"></hxk-icon> ${w}</div>`)}
         <div class="plan">${(a.exercises || []).map((e: any) => html`<div class="it" style=${e.skipped ? 'text-decoration:line-through;opacity:.6' : ''}>
           <span class="truncate">${exs.get(e.exercise_id)?.name || '?'}</span>
-          <span class="x tnum">${(e.planned || []).filter((p: any) => p.type !== 'warmup').length} serie · ${plannedLabel((e.planned || []).find((p: any) => p.type !== 'warmup') || {}, exs.get(e.exercise_id)?.kind)}</span></div>`)}</div>
+          <span class="x tnum">${(e.planned || []).filter((p: any) => p.type !== 'warmup').length} ${tr("serie ·")} ${plannedLabel((e.planned || []).find((p: any) => p.type !== 'warmup') || {}, exs.get(e.exercise_id)?.kind)}</span></div>`)}</div>
         <div class="row wrap">
-          <hxk-button variant="primary" icon="play" ?loading=${this.busy === 'apply'} @click=${() => this.applyAdapted()}>Inizia con questo piano</hxk-button>
-          <hxk-button variant="ghost" @click=${() => (this.adapted = null)}>Lascia il piano normale</hxk-button>
+          <hxk-button variant="primary" icon="play" ?loading=${this.busy === 'apply'} @click=${() => this.applyAdapted()}>${tr("Inizia con questo piano")}</hxk-button>
+          <hxk-button variant="ghost" @click=${() => (this.adapted = null)}>${tr("Lascia il piano normale")}</hxk-button>
         </div>` : nothing}
     </div>`;
   }
@@ -500,20 +500,20 @@ export class HerculesToday extends HestiaElement {
     return html`
       <div class="live-head">
         <div class="between"><div class="grow"><h1 class="truncate">${sess.name}</h1>
-          <div class="small muted tnum">${dur(elapsed)} · ${sets.length}/${total} serie · ${kg(Math.round(volume))} kg</div></div>
-          <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>Assistente</hxk-button></div>
+          <div class="small muted tnum">${dur(elapsed)} · ${sets.length}/${total} ${tr("serie ·")} ${kg(Math.round(volume))} kg</div></div>
+          <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>${tr("Assistente")}</hxk-button></div>
         ${this.renderRest()}
       </div>
-      ${sess.adaptation_id ? html`<div class="row small muted">Piano adattato oggi.
-        ${sess.original_plan ? html`<button class="link" @click=${() => this.restore()}>Torna al piano originale</button>` : nothing}</div>` : nothing}
+      ${sess.adaptation_id ? html`<div class="row small muted">${tr("Piano adattato oggi.")}
+        ${sess.original_plan ? html`<button class="link" @click=${() => this.restore()}>${tr("Torna al piano originale")}</button>` : nothing}</div>` : nothing}
       ${this.picker ? html`<hercules-picker .host=${this.host} .ctx=${this.ctx} .prefer=${this.picker.prefer || []}
-          heading=${this.picker.mode === 'add' ? 'Aggiungi esercizio' : 'Sostituisci esercizio'}
+          heading=${this.picker.mode === 'add' ? tr('Aggiungi esercizio') : tr('Sostituisci esercizio')}
           @pick=${(e: CustomEvent) => this.pick(e.detail)} @close=${() => (this.picker = null)}></hercules-picker>` : nothing}
       ${(sess.exercises || []).map((b: any, bi: number) => this.renderBlock(sess, b, exs.get(b.exercise_id), bi))}
-      <hxk-button icon="plus" @click=${() => (this.picker = { mode: 'add' })}>Aggiungi esercizio</hxk-button>
+      <hxk-button icon="plus" @click=${() => (this.picker = { mode: 'add' })}>${tr("Aggiungi esercizio")}</hxk-button>
       ${this.finishing ? this.renderFinish(sess) : html`<div class="foot">
-        <hxk-button variant="primary" size="lg" icon="check" @click=${() => (this.finishing = { effort: null, notes: '', update: false })}>Termina allenamento</hxk-button>
-        <hxk-button variant="danger" @click=${() => this.discard()}>Scarta</hxk-button></div>`}`;
+        <hxk-button variant="primary" size="lg" icon="check" @click=${() => (this.finishing = { effort: null, notes: '', update: false })}>${tr("Termina allenamento")}</hxk-button>
+        <hxk-button variant="danger" @click=${() => this.discard()}>${tr("Scarta")}</hxk-button></div>`}`;
   }
 
   private renderRest() {
@@ -544,25 +544,25 @@ export class HerculesToday extends HestiaElement {
     return html`<div class="card block ${b.skipped ? 'skipped' : ''}">
       <div class="bh">
         <div class="grow">
-          <div class="name truncate" @click=${() => this.host.navigate('esercizi/' + b.exercise_id)}>${ex?.name || 'Esercizio'}</div>
-          <div class="small muted truncate">${muscleText(ex)}${prev ? ` · ultima volta ${prev.sets.map((s: any) => setLabel(s, kind)).slice(0, 4).join(', ')}` : ''}</div>
+          <div class="name truncate" @click=${() => this.host.navigate('esercizi/' + b.exercise_id)}>${ex?.name || tr('Esercizio')}</div>
+          <div class="small muted truncate">${muscleText(ex)}${prev ? tr(" · ultima volta {0}", prev.sets.map((s: any) => setLabel(s, kind)).slice(0, 4).join(', ')) : ''}</div>
           ${sug?.reason && sug.action !== 'plan' ? html`<div class="reason">${sug.reason}</div>` : nothing}
         </div>
         <hxk-button size="sm" variant="ghost" icon="more" @click=${() => (this.menu = menuOpen ? '' : b.id)}></hxk-button>
       </div>
       ${menuOpen ? html`<div class="menu">
-        ${weight ? html`<hxk-button size="sm" @click=${() => this.addWarmups(sess, b, ex)}>Riscaldamento</hxk-button>` : nothing}
-        <hxk-button size="sm" @click=${() => (this.picker = { mode: 'replace', block: b.id, prefer: ex?.primary_muscles || [] })}>Sostituisci</hxk-button>
+        ${weight ? html`<hxk-button size="sm" @click=${() => this.addWarmups(sess, b, ex)}>${tr("Riscaldamento")}</hxk-button>` : nothing}
+        <hxk-button size="sm" @click=${() => (this.picker = { mode: 'replace', block: b.id, prefer: ex?.primary_muscles || [] })}>${tr("Sostituisci")}</hxk-button>
         <hxk-button size="sm" ?disabled=${bi === 0} @click=${() => this.move(sess, b.id, -1)}>Su</hxk-button>
-        <hxk-button size="sm" ?disabled=${bi === (sess.exercises || []).length - 1} @click=${() => this.move(sess, b.id, 1)}>Giù</hxk-button>
-        <hxk-button size="sm" @click=${() => this.updateBlock(sess, b.id, { rest_seconds: Math.max(30, Number(b.rest_seconds || L.settings.rest_default) - 30) })}>Recupero −30 s</hxk-button>
-        <hxk-button size="sm" @click=${() => this.updateBlock(sess, b.id, { rest_seconds: Number(b.rest_seconds || L.settings.rest_default) + 30 })}>Recupero +30 s</hxk-button>
-        <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.removeBlock(sess, b)}>Togli</hxk-button>
-        <span class="small muted" style="align-self:center">Recupero ${dur(Number(b.rest_seconds || L.settings.rest_default))}</span>
+        <hxk-button size="sm" ?disabled=${bi === (sess.exercises || []).length - 1} @click=${() => this.move(sess, b.id, 1)}>${tr("Giù")}</hxk-button>
+        <hxk-button size="sm" @click=${() => this.updateBlock(sess, b.id, { rest_seconds: Math.max(30, Number(b.rest_seconds || L.settings.rest_default) - 30) })}>${tr("Recupero −30 s")}</hxk-button>
+        <hxk-button size="sm" @click=${() => this.updateBlock(sess, b.id, { rest_seconds: Number(b.rest_seconds || L.settings.rest_default) + 30 })}>${tr("Recupero +30 s")}</hxk-button>
+        <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.removeBlock(sess, b)}>${tr("Togli")}</hxk-button>
+        <span class="small muted" style="align-self:center">${tr("Recupero")} ${dur(Number(b.rest_seconds || L.settings.rest_default))}</span>
       </div>` : nothing}
       <div class=${cls}>
-        <span class="hd">#</span><span class="hd">Prima</span>
-        ${time ? html`<span class="hd">Tempo</span>` : weight ? html`<span class="hd">kg</span><span class="hd">Rip</span>` : html`<span class="hd">Rip</span>`}
+        <span class="hd">#</span><span class="hd">${tr("Prima")}</span>
+        ${time ? html`<span class="hd">${tr("Tempo")}</span>` : weight ? html`<span class="hd">kg</span><span class="hd">${tr("Rip")}</span>` : html`<span class="hd">${tr("Rip")}</span>`}
         <span></span>
         ${(b.planned || []).map((p: any, i: number) => {
           const s = this.setAt(sess, b, i);
@@ -572,7 +572,7 @@ export class HerculesToday extends HestiaElement {
           const w = this.value(sess, b, i, 'weight_kg');
           return html`
             <span class="n ${isWarm ? 'w' : ''}" title=${SET_TYPE_LABEL[p.type] || ''}>${label}</span>
-            <span class="prev truncate" title="Usa i valori dell'ultima volta" @click=${() => {
+            <span class="prev truncate" title=${tr("Usa i valori dell'ultima volta")} @click=${() => {
               if (!pw) return; if (weight) this.edit(sess, b, i, 'weight_kg', String(pw.weight_kg ?? '')); this.edit(sess, b, i, 'reps', String(pw.reps ?? '')); this.requestUpdate(); }}>
               ${pw ? setLabel(pw, kind) : plannedLabel(p, kind)}</span>
             ${time ? html`<input class="in ${s ? 'row-done' : ''}" inputmode="numeric" placeholder="m:ss" .value=${fmtDuration(this.value(sess, b, i, 'duration_s'))}
@@ -582,15 +582,15 @@ export class HerculesToday extends HestiaElement {
                   @change=${(e: any) => this.edit(sess, b, i, 'weight_kg', e.target.value)}>` : nothing}
                 <input class="in ${s ? 'row-done' : ''}" inputmode="numeric" .value=${String(this.value(sess, b, i, 'reps') ?? '')}
                   @change=${(e: any) => this.edit(sess, b, i, 'reps', e.target.value)}>`}
-            <button class="ok" aria-pressed=${!!s} aria-label="Serie fatta" @click=${() => this.toggle(sess, b, i, ex)}><hxk-icon name="check"></hxk-icon></button>`;
+            <button class="ok" aria-pressed=${!!s} aria-label=${tr("Serie fatta")} @click=${() => this.toggle(sess, b, i, ex)}><hxk-icon name="check"></hxk-icon></button>`;
         })}
       </div>
       ${this.platesFor && ex?.equipment === 'barbell' ? this.renderPlates(this.platesFor) : nothing}
       <div class="row">
-        <hxk-button size="sm" variant="ghost" icon="plus" @click=${() => this.addSet(sess, b)}>Serie</hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="plus" @click=${() => this.addSet(sess, b)}>${tr("Serie")}</hxk-button>
         ${(b.planned || []).length ? html`<hxk-button size="sm" variant="ghost" @click=${() => this.removeLastSet(sess, b)}>− Serie</hxk-button>` : nothing}
         <span class="grow"></span>
-        ${b.replaced_from ? html`<span class="small muted">sostituito</span>` : nothing}
+        ${b.replaced_from ? html`<span class="small muted">${tr("sostituito")}</span>` : nothing}
       </div>
     </div>`;
   }
@@ -599,8 +599,8 @@ export class HerculesToday extends HestiaElement {
     const s = this.L.settings;
     const p = plates(w, s.bar_weight, s.plates);
     if (!p.perSide.length) return nothing;
-    return html`<div class="plates small"><span class="muted">Per lato (${kg(s.bar_weight)} kg bilanciere):</span>
-      ${p.perSide.map(x => html`<span class="plate">${kg(x)}</span>`)}${p.rest ? html`<span class="muted">+${kg(p.rest)} non caricabili</span>` : nothing}</div>`;
+    return html`<div class="plates small"><span class="muted">${tr("Per lato (")}${kg(s.bar_weight)} kg bilanciere):</span>
+      ${p.perSide.map(x => html`<span class="plate">${kg(x)}</span>`)}${p.rest ? html`<span class="muted">+${kg(p.rest)} ${tr("non caricabili")}</span>` : nothing}</div>`;
   }
 
   private renderFinish(sess: any) {
@@ -608,16 +608,16 @@ export class HerculesToday extends HestiaElement {
     const set = (p: any) => (this.finishing = { ...f, ...p });
     const logged = this.L.setsOf(sess.id).length;
     return html`<div class="card col">
-      <h2>Termina allenamento</h2>
-      ${logged ? nothing : html`<div class="warn">Nessuna serie registrata.</div>`}
-      <div class="col"><span class="small muted">Quanto è stato duro? (1–10)</span><div class="chips">
+      <h2>${tr("Termina allenamento")}</h2>
+      ${logged ? nothing : html`<div class="warn">${tr("Nessuna serie registrata.")}</div>`}
+      <div class="col"><span class="small muted">${tr("Quanto è stato duro? (1–10)")}</span><div class="chips">
         ${[5, 6, 7, 8, 9, 10].map(v => html`<button class="chip" aria-pressed=${f.effort === v} @click=${() => set({ effort: f.effort === v ? null : v })}>${v}</button>`)}</div></div>
-      <textarea class="in" rows="2" placeholder="Note (facoltative)" .value=${f.notes} @input=${(e: any) => set({ notes: e.target.value })}></textarea>
+      <textarea class="in" rows="2" placeholder=${tr("Note (facoltative)")} .value=${f.notes} @input=${(e: any) => set({ notes: e.target.value })}></textarea>
       ${sess.template_id ? html`<label class="row small"><input type="checkbox" .checked=${f.update} @change=${(e: any) => set({ update: e.target.checked })}>
-        Aggiorna la scheda con i pesi di oggi</label>` : nothing}
+        ${tr("Aggiorna la scheda con i pesi di oggi")}</label>` : nothing}
       <div class="row wrap">
-        <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'finish'} @click=${() => this.finish()}>Salva</hxk-button>
-        <hxk-button variant="ghost" @click=${() => (this.finishing = null)}>Continua ad allenarti</hxk-button>
+        <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'finish'} @click=${() => this.finish()}>${tr("Salva")}</hxk-button>
+        <hxk-button variant="ghost" @click=${() => (this.finishing = null)}>${tr("Continua ad allenarti")}</hxk-button>
       </div></div>`;
   }
 
@@ -626,26 +626,26 @@ export class HerculesToday extends HestiaElement {
     const sm = r.summary || {};
     const prs = (r.prs || []).filter((p: any) => !p.first);
     return html`<div class="card col">
-      <div class="between"><h1><hxk-icon name="check-circle" size=${24} tone="success"></hxk-icon> Fatto!</h1>${r.offline ? html`<span class="offline">salvato sul dispositivo</span>` : nothing}</div>
+      <div class="between"><h1><hxk-icon name="check-circle" size=${24} tone="success"></hxk-icon> ${tr("Fatto!")}</h1>${r.offline ? html`<span class="offline">${tr("salvato sul dispositivo")}</span>` : nothing}</div>
       <div class="row wrap" style="gap:18px">
-        ${sm.duration_min !== undefined ? html`<div><div class="big tnum">${minutes(sm.duration_min)}</div><div class="small muted">durata</div></div>` : nothing}
-        ${sm.sets !== undefined ? html`<div><div class="big tnum">${sm.sets}</div><div class="small muted">serie</div></div>` : nothing}
-        ${sm.volume !== undefined ? html`<div><div class="big tnum">${kg(sm.volume)}</div><div class="small muted">kg sollevati</div></div>` : nothing}
+        ${sm.duration_min !== undefined ? html`<div><div class="big tnum">${minutes(sm.duration_min)}</div><div class="small muted">${tr("durata")}</div></div>` : nothing}
+        ${sm.sets !== undefined ? html`<div><div class="big tnum">${sm.sets}</div><div class="small muted">${tr("serie")}</div></div>` : nothing}
+        ${sm.volume !== undefined ? html`<div><div class="big tnum">${kg(sm.volume)}</div><div class="small muted">${tr("kg sollevati")}</div></div>` : nothing}
       </div>
-      ${prs.length ? html`<h3><hxk-icon name="trophy" size=${16} tone="warning"></hxk-icon> Record</h3>${prs.map((p: any) => html`<div class="pr"><hxk-badge tone="success">PR</hxk-badge>
+      ${prs.length ? html`<h3><hxk-icon name="trophy" size=${16} tone="warning"></hxk-icon> ${tr("Record")}</h3>${prs.map((p: any) => html`<div class="pr"><hxk-badge tone="success">PR</hxk-badge>
         <span class="grow">${p.exercise}: ${p.label}</span><span class="tnum">${typeof p.value === 'number' ? kg(p.value) : p.value}${p.unit ? ' ' + p.unit : ''}</span></div>`)}` : nothing}
-      <h3>Com'è andata?</h3>
+      <h3>${tr("Com'è andata?")}</h3>
       <div class="chips">${Object.entries(FEEDBACK_TAGS).map(([k, v]) => html`<button class="chip" @click=${() => this.feedback(r.id, k)}>${v}</button>`)}</div>
       <div class="row wrap">
-        <hxk-button variant="primary" @click=${() => this.host.navigate('storico/' + r.id)}>Vedi dettaglio</hxk-button>
-        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk({ session_id: r.id })}>Commentalo con l'assistente</hxk-button>
-        <hxk-button variant="ghost" @click=${() => (this.result = null)}>Chiudi</hxk-button>
+        <hxk-button variant="primary" @click=${() => this.host.navigate('storico/' + r.id)}>${tr("Vedi dettaglio")}</hxk-button>
+        <hxk-button variant="ghost" icon="heart" @click=${() => this.talk({ session_id: r.id })}>${tr("Commentalo con l'assistente")}</hxk-button>
+        <hxk-button variant="ghost" @click=${() => (this.result = null)}>${tr("Chiudi")}</hxk-button>
       </div></div>`;
   }
 
   private feedback(sessionId: string, tag: string) {
     this.L.put('feedback', uuid(), { session_id: sessionId, tags: [tag], at: nowIso(), text: '' });
-    this.host.toast(`Annotato: ${FEEDBACK_TAGS[tag]}. Ne terrà conto il coach.`, 'success');
+    this.host.toast(tr("Annotato: {0}. Ne terrà conto il coach.", FEEDBACK_TAGS[tag]), 'success');
   }
 }
 

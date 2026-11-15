@@ -3,7 +3,7 @@
  * search (same as the chat), add a file (archived like a chat attachment), keep for good, delete.
  * Reads/acts on /api/ui/documents… (Oracle → Archive through Hub). Ported from the built-in WebUI page (§A4).
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 const ACCEPT = 'image/*,audio/*,video/*,text/*,application/pdf,application/json,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.md,.csv,.yaml,.yml';
@@ -61,7 +61,7 @@ export class OracleDocuments extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/documents`, { query: { limit: 200 } });
-    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? 'Oracle non raggiungibile' : r.error || 'Oracle non raggiungibile'; return; }
+    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? tr('Oracle non raggiungibile') : r.error || tr('Oracle non raggiungibile'); return; }
     this.error = '';
     this.docs = r.data.documents || [];
     const ids = new Set(this.docs!.map(d => d.document_id));
@@ -76,7 +76,7 @@ export class OracleDocuments extends HestiaElement {
     this.searching = true;
     const r = await this.host.api('GET', `${API}/documents/search`, { query: { query: q, limit: 10 } });
     this.searching = false;
-    if (!r.ok) { this.host.toast(r.status === 0 ? 'Oracle non raggiungibile' : r.error || 'Ricerca non riuscita', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.status === 0 ? tr('Oracle non raggiungibile') : r.error || tr('Ricerca non riuscita'), 'danger'); return; }
     this.hits = r.data.chunks || [];
   }
 
@@ -88,44 +88,44 @@ export class OracleDocuments extends HestiaElement {
     for (const f of files) {
       const r = await this.host.api('POST', `${API}/documents`, { body: { name: f.name, mime: f.mime, data_b64: f.data_b64 } });
       if (r.ok) { ok++; this.pending = [...this.pending, r.data.document_id]; }
-      else this.host.toast(`${f.name}: ${r.error || 'non aggiunto'}`, 'danger');
+      else this.host.toast(`${f.name}: ${r.error || tr('non aggiunto')}`, 'danger');
     }
     this.adding = false;
-    if (ok) this.host.toast(ok === 1 ? 'Sto leggendo il file: comparirà tra poco' : `Sto leggendo ${ok} file: compariranno tra poco`, 'success');
+    if (ok) this.host.toast(ok === 1 ? tr('Sto leggendo il file: comparirà tra poco') : tr("Sto leggendo {0} file: compariranno tra poco", ok), 'success');
     this.load();
   }
 
   private async keep(d: any) {
     const r = await this.host.api('PATCH', `${API}/documents/${encodeURIComponent(d.document_id)}/permanent`,
       { body: { is_permanent: !d.is_permanent } });
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
     this.docs = (this.docs || []).map(x => x.document_id === d.document_id ? { ...x, is_permanent: !d.is_permanent } : x);
-    this.host.toast(d.is_permanent ? 'Ora è temporaneo: può essere ripulito se non lo usi' : 'Tenuto per sempre', 'success');
+    this.host.toast(d.is_permanent ? tr('Ora è temporaneo: può essere ripulito se non lo usi') : tr('Tenuto per sempre'), 'success');
   }
 
   private async drop(d: any) {
-    if (!(await this.host.confirm('Eliminare il documento?', d.title || d.filename || d.document_id, { label: 'Elimina', danger: true }))) return;
+    if (!(await this.host.confirm(tr('Eliminare il documento?'), d.title || d.filename || d.document_id, { label: tr('Elimina'), danger: true }))) return;
     const r = await this.host.api('DELETE', `${API}/documents/${encodeURIComponent(d.document_id)}`);
-    if (!r.ok) { this.host.toast(r.error || 'Eliminazione non riuscita', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Eliminazione non riuscita'), 'danger'); return; }
     this.docs = (this.docs || []).filter(x => x.document_id !== d.document_id);
     this.hits = this.hits ? this.hits.filter(h => h.document_id !== d.document_id) : null;
-    this.host.toast('Documento eliminato', 'success');
+    this.host.toast(tr('Documento eliminato'), 'success');
   }
 
   private ask(d: any) {
-    this.host.assistant({ label: `Documento · ${d.title || d.filename || 'file'}`, hints: { documento: d.document_id },
-      suggestions: ['Riassumilo', 'Cosa dice su…?', 'Quali scadenze contiene?'] });
+    this.host.assistant({ label: tr("Documento · {0}", d.title || d.filename || 'file'), hints: { documento: d.document_id },
+      suggestions: [tr('Riassumilo'), tr('Cosa dice su…?'), tr('Quali scadenze contiene?')] });
   }
 
   private renderHits() {
     if (this.hits === null) return nothing;
-    return html`<hxk-card heading="Risultati per «${this.q.trim()}»" subtitle="Passaggi più vicini alla domanda, come li vede la chat">
+    return html`<hxk-card heading="Risultati per «${this.q.trim()}»" subtitle=${tr("Passaggi più vicini alla domanda, come li vede la chat")}>
       ${this.hits.length ? this.hits.map(h => html`<div class="hit">
-          <div class="row"><b class="grow truncate">${h.title || 'Documento'}</b>
-            <span class="small muted">distanza ${Number(h.distance ?? 0).toFixed(2).replace('.', ',')}</span></div>
+          <div class="row"><b class="grow truncate">${h.title || tr('Documento')}</b>
+            <span class="small muted">${tr("distanza")} ${Number(h.distance ?? 0).toFixed(2).replace('.', ',')}</span></div>
           <p class="passage">${h.chunk_text}</p></div>`)
-        : html`<hxk-state kind="empty" text="Nessun passaggio abbastanza vicino"></hxk-state>`}
-      <hxk-button slot="actions" size="sm" variant="ghost" icon="x" @click=${() => { this.hits = null; this.q = ''; }}>Chiudi</hxk-button>
+        : html`<hxk-state kind="empty" text=${tr("Nessun passaggio abbastanza vicino")}></hxk-state>`}
+      <hxk-button slot="actions" size="sm" variant="ghost" icon="x" @click=${() => { this.hits = null; this.q = ''; }}>${tr("Chiudi")}</hxk-button>
     </hxk-card>`;
   }
 
@@ -138,14 +138,14 @@ export class OracleDocuments extends HestiaElement {
         <div class="name truncate" title=${d.filename || ''}>${d.title || d.filename || d.document_id}</div>
         <div class="meta">${meta}${d.access_count ? ` · usato ${d.access_count}×` : ''}</div>
         ${d.summary ? html`<div class="sum">${d.summary}</div>` : nothing}
-        <div class="tags">${d.is_permanent ? html`<hxk-badge tone="accent">per sempre</hxk-badge>` : nothing}
+        <div class="tags">${d.is_permanent ? html`<hxk-badge tone="accent">${tr("per sempre")}</hxk-badge>` : nothing}
           <hxk-badge>${d.domain}</hxk-badge>${(d.tags || []).slice(0, 4).map((t: string) => html`<hxk-badge tone="info">${t}</hxk-badge>`)}</div>
       </div>
       <div class="acts">
-        <hxk-button size="sm" variant="ghost" icon="sparkle" title="Chiedi a Hestia" @click=${() => this.ask(d)}></hxk-button>
-        <hxk-button size="sm" variant="ghost" icon="pin" title=${d.is_permanent ? 'Rendi temporaneo' : 'Tieni per sempre'}
+        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Chiedi a Hestia")} @click=${() => this.ask(d)}></hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="pin" title=${d.is_permanent ? tr('Rendi temporaneo') : tr('Tieni per sempre')}
           @click=${() => this.keep(d)}></hxk-button>
-        <hxk-button size="sm" variant="ghost" icon="trash" title="Elimina" @click=${() => this.drop(d)}></hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Elimina")} @click=${() => this.drop(d)}></hxk-button>
       </div>
     </div>`;
   }
@@ -156,23 +156,23 @@ export class OracleDocuments extends HestiaElement {
     const domains = [...new Set(this.docs.map(d => d.domain))].sort();
     const shown = this.domain ? this.docs.filter(d => d.domain === this.domain) : this.docs;
     return html`<div class="page">
-      <div class="head"><div class="grow"><h1>Documenti</h1>
-        <div class="sub">File che hai condiviso con Hestia: la chat li usa quando ne parli</div></div>
-        <hxk-button variant="ghost" icon="refresh" title="Aggiorna" @click=${() => this.load()}></hxk-button>
-        <hxk-button variant="primary" icon="plus" ?loading=${this.adding} @click=${() => this.add()}>Aggiungi file</hxk-button></div>
+      <div class="head"><div class="grow"><h1>${tr("Documenti")}</h1>
+        <div class="sub">${tr("File che hai condiviso con Hestia: la chat li usa quando ne parli")}</div></div>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Aggiorna")} @click=${() => this.load()}></hxk-button>
+        <hxk-button variant="primary" icon="plus" ?loading=${this.adding} @click=${() => this.add()}>${tr("Aggiungi file")}</hxk-button></div>
       <div class="bar">
-        <input type="search" placeholder="Cerca nei documenti (es. «scadenza contratto»)" .value=${this.q}
+        <input type="search" placeholder=${tr("Cerca nei documenti (es. «scadenza contratto»)")} .value=${this.q}
           @input=${(e: any) => (this.q = e.target.value)} @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.search()}>
-        <hxk-button icon="search" ?loading=${this.searching} @click=${() => this.search()}>Cerca</hxk-button>
+        <hxk-button icon="search" ?loading=${this.searching} @click=${() => this.search()}>${tr("Cerca")}</hxk-button>
       </div>
       ${this.renderHits()}
-      ${this.pending.length ? html`<div class="small muted">Sto leggendo ${this.pending.length} file…</div>` : nothing}
+      ${this.pending.length ? html`<div class="small muted">${tr("Sto leggendo")} ${this.pending.length} ${tr("file…")}</div>` : nothing}
       ${domains.length > 1 ? html`<div class="chips">
-        <button class="chip ${this.domain ? '' : 'on'}" @click=${() => (this.domain = '')}>Tutti (${this.docs.length})</button>
+        <button class="chip ${this.domain ? '' : 'on'}" @click=${() => (this.domain = '')}>${tr("Tutti (")}${this.docs.length})</button>
         ${domains.map(dm => html`<button class="chip ${this.domain === dm ? 'on' : ''}" @click=${() => (this.domain = dm)}>${dm}</button>`)}
       </div>` : nothing}
       ${shown.length ? html`<div class="grid docs">${shown.map(d => this.renderDoc(d))}</div>`
-        : html`<hxk-state kind="empty" text="Nessun documento: aggiungine uno qui o allega un file in chat."></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("Nessun documento: aggiungine uno qui o allega un file in chat.")}></hxk-state>`}
     </div>`;
   }
 }

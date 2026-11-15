@@ -5,6 +5,7 @@ import {
 } from '@angular/core';
 import { IconComponent } from './icon.component';
 import { ButtonComponent, ButtonVariant } from './button.component';
+import { tr, TrPipe } from '../core/i18n';
 
 // ── Modal ──────────────────────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ import { ButtonComponent, ButtonVariant } from './button.component';
  */
 @Component({
   selector: 'hx-modal',
-  imports: [ButtonComponent],
+  imports: [TrPipe, ButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (open()) {
@@ -26,7 +27,7 @@ import { ButtonComponent, ButtonVariant } from './button.component';
           @if (title()) {
             <header>
               <h2>{{ title() }}</h2>
-              <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi" (click)="closed.emit()"></button>
+              <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi' | tr" (click)="closed.emit()"></button>
             </header>
           }
           <div class="body"><ng-content /></div>
@@ -79,6 +80,7 @@ export type Anchor = DOMRect | { x: number; y: number; width?: number; height?: 
 @Component({
   selector: 'hx-popover',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [],
   template: `
     @if (open() && anchor()) {
       <div class="pop hx-fade-in" #pop [style.left.px]="pos().x" [style.top.px]="pos().y" [style.width.px]="width()"
@@ -212,7 +214,7 @@ export class ToastService {
 
 @Component({
   selector: 'hx-toast-host',
-  imports: [IconComponent],
+  imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @for (t of svc.toasts(); track t.id) {
@@ -220,7 +222,7 @@ export class ToastService {
         <hx-icon [name]="t.tone === 'success' ? 'check' : t.tone === 'danger' ? 'alert' : 'info'" [size]="16" />
         <span class="txt">{{ t.text }}</span>
         @if (t.action) { <button class="act" (click)="t.action.run(); svc.dismiss(t.id)">{{ t.action.label }}</button> }
-        <button class="x" (click)="svc.dismiss(t.id)" aria-label="Chiudi"><hx-icon name="x" [size]="14" /></button>
+        <button class="x" (click)="svc.dismiss(t.id)"  [attr.aria-label]="'Chiudi' | tr"><hx-icon name="x" [size]="14" /></button>
       </div>
     }`,
   styles: [`
@@ -255,9 +257,9 @@ export class DialogService {
     return new Promise(resolve => this.current.set({ title, message, options, resolve: resolve as (v: unknown) => void }));
   }
 
-  async confirm(title: string, message = '', confirmLabel = 'Conferma', danger = false): Promise<boolean> {
+  async confirm(title: string, message = '', confirmLabel = tr('Conferma'), danger = false): Promise<boolean> {
     const r = await this.choose(title, message, [
-      { value: 'no', label: 'Annulla', variant: 'ghost' },
+      { value: 'no', label: tr('Annulla'), variant: 'ghost' },
       { value: 'yes', label: confirmLabel, variant: danger ? 'danger' : 'primary' },
     ]);
     return r === 'yes';

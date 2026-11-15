@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.2 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools), 2c (module texts) done |
+| 1.3 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools), 2c (module texts), 2d (WebUI and plugins) done |
 
 ## Goal
 Every text the model reads is English; every fixed text a person reads comes from translation files in the
@@ -38,7 +38,12 @@ what the assistant writes on its own follows the language setting (dossier `2026
 - **2c Module texts** (done): every Italian literal a person reads in the modules' function bodies goes through
   `tr`; technical strings (SQL, headers, document styles) and model-facing lines are never translated: those are
   English in the code.
-- **2d** WebUI (Angular): same catalogs, language from the identity service.
+- **2d WebUI and plugins** (done): the same `locales/<lang>/messages.json`. Themis `GET /api/settings/i18n?lang=`
+  → `{language, messages}` (English merged under the language's own; Italian = empty map). The WebUI serves it
+  public at `/api/webui/i18n` and as a script `/api/webui/i18n.js` (`globalThis.__hestiaI18n`) that `index.html`
+  loads before any bundle, so module-level constants of the shell and of every plugin are translated too.
+  Angular: `tr()` and the pipe `{{ 'Testo' | tr }}` (`core/i18n.ts`); plugins: `tr` of `@hestia/webui-sdk`.
+  Saving «Lingua» (set, reset, undo) reloads the page. Technical strings (SVG paths, CSS) are never wrapped.
 - German, French and Spanish catalogs (until then they show English).
 
 ## Acceptance criteria

@@ -1,4 +1,5 @@
 import { Type } from '@angular/core';
+import { tr } from './core/i18n';
 
 /**
  * WebUI module registry — ONE place to add a page.
@@ -17,12 +18,12 @@ export interface AppModule {
 }
 
 export const APP_MODULES: AppModule[] = [
-  { path: 'home', label: 'Home', icon: 'home',
+  { path: 'home', label: tr('Home'), icon: 'home',
     load: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent) },
-  { path: 'chat', label: 'Chat', icon: 'chat',
+  { path: 'chat', label: tr('Chat'), icon: 'chat',
     load: () => import('./features/chat/chat-page.component').then(m => m.ChatPageComponent) },
-  { path: 'scopri', label: 'Scopri', icon: 'sparkle',
+  { path: 'scopri', label: tr('Scopri'), icon: 'sparkle',
     load: () => import('./features/scopri/scopri-page.component').then(m => m.ScopriPageComponent) },
-  { path: 'settings', label: 'Impostazioni', icon: 'settings', bottom: true,
+  { path: 'settings', label: tr('Impostazioni'), icon: 'settings', bottom: true,
     load: () => import('./features/settings/settings-page.component').then(m => m.SettingsPageComponent) },
 ];

@@ -1,5 +1,5 @@
 /** Icons of the Sviluppo page missing from the kit's hxk-icon set (same stroke style); the rest go to hxk-icon. */
-import { html, svg } from '@hestia/webui-sdk';
+import { html, svg, tr } from '@hestia/webui-sdk';
 
 const EXTRA: Record<string, string> = {
   terminal: 'M4 5h16v14H4zM8 10l3 2-3 2M13 15h3',

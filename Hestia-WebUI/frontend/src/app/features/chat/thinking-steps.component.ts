@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, input, signal, untracked } from '@angular/core';
 import { ThinkingStep } from '../../models/chat.models';
 import { IconComponent } from '../../ui';
+import { tr } from '../../core/i18n';
 
 /**
  * Reasoning / tool trace of an assistant answer. The title says what is inside: «Ragionamento · 2 passi ·
@@ -76,8 +77,8 @@ export class ThinkingStepsComponent {
   private readonly tools = computed(() => this.steps().filter(x => x.type === 'tool_call').length);
 
   readonly title = computed(() => this.thought()
-    ? (this.live() ? 'Sto ragionando…' : 'Ragionamento')
-    : (this.live() ? 'Uso gli strumenti…' : 'Strumenti usati'));
+    ? (this.live() ? tr('Sto ragionando…') : tr('Ragionamento'))
+    : (this.live() ? tr('Uso gli strumenti…') : tr('Strumenti usati')));
 
   summary = computed(() => {
     const n = this.thought(), tools = this.tools();
@@ -86,7 +87,7 @@ export class ThinkingStepsComponent {
   });
 
   label(s: ThinkingStep): string {
-    if (s.type === 'tool_call') return `Uso ${s.tool}`;
+    if (s.type === 'tool_call') return tr("Uso {0}", s.tool);
     if (s.type === 'tool_result') {
       const n = s.metadata?.result_count, ms = s.metadata?.duration_ms;
       return `${s.tool}: ${s.metadata?.ok ? 'ok' : 'errore'}${n ? ` · ${n} risultati` : ''}${ms ? ` · ${ms} ms` : ''}`;

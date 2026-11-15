@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { ButtonComponent, IconComponent, SpinnerComponent, ToastService } from '../../ui';
 import { ChatSummary, ChatTag, ChatsService, TAG_COLORS, TAG_CSS } from '../../services/chats.service';
 import { SessionService } from '../../services/session.service';
+import { TrPipe } from '../../core/i18n';
 
 const PAGE = 30;
 
@@ -12,16 +13,16 @@ const PAGE = 30;
  */
 @Component({
   selector: 'hx-chat-history',
-  imports: [DatePipe, ButtonComponent, IconComponent, SpinnerComponent],
+  imports: [TrPipe, DatePipe, ButtonComponent, IconComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <aside class="hist hx-glass hx-fade-in" aria-label="Cronologia delle conversazioni">
-      <div class="h"><b>Cronologia</b><span class="hx-grow"></span>
-        <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi" (click)="chats.historyOpen.set(false)"></button></div>
+    <aside class="hist hx-glass hx-fade-in"  [attr.aria-label]="'Cronologia delle conversazioni' | tr">
+      <div class="h"><b>{{ "Cronologia" | tr }}</b><span class="hx-grow"></span>
+        <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi' | tr" (click)="chats.historyOpen.set(false)"></button></div>
       <div class="search"><hx-icon name="search" [size]="14" />
-        <input class="hx-input" placeholder="Cerca nelle conversazioni" [value]="q()" (input)="type($any($event.target).value)" (keydown.enter)="reload()" aria-label="Cerca"></div>
+        <input class="hx-input"  [placeholder]="'Cerca nelle conversazioni' | tr" [value]="q()" (input)="type($any($event.target).value)" (keydown.enter)="reload()"  [attr.aria-label]="'Cerca' | tr"></div>
       <div class="dates">
-        <label>Dal <input class="hx-input" type="date" [value]="since()" (change)="since.set($any($event.target).value); reload()"></label>
+        <label>{{ "Dal" | tr }} <input class="hx-input" type="date" [value]="since()" (change)="since.set($any($event.target).value); reload()"></label>
         <label>Al <input class="hx-input" type="date" [value]="until()" (change)="until.set($any($event.target).value); reload()"></label>
       </div>
       @if (chats.tags().length) {
@@ -36,35 +37,35 @@ const PAGE = 30;
           <div class="it" [class.cur]="c.session_id === session.sessionId()">
             <button class="open" (click)="open(c)">
               <span class="t">@if (c.pinned) { <hx-icon name="pin" [size]="12" /> }{{ c.title }}</span>
-              <span class="m">{{ c.last_at | date:'d MMM, HH:mm' }} · {{ c.messages }} messaggi</span>
+              <span class="m">{{ c.last_at | date:'d MMM, HH:mm' }} · {{ c.messages }} {{ "messaggi" | tr }}</span>
               @if (c.tags.length) { <span class="ct">@for (t of c.tags; track t.name) { <span class="chip" [style.--c]="css(t.color)"><i></i>{{ t.name }}</span> }</span> }
             </button>
-            <button class="mini" [class.on]="c.pinned" (click)="pin(c)" [attr.aria-label]="c.pinned ? 'Sblocca' : 'Fissa'" [attr.title]="c.pinned ? 'Togli da fissate' : 'Fissa in cima'"><hx-icon name="pin" [size]="13" /></button>
-            <button class="mini" [class.on]="edit() === c.session_id" (click)="edit.set(edit() === c.session_id ? '' : c.session_id)" aria-label="Altro: titolo, etichette, elimina" title="Altro: titolo, etichette, elimina"><hx-icon name="more" [size]="13" /></button>
+            <button class="mini" [class.on]="c.pinned" (click)="pin(c)" [attr.aria-label]="c.pinned ? ('Sblocca' | tr) : ('Fissa' | tr)" [attr.title]="c.pinned ? ('Togli da fissate' | tr) : ('Fissa in cima' | tr)"><hx-icon name="pin" [size]="13" /></button>
+            <button class="mini" [class.on]="edit() === c.session_id" (click)="edit.set(edit() === c.session_id ? '' : c.session_id)"  [attr.aria-label]="'Altro: titolo, etichette, elimina' | tr"  [title]="'Altro: titolo, etichette, elimina' | tr"><hx-icon name="more" [size]="13" /></button>
           </div>
           @if (edit() === c.session_id) {
             <div class="ed">
-              <input class="hx-input" placeholder="Titolo" [value]="c.title" (change)="rename(c, $any($event.target).value)" aria-label="Titolo">
+              <input class="hx-input"  [placeholder]="'Titolo' | tr" [value]="c.title" (change)="rename(c, $any($event.target).value)"  [attr.aria-label]="'Titolo' | tr">
               <div class="row">
-                <input #nt class="hx-input" placeholder="Nuova etichetta" (keydown.enter)="addTag(c, nt.value, color()); nt.value = ''" aria-label="Nuova etichetta">
-                <button hx-btn size="sm" icon="plus" (click)="addTag(c, nt.value, color()); nt.value = ''">Aggiungi</button>
+                <input #nt class="hx-input"  [placeholder]="'Nuova etichetta' | tr" (keydown.enter)="addTag(c, nt.value, color()); nt.value = ''"  [attr.aria-label]="'Nuova etichetta' | tr">
+                <button hx-btn size="sm" icon="plus" (click)="addTag(c, nt.value, color()); nt.value = ''">{{ "Aggiungi" | tr }}</button>
               </div>
               <div class="colors">@for (k of colors; track k) {
                 <button class="sw" [class.on]="color() === k" [style.background]="css(k)" (click)="color.set(k)" [attr.aria-label]="k"></button> }</div>
               @if (c.tags.length) { <div class="ct">@for (t of c.tags; track t.name) {
-                <button class="chip rm" [style.--c]="css(t.color)" (click)="dropTag(c, t)" [attr.title]="'Togli ' + t.name"><i></i>{{ t.name }}<hx-icon name="x" [size]="11" /></button> }</div> }
-              <label class="train" title="Le conversazioni restano solo sul tuo computer; quelle escluse non entrano nel dataset di allenamento.">
+                <button class="chip rm" [style.--c]="css(t.color)" (click)="dropTag(c, t)" [attr.title]="('Togli ' | tr) + t.name"><i></i>{{ t.name }}<hx-icon name="x" [size]="11" /></button> }</div> }
+              <label class="train"  [title]="'Le conversazioni restano solo sul tuo computer; quelle escluse non entrano nel dataset di allenamento.' | tr">
                 <input type="checkbox" [checked]="!!c.training_off" (change)="trainingOff(c, $any($event.target).checked)">
-                <hx-icon name="eye-off" [size]="13" /> Non usare per l'allenamento
+                <hx-icon name="eye-off" [size]="13" /> {{ "Non usare per l'allenamento" | tr }}
               </label>
-              <button hx-btn variant="ghost" size="sm" icon="trash" class="del" (click)="remove(c)">Elimina conversazione</button>
+              <button hx-btn variant="ghost" size="sm" icon="trash" class="del" (click)="remove(c)">{{ "Elimina conversazione" | tr }}</button>
             </div>
           }
         } @empty {
-          @if (!loading()) { <div class="none">{{ error() ? 'Non disponibile, riprova tra poco.' : 'Nessuna conversazione.' }}</div> }
+          @if (!loading()) { <div class="none">{{ error() ? ('Non disponibile, riprova tra poco.' | tr) : ('Nessuna conversazione.' | tr) }}</div> }
         }
         @if (loading()) { <div class="none"><hx-spinner [size]="16" /></div> }
-        @else if (items().length < total()) { <button hx-btn variant="ghost" size="sm" (click)="more()">Carica altre</button> }
+        @else if (items().length < total()) { <button hx-btn variant="ghost" size="sm" (click)="more()">{{ "Carica altre" | tr }}</button> }
       </div>
     </aside>`,
   styles: [`

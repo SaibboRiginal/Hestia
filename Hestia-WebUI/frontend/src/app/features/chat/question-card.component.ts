@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output, signal } f
 import { FormsModule } from '@angular/forms';
 import { PendingQuestion } from '../../models/chat.models';
 import { ButtonComponent, IconComponent } from '../../ui';
+import { TrPipe } from '../../core/i18n';
 
 /**
  * A question from the assistant (Chat page and "Crea con Hestia" drawer): confirm, single choice, multiple choice
@@ -10,7 +11,7 @@ import { ButtonComponent, IconComponent } from '../../ui';
  */
 @Component({
   selector: 'hx-question-card',
-  imports: [FormsModule, ButtonComponent, IconComponent],
+  imports: [TrPipe, FormsModule, ButtonComponent, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let q = question();
@@ -33,14 +34,14 @@ import { ButtonComponent, IconComponent } from '../../ui';
       @if (freeField()) {
         <div class="qf">
           <input class="hx-input" [(ngModel)]="text" (keydown.enter)="submit()"
-                 [placeholder]="q.options.length ? 'Altro…' : 'Rispondi…'" />
-          @if (!multi()) { <button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!text.trim()">Invia</button> }
+                 [placeholder]="q.options.length ? ('Altro…' | tr) : 'Rispondi…'" />
+          @if (!multi()) { <button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!text.trim()">{{ "Invia" | tr }}</button> }
         </div>
       }
       @if (multi()) {
-        <div class="qf"><button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!picked().length && !text.trim()">Invia</button></div>
+        <div class="qf"><button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!picked().length && !text.trim()">{{ "Invia" | tr }}</button></div>
       }
-      @if (!q.required) { <button class="skipq" (click)="send('')">Salta</button> }
+      @if (!q.required) { <button class="skipq" (click)="send('')">{{ "Salta" | tr }}</button> }
     </div>
   `,
   styles: [`

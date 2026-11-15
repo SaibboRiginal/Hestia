@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, u
 import { IconComponent } from '../../ui';
 import { AdessoItem, MetisService } from '../../services/metis.service';
 import { PluginsService } from './plugins.service';
+import { TrPipe } from '../../core/i18n';
 
 const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat', recent: 'history', idea: 'sparkle' };
 
@@ -12,12 +13,12 @@ const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat
  */
 @Component({
   selector: 'hx-adesso-row',
-  imports: [IconComponent],
+  imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (items().length) {
-      <section class="row" aria-label="Adesso">
-        <div class="h"><hx-icon name="zap" [size]="14" /><span>Adesso</span></div>
+      <section class="row"  [attr.aria-label]="'Adesso' | tr">
+        <div class="h"><hx-icon name="zap" [size]="14" /><span>{{ "Adesso" | tr }}</span></div>
         <div class="list">
           @for (it of items(); track it.tool + it.title) {
             <button class="card" (click)="open(it)" [attr.title]="it.reason || it.title">

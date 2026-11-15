@@ -5,11 +5,11 @@
  * Reads GET /api/argus/performance and /api/argus/performance/history. Dossier 2026-10-24-tutto-brainstorm-cindy
  * D16 + Cindy 25 (W3) + W7.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 
 const API = '/api/argus';
-const METRICS = [{ id: 'mem_mb', label: 'Memoria', unit: 'MB' }, { id: 'cpu', label: 'Processore', unit: '%' },
-                 { id: 'ms', label: 'Risposta', unit: 'ms' }];
+const METRICS = [{ id: 'mem_mb', label: tr('Memoria'), unit: 'MB' }, { id: 'cpu', label: tr('Processore'), unit: '%' },
+                 { id: 'ms', label: tr('Risposta'), unit: 'ms' }];
 
 function bytes(n?: number | null): string {
   if (n === null || n === undefined) return '–';
@@ -63,7 +63,7 @@ export class ArgusPerformance extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/performance`);
-    if (!r.ok) { this.error = r.status === 0 ? 'Non raggiungibile' : r.error || 'Non raggiungibile'; return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Non raggiungibile') : r.error || tr('Non raggiungibile'); return; }
     this.error = '';
     this.data = r.data;
     if (!this.pick) this.pick = Object.keys(r.data?.services || {})[0] || '';
@@ -80,7 +80,7 @@ export class ArgusPerformance extends HestiaElement {
 
   private chart() {
     const rows: any[] = this.hist?.series?.[this.pick] || [];
-    if (rows.length < 2) return html`<hxk-state kind="empty" text="Servono un paio di controlli per il grafico."></hxk-state>`;
+    if (rows.length < 2) return html`<hxk-state kind="empty" text=${tr("Servono un paio di controlli per il grafico.")}></hxk-state>`;
     const m = METRICS.find(x => x.id === this.metric) || METRICS[0];
     const step = Math.max(1, Math.ceil(rows.length / 48));
     const pts = rows.filter((_, i) => i % step === 0);
@@ -90,7 +90,7 @@ export class ArgusPerformance extends HestiaElement {
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>Prestazioni</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("Prestazioni")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     const d = this.data;
     if (!d) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const t = d.thresholds || {};
@@ -99,27 +99,27 @@ export class ArgusPerformance extends HestiaElement {
     const dbOver = st && t.database_gb && st.database_bytes > t.database_gb * 1024 ** 3;
     const growOver = st && t.growth_mb_day && (st.growth_day_bytes || 0) > t.growth_mb_day * 1024 ** 2;
     return html`<div class="page">
-      <div class="head"><h1>Prestazioni</h1><span class="sub">${d.at ? `Ultimo controllo ${new Date(d.at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}` : 'Nessun controllo ancora'}</span></div>
+      <div class="head"><h1>${tr("Prestazioni")}</h1><span class="sub">${d.at ? tr("Ultimo controllo {0}", new Date(d.at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })) : tr('Nessun controllo ancora')}</span></div>
       <div class="stats">
-        <div class="stat"><span class="small muted">Giro attraverso l'hub</span><b>${num(d.hub_ms)} ms</b></div>
-        <div class="stat"><span class="small muted">Database</span><b style=${dbOver ? 'color:var(--danger)' : ''}>${bytes(st?.database_bytes)}</b>
-          <span class="small muted">limite ${num(t.database_gb)} GB</span></div>
-        <div class="stat"><span class="small muted">File salvati</span><b>${bytes(st?.blob_bytes)}</b><span class="small muted">${num(st?.blob_count)} file</span></div>
-        <div class="stat"><span class="small muted">Crescita al giorno</span><b style=${growOver ? 'color:var(--danger)' : ''}>${st?.growth_day_bytes === null || st?.growth_day_bytes === undefined ? '–' : bytes(st.growth_day_bytes)}</b>
-          <span class="small muted">limite ${num(t.growth_mb_day)} MB</span></div>
+        <div class="stat"><span class="small muted">${tr("Giro attraverso l'hub")}</span><b>${num(d.hub_ms)} ms</b></div>
+        <div class="stat"><span class="small muted">${tr("Database")}</span><b style=${dbOver ? 'color:var(--danger)' : ''}>${bytes(st?.database_bytes)}</b>
+          <span class="small muted">${tr("limite")} ${num(t.database_gb)} GB</span></div>
+        <div class="stat"><span class="small muted">${tr("File salvati")}</span><b>${bytes(st?.blob_bytes)}</b><span class="small muted">${num(st?.blob_count)} ${tr("file")}</span></div>
+        <div class="stat"><span class="small muted">${tr("Crescita al giorno")}</span><b style=${growOver ? 'color:var(--danger)' : ''}>${st?.growth_day_bytes === null || st?.growth_day_bytes === undefined ? '–' : bytes(st.growth_day_bytes)}</b>
+          <span class="small muted">${tr("limite")} ${num(t.growth_mb_day)} MB</span></div>
       </div>
       ${services.length ? html`<div class="card scroll"><table>
-        <thead><tr><th>Modulo</th><th>Memoria</th><th>Processore</th><th>Risposta</th><th>Acceso da</th><th>Riavvii</th></tr></thead>
+        <thead><tr><th>${tr("Modulo")}</th><th>${tr("Memoria")}</th><th>${tr("Processore")}</th><th>${tr("Risposta")}</th><th>${tr("Acceso da")}</th><th>${tr("Riavvii")}</th></tr></thead>
         <tbody>${services.map(([name, m]) => html`<tr class=${name === this.pick ? 'sel' : ''} @click=${() => this.select(name)}>
           <td>${name.replace(/^hestia[-_]/, '')}</td>
           <td class=${t.memory_mb && m.mem_mb > t.memory_mb ? 'over' : ''}>${num(m.mem_mb)} MB</td>
           <td class=${t.cpu_percent && m.cpu > t.cpu_percent ? 'over' : ''}>${num(m.cpu, 1)}%</td>
           <td class=${t.response_ms && m.ms > t.response_ms ? 'over' : ''}>${num(m.ms)} ms</td>
           <td>${uptime(m.uptime_s)}</td><td>${num(m.restarts)}</td></tr>`)}</tbody></table>
-        <div class="small muted" style="margin-top:6px">Limiti: memoria ${num(t.memory_mb)} MB, processore ${num(t.cpu_percent)}%, risposta ${num(t.response_ms)} ms. Oltre il limite arriva un avviso.</div>
-      </div>` : html`<hxk-state kind="empty" text="Nessun dato: memoria e processore servono l'accesso in lettura a Docker."></hxk-state>`}
+        <div class="small muted" style="margin-top:6px">${tr("Limiti: memoria")} ${num(t.memory_mb)} ${tr("MB, processore")} ${num(t.cpu_percent)}%, risposta ${num(t.response_ms)} ${tr("ms. Oltre il limite arriva un avviso.")}</div>
+      </div>` : html`<hxk-state kind="empty" text=${tr("Nessun dato: memoria e processore servono l'accesso in lettura a Docker.")}></hxk-state>`}
       ${this.pick ? html`<div class="card col">
-        <div class="row wrap"><b>${this.pick.replace(/^hestia[-_]/, '')}</b><span class="small muted">ultime 24 ore</span><span class="grow"></span>
+        <div class="row wrap"><b>${this.pick.replace(/^hestia[-_]/, '')}</b><span class="small muted">${tr("ultime 24 ore")}</span><span class="grow"></span>
           <div class="chips">${METRICS.map(m => html`<button class="chip" aria-pressed=${this.metric === m.id} @click=${() => (this.metric = m.id)}>${m.label}</button>`)}</div></div>
         ${this.chart()}
       </div>` : nothing}

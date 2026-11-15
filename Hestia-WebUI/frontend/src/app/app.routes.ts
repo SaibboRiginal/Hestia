@@ -4,12 +4,13 @@ import { setupGuard } from './guards/setup.guard';
 import { APP_MODULES } from './app.modules';
 import { ShellComponent } from './layout/shell.component';
 import { pluginPageMatcher } from './features/plugins/plugin-routes';
+import { tr } from './core/i18n';
 
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login-page.component').then(m => m.LoginPageComponent) },
   // Guided setup after the install (docs/work/2026-10-30-setup-un-click §4.2): full screen, outside the shell.
   // The address is the same in every language (the installer prints it); the old Italian one still works.
-  { path: 'setup', canActivate: [authGuard], title: 'Setup · Hestia',
+  { path: 'setup', canActivate: [authGuard], title: tr('Setup · Hestia'),
     loadComponent: () => import('./features/setup/setup-page.component').then(m => m.SetupPageComponent) },
   { path: 'benvenuto', redirectTo: 'setup' },
   {
@@ -24,11 +25,11 @@ export const routes: Routes = [
       { path: 'forge', redirectTo: '/p/hephaestus/sviluppo' },
       { path: 'documents', redirectTo: '/p/oracle/documenti' },
       { path: 'calendar', redirectTo: '/p/chronos/agenda' },
-      { path: 'download', loadComponent: () => import('./features/downloads/downloads-page.component').then(m => m.DownloadsPageComponent), title: 'Download · Hestia' },
-      { path: 'aggiornamenti', loadComponent: () => import('./features/updates/updates-page.component').then(m => m.UpdatesPageComponent), title: 'Aggiornamenti · Hestia' },
-      { path: 'macchine', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: 'Macchine · Hestia' },
-      { path: 'sistema', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: 'Sistema · Hestia' },
-      { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: 'Dashboard · Hestia' },
+      { path: 'download', loadComponent: () => import('./features/downloads/downloads-page.component').then(m => m.DownloadsPageComponent), title: tr('Download · Hestia') },
+      { path: 'aggiornamenti', loadComponent: () => import('./features/updates/updates-page.component').then(m => m.UpdatesPageComponent), title: tr('Aggiornamenti · Hestia') },
+      { path: 'macchine', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: tr('Macchine · Hestia') },
+      { path: 'sistema', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: tr('Sistema · Hestia') },
+      { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: tr('Dashboard · Hestia') },
       { matcher: pluginPageMatcher, loadComponent: () => import('./features/plugins/plugin-page.component').then(m => m.PluginPageComponent), title: 'Hestia' },
       { path: '', pathMatch: 'full' as const, redirectTo: 'home' },
     ],

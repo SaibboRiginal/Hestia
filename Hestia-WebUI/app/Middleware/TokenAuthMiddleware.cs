@@ -37,9 +37,10 @@ public class TokenAuthMiddleware
             return;
         }
 
-        // Allow login endpoint without token; /auth/access tells the browser whether it needs one
+        // Allow login endpoint without token; /auth/access tells the browser whether it needs one; /i18n = fixed texts
         if (((path == "/api/webui/auth/login" || path == "/api/webui/auth/telegram") && context.Request.Method == "POST")
-            || (path == "/api/webui/auth/access" && HttpMethods.IsGet(context.Request.Method)))
+            || (path == "/api/webui/auth/access" && HttpMethods.IsGet(context.Request.Method))
+            || ((path == "/api/webui/i18n" || path == "/api/webui/i18n.js") && HttpMethods.IsGet(context.Request.Method)))
         {
             await _next(context);
             return;

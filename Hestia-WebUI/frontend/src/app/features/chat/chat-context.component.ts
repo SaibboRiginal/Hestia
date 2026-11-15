@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ChatService } from '../../services/chat.service';
 import { SessionService } from '../../services/session.service';
 import { ButtonComponent, IconComponent, PopoverComponent, SettingLinkComponent, ToastService } from '../../ui';
+import { tr, TrPipe } from '../../core/i18n';
 
 interface ModelUsage {
   provider: string; model: string; calls: number; input_tokens: number; cached_tokens: number; output_tokens: number;
@@ -35,11 +36,11 @@ interface ContextStats {
 }
 
 const WINDOW_SOURCE: Record<string, string> = {
-  runtime: 'letta dal programma che fa girare il modello',
-  setting: 'fissata nelle impostazioni di Hestia',
-  floor: 'il programma locale ne ha impostata una troppo piccola: uso il minimo',
-  default: 'non ancora letta dal programma locale: valore di partenza',
-  provider: 'quella del servizio',
+  runtime: tr('letta dal programma che fa girare il modello'),
+  setting: tr('fissata nelle impostazioni di Hestia'),
+  floor: tr('il programma locale ne ha impostata una troppo piccola: uso il minimo'),
+  default: tr('non ancora letta dal programma locale: valore di partenza'),
+  provider: tr('quella del servizio'),
 };
 
 /** 12345 → "12,3k" · 1048576 → "1,05M" */
@@ -57,12 +58,12 @@ export function tokens(n: number | undefined | null): string {
  */
 @Component({
   selector: 'hx-chat-context',
-  imports: [ButtonComponent, IconComponent, PopoverComponent, SettingLinkComponent],
+  imports: [TrPipe, ButtonComponent, IconComponent, PopoverComponent, SettingLinkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button class="gauge" [class.warn]="pct() >= 70" [class.full]="pct() >= 90" (click)="toggle($event)"
-            [title]="stats() ? 'Contesto: ' + pct() + '% di ' + fmt(stats()!.context_window) + ' token' : 'Contesto'"
-            aria-label="Contesto e consumi">
+            [title]="stats() ? 'Contesto: ' + pct() + ('% di ' | tr) + fmt(stats()!.context_window) + ' token' : ('Contesto' | tr)"
+             [attr.aria-label]="'Contesto e consumi' | tr">
       <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
         <circle cx="10" cy="10" r="8" class="bg" />
         <circle cx="10" cy="10" r="8" class="fg" [attr.stroke-dasharray]="dash()" transform="rotate(-90 10 10)" />
@@ -76,59 +77,59 @@ export function tokens(n: number | undefined | null): string {
             <div class="prov">
               <b>{{ a.provider_label }}</b><span class="model">{{ a.model }}</span>
               <span class="hx-grow"></span>
-              <hx-setting-link module="oracle" title="Cambia il modello che risponde" (go)="open.set(false)" />
+              <hx-setting-link module="oracle"  [title]="'Cambia il modello che risponde' | tr" (go)="open.set(false)" />
               @if (a.billing) { <span class="bill">{{ a.billing }}</span> }
             </div>
           }
           <div class="sec">
-            <div class="row"><span>Contesto</span><b>{{ fmt(s.context_used_tokens) }} / {{ fmt(s.context_window) }} · {{ pct() }}%</b></div>
-            <div class="bar" role="img" [attr.aria-label]="'Contesto usato: ' + pct() + '%'">
+            <div class="row"><span>{{ "Contesto" | tr }}</span><b>{{ fmt(s.context_used_tokens) }} / {{ fmt(s.context_window) }} · {{ pct() }}%</b></div>
+            <div class="bar" role="img" [attr.aria-label]="('Contesto usato: ' | tr) + pct() + '%'">
               @for (p of parts(); track p.id) { <i [attr.data-part]="p.id" [style.width.%]="p.share" [title]="p.label + ': ' + fmt(p.tokens)"></i> }
             </div>
             <div class="note win">
               <span>Finestra: {{ windowSource() }}</span>
-              @if (s.window_setting_key) { <hx-setting-link [key]="s.window_setting_key" title="Cambia la finestra di contesto" (go)="open.set(false)" /> }
+              @if (s.window_setting_key) { <hx-setting-link [key]="s.window_setting_key"  [title]="'Cambia la finestra di contesto' | tr" (go)="open.set(false)" /> }
             </div>
             @if (s.over_window) {
               <div class="over"><hx-icon name="alert" [size]="14" />
-                <span>Il prompt è più grande della finestra: il modello ne perde una parte. Alza la finestra nel programma locale, oppure compatta.</span></div>
+                <span>{{ "Il prompt è più grande della finestra: il modello ne perde una parte. Alza la finestra nel programma locale, oppure compatta." | tr }}</span></div>
             }
             <div class="grid legend">
               @for (p of parts(); track p.id) {
                 <span><i class="dot" [attr.data-part]="p.id"></i>{{ p.label }}@if (p.id === 'history') { · {{ s.history_messages }} msg }</span><span>{{ fmt(p.tokens) }}</span>
               }
-              <span><i class="dot" data-part="free"></i>Spazio libero</span><span>{{ fmt(free()) }}</span>
+              <span><i class="dot" data-part="free"></i>{{ "Spazio libero" | tr }}</span><span>{{ fmt(free()) }}</span>
             </div>
             <div class="note">{{ measureNote() }}</div>
           </div>
           <div class="sec">
-            <div class="row"><span>Consumo di questa conversazione</span></div>
+            <div class="row"><span>{{ "Consumo di questa conversazione" | tr }}</span></div>
             @if (s.session_usage?.calls) {
               <div class="grid">
-                <span>Chiamate al modello</span><span>{{ s.session_usage!.calls }}</span>
-                <span>Token in ingresso</span><span>{{ fmt(s.session_usage!.input_tokens) }}</span>
-                <span>· di cui dalla cache</span><span>{{ fmt(s.session_usage!.cached_tokens) }} ({{ cachePct() }}%)</span>
-                <span>Token generati</span><span>{{ fmt(s.session_usage!.output_tokens) }}</span>
+                <span>{{ "Chiamate al modello" | tr }}</span><span>{{ s.session_usage!.calls }}</span>
+                <span>{{ "Token in ingresso" | tr }}</span><span>{{ fmt(s.session_usage!.input_tokens) }}</span>
+                <span>{{ "· di cui dalla cache" | tr }}</span><span>{{ fmt(s.session_usage!.cached_tokens) }} ({{ cachePct() }}%)</span>
+                <span>{{ "Token generati" | tr }}</span><span>{{ fmt(s.session_usage!.output_tokens) }}</span>
                 @if (s.session_usage!.cost_usd) {
-                  <span>{{ s.active?.provider === 'claude_cli' ? 'Equivalente API' : 'Costo' }}</span><span>$ {{ s.session_usage!.cost_usd!.toFixed(4) }}</span>
+                  <span>{{ s.active?.provider === 'claude_cli' ? ('Equivalente API' | tr) : ('Costo' | tr) }}</span><span>$ {{ s.session_usage!.cost_usd!.toFixed(4) }}</span>
                 }
               </div>
               @if (models().length > 1 || (models().length === 1 && models()[0].estimated)) {
                 <div class="models">
                   @for (m of models(); track m.provider + m.model) {
                     <div class="mrow"><span class="model">{{ m.model }}</span>
-                      <span>{{ m.calls === 1 ? '1 chiamata' : m.calls + ' chiamate' }} · {{ fmt(m.input_tokens) }}@if (m.estimated) { <em title="Il programma locale non dice quanto prompt ha riusato: ingresso e cache sono calcolati dalla lunghezza del testo"> stimati</em> }</span></div>
+                      <span>{{ m.calls === 1 ? '1 chiamata' : m.calls + ' chiamate' }} · {{ fmt(m.input_tokens) }}@if (m.estimated) { <em  [title]="'Il programma locale non dice quanto prompt ha riusato: ingresso e cache sono calcolati dalla lunghezza del testo' | tr"> {{ "stimati" | tr }}</em> }</span></div>
                   }
                 </div>
               }
             } @else {
-              <div class="note">Ancora nessuna chiamata registrata dall'ultimo riavvio.</div>
+              <div class="note">{{ "Ancora nessuna chiamata registrata dall'ultimo riavvio." | tr }}</div>
             }
           </div>
           <div class="acts">
-            <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="load()">Aggiorna</button>
+            <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="load()">{{ "Aggiorna" | tr }}</button>
             <button hx-btn size="sm" [disabled]="!s.compaction_available || compacting()" (click)="compact()"
-                    title="Riassume i messaggi più vecchi e libera contesto">{{ compacting() ? 'Compatto…' : 'Compatta' }}</button>
+                     [title]="'Riassume i messaggi più vecchi e libera contesto' | tr">{{ compacting() ? 'Compatto…' : ('Compatta' | tr) }}</button>
           </div>
         } @else {
           <div class="note">{{ error() || 'Carico…' }}</div>
@@ -206,8 +207,8 @@ export class ChatContextComponent {
   readonly windowSource = computed(() => WINDOW_SOURCE[this.stats()?.window_source ?? ''] ?? WINDOW_SOURCE['provider']);
   readonly measureNote = computed(() => {
     const s = this.stats();
-    if (!s?.context_measured) return 'Stima: nessuna chiamata misurata ancora.';
-    return s.breakdown_measured ? 'Misurato sull’ultima chiamata al modello.' : 'Totale misurato; la ripartizione è una stima.';
+    if (!s?.context_measured) return tr('Stima: nessuna chiamata misurata ancora.');
+    return s.breakdown_measured ? tr('Misurato sull’ultima chiamata al modello.') : tr('Totale misurato; la ripartizione è una stima.');
   });
   readonly models = computed(() => this.stats()?.session_usage?.by_model ?? []);
   readonly fmt = tokens;
@@ -228,7 +229,7 @@ export class ChatContextComponent {
       this.stats.set(await firstValueFrom(this.http.get<ContextStats>('/api/webui/chat/context')));
       this.error.set('');
     } catch {
-      this.error.set('Contesto non disponibile ora.');
+      this.error.set(tr('Contesto non disponibile ora.'));
     }
   }
 
@@ -245,7 +246,7 @@ export class ChatContextComponent {
     this.compacting.set(true);
     try {
       await firstValueFrom(this.http.post('/api/webui/chat/compact', {}));
-      this.toast.success('Conversazione compattata');
+      this.toast.success(tr('Conversazione compattata'));
       await this.load();
     } catch {
       this.toast.error('Compattazione non riuscita');

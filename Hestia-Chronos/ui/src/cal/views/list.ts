@@ -3,7 +3,7 @@
  * current time (the list scrolls to it once); past rows show the outcome of their run (ok / fallito + detail).
  * Event: cal-select {ev, rect}.
  */
-import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
+import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';
 import type { TemplateResult } from '@hestia/webui-sdk';
 import { type CalEvent, type CalWeather, NO_WEATHER, STATUS_META, TYPE_META, dur, fire, ownerLabel } from '../models';
 import { extLines } from './month';
@@ -52,12 +52,12 @@ export function outcome(ev: CalEvent, now: number): Outcome | null {
     const s = STATUS_META[o.status] ?? STATUS_META.confirmed;
     return { label: s.label, tone: s.tone };
   }
-  if (started && !ended) return { label: 'in corso', tone: 'accent' };
+  if (started && !ended) return { label: tr('in corso'), tone: 'accent' };
   if (ended) {
     if (!ev.item?.action) return { label: 'concluso', tone: 'neutral' };
     const lr = !o.recurring ? ev.item.last_result : null;   // one-off item: its result is the rule's last result
     if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: 'fallito', tone: 'danger', detail: lr.detail || undefined };
-    return { label: 'nessun esito', tone: 'warning' };
+    return { label: tr('nessun esito'), tone: 'warning' };
   }
   if (o.moved) return { label: 'spostata', tone: 'info' };
   return null;
@@ -111,7 +111,7 @@ export class ChronosCalList extends LitElement {
   }
 
   private nowLine(): TemplateResult {
-    return html`<div class="now"><span class="dot"></span><span class="lbl">Adesso · ${fmt.time(new Date(this.now))}</span><span class="line"></span></div>`;
+    return html`<div class="now"><span class="dot"></span><span class="lbl">${tr("Adesso ·")} ${fmt.time(new Date(this.now))}</span><span class="line"></span></div>`;
   }
 
   private row(ev: CalEvent) {
@@ -141,7 +141,7 @@ export class ChronosCalList extends LitElement {
 
   render() {
     const groups = groupByDay(this.events, this.from, this.now);
-    if (!groups.length) return html`<hxk-state kind="empty" text="Niente in programma: nessuna voce nel periodo con i filtri attuali."></hxk-state>`;
+    if (!groups.length) return html`<hxk-state kind="empty" text=${tr("Niente in programma: nessuna voce nel periodo con i filtri attuali.")}></hxk-state>`;
     return groups.map(g => html`${g.nowBefore ? this.nowLine() : nothing}
       <section><h3 class=${g.today ? 'today' : ''}>${g.label}${wxChip(this.weather.days[g.key], extLines(this.weather, g.key))}</h3>
         ${g.events.map(ev => html`${g.nowAt === ev.id ? this.nowLine() : nothing}${this.row(ev)}`)}

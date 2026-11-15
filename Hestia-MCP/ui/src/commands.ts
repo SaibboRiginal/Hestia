@@ -6,7 +6,7 @@
  * `?command=<tool>` opens that tool's form (Adesso, Scopri, notification buttons); `&args=<json>` fills it and
  * `&run=1` runs it at once when nothing required is missing (brainstorm W7).
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 
 const API = '/api/mcp/ui';
 
@@ -78,7 +78,7 @@ export class McpCommands extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/tools`);
-    if (!r.ok) { this.error = r.status === 0 || !r.error ? 'Hestia-MCP non raggiungibile' : r.error; return; }
+    if (!r.ok) { this.error = r.status === 0 || !r.error ? tr('Hestia-MCP non raggiungibile') : r.error; return; }
     this.error = '';
     this.all = r.data.commands || [];
     if (this.sel) this.sel = this.all!.find(c => c.command === this.sel!.command) ?? null;
@@ -94,7 +94,7 @@ export class McpCommands extends HestiaElement {
     if (!q.command || !this.all || key === this.applied) return;
     this.applied = key;
     const c = this.all.find(x => x.command === q.command);
-    if (!c) { this.host.toast('Questo comando non è disponibile ora', 'warning'); return; }
+    if (!c) { this.host.toast(tr('Questo comando non è disponibile ora'), 'warning'); return; }
     this.select(c);
     if (q.args) {
       try {
@@ -118,7 +118,7 @@ export class McpCommands extends HestiaElement {
     const map = new Map<string, Cmd[]>();
     for (const c of this.all || []) {
       if (q && !`${c.title} ${c.command} ${c.summary ?? ''} ${c.description} ${c.area_label ?? ''}`.toLowerCase().includes(q)) continue;
-      const key = c.area_label || 'Altro';    // grouped by area as people know them, never by module name
+      const key = c.area_label || tr('Altro');    // grouped by area as people know them, never by module name
       (map.get(key) ?? map.set(key, []).get(key)!).push(c);
     }
     const order = (items: Cmd[]) => items[0]?.area_order ?? 999;
@@ -132,12 +132,12 @@ export class McpCommands extends HestiaElement {
     const props = c.arguments_schema?.properties ?? {};
     const missing = (c.arguments_schema?.required ?? []).filter(a => a in props && !String(this.args[a] ?? '').trim());
     if (missing.length) { this.host.toast(`Manca: ${missing.join(', ')}`, 'warning'); return; }
-    if (c.writes && !(await this.host.confirm('Eseguire il comando?', `${c.title || c.command} cambia qualcosa in Hestia.`,
-      { label: 'Esegui' }))) return;
+    if (c.writes && !(await this.host.confirm(tr('Eseguire il comando?'), tr("{0} cambia qualcosa in Hestia.", c.title || c.command),
+      { label: tr('Esegui') }))) return;
     this.running = true; this.result = null;
     const r = await this.host.api('POST', `${API}/tools/call`, { body: { command: c.command, args: coerceArgs(c, this.args) } });
     this.running = false;
-    if (!r.ok) { this.result = { ok: false, json: r.status === 0 ? 'Hestia-MCP non raggiungibile' : r.error || 'Errore' }; return; }
+    if (!r.ok) { this.result = { ok: false, json: r.status === 0 ? tr('Hestia-MCP non raggiungibile') : r.error || tr('Errore') }; return; }
     const d = r.data;
     if (!d.ok) { this.result = { ok: false, json: typeof d.error === 'string' ? d.error : JSON.stringify(d.result, null, 2) }; return; }
     const json = typeof d.result === 'string' ? d.result : JSON.stringify(d.result, null, 2);
@@ -157,10 +157,10 @@ export class McpCommands extends HestiaElement {
   private askHestia() {
     const c = this.sel;
     this.host.assistant(c ? {
-      label: `Comando · ${c.title || c.command}`,
+      label: tr("Comando · {0}", c.title || c.command),
       hints: { comando: c.command, servizio: c.service, metodo: c.method, path: c.path },
-      suggestions: ['Eseguilo per me', 'Spiegami quando usarlo', 'Mi serve una variante che…'],
-    } : { label: 'Comandi & MCP', suggestions: ['Mi serve uno strumento che…', 'Quale comando uso per…?'] });
+      suggestions: [tr('Eseguilo per me'), tr('Spiegami quando usarlo'), tr('Mi serve una variante che…')],
+    } : { label: tr('Comandi & MCP'), suggestions: [tr('Mi serve uno strumento che…'), tr('Quale comando uso per…?')] });
   }
 
   private field(c: Cmd, a: string) {
@@ -172,10 +172,10 @@ export class McpCommands extends HestiaElement {
     if (p.enum?.length) return html`<hxk-field label=${label} type="enum" .options=${['', ...p.enum]} .value=${this.args[a] ?? ''}
       help=${help} @change=${set}></hxk-field>`;
     if (p.type === 'boolean') return html`<hxk-field label=${label} type="enum"
-      .options=${[{ value: '', label: '' }, { value: 'true', label: 'sì' }, { value: 'false', label: 'no' }]}
+      .options=${[{ value: '', label: '' }, { value: 'true', label: tr('sì') }, { value: 'false', label: 'no' }]}
       .value=${this.args[a] ?? ''} help=${help} @change=${set}></hxk-field>`;
     const type = p.type === 'integer' ? 'int' : p.type === 'number' ? 'float' : 'text';
-    return html`<hxk-field label=${label} type=${type} placeholder=${p.type === 'array' || p.type === 'object' ? 'JSON o a, b, c' : p.type || ''}
+    return html`<hxk-field label=${label} type=${type} placeholder=${p.type === 'array' || p.type === 'object' ? tr('JSON o a, b, c') : p.type || ''}
       .value=${this.args[a] ?? ''} help=${help} @change=${set}></hxk-field>`;
   }
 
@@ -183,25 +183,25 @@ export class McpCommands extends HestiaElement {
     const r = this.result; if (!r) return nothing;
     if (!r.ok) return html`<div class="result err"><pre>${r.json}</pre></div>`;
     if (r.text) return html`<div class="result"><p class="text">${r.text}</p>
-      <details><summary>Risposta grezza</summary><pre>${r.json}</pre></details></div>`;
-    return html`<div class="result">${r.formatting ? html`<div class="small muted" style="margin-bottom:8px">Hestia sta scrivendo la risposta…</div>` : nothing}
+      <details><summary>${tr("Risposta grezza")}</summary><pre>${r.json}</pre></details></div>`;
+    return html`<div class="result">${r.formatting ? html`<div class="small muted" style="margin-bottom:8px">${tr("Hestia sta scrivendo la risposta…")}</div>` : nothing}
       <pre>${r.json}</pre></div>`;
   }
 
   private renderDetail() {
     const c = this.sel;
-    if (!c) return html`<div class="card"><hxk-state kind="empty" text="Seleziona un comando: vedi descrizione e parametri ed eseguilo come farebbe Hestia."></hxk-state></div>`;
+    if (!c) return html`<div class="card"><hxk-state kind="empty" text=${tr("Seleziona un comando: vedi descrizione e parametri ed eseguilo come farebbe Hestia.")}></hxk-state></div>`;
     const names = Object.keys(c.arguments_schema?.properties ?? {});
     return html`<div class="card detail">
       <h2>${c.title || c.command}</h2>
       ${c.summary || c.description ? html`<p class="desc">${c.summary || c.description}</p>` : nothing}
-      ${c.summary && c.description && c.summary !== c.description ? html`<details><summary>Istruzioni per l'assistente</summary><p class="small muted">${c.description}</p></details>` : nothing}
-      <div class="meta"><hxk-badge>${c.area_label || 'Altro'}</hxk-badge><code>${c.method} ${c.path}</code>
-        ${c.writes ? html`<hxk-badge tone="warning">cambia qualcosa</hxk-badge>` : nothing}
-        ${c.response_mode === 'oracle_natural' ? html`<hxk-badge tone="accent">risposta in linguaggio naturale</hxk-badge>` : nothing}</div>
-      <div class="small muted">Nome dello strumento: <code>${c.command}</code></div>
+      ${c.summary && c.description && c.summary !== c.description ? html`<details><summary>${tr("Istruzioni per l'assistente")}</summary><p class="small muted">${c.description}</p></details>` : nothing}
+      <div class="meta"><hxk-badge>${c.area_label || tr('Altro')}</hxk-badge><code>${c.method} ${c.path}</code>
+        ${c.writes ? html`<hxk-badge tone="warning">${tr("cambia qualcosa")}</hxk-badge>` : nothing}
+        ${c.response_mode === 'oracle_natural' ? html`<hxk-badge tone="accent">${tr("risposta in linguaggio naturale")}</hxk-badge>` : nothing}</div>
+      <div class="small muted">${tr("Nome dello strumento:")} <code>${c.command}</code></div>
       ${names.length ? html`<div class="args">${names.map(a => this.field(c, a))}</div>` : nothing}
-      <div class="acts"><hxk-button variant="primary" icon="play" ?loading=${this.running} @click=${() => this.run(c)}>Esegui</hxk-button></div>
+      <div class="acts"><hxk-button variant="primary" icon="play" ?loading=${this.running} @click=${() => this.run(c)}>${tr("Esegui")}</hxk-button></div>
       ${this.renderResult()}
     </div>`;
   }
@@ -212,18 +212,18 @@ export class McpCommands extends HestiaElement {
     const groups = this.groups();
     const services = new Set(this.all.map(c => c.area_label || c.service)).size;
     return html`<div class="page">
-      <div class="head"><div class="grow"><h1>Comandi & MCP</h1>
-        <div class="sub">${this.all.length} strumenti in ${services} aree: gli stessi di chat, Telegram e AI esterne</div></div>
-        <input class="search" type="search" placeholder="Cerca comando…" .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
-        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()} title="Aggiorna"></hxk-button>
+      <div class="head"><div class="grow"><h1>${tr("Comandi & MCP")}</h1>
+        <div class="sub">${this.all.length} ${tr("strumenti in")} ${services} ${tr("aree: gli stessi di chat, Telegram e AI esterne")}</div></div>
+        <input class="search" type="search" placeholder=${tr("Cerca comando…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
+        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()} title=${tr("Aggiorna")}></hxk-button>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.askHestia()}
-          title="Usa un comando a parole, o fatti proporre uno strumento nuovo">Chiedi a Hestia</hxk-button></div>
+          title=${tr("Usa un comando a parole, o fatti proporre uno strumento nuovo")}>${tr("Chiedi a Hestia")}</hxk-button></div>
       <div class="body">
         <div class="card list">
           ${groups.length ? groups.map(g => html`<h4>${g.service} <span>${g.items.length}</span></h4>
             ${g.items.map(c => html`<button class="it ${this.sel?.command === c.command ? 'on' : ''}" @click=${() => this.select(c)}>
               <span class="grow truncate">${c.title || c.command}</span><span class="m">${c.method}</span></button>`)}`)
-            : html`<hxk-state kind="empty" text=${this.q ? 'Nessun comando trovato' : 'Nessuno strumento disponibile'}></hxk-state>`}
+            : html`<hxk-state kind="empty" text=${this.q ? tr('Nessun comando trovato') : tr('Nessuno strumento disponibile')}></hxk-state>`}
         </div>
         ${this.renderDetail()}
       </div>

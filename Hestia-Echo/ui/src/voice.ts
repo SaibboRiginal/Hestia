@@ -5,13 +5,13 @@
  * «Audio conservati» (space by class, recordings to listen/download/delete), «La tua voce» (<echo-your-voice>:
  * voiceprint + personal dictionary). In «Prova» a wrong transcript can be corrected: the words go to the dictionary.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, bytes, money, playB64, secs, when } from './util';
 
-const TABS = [{ id: 'prova', label: 'Prova' }, { id: 'tua', label: 'La tua voce' }, { id: 'motori', label: 'Motori' },
-              { id: 'uso', label: 'Uso' }, { id: 'audio', label: 'Audio conservati' }];
-const CLASSES: Record<string, string> = { recording: 'Le tue registrazioni', file: 'Audio mandati in chat',
-                                          generated: 'Risposte lette', notification: 'Notifiche a voce' };
+const TABS = [{ id: 'prova', label: tr('Prova') }, { id: 'tua', label: tr('La tua voce') }, { id: 'motori', label: tr('Motori') },
+              { id: 'uso', label: tr('Uso') }, { id: 'audio', label: tr('Audio conservati') }];
+const CLASSES: Record<string, string> = { recording: tr('Le tue registrazioni'), file: tr('Audio mandati in chat'),
+                                          generated: tr('Risposte lette'), notification: tr('Notifiche a voce') };
 
 export class EchoVoice extends HestiaElement {
   static properties = { ...HestiaElement.properties, tab: { state: true }, recording: { state: true }, busy: { state: true },
@@ -50,7 +50,7 @@ export class EchoVoice extends HestiaElement {
   `];
 
   constructor() {
-    super(); this.tab = 'prova'; this.recording = false; this.busy = ''; this.heard = null; this.text = 'Ciao, sono Hestia. Ti sento forte e chiaro.';
+    super(); this.tab = 'prova'; this.recording = false; this.busy = ''; this.heard = null; this.text = tr('Ciao, sono Hestia. Ti sento forte e chiaro.');
     this.said = null; this.usage = null; this.kept = null; this.days = 30; this.error = ''; this.fix = null;
   }
 
@@ -65,10 +65,10 @@ export class EchoVoice extends HestiaElement {
   private async loadTab() {
     if (this.tab === 'uso') {
       const r = await this.host.api('GET', `${API}/usage`, { query: { days: this.days } });
-      this.usage = r.ok ? r.data : null; this.error = r.ok ? '' : r.error || 'Non raggiungibile';
+      this.usage = r.ok ? r.data : null; this.error = r.ok ? '' : r.error || tr('Non raggiungibile');
     } else if (this.tab === 'audio') {
       const r = await this.host.api('GET', `${API}/audio`, { query: { limit: 200 } });
-      this.kept = r.ok ? r.data : null; this.error = r.ok ? '' : r.error || 'Non raggiungibile';
+      this.kept = r.ok ? r.data : null; this.error = r.ok ? '' : r.error || tr('Non raggiungibile');
     }
   }
 
@@ -76,7 +76,7 @@ export class EchoVoice extends HestiaElement {
   private async toggleMic() {
     if (!this.recording) {
       try { await this.rec.start(); this.recording = true; this.heard = null; this.fix = null; }
-      catch { this.host.toast('Il browser non mi dà il microfono', 'danger'); }
+      catch { this.host.toast(tr('Il browser non mi dà il microfono'), 'danger'); }
       return;
     }
     this.recording = false;
@@ -86,7 +86,7 @@ export class EchoVoice extends HestiaElement {
     const r = await this.host.api('POST', `${API}/transcribe`, { body: {
       audio_b64: await blobToB64(blob), mime_type: this.rec.mime, use_case: 'echo.prova.ascolto' } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non sono riuscita ad ascoltare', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non sono riuscita ad ascoltare'), 'danger'); return; }
     this.heard = r.data;
   }
 
@@ -97,11 +97,11 @@ export class EchoVoice extends HestiaElement {
     this.busy = 'impara';
     const r = await this.host.api('POST', `${API}/dictionary/learn`, { body: { heard: this.heard.text, corrected } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'warning'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'warning'); return; }
     this.heard = { ...this.heard, text: corrected };
     this.fix = null;
     const n = (r.data?.confirmed || []).length;
-    this.host.toast(n ? `Imparato: ${(r.data.confirmed || []).join(', ')}` : 'Grazie, me lo segno', 'success');
+    this.host.toast(n ? `Imparato: ${(r.data.confirmed || []).join(', ')}` : tr('Grazie, me lo segno'), 'success');
   }
 
   private async speak() {
@@ -109,7 +109,7 @@ export class EchoVoice extends HestiaElement {
     this.busy = 'voce';
     const r = await this.host.api('POST', `${API}/speak`, { body: { text: this.text, format: 'ogg_opus', use_case: 'echo.prova.voce' } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non sono riuscita a parlare', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non sono riuscita a parlare'), 'danger'); return; }
     this.said = r.data;
     this.play(r.data.audio_b64, r.data.mime_type);
   }
@@ -123,42 +123,40 @@ export class EchoVoice extends HestiaElement {
     if (!d) return nothing;
     return html`<div class="meta">
       ${d.provider ? html`<hxk-badge tone="neutral">${d.provider}${d.model || d.voice ? ` · ${d.model || d.voice}` : ''}</hxk-badge>` : nothing}
-      ${d.chain ? html`<span>catena ${d.chain}</span>` : nothing}
-      ${d.mode === 'esterna' ? html`<hxk-badge tone="info">esterna</hxk-badge>` : nothing}
-      ${d.fallback ? html`<hxk-badge tone="warning">ripiego</hxk-badge>` : nothing}
+      ${d.chain ? html`<span>${tr("catena")} ${d.chain}</span>` : nothing}
+      ${d.mode === 'esterna' ? html`<hxk-badge tone="info">${tr("esterna")}</hxk-badge>` : nothing}
+      ${d.fallback ? html`<hxk-badge tone="warning">${tr("ripiego")}</hxk-badge>` : nothing}
       ${d.duration_s ? html`<span>${secs(d.duration_s)}</span>` : nothing}
     </div>`;
   }
 
   private prova() {
     return html`<div class="cols">
-      <hxk-card heading="Ascolto" subtitle="Parla e guarda cosa capisco">
+      <hxk-card heading=${tr("Ascolto")} subtitle=${tr("Parla e guarda cosa capisco")}>
         <div class="mic">
-          <button class=${this.recording ? 'on' : ''} @click=${() => this.toggleMic()} aria-label=${this.recording ? 'Ferma e trascrivi' : 'Registra'}>
+          <button class=${this.recording ? 'on' : ''} @click=${() => this.toggleMic()} aria-label=${this.recording ? tr('Ferma e trascrivi') : tr('Registra')}>
             <hxk-icon name=${this.recording ? 'stop' : 'mic'} size=${30}></hxk-icon></button>
-          <span class="small muted">${this.recording ? 'Ti ascolto… tocca per finire' : this.busy === 'ascolto' ? 'Trascrivo…' : 'Tocca per parlare'}</span>
+          <span class="small muted">${this.recording ? tr('Ti ascolto… tocca per finire') : this.busy === 'ascolto' ? 'Trascrivo…' : tr('Tocca per parlare')}</span>
         </div>
         ${this.heard ? this.fix !== null && this.fix !== undefined ? html`<textarea .value=${this.fix} @input=${(e: any) => (this.fix = e.target.value)}></textarea>
-            <div class="actions"><hxk-button variant="ghost" @click=${() => (this.fix = null)}>Annulla</hxk-button>
-              <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'impara'} @click=${() => this.learn()}>Correggi</hxk-button></div>`
+            <div class="actions"><hxk-button variant="ghost" @click=${() => (this.fix = null)}>${tr("Annulla")}</hxk-button>
+              <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'impara'} @click=${() => this.learn()}>${tr("Correggi")}</hxk-button></div>`
           : html`<div class="out">${this.heard.text}</div>${this.meta(this.heard)}
-            <div class="actions"><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.fix = this.heard.text)}>Correggi la trascrizione</hxk-button></div>` : nothing}
+            <div class="actions"><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.fix = this.heard.text)}>${tr("Correggi la trascrizione")}</hxk-button></div>` : nothing}
       </hxk-card>
-      <hxk-card heading="Voce" subtitle="Scrivi e ascolta come lo leggo">
+      <hxk-card heading=${tr("Voce")} subtitle=${tr("Scrivi e ascolta come lo leggo")}>
         <textarea .value=${this.text} @input=${(e: any) => (this.text = e.target.value)}></textarea>
         <div class="actions">
-          ${this.said ? html`<hxk-button variant="ghost" icon="play" @click=${() => this.play(this.said.audio_b64, this.said.mime_type)}>Di nuovo</hxk-button>` : nothing}
-          <hxk-button variant="primary" icon="volume" ?loading=${this.busy === 'voce'} @click=${() => this.speak()}>Leggi</hxk-button>
+          ${this.said ? html`<hxk-button variant="ghost" icon="play" @click=${() => this.play(this.said.audio_b64, this.said.mime_type)}>${tr("Di nuovo")}</hxk-button>` : nothing}
+          <hxk-button variant="primary" icon="volume" ?loading=${this.busy === 'voce'} @click=${() => this.speak()}>${tr("Leggi")}</hxk-button>
         </div>
         ${this.meta(this.said)}
       </hxk-card>
     </div>
-    <hxk-card heading="Prepara la voce adesso" subtitle="Per non aspettare alla prima frase" style="margin-top:16px">
-      <p class="small muted" style="margin:0 0 10px">La prima volta che ti ascolto o ti parlo su questo computer devo scaricare quello che serve,
-        e quella frase aspetta. Qui lo scarico subito. Se è già tutto pronto, o usi una voce in cloud, non scarico niente.
-        L'avanzamento lo vedi in Sistema › Download.</p>
+    <hxk-card heading=${tr("Prepara la voce adesso")} subtitle=${tr("Per non aspettare alla prima frase")} style="margin-top:16px">
+      <p class="small muted" style="margin:0 0 10px">${tr("La prima volta che ti ascolto o ti parlo su questo computer devo scaricare quello che serve, e quella frase aspetta. Qui lo scarico subito. Se è già tutto pronto, o usi una voce in cloud, non scarico niente. L'avanzamento lo vedi in Sistema › Download.")}</p>
       <div class="actions" style="justify-content:flex-start;margin:0">
-        <hxk-button icon="download" ?loading=${this.busy === 'prepara'} @click=${() => this.prepare()}>Prepara la voce adesso</hxk-button>
+        <hxk-button icon="download" ?loading=${this.busy === 'prepara'} @click=${() => this.prepare()}>${tr("Prepara la voce adesso")}</hxk-button>
       </div>
     </hxk-card>`;
   }
@@ -168,9 +166,9 @@ export class EchoVoice extends HestiaElement {
     this.busy = 'prepara';
     const r = await this.host.api('POST', `${API}/models/prefetch`, { body: {} });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'La voce non risponde ora', 'danger'); return; }
-    this.host.toast((r.data?.queued || []).length ? 'Sto scaricando: segui l\'avanzamento in Sistema › Download'
-      : 'È già tutto pronto, non c\'è niente da scaricare', 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('La voce non risponde ora'), 'danger'); return; }
+    this.host.toast((r.data?.queued || []).length ? tr('Sto scaricando: segui l\'avanzamento in Sistema › Download')
+      : tr('È già tutto pronto, non c\'è niente da scaricare'), 'success');
   }
 
   // ── Uso ────────────────────────────────────────────────────────────────
@@ -181,25 +179,25 @@ export class EchoVoice extends HestiaElement {
     const t = u.totals || {};
     const rows = (obj: Record<string, any>) => Object.entries<any>(obj || {}).sort((a, b) => b[1].calls - a[1].calls)
       .map(([k, v]) => html`<div class="row"><span class="grow preview">${k}</span>
-        <span class="num small muted">${v.calls} · ${secs(v.seconds)} · ${v.chars} car.${v.errors ? html` · <span style="color:var(--danger)">${v.errors} errori</span>` : nothing}</span>
+        <span class="num small muted">${v.calls} · ${secs(v.seconds)} · ${v.chars} car.${v.errors ? html` · <span style="color:var(--danger)">${v.errors} ${tr("errori")}</span>` : nothing}</span>
         <span class="num">${money(v.cost)}</span></div>`);
     return html`
       <div class="actions" style="justify-content:flex-start;margin:0 0 12px">
-        ${[7, 30, 90].map(d => html`<hxk-button variant=${d === this.days ? 'primary' : 'ghost'} @click=${() => { this.days = d; this.loadTab(); }}>${d} giorni</hxk-button>`)}
+        ${[7, 30, 90].map(d => html`<hxk-button variant=${d === this.days ? 'primary' : 'ghost'} @click=${() => { this.days = d; this.loadTab(); }}>${d} ${tr("giorni")}</hxk-button>`)}
       </div>
-      <hxk-stat .items=${[{ label: 'Operazioni', value: t.calls || 0 }, { label: 'Minuti ascoltati', value: t.minutes || 0 },
-        { label: 'Caratteri letti', value: t.chars || 0 }, { label: 'Costo', value: money(t.cost), hint: 'Dai prezzi in Impostazioni' },
-        { label: 'Errori', value: t.errors || 0 }]}></hxk-stat>
+      <hxk-stat .items=${[{ label: tr('Operazioni'), value: t.calls || 0 }, { label: tr('Minuti ascoltati'), value: t.minutes || 0 },
+        { label: tr('Caratteri letti'), value: t.chars || 0 }, { label: tr('Costo'), value: money(t.cost), hint: tr('Dai prezzi in Impostazioni') },
+        { label: tr('Errori'), value: t.errors || 0 }]}></hxk-stat>
       <div class="cols" style="margin-top:16px">
-        <hxk-card heading="Per uso">${Object.keys(u.by_use || {}).length ? rows(u.by_use) : html`<span class="muted">Ancora niente.</span>`}</hxk-card>
-        <hxk-card heading="Per motore">${Object.keys(u.by_provider || {}).length ? rows(u.by_provider) : html`<span class="muted">Ancora niente.</span>`}</hxk-card>
+        <hxk-card heading=${tr("Per uso")}>${Object.keys(u.by_use || {}).length ? rows(u.by_use) : html`<span class="muted">${tr("Ancora niente.")}</span>`}</hxk-card>
+        <hxk-card heading=${tr("Per motore")}>${Object.keys(u.by_provider || {}).length ? rows(u.by_provider) : html`<span class="muted">${tr("Ancora niente.")}</span>`}</hxk-card>
       </div>
-      <hxk-card heading="Ultime operazioni" style="margin-top:16px">
+      <hxk-card heading=${tr("Ultime operazioni")} style="margin-top:16px">
         ${(u.recent || []).slice(0, 20).map((r: any) => html`<div class="row">
           <span class="num small muted">${when(r.at)}</span>
-          <span class="grow preview">${r.kind === 'transcribe' ? 'Ascolto' : 'Voce'} · ${r.use_case || '–'}</span>
+          <span class="grow preview">${r.kind === 'transcribe' ? tr('Ascolto') : tr('Voce')} · ${r.use_case || '–'}</span>
           <span class="small muted preview">${r.provider || '–'}${r.model ? ` · ${r.model}` : ''}</span>
-          ${r.ok ? (r.fallback ? html`<hxk-badge tone="warning">ripiego</hxk-badge>` : nothing) : html`<hxk-badge tone="danger" title=${r.error || ''}>errore</hxk-badge>`}
+          ${r.ok ? (r.fallback ? html`<hxk-badge tone="warning">${tr("ripiego")}</hxk-badge>` : nothing) : html`<hxk-badge tone="danger" title=${r.error || ''}>${tr("errore")}</hxk-badge>`}
         </div>`)}
       </hxk-card>`;
   }
@@ -207,7 +205,7 @@ export class EchoVoice extends HestiaElement {
   // ── Audio conservati ───────────────────────────────────────────────────
   private async listen(id: string) {
     const r = await this.host.api('GET', `${API}/audio/${id}`);
-    if (!r.ok) { this.host.toast(r.error || 'Audio non trovato', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Audio non trovato'), 'danger'); return; }
     this.play(r.data.audio_b64, r.data.mime_type);
   }
 
@@ -222,10 +220,10 @@ export class EchoVoice extends HestiaElement {
 
   private async dropAudio(item: any) {
     const mine = item.class === 'recording';
-    if (!(await this.host.confirm('Eliminare questo audio?', mine ? 'È una tua registrazione: non si può rifare.' : 'Si potrà rigenerare dal testo.',
-      { label: 'Elimina', danger: true }))) return;
+    if (!(await this.host.confirm(tr('Eliminare questo audio?'), mine ? tr('È una tua registrazione: non si può rifare.') : tr('Si potrà rigenerare dal testo.'),
+      { label: tr('Elimina'), danger: true }))) return;
     const r = await this.host.api('DELETE', `${API}/audio/${item.blob_id}`);
-    if (!r.ok) { this.host.toast(r.error || 'Non eliminato', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non eliminato'), 'danger'); return; }
     this.loadTab();
   }
 
@@ -236,21 +234,20 @@ export class EchoVoice extends HestiaElement {
     const sp = k.space || {};
     const pct = sp.limit_bytes ? Math.min(100, Math.round((sp.total_bytes / sp.limit_bytes) * 100)) : 0;
     return html`
-      <hxk-card heading="Spazio" subtitle=${`${bytes(sp.total_bytes)} di ${bytes(sp.limit_bytes)}`}>
+      <hxk-card heading=${tr("Spazio")} subtitle=${`${bytes(sp.total_bytes)} di ${bytes(sp.limit_bytes)}`}>
         <div class="bar"><span style=${`width:${pct}%`}></span></div>
         ${Object.entries<any>(sp.classes || {}).map(([c, v]) => html`<div class="row"><span>${CLASSES[c] || c}</span>
           <span class="num small muted">${v.count} · ${bytes(v.bytes)}</span></div>`)}
-        <div class="small muted" style="margin-top:6px">Le tue registrazioni non le tolgo mai; le risposte lette e le notifiche
-          si rifanno dal testo e vanno via per prime.</div>
+        <div class="small muted" style="margin-top:6px">${tr("Le tue registrazioni non le tolgo mai; le risposte lette e le notifiche si rifanno dal testo e vanno via per prime.")}</div>
       </hxk-card>
-      <hxk-card heading="Audio" style="margin-top:16px">
+      <hxk-card heading=${tr("Audio")} style="margin-top:16px">
         ${(k.items || []).length ? (k.items || []).map((it: any) => html`<div class="row">
-          <hxk-button variant="ghost" icon="play" title="Ascolta" @click=${() => this.listen(it.blob_id)}></hxk-button>
+          <hxk-button variant="ghost" icon="play" title=${tr("Ascolta")} @click=${() => this.listen(it.blob_id)}></hxk-button>
           <div class="grow"><div class="preview">${it.text || CLASSES[it.class] || it.class}</div>
             <div class="small muted">${when(it.at)} · ${CLASSES[it.class] || it.class}${it.duration_s ? ` · ${secs(it.duration_s)}` : ''} · ${bytes(it.size)}</div></div>
-          <hxk-button variant="ghost" icon="upload" title="Scarica" style="transform:rotate(180deg)" @click=${() => this.download(it)}></hxk-button>
-          <hxk-button variant="ghost" icon="trash" title="Elimina" @click=${() => this.dropAudio(it)}></hxk-button>
-        </div>`) : html`<span class="muted">Nessun audio conservato.</span>`}
+          <hxk-button variant="ghost" icon="upload" title=${tr("Scarica")} style="transform:rotate(180deg)" @click=${() => this.download(it)}></hxk-button>
+          <hxk-button variant="ghost" icon="trash" title=${tr("Elimina")} @click=${() => this.dropAudio(it)}></hxk-button>
+        </div>`) : html`<span class="muted">${tr("Nessun audio conservato.")}</span>`}
       </hxk-card>`;
   }
 

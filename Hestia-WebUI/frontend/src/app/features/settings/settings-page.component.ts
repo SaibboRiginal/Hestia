@@ -8,6 +8,7 @@ import { PERSONAL_SECTIONS, PersonalSettingsComponent, personalHits } from './pe
 import { HEALTH, SystemSettingsComponent } from './system-settings.component';
 import { PluginSettingsComponent } from '../plugins/plugin-settings.component';
 import { TransferSettingsComponent } from './transfer-settings.component';
+import { TrPipe } from '../../core/i18n';
 
 /**
  * Impostazioni, VS Code-like: one search box over every setting (personal and system), a
@@ -23,22 +24,22 @@ const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.c
 
 @Component({
   selector: 'app-settings-page',
-  imports: [BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent, PluginSettingsComponent, TransferSettingsComponent],
+  imports: [TrPipe, BadgeComponent, IconComponent, ResizeHandleComponent, PersonalSettingsComponent, SystemSettingsComponent, PluginSettingsComponent, TransferSettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
-      <h1>Impostazioni</h1>
+      <h1>{{ "Impostazioni" | tr }}</h1>
       <label class="search">
         <hx-icon name="search" [size]="16" />
-        <input #q class="hx-input" type="search" placeholder="Cerca in tutte le impostazioni (Ctrl+F)" [value]="store.query()"
-               (input)="store.search($any($event.target).value)" (keydown.escape)="store.search('')" aria-label="Cerca impostazioni" />
+        <input #q class="hx-input" type="search"  [placeholder]="'Cerca in tutte le impostazioni (Ctrl+F)' | tr" [value]="store.query()"
+               (input)="store.search($any($event.target).value)" (keydown.escape)="store.search('')"  [attr.aria-label]="'Cerca impostazioni' | tr" />
         @if (store.query()) { <span class="count">{{ totalHits() === 1 ? '1 risultato' : totalHits() + ' risultati' }}</span> }
       </label>
     </header>
 
     <div class="layout">
       <aside class="side" [style.width.px]="width()">
-        <div class="head">Personali</div>
+        <div class="head">{{ "Personali" | tr }}</div>
         @for (s of personal; track s.id) {
           <button class="item" [class.on]="!searching() && view() === 'p:' + s.id" [class.none]="searching() && !pHits().get(s.id)"
                   (click)="open('p:' + s.id)">
@@ -46,14 +47,14 @@ const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.c
             @if (searching() && pHits().get(s.id)) { <span class="n">{{ pHits().get(s.id) }}</span> }
           </button>
         }
-        <div class="head">Dati</div>
+        <div class="head">{{ "Dati" | tr }}</div>
         <button class="item" [class.on]="!searching() && view() === 'transfer'" (click)="open('transfer')">
-          <hx-icon name="download" [size]="15" /><span class="hx-grow">Esporta e importa</span>
+          <hx-icon name="download" [size]="15" /><span class="hx-grow">{{ "Esporta e importa" | tr }}</span>
         </button>
-        <div class="head">Sistema</div>
+        <div class="head">{{ "Sistema" | tr }}</div>
         <button class="item" [class.on]="!searching() && view() === 'system'" (click)="open('system')">
-          <hx-icon name="grid" [size]="15" /><span class="hx-grow">Panoramica</span>
-          @if (store.proposals().length) { <hx-badge tone="accent" title="Proposte in attesa">{{ store.proposals().length }}</hx-badge> }
+          <hx-icon name="grid" [size]="15" /><span class="hx-grow">{{ "Panoramica" | tr }}</span>
+          @if (store.proposals().length) { <hx-badge tone="accent"  [title]="'Proposte in attesa' | tr">{{ store.proposals().length }}</hx-badge> }
         </button>
         @for (m of store.modules(); track m.module) {
           <button class="item" [class.on]="!searching() && view() === m.module" [class.none]="searching() && !store.hitsByModule().get(m.module)"
@@ -61,7 +62,7 @@ const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.c
             <span class="dot" [attr.data-tone]="health(m).tone" [title]="health(m).label"></span>
             <span class="hx-grow">{{ name(m.module) }}</span>
             @if (searching()) { @if (store.hitsByModule().get(m.module); as n) { <span class="n">{{ n }}</span> } }
-            @else if (m.pending_proposals) { <hx-badge tone="accent" title="Proposte in attesa">{{ m.pending_proposals }}</hx-badge> }
+            @else if (m.pending_proposals) { <hx-badge tone="accent"  [title]="'Proposte in attesa' | tr">{{ m.pending_proposals }}</hx-badge> }
             @else { <span class="n">{{ m.definitions }}</span> }
           </button>
         }
@@ -71,7 +72,7 @@ const KEY_ROWS: Record<string, string> = { 'oracle.chat.tone': 'tone', 'oracle.c
       <main class="main">
         @if (searching()) {
           @if (pTotal()) {
-            <h3 class="sec">Personali</h3>
+            <h3 class="sec">{{ "Personali" | tr }}</h3>
             <app-personal-settings [query]="store.query()" />
           }
           @if (store.visible().length || store.hiddenAdvanced() || store.onlyModified() || !pTotal()) { <app-system-settings /> }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { tr } from '../core/i18n';
 
 /**
  * <hx-icon name="calendar" [size]="18" tone="success" />

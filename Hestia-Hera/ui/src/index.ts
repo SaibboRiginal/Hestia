@@ -2,22 +2,22 @@
  * Hera («Persone») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages and widget declared in Hestia-Hera/app/main.py.
  */
-import { HestiaElement, css, definePlugin, html, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/people';
 const RELATIONS = [
-  { value: 'partner', label: 'Partner' }, { value: 'famiglia', label: 'Famiglia' }, { value: 'amico', label: 'Amico' },
-  { value: 'collega', label: 'Collega' }, { value: 'altro', label: 'Altro' }];
-const relLabel = (r: string) => RELATIONS.find(x => x.value === r)?.label || 'Altro';
+  { value: 'partner', label: tr('Partner') }, { value: 'famiglia', label: tr('Famiglia') }, { value: 'amico', label: tr('Amico') },
+  { value: 'collega', label: tr('Collega') }, { value: 'altro', label: tr('Altro') }];
+const relLabel = (r: string) => RELATIONS.find(x => x.value === r)?.label || tr('Altro');
 
 async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string, body?: unknown): Promise<ApiResult<T>> {
   const r = await host.api<T>(method, `${API}${path}`, body === undefined ? undefined : { body });
-  if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? 'Non raggiungibile, riprova' : r.error || 'Errore', 'warning');
+  if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Non raggiungibile, riprova') : r.error || tr('Errore'), 'warning');
   return r;
 }
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
-const inDays = (n: number) => n === 0 ? 'oggi' : n === 1 ? 'domani' : `tra ${n} giorni`;
+const inDays = (n: number) => n === 0 ? 'oggi' : n === 1 ? 'domani' : tr("tra {0} giorni", n);
 
 const styles = css`
   .between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -51,7 +51,7 @@ export class HeraPeople extends HestiaElement {
   }
   private set(k: string, v: any) { this.draft = { ...this.draft, [k]: v }; }
   private async save() {
-    if (!String(this.draft.name || '').trim()) { this.host.toast('Serve il nome', 'warning'); return; }
+    if (!String(this.draft.name || '').trim()) { this.host.toast(tr('Serve il nome'), 'warning'); return; }
     const r = await call(this.host, 'POST', '', this.draft);
     if (r.ok) { this.adding = false; this.draft = { relation: 'amico' }; this.host.toast(`${r.data.name} salvata`, 'success'); this.load(); }
   }
@@ -61,28 +61,28 @@ export class HeraPeople extends HestiaElement {
     const q = this.q.trim().toLowerCase();
     const shown = this.items.filter(p => !q || p.name.toLowerCase().includes(q));
     return html`<div class="page">
-      <div class="between"><h1>Persone</h1>
-        <hxk-button variant="primary" icon="plus" @click=${() => { this.adding = !this.adding; }}>Aggiungi</hxk-button></div>
+      <div class="between"><h1>${tr("Persone")}</h1>
+        <hxk-button variant="primary" icon="plus" @click=${() => { this.adding = !this.adding; }}>${tr("Aggiungi")}</hxk-button></div>
       ${this.adding ? html`<div class="card col">
         <div class="form">
-          <hxk-field label="Nome" .value=${this.draft.name || ''} @change=${(e: any) => this.set('name', e.detail)}></hxk-field>
-          <hxk-field label="Relazione" type="enum" .options=${RELATIONS} .value=${this.draft.relation} @change=${(e: any) => this.set('relation', e.detail)}></hxk-field>
-          <hxk-field label="Compleanno" placeholder="GG/MM o AAAA-MM-GG" .value=${this.draft.birthday || ''} @change=${(e: any) => this.set('birthday', e.detail)}></hxk-field>
-          <hxk-field label="Sentirla ogni" type="int" unit="giorni" .value=${this.draft.contact_every_days ?? ''} @change=${(e: any) => this.set('contact_every_days', e.detail)}></hxk-field>
+          <hxk-field label=${tr("Nome")} .value=${this.draft.name || ''} @change=${(e: any) => this.set('name', e.detail)}></hxk-field>
+          <hxk-field label=${tr("Relazione")} type="enum" .options=${RELATIONS} .value=${this.draft.relation} @change=${(e: any) => this.set('relation', e.detail)}></hxk-field>
+          <hxk-field label=${tr("Compleanno")} placeholder=${tr("GG/MM o AAAA-MM-GG")} .value=${this.draft.birthday || ''} @change=${(e: any) => this.set('birthday', e.detail)}></hxk-field>
+          <hxk-field label=${tr("Sentirla ogni")} type="int" unit=${tr("giorni")} .value=${this.draft.contact_every_days ?? ''} @change=${(e: any) => this.set('contact_every_days', e.detail)}></hxk-field>
         </div>
-        <hxk-field label="Cosa le piace" type="list" .value=${this.draft.likes || []} @change=${(e: any) => this.set('likes', e.detail)}></hxk-field>
-        <div class="row"><hxk-button variant="primary" @click=${() => this.save()}>Salva</hxk-button>
-          <hxk-button variant="ghost" @click=${() => { this.adding = false; }}>Annulla</hxk-button></div>
+        <hxk-field label=${tr("Cosa le piace")} type="list" .value=${this.draft.likes || []} @change=${(e: any) => this.set('likes', e.detail)}></hxk-field>
+        <div class="row"><hxk-button variant="primary" @click=${() => this.save()}>${tr("Salva")}</hxk-button>
+          <hxk-button variant="ghost" @click=${() => { this.adding = false; }}>${tr("Annulla")}</hxk-button></div>
       </div>` : nothing}
-      ${this.soon.length ? html`<div class="card col"><h3>Prossime date</h3>
+      ${this.soon.length ? html`<div class="card col"><h3>${tr("Prossime date")}</h3>
         ${this.soon.map(s => html`<div class="between small"><span class="click" @click=${() => this.host.navigate('persona/' + s.person_id)}>${s.label} di <b>${s.person}</b></span>
           <span class="muted">${ddmm(s.next)} · ${inDays(s.in_days)}</span></div>`)}</div>` : nothing}
-      <input placeholder="Cerca" .value=${this.q} @input=${(e: any) => { this.q = e.target.value; }}>
+      <input placeholder=${tr("Cerca")} .value=${this.q} @input=${(e: any) => { this.q = e.target.value; }}>
       <div class="card">${shown.length ? shown.map(p => html`<div class="person" @click=${() => this.host.navigate('persona/' + p.id)}>
           <div class="avatar">${p.name.slice(0, 1).toUpperCase()}</div>
           <div class="grow"><div>${p.name}</div><div class="small muted">${relLabel(p.relation)}${p.dates.length ? ` · ${p.dates[0].label.toLowerCase()} ${ddmm(p.dates[0].next)}` : ''}</div></div>
-          ${p.contact_due_in !== null && p.contact_due_in !== undefined && p.contact_due_in <= 0 ? html`<hxk-badge tone="warning">da sentire</hxk-badge>` : nothing}
-        </div>`) : html`<hxk-state kind="empty" text=${this.items.length ? 'Nessuna persona con questo nome.' : 'Ancora nessuna persona: aggiungi chi è importante per te.'}></hxk-state>`}</div>
+          ${p.contact_due_in !== null && p.contact_due_in !== undefined && p.contact_due_in <= 0 ? html`<hxk-badge tone="warning">${tr("da sentire")}</hxk-badge>` : nothing}
+        </div>`) : html`<hxk-state kind="empty" text=${this.items.length ? tr('Nessuna persona con questo nome.') : tr('Ancora nessuna persona: aggiungi chi è importante per te.')}></hxk-state>`}</div>
     </div>`;
   }
 }
@@ -102,50 +102,50 @@ export class HeraPerson extends HestiaElement {
   private async patch(body: any) { const r = await call(this.host, 'PUT', `/${this.pid}`, body); if (r.ok) this.p = r.data; }
   private async post(path: string, body: any = {}) { const r = await call(this.host, 'POST', `/${this.pid}${path}`, body); if (r.ok) this.p = r.data; return r.ok; }
   private async deletePerson() {
-    if (!await this.host.confirm('Eliminare la scheda?', `${this.p.name} e le sue date spariscono anche dal calendario.`, { label: 'Elimina', danger: true })) return;
+    if (!await this.host.confirm(tr('Eliminare la scheda?'), tr("{0} e le sue date spariscono anche dal calendario.", this.p.name), { label: tr('Elimina'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `/${this.pid}`);
-    if (r.ok) { this.host.toast('Eliminata', 'success'); this.host.navigate('persone'); }
+    if (r.ok) { this.host.toast(tr('Eliminata'), 'success'); this.host.navigate('persone'); }
   }
   render() {
     const p = this.p;
     if (p === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (p === null) return html`<hxk-state kind="error" text="Persona non trovata." @retry=${() => this.load()}></hxk-state>`;
+    if (p === null) return html`<hxk-state kind="error" text=${tr("Persona non trovata.")} @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
       <div class="between"><div class="row"><div class="avatar">${p.name.slice(0, 1).toUpperCase()}</div>
-        <div><h1>${p.name}</h1><div class="small muted">${relLabel(p.relation)}${p.last_contact ? ` · sentita il ${ddmm(p.last_contact)}` : ''}</div></div></div>
-        <div class="row"><hxk-button icon="check" variant="primary" @click=${async () => { if (await this.post('/contact')) this.host.toast("Segnato: l'hai sentita", 'success'); }}>L'ho sentita</hxk-button>
-          <hxk-button icon="chat" variant="ghost" @click=${() => this.host.assistant({ label: p.name, hints: { persona: p.id }, suggestions: ['Idee regalo per lei', 'Cosa le piace?'] })}>Chiedi</hxk-button></div></div>
+        <div><h1>${p.name}</h1><div class="small muted">${relLabel(p.relation)}${p.last_contact ? tr(" · sentita il {0}", ddmm(p.last_contact)) : ''}</div></div></div>
+        <div class="row"><hxk-button icon="check" variant="primary" @click=${async () => { if (await this.post('/contact')) this.host.toast(tr("Segnato: l'hai sentita"), 'success'); }}>${tr("L'ho sentita")}</hxk-button>
+          <hxk-button icon="chat" variant="ghost" @click=${() => this.host.assistant({ label: p.name, hints: { persona: p.id }, suggestions: [tr('Idee regalo per lei'), tr('Cosa le piace?')] })}>${tr("Chiedi")}</hxk-button></div></div>
       <div class="grid" style="--min: 280px">
-        <div class="card col"><h3>Date</h3>
-          ${p.dates.length ? p.dates.map((d: any) => html`<div class="between small"><span>${d.label}</span><span class="muted">${ddmm(d.next)} · ${inDays(d.in_days)} · avviso ${d.lead_days} g prima</span></div>`)
-            : html`<div class="small muted">Nessuna data.</div>`}
+        <div class="card col"><h3>${tr("Date")}</h3>
+          ${p.dates.length ? p.dates.map((d: any) => html`<div class="between small"><span>${d.label}</span><span class="muted">${ddmm(d.next)} · ${inDays(d.in_days)} · avviso ${d.lead_days} ${tr("g prima")}</span></div>`)
+            : html`<div class="small muted">${tr("Nessuna data.")}</div>`}
           <div class="row wrap">
-            <input placeholder="Es. Anniversario" style="flex:1" .value=${this.newDate.label || ''} @input=${(e: any) => { this.newDate = { ...this.newDate, label: e.target.value }; }}>
+            <input placeholder=${tr("Es. Anniversario")} style="flex:1" .value=${this.newDate.label || ''} @input=${(e: any) => { this.newDate = { ...this.newDate, label: e.target.value }; }}>
             <input placeholder="GG/MM" style="width:90px" .value=${this.newDate.day || ''} @input=${(e: any) => { this.newDate = { ...this.newDate, day: e.target.value }; }}>
-            <hxk-button icon="plus" @click=${async () => { if (this.newDate.label && this.newDate.day) { await this.patch({ dates: [{ ...this.newDate, kind: /anniversario/i.test(this.newDate.label) ? 'anniversary' : 'custom' }] }); this.newDate = {}; } }}>Aggiungi</hxk-button></div>
-          <div class="small muted">Le date vanno nel calendario con il preavviso.</div>
+            <hxk-button icon="plus" @click=${async () => { if (this.newDate.label && this.newDate.day) { await this.patch({ dates: [{ ...this.newDate, kind: /anniversario/i.test(this.newDate.label) ? 'anniversary' : 'custom' }] }); this.newDate = {}; } }}>${tr("Aggiungi")}</hxk-button></div>
+          <div class="small muted">${tr("Le date vanno nel calendario con il preavviso.")}</div>
         </div>
-        <div class="card col"><h3>Idee regalo</h3>
+        <div class="card col"><h3>${tr("Idee regalo")}</h3>
           ${p.gift_ideas.length ? p.gift_ideas.map((g: any) => html`<div class="idea"><span class="grow">${g.text}</span>
-            <hxk-button size="sm" variant="ghost" icon="check" @click=${() => this.post(`/gift/${g.id}/done`)}>Fatto</hxk-button></div>`)
-            : html`<div class="small muted">Quando in chat dici cosa le piacerebbe, l'assistente lo segna qui.</div>`}
-          <div class="row"><input class="grow" placeholder="Nuova idea" .value=${this.idea} @input=${(e: any) => { this.idea = e.target.value; }}
+            <hxk-button size="sm" variant="ghost" icon="check" @click=${() => this.post(`/gift/${g.id}/done`)}>${tr("Fatto")}</hxk-button></div>`)
+            : html`<div class="small muted">${tr("Quando in chat dici cosa le piacerebbe, l'assistente lo segna qui.")}</div>`}
+          <div class="row"><input class="grow" placeholder=${tr("Nuova idea")} .value=${this.idea} @input=${(e: any) => { this.idea = e.target.value; }}
             @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.addIdea(); }}>
-            <hxk-button icon="plus" @click=${() => this.addIdea()}>Aggiungi</hxk-button></div>
+            <hxk-button icon="plus" @click=${() => this.addIdea()}>${tr("Aggiungi")}</hxk-button></div>
         </div>
-        <div class="card col"><h3>Gusti</h3>
+        <div class="card col"><h3>${tr("Gusti")}</h3>
           <div class="chips">${(p.likes || []).map((l: string) => html`<span class="chip">${l}</span>`)}${(p.dislikes || []).map((l: string) => html`<span class="chip no">${l}</span>`)}</div>
-          <div class="row"><input class="grow" placeholder="Le piace…" .value=${this.like} @input=${(e: any) => { this.like = e.target.value; }}>
-            <hxk-button size="sm" @click=${() => this.addLike(false)}>Piace</hxk-button>
-            <hxk-button size="sm" variant="ghost" @click=${() => this.addLike(true)}>Non piace</hxk-button></div>
+          <div class="row"><input class="grow" placeholder=${tr("Le piace…")} .value=${this.like} @input=${(e: any) => { this.like = e.target.value; }}>
+            <hxk-button size="sm" @click=${() => this.addLike(false)}>${tr("Piace")}</hxk-button>
+            <hxk-button size="sm" variant="ghost" @click=${() => this.addLike(true)}>${tr("Non piace")}</hxk-button></div>
         </div>
-        <div class="card col"><h3>Note e contatto</h3>
+        <div class="card col"><h3>${tr("Note e contatto")}</h3>
           <hxk-field type="textarea" .value=${p.notes || ''} @change=${(e: any) => this.patch({ notes: e.detail })}></hxk-field>
-          <hxk-field label="Sentirla ogni" type="int" unit="giorni" .value=${p.contact_every_days ?? ''} @change=${(e: any) => e.detail && this.patch({ contact_every_days: e.detail })}></hxk-field>
-          <hxk-field label="Relazione" type="enum" .options=${RELATIONS} .value=${p.relation} @change=${(e: any) => this.patch({ relation: e.detail })}></hxk-field>
+          <hxk-field label=${tr("Sentirla ogni")} type="int" unit=${tr("giorni")} .value=${p.contact_every_days ?? ''} @change=${(e: any) => e.detail && this.patch({ contact_every_days: e.detail })}></hxk-field>
+          <hxk-field label=${tr("Relazione")} type="enum" .options=${RELATIONS} .value=${p.relation} @change=${(e: any) => this.patch({ relation: e.detail })}></hxk-field>
         </div>
       </div>
-      <div><hxk-button variant="danger" icon="trash" @click=${() => this.deletePerson()}>Elimina scheda</hxk-button></div>
+      <div><hxk-button variant="danger" icon="trash" @click=${() => this.deletePerson()}>${tr("Elimina scheda")}</hxk-button></div>
     </div>`;
   }
   private async addIdea() { if (this.idea.trim() && await this.post('/gift', { idea: this.idea })) this.idea = ''; }
@@ -166,7 +166,7 @@ export class HeraSoonWidget extends HestiaElement {
     return html`<div class="col" style="gap:6px">
       ${this.items.length ? this.items.slice(0, n).map(s => html`<div class="between small click" @click=${() => this.host.navigate('persona/' + s.person_id)}>
         <span class="truncate">${s.label} di <b>${s.person}</b></span><span class="muted">${inDays(s.in_days)}</span></div>`)
-        : html`<div class="small muted">Niente nei prossimi 30 giorni.</div>`}
+        : html`<div class="small muted">${tr("Niente nei prossimi 30 giorni.")}</div>`}
     </div>`;
   }
 }

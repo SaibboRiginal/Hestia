@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { IconComponent } from './icon.component';
+import { tr } from '../core/i18n';
 
 /** Where a value is set: a central setting (`key`), a module's settings (`module`) or a personal row. */
 export interface SettingTarget { key?: string; module?: string; section?: string; row?: string; }
@@ -45,5 +46,5 @@ export class SettingLinkComponent {
   go = output<void>();
 
   readonly query = computed(() => settingQuery({ key: this.key(), module: this.module(), section: this.section(), row: this.row() }));
-  readonly hint = computed(() => this.title() || 'Apri questa impostazione');
+  readonly hint = computed(() => this.title() || tr('Apri questa impostazione'));
 }

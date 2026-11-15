@@ -5,12 +5,12 @@
  * times). Calls GET/POST/DELETE /api/voice/voiceprint, GET/POST /api/voice/dictionary, DELETE /dictionary/{word}.
  * Dossier 2026-10-24-tutto-brainstorm-cindy Cindy 10 + 17 (W4) + W7.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, secs, when } from './util';
 
 const MIN_SECONDS = 6;
-const SAMPLE = 'Leggi ad alta voce: «Ciao Hestia, questa è la mia voce. Oggi ti racconto la giornata, cosa ho fatto ' +
-               'e cosa devo ricordare per domani, con calma e senza fretta.»';
+const SAMPLE = tr('Leggi ad alta voce: «Ciao Hestia, questa è la mia voce. Oggi ti racconto la giornata, cosa ho fatto ') +
+               tr('e cosa devo ricordare per domani, con calma e senza fretta.»');
 
 export class EchoYourVoice extends HestiaElement {
   static properties = { ...HestiaElement.properties, print: { state: true }, words: { state: true }, error: { state: true },
@@ -54,7 +54,7 @@ export class EchoYourVoice extends HestiaElement {
 
   private async load() {
     const [p, d] = await Promise.all([this.host.api('GET', `${API}/voiceprint`), this.host.api('GET', `${API}/dictionary`)]);
-    if (!p.ok && !d.ok) { this.error = p.error || 'Non raggiungibile'; return; }
+    if (!p.ok && !d.ok) { this.error = p.error || tr('Non raggiungibile'); return; }
     this.error = '';
     this.print = p.ok ? p.data : null;
     this.words = d.ok ? d.data : null;
@@ -62,7 +62,7 @@ export class EchoYourVoice extends HestiaElement {
 
   private async toggle() {
     if (!this.recording) {
-      try { await this.rec.start(); } catch { this.host.toast('Il browser non mi dà il microfono', 'danger'); return; }
+      try { await this.rec.start(); } catch { this.host.toast(tr('Il browser non mi dà il microfono'), 'danger'); return; }
       this.recording = true; this.started = Date.now(); this.elapsed = 0;
       this.timer = window.setInterval(() => (this.elapsed = (Date.now() - this.started) / 1000), 250);
       return;
@@ -71,22 +71,22 @@ export class EchoYourVoice extends HestiaElement {
     this.recording = false;
     const blob = await this.rec.stop();
     if (!blob) return;
-    if (this.elapsed < MIN_SECONDS) { this.host.toast(`Parla almeno ${MIN_SECONDS} secondi`, 'warning'); return; }
+    if (this.elapsed < MIN_SECONDS) { this.host.toast(tr("Parla almeno {0} secondi", MIN_SECONDS), 'warning'); return; }
     this.busy = 'enroll';
     const r = await this.host.api('POST', `${API}/voiceprint`, { body: { audio_b64: await blobToB64(blob), mime_type: this.rec.mime } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Impronta non salvata', 'danger'); return; }
-    this.host.toast('Impronta della voce salvata', 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('Impronta non salvata'), 'danger'); return; }
+    this.host.toast(tr('Impronta della voce salvata'), 'success');
     this.load();
   }
 
   private async forget() {
-    if (!(await this.host.confirm('Togliere l\'impronta?', 'Ascolterò di nuovo tutte le voci.', { label: 'Togli', danger: true }))) return;
+    if (!(await this.host.confirm(tr('Togliere l\'impronta?'), tr('Ascolterò di nuovo tutte le voci.'), { label: tr('Togli'), danger: true }))) return;
     this.busy = 'forget';
     const r = await this.host.api('DELETE', `${API}/voiceprint`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
-    this.host.toast('Impronta tolta', 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
+    this.host.toast(tr('Impronta tolta'), 'success');
     this.load();
   }
 
@@ -96,7 +96,7 @@ export class EchoYourVoice extends HestiaElement {
     this.busy = 'add';
     const r = await this.host.api('POST', `${API}/dictionary`, { body: { word: w } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Parola non aggiunta', 'warning'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Parola non aggiunta'), 'warning'); return; }
     this.word = '';
     this.load();
   }
@@ -105,8 +105,8 @@ export class EchoYourVoice extends HestiaElement {
     this.busy = `w:${w}`;
     const r = await this.host.api('DELETE', `${API}/dictionary/${encodeURIComponent(w)}`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non tolta', 'warning'); return; }
-    this.host.toast('Parola tolta', 'success', { label: 'Annulla', run: async () => {
+    if (!r.ok) { this.host.toast(r.error || tr('Non tolta'), 'warning'); return; }
+    this.host.toast(tr('Parola tolta'), 'success', { label: tr('Annulla'), run: async () => {
       await this.host.api('POST', `${API}/dictionary`, { body: { word: w } }); this.load(); } });
     this.load();
   }
@@ -118,29 +118,27 @@ export class EchoYourVoice extends HestiaElement {
     const items: any[] = (this.words?.items || []).filter((d: any) => d.status !== 'removed');
     const needed = this.words?.needed || 3;
     return html`<div class="cols">
-      <hxk-card heading="Impronta della voce" subtitle=${p.enrolled ? `Salvata ${when(p.at)}${p.seconds ? ` · ${secs(p.seconds)}` : ''}` : 'Non ancora registrata'}>
-        <div class="small muted">Con l'impronta riconosco la tua voce: la TV e le altre persone non finiscono in quello che detti
-          e non tengono aperto il turno della modalità live.</div>
-        ${p.engine_error ? html`<div class="small" style="color:var(--warning);margin-top:6px">Riconoscimento non disponibile ora: ${p.engine_error}</div>` : nothing}
+      <hxk-card heading=${tr("Impronta della voce")} subtitle=${p.enrolled ? tr("Salvata {0}{1}", when(p.at), p.seconds ? ` · ${secs(p.seconds)}` : '') : tr('Non ancora registrata')}>
+        <div class="small muted">${tr("Con l'impronta riconosco la tua voce: la TV e le altre persone non finiscono in quello che detti e non tengono aperto il turno della modalità live.")}</div>
+        ${p.engine_error ? html`<div class="small" style="color:var(--warning);margin-top:6px">${tr("Riconoscimento non disponibile ora:")} ${p.engine_error}</div>` : nothing}
         <div class="sample" style="margin-top:10px">${SAMPLE}</div>
         <div class="mic">
-          <button class=${this.recording ? 'on' : ''} @click=${() => this.toggle()} aria-label=${this.recording ? 'Ferma e salva' : 'Registra'}>
+          <button class=${this.recording ? 'on' : ''} @click=${() => this.toggle()} aria-label=${this.recording ? tr('Ferma e salva') : tr('Registra')}>
             <hxk-icon name=${this.recording ? 'stop' : 'mic'} size=${26}></hxk-icon></button>
-          <span class="small muted">${this.recording ? `Ti ascolto… ${Math.floor(this.elapsed)} s${this.elapsed < MIN_SECONDS ? ` (almeno ${MIN_SECONDS})` : ', tocca per salvare'}`
-            : this.busy === 'enroll' ? 'Salvo l\'impronta…' : p.enrolled ? 'Tocca per registrarla di nuovo' : 'Tocca e leggi la frase'}</span>
+          <span class="small muted">${this.recording ? tr("Ti ascolto… {0} s{1}", Math.floor(this.elapsed), this.elapsed < MIN_SECONDS ? ` (almeno ${MIN_SECONDS})` : ', tocca per salvare')
+            : this.busy === 'enroll' ? tr('Salvo l\'impronta…') : p.enrolled ? tr('Tocca per registrarla di nuovo') : tr('Tocca e leggi la frase')}</span>
         </div>
-        ${p.enrolled ? html`<hxk-button variant="ghost" icon="trash" ?loading=${this.busy === 'forget'} @click=${() => this.forget()}>Togli l'impronta</hxk-button>` : nothing}
+        ${p.enrolled ? html`<hxk-button variant="ghost" icon="trash" ?loading=${this.busy === 'forget'} @click=${() => this.forget()}>${tr("Togli l'impronta")}</hxk-button>` : nothing}
       </hxk-card>
-      <hxk-card heading="Il tuo dizionario" subtitle=${`${this.words?.confirmed ?? 0} parole sicure`}>
-        <div class="small muted">Nomi e parole che i motori di ascolto devono aspettarsi. Quando correggi una trascrizione imparo
-          le parole nuove: dopo ${needed} volte diventano sicure.</div>
+      <hxk-card heading=${tr("Il tuo dizionario")} subtitle=${`${this.words?.confirmed ?? 0} parole sicure`}>
+        <div class="small muted">${tr("Nomi e parole che i motori di ascolto devono aspettarsi. Quando correggi una trascrizione imparo le parole nuove: dopo")} ${needed} ${tr("volte diventano sicure.")}</div>
         <div style="margin-top:8px">${items.length ? items.map(d => html`<div class="w">
           <span class="grow">${d.word}</span>
-          ${d.status === 'confirmed' ? html`<hxk-badge tone="success">sicura</hxk-badge>` : html`<hxk-badge tone="neutral">${d.count || 0} di ${needed}</hxk-badge>`}
-          <hxk-button size="sm" variant="ghost" icon="trash" title="Togli" ?loading=${this.busy === `w:${d.word}`} @click=${() => this.dropWord(d.word)}></hxk-button>
-        </div>`) : html`<span class="muted small">Ancora nessuna parola.</span>`}</div>
-        <div class="add"><hxk-field label="Nuova parola" .value=${this.word} @change=${(e: CustomEvent) => (this.word = String(e.detail ?? ''))}></hxk-field>
-          <hxk-button icon="plus" ?loading=${this.busy === 'add'} @click=${() => this.addWord()}>Aggiungi</hxk-button></div>
+          ${d.status === 'confirmed' ? html`<hxk-badge tone="success">${tr("sicura")}</hxk-badge>` : html`<hxk-badge tone="neutral">${d.count || 0} di ${needed}</hxk-badge>`}
+          <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Togli")} ?loading=${this.busy === `w:${d.word}`} @click=${() => this.dropWord(d.word)}></hxk-button>
+        </div>`) : html`<span class="muted small">${tr("Ancora nessuna parola.")}</span>`}</div>
+        <div class="add"><hxk-field label=${tr("Nuova parola")} .value=${this.word} @change=${(e: CustomEvent) => (this.word = String(e.detail ?? ''))}></hxk-field>
+          <hxk-button icon="plus" ?loading=${this.busy === 'add'} @click=${() => this.addWord()}>${tr("Aggiungi")}</hxk-button></div>
       </hxk-card>
     </div>`;
   }

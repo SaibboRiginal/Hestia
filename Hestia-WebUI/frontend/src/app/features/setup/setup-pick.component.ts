@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UI } from '../../ui';
+import { tr, TrPipe } from '../../core/i18n';
 
 /** One choice of the setup's picker: a model, a voice, a program's model… */
 export interface PickItem { id: string; title: string; note?: string; warn?: boolean; tag?: string; icon?: string;
@@ -15,7 +16,7 @@ export function family(id: string): string {
   const words = id.toLowerCase().replace(/^models\//, '').split(/[-_:/. ]+/)
     .filter(w => w && !/^\d/.test(w) && !/^v\d/.test(w) && !['preview', 'exp', 'experimental', 'latest', 'it', 'instruct', 'chat', 'gguf', 'q4', 'k', 'm'].includes(w) && !/^\d+[bkm]$/.test(w));
   const name = words.slice(0, 3).join(' ');
-  return name ? name.replace(/\b\w/g, c => c.toUpperCase()) : 'Altri';
+  return name ? name.replace(/\b\w/g, c => c.toUpperCase()) : tr('Altri');
 }
 
 /**
@@ -26,7 +27,7 @@ export function family(id: string): string {
  */
 @Component({
   selector: 'app-setup-pick',
-  imports: [...UI, FormsModule],
+  imports: [TrPipe, ...UI, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (items().length) {
@@ -36,15 +37,15 @@ export function family(id: string): string {
           <input class="hx-input" type="search" [placeholder]="placeholder()" [ngModel]="query()" (ngModelChange)="query.set($event)" autocomplete="off" spellcheck="false" />
         </label>
         @if (langs().length > 1) {
-          <select class="hx-select lang" aria-label="Lingua" [value]="langNow()" (change)="lang.set($any($event.target).value)">
+          <select class="hx-select lang"  [attr.aria-label]="'Lingua' | tr" [value]="langNow()" (change)="lang.set($any($event.target).value)">
             @for (l of langs(); track l.id) { <option [value]="l.id" [selected]="l.id === langNow()">{{ l.label }}</option> }
           </select>
         }
       </div>
     }
     @if (groups().length > 1 && items().length > searchFrom) {
-      <div class="chips" role="group" aria-label="Filtra">
-        <button type="button" class="chip" [class.on]="!group()" (click)="group.set('')">Tutti</button>
+      <div class="chips" role="group"  [attr.aria-label]="'Filtra' | tr">
+        <button type="button" class="chip" [class.on]="!group()" (click)="group.set('')">{{ "Tutti" | tr }}</button>
         @for (g of groups(); track g) { <button type="button" class="chip" [class.on]="group() === g" (click)="group.set(group() === g ? '' : g)">{{ g }}</button> }
       </div>
     }
@@ -61,18 +62,18 @@ export function family(id: string): string {
             @if (trying(it.id)?.busy) { <span class="try"><hx-spinner /></span> }
             @else {
               <button type="button" class="try" [class.rec]="!!trying(it.id)?.recording" (click)="tried.emit(it.id)"
-                      [attr.aria-label]="trial() === 'voce' ? 'Ascolta ' + it.title : (trying(it.id)?.recording ? 'Ferma e prova' : 'Prova a parlare con ' + it.title)">
+                      [attr.aria-label]="trial() === 'voce' ? ('Ascolta ' | tr) + it.title : (trying(it.id)?.recording ? ('Ferma e prova' | tr) : ('Prova a parlare con ' | tr) + it.title)">
                 <hx-icon [name]="trying(it.id)?.recording || trying(it.id)?.playing ? 'stop' : (trial() === 'voce' ? 'play' : 'mic')" [size]="16" />
               </button>
             }
           }
         </div>
       } @empty {
-        <p class="none">{{ query() ? 'Nessun risultato.' : empty() }}</p>
+        <p class="none">{{ query() ? ('Nessun risultato.' | tr) : empty() }}</p>
       }
     </div>
     @if (hidden() > 0) {
-      <button type="button" class="more" (click)="all.set(true)">Mostra tutti ({{ filtered().length }})</button>
+      <button type="button" class="more" (click)="all.set(true)">{{ "Mostra tutti (" | tr }}{{ filtered().length }})</button>
     }
   `,
   styles: [`
@@ -111,8 +112,8 @@ export class SetupPickComponent {
   /** Several in order instead of one. */
   multi = input<boolean>(false);
   chosen = input<string[]>([]);
-  placeholder = input<string>('Cerca');
-  empty = input<string>('Niente da scegliere.');
+  placeholder = input<string>(tr('Cerca'));
+  empty = input<string>(tr('Niente da scegliere.'));
   /** Cards before «Mostra tutti». */
   limit = input<number>(5);
   picked = output<string>();

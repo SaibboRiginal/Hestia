@@ -6,12 +6,13 @@ import { SettingControlComponent } from './setting-control.component';
 import { SettingRowComponent, showValue } from './setting-row.component';
 import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
 import { PluginsService } from '../plugins/plugins.service';
+import { tr, TrPipe } from '../../core/i18n';
 
 export const HEALTH: Record<string, { tone: Tone; label: string }> = {
   healthy: { tone: 'success', label: 'attivo' },
-  degraded: { tone: 'warning', label: 'con problemi' },
-  unavailable: { tone: 'danger', label: 'non risponde' },
-  unregistered: { tone: 'neutral', label: 'non registrato' },
+  degraded: { tone: 'warning', label: tr('con problemi') },
+  unavailable: { tone: 'danger', label: tr('non risponde') },
+  unregistered: { tone: 'neutral', label: tr('non registrato') },
   unknown: { tone: 'neutral', label: 'stato sconosciuto' },
 };
 
@@ -24,14 +25,14 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
  */
 @Component({
   selector: 'app-system-settings',
-  imports: [BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SpinnerComponent,
+  imports: [TrPipe, BadgeComponent, ButtonComponent, EmptyStateComponent, IconComponent, SegmentedComponent, SpinnerComponent,
             ToggleComponent, SettingRowComponent, SettingControlComponent, PluginOutletComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="main">
       @if (store.offline()) {
         <div class="hx-notices"><div class="hx-notice" data-level="error"><hx-icon name="alert" [size]="15" />
-          <span class="nt">Impostazioni non raggiungibili</span><span class="nd">Themis non risponde: riprovo da solo.</span></div></div>
+          <span class="nt">{{ "Impostazioni non raggiungibili" | tr }}</span><span class="nd">{{ "Themis non risponde: riprovo da solo." | tr }}</span></div></div>
       }
 
       @if (!store.query()) { @for (p of store.proposals(); track p.proposal_id) {
@@ -41,8 +42,8 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
             <div class="pt">{{ proposer(p) }} propone: <b>{{ labelOf(p) }}</b> → <b>{{ proposedValue(p) }}</b></div>
             @if (p.reason) { <div class="pd">{{ p.reason }}</div> }
           </div>
-          <button hx-btn size="sm" variant="primary" icon="check" (click)="store.decide(p, true)">Approva</button>
-          <button hx-btn size="sm" variant="ghost" (click)="store.decide(p, false)">Rifiuta</button>
+          <button hx-btn size="sm" variant="primary" icon="check" (click)="store.decide(p, true)">{{ "Approva" | tr }}</button>
+          <button hx-btn size="sm" variant="ghost" (click)="store.decide(p, false)">{{ "Rifiuta" | tr }}</button>
         </div>
       } }
 
@@ -52,7 +53,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
             <button class="card" (click)="store.select(m.module)">
               <div class="ch"><span class="cn">{{ name(m.module) }}</span>
                 <hx-badge [tone]="health(m).tone" dot>{{ health(m).label }}</hx-badge></div>
-              <div class="cm">{{ m.definitions }} impostazioni@if (m.groups?.length) { · {{ m.groups!.join(', ') }} }</div>
+              <div class="cm">{{ m.definitions }} {{ "impostazioni" | tr }}@if (m.groups?.length) { · {{ m.groups!.join(', ') }} }</div>
               <div class="cf">
                 @if (m.version) { <span>v{{ m.version }}</span> }
                 @if (m.pending_proposals) { <hx-badge tone="accent">{{ m.pending_proposals === 1 ? '1 proposta' : m.pending_proposals + ' proposte' }}</hx-badge> }
@@ -61,7 +62,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
           }
         </div>
         @if (store.others().length) {
-          <h4 class="sub">Altri servizi (ancora senza impostazioni)</h4>
+          <h4 class="sub">{{ "Altri servizi (ancora senza impostazioni)" | tr }}</h4>
           <div class="others">
             @for (m of store.others(); track m.module) {
               <hx-badge [tone]="health(m).tone" dot [title]="health(m).label">{{ name(m.module) }}</hx-badge>
@@ -69,34 +70,34 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
           </div>
         }
         @if (!store.modules().length && !store.offline()) {
-          <hx-empty icon="settings" title="Nessun modulo ha ancora dichiarato impostazioni">
-            I moduli si registrano da soli all'avvio.
+          <hx-empty icon="settings"  [title]="'Nessun modulo ha ancora dichiarato impostazioni' | tr">
+            {{ "I moduli si registrano da soli all'avvio." | tr }}
           </hx-empty>
         }
       } @else {
         <div class="bar">
           <div class="hx-grow">
-            @if (store.query()) { <h3>Sistema</h3> }
+            @if (store.query()) { <h3>{{ "Sistema" | tr }}</h3> }
             @else { @if (current(); as m) {
               <h3>{{ name(m.module) }} <hx-badge [tone]="health(m).tone" dot>{{ health(m).label }}</hx-badge></h3>
             } }
           </div>
-          <hx-toggle label="Solo modificate" [checked]="store.onlyModified()" (changed)="store.onlyModified.set($event)" />
+          <hx-toggle  [label]="'Solo modificate' | tr" [checked]="store.onlyModified()" (changed)="store.onlyModified.set($event)" />
           <hx-toggle [label]="advancedLabel()" [checked]="store.showAdvanced()" (changed)="store.showAdvanced.set($event)" />
         </div>
 
         @if (store.restartNeeded().length) {
           <div class="hx-notices"><div class="hx-notice" data-level="warning"><hx-icon name="refresh" [size]="15" />
-            <span class="nt">Riavvio necessario</span>
-            <span class="nd">{{ store.restartNeeded().length === 1 ? '1 valore salvato vale' : store.restartNeeded().length + ' valori salvati valgono' }} dal prossimo riavvio del modulo.</span></div></div>
+            <span class="nt">{{ "Riavvio necessario" | tr }}</span>
+            <span class="nd">{{ store.restartNeeded().length === 1 ? ('1 valore salvato vale' | tr) : store.restartNeeded().length + ' valori salvati valgono' }} {{ "dal prossimo riavvio del modulo." | tr }}</span></div></div>
         }
 
         @if (store.loading() && !store.items().length) { <div class="center"><hx-spinner /></div> }
         @else if (!store.sections().length) {
-          <hx-empty icon="search" title="Niente da mostrare">
-            @if (store.onlyModified()) { Nessuna impostazione modificata qui. }
-            @else if (store.hiddenAdvanced()) { Ci sono {{ store.hiddenAdvanced() }} impostazioni avanzate: attiva «Avanzate». }
-            @else { Nessuna impostazione di sistema trovata. }
+          <hx-empty icon="search"  [title]="'Niente da mostrare' | tr">
+            @if (store.onlyModified()) { {{ "Nessuna impostazione modificata qui." | tr }} }
+            @else if (store.hiddenAdvanced()) { {{ "Ci sono" | tr }} {{ store.hiddenAdvanced() }} {{ "impostazioni avanzate: attiva «Avanzate»." | tr }} }
+            @else { {{ "Nessuna impostazione di sistema trovata." | tr }} }
           </hx-empty>
         }
 
@@ -129,7 +130,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
                                   <hx-setting-control [item]="it" [compact]="true" [disabled]="!store.enabled(it) || store.saving() === it.key"
                                                       (commit)="store.set(it, $event)" />
                                   @if (modified(it)) {
-                                    <button class="rst" (click)="store.reset(it)" [title]="'Ripristina predefinito: ' + show(it, it.default)">
+                                    <button class="rst" (click)="store.reset(it)" [title]="('Ripristina predefinito: ' | tr) + show(it, it.default)">
                                       <hx-icon name="undo" [size]="13" /></button>
                                   }
                                 </div>
@@ -219,7 +220,7 @@ export class SystemSettingsComponent {
   }
 
   readonly current = computed(() => this.store.modulesById().get(this.store.selected() ?? '') ?? null);
-  readonly advancedLabel = computed(() => this.store.hiddenAdvanced() ? `Avanzate (${this.store.hiddenAdvanced()})` : 'Avanzate');
+  readonly advancedLabel = computed(() => this.store.hiddenAdvanced() ? tr("Avanzate ({0})", this.store.hiddenAdvanced()) : tr('Avanzate'));
 
   name = moduleLabel;
   modified = isModified;
@@ -233,10 +234,10 @@ export class SystemSettingsComponent {
 
   presetOptions(pg: PresetGroup): SegmentOption[] {
     return [...pg.presets.map(p => ({ value: p.id, label: p.label, title: p.help })),
-            { value: 'custom', label: 'Personalizzato', title: 'Valori scelti a mano' }];
+            { value: 'custom', label: tr('Personalizzato'), title: tr('Valori scelti a mano') }];
   }
   presetHelp(pg: PresetGroup) {
-    return pg.active === 'custom' ? 'Personalizzato: i valori non corrispondono a nessun preset.'
+    return pg.active === 'custom' ? tr('Personalizzato: i valori non corrispondono a nessun preset.')
       : pg.presets.find(p => p.id === pg.active)?.help ?? '';
   }
   pickPreset(pg: PresetGroup, id: string) {

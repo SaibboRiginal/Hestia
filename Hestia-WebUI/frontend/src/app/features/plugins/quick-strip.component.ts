@@ -4,6 +4,7 @@ import { ButtonComponent, DateFieldComponent, FieldComponent, IconComponent, Pop
 import { PluginsService } from './plugins.service';
 import { QuickActionsService } from './quick-actions.service';
 import { QuickChipView } from './plugins.types';
+import { TrPipe } from '../../core/i18n';
 
 const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 
@@ -13,28 +14,28 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
  */
 @Component({
   selector: 'hx-quick-strip',
-  imports: [FormsModule, ButtonComponent, IconComponent, SpinnerComponent, PopoverComponent, DateFieldComponent, FieldComponent],
+  imports: [TrPipe, FormsModule, ButtonComponent, IconComponent, SpinnerComponent, PopoverComponent, DateFieldComponent, FieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (qa.chips().length || qa.loading()) {
-      <section class="strip" aria-label="Azioni rapide">
+      <section class="strip"  [attr.aria-label]="'Azioni rapide' | tr">
         @for (c of shown(); track c.key) {
           <div class="chip" role="button" tabindex="0" [attr.data-state]="c.state || 'todo'" [attr.aria-busy]="qa.busy() === c.key"
                [attr.title]="c.hint ? c.label + ' · ' + c.hint : moduleTitle(c)" (click)="tap(c)" (keydown.enter)="tap(c)" (keydown.space)="$event.preventDefault(); tap(c)">
             @if (c.state === 'done') { <hx-icon name="check" [size]="16" /> } @else if (c.icon) { <hx-icon [name]="c.icon" [size]="16" /> }
             <span class="txt"><span class="lab">{{ c.label }}</span>@if (c.hint) {<span class="hint">{{ c.hint }}</span>}</span>
             <button class="mini" [class.pinned]="isPinned(c)" (click)="$event.stopPropagation(); plugins.togglePin(c.key)"
-                    [attr.aria-label]="isPinned(c) ? 'Togli dalla Home' : 'Fissa in Home'" [attr.title]="isPinned(c) ? 'Fissata' : 'Fissa in Home'">
+                    [attr.aria-label]="isPinned(c) ? ('Togli dalla Home' | tr) : ('Fissa in Home' | tr)" [attr.title]="isPinned(c) ? ('Fissata' | tr) : ('Fissa in Home' | tr)">
               <hx-icon name="star" [size]="13" />
             </button>
-            <button class="mini" (click)="openMore($event, c)" aria-label="Altro giorno o dettagli" title="Altro giorno o dettagli">
+            <button class="mini" (click)="openMore($event, c)"  [attr.aria-label]="'Altro giorno o dettagli' | tr"  [title]="'Altro giorno o dettagli' | tr">
               <hx-icon name="more" [size]="15" />
             </button>
           </div>
         }
         @if (qa.secondary().length) {
           <button class="chip more-toggle" (click)="showAll.set(!showAll())">
-            {{ showAll() ? 'Meno' : 'Altre (' + qa.secondary().length + ')' }}
+            {{ showAll() ? ('Meno' | tr) : ('Altre (' | tr) + qa.secondary().length + ')' }}
           </button>
         }
         @if (qa.loading() && !qa.chips().length) { <hx-spinner [size]="16" /> }
@@ -45,7 +46,7 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
         <div class="sheet">
           <div class="st">{{ c.label }}</div>
           @if (c.hint) { <div class="sh">{{ c.hint }}</div> }
-          <hx-field label="Giorno"><hx-date [(value)]="date" /></hx-field>
+          <hx-field  [label]="'Giorno' | tr"><hx-date [(value)]="date" /></hx-field>
           @for (p of params(); track p.name) {
             <hx-field [label]="p.spec.label">
               @if (p.spec.type === 'enum') {
@@ -59,8 +60,8 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
               }
             </hx-field>
           }
-          <hx-field label="Nota"><input class="hx-input" [(ngModel)]="note" placeholder="facoltativa"></hx-field>
-          <button hx-btn variant="primary" size="sm" icon="check" (click)="submitMore(c)">Segna</button>
+          <hx-field  [label]="'Nota' | tr"><input class="hx-input" [(ngModel)]="note"  [placeholder]="'facoltativa' | tr"></hx-field>
+          <button hx-btn variant="primary" size="sm" icon="check" (click)="submitMore(c)">{{ "Segna" | tr }}</button>
         </div>
       }
     </hx-popover>`,

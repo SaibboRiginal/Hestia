@@ -3,6 +3,7 @@ import * as signalR from '@microsoft/signalr';
 import { AuthService } from './auth.service';
 import { Subject, Observable } from 'rxjs';
 import { ServerEvent, ClientMessage } from '../models/chat.models';
+import { tr } from '../core/i18n';
 
 /** Raw Hermes push (snake_case, as Hermes sends it). */
 export interface HermesPush { kind: 'notification' | 'update' | string; notification_id: string; [k: string]: unknown; }
@@ -75,7 +76,7 @@ export class SignalRService {
     }
     if (this.hub?.state !== signalR.HubConnectionState.Connected) {
       // Never drop silently: the caller marks the message as failed.
-      throw new Error('Connessione al server non disponibile');
+      throw new Error(tr('Connessione al server non disponibile'));
     }
     await this.hub.invoke('SendMessage', message);
   }

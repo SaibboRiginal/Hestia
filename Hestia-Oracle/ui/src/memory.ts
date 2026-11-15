@@ -3,7 +3,7 @@
  * or noted by an external AI through memory_note). Search, filter by origin, forget.
  * Reads/acts on /api/ui/memory… (Oracle → Archive through Hub). SPEC docs/work/2026-10-20-memory-note.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 function day(iso?: string | null): string {
@@ -12,7 +12,7 @@ function day(iso?: string | null): string {
 }
 
 function origin(m: any): string {
-  return m.source === 'external' ? (m.access || 'AI esterna') : 'In chat';
+  return m.source === 'external' ? (m.access || tr('AI esterna')) : tr('In chat');
 }
 
 export class OracleMemory extends HestiaElement {
@@ -41,17 +41,17 @@ export class OracleMemory extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/memory`);
-    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? 'Memoria non raggiungibile' : r.error || 'Memoria non raggiungibile'; return; }
+    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? tr('Memoria non raggiungibile') : r.error || tr('Memoria non raggiungibile'); return; }
     this.error = '';
     this.rows = r.data.memories || [];
   }
 
   private async forget(m: any) {
-    if (!(await this.host.confirm('Dimenticare questo ricordo?', m.fact, { label: 'Dimentica', danger: true }))) return;
+    if (!(await this.host.confirm(tr('Dimenticare questo ricordo?'), m.fact, { label: tr('Dimentica'), danger: true }))) return;
     const r = await this.host.api('DELETE', `${API}/memory/${encodeURIComponent(m.id)}`);
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
     this.rows = (this.rows || []).filter(x => x.id !== m.id);
-    this.host.toast('Ricordo dimenticato', 'success');
+    this.host.toast(tr('Ricordo dimenticato'), 'success');
   }
 
   private renderRow(m: any) {
@@ -64,7 +64,7 @@ export class OracleMemory extends HestiaElement {
           <span>· ${day(m.created_at)}</span>
           ${(m.domains || []).filter(Boolean).map((d: string) => html`<hxk-badge>${d}</hxk-badge>`)}</div>
       </div>
-      <hxk-button size="sm" variant="ghost" icon="trash" title="Dimentica" @click=${() => this.forget(m)}></hxk-button>
+      <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Dimentica")} @click=${() => this.forget(m)}></hxk-button>
     </div>`;
   }
 
@@ -76,17 +76,17 @@ export class OracleMemory extends HestiaElement {
     const shown = this.rows.filter(m => (!this.from || origin(m) === this.from)
       && (!q || `${m.fact} ${m.topic} ${(m.domains || []).join(' ')}`.toLowerCase().includes(q)));
     return html`<div class="page">
-      <div class="head"><div class="grow"><h1>Memoria</h1>
-        <div class="sub">Quello che Hestia ricorda di te e da dove l'ha saputo</div></div>
-        <hxk-button variant="ghost" icon="refresh" title="Aggiorna" @click=${() => this.load()}></hxk-button></div>
-      <div class="bar"><input type="search" placeholder="Cerca nei ricordi (es. «palestra»)" .value=${this.q}
+      <div class="head"><div class="grow"><h1>${tr("Memoria")}</h1>
+        <div class="sub">${tr("Quello che Hestia ricorda di te e da dove l'ha saputo")}</div></div>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Aggiorna")} @click=${() => this.load()}></hxk-button></div>
+      <div class="bar"><input type="search" placeholder=${tr("Cerca nei ricordi (es. «palestra»)")} .value=${this.q}
         @input=${(e: any) => (this.q = e.target.value)}></div>
       ${origins.length > 1 ? html`<div class="chips">
-        <button class="chip ${this.from ? '' : 'on'}" @click=${() => (this.from = '')}>Tutti (${this.rows.length})</button>
+        <button class="chip ${this.from ? '' : 'on'}" @click=${() => (this.from = '')}>${tr("Tutti (")}${this.rows.length})</button>
         ${origins.map(o => html`<button class="chip ${this.from === o ? 'on' : ''}" @click=${() => (this.from = o)}>${o}</button>`)}
       </div>` : nothing}
       <hxk-card>${shown.length ? shown.map(m => this.renderRow(m))
-        : html`<hxk-state kind="empty" text=${this.rows.length ? 'Nessun ricordo corrisponde' : 'Hestia non ricorda ancora nulla di te'}></hxk-state>`}</hxk-card>
+        : html`<hxk-state kind="empty" text=${this.rows.length ? tr('Nessun ricordo corrisponde') : tr('Hestia non ricorda ancora nulla di te')}></hxk-state>`}</hxk-card>
     </div>`;
   }
 }

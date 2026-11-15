@@ -13,8 +13,9 @@ import { AdessoRowComponent } from './adesso-row.component';
 import { SetupCardComponent } from '../setup/setup-card.component';
 import { PluginsService, SIZE_SPAN } from './plugins.service';
 import { Dashboard, DashboardItem, PluginWidget, WidgetSize } from './plugins.types';
+import { tr, TrPipe } from '../../core/i18n';
 
-const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'Grande', xl: 'Intero' };
+const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Piccolo'), m: tr('Medio'), l: tr('Grande'), xl: tr('Intero') };
 
 /**
  * Home and dashboards (SPEC §4.6, §4.8): «Adesso» and quick actions on top (Home), widgets of every module in a grid.
@@ -23,33 +24,33 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, AdessoRowComponent, SetupCardComponent],
+  imports: [TrPipe, ...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, AdessoRowComponent, SetupCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header [title]="current()?.title || 'Home'" [subtitle]="subtitle()">
+    <hx-page-header [title]="current()?.title || ('Home' | tr)" [subtitle]="subtitle()">
       @if (editing()) {
-        <button hx-btn variant="secondary" icon="plus" (click)="adding.set(true)">Aggiungi widget</button>
-        <button hx-btn variant="ghost" (click)="cancelEdit()">Annulla</button>
-        <button hx-btn variant="primary" icon="check" [loading]="saving()" (click)="saveEdit()">Salva</button>
+        <button hx-btn variant="secondary" icon="plus" (click)="adding.set(true)">{{ "Aggiungi widget" | tr }}</button>
+        <button hx-btn variant="ghost" (click)="cancelEdit()">{{ "Annulla" | tr }}</button>
+        <button hx-btn variant="primary" icon="check" [loading]="saving()" (click)="saveEdit()">{{ "Salva" | tr }}</button>
       } @else {
         @if (isHome()) {
           <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" icon="waveform" (click)="toggleLive()" [attr.aria-pressed]="live.on"
-                  [attr.aria-label]="live.on ? 'Ferma Parla' : 'Parla'"
-                  title="Parla con Hestia a voce (Ctrl+Shift+Spazio)"><span class="lbl">{{ live.on ? 'Ferma' : 'Parla' }}</span></button>
+                  [attr.aria-label]="live.on ? ('Ferma Parla' | tr) : ('Parla' | tr)"
+                   [title]="'Parla con Hestia a voce (Ctrl+Shift+Spazio)' | tr"><span class="lbl">{{ live.on ? ('Ferma' | tr) : ('Parla' | tr) }}</span></button>
         }
-        <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">Crea con Hestia</button>
-        <button hx-btn variant="secondary" icon="edit" (click)="startEdit()">Modifica</button>
+        <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">{{ "Crea con Hestia" | tr }}</button>
+        <button hx-btn variant="secondary" icon="edit" (click)="startEdit()">{{ "Modifica" | tr }}</button>
         <hx-menu [items]="menuItems()" (select)="onMenu($event)">
-          <button hx-btn variant="ghost" icon="more" iconOnly aria-label="Altre azioni" trigger></button>
+          <button hx-btn variant="ghost" icon="more" iconOnly  [attr.aria-label]="'Altre azioni' | tr" trigger></button>
         </hx-menu>
       }
     </hx-page-header>
 
     @if (plugins.dashboards().length > 1) {
-      <nav class="tabs" aria-label="Dashboard">
+      <nav class="tabs"  [attr.aria-label]="'Dashboard' | tr">
         @for (d of plugins.dashboards(); track d.id) {
           <a [routerLink]="d.id === 'home' ? '/home' : '/d/' + d.id" [class.on]="d.id === current()?.id">
-            {{ d.title }}@if (d.created_by === 'oracle') { <hx-icon name="sparkle" [size]="12" title="Creata da Hestia" /> }
+            {{ d.title }}@if (d.created_by === 'oracle') { <hx-icon name="sparkle" [size]="12"  [title]="'Creata da Hestia' | tr" /> }
           </a>
         }
       </nav>
@@ -61,9 +62,9 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
       @if (!plugins.catalog() && !plugins.catalogError()) {
         <div class="center"><hx-spinner /></div>
       } @else if (!items().length) {
-        <hx-empty icon="grid" title="Nessun widget">
-          I moduli con un'interfaccia mettono qui i loro widget. Puoi aggiungerli tu o chiedere a Hestia di comporre una dashboard.
-          <button hx-btn variant="primary" icon="plus" (click)="startEdit(); adding.set(true)">Aggiungi widget</button>
+        <hx-empty icon="grid"  [title]="'Nessun widget' | tr">
+          {{ "I moduli con un'interfaccia mettono qui i loro widget. Puoi aggiungerli tu o chiedere a Hestia di comporre una dashboard." | tr }}
+          <button hx-btn variant="primary" icon="plus" (click)="startEdit(); adding.set(true)">{{ "Aggiungi widget" | tr }}</button>
         </hx-empty>
       } @else {
         <div class="grid" [class.editing]="editing()">
@@ -74,25 +75,25 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
                      [class.offline]="w && !w.online" [class.empty]="!editing() && empty().has(it.widget + i)"
                      (hestia-widget-empty)="setEmpty(it.widget + i, $any($event).detail)">
               <header>
-                @if (editing()) { <hx-icon name="selector" [size]="15" class="grip" title="Trascina per spostare" /> }
+                @if (editing()) { <hx-icon name="selector" [size]="15" class="grip"  [title]="'Trascina per spostare' | tr" /> }
                 <span class="wt">{{ it.title || w?.label || it.widget }}</span>
-                @if (w && !w.online) { <hx-badge tone="warning">offline</hx-badge> }
+                @if (w && !w.online) { <hx-badge tone="warning">{{ "offline" | tr }}</hx-badge> }
                 @if (!editing() && w?.open_page) {
-                  <a class="open" [routerLink]="plugins.link(w!.module, w!.open_page)" title="Apri"><hx-icon name="chevron-right" [size]="15" /></a>
+                  <a class="open" [routerLink]="plugins.link(w!.module, w!.open_page)"  [title]="'Apri' | tr"><hx-icon name="chevron-right" [size]="15" /></a>
                 }
                 @if (editing()) {
-                  <select class="hx-select sz" [ngModel]="it.size" (ngModelChange)="setSize(i, $event)" aria-label="Misura">
+                  <select class="hx-select sz" [ngModel]="it.size" (ngModelChange)="setSize(i, $event)"  [attr.aria-label]="'Misura' | tr">
                     @for (s of (w?.sizes ?? ['m']); track s) { <option [value]="s">{{ sizeLabel[s] }}</option> }
                   </select>
-                  <button hx-btn variant="ghost" size="sm" icon="settings" iconOnly aria-label="Impostazioni widget" (click)="configure(i)"></button>
-                  <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly aria-label="Rimuovi" (click)="remove(i)"></button>
+                  <button hx-btn variant="ghost" size="sm" icon="settings" iconOnly  [attr.aria-label]="'Impostazioni widget' | tr" (click)="configure(i)"></button>
+                  <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly  [attr.aria-label]="'Rimuovi' | tr" (click)="remove(i)"></button>
                 }
               </header>
               <div class="wb">
                 @if (w) {
                   <hx-plugin-outlet [module]="w.module" [element]="w.element" [ctx]="ctxFor(w, it)" />
                 } @else {
-                  <div class="gone">Widget non più disponibile</div>
+                  <div class="gone">{{ "Widget non più disponibile" | tr }}</div>
                 }
               </div>
             </article>
@@ -101,8 +102,8 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
       }
     </div>
 
-    <hx-modal [open]="adding()" title="Aggiungi widget" size="lg" (closed)="adding.set(false)">
-      <input class="hx-input" placeholder="Cerca…" [ngModel]="filter()" (ngModelChange)="filter.set($event)" aria-label="Cerca widget">
+    <hx-modal [open]="adding()"  [title]="'Aggiungi widget' | tr" size="lg" (closed)="adding.set(false)">
+      <input class="hx-input"  [placeholder]="'Cerca…' | tr" [ngModel]="filter()" (ngModelChange)="filter.set($event)"  [attr.aria-label]="'Cerca widget' | tr">
       @for (g of catalogGroups(); track g.module) {
         <h3 class="gh">{{ g.title }}</h3>
         <div class="cat">
@@ -114,24 +115,24 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
             </button>
           }
         </div>
-      } @empty { <hx-empty icon="puzzle" title="Nessun widget disponibile">Nessun modulo con interfaccia è registrato.</hx-empty> }
+      } @empty { <hx-empty icon="puzzle"  [title]="'Nessun widget disponibile' | tr">{{ "Nessun modulo con interfaccia è registrato." | tr }}</hx-empty> }
     </hx-modal>
 
-    <hx-modal [open]="!!nameDlg()" [title]="nameDlg()?.mode === 'new' ? 'Nuova dashboard' : 'Rinomina dashboard'" size="sm" (closed)="nameDlg.set(null)">
+    <hx-modal [open]="!!nameDlg()" [title]="nameDlg()?.mode === 'new' ? ('Nuova dashboard' | tr) : ('Rinomina dashboard' | tr)" size="sm" (closed)="nameDlg.set(null)">
       @if (nameDlg(); as n) {
-        <hx-field label="Nome"><input class="hx-input" [ngModel]="n.value" (ngModelChange)="nameDlg.set({ mode: n.mode, value: $event })"
+        <hx-field  [label]="'Nome' | tr"><input class="hx-input" [ngModel]="n.value" (ngModelChange)="nameDlg.set({ mode: n.mode, value: $event })"
           (keydown.enter)="confirmName()" autofocus></hx-field>
       }
       <ng-container footer>
-        <button hx-btn variant="ghost" (click)="nameDlg.set(null)">Annulla</button>
-        <button hx-btn variant="primary" [disabled]="!nameDlg()?.value?.trim()" (click)="confirmName()">{{ nameDlg()?.mode === 'new' ? 'Crea' : 'Rinomina' }}</button>
+        <button hx-btn variant="ghost" (click)="nameDlg.set(null)">{{ "Annulla" | tr }}</button>
+        <button hx-btn variant="primary" [disabled]="!nameDlg()?.value?.trim()" (click)="confirmName()">{{ nameDlg()?.mode === 'new' ? ('Crea' | tr) : ('Rinomina' | tr) }}</button>
       </ng-container>
     </hx-modal>
 
-    <hx-modal [open]="cfgIndex() !== null" title="Impostazioni widget" size="sm" (closed)="cfgIndex.set(null)">
+    <hx-modal [open]="cfgIndex() !== null"  [title]="'Impostazioni widget' | tr" size="sm" (closed)="cfgIndex.set(null)">
       @if (cfgIndex() !== null) {
         <div class="form">
-          <hx-field label="Titolo" hint="Vuoto = quello del modulo"><input class="hx-input" [(ngModel)]="cfgTitle"></hx-field>
+          <hx-field  [label]="'Titolo' | tr"  [hint]="'Vuoto = quello del modulo' | tr"><input class="hx-input" [(ngModel)]="cfgTitle"></hx-field>
           @for (p of cfgParams(); track p.name) {
             <hx-field [label]="p.spec.label">
               @if (p.spec.type === 'enum') {
@@ -149,8 +150,8 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: 'Piccolo', m: 'Medio', l: 'G
         </div>
       }
       <ng-container footer>
-        <button hx-btn variant="ghost" (click)="cfgIndex.set(null)">Annulla</button>
-        <button hx-btn variant="primary" (click)="applyConfig()">Applica</button>
+        <button hx-btn variant="ghost" (click)="cfgIndex.set(null)">{{ "Annulla" | tr }}</button>
+        <button hx-btn variant="primary" (click)="applyConfig()">{{ "Applica" | tr }}</button>
       </ng-container>
     </hx-modal>`,
   styles: [`
@@ -222,14 +223,14 @@ export class DashboardPageComponent {
   readonly items = computed(() => this.editing() ? this.draft() : this.current()?.items ?? []);
   readonly subtitle = computed(() => {
     const d = this.current();
-    if (!d) return 'Dashboard non trovata';
-    if (d.created_by === 'oracle') return 'Creata da Hestia';
-    return this.isHome() ? 'Le tue azioni rapide e i widget dei moduli' : '';
+    if (!d) return tr('Dashboard non trovata');
+    if (d.created_by === 'oracle') return tr('Creata da Hestia');
+    return this.isHome() ? tr('Le tue azioni rapide e i widget dei moduli') : '';
   });
   readonly menuItems = computed(() => [
-    ...(this.phone() ? [{ id: 'ask', label: 'Crea con Hestia', icon: 'sparkle' }] : []),
-    { id: 'new', label: 'Nuova dashboard', icon: 'plus' },
-    ...(this.current() && !this.isHome() ? [{ id: 'rename', label: 'Rinomina', icon: 'edit' }, { id: 'delete', label: 'Elimina', icon: 'trash', danger: true }] : []),
+    ...(this.phone() ? [{ id: 'ask', label: tr('Crea con Hestia'), icon: 'sparkle' }] : []),
+    { id: 'new', label: tr('Nuova dashboard'), icon: 'plus' },
+    ...(this.current() && !this.isHome() ? [{ id: 'rename', label: tr('Rinomina'), icon: 'edit' }, { id: 'delete', label: tr('Elimina'), icon: 'trash', danger: true }] : []),
   ]);
 
   readonly phone = signal(typeof matchMedia !== 'undefined' && matchMedia('(max-width: 860px)').matches);
@@ -333,7 +334,7 @@ export class DashboardPageComponent {
     else if (id === 'new') this.nameDlg.set({ mode: 'new', value: '' });
     else if (id === 'rename' && cur) this.nameDlg.set({ mode: 'rename', value: cur.title });
     else if (id === 'delete' && cur && !this.isHome()) {
-      if (!(await this.dialogs.confirm(`Eliminare «${cur.title}»?`, 'I widget restano disponibili nel catalogo.', 'Elimina', true))) return;
+      if (!(await this.dialogs.confirm(tr("Eliminare «{0}»?", cur.title), tr('I widget restano disponibili nel catalogo.'), tr('Elimina'), true))) return;
       if (await this.plugins.saveDashboards(this.plugins.dashboards().filter(d => d.id !== cur.id))) await this.router.navigate(['/home']);
     }
   }

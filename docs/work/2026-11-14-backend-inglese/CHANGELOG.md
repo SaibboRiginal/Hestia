@@ -6,3 +6,6 @@
   fallback for languages without a catalog — keeps each PR reviewable — ext-chat
 - v1.2 — 2026-11-14 — 2b narrowed to settings and tools; module notices move to 2c, WebUI to 2d; tool texts fall
   back to English before Italian like fixed texts — one consistent chain for every language — ext-chat
+- v1.3 — 2026-11-15 — 2d delivered as one catalog for shell and plugins, served before the bundles (script
+  `/api/webui/i18n.js`) instead of a per-page language from the identity service — module-level constants are
+  translated too and plugins need no host call — ext-chat

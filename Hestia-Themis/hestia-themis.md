@@ -146,4 +146,8 @@ what the assistant proposed and confirms from the notification as usual.
 
 **2026-11-14 (settings in the owner's language)**: every label, help, group, unit and option label Themis serves (list, presets, options) is translated into «Lingua» (`themis.personal.language`) with `settings_client.translated`; the Italian text in the definition is the key of `locales/<lang>/messages.json`. Keys and values never change.
 
+**2026-11-15 (catalog for the WebUI)**: `GET /api/settings/i18n?lang=` → `{language, messages}`: the fixed texts
+of `locales/<lang>/messages.json` (English merged under the language's own, Italian = empty map; no `lang` = «Lingua»).
+The WebUI serves it to the browser before the app starts (`/api/webui/i18n.js`).
+
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».

@@ -1,5 +1,5 @@
 /** Plutus widgets for Home and dashboards: the month at a glance, the latest movements. */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, budgetBar, money, plutusStyles, txRow } from './util';
 
 abstract class Widget extends HestiaElement {
@@ -30,14 +30,14 @@ export class PlutusMonthWidget extends Widget {
     const pct = s.budget ? Math.round(100 * s.spent / s.budget) : null;
     const big = this.size === 'l' || this.size === 'xl';
     return html`<div class="w click" @click=${() => this.host.navigate('panoramica')}>
-      <div class="between"><span class="small muted">Spese di ${s.label}</span>${s.to_review ? html`<span class="pill warn">${s.to_review} da rivedere</span>` : nothing}</div>
+      <div class="between"><span class="small muted">${tr("Spese di")} ${s.label}</span>${s.to_review ? html`<span class="pill warn">${s.to_review} ${tr("da rivedere")}</span>` : nothing}</div>
       <div class="big">${money(s.spent, s.currency)}</div>
-      ${s.budget ? html`${budgetBar(pct)}<div class="small muted">${s.left >= 0 ? `rimangono ${money(s.left, s.currency)}` : `${money(-s.left, s.currency)} oltre il budget`} · ${pct}%</div>`
-        : html`<div class="small muted">${s.days_gone < s.days_total && s.spent ? `a questo ritmo ${money(s.pace, s.currency)}` : `entrate ${money(s.income, s.currency)}`}</div>`}
+      ${s.budget ? html`${budgetBar(pct)}<div class="small muted">${s.left >= 0 ? `rimangono ${money(s.left, s.currency)}` : tr("{0} oltre il budget", money(-s.left, s.currency))} · ${pct}%</div>`
+        : html`<div class="small muted">${s.days_gone < s.days_total && s.spent ? tr("a questo ritmo {0}", money(s.pace, s.currency)) : `entrate ${money(s.income, s.currency)}`}</div>`}
       ${this.size !== 's' ? html`<div class="col" style="gap:5px">${s.categories.slice(0, big ? 6 : 2).map((c: any) => html`<div class="col" style="gap:2px">
         <div class="between small"><span class="truncate">${c.label}</span><span class="tnum">${money(c.spent, s.currency)}</span></div>
         ${c.budget ? budgetBar(c.pct) : nothing}</div>`)}</div>` : nothing}
-      ${big && s.recurring_next.length ? html`<div class="small muted">In arrivo: ${s.recurring_next.slice(0, 3).map((r: any) => `${r.merchant} ${money(r.amount, s.currency)}`).join(' · ')}</div>` : nothing}
+      ${big && s.recurring_next.length ? html`<div class="small muted">${tr("In arrivo:")} ${s.recurring_next.slice(0, 3).map((r: any) => `${r.merchant} ${money(r.amount, s.currency)}`).join(' · ')}</div>` : nothing}
     </div>`;
   }
 }
@@ -55,8 +55,8 @@ export class PlutusLatestWidget extends Widget {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="w">
-      <div class="between click" @click=${() => this.host.navigate('movimenti')}><span class="small muted">Ultimi movimenti</span><span class="link small">Tutti ›</span></div>
-      ${this.items.length ? html`<div class="list">${this.items.map(t => txRow(this.host, t, this.cur))}</div>` : html`<div class="muted small">Ancora nessun movimento.</div>`}
+      <div class="between click" @click=${() => this.host.navigate('movimenti')}><span class="small muted">${tr("Ultimi movimenti")}</span><span class="link small">${tr("Tutti ›")}</span></div>
+      ${this.items.length ? html`<div class="list">${this.items.map(t => txRow(this.host, t, this.cur))}</div>` : html`<div class="muted small">${tr("Ancora nessun movimento.")}</div>`}
     </div>`;
   }
 }

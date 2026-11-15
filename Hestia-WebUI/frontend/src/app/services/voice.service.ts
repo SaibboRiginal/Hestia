@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { tr } from '../core/i18n';
 
 /**
  * Voice in the WebUI (dossier docs/work/2026-10-20-modulo-voce §7). The browser only records and plays:
@@ -85,13 +86,13 @@ export class MicRecorder {
 
 /** Why «Ascolta» gave no sound, in words for the owner (the cause the server gave, when it gave one). */
 export function listenError(err: unknown, stage: 'speak' | 'play'): string {
-  if (stage === 'play') return 'Non riesco a far partire l\'audio in questo browser.';
+  if (stage === 'play') return tr('Non riesco a far partire l\'audio in questo browser.');
   const e = err as { status?: number; error?: { detail?: unknown; error?: unknown } } | null;
-  if (!e || e.status === 0) return 'Non riesco a leggerlo: il sito non raggiunge il server.';
+  if (!e || e.status === 0) return tr('Non riesco a leggerlo: il sito non raggiunge il server.');
   const detail = e.error?.detail ?? e.error?.error;
-  if (typeof detail === 'string' && detail.trim()) return `Non riesco a leggerlo: ${detail.trim().slice(0, 160)}`;
-  if (e.status === 502 || e.status === 503 || e.status === 504) return 'Non riesco a leggerlo: la voce non è pronta o non risponde.';
-  return 'Non riesco a leggerlo ora.';
+  if (typeof detail === 'string' && detail.trim()) return tr("Non riesco a leggerlo: {0}", detail.trim().slice(0, 160));
+  if (e.status === 502 || e.status === 503 || e.status === 504) return tr('Non riesco a leggerlo: la voce non è pronta o non risponde.');
+  return tr('Non riesco a leggerlo ora.');
 }
 
 @Injectable({ providedIn: 'root' })

@@ -1,6 +1,7 @@
 /** Diff viewer: <hx-diff [diff]="unifiedDiffText" [only]="path?" /> — unified or split, per-file collapsible. */
 import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
 import { IconComponent } from './icon.component';
+import { TrPipe } from '../core/i18n';
 
 export interface DiffLine { kind: 'ctx' | 'add' | 'del' | 'meta'; text: string; old?: number; new?: number; }
 export interface DiffHunk { header: string; lines: DiffLine[]; }
@@ -68,22 +69,22 @@ const BIG = 600;
 
 @Component({
   selector: 'hx-diff',
-  imports: [IconComponent],
+  imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="bar">
-      <span class="sum">{{ shown().length }} file · <b class="a">+{{ totals().added }}</b> <b class="d">−{{ totals().deleted }}</b></span>
+      <span class="sum">{{ shown().length }} {{ "file ·" | tr }} <b class="a">+{{ totals().added }}</b> <b class="d">−{{ totals().deleted }}</b></span>
       <span class="hx-grow"></span>
       @if (shown().length > 1) {
-        <button class="lnk" (click)="collapseAll()">Comprimi tutti</button>
-        <button class="lnk" (click)="expandAll()">Espandi tutti</button>
+        <button class="lnk" (click)="collapseAll()">{{ "Comprimi tutti" | tr }}</button>
+        <button class="lnk" (click)="expandAll()">{{ "Espandi tutti" | tr }}</button>
       }
       <div class="seg">
-        <button [class.on]="mode() === 'unified'" (click)="setMode('unified')" title="Diff unificato">Unificato</button>
-        <button [class.on]="mode() === 'split'" (click)="setMode('split')" title="Affiancato">Affiancato</button>
+        <button [class.on]="mode() === 'unified'" (click)="setMode('unified')"  [title]="'Diff unificato' | tr">{{ "Unificato" | tr }}</button>
+        <button [class.on]="mode() === 'split'" (click)="setMode('split')"  [title]="'Affiancato' | tr">{{ "Affiancato" | tr }}</button>
       </div>
     </div>
-    @if (!shown().length) { <div class="empty">Nessuna differenza.</div> }
+    @if (!shown().length) { <div class="empty">{{ "Nessuna differenza." | tr }}</div> }
     @for (f of shown(); track f.path) {
       <section class="file">
         <header (click)="toggle(f)">
@@ -93,7 +94,7 @@ const BIG = 600;
           <span class="cnt"><b class="a">+{{ f.added }}</b> <b class="d">−{{ f.deleted }}</b></span>
         </header>
         @if (!isCollapsed(f)) {
-          @if (f.binary) { <div class="empty">File binario.</div> }
+          @if (f.binary) { <div class="empty">{{ "File binario." | tr }}</div> }
           @else if (mode() === 'unified') {
             <div class="code">
               @for (h of f.hunks; track $index) {
@@ -117,7 +118,7 @@ const BIG = 600;
         }
       </section>
     }
-    @if (truncated()) { <div class="empty">Diff troncato: troppo grande da mostrare per intero.</div> }
+    @if (truncated()) { <div class="empty">{{ "Diff troncato: troppo grande da mostrare per intero." | tr }}</div> }
   `,
   styles: [`
     :host { display: block; font-size: 13px; }

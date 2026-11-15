@@ -630,3 +630,14 @@ Replaces what the 2026-10-29 section says about the sidebar's top and the «Sist
   sound, the reason with «Apri Voce» (`VoiceService.failed`, `listenError`). Wavy dividers (`.hx-divider`) for a new
   day (Oggi, Ieri, «mer 5 nov») and for another model answering (`final.model`, kept with the message).
 - **Download**: «Scarica le voci» moved to the Voce page as «Prepara la voce adesso»; the page is listed in Sistema.
+
+## Owner's language (2026-11-15, dossier `docs/work/2026-11-14-backend-inglese`)
+
+Every fixed text of the shell and of the plugins follows «Lingua» (`themis.personal.language`). `index.html` loads
+`/api/webui/i18n.js` (public, no-store: `I18nController` → Hub → Themis `/api/settings/i18n`) before any bundle; it sets
+`globalThis.__hestiaI18n = {language, messages}`. Code: `tr('Testo', ...args)` (`core/i18n.ts`, `{0}` placeholders),
+templates `{{ 'Testo' | tr }}` / `[title]="'Testo' | tr"` (`TrPipe`); plugins `tr` of `@hestia/webui-sdk`. The Italian
+text is the key of `Hestia-Shared/hestia_common/locales/<lang>/messages.json`; missing → English → Italian. Themis
+unreachable → Italian texts, never an error page. Saving «Lingua» (`CentralSettingsApi.set/reset/undo`) reloads the
+page once. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
+them; no personal data).

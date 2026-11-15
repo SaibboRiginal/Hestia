@@ -2,7 +2,7 @@
  * <chronos-cal-month> — month grid: chips per day (windows first, as thin bars), rules grouped ×N, "+N altri",
  * HTML5 drag of a chip to another day. Events: cal-select {ev, rect} · cal-create (Date) · cal-move {ev,start,end} · cal-day (Date).
  */
-import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
+import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';
 import { type CalEvent, type CalWeather, NO_WEATHER, fire } from '../models';
 import { DAY_MS, addDays, dayKey, fmt, isSameDay, isToday, monthGrid, startOfDay } from '../date';
 import { calStyles, wxChip } from '../ui';
@@ -14,7 +14,7 @@ export function extLines(w: CalWeather, k: string): string[] {
   return w.external.filter(x => x.start.slice(0, 10) === k).map(x =>
     `${x.start.slice(11, 16)} ${x.title} · ${x.place || x.location}${x.hour ? `: ${x.hour.temp_c}°, ${x.hour.condition}` : ''}`);
 }
-const WD = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+const WD = [tr('Lun'), tr('Mar'), tr('Mer'), tr('Gio'), tr('Ven'), tr('Sab'), tr('Dom')];
 type Split = { wins: CalEvent[]; groups: { ev: CalEvent; count: number }[] };
 
 export class ChronosCalMonth extends LitElement {
@@ -116,20 +116,20 @@ export class ChronosCalMonth extends LitElement {
         @click=${() => fire(this, 'cal-create', this.at9(d))}
         @dragover=${(e: DragEvent) => { e.preventDefault(); this.dropKey = k; }} @dragleave=${() => (this.dropKey = null)}
         @drop=${(e: DragEvent) => this.drop(e, d)}>
-      <div class="top"><button class="num" @click=${(e: Event) => { e.stopPropagation(); fire(this, 'cal-day', d); }} title="Apri il giorno">${d.getDate()}</button>
+      <div class="top"><button class="num" @click=${(e: Event) => { e.stopPropagation(); fire(this, 'cal-day', d); }} title=${tr("Apri il giorno")}>${d.getDate()}</button>
         ${wxChip(this.weather.days[k], extLines(this.weather, k))}</div>
       ${s?.wins.length ? html`<div class="wins">${s.wins.map(w => html`<span class="win ${w.occ.skipped ? 'skipped' : ''} ${w.occ.status === 'paused' ? 'paused' : ''}"
-          style="--c:${w.color}" title=${`Finestra ${fmt.time(w.start)}${w.end ? '–' + fmt.time(w.end) : ''} · ${w.occ.title}`}
+          style="--c:${w.color}" title=${tr("Finestra {0}{1} · {2}", fmt.time(w.start), w.end ? '–' + fmt.time(w.end) : '', w.occ.title)}
           @click=${(e: Event) => this.sel(e, w)}></span>`)}</div>` : nothing}
       <div class="chips">
         ${groups.slice(0, MAX_CHIPS).map(({ ev, count }) => html`<div class="chip ${ev.occ.skipped ? 'skipped' : ''} ${ev.occ.run?.ok === false ? 'failed' : ''}
             ${ev.occ.status === 'completed' || ev.occ.status === 'cancelled' ? 'done' : ''} ${ev.occ.status === 'paused' ? 'paused' : ''}"
             style="--c:${ev.color}" draggable="true" @dragstart=${(e: DragEvent) => this.dragStart(e, ev)} @dragend=${() => (this.dropKey = null)}
-            @click=${(e: Event) => this.sel(e, ev)} title=${ev.occ.title + (count > 1 ? ` (${count} volte oggi)` : '')}>
+            @click=${(e: Event) => this.sel(e, ev)} title=${ev.occ.title + (count > 1 ? tr(" ({0} volte oggi)", count) : '')}>
           <span class="dot"></span><span class="t">${fmt.time(ev.start)}</span><span class="tt">${ev.occ.title}</span>
-          ${count > 1 ? html`<span class="x">×${count}</span>` : (ev.failedCount ?? 0) > 1 ? html`<span class="x">fallito ×${ev.failedCount}</span>` : nothing}
+          ${count > 1 ? html`<span class="x">×${count}</span>` : (ev.failedCount ?? 0) > 1 ? html`<span class="x">${tr("fallito ×")}${ev.failedCount}</span>` : nothing}
         </div>`)}
-        ${hidden ? html`<button class="more" @click=${(e: Event) => { e.stopPropagation(); fire(this, 'cal-day', d); }}>+${hidden} altri</button>` : nothing}
+        ${hidden ? html`<button class="more" @click=${(e: Event) => { e.stopPropagation(); fire(this, 'cal-day', d); }}>+${hidden} ${tr("altri")}</button>` : nothing}
       </div></div>`;
   }
 

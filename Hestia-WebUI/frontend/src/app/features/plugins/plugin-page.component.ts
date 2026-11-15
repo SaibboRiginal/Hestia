@@ -6,26 +6,27 @@ import { EmptyStateComponent, SettingLinkComponent, SpinnerComponent } from '../
 import { CentralSettingsStore } from '../settings/central-settings.store';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { PluginsService } from './plugins.service';
+import { TrPipe } from '../../core/i18n';
 
 /** A module's page (SPEC §4.3): the plugin element fills the page; the shell gives only the frame, and one gear in
  *  the top right corner that opens the settings of the module the page belongs to (when it has any): the same
  *  shortcut on every module page, drawn once here (dossier docs/work/2026-11-12-contesto-e-scorciatoie §3.3). */
 @Component({
   selector: 'app-plugin-page',
-  imports: [PluginOutletComponent, EmptyStateComponent, SettingLinkComponent, SpinnerComponent],
+  imports: [TrPipe, PluginOutletComponent, EmptyStateComponent, SettingLinkComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (!plugins.catalog()) {
-      <div class="center">@if (plugins.catalogError()) { <hx-empty icon="offline" title="Catalogo dei moduli non raggiungibile" /> } @else { <hx-spinner /> }</div>
+      <div class="center">@if (plugins.catalogError()) { <hx-empty icon="offline"  [title]="'Catalogo dei moduli non raggiungibile' | tr" /> } @else { <hx-spinner /> }</div>
     } @else {
       @if (match(); as m) {
         @if (hasSettings()) {
-          <hx-setting-link class="gear" [module]="route().module" label="" [title]="'Impostazioni di ' + moduleTitle()" />
+          <hx-setting-link class="gear" [module]="route().module" label="" [title]="('Impostazioni di ' | tr) + moduleTitle()" />
         }
         <hx-plugin-outlet [module]="route().module" [element]="m.page.element" [ctx]="ctx()" />
       } @else {
-        <div class="center"><hx-empty icon="puzzle" title="Pagina non trovata">
-          {{ moduleTitle() }} non ha questa pagina, oppure il modulo non è installato.</hx-empty></div>
+        <div class="center"><hx-empty icon="puzzle"  [title]="'Pagina non trovata' | tr">
+          {{ moduleTitle() }} {{ "non ha questa pagina, oppure il modulo non è installato." | tr }}</hx-empty></div>
       }
     }`,
   styles: [`

@@ -10,6 +10,7 @@ import { NO_WEATHER, colorFor } from './models';
 import { DAY_MS, addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './date';
 import { type CalendarPrefs, DEFAULT_PREFS, type SavedPrefs, perDayFromRRule, savePrefs } from './prefs';
 import { shiftByDay } from './rrule';
+import { tr } from '@hestia/webui-sdk';
 
 export class CalStore {
   readonly api: AgendaApi;
@@ -24,7 +25,7 @@ export class CalStore {
   vp: CalendarPrefs = { ...DEFAULT_PREFS };
   sideW = 256;
   /** Layers: only the AI agenda today; external calendars will be added here. */
-  sources: CalendarSource[] = [{ id: 'hestia', label: 'Agenda di Hestia', kind: 'ai', enabled: true }];
+  sources: CalendarSource[] = [{ id: 'hestia', label: tr('Agenda di Hestia'), kind: 'ai', enabled: true }];
   // data
   occurrences: AgendaOccurrence[] = [];
   /** Weather of the visible range (empty when the weather service is away or the range is past/far). */
@@ -185,7 +186,7 @@ export class CalStore {
           ? `${r.start.getDate()}–${e.getDate()} ${e.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}`
           : `${r.start.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`;
       }
-      default: return `Dal ${a.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })}`;
+      default: return tr("Dal {0}", a.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }));
     }
   }
 
@@ -239,7 +240,7 @@ export class CalStore {
       this.offline = false; this.loaded = true;
       void this.loadWeather(seq);
     } catch (e: any) {
-      if (seq === this.seq) { this.error = e?.message || 'Chronos non raggiungibile'; this.offline = !!e?.offline; }
+      if (seq === this.seq) { this.error = e?.message || tr('Chronos non raggiungibile'); this.offline = !!e?.offline; }
     } finally {
       if (seq === this.seq) { this.loading = false; this.changed(); }
     }
@@ -264,35 +265,35 @@ export class CalStore {
   private async act<T>(fn: () => Promise<T>, ok?: string, undo?: () => Promise<unknown>): Promise<T | null> {
     try {
       const r = await fn();
-      if (ok) this.host.toast(ok, 'success', undo ? { label: 'Annulla', run: () => void undo().then(() => this.load()) } : undefined);
+      if (ok) this.host.toast(ok, 'success', undo ? { label: tr('Annulla'), run: () => void undo().then(() => this.load()) } : undefined);
       await this.load();
       return r;
     } catch (e: any) {
-      this.host.toast(e?.message || 'Operazione non riuscita', 'danger');
+      this.host.toast(e?.message || tr('Operazione non riuscita'), 'danger');
       return null;
     }
   }
 
-  create(body: Record<string, unknown>) { return this.act(() => this.api.create(body), 'Aggiunto all\'agenda'); }
-  createFromTemplate(owner: string, id: string, body: TemplateBody) { return this.act(() => this.api.fromTemplate(owner, id, body), 'Creato dal modulo'); }
-  update(key: string, changes: Record<string, unknown>, msg = 'Aggiornato') { return this.act(() => this.api.update(key, changes), msg); }
+  create(body: Record<string, unknown>) { return this.act(() => this.api.create(body), tr('Aggiunto all\'agenda')); }
+  createFromTemplate(owner: string, id: string, body: TemplateBody) { return this.act(() => this.api.fromTemplate(owner, id, body), tr('Creato dal modulo')); }
+  update(key: string, changes: Record<string, unknown>, msg = tr('Aggiornato')) { return this.act(() => this.api.update(key, changes), msg); }
   cancel(ev: CalEvent) {
-    return this.act(() => this.api.cancel(ev.occ.key), 'Regola annullata', () => this.api.update(ev.occ.key, { status: 'confirmed' }));
+    return this.act(() => this.api.cancel(ev.occ.key), tr('Regola annullata'), () => this.api.update(ev.occ.key, { status: 'confirmed' }));
   }
   skip(ev: CalEvent) {
-    return this.act(() => this.api.skip(ev.occ.key, ev.occ.occurrence), 'Occorrenza saltata',
+    return this.act(() => this.api.skip(ev.occ.key, ev.occ.occurrence), tr('Occorrenza saltata'),
       ev.occ.recurring ? () => this.api.unskip(ev.occ.key, ev.occ.occurrence) : undefined);
   }
-  unskip(ev: CalEvent) { return this.act(() => this.api.unskip(ev.occ.key, ev.occ.occurrence), 'Occorrenza ripristinata'); }
+  unskip(ev: CalEvent) { return this.act(() => this.api.unskip(ev.occ.key, ev.occ.occurrence), tr('Occorrenza ripristinata')); }
   pause(ev: CalEvent, paused: boolean) {
-    return this.update(ev.occ.key, { status: paused ? 'paused' : 'confirmed' }, paused ? 'In pausa' : 'Riattivato');
+    return this.update(ev.occ.key, { status: paused ? 'paused' : 'confirmed' }, paused ? tr('In pausa') : tr('Riattivato'));
   }
   async run(ev: CalEvent) {
     const r = await this.act(() => this.api.run(ev.occ.key));
-    if (r) this.host.toast(r.ok ? 'Eseguito' : `Esecuzione fallita: ${r.detail}`, r.ok ? 'success' : 'danger');
+    if (r) this.host.toast(r.ok ? tr('Eseguito') : tr("Esecuzione fallita: {0}", r.detail), r.ok ? 'success' : 'danger');
   }
   resetMove(ev: CalEvent) {
-    return this.act(() => this.api.move(ev.occ.key, ev.occ.occurrence, null, null, true), 'Orario originale ripristinato');
+    return this.act(() => this.api.move(ev.occ.key, ev.occ.occurrence, null, null, true), tr('Orario originale ripristinato'));
   }
 
   /** Move an occurrence: 'one' = exception for this occurrence, 'all' = shift the whole rule. */
@@ -300,7 +301,7 @@ export class CalStore {
     const delta = newStart.getTime() - ev.start.getTime();
     const durationChange = newEnd && ev.end ? (newEnd.getTime() - ev.end.getTime()) - delta : 0;
     if (scope === 'one' || !ev.occ.recurring || !ev.item) {
-      return this.act(() => this.api.move(ev.occ.key, ev.occ.occurrence, newStart.toISOString(), newEnd ? newEnd.toISOString() : null), 'Spostato');
+      return this.act(() => this.api.move(ev.occ.key, ev.occ.occurrence, newStart.toISOString(), newEnd ? newEnd.toISOString() : null), tr('Spostato'));
     }
     const it = ev.item;
     const s0 = new Date(it.start_at);
@@ -308,7 +309,7 @@ export class CalStore {
     if (it.end_at) changes['end_at'] = new Date(new Date(it.end_at).getTime() + delta + durationChange).toISOString();
     const dayShift = Math.round((startOfDay(newStart).getTime() - startOfDay(ev.start).getTime()) / DAY_MS);
     if (dayShift && it.recurrence?.includes('BYDAY')) changes['recurrence'] = shiftByDay(it.recurrence, dayShift);
-    return this.update(it.key, changes, 'Serie spostata');
+    return this.update(it.key, changes, tr('Serie spostata'));
   }
 }
 

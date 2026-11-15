@@ -1,5 +1,5 @@
 /** Shared helpers of the Hermes plugin (labels in Italian, dates in it-IT). */
-import { css } from '@hestia/webui-sdk';
+import { css, tr } from '@hestia/webui-sdk';
 
 export const API = '/api/ui';
 
@@ -22,7 +22,7 @@ export function todayStart(): string {
 
 export const CLIENT_STATE: Record<string, { text: string; tone: string }> = {
   delivered: { text: 'consegnata', tone: 'success' },
-  skipped: { text: 'solo elenco', tone: 'neutral' },
+  skipped: { text: tr('solo elenco'), tone: 'neutral' },
   failed: { text: 'fallita', tone: 'danger' },
   dead: { text: 'abbandonata', tone: 'danger' },
 };

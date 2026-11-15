@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { tr, followLanguage, LANGUAGE_KEY } from '../../core/i18n';
 
 /** Central settings (Themis) as seen by the WebUI: `/api/webui/central-settings/*` → Hub → Themis. */
 
@@ -84,11 +85,11 @@ export interface Proposal {
 }
 
 /** Italian message from a Themis error ({detail}), for toasts. */
-export function apiError(e: unknown, fallback = 'Operazione non riuscita'): string {
+export function apiError(e: unknown, fallback = tr('Operazione non riuscita')): string {
   if (e instanceof HttpErrorResponse) {
     const d = e.error?.detail;
     if (typeof d === 'string' && d) return d;
-    if (e.status === 0) return 'WebUI non raggiungibile';
+    if (e.status === 0) return tr('WebUI non raggiungibile');
   }
   return fallback;
 }
@@ -119,16 +120,22 @@ export class CentralSettingsApi {
   }
 
   /** `scope` for personal settings: profile (default) · client · session (this conversation). */
-  set(key: string, value: unknown, scope?: 'profile' | 'client' | 'session') {
-    return firstValueFrom(this.http.put<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
+  async set(key: string, value: unknown, scope?: 'profile' | 'client' | 'session') {
+    const out = await firstValueFrom(this.http.put<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
       scope ? { value, scope } : { value }));
+    if (key === LANGUAGE_KEY) followLanguage(out?.value ?? value);
+    return out;
   }
-  reset(key: string, scope?: 'profile' | 'client' | 'session') {
-    return firstValueFrom(this.http.delete<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
+  async reset(key: string, scope?: 'profile' | 'client' | 'session') {
+    const out = await firstValueFrom(this.http.delete<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
       scope ? { params: { scope } } : {}));
+    if (key === LANGUAGE_KEY) followLanguage(out?.value);
+    return out;
   }
-  undo(key: string) {
-    return firstValueFrom(this.http.post<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}/undo`, {}));
+  async undo(key: string) {
+    const out = await firstValueFrom(this.http.post<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}/undo`, {}));
+    if (key === LANGUAGE_KEY) followLanguage(out?.value);
+    return out;
   }
   applyPreset(module: string, presetId: string) {
     return firstValueFrom(this.http.post<{ applied: Record<string, unknown> }>(

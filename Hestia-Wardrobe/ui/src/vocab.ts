@@ -2,10 +2,10 @@
  * <wardrobe-vocab> — the user's own lists (categories, styles, occasions, colours, patterns, fits, places):
  * rename, hide, reorder, add. Keys stay stable so pieces never lose their values.
  */
-import { css, html, nothing } from '@hestia/webui-sdk';
+import { css, html, nothing, tr } from '@hestia/webui-sdk';
 import { WardrobeElement, call, meta, wardrobeStyles } from './util';
 
-const NAMES: Record<string, string> = { category: 'Categorie', style: 'Stili', occasion: 'Occasioni', color: 'Colori', pattern: 'Fantasie', fit: 'Vestibilità', location: 'Posti' };
+const NAMES: Record<string, string> = { category: tr('Categorie'), style: tr('Stili'), occasion: tr('Occasioni'), color: tr('Colori'), pattern: tr('Fantasie'), fit: tr('Vestibilità'), location: tr('Posti') };
 
 export class WardrobeVocab extends WardrobeElement {
   static properties = { ...WardrobeElement.properties, tab: { state: true }, rows: { state: true }, dirty: { state: true }, busy: { state: true } };
@@ -19,7 +19,7 @@ export class WardrobeVocab extends WardrobeElement {
   constructor() { super(); this.tab = 'category'; this.rows = []; this.dirty = false; this.busy = false; }
   protected async load() { if (!this.dirty) this.rows = (this.m?.vocabularies?.[this.tab] || []).map(v => ({ ...v })); }
   private async setTab(t: string) {
-    if (this.dirty && !(await this.host.confirm('Modifiche non salvate', 'Cambiando lista le perdi.', { label: 'Cambia lista' }))) return;
+    if (this.dirty && !(await this.host.confirm(tr('Modifiche non salvate'), tr('Cambiando lista le perdi.'), { label: tr('Cambia lista') }))) return;
     this.tab = t; this.dirty = false; this.load();
   }
   private edit(i: number, k: string, v: any) { this.rows = this.rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)); this.dirty = true; }
@@ -45,33 +45,33 @@ export class WardrobeVocab extends WardrobeElement {
     const values = this.rows.filter(r => (r.label || '').trim()).map((r, i) => ({ ...r, order: i }));
     const r = await call(this.host, 'PUT', `/vocabularies/${this.tab}`, { values });
     this.busy = false;
-    if (r.ok) { this.dirty = false; this.m = await meta(this.host, true); this.load(); this.host.toast('Salvato', 'success'); }
+    if (r.ok) { this.dirty = false; this.m = await meta(this.host, true); this.load(); this.host.toast(tr('Salvato'), 'success'); }
   }
   render() {
     const m = this.m;
     const rows = this.rows;
     const isCat = this.tab === 'category';
     return html`<div class="page">
-      <div class="head"><h1>Vocabolari</h1><span class="sub">Le tue liste: rinomina, nascondi o aggiungi voci.</span></div>
+      <div class="head"><h1>${tr("Vocabolari")}</h1><span class="sub">${tr("Le tue liste: rinomina, nascondi o aggiungi voci.")}</span></div>
       <div class="tabs">${Object.entries(NAMES).map(([k, v]) => html`<button class="chip soft" aria-pressed=${this.tab === k} @click=${() => this.setTab(k)}>${v}</button>`)}</div>
       <div class="card col">
         ${rows.map((r, i) => html`<div class="r ${isCat && r.parent ? 'sub' : ''} ${r.hidden ? 'hidden' : ''}">
           ${this.tab === 'color' ? html`<input type="color" .value=${r.hex || '#888888'} @input=${(e: any) => this.edit(i, 'hex', e.target.value)}>` : nothing}
-          <input class="in lab" placeholder="Nome" .value=${r.label} @input=${(e: any) => this.edit(i, 'label', e.target.value)}>
+          <input class="in lab" placeholder=${tr("Nome")} .value=${r.label} @input=${(e: any) => this.edit(i, 'label', e.target.value)}>
           ${isCat && !r.parent ? html`<select class="in" @change=${(e: any) => this.edit(i, 'kind', e.target.value)}>${Object.entries(m?.kinds || {}).map(([k, v]) => html`<option value=${k} ?selected=${r.kind === k}>${v}</option>`)}</select>` : nothing}
-          ${isCat ? html`<select class="in" title="Posizione nell'outfit" @change=${(e: any) => this.edit(i, 'slot', e.target.value)}>${Object.entries(m?.slots || {}).map(([k, v]) => html`<option value=${k} ?selected=${r.slot === k}>${v}</option>`)}</select>` : nothing}
+          ${isCat ? html`<select class="in" title=${tr("Posizione nell'outfit")} @change=${(e: any) => this.edit(i, 'slot', e.target.value)}>${Object.entries(m?.slots || {}).map(([k, v]) => html`<option value=${k} ?selected=${r.slot === k}>${v}</option>`)}</select>` : nothing}
           <hxk-button size="sm" variant="ghost" title="Su" @click=${() => this.move(i, -1)}>↑</hxk-button>
-          <hxk-button size="sm" variant="ghost" title=${r.hidden ? 'Mostra' : 'Nascondi'} @click=${() => this.edit(i, 'hidden', !r.hidden)}>${r.hidden ? 'Mostra' : 'Nascondi'}</hxk-button>
-          ${isCat && !r.parent ? html`<hxk-button size="sm" variant="ghost" icon="plus" title="Sottocategoria" @click=${() => this.add(r.key)}></hxk-button>` : nothing}
+          <hxk-button size="sm" variant="ghost" title=${r.hidden ? tr('Mostra') : tr('Nascondi')} @click=${() => this.edit(i, 'hidden', !r.hidden)}>${r.hidden ? tr('Mostra') : tr('Nascondi')}</hxk-button>
+          ${isCat && !r.parent ? html`<hxk-button size="sm" variant="ghost" icon="plus" title=${tr("Sottocategoria")} @click=${() => this.add(r.key)}></hxk-button>` : nothing}
           ${!r.key ? html`<hxk-button size="sm" variant="ghost" icon="x" @click=${() => { this.rows = rows.filter((_, j) => j !== i); }}></hxk-button>` : nothing}
         </div>`)}
-        <div class="row"><hxk-button size="sm" icon="plus" @click=${() => this.add()}>Aggiungi</hxk-button><span class="grow"></span>
-          ${this.dirty ? html`<hxk-button size="sm" variant="ghost" @click=${() => { this.dirty = false; this.load(); }}>Annulla</hxk-button>` : nothing}
-          <hxk-button size="sm" variant="primary" ?disabled=${!this.dirty} ?loading=${this.busy} @click=${() => this.save()}>Salva</hxk-button></div>
-        <span class="small muted">Le voci usate dai capi non si possono togliere: nascondile.${isCat ? ' La posizione dice dove va il capo in un outfit (sopra, sotto, capospalla…).' : ''}</span>
+        <div class="row"><hxk-button size="sm" icon="plus" @click=${() => this.add()}>${tr("Aggiungi")}</hxk-button><span class="grow"></span>
+          ${this.dirty ? html`<hxk-button size="sm" variant="ghost" @click=${() => { this.dirty = false; this.load(); }}>${tr("Annulla")}</hxk-button>` : nothing}
+          <hxk-button size="sm" variant="primary" ?disabled=${!this.dirty} ?loading=${this.busy} @click=${() => this.save()}>${tr("Salva")}</hxk-button></div>
+        <span class="small muted">${tr("Le voci usate dai capi non si possono togliere: nascondile.")}${isCat ? tr(' La posizione dice dove va il capo in un outfit (sopra, sotto, capospalla…).') : ''}</span>
       </div>
-      <span class="small muted">Esporta / importa tutto il guardaroba: <button class="link" @click=${() => this.host.navigate('statistiche')}>Statistiche</button>${' · '}
-        <button class="link" @click=${() => this.importFile()}>Importa JSON</button></span>
+      <span class="small muted">${tr("Esporta / importa tutto il guardaroba:")} <button class="link" @click=${() => this.host.navigate('statistiche')}>${tr("Statistiche")}</button>${' · '}
+        <button class="link" @click=${() => this.importFile()}>${tr("Importa JSON")}</button></span>
     </div>`;
   }
   private async importFile() {
@@ -79,9 +79,9 @@ export class WardrobeVocab extends WardrobeElement {
     input.type = 'file'; input.accept = 'application/json,.json';
     input.onchange = async () => {
       const f = input.files?.[0]; if (!f) return;
-      if (!(await this.host.confirm('Importa', `Unisco «${f.name}» al guardaroba (stessi id = sostituiti).`, { label: 'Importa' }))) return;
+      if (!(await this.host.confirm(tr('Importa'), tr("Unisco «{0}» al guardaroba (stessi id = sostituiti).", f.name), { label: tr('Importa') }))) return;
       const r = await call(this.host, 'POST', '/import', { text: await f.text() });
-      if (r.ok) { this.host.toast('Importato', 'success'); this.m = await meta(this.host, true); this.load(); }
+      if (r.ok) { this.host.toast(tr('Importato'), 'success'); this.m = await meta(this.host, true); this.load(); }
     };
     input.click();
   }

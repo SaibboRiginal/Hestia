@@ -3,22 +3,23 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ButtonComponent, FieldComponent } from '../../ui';
+import { tr, TrPipe } from '../../core/i18n';
 
 @Component({
   selector: 'app-login-page',
-  imports: [FormsModule, ButtonComponent, FieldComponent],
+  imports: [TrPipe, FormsModule, ButtonComponent, FieldComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="wrap">
       <form class="card hx-card" (ngSubmit)="submit()">
         <div class="logo">◈</div>
         <h1>Hestia</h1>
-        <p class="sub">Inserisci il token di accesso</p>
-        <hx-field [error]="error()" hint="Lo ottieni con /webui_token su Telegram">
+        <p class="sub">{{ "Inserisci il token di accesso" | tr }}</p>
+        <hx-field [error]="error()"  [hint]="'Lo ottieni con /webui_token su Telegram' | tr">
           <input class="hx-input mono" name="token" [(ngModel)]="token" type="password" autocomplete="off"
-                 placeholder="token…" autofocus />
+                  [placeholder]="'token…' | tr" autofocus />
         </hx-field>
-        <button hx-btn variant="primary" size="lg" block type="submit" [loading]="loading()" [disabled]="!token">Entra</button>
+        <button hx-btn variant="primary" size="lg" block type="submit" [loading]="loading()" [disabled]="!token">{{ "Entra" | tr }}</button>
       </form>
     </div>`,
   styles: [`
@@ -53,6 +54,6 @@ export class LoginPageComponent {
     const ok = await this.auth.login(this.token.trim());
     this.loading.set(false);
     if (ok) this.router.navigateByUrl(this.next);
-    else this.error.set('Token non valido o scaduto');
+    else this.error.set(tr('Token non valido o scaduto'));
   }
 }

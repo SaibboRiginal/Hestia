@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ToastService } from '../ui';
+import { tr } from '../core/i18n';
 
 /**
  * Assistant presence (SPEC docs/work/2026-10-10-assistant-presence): the state Chronos computes
@@ -35,23 +36,23 @@ export interface PresenceChange { at?: string; base: string; label: string; from
 /** What the current state changes in the system, in plain words (one line per effect). */
 const EFFECT_LABELS: Record<string, Record<string, string>> = {
   'work.heavy': {
-    allow: 'Forge e addestramenti possono partire',
-    local: 'Lavori pesanti solo con i modelli locali',
-    defer: 'Forge e addestramenti aspettano che tu sia via',
+    allow: tr('Forge e addestramenti possono partire'),
+    local: tr('Lavori pesanti solo con i modelli locali'),
+    defer: tr('Forge e addestramenti aspettano che tu sia via'),
   },
   'llm.claude': {
-    allow: 'Claude usabile anche dai lavori automatici (es. Forge di notte)',
-    save: 'Claude solo per le tue richieste: niente consumi automatici',
-    deny: 'Claude non viene usato',
+    allow: tr('Claude usabile anche dai lavori automatici (es. Forge di notte)'),
+    save: tr('Claude solo per le tue richieste: niente consumi automatici'),
+    deny: tr('Claude non viene usato'),
   },
   'chat.reply': {
     live: '',
-    queued: 'Non posso rispondere adesso: i messaggi in chat restano in coda e avranno risposta appena possibile',
+    queued: tr('Non posso rispondere adesso: i messaggi in chat restano in coda e avranno risposta appena possibile'),
   },
   'notify.level': {
-    all: 'Ti arrivano tutte le notifiche',
-    important: 'Solo notifiche importanti, le altre in un riepilogo dopo',
-    urgent: 'Solo notifiche urgenti, le altre in un riepilogo dopo',
+    all: tr('Ti arrivano tutte le notifiche'),
+    important: tr('Solo notifiche importanti, le altre in un riepilogo dopo'),
+    urgent: tr('Solo notifiche urgenti, le altre in un riepilogo dopo'),
   },
 };
 
@@ -60,19 +61,19 @@ export function reasonLabel(r?: string): string {
   if (!r) return '';
   const [kind, a] = r.split(':');
   switch (kind) {
-    case 'interaction': return `hai interagito (${a})`;
-    case 'activity_start': return 'iniziato un lavoro';
-    case 'activity_stop': return 'finito un lavoro';
-    case 'dnd_on': return 'Non disturbare attivato';
-    case 'dnd_off': return 'Non disturbare spento';
+    case 'interaction': return tr("hai interagito ({0})", a);
+    case 'activity_start': return tr('iniziato un lavoro');
+    case 'activity_stop': return tr('finito un lavoro');
+    case 'dnd_on': return tr('Non disturbare attivato');
+    case 'dnd_off': return tr('Non disturbare spento');
     case 'tick': case 'read': return 'tempo trascorso';
     case 'settings': return 'impostazioni cambiate';
     case 'boot': return 'riavvio';
     case 'signal': case 'clear':
       if (a?.startsWith('resource.claude')) return 'quota Claude';
-      if (a?.startsWith('health.')) return 'moduli in errore';
-      if (a?.startsWith('oracle.offline')) return 'non disponibile o di nuovo disponibile';
-      if (a?.startsWith('manual.dnd')) return 'Non disturbare scaduto';
+      if (a?.startsWith('health.')) return tr('moduli in errore');
+      if (a?.startsWith('oracle.offline')) return tr('non disponibile o di nuovo disponibile');
+      if (a?.startsWith('manual.dnd')) return tr('Non disturbare scaduto');
       return '';
     default: return '';
   }
@@ -83,7 +84,7 @@ export function ago(minutes: number | null | undefined): string {
   if (minutes < 1) return 'adesso';
   if (minutes < 60) return `${Math.floor(minutes)} min fa`;
   if (minutes < 48 * 60) return `${Math.floor(minutes / 60)} h fa`;
-  return `${Math.floor(minutes / 1440)} giorni fa`;
+  return tr("{0} giorni fa", Math.floor(minutes / 1440));
 }
 
 @Injectable({ providedIn: 'root' })
@@ -144,7 +145,7 @@ export class PresenceService {
         ? await firstValueFrom(this.http.post<PresenceState>(`${this.base}/dnd`, minutes ? { minutes } : {}))
         : await firstValueFrom(this.http.delete<PresenceState>(`${this.base}/dnd`));
       this.state.set(res);
-      this.toast.success(on ? 'Non disturbare attivo' : 'Non disturbare spento');
+      this.toast.success(on ? tr('Non disturbare attivo') : tr('Non disturbare spento'));
     } catch {
       this.toast.error('Stato non raggiungibile (Chronos)');
     } finally {
