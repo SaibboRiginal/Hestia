@@ -1,3 +1,4 @@
+import { tr } from '@hestia/webui-sdk';
 /** Small formatting helpers shared by the Oracle page and widget. */
 export const API = '/api/ui';
 
@@ -36,11 +37,11 @@ export function when(ts: number | null | undefined): string {
 }
 
 export function ago(seconds: number | null | undefined): string {
-  if (seconds == null) return 'nessuna chat da quando Oracle è partito';
+  if (seconds == null) return tr('nessuna chat da quando Oracle è partito');
   if (seconds < 60) return 'adesso';
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min fa`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} h fa`;
-  return `${Math.floor(seconds / 86400)} giorni fa`;
+  return tr("{0} giorni fa", Math.floor(seconds / 86400));
 }
 
 export function dayLabel(iso: string): string {

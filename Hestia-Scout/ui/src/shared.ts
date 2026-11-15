@@ -1,4 +1,4 @@
-import { css, html } from '@hestia/webui-sdk';
+import { css, html, tr } from '@hestia/webui-sdk';
 
 export interface Listing {
   id: string; url: string; title: string; address: string; city: string;
@@ -34,7 +34,7 @@ export const statusTone = (s: string) =>
 export function ago(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso); const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (days <= 0) return 'oggi'; if (days === 1) return 'ieri'; if (days < 7) return `${days} giorni fa`;
+  if (days <= 0) return 'oggi'; if (days === 1) return 'ieri'; if (days < 7) return tr("{0} giorni fa", days);
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 }
 

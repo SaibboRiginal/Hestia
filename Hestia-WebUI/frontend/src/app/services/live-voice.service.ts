@@ -4,6 +4,7 @@ import { ChatService } from './chat.service';
 import { PendingQuestion } from '../models/chat.models';
 import { SessionService } from './session.service';
 import { PLAY_FORMAT, VoiceService, b64ToBlob, blobToB64, recorderMime, speakableText } from './voice.service';
+import { tr } from '../core/i18n';
 
 /**
  * Live mode «Parla» (dossier docs/work/2026-10-20-modulo-voce §7.1): a conversation by voice with the same Hestia
@@ -30,7 +31,7 @@ export function spokenOptions(q: PendingQuestion | null): string {
   const labels = (q?.options || []).map(o => o.label).filter(Boolean);
   if (!q || q.kind === 'confirm' || labels.length < 2) return '';
   const list = `${labels.slice(0, -1).join(', ')} o ${labels[labels.length - 1]}`;
-  return q.kind === 'multi_choice' ? `Puoi sceglierne più di una: ${list}.` : `Puoi dire: ${list}.`;
+  return q.kind === 'multi_choice' ? tr("Puoi sceglierne più di una: {0}.", list) : tr("Puoi dire: {0}.", list);
 }
 
 @Injectable({ providedIn: 'root' })
@@ -88,7 +89,7 @@ export class LiveVoiceService {
       this.analyser.fftSize = 1024;
       this.ctx.createMediaStreamSource(this.stream).connect(this.analyser);
     } catch {
-      this.error.set('Il browser non mi dà il microfono.');
+      this.error.set(tr('Il browser non mi dà il microfono.'));
       this.stop();
       return;
     }

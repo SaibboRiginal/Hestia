@@ -1,5 +1,5 @@
 /** <hercules-picker>: search the local catalog (works offline) and pick an exercise → event 'pick' (detail = exercise). */
-import { HestiaElement, html, css } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, tr } from '@hestia/webui-sdk';
 import { local } from './data';
 import { EQUIPMENT, GROUPS, GROUP_LABEL, herculesStyles, muscleText, search } from './util';
 
@@ -17,7 +17,7 @@ export class HerculesPicker extends HestiaElement {
     .li { padding: 9px 12px; }
   `];
 
-  constructor() { super(); this.q = ''; this.group = ''; this.heading = 'Aggiungi esercizio'; this.prefer = []; }
+  constructor() { super(); this.q = ''; this.group = ''; this.heading = tr('Aggiungi esercizio'); this.prefer = []; }
 
   firstUpdated() { (this.renderRoot.querySelector('input') as HTMLInputElement | null)?.focus(); }
 
@@ -32,17 +32,17 @@ export class HerculesPicker extends HestiaElement {
     }
     return html`<div class="box card">
       <div class="between"><h2>${this.heading}</h2>
-        <hxk-button variant="ghost" size="sm" icon="x" @click=${() => this.dispatchEvent(new CustomEvent('close'))}>Chiudi</hxk-button></div>
-      <input class="in" placeholder="Cerca: panca, squat, dorsali…" .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
+        <hxk-button variant="ghost" size="sm" icon="x" @click=${() => this.dispatchEvent(new CustomEvent('close'))}>${tr("Chiudi")}</hxk-button></div>
+      <input class="in" placeholder=${tr("Cerca: panca, squat, dorsali…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
       <div class="chips">
-        <button class="chip" aria-pressed=${!this.group} @click=${() => (this.group = '')}>Tutti</button>
+        <button class="chip" aria-pressed=${!this.group} @click=${() => (this.group = '')}>${tr("Tutti")}</button>
         ${Object.keys(GROUPS).map(g => html`<button class="chip" aria-pressed=${this.group === g} @click=${() => (this.group = this.group === g ? '' : g)}>${GROUP_LABEL[g]}</button>`)}
       </div>
       <div class="res list">
         ${items.slice(0, 60).map(e => html`<div class="li" @click=${() => this.dispatchEvent(new CustomEvent('pick', { detail: e }))}>
           <div class="grow"><div class="truncate">${e.name}</div><div class="small muted truncate">${muscleText(e)} · ${EQUIPMENT[e.equipment] || e.equipment}</div></div>
           <hxk-icon name="plus"></hxk-icon></div>`)}
-        ${items.length ? '' : html`<div class="empty" style="padding:12px">Nessun esercizio. Puoi crearlo in Esercizi.</div>`}
+        ${items.length ? '' : html`<div class="empty" style="padding:12px">${tr("Nessun esercizio. Puoi crearlo in Esercizi.")}</div>`}
       </div>
     </div>`;
   }

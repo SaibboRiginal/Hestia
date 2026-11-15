@@ -3,7 +3,7 @@
  * waiting for your review, Claude budget window). The only button is the existing manual brake
  * (POST /api/hephaestus/forge/pause, same switch as the Sviluppo page and Telegram), after a confirm.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { FORGE, PHASE, when } from './util';
 
 export class HephaestusForgeWidget extends HestiaElement {
@@ -31,7 +31,7 @@ export class HephaestusForgeWidget extends HestiaElement {
       this.host.api('GET', `${FORGE}/claude-budget`),
       this.host.api('GET', `${FORGE}/tasks`, { query: { limit: 100 } }),
     ]);
-    if (!s.ok) { this.error = s.status === 0 || !s.error ? 'Hephaestus non raggiungibile' : s.error; return; }
+    if (!s.ok) { this.error = s.status === 0 || !s.error ? tr('Hephaestus non raggiungibile') : s.error; return; }
     this.error = ''; this.st = s.data; this.budget = b.ok ? b.data : null;
     const counts: Record<string, number> = {};
     for (const task of (t.ok ? t.data?.tasks || [] : [])) counts[task.state] = (counts[task.state] || 0) + 1;
@@ -40,15 +40,15 @@ export class HephaestusForgeWidget extends HestiaElement {
 
   private async togglePause() {
     const pause = !this.st?.paused;
-    const ok = await this.host.confirm(pause ? 'Mettere in pausa lo sviluppo?' : 'Riprendere lo sviluppo?',
-      pause ? 'Nessun task parte da solo finché non riprendi; quelli proposti restano lì.'
-            : 'I task trattenuti durante la pausa restano da avviare a mano.', { label: pause ? 'Pausa' : 'Riprendi' });
+    const ok = await this.host.confirm(pause ? tr('Mettere in pausa lo sviluppo?') : tr('Riprendere lo sviluppo?'),
+      pause ? tr('Nessun task parte da solo finché non riprendi; quelli proposti restano lì.')
+            : tr('I task trattenuti durante la pausa restano da avviare a mano.'), { label: pause ? tr('Pausa') : tr('Riprendi') });
     if (!ok) return;
     this.busy = true;
     const r = await this.host.api('POST', `${FORGE}/pause`, { body: { paused: pause, by: 'webui' } });
     this.busy = false;
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
-    this.host.toast(pause ? 'Sviluppo in pausa' : 'Sviluppo ripreso', 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
+    this.host.toast(pause ? tr('Sviluppo in pausa') : tr('Sviluppo ripreso'), 'success');
     this.load();
   }
 
@@ -57,26 +57,26 @@ export class HephaestusForgeWidget extends HestiaElement {
     const s = this.st;
     if (!s) return html`<hxk-state kind="loading"></hxk-state>`;
     const size = this.ctx?.size || 'm';
-    const state = !s.enabled ? { label: 'Spento', tone: 'neutral' } : s.paused ? { label: 'In pausa', tone: 'warning' }
-      : { label: 'Attivo', tone: 'success' };
+    const state = !s.enabled ? { label: tr('Spento'), tone: 'neutral' } : s.paused ? { label: tr('In pausa'), tone: 'warning' }
+      : { label: tr('Attivo'), tone: 'success' };
     const queue = (s.queue || []).length;
     const running = (this.counts.running || 0) + (this.counts.merging || 0);
     const review = this.counts.awaiting_review || 0;
     const b = this.budget; const ph = b ? PHASE[b.phase] || { label: b.phase, tone: 'neutral' } : null;
     return html`<div class="w">
       <div class="between"><span class="small muted">Auto-sviluppo</span><hxk-badge tone=${state.tone}>${state.label}</hxk-badge></div>
-      ${size === 's' ? html`<div class="big">${review}</div><div class="small muted">da rivedere · ${queue} in coda</div>` : html`
+      ${size === 's' ? html`<div class="big">${review}</div><div class="small muted">${tr("da rivedere ·")} ${queue} ${tr("in coda")}</div>` : html`
         <div class="nums">
-          <div class="n"><b>${running}</b><span class="small muted">in corso</span></div>
-          <div class="n"><b>${queue}</b><span class="small muted">in coda</span></div>
-          <div class="n"><b>${review}</b><span class="small muted">da rivedere</span></div>
-          ${this.counts.proposed ? html`<div class="n"><b>${this.counts.proposed}</b><span class="small muted">proposti</span></div>` : nothing}
+          <div class="n"><b>${running}</b><span class="small muted">${tr("in corso")}</span></div>
+          <div class="n"><b>${queue}</b><span class="small muted">${tr("in coda")}</span></div>
+          <div class="n"><b>${review}</b><span class="small muted">${tr("da rivedere")}</span></div>
+          ${this.counts.proposed ? html`<div class="n"><b>${this.counts.proposed}</b><span class="small muted">${tr("proposti")}</span></div>` : nothing}
         </div>
         ${ph ? html`<div class="small"><span class="muted">Claude:</span> <hxk-badge tone=${ph.tone}>${ph.label}</hxk-badge>
           ${size === 'l' ? html`<div class="small muted">${b.reason} · reset ${when(b.next_reset)}</div>` : nothing}</div>` : nothing}
-        ${size === 'l' ? html`<div class="small muted">Motore: ${s.engine_default || '–'}${s.repo_ok ? '' : ' · repo non montato'}</div>` : nothing}
+        ${size === 'l' ? html`<div class="small muted">Motore: ${s.engine_default || '–'}${s.repo_ok ? '' : tr(' · repo non montato')}</div>` : nothing}
         ${s.enabled ? html`<div><hxk-button size="sm" variant="ghost" icon=${s.paused ? 'play' : 'pause'} ?loading=${this.busy}
-          @click=${() => this.togglePause()}>${s.paused ? 'Riprendi' : 'Pausa'}</hxk-button></div>` : nothing}`}
+          @click=${() => this.togglePause()}>${s.paused ? tr('Riprendi') : tr('Pausa')}</hxk-button></div>` : nothing}`}
     </div>`;
   }
 }

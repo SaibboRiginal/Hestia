@@ -24,9 +24,10 @@ import { MicRecorder, VoiceService } from '../../services/voice.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
 import { REACTION_EMOJI } from './reaction-emoji';
 import { IdentityService } from '../../services/identity.service';
+import { tr, TrPipe } from '../../core/i18n';
 
 const LIVE_LABELS: Record<string, string> = {
-  starting: 'Accendo il microfono…', listening: 'Ti ascolto', hearing: 'Ti sento…', thinking: 'Ci penso…', speaking: 'Sto parlando',
+  starting: tr('Accendo il microfono…'), listening: tr('Ti ascolto'), hearing: tr('Ti sento…'), thinking: tr('Ci penso…'), speaking: tr('Sto parlando'),
 };
 
 function dayKey(d: Date | undefined): string {
@@ -37,8 +38,8 @@ function dayKey(d: Date | undefined): string {
 export function dayLabel(d: Date, now = new Date()): string {
   const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((start(now) - start(d)) / 86400000);
-  if (diff === 0) return 'Oggi';
-  if (diff === 1) return 'Ieri';
+  if (diff === 0) return tr('Oggi');
+  if (diff === 1) return tr('Ieri');
   return new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short',
     ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).format(d);
 }
@@ -46,21 +47,21 @@ export function dayLabel(d: Date, now = new Date()): string {
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
   selector: 'app-chat-page',
-  imports: [FormsModule, ButtonComponent, IconComponent, SpinnerComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
+  imports: [TrPipe, FormsModule, ButtonComponent, IconComponent, SpinnerComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
             ChatModeComponent, ChatContextComponent, QuestionCardComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="top">
       <button hx-btn variant="ghost" size="sm" icon="history" (click)="chats.historyOpen.set(!chats.historyOpen())"
-              [attr.aria-pressed]="chats.historyOpen()" title="Tutte le conversazioni">Cronologia</button>
-      <span class="ttl">{{ chat.messages().length ? 'Conversazione' : '' }}</span>
+              [attr.aria-pressed]="chats.historyOpen()"  [title]="'Tutte le conversazioni' | tr">{{ "Cronologia" | tr }}</button>
+      <span class="ttl">{{ chat.messages().length ? ('Conversazione' | tr) : '' }}</span>
       <div class="hx-grow"></div>
       <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" (click)="toggleLive()"
-              [attr.aria-pressed]="live.on" [title]="'Parla con ' + identity.assistant() + ' a voce'">Parla</button>
+              [attr.aria-pressed]="live.on" [title]="('Parla con ' | tr) + identity.assistant() + (' a voce' | tr)">{{ "Parla" | tr }}</button>
       <hx-chat-context />
       <hx-chat-quick-settings />
       <hx-menu [items]="menu" (select)="onMenu($event)">
-        <button hx-btn variant="ghost" size="sm" icon="more" iconOnly trigger aria-label="Altro"></button>
+        <button hx-btn variant="ghost" size="sm" icon="more" iconOnly trigger  [attr.aria-label]="'Altro' | tr"></button>
       </hx-menu>
     </header>
 
@@ -70,7 +71,7 @@ export function dayLabel(d: Date, now = new Date()): string {
           <div class="welcome hx-fade-in">
             <div class="logo">◈</div>
             <h1>{{ greeting() }}</h1>
-            <p>Chiedi qualcosa, pianifica nell'agenda, fai sviluppare Hestia.</p>
+            <p>{{ "Chiedi qualcosa, pianifica nell'agenda, fai sviluppare Hestia." | tr }}</p>
             <div class="chips">
               @for (s of suggestions; track s) { <button (click)="use(s)">{{ s }}</button> }
             </div>
@@ -79,45 +80,45 @@ export function dayLabel(d: Date, now = new Date()): string {
         @for (m of chat.messages(); track m.id) {
           @if (marks()[m.id]; as k) {
             @if (k.day) { <div class="hx-divider" role="separator">{{ k.day }}</div> }
-            @if (k.model) { <div class="hx-divider" role="separator" title="Da qui risponde un altro modello"><hx-icon name="brain" [size]="12" />{{ k.model }}</div> }
+            @if (k.model) { <div class="hx-divider" role="separator"  [title]="'Da qui risponde un altro modello' | tr"><hx-icon name="brain" [size]="12" />{{ k.model }}</div> }
           }
           @if (m.role === 'user') {
             @if (m.audio) {
               <div class="msg user hx-fade-in"><div class="bubble voice">
                 <div class="vrow">
-                  <button class="vplay" (click)="playVoice(m)" [attr.aria-label]="voice.playing() === m.id ? 'Ferma' : 'Ascolta il vocale'">
+                  <button class="vplay" (click)="playVoice(m)" [attr.aria-label]="voice.playing() === m.id ? ('Ferma' | tr) : ('Ascolta il vocale' | tr)">
                     <hx-icon [name]="voice.playing() === m.id ? 'pause' : 'play'" [size]="15" /></button>
                   <hx-icon class="vwave" name="waveform" [size]="22" />
                   <span class="vdur">{{ duration(m.audio.seconds) }}</span>
                 </div>
-                @if (m.transcribing) { <div class="vtext muted">Trascrivo…</div> }
+                @if (m.transcribing) { <div class="vtext muted">{{ "Trascrivo…" | tr }}</div> }
                 @else if (m.content) { <div class="vtext" [class.verr]="m.error">{{ m.content }}</div> }
-                @if (m.reaction) { <span class="rx" [title]="'Reazione di ' + identity.assistant()">{{ m.reaction }}</span> }
+                @if (m.reaction) { <span class="rx" [title]="('Reazione di ' | tr) + identity.assistant()">{{ m.reaction }}</span> }
               </div></div>
             } @else {
-              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}@if (m.reaction) { <span class="rx" [title]="'Reazione di ' + identity.assistant()">{{ m.reaction }}</span> }</div></div>
+              <div class="msg user hx-fade-in"><div class="bubble">@if (m.icon) { <hx-icon class="bi" [name]="m.icon" [size]="14" /> }{{ m.content }}@if (m.reaction) { <span class="rx" [title]="('Reazione di ' | tr) + identity.assistant()">{{ m.reaction }}</span> }</div></div>
             }
           } @else {
             <div class="msg asst hx-fade-in">
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
                 <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
               }
-              @if (m.origin; as o) { <div class="origin"><hx-icon name="zap" [size]="13" />{{ o.label || 'Avviata in automatico' }}</div> }
+              @if (m.origin; as o) { <div class="origin"><hx-icon name="zap" [size]="13" />{{ o.label || ('Avviata in automatico' | tr) }}</div> }
               @if (m.error) { <div class="err"><hx-icon name="alert" tone="danger" [size]="15" /><span>{{ m.content }}</span></div> }
               @else { <hx-assistant-text [html]="m.content" [streaming]="!!m.isStreaming" [queued]="!!m.queuedId" (send)="use($event)" /> }
               @if (m.changes?.length && !m.isStreaming) {
-                <div class="changes" aria-label="Ho fatto">
-                  <div class="ch"><hx-icon name="check-circle" [size]="14" />Ho fatto</div>
+                <div class="changes"  [attr.aria-label]="'Ho fatto' | tr">
+                  <div class="ch"><hx-icon name="check-circle" [size]="14" />{{ "Ho fatto" | tr }}</div>
                   @for (c of m.changes; track $index) {
                     <div class="cr" [class.done]="c.done">
                       <span class="ct">{{ c.title }}@if (c.detail) {<span class="cd"> · {{ c.detail }}</span>}</span>
-                      @if (c.done) { <span class="cu">Annullato</span> }
-                      @else if (c.undo) { <button hx-btn variant="ghost" size="sm" icon="undo" [loading]="undoing() === m.id + $index" (click)="undo(m, $index, c)">{{ c.undo.label || 'Annulla' }}</button> }
+                      @if (c.done) { <span class="cu">{{ "Annullato" | tr }}</span> }
+                      @else if (c.undo) { <button hx-btn variant="ghost" size="sm" icon="undo" [loading]="undoing() === m.id + $index" (click)="undo(m, $index, c)">{{ c.undo.label || ('Annulla' | tr) }}</button> }
                     </div>
                   }
                 </div>
               }
-              @if (m.queuedId) { <div class="inq"><hx-icon name="clock" [size]="14" /> In coda</div> }
+              @if (m.queuedId) { <div class="inq"><hx-icon name="clock" [size]="14" /> {{ "In coda" | tr }}</div> }
               @if (m.notices?.length && notices.inline()) {
                 <div class="hx-notices" [class.rich]="notices.prefs().style === 'rich'">
                   @for (n of m.notices; track n.id) {
@@ -130,27 +131,27 @@ export function dayLabel(d: Date, now = new Date()): string {
                 </div>
               }
               @if (m.reaction && !m.isStreaming) {
-                <button class="rx mine" (click)="chat.reactTo(m.id, m.reaction!)" title="Togli la reazione">{{ m.reaction }}</button>
+                <button class="rx mine" (click)="chat.reactTo(m.id, m.reaction!)"  [title]="'Togli la reazione' | tr">{{ m.reaction }}</button>
               }
               @if (!m.isStreaming && m.content && !m.queuedId) {
                 <div class="foot">
                   <span class="rxw">
-                    <button class="fb" [class.on]="picker() === m.id" (click)="picker.set(picker() === m.id ? null : m.id)" title="Reagisci" aria-haspopup="true"><hx-icon name="smile" [size]="15" /></button>
+                    <button class="fb" [class.on]="picker() === m.id" (click)="picker.set(picker() === m.id ? null : m.id)"  [title]="'Reagisci' | tr" aria-haspopup="true"><hx-icon name="smile" [size]="15" /></button>
                     @if (picker() === m.id) {
                       <span class="rxp hx-fade-in" role="menu">
                         @for (e of reactions; track e) { <button role="menuitem" [class.on]="m.reaction === e" (click)="react(m, e)">{{ e }}</button> }
                       </span>
                     }
                   </span>
-                  <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)" title="Utile"><hx-icon name="thumb-up" [size]="15" /></button>
-                  <button class="fb" [class.on]="rated()[m.id] === 'bad'" (click)="feedback('bad', m)" title="Non utile"><hx-icon name="thumb-down" [size]="15" /></button>
-                  <button class="fb" (click)="copy(m)" title="Copia"><hx-icon name="copy" [size]="15" /></button>
+                  <button class="fb" [class.on]="rated()[m.id] === 'good'" (click)="feedback('good', m)"  [title]="'Utile' | tr"><hx-icon name="thumb-up" [size]="15" /></button>
+                  <button class="fb" [class.on]="rated()[m.id] === 'bad'" (click)="feedback('bad', m)"  [title]="'Non utile' | tr"><hx-icon name="thumb-down" [size]="15" /></button>
+                  <button class="fb" (click)="copy(m)"  [title]="'Copia' | tr"><hx-icon name="copy" [size]="15" /></button>
                   <button class="fb" [class.on]="voice.playing() === m.id" [class.busy]="voice.loading() === m.id" (click)="voice.toggle(m.id, m.content)"
-                          [title]="voice.loading() === m.id ? 'Preparo la voce… (clic per fermare)' : voice.playing() === m.id ? 'Ferma' : 'Ascolta'"
-                          [attr.aria-label]="voice.loading() === m.id ? 'Preparo la voce' : voice.playing() === m.id ? 'Ferma' : 'Ascolta'">
+                          [title]="voice.loading() === m.id ? ('Preparo la voce… (clic per fermare)' | tr) : voice.playing() === m.id ? ('Ferma' | tr) : ('Ascolta' | tr)"
+                          [attr.aria-label]="voice.loading() === m.id ? ('Preparo la voce' | tr) : voice.playing() === m.id ? ('Ferma' | tr) : ('Ascolta' | tr)">
                     @if (voice.loading() === m.id) { <hx-spinner [size]="14" /> }
                     @else { <hx-icon [name]="voice.playing() === m.id ? 'stop' : 'volume'" [size]="15" /> }</button>
-                  @if ($last) { <button class="fb" (click)="chat.retry()" [disabled]="chat.isStreaming()" title="Rigenera"><hx-icon name="refresh" [size]="15" /></button> }
+                  @if ($last) { <button class="fb" (click)="chat.retry()" [disabled]="chat.isStreaming()"  [title]="'Rigenera' | tr"><hx-icon name="refresh" [size]="15" /></button> }
                 </div>
               }
             </div>
@@ -164,7 +165,7 @@ export function dayLabel(d: Date, now = new Date()): string {
       @if (presence.chatQueued()) {
         <div class="offline hx-fade-in" role="status">
           <hx-icon class="oe" name="hourglass" tone="warning" [size]="16" />
-          <span><b>Non disponibile</b> · i messaggi restano in coda e avranno risposta appena possibile.</span>
+          <span><b>{{ "Non disponibile" | tr }}</b> {{ "· i messaggi restano in coda e avranno risposta appena possibile." | tr }}</span>
         </div>
       }
       @if (chat.pendingQuestion(); as q) { <hx-question-card [question]="q" (answered)="answer(q.questionId, $event)" /> }
@@ -176,39 +177,39 @@ export function dayLabel(d: Date, now = new Date()): string {
             @if (live.partial()) { <div class="lpart">{{ live.partial() }}</div> }
           </div>
           @if (live.state() === 'speaking' || live.state() === 'thinking') {
-            <button hx-btn variant="secondary" size="sm" icon="stop" (click)="live.interrupt()">Interrompi</button>
+            <button hx-btn variant="secondary" size="sm" icon="stop" (click)="live.interrupt()">{{ "Interrompi" | tr }}</button>
           }
-          <button hx-btn variant="ghost" size="sm" icon="x" iconOnly aria-label="Chiudi Parla" (click)="live.stop()"></button>
+          <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi Parla' | tr" (click)="live.stop()"></button>
         </div>
       }
       <div class="composer hx-glass" [class.disabled]="signalR.connectionState() !== 'connected'">
         @if (recording()) {
           <div class="rec" role="status">
             <span class="rdot"></span><span class="rtime">{{ duration(recSeconds()) }}</span>
-            <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? 'Rilascia per annullare' : 'Rilascia per inviare · scorri a sinistra per annullare' }}</span>
+            <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? ('Rilascia per annullare' | tr) : ('Rilascia per inviare · scorri a sinistra per annullare' | tr) }}</span>
           </div>
         }
         <textarea #ta [hidden]="recording()" [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="1"
-                  [placeholder]="signalR.connectionState() === 'connected' ? 'Scrivi a ' + identity.assistant() + '…' : 'Connessione in corso…'"></textarea>
+                  [placeholder]="signalR.connectionState() === 'connected' ? ('Scrivi a ' | tr) + identity.assistant() + '…' : ('Connessione in corso…' | tr)"></textarea>
         <div class="tools">
           <input #file type="file" hidden (change)="onFile($event)" />
-          <button hx-btn variant="ghost" size="sm" icon="paperclip" iconOnly aria-label="Allega" (click)="file.click()" [disabled]="chat.isStreaming()"></button>
+          <button hx-btn variant="ghost" size="sm" icon="paperclip" iconOnly  [attr.aria-label]="'Allega' | tr" (click)="file.click()" [disabled]="chat.isStreaming()"></button>
           <hx-chat-mode [(mode)]="mode" />
           <div class="hx-grow"></div>
           @if (chat.isStreaming()) {
-            <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly aria-label="Stop" (click)="chat.cancelStream()"></button>
+            <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly  [attr.aria-label]="'Stop' | tr" (click)="chat.cancelStream()"></button>
           } @else {
-            @if (dictating()) { <span class="dhint" role="status">Ti ascolto: tocca di nuovo per scrivere il testo</span> }
+            @if (dictating()) { <span class="dhint" role="status">{{ "Ti ascolto: tocca di nuovo per scrivere il testo" | tr }}</span> }
             <!-- One microphone, always here: a tap dictates into the box, holding it records a voice message. -->
             <button hx-btn [variant]="dictating() || recording() ? 'primary' : 'ghost'" size="sm" [icon]="dictating() ? 'stop' : 'mic'" iconOnly class="micbtn"
                     [loading]="dictBusy()" [attr.aria-pressed]="dictating()" [attr.aria-label]="micLabel()" [title]="micLabel()"
                     (pointerdown)="micDown($event)" (pointermove)="micMove($event)" (pointerup)="micUp()"
                     (pointercancel)="micCancel()" (contextmenu)="$event.preventDefault()" (click)="micKey($event)"></button>
-            @if (text.trim() && !recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly aria-label="Invia" (click)="send()"></button> }
+            @if (text.trim() && !recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly  [attr.aria-label]="'Invia' | tr" (click)="send()"></button> }
           }
         </div>
       </div>
-      <p class="disc">Invio per mandare · Shift+Invio per andare a capo · microfono: tocca per dettare, tieni premuto per un messaggio vocale</p>
+      <p class="disc">{{ "Invio per mandare · Shift+Invio per andare a capo · microfono: tocca per dettare, tieni premuto per un messaggio vocale" | tr }}</p>
     </div>
   `,
   styles: [`
@@ -327,8 +328,8 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   private held = false;
   /** Set when the button is released before the microphone has started: null = still held. */
   private released: boolean | null = null;
-  micLabel = computed(() => this.dictating() ? 'Ferma la dettatura: il testo va nella casella'
-    : 'Microfono: tocca per dettare, tieni premuto per un messaggio vocale');
+  micLabel = computed(() => this.dictating() ? tr('Ferma la dettatura: il testo va nella casella')
+    : tr('Microfono: tocca per dettare, tieni premuto per un messaggio vocale'));
   recSeconds = signal(0);
   private recX = 0;
   private recTimer: number | undefined;
@@ -350,10 +351,10 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   private lastCount = 0;
   private lastLen = 0;
 
-  readonly suggestions = ['Cosa ho in agenda questa settimana?', 'Riassumi le ultime email importanti', 'Cosa ha pianificato Hestia per stanotte?', 'Ci sono nuove case interessanti?'];
+  readonly suggestions = [tr('Cosa ho in agenda questa settimana?'), tr('Riassumi le ultime email importanti'), tr('Cosa ha pianificato Hestia per stanotte?'), tr('Ci sono nuove case interessanti?')];
   readonly menu: MenuItem[] = [
-    { id: 'new', label: 'Nuova conversazione', icon: 'plus' },
-    { id: 'clear', label: 'Pulisci schermo', icon: 'trash' },
+    { id: 'new', label: tr('Nuova conversazione'), icon: 'plus' },
+    { id: 'clear', label: tr('Pulisci schermo'), icon: 'trash' },
   ];
 
   /** Dividers of the conversation: the day when it changes (always before the first message of another day than
@@ -378,7 +379,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   thinkingMode = computed(() => this.settings.settings().thinkingDisplay || 'compact');
   greeting = computed(() => {
     const h = new Date().getHours();
-    return h < 6 ? 'Buona notte' : h < 13 ? 'Buongiorno' : h < 18 ? 'Buon pomeriggio' : 'Buonasera';
+    return h < 6 ? tr('Buona notte') : h < 13 ? tr('Buongiorno') : h < 18 ? tr('Buon pomeriggio') : tr('Buonasera');
   });
 
   constructor() {
@@ -391,7 +392,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
       const f = this.voice.failed();
       if (!f || f.n === seen) return;
       seen = f.n;
-      untracked(() => this.toast.show(f.text, 'danger', { label: 'Apri Voce', run: () => void this.router.navigateByUrl('/p/echo/voce') }, 9000));
+      untracked(() => this.toast.show(f.text, 'danger', { label: tr('Apri Voce'), run: () => void this.router.navigateByUrl('/p/echo/voce') }, 9000));
     });
   }
 
@@ -423,7 +424,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     this.undoing.set('');
     if (!r.ok || r.data?.ok === false) { this.toast.error(r.data?.error || 'Non annullato'); return; }
     this.chat.patch(m.id, { changes: (m.changes ?? []).map((x, k) => k === i ? { ...x, done: true } : x) });
-    this.toast.success('Annullato');
+    this.toast.success(tr('Annullato'));
   }
 
   /** Dictation (brainstorm C12): speak, the text lands in the box to read again; nothing is sent or kept. */
@@ -440,7 +441,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     try {
       const heard = await this.voice.dictate(out.blob, this.dict.mime);
       const t = (heard.text || '').trim();
-      if (!t) { this.toast.show('Non ho sentito niente', 'warning'); return; }
+      if (!t) { this.toast.show(tr('Non ho sentito niente'), 'warning'); return; }
       this.text = this.text.trim() ? `${this.text.trim()} ${t}` : t;
       queueMicrotask(() => { this.grow(); this.ta()?.nativeElement.focus(); });
     } catch {
@@ -558,19 +559,19 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     const prompt = msgs.slice(0, Math.max(0, idx)).reverse().find(x => x.role === 'user')?.content || '';
     if (await this.fb.submit(label, '', { interactionId: m.traceId || m.id, prompt, response: m.content.replace(/<[^>]+>/g, '') })) {
       this.rated.update(r => ({ ...r, [m.id]: label }));
-      this.toast.success('Grazie del feedback');
+      this.toast.success(tr('Grazie del feedback'));
     }
   }
 
   async copy(m: ChatMessage) {
     const tmp = document.createElement('div');
     tmp.innerHTML = m.content;
-    try { await navigator.clipboard.writeText(tmp.innerText); this.toast.success('Copiato'); } catch { /* */ }
+    try { await navigator.clipboard.writeText(tmp.innerText); this.toast.success(tr('Copiato')); } catch { /* */ }
   }
 
   async onMenu(id: string) {
     if (id === 'clear') this.chat.clearMessages();
-    if (id === 'new' && await this.dialogs.confirm('Nuova conversazione?', 'Hestia dimentica il contesto di questa chat (le memorie restano).')) {
+    if (id === 'new' && await this.dialogs.confirm(tr('Nuova conversazione?'), tr('Hestia dimentica il contesto di questa chat (le memorie restano).'))) {
       await this.session.clear();
       this.chat.clearMessages();
     }

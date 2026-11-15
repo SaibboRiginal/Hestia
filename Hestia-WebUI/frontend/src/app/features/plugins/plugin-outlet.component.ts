@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, OnDestroy, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { IconComponent, SpinnerComponent } from '../../ui';
 import { PluginsService } from './plugins.service';
+import { TrPipe } from '../../core/i18n';
 
 /**
  * Mounts one plugin custom element (page or widget): loads the module bundle, creates `<element>`, sets
@@ -8,15 +9,15 @@ import { PluginsService } from './plugins.service';
  */
 @Component({
   selector: 'hx-plugin-outlet',
-  imports: [IconComponent, SpinnerComponent],
+  imports: [TrPipe, IconComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @switch (state()) {
       @case ('loading') { <div class="st"><hx-spinner [size]="18" /></div> }
-      @case ('offline') { <div class="st"><hx-icon name="offline" [size]="20" /><span>Non raggiungibile in questo momento</span>
-        <button class="retry" (click)="mount(true)">Riprova</button></div> }
-      @case ('error') { <div class="st"><hx-icon name="alert" [size]="20" /><span>Non disponibile in questo momento</span>
-        <button class="retry" (click)="mount(true)">Riprova</button></div> }
+      @case ('offline') { <div class="st"><hx-icon name="offline" [size]="20" /><span>{{ "Non raggiungibile in questo momento" | tr }}</span>
+        <button class="retry" (click)="mount(true)">{{ "Riprova" | tr }}</button></div> }
+      @case ('error') { <div class="st"><hx-icon name="alert" [size]="20" /><span>{{ "Non disponibile in questo momento" | tr }}</span>
+        <button class="retry" (click)="mount(true)">{{ "Riprova" | tr }}</button></div> }
     }
     <div #slot class="slot" [hidden]="state() !== 'ready'"></div>`,
   styles: [`

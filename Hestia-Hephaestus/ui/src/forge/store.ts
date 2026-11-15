@@ -6,6 +6,7 @@
 import type { HestiaHost } from '@hestia/webui-sdk';
 import { ACTIVE, CLOSED, ForgeApi, ForgeStatus, ForgeTask, TaskFiles, TaskLogs, TaskTests, TaskWorkdoc, TranscriptEvent,
          USER_SOURCES, errText } from './models';
+import { tr } from '@hestia/webui-sdk';
 
 export type SidePanel = 'overview' | 'files' | 'diff' | 'dossier' | 'tests' | 'logs' | 'branch';
 export type Filter = 'all' | 'open' | 'modules' | 'done' | 'failed';
@@ -82,7 +83,7 @@ export class ForgeStore {
       this.tasks = await this.api.tasks();
       this.error = '';
     } catch (e) {
-      this.error = errText(e, 'Hephaestus non raggiungibile');
+      this.error = errText(e, tr('Hephaestus non raggiungibile'));
     } finally {
       this.loading = false;
       this.changed();
@@ -108,7 +109,7 @@ export class ForgeStore {
       this.changed();
       await Promise.all([this.pullTranscript(seq, true), this.loadPanel(this.panel, seq)]);
     } catch (e) {
-      if (seq === this.seq) this.host.toast(errText(e, 'Task non trovato'), 'danger');
+      if (seq === this.seq) this.host.toast(errText(e, tr('Task non trovato')), 'danger');
     }
     this.scheduleLive(seq);
   }
@@ -140,7 +141,7 @@ export class ForgeStore {
         if (seq === this.seq) this.logs = l;
       }
     } catch (e) {
-      if (seq === this.seq) this.host.toast(errText(e, 'Caricamento non riuscito'), 'danger');
+      if (seq === this.seq) this.host.toast(errText(e, tr('Caricamento non riuscito')), 'danger');
     }
     if (seq === this.seq) this.changed();
   }
@@ -204,20 +205,20 @@ export class ForgeStore {
 
   /** Manual brake: paused = nothing starts on its own; resuming restarts nothing held. */
   async setPaused(paused: boolean) {
-    const r = await this.run(() => this.api.pause(paused), 'Impostazione non salvata');
+    const r = await this.run(() => this.api.pause(paused), tr('Impostazione non salvata'));
     if (!r) return;
     if (this.status) this.status = { ...this.status, paused: r.paused };
-    const held = r.held?.length ? ` ${r.held.length} task trattenuti restano da avviare a mano.` : '';
-    this.host.toast(r.paused ? 'Sviluppo in pausa: niente parte da solo' : `Sviluppo ripreso.${held}`, 'success');
+    const held = r.held?.length ? tr(" {0} task trattenuti restano da avviare a mano.", r.held.length) : '';
+    this.host.toast(r.paused ? tr('Sviluppo in pausa: niente parte da solo') : tr("Sviluppo ripreso.{0}", held), 'success');
     await this.loadList(true);
   }
 
   async act(verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean; engine?: string } = {}) {
     const t = this.task;
     if (!t) return;
-    const r = await this.run(() => this.api.act(t.id, verb, body), 'Azione non riuscita');
+    const r = await this.run(() => this.api.act(t.id, verb, body), tr('Azione non riuscita'));
     if (!r) return;
-    const labels = { approve: 'Approvato', reject: 'Rifiutato', rollback: 'Rollback avviato', retry: 'Nuovo tentativo avviato' };
+    const labels = { approve: tr('Approvato'), reject: tr('Rifiutato'), rollback: tr('Rollback avviato'), retry: tr('Nuovo tentativo avviato') };
     this.host.toast(labels[verb], 'success');
     await this.loadList(true);
     const next = verb === 'retry' ? r.task.id : t.id;
@@ -226,9 +227,9 @@ export class ForgeStore {
   }
 
   async submit(body: { request: string; services?: string[]; engine?: string; workdoc?: string; parent_task?: string }) {
-    const r = await this.run(() => this.api.submit(body), 'Invio non riuscito');
+    const r = await this.run(() => this.api.submit(body), tr('Invio non riuscito'));
     if (!r) return false;
-    this.host.toast('Sviluppo avviato', 'success');
+    this.host.toast(tr('Sviluppo avviato'), 'success');
     await this.loadList(true);
     this.onSelected(r.task.id);
     await this.select(r.task.id);
@@ -238,9 +239,9 @@ export class ForgeStore {
   async addNote(text: string) {
     const t = this.task;
     if (!t) return false;
-    const r = await this.run(() => this.api.note(t.id, text), 'Nota non salvata');
+    const r = await this.run(() => this.api.note(t.id, text), tr('Nota non salvata'));
     if (!r) return false;
-    this.host.toast('Nota aggiunta: il motore la usa quando il task parte o viene riprovato', 'success');
+    this.host.toast(tr('Nota aggiunta: il motore la usa quando il task parte o viene riprovato'), 'success');
     try { const task = await this.api.task(t.id); if (this.selectedId === task.id) { this.task = task; this.changed(); } } catch { /* next poll */ }
     return true;
   }

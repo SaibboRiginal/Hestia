@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { BASE_TOKENS, DEFAULT_DARK, DEFAULT_LIGHT, THEMES, ThemeDef } from './themes';
 import { DEFAULT_STYLE, GLASS, LookKnobs, MOTION, RADII, STYLES, StyleDef } from './looks';
+import { tr } from '../i18n';
 
 const STORAGE_KEY = 'hestia_theme';
 const LOOK_KEY = 'hestia_look';
@@ -76,7 +77,7 @@ export class ThemeService {
     if (a) {
       const [r, g, bl] = [1, 3, 5].map(i => parseInt(a.slice(i, i + 2), 16));
       next['--accent'] = a;
-      next['--accent-hover'] = `color-mix(in srgb, ${a} 86%, #000)`;
+      next['--accent-hover'] = tr("color-mix(in srgb, {0} 86%, #000)", a);
       next['--accent-soft'] = `rgba(${r},${g},${bl},.14)`;
     }
     next['--accent-2'] = b || a || '';
@@ -92,15 +93,15 @@ export class ThemeService {
     const tokens: Record<string, string> = { ...BASE_TOKENS, ...theme.tokens, ...this.style().tokens, ...RADII[k.corners], ...MOTION[k.motion] };
     const t = theme.tokens;
     if (k.borders === 'leggeri') {
-      tokens['--border'] = `color-mix(in srgb, ${t['--border']} 55%, transparent)`;
-      tokens['--border-strong'] = `color-mix(in srgb, ${t['--border-strong']} 75%, transparent)`;
+      tokens['--border'] = tr("color-mix(in srgb, {0} 55%, transparent)", t['--border']);
+      tokens['--border-strong'] = tr("color-mix(in srgb, {0} 75%, transparent)", t['--border-strong']);
     } else if (k.borders === 'marcati') {
       tokens['--border'] = t['--border-strong'];
-      tokens['--border-strong'] = `color-mix(in srgb, ${t['--border-strong']} 65%, ${t['--text']})`;
+      tokens['--border-strong'] = tr("color-mix(in srgb, {0} 65%, {1})", t['--border-strong'], t['--text']);
     }
     // Transparency: the main surfaces let the shaded backdrop through; floating panels blur what is behind them.
     const g = GLASS[k.glass];
-    const see = (name: string, pct: number) => { if (pct < 100) tokens[name] = `color-mix(in srgb, ${t[name]} ${pct}%, transparent)`; };
+    const see = (name: string, pct: number) => { if (pct < 100) tokens[name] = tr("color-mix(in srgb, {0} {1}%, transparent)", t[name], pct); };
     see('--surface', g.surface); see('--bg-subtle', g.subtle); see('--surface-2', g.surface2);
     tokens['--glass'] = g.blur;
     tokens['--backdrop'] = k.glass === 'no' ? 'var(--bg)'

@@ -88,3 +88,37 @@ def test_every_module_text_has_an_english_translation():
                 if text not in en and _IT.search(text):
                     missing.append(f"{path.relative_to(root)}: {text[:60]}")
     assert not missing, missing[:20]
+
+
+# A quoted literal; `\\'` is an Angular template quote escaped inside a TS string.
+_Q = r"""'(?:\\\\.|[^'\\\n]|\\.)*'""" + r'''|"(?:\\\\.|[^"\\\n]|\\.)*"'''
+_TS_TR = re.compile(rf"""\btr\(\s*({_Q})\s*[,)]|({_Q})\s*\|\s*tr\b""")
+
+
+def _ts_unquote(lit: str) -> str:
+    body = re.sub(r"\\\\(['\"])", r"\1", lit[1:-1])
+    return re.sub(r"\\(u\{?[0-9a-fA-F]+\}?|.)", lambda m: {
+        "n": "\n", "t": "\t", "\\": "\\", "'": "'", '"': '"', "`": "`", "$": "$",
+    }.get(m.group(1), None) or (chr(int(m.group(1)[1:].strip("{}"), 16)) if m.group(1)[0] == "u" else m.group(1)), body)
+
+
+@pytest.mark.unit
+def test_every_webui_and_plugin_text_has_an_english_translation():
+    """Every ``tr('…')`` / ``'…' | tr`` literal of the WebUI shell, the plugins and the SDK kit is in the English catalog."""
+    from pathlib import Path
+    from hestia_common import i18n
+    en = i18n.catalog("messages", "en")
+    root = Path(__file__).resolve().parents[2]
+    files = [*root.glob("Hestia-WebUI/frontend/src/**/*.ts"), *root.glob("Hestia-WebUI/frontend/src/**/*.html"),
+             *root.glob("Hestia-*/ui/src/**/*.ts"), *root.glob("Hestia-Shared/webui-sdk/src/**/*.ts")]
+    missing, seen = [], 0
+    for path in files:
+        if "node_modules" in path.parts or path.name == "i18n.ts":
+            continue
+        for m in _TS_TR.finditer(path.read_text(encoding="utf-8")):
+            text = _ts_unquote(m.group(1) or m.group(2))
+            seen += 1
+            if text and text not in en:
+                missing.append(f"{path.relative_to(root)}: {text[:60]}")
+    assert seen > 1000, seen
+    assert not missing, missing[:20]

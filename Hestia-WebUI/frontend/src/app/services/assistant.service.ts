@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { SignalRService } from './signalr.service';
+import { tr } from '../core/i18n';
 
 /**
  * Context packet of "Crea con Hestia": where the user opened the assistant from.
@@ -53,7 +54,7 @@ export class AssistantService {
   /** Opened without an explicit packet (sidebar, Ctrl+J): the current page is still useful context. */
   guessContext(): AssistantContext {
     const page = location.pathname.split('/').filter(Boolean)[0] || 'chat';
-    const labels: Record<string, string> = { calendar: 'Agenda di Hestia', forge: 'Sviluppo', commands: 'Comandi & MCP', documents: 'Documenti', settings: 'Impostazioni' };
+    const labels: Record<string, string> = { calendar: tr('Agenda di Hestia'), forge: tr('Sviluppo'), commands: tr('Comandi & MCP'), documents: tr('Documenti'), settings: tr('Impostazioni') };
     return { page, intent: 'ask', label: labels[page] };
   }
 

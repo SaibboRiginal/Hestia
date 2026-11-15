@@ -2,14 +2,15 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { SessionSettings } from '../models/chat.models';
+import { tr } from '../core/i18n';
 
 /** How the reasoning of an answer is shown (WebUI presentation, saved by the WebUI backend). */
 export type ThinkingDisplay = 'hidden' | 'compact' | 'detailed' | 'live';
 export const THINKING_DISPLAY_OPTIONS: { value: ThinkingDisplay; label: string; title: string }[] = [
-  { value: 'hidden', label: 'Nascosto', title: 'Solo la risposta' },
-  { value: 'compact', label: 'Compatto', title: 'Riquadro chiuso, un passo per riga' },
-  { value: 'detailed', label: 'Dettagliato', title: 'Riquadro aperto con ragionamento e risultati completi' },
-  { value: 'live', label: 'Dal vivo', title: 'Aperto mentre lavora, si chiude quando risponde' },
+  { value: 'hidden', label: tr('Nascosto'), title: tr('Solo la risposta') },
+  { value: 'compact', label: tr('Compatto'), title: tr('Riquadro chiuso, un passo per riga') },
+  { value: 'detailed', label: tr('Dettagliato'), title: tr('Riquadro aperto con ragionamento e risultati completi') },
+  { value: 'live', label: tr('Dal vivo'), title: tr('Aperto mentre lavora, si chiude quando risponde') },
 ];
 
 @Injectable({ providedIn: 'root' })

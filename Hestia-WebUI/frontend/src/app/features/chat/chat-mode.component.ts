@@ -2,15 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, model, si
 import { CentralSettingsApi, apiError } from '../settings/central-settings.api';
 import { SessionService } from '../../services/session.service';
 import { IconComponent, PopoverComponent, SettingLinkComponent, ToastService } from '../../ui';
+import { tr, TrPipe } from '../../core/i18n';
 
 export const MODE_KEY = 'oracle.chat.mode';
 
 /** Conversation modes (Oracle owns them: setting oracle.chat.mode). */
 export const CHAT_MODES = [
-  { value: 'auto', label: 'Auto', icon: 'sparkle', help: 'Hestia decide: risposta rapida o ragionata con gli strumenti.' },
-  { value: 'quick', label: 'Rapida', icon: 'zap', help: 'Una sola risposta, niente strumenti. La più veloce.' },
-  { value: 'thinking', label: 'Pensata', icon: 'brain', help: 'Ragiona sempre e usa gli strumenti prima di rispondere.' },
-  { value: 'cot', label: 'CoT', icon: 'list', help: 'Ragionamento profondo passo passo, con i passi in fondo. Più lenta.' },
+  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('Hestia decide: risposta rapida o ragionata con gli strumenti.') },
+  { value: 'quick', label: tr('Rapida'), icon: 'zap', help: tr('Una sola risposta, niente strumenti. La più veloce.') },
+  { value: 'thinking', label: tr('Pensata'), icon: 'brain', help: tr('Ragiona sempre e usa gli strumenti prima di rispondere.') },
+  { value: 'cot', label: 'CoT', icon: 'list', help: tr('Ragionamento profondo passo passo, con i passi in fondo. Più lenta.') },
 ] as const;
 
 /**
@@ -20,14 +21,14 @@ export const CHAT_MODES = [
  */
 @Component({
   selector: 'hx-chat-mode',
-  imports: [IconComponent, PopoverComponent, SettingLinkComponent],
+  imports: [TrPipe, IconComponent, PopoverComponent, SettingLinkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <button class="pick" (click)="toggle($event)" title="Modalità di conversazione" aria-label="Modalità di conversazione">
+    <button class="pick" (click)="toggle($event)"  [title]="'Modalità di conversazione' | tr"  [attr.aria-label]="'Modalità di conversazione' | tr">
       <hx-icon [name]="current().icon" [size]="14" /><span>{{ current().label }}</span><hx-icon name="chevron-down" [size]="13" />
     </button>
     <hx-popover [open]="open()" [anchor]="anchor()" [width]="300" (closed)="open.set(false)">
-      <div class="list" role="listbox" aria-label="Modalità">
+      <div class="list" role="listbox"  [attr.aria-label]="'Modalità' | tr">
         @for (m of modes; track m.value) {
           <button class="opt" role="option" [class.on]="m.value === mode()" [attr.aria-selected]="m.value === mode()" (click)="pick(m.value)">
             <hx-icon [name]="m.icon" [size]="15" />
@@ -35,8 +36,8 @@ export const CHAT_MODES = [
             @if (m.value === mode()) { <hx-icon name="check" [size]="14" /> }
           </button>
         }
-        <div class="foot"><span>Vale per questa conversazione</span>
-          <hx-setting-link [key]="key" label="predefinita" title="Cambia la modalità predefinita" (go)="open.set(false)" /></div>
+        <div class="foot"><span>{{ "Vale per questa conversazione" | tr }}</span>
+          <hx-setting-link [key]="key"  [label]="'predefinita' | tr"  [title]="'Cambia la modalità predefinita' | tr" (go)="open.set(false)" /></div>
       </div>
     </hx-popover>`,
   styles: [`

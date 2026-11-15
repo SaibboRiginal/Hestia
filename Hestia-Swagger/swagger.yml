@@ -9135,6 +9135,20 @@ paths:
       responses:
         "200": {description: "{revision}"}
 
+  /api/settings/i18n:
+    get:
+      tags: [Themis]
+      summary: Fixed texts for the WebUI and plugins in a language (Italian source → translation)
+      description: >-
+        messages = locales/<lang>/messages.json with the English catalog merged under it; Italian returns an empty map
+        (the source texts are Italian). No lang = the personal setting themis.personal.language.
+      servers:
+        - url: http://localhost:19016
+      parameters:
+        - {name: lang, in: query, required: false, schema: {type: string, example: en}}
+      responses:
+        "200": {description: "{language, messages}"}
+
   /api/settings/modules:
     get:
       tags: [Themis]
@@ -12816,6 +12830,29 @@ paths:
         - url: http://localhost:19015
       responses:
         "200": {description: "{local, tokenRequired}"}
+
+  /api/webui/i18n:
+    get:
+      tags: [WebUI]
+      summary: Fixed texts of the site in the owner's language (no token required to call it)
+      description: >-
+        Themis /api/settings/i18n through Hub. Themis unreachable → {language: it, messages: {}} (Italian source texts).
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: "{language, messages}"}
+
+  /api/webui/i18n.js:
+    get:
+      tags: [WebUI]
+      summary: The same catalog as a script for index.html (no token required to call it)
+      description: >-
+        `globalThis.__hestiaI18n = {language, messages};` with Cache-Control no-store. Loaded before any bundle, so
+        module-level constants of the shell and the plugins are translated too.
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: "text/javascript"}
 
   /api/webui/auth/telegram:
     post:

@@ -3,12 +3,12 @@
  * .env as ORACLE_KEY_<NAME>), reusable chains of provider/model steps (order = fallback, quota state per step),
  * every use case declared by a module → chain / mode / thinking. Saves through Themis (PUT /api/ui/models/<part>).
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 type Opt = { value: string; label: string };
-const THINKING: Opt[] = [{ value: '', label: 'Come suggerito' }, { value: 'auto', label: 'Automatico' },
-  { value: 'true', label: 'Sì' }, { value: 'false', label: 'No' }];
+const THINKING: Opt[] = [{ value: '', label: tr('Come suggerito') }, { value: 'auto', label: tr('Automatico') },
+  { value: 'true', label: tr('Sì') }, { value: 'false', label: 'No' }];
 
 function clone<T>(v: T): T { return JSON.parse(JSON.stringify(v ?? {})); }
 
@@ -57,7 +57,7 @@ export class OracleModels extends HestiaElement {
 
   async load() {
     const r = await this.host.api('GET', `${API}/models`);
-    if (!r.ok) { this.error = r.error || 'Oracle non raggiungibile'; return; }
+    if (!r.ok) { this.error = r.error || tr('Oracle non raggiungibile'); return; }
     this.error = '';
     this.data = r.data;
     const provs: Record<string, any> = {};
@@ -78,8 +78,8 @@ export class OracleModels extends HestiaElement {
     this.saving = part;
     const r = await this.host.api('PUT', `${API}/models/${part}`, { body: { value } });
     this.saving = '';
-    if (!r.ok) { this.host.toast(r.error || 'Non salvato', 'danger'); return; }
-    this.host.toast('Salvato', 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('Non salvato'), 'danger'); return; }
+    this.host.toast(tr('Salvato'), 'success');
     this.dirty = { ...this.dirty, [part]: false };
     window.setTimeout(() => this.load(), 800);   // Themis pushes the new value back to Oracle
   }
@@ -101,17 +101,17 @@ export class OracleModels extends HestiaElement {
     const live = (this.data?.providers || []).find((x: any) => x.name === name) || {};
     const set = (k: string, v: any) => { this.providers = { ...this.providers, [name]: { ...p, [k]: v } }; this.touch('providers'); };
     return html`<hxk-card heading=${p.label || name} subtitle=${name}>
-      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeProvider(name)}>Rimuovi</hxk-button>
+      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeProvider(name)}>${tr("Rimuovi")}</hxk-button>
       <div class="grid2">
-        <hxk-field label="Nome visibile" .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
-        <hxk-field type="enum" label="Standard" .options=${this.data?.types || []} .value=${p.type}
+        <hxk-field label=${tr("Nome visibile")} .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
+        <hxk-field type="enum" label=${tr("Standard")} .options=${this.data?.types || []} .value=${p.type}
           @change=${(e: CustomEvent) => set('type', e.detail)}></hxk-field>
-        <hxk-field label="Indirizzo" .value=${p.url} placeholder=${p.type === 'ollama' ? 'da OLLAMA_URL' : 'predefinito'}
+        <hxk-field label=${tr("Indirizzo")} .value=${p.url} placeholder=${p.type === 'ollama' ? tr('da OLLAMA_URL') : 'predefinito'}
           @change=${(e: CustomEvent) => set('url', e.detail)}></hxk-field>
       </div>
       <div class="state" style="margin-top:8px">
-        <hxk-badge tone=${live.available ? 'success' : 'warning'}>${live.available ? 'pronto' : 'non pronto'}</hxk-badge>
-        ${live.needs_key || live.key_set ? html`<span>Chiave in .env: <span class="key">${live.key_env}</span> ${live.key_set ? html`<hxk-icon name="check" size=${13} tone="success" title="impostata"></hxk-icon>` : '— manca'}</span>` : nothing}
+        <hxk-badge tone=${live.available ? 'success' : 'warning'}>${live.available ? 'pronto' : tr('non pronto')}</hxk-badge>
+        ${live.needs_key || live.key_set ? html`<span>${tr("Chiave in .env:")} <span class="key">${live.key_env}</span> ${live.key_set ? html`<hxk-icon name="check" size=${13} tone="success" title=${tr("impostata")}></hxk-icon>` : tr('— manca')}</span>` : nothing}
         ${!live.available && live.detail ? html`<span class="muted">${live.detail}</span>` : nothing}
       </div>
     </hxk-card>`;
@@ -127,8 +127,8 @@ export class OracleModels extends HestiaElement {
 
   private async removeProvider(name: string) {
     const used = Object.entries<any>(this.chains).filter(([, c]) => c.steps.some((s: any) => s.provider === name)).map(([n]) => n);
-    const text = used.length ? `È usato dalle catene ${used.join(', ')}: quei passi verranno saltati.` : 'Non è usato da nessuna catena.';
-    if (!(await this.host.confirm(`Rimuovere ${name}?`, text, { label: 'Rimuovi', danger: true }))) return;
+    const text = used.length ? tr("È usato dalle catene {0}: quei passi verranno saltati.", used.join(', ')) : tr('Non è usato da nessuna catena.');
+    if (!(await this.host.confirm(tr("Rimuovere {0}?", name), text, { label: tr('Rimuovi'), danger: true }))) return;
     const next = { ...this.providers }; delete next[name];
     this.providers = next; this.touch('providers');
   }
@@ -143,22 +143,22 @@ export class OracleModels extends HestiaElement {
     const listId = `m-${chain}-${i}`;
     return html`<div class="step">
       <span class="idx">${i + 1}</span>
-      <hxk-field type="enum" label="Fornitore" .options=${provOpts} .value=${step.provider}
+      <hxk-field type="enum" label=${tr("Fornitore")} .options=${provOpts} .value=${step.provider}
         @change=${(e: CustomEvent) => update({ provider: e.detail })}></hxk-field>
       <div @focusin=${() => this.loadModels(step.provider)}>
-        <label class="small muted">Modello</label>
+        <label class="small muted">${tr("Modello")}</label>
         <input list=${listId} .value=${step.model} style="font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:7px 10px;width:100%;box-sizing:border-box"
           @change=${(e: any) => update({ model: String(e.target.value).trim() })}>
         <datalist id=${listId}>${(this.models[step.provider] || []).map(m => html`<option value=${m}></option>`)}</datalist>
       </div>
       <div class="tools">
-        <hxk-button variant="ghost" ?disabled=${i === 0} @click=${() => move(-1)} title="Prima">↑</hxk-button>
-        <hxk-button variant="ghost" ?disabled=${i === steps.length - 1} @click=${() => move(1)} title="Dopo">↓</hxk-button>
-        <hxk-button variant="ghost" icon="trash" @click=${() => this.setSteps(chain, steps.filter((_, j) => j !== i))} title="Togli"></hxk-button>
+        <hxk-button variant="ghost" ?disabled=${i === 0} @click=${() => move(-1)} title=${tr("Prima")}>↑</hxk-button>
+        <hxk-button variant="ghost" ?disabled=${i === steps.length - 1} @click=${() => move(1)} title=${tr("Dopo")}>↓</hxk-button>
+        <hxk-button variant="ghost" icon="trash" @click=${() => this.setSteps(chain, steps.filter((_, j) => j !== i))} title=${tr("Togli")}></hxk-button>
       </div>
       ${live && (!live.available || live.exhausted_until) ? html`<div class="state">
-        ${live.exhausted_until ? html`<hxk-badge tone="warning">senza quota fino alle ${live.exhausted_until.slice(11, 16)}</hxk-badge>
-          <hxk-button variant="ghost" @click=${() => this.retry(step.provider, step.model)}>Riprova adesso</hxk-button>` : nothing}
+        ${live.exhausted_until ? html`<hxk-badge tone="warning">${tr("senza quota fino alle")} ${live.exhausted_until.slice(11, 16)}</hxk-badge>
+          <hxk-button variant="ghost" @click=${() => this.retry(step.provider, step.model)}>${tr("Riprova adesso")}</hxk-button>` : nothing}
         ${!live.available ? html`<span class="muted">saltato: ${live.detail}</span>` : nothing}</div>` : nothing}
     </div>`;
   }
@@ -172,13 +172,13 @@ export class OracleModels extends HestiaElement {
     const c = this.chains[name];
     const single = !!this.data?.chains?.[name]?.single_step;
     const firstProvider = Object.keys(this.providers)[0] || 'ollama';
-    return html`<hxk-card heading=${c.label || name} subtitle=${single ? `${name} · un solo modello (i vettori devono restare confrontabili)` : name}>
-      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>Elimina</hxk-button>
-      <hxk-field label="Nome visibile" .value=${c.label}
+    return html`<hxk-card heading=${c.label || name} subtitle=${single ? tr("{0} · un solo modello (i vettori devono restare confrontabili)", name) : name}>
+      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Elimina")}</hxk-button>
+      <hxk-field label=${tr("Nome visibile")} .value=${c.label}
         @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>
       ${c.steps.map((s: any, i: number) => this.stepRow(name, i, s))}
       ${single && c.steps.length >= 1 ? nothing : html`<hxk-button variant="ghost" icon="plus"
-        @click=${() => this.setSteps(name, [...c.steps, { provider: firstProvider, model: '' }])}>Aggiungi un modello</hxk-button>`}
+        @click=${() => this.setSteps(name, [...c.steps, { provider: firstProvider, model: '' }])}>${tr("Aggiungi un modello")}</hxk-button>`}
     </hxk-card>`;
   }
 
@@ -192,8 +192,8 @@ export class OracleModels extends HestiaElement {
 
   private async removeChain(name: string) {
     const users = (this.data?.usecases || []).filter((u: any) => u.effective_chain === name).map((u: any) => u.label);
-    const text = users.length ? `La usano: ${users.join(', ')}. Torneranno alla catena di «Uso generale».` : 'Nessun uso la sceglie.';
-    if (!(await this.host.confirm(`Eliminare la catena ${name}?`, text, { label: 'Elimina', danger: true }))) return;
+    const text = users.length ? tr("La usano: {0}. Torneranno alla catena di «Uso generale».", users.join(', ')) : tr('Nessun uso la sceglie.');
+    if (!(await this.host.confirm(tr("Eliminare la catena {0}?", name), text, { label: tr('Elimina'), danger: true }))) return;
     const next = { ...this.chains }; delete next[name];
     this.chains = next; this.touch('chains');
   }
@@ -201,20 +201,20 @@ export class OracleModels extends HestiaElement {
   // ── use cases ──────────────────────────────────────────────────────────
   private ucRow(u: any) {
     const o = this.overrides[u.id] || {};
-    const chainOpts: Opt[] = [{ value: '', label: `Suggerita (${u.chain || 'generale'})` },
+    const chainOpts: Opt[] = [{ value: '', label: tr("Suggerita ({0})", u.chain || 'generale') },
       ...Object.entries<any>(this.chains).map(([n, c]) => ({ value: n, label: c.label || n }))];
-    const modeOpts: Opt[] = [{ value: '', label: `Suggerita (${u.mode || 'segui'})` }, ...(this.data?.modes || [])];
+    const modeOpts: Opt[] = [{ value: '', label: tr("Suggerita ({0})", u.mode || 'segui') }, ...(this.data?.modes || [])];
     const set = (k: string, v: string) => {
       const next = { ...o, [k]: v }; if (!v) delete next[k];
       const all: Record<string, any> = { ...this.overrides, [u.id]: next }; if (!Object.keys(next).length) delete all[u.id];
       this.overrides = all; this.touch('usecases');
     };
     return html`<div class="uc">
-      <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">non dichiarato</hxk-badge>` : nothing}</div>
+      <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">${tr("non dichiarato")}</hxk-badge>` : nothing}</div>
         <div class="small muted truncate" title=${u.help || ''}>${u.id}${u.help ? ` · ${u.help}` : ''}</div></div>
-      <hxk-field type="enum" label="Catena" .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
-      <hxk-field type="enum" label="Modalità" .options=${modeOpts} .value=${o.mode || ''} @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
-      <hxk-field type="enum" label="Ragionamento" .options=${THINKING} .value=${o.thinking || ''} @change=${(e: CustomEvent) => set('thinking', e.detail)}></hxk-field>
+      <hxk-field type="enum" label=${tr("Catena")} .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
+      <hxk-field type="enum" label=${tr("Modalità")} .options=${modeOpts} .value=${o.mode || ''} @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
+      <hxk-field type="enum" label=${tr("Ragionamento")} .options=${THINKING} .value=${o.thinking || ''} @change=${(e: CustomEvent) => set('thinking', e.detail)}></hxk-field>
     </div>`;
   }
 
@@ -226,28 +226,26 @@ export class OracleModels extends HestiaElement {
 
   private saveBar(part: 'providers' | 'chains' | 'usecases') {
     if (!this.dirty[part]) return nothing;
-    return html`<div class="actions"><hxk-button variant="ghost" @click=${() => this.load()}>Annulla</hxk-button>
-      <hxk-button variant="primary" icon="check" ?loading=${this.saving === part} @click=${() => this.save(part)}>Salva</hxk-button></div>`;
+    return html`<div class="actions"><hxk-button variant="ghost" @click=${() => this.load()}>${tr("Annulla")}</hxk-button>
+      <hxk-button variant="primary" icon="check" ?loading=${this.saving === part} @click=${() => this.save(part)}>${tr("Salva")}</hxk-button></div>`;
   }
 
   render() {
     if (this.error) return html`<hxk-state kind="error" text=${this.error} @retry=${() => this.load()}></hxk-state>`;
     if (!this.data) return html`<hxk-state kind="loading"></hxk-state>`;
     return html`
-      <div class="section"><h2>Usi dei moduli</h2>
-        <div class="hint">Ogni modulo dichiara i suoi usi; qui scegli la catena e la modalità (Interna = catena di Oracle,
-          Esterna = agente esterno come Claude Code). Vuoto = quello che suggerisce il modulo.</div>
+      <div class="section"><h2>${tr("Usi dei moduli")}</h2>
+        <div class="hint">${tr("Ogni modulo dichiara i suoi usi; qui scegli la catena e la modalità (Interna = catena di Oracle, Esterna = agente esterno come Claude Code). Vuoto = quello che suggerisce il modulo.")}</div>
         ${this.usecases()}${this.saveBar('usecases')}</div>
-      <div class="section"><h2>Catene di modelli</h2>
-        <div class="hint">Come una lista di font: si usa il primo modello pronto; se finisce la quota passo al successivo e lo
-          salto finché non si ricarica.</div>
+      <div class="section"><h2>${tr("Catene di modelli")}</h2>
+        <div class="hint">${tr("Come una lista di font: si usa il primo modello pronto; se finisce la quota passo al successivo e lo salto finché non si ricarica.")}</div>
         ${Object.keys(this.chains).map(n => this.chainCard(n))}
-        <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addChain()}>Nuova catena</hxk-button></div>
+        <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addChain()}>${tr("Nuova catena")}</hxk-button></div>
         ${this.saveBar('chains')}</div>
-      <div class="section"><h2>Fornitori</h2>
-        <div class="hint">Dove stanno i modelli. La chiave non si scrive qui: va nel file .env come ORACLE_KEY_&lt;NOME&gt;.</div>
+      <div class="section"><h2>${tr("Fornitori")}</h2>
+        <div class="hint">${tr("Dove stanno i modelli. La chiave non si scrive qui: va nel file .env come ORACLE_KEY_<NOME>.")}</div>
         ${Object.keys(this.providers).map(n => this.providerCard(n))}
-        <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addProvider()}>Nuovo fornitore</hxk-button></div>
+        <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addProvider()}>${tr("Nuovo fornitore")}</hxk-button></div>
         ${this.saveBar('providers')}</div>`;
   }
 }

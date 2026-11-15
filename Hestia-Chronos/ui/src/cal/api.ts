@@ -4,6 +4,7 @@
  */
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 import type { AgendaItem, AgendaOccurrence, AgendaTemplate, AgendaType, CalWeather } from './models';
+import { tr } from '@hestia/webui-sdk';
 
 export const API = '/api/agenda';
 export interface AgendaDraft { title: string; type: AgendaType; start_at: string; end_at: string | null;
@@ -25,7 +26,7 @@ export class AgendaApi {
     const r: ApiResult<T> = await this.host.api<T>(method, `${API}${path}`, opts);
     if (!r.ok) {
       const offline = r.status === 0 || r.error === 'unreachable' || r.error === 'offline';
-      throw new AgendaError(offline ? 'Chronos non raggiungibile' : r.error || 'Operazione non riuscita', offline);
+      throw new AgendaError(offline ? tr('Chronos non raggiungibile') : r.error || tr('Operazione non riuscita'), offline);
     }
     return r.data;
   }
@@ -76,7 +77,7 @@ export class AgendaApi {
   async ics(): Promise<string> {
     const r = await this.call<any>('GET', '/ics', { query: { days: 60 } });
     const text = typeof r === 'string' ? r : r?.raw ?? '';
-    if (!String(text).startsWith('BEGIN:VCALENDAR')) throw new AgendaError('Chronos non ha restituito un calendario');
+    if (!String(text).startsWith('BEGIN:VCALENDAR')) throw new AgendaError(tr('Chronos non ha restituito un calendario'));
     return text;
   }
 }

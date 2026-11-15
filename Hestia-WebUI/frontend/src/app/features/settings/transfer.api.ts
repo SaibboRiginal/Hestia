@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { tr } from '../../core/i18n';
 
 /**
  * Esporta e importa (docs/work/2026-10-20-import-export): `/api/webui/transfer/*` → Hub → the module's
@@ -102,14 +103,14 @@ export async function decodeFile(blob: Blob): Promise<TransferFile> {
   const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
   let text: string;
   if (head[0] === 0x1f && head[1] === 0x8b) {
-    if (typeof DecompressionStream === 'undefined') throw new Error('Questo browser non sa aprire il file compresso');
+    if (typeof DecompressionStream === 'undefined') throw new Error(tr('Questo browser non sa aprire il file compresso'));
     text = await new Response(blob.stream().pipeThrough(new DecompressionStream('gzip'))).text();
   } else {
     text = await blob.text();
   }
   const file = JSON.parse(text) as TransferFile;
-  if (file?.hestia !== 'transfer' || typeof file.modules !== 'object') throw new Error('Non è un file di Hestia');
-  if ((file.format ?? 1) > FORMAT) throw new Error('File di una versione di Hestia più recente: aggiorna Hestia');
+  if (file?.hestia !== 'transfer' || typeof file.modules !== 'object') throw new Error(tr('Non è un file di Hestia'));
+  if ((file.format ?? 1) > FORMAT) throw new Error(tr('File di una versione di Hestia più recente: aggiorna Hestia'));
   return file;
 }
 

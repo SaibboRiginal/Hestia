@@ -282,3 +282,5 @@ Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE
 Notifications below the presence `notify.level` (all/important/urgent) are **held**: stored, delivered silently, marked `held`. When the level relaxes Chronos calls `POST /api/notifications/release-held` and Hermes sends one digest «Mentre riposavo». `important` holds info/success without actions; `urgent` lets through only errors and events flagged `_urgent`.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Notifiche»; deliveries subtitle «Cosa è stato mandato, a chi e com'è andata»; agenda title «Pulisci le notifiche già gestite».
+
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.

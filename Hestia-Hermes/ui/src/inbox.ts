@@ -7,7 +7,7 @@
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
  */
-import { HestiaElement, html, css, nothing, svg } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, svg, tr } from '@hestia/webui-sdk';
 import { API, hermesStyles } from './util';
 
 type Filter = 'unread' | 'pending' | 'all';
@@ -22,16 +22,16 @@ const PREFS_KEY = 'hestia_notification_prefs';
 const PREFS_EVENT = 'hestia:notification-prefs';
 
 const SOURCE_LABELS: Record<string, string> = {
-  themis: 'Impostazioni', hephaestus: 'Sviluppo', chronos: 'Agenda', argus: 'Diagnosi', athena: 'Athena',
-  scout: 'Scout', hecate: 'Account', system: 'Sistema', service: 'Sistema', real_estate: 'Scout', settings: 'Impostazioni',
+  themis: tr('Impostazioni'), hephaestus: tr('Sviluppo'), chronos: tr('Agenda'), argus: tr('Diagnosi'), athena: 'Athena',
+  scout: 'Scout', hecate: tr('Account'), system: tr('Sistema'), service: tr('Sistema'), real_estate: 'Scout', settings: tr('Impostazioni'),
 };
 const CLIENT_LABELS: Record<string, string> = { telegram: 'Telegram', webui: 'WebUI' };
 const clientLabel = (name?: string | null) => (name && CLIENT_LABELS[name]) || name || '';
 const sourceLabel = (s: string) => SOURCE_LABELS[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Hestia');
 const TOAST_OPTIONS: Array<{ id: ToastMode; label: string }> = [
-  { id: 'all', label: 'Avvisi a comparsa per tutte' },
-  { id: 'important', label: 'Solo importanti e da rispondere' },
-  { id: 'none', label: 'Nessun avviso a comparsa' },
+  { id: 'all', label: tr('Avvisi a comparsa per tutte') },
+  { id: 'important', label: tr('Solo importanti e da rispondere') },
+  { id: 'none', label: tr('Nessun avviso a comparsa') },
 ];
 
 const ICON_PATHS: Record<string, string> = {
@@ -50,8 +50,8 @@ function dayLabel(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
   const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Oggi';
-  if (d.toDateString() === yesterday.toDateString()) return 'Ieri';
+  if (d.toDateString() === today.toDateString()) return tr('Oggi');
+  if (d.toDateString() === yesterday.toDateString()) return tr('Ieri');
   return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
@@ -204,7 +204,7 @@ export class HermesInbox extends HestiaElement {
     this.voiceBusy = n.id;
     const r = await this.host.api('GET', `${API}/inbox/${encodeURIComponent(n.id)}/voice`, { query: { format: 'mp3' } });
     this.voiceBusy = '';
-    if (!r.ok || !r.data?.audio_b64) { this.host.toast(r.error || 'Audio non disponibile', 'danger'); return; }
+    if (!r.ok || !r.data?.audio_b64) { this.host.toast(r.error || tr('Audio non disponibile'), 'danger'); return; }
     const raw = atob(r.data.audio_b64);
     const buf = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i++) buf[i] = raw.charCodeAt(i);
@@ -227,8 +227,8 @@ export class HermesInbox extends HestiaElement {
     const r = await this.host.api('GET', `${API}/inbox`, { query });
     this.loading = false;
     if (!r.ok) {
-      if (more || this.items) { this.host.toast('Notifiche non disponibili: Hermes non risponde', 'danger'); if (more) return; }
-      this.error = 'Hermes non raggiungibile';
+      if (more || this.items) { this.host.toast(tr('Notifiche non disponibili: Hermes non risponde'), 'danger'); if (more) return; }
+      this.error = tr('Hermes non raggiungibile');
       return;
     }
     this.error = '';
@@ -283,7 +283,7 @@ export class HermesInbox extends HestiaElement {
 
   private async markAllSeen() {
     const r = await this.host.api('POST', `${API}/inbox/seen-all`, { body: {} });
-    if (!r.ok) { this.host.toast('Non riuscito, riprova', 'danger'); return; }
+    if (!r.ok) { this.host.toast(tr('Non riuscito, riprova'), 'danger'); return; }
     this.items = (this.items || []).map(n => (n.read ? n : { ...n, read: true, state: 'seen' }));
     await this.loadCounts();
     if (this.filter === 'unread') await this.reload();
@@ -308,9 +308,9 @@ export class HermesInbox extends HestiaElement {
     } else if (r.status === 409) {
       const answer = r.data?.answer ?? {};
       this.applyAnswer(n.id, answer);
-      this.host.toast(answer.by && answer.by !== 'webui' ? `Già gestita da ${clientLabel(answer.by)}` : 'Già gestita', 'info');
+      this.host.toast(answer.by && answer.by !== 'webui' ? tr("Già gestita da {0}", clientLabel(answer.by)) : tr('Già gestita'), 'info');
     } else {
-      this.host.toast(`Non riuscito: ${r.data?.detail || (r.error && r.error !== 'offline' ? r.error : '') || 'riprova più tardi'}`, 'danger');
+      this.host.toast(tr("Non riuscito: {0}", r.data?.detail || (r.error && r.error !== 'offline' ? r.error : '') || 'riprova più tardi'), 'danger');
     }
     void this.loadCounts();
   }
@@ -325,13 +325,13 @@ export class HermesInbox extends HestiaElement {
     const { [n.id]: _sent, ...rest } = this.secrets;
     this.secrets = rest;                                   // never keep what was typed
     if (r.ok) {
-      this.applyAnswer(n.id, r.data?.answer ?? { label: 'Inviato', by: 'webui', status: 'done' });
-      this.host.toast(r.data?.message || 'Inviato', 'success');
+      this.applyAnswer(n.id, r.data?.answer ?? { label: tr('Inviato'), by: 'webui', status: 'done' });
+      this.host.toast(r.data?.message || tr('Inviato'), 'success');
     } else if (r.status === 409) {
       this.applyAnswer(n.id, r.data?.answer ?? {});
-      this.host.toast('Già gestita', 'info');
+      this.host.toast(tr('Già gestita'), 'info');
     } else {
-      this.host.toast(`Non riuscito: ${r.data?.detail || r.data?.message || 'riprova'}`, 'danger');
+      this.host.toast(tr("Non riuscito: {0}", r.data?.detail || r.data?.message || 'riprova'), 'danger');
     }
     void this.loadCounts();
   }
@@ -346,13 +346,13 @@ export class HermesInbox extends HestiaElement {
     }
     if (r.ok) {
       this.applyAnswer(n.id, r.data?.answer ?? { label: String(answer), by: 'webui', status: 'done' });
-      this.host.toast(r.data?.answer?.outcome_text || 'Risposta inviata', 'success');
+      this.host.toast(r.data?.answer?.outcome_text || tr('Risposta inviata'), 'success');
     } else if (r.status === 409) {
       const a = r.data?.answer ?? {};
       this.applyAnswer(n.id, a);
-      this.host.toast(a.by && a.by !== 'webui' ? `Già gestita da ${clientLabel(a.by)}` : 'Già gestita', 'info');
+      this.host.toast(a.by && a.by !== 'webui' ? tr("Già gestita da {0}", clientLabel(a.by)) : tr('Già gestita'), 'info');
     } else {
-      this.host.toast(`Non riuscito: ${r.data?.detail || 'riprova più tardi'}`, 'danger');
+      this.host.toast(tr("Non riuscito: {0}", r.data?.detail || 'riprova più tardi'), 'danger');
     }
     void this.loadCounts();
   }
@@ -386,11 +386,11 @@ export class HermesInbox extends HestiaElement {
             aria-pressed=${picked.includes(o.value)} ?disabled=${busy} @click=${() => this.togglePick(n, o.value)}>${o.label}</hxk-button>`
         : html`<hxk-button size="sm" ?loading=${busy} ?disabled=${busy} @click=${() => this.reply(n, o.value)}>${o.label}</hxk-button>`)}</div>` : nothing}
       ${free || multi ? html`<div class="free">
-        ${free ? html`<input .value=${text} placeholder=${q.options?.length ? 'Altro…' : 'Rispondi…'} aria-label="Risposta"
+        ${free ? html`<input .value=${text} placeholder=${q.options?.length ? tr('Altro…') : 'Rispondi…'} aria-label=${tr("Risposta")}
           @input=${(e: Event) => (this.others_text = { ...this.others_text, [n.id]: (e.target as HTMLInputElement).value })}
           @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.sendQuestion(n); }}>` : nothing}
         <hxk-button size="sm" variant="primary" icon="send" ?loading=${busy}
-          ?disabled=${busy || (!text.trim() && !(multi && picked.length))} @click=${() => this.sendQuestion(n)}>Invia</hxk-button>
+          ?disabled=${busy || (!text.trim() && !(multi && picked.length))} @click=${() => this.sendQuestion(n)}>${tr("Invia")}</hxk-button>
       </div>` : nothing}
     </div>`;
   }
@@ -404,8 +404,8 @@ export class HermesInbox extends HestiaElement {
           .value=${vals[f.name] || ''} @input=${(e: Event) => (this.secrets = { ...this.secrets,
             [n.id]: { ...vals, [f.name]: (e.target as HTMLInputElement).value } })}></label>`)}
       <div class="actions"><hxk-button size="sm" variant="primary" icon="unlock" ?loading=${busy} ?disabled=${busy}
-        @click=${() => this.sendSecret(n)}>Invia</hxk-button>
-        <span class="small muted">Va solo a chi l'ha chiesto, non viene salvato.</span></div>
+        @click=${() => this.sendSecret(n)}>${tr("Invia")}</hxk-button>
+        <span class="small muted">${tr("Va solo a chi l'ha chiesto, non viene salvato.")}</span></div>
     </form>`;
   }
 
@@ -438,14 +438,14 @@ export class HermesInbox extends HestiaElement {
 
   private subtitle(): string {
     const c = this.counts;
-    if (!c.unread && !c.pending) return 'Tutto letto';
-    return [c.unread ? `${c.unread} da leggere` : '', c.pending ? `${c.pending} da decidere` : ''].filter(Boolean).join(' · ');
+    if (!c.unread && !c.pending) return tr('Tutto letto');
+    return [c.unread ? tr("{0} da leggere", c.unread) : '', c.pending ? tr("{0} da decidere", c.pending) : ''].filter(Boolean).join(' · ');
   }
 
   private outcome(n: any): string {
     const a = n.answer || {};
-    if (n.state === 'expired' || a.status === 'expired') return 'Scaduta';
-    const parts = [a.outcome_text || a.label || 'Gestita'];
+    if (n.state === 'expired' || a.status === 'expired') return tr('Scaduta');
+    const parts = [a.outcome_text || a.label || tr('Gestita')];
     if (a.by && a.by !== 'webui' && CLIENT_LABELS[a.by]) parts.push(`da ${clientLabel(a.by)}`);
     if (a.at) parts.push(time(a.at));
     return parts.join(' · ');
@@ -460,17 +460,17 @@ export class HermesInbox extends HestiaElement {
       <div class="main">
         <div class="meta">
           <span class="src">${sourceLabel(n.source)}</span>
-          ${n.repeat ? html`<hxk-badge tone="warning" title="Lo stesso promemoria, inviato di nuovo">↻ ${n.repeat.text}</hxk-badge>` : nothing}
+          ${n.repeat ? html`<hxk-badge tone="warning" title=${tr("Lo stesso promemoria, inviato di nuovo")}>↻ ${n.repeat.text}</hxk-badge>` : nothing}
           ${n.other_client && n.origin ? html`<hxk-badge tone="neutral">da ${clientLabel(n.origin.client)}</hxk-badge>` : nothing}
           <span class="time tnum">${time(n.created_at)}</span>
-          ${!n.read ? html`<span class="dot" title="Da leggere"></span>` : nothing}
+          ${!n.read ? html`<span class="dot" title=${tr("Da leggere")}></span>` : nothing}
         </div>
         ${n.title ? html`<div class="title">${noEmoji(n.title)}</div>` : nothing}
         <div class="msg">${richText(n.message)}</div>
         ${n.link?.page || n.voice ? html`<div class="actions">
           ${n.voice ? html`<hxk-button size="sm" variant="ghost" icon=${this.playing === n.id ? 'stop' : 'volume'}
-            ?loading=${this.voiceBusy === n.id} @click=${() => this.listen(n)}>${this.playing === n.id ? 'Ferma' : 'Ascolta'}</hxk-button>` : nothing}
-          ${n.link?.page ? html`<hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>Apri</hxk-button>` : nothing}</div>` : nothing}
+            ?loading=${this.voiceBusy === n.id} @click=${() => this.listen(n)}>${this.playing === n.id ? tr('Ferma') : tr('Ascolta')}</hxk-button>` : nothing}
+          ${n.link?.page ? html`<hxk-button size="sm" icon="chevron-right" @click=${() => this.open(n)}>${tr("Apri")}</hxk-button>` : nothing}</div>` : nothing}
         ${n.pending && n.secret?.fields?.length ? this.secretForm(n) : nothing}
         ${n.pending && n.question?.kind ? this.questionCard(n) : nothing}
         ${n.pending && n.actions?.length ? html`<div class="actions">
@@ -478,7 +478,7 @@ export class HermesInbox extends HestiaElement {
               @click=${() => this.answer(n, a)}>${a.label}</hxk-button>`)}</div>`
           : n.answer && (n.state === 'answered' || n.state === 'expired') ? html`<div class="outcome" data-status=${n.answer.status || ''}>
             ${icon(n.state === 'expired' ? 'clock' : 'check', 14)}<span>${this.outcome(n)}</span></div>` : nothing}
-        ${n.seen && n.seen.by !== 'webui' && n.state === 'seen' ? html`<div class="seen">Vista su ${clientLabel(n.seen.by)}</div>` : nothing}
+        ${n.seen && n.seen.by !== 'webui' && n.state === 'seen' ? html`<div class="seen">${tr("Vista su")} ${clientLabel(n.seen.by)}</div>` : nothing}
       </div>
     </article>`;
   }
@@ -487,12 +487,12 @@ export class HermesInbox extends HestiaElement {
     if (this.items === null) return html`<hxk-state kind="loading"></hxk-state>`;
     const shown = this.visible();
     if (!shown.length) {
-      const empty = { unread: 'Nessuna notifica da leggere', pending: 'Niente da decidere', all: 'Nessuna notifica' }[this.filter];
+      const empty = { unread: tr('Nessuna notifica da leggere'), pending: tr('Niente da decidere'), all: tr('Nessuna notifica') }[this.filter];
       return html`<hxk-state kind="empty" text=${empty}></hxk-state>`;
     }
     const groups: Array<{ label: string; items: any[] }> = [];
     const top = this.focusId ? shown.find(n => n.id === this.focusId) : null;
-    if (top) groups.push({ label: 'Questa', items: [top] });
+    if (top) groups.push({ label: tr('Questa'), items: [top] });
     for (const n of shown) {
       if (n === top) continue;
       const label = dayLabel(n.created_at);
@@ -500,34 +500,34 @@ export class HermesInbox extends HestiaElement {
       if (last && last.label === label) last.items.push(n); else groups.push({ label, items: [n] });
     }
     return html`${groups.map(g => html`<h3 class="day">${g.label}</h3><div class="list">${g.items.map(n => this.renderItem(n))}</div>`)}
-      ${this.hasMore ? html`<div class="center"><hxk-button size="sm" ?loading=${this.loading} @click=${() => this.load(true)}>Carica altre</hxk-button></div>` : nothing}`;
+      ${this.hasMore ? html`<div class="center"><hxk-button size="sm" ?loading=${this.loading} @click=${() => this.load(true)}>${tr("Carica altre")}</hxk-button></div>` : nothing}`;
   }
 
   render() {
     if (this.error && !this.items) {
-      return html`<div class="page"><h1>Notifiche</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+      return html`<div class="page"><h1>${tr("Notifiche")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     }
     const c = this.counts;
     const filters: Array<{ id: Filter; label: string }> = [
-      { id: 'unread', label: c.unread ? `Da leggere · ${c.unread}` : 'Da leggere' },
-      { id: 'pending', label: c.pending ? `Da decidere · ${c.pending}` : 'Da decidere' },
-      { id: 'all', label: 'Tutte' },
+      { id: 'unread', label: c.unread ? tr("Da leggere · {0}", c.unread) : tr('Da leggere') },
+      { id: 'pending', label: c.pending ? tr("Da decidere · {0}", c.pending) : tr('Da decidere') },
+      { id: 'all', label: tr('Tutte') },
     ];
     return html`<div class="page">
       <div class="head">
-        <div class="grow"><h1>Notifiche</h1><div class="sub">${this.subtitle()}</div></div>
-        ${c.unread ? html`<hxk-button size="sm" variant="ghost" icon="check" @click=${() => this.markAllSeen()}>Segna tutte lette</hxk-button>` : nothing}
+        <div class="grow"><h1>${tr("Notifiche")}</h1><div class="sub">${this.subtitle()}</div></div>
+        ${c.unread ? html`<hxk-button size="sm" variant="ghost" icon="check" @click=${() => this.markAllSeen()}>${tr("Segna tutte lette")}</hxk-button>` : nothing}
       </div>
       <div class="bar">
-        <div class="chips" role="group" aria-label="Filtro">${filters.map(f => html`<button class="chip" aria-pressed=${this.filter === f.id}
+        <div class="chips" role="group" aria-label=${tr("Filtro")}>${filters.map(f => html`<button class="chip" aria-pressed=${this.filter === f.id}
           @click=${() => this.setFilter(f.id)}>${f.label}</button>`)}</div>
-        <select aria-label="Modulo" @change=${(e: Event) => this.setSource(e)}>
-          <option value="" ?selected=${!this.source}>Tutti i moduli</option>
+        <select aria-label=${tr("Modulo")} @change=${(e: Event) => this.setSource(e)}>
+          <option value="" ?selected=${!this.source}>${tr("Tutti i moduli")}</option>
           ${this.sources().map(s => html`<option value=${s} ?selected=${this.source === s}>${sourceLabel(s)}</option>`)}
         </select>
         <label class="tog"><input type="checkbox" .checked=${this.others}
-          @change=${(e: Event) => (this.others = (e.target as HTMLInputElement).checked)}>Anche da altri client</label>
-        <select aria-label="Avvisi a comparsa" title="Avvisi a comparsa in questo browser" @change=${(e: Event) => this.setToast(e)}>
+          @change=${(e: Event) => (this.others = (e.target as HTMLInputElement).checked)}>${tr("Anche da altri client")}</label>
+        <select aria-label=${tr("Avvisi a comparsa")} title=${tr("Avvisi a comparsa in questo browser")} @change=${(e: Event) => this.setToast(e)}>
           ${TOAST_OPTIONS.map(o => html`<option value=${o.id} ?selected=${this.toastMode === o.id}>${o.label}</option>`)}
         </select>
       </div>

@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-15
+- The site speaks your language too: every page, menu, button, card, notice and the pages of every module (calendar, workouts, wardrobe, expenses, houses, settings…) follow «Lingua» (Italian and English ready); changing «Lingua» reloads the page in the new language → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 - Every module now speaks your language: notices, errors, confirmations and cards of backup, health, updates, development, voice, links to Google/Garmin, workouts, self care, wardrobe, expenses, mood, deadlines, home and the others follow «Lingua» (Italian and English ready) → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 
 ## 2026-11-14

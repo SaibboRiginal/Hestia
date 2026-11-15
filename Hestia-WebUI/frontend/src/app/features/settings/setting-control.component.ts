@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { SegmentedComponent, SegmentOption, TimeFieldComponent, ToastService, ToggleComponent } from '../../ui';
 import { CentralSettingsApi, SettingItem, SettingOption } from './central-settings.api';
 import { PlacesEditorComponent } from './places-editor.component';
+import { tr, TrPipe } from '../../core/i18n';
 
 /**
  * <hx-setting-control [item] [disabled] (commit)="store.set(item, $event)" />
@@ -13,7 +14,7 @@ import { PlacesEditorComponent } from './places-editor.component';
  */
 @Component({
   selector: 'hx-setting-control',
-  imports: [NgTemplateOutlet, RouterLink, ToggleComponent, SegmentedComponent, TimeFieldComponent, PlacesEditorComponent],
+  imports: [TrPipe, NgTemplateOutlet, RouterLink, ToggleComponent, SegmentedComponent, TimeFieldComponent, PlacesEditorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let it = item();
@@ -39,12 +40,12 @@ import { PlacesEditorComponent } from './places-editor.component';
       }
       @case ('model') {
         <input class="hx-input mono" [attr.list]="listId()" [value]="text(it.value)" [disabled]="disabled()"
-               [attr.aria-label]="it.label" placeholder="nome del modello"
+               [attr.aria-label]="it.label"  [placeholder]="'nome del modello' | tr"
                (focus)="loadChoices()" (change)="commitText($any($event.target).value)" (keydown.enter)="blur($event)" />
         <datalist [id]="listId()">
           @for (o of choices(); track $index) { <option [value]="o.value">{{ o.label }}</option> }
         </datalist>
-        @if (loadingChoices()) { <span class="hint">carico i modelli…</span> }
+        @if (loadingChoices()) { <span class="hint">{{ "carico i modelli…" | tr }}</span> }
       }
       @case ('int') { <ng-container [ngTemplateOutlet]="num" /> }
       @case ('float') { <ng-container [ngTemplateOutlet]="num" /> }
@@ -57,7 +58,7 @@ import { PlacesEditorComponent } from './places-editor.component';
       }
       @case ('list') {
         <textarea class="hx-textarea mono" rows="3" [value]="lines(it.value)" [disabled]="disabled()"
-                  [attr.aria-label]="it.label" placeholder="un valore per riga"
+                  [attr.aria-label]="it.label"  [placeholder]="'un valore per riga' | tr"
                   (change)="commitList($any($event.target).value)"></textarea>
       }
       @case ('object') {
@@ -133,7 +134,7 @@ export class SettingControlComponent {
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
   /** Object values with a dedicated editor: link to it (the JSON stays editable below). */
   editorLink(editor?: string): { path: string; label: string } | null {
-    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: 'Modifica in Oracle · Cervello · Modelli' } : null;
+    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: tr('Modifica in Oracle · Cervello · Modelli') } : null;
   }
 
   commitJson(v: string) {

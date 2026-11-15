@@ -3,16 +3,16 @@
  * outcome, whether it can be undone, notes). Read only: approving or undoing a repair keeps its consent path
  * (chat / Telegram tools). SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATE, CONSENT, when, short } from './util';
 
 const FILTERS = [
-  { value: '', label: 'Tutte' }, { value: 'pending_approval', label: 'Da approvare' }, { value: 'failed', label: 'Fallite' },
-  { value: 'succeeded', label: 'Riuscite' }, { value: 'rolled_back', label: 'Annullate' }, { value: 'escalated', label: 'Passate a Forge' },
+  { value: '', label: tr('Tutte') }, { value: 'pending_approval', label: tr('Da approvare') }, { value: 'failed', label: tr('Fallite') },
+  { value: 'succeeded', label: tr('Riuscite') }, { value: 'rolled_back', label: tr('Annullate') }, { value: 'escalated', label: tr('Passate a Forge') },
 ];
 const UNDO: Record<string, string> = {
-  restored: 'dati ripristinati', cancelled: 'fermata prima di cambiare qualcosa',
-  nothing_to_undo: 'niente da ripristinare', failed: 'ripristino non riuscito, si può riprovare',
+  restored: 'dati ripristinati', cancelled: tr('fermata prima di cambiare qualcosa'),
+  nothing_to_undo: tr('niente da ripristinare'), failed: tr('ripristino non riuscito, si può riprovare'),
 };
 
 export class HephaestusRepairs extends HestiaElement {
@@ -48,7 +48,7 @@ export class HephaestusRepairs extends HestiaElement {
       this.host.api('GET', `${API}/runbooks`),
       this.host.api('GET', `${API}/status`),
     ]);
-    if (!t.ok) { this.error = t.status === 0 || !t.error ? 'Hephaestus non raggiungibile' : t.error; return; }
+    if (!t.ok) { this.error = t.status === 0 || !t.error ? tr('Hephaestus non raggiungibile') : t.error; return; }
     this.error = '';
     this.tasks = t.data?.tasks || [];
     this.runbooks = Object.fromEntries((r.ok ? r.data?.runbooks || [] : []).map((b: any) => [b.runbook_id, b]));
@@ -58,10 +58,10 @@ export class HephaestusRepairs extends HestiaElement {
   private stats() {
     const n = (st: string) => (this.tasks || []).filter(t => t.state === st).length;
     return [
-      { label: 'Da approvare', value: n('pending_approval'), tone: n('pending_approval') ? 'warning' : 'neutral' },
-      { label: 'Riuscite', value: n('succeeded'), tone: 'success' },
-      { label: 'Fallite', value: n('failed'), tone: n('failed') ? 'danger' : 'neutral' },
-      { label: 'Annullate', value: n('rolled_back') },
+      { label: tr('Da approvare'), value: n('pending_approval'), tone: n('pending_approval') ? 'warning' : 'neutral' },
+      { label: tr('Riuscite'), value: n('succeeded'), tone: 'success' },
+      { label: tr('Fallite'), value: n('failed'), tone: n('failed') ? 'danger' : 'neutral' },
+      { label: tr('Annullate'), value: n('rolled_back') },
     ];
   }
 
@@ -70,26 +70,26 @@ export class HephaestusRepairs extends HestiaElement {
     const res = t.execution_result;
     return html`<div class="det" @click=${(e: Event) => e.stopPropagation()}>
       <div class="kv">
-        <span>Runbook</span><span>${rb ? html`<b>${rb.title}</b> · ${rb.summary}` : t.runbook_id || '–'}</span>
-        <span>Consenso richiesto</span><span>${rb ? CONSENT[rb.consent_tier] || rb.consent_tier : '–'}</span>
-        <span>Prova (dry-run)</span><span>${t.dry_run ? 'sì, nessuna modifica reale' : 'no, esecuzione reale'}</span>
-        <span>Ambiente</span><span>${t.environment || '–'}</span>
-        <span>Gravità</span><span>${t.severity || '–'}</span>
-        <span>Origine</span><span>${t.source || '–'}${t.auto_approve ? ' · auto-approvazione richiesta' : ''}</span>
-        <span>Tentativi</span><span>${t.attempts ?? 1}</span>
-        <span>Si può annullare</span><span>${t.undoable ? 'sì, i dati cambiati vengono ripristinati' : 'no, non ha cambiato dati da ripristinare'}</span>
-        ${t.rollback_result ? html`<span>Annullamento</span><span>${UNDO[t.rollback_result.status] || t.rollback_result.status}</span>` : nothing}
-        <span>Branch</span><span><code>${t.branch || '–'}</code></span>
-        ${t.forge_task_id ? html`<span>Forge</span><span>passata allo sviluppo: <a href=${this.host.link('sviluppo', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('sviluppo', { task: t.forge_task_id }); }}>task <code>${short(t.forge_task_id)}</code> in Sviluppo</a></span>` : nothing}
+        <span>${tr("Runbook")}</span><span>${rb ? html`<b>${rb.title}</b> · ${rb.summary}` : t.runbook_id || '–'}</span>
+        <span>${tr("Consenso richiesto")}</span><span>${rb ? CONSENT[rb.consent_tier] || rb.consent_tier : '–'}</span>
+        <span>${tr("Prova (dry-run)")}</span><span>${t.dry_run ? tr('sì, nessuna modifica reale') : 'no, esecuzione reale'}</span>
+        <span>${tr("Ambiente")}</span><span>${t.environment || '–'}</span>
+        <span>${tr("Gravità")}</span><span>${t.severity || '–'}</span>
+        <span>${tr("Origine")}</span><span>${t.source || '–'}${t.auto_approve ? ' · auto-approvazione richiesta' : ''}</span>
+        <span>${tr("Tentativi")}</span><span>${t.attempts ?? 1}</span>
+        <span>${tr("Si può annullare")}</span><span>${t.undoable ? tr('sì, i dati cambiati vengono ripristinati') : tr('no, non ha cambiato dati da ripristinare')}</span>
+        ${t.rollback_result ? html`<span>${tr("Annullamento")}</span><span>${UNDO[t.rollback_result.status] || t.rollback_result.status}</span>` : nothing}
+        <span>${tr("Branch")}</span><span><code>${t.branch || '–'}</code></span>
+        ${t.forge_task_id ? html`<span>Forge</span><span>${tr("passata allo sviluppo:")} <a href=${this.host.link('sviluppo', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('sviluppo', { task: t.forge_task_id }); }}>${"task"} <code>${short(t.forge_task_id)}</code> ${tr("in Sviluppo")}</a></span>` : nothing}
         <span>Id</span><span><code>${t.task_id}</code></span>
       </div>
-      ${rb?.steps?.length ? html`<div><div class="small muted">Passi del runbook</div><ol>${rb.steps.map((s: any) => html`<li>${s.title}
-        <span class="small muted">· ${s.read_only ? 'sola lettura' : 'modifica'}${s.rollback_checkpoint ? ` · punto di ritorno ${s.rollback_checkpoint}` : ''}</span></li>`)}</ol></div>` : nothing}
-      ${(t.notifications || []).length ? html`<div><div class="small muted">Cronologia</div><div class="notes">
+      ${rb?.steps?.length ? html`<div><div class="small muted">${tr("Passi del runbook")}</div><ol>${rb.steps.map((s: any) => html`<li>${s.title}
+        <span class="small muted">· ${s.read_only ? 'sola lettura' : 'modifica'}${s.rollback_checkpoint ? tr(" · punto di ritorno {0}", s.rollback_checkpoint) : ''}</span></li>`)}</ol></div>` : nothing}
+      ${(t.notifications || []).length ? html`<div><div class="small muted">${tr("Cronologia")}</div><div class="notes">
         ${t.notifications.map((n: any) => html`<div><span class="muted">${when(n.ts)}</span> · ${n.note}</div>`)}</div></div>` : nothing}
-      ${res ? html`<div><div class="small muted">Esito</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
-      ${t.state === 'pending_approval' ? html`<p class="note">Per approvarla scrivi a Hestia «approva la riparazione ${t.task_id}» (chat o Telegram).</p>`
-        : t.state === 'succeeded' && t.undoable ? html`<p class="note">Per annullarla scrivi a Hestia «annulla la riparazione ${t.task_id}».</p>` : nothing}
+      ${res ? html`<div><div class="small muted">${tr("Esito")}</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
+      ${t.state === 'pending_approval' ? html`<p class="note">${tr("Per approvarla scrivi a Hestia «approva la riparazione")} ${t.task_id}${tr("» (chat o Telegram).")}</p>`
+        : t.state === 'succeeded' && t.undoable ? html`<p class="note">${tr("Per annullarla scrivi a Hestia «annulla la riparazione")} ${t.task_id}».</p>` : nothing}
     </div>`;
   }
 
@@ -98,12 +98,12 @@ export class HephaestusRepairs extends HestiaElement {
     if (!this.tasks) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const list = this.tasks.filter(t => !this.filter || t.state === this.filter);
     return html`<div class="page">
-      <div class="head"><h1>Riparazioni</h1><span class="sub">Interventi automatici sui servizi, con runbook e consenso</span>
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>Aggiorna</hxk-button></div>
+      <div class="head"><h1>${tr("Riparazioni")}</h1><span class="sub">${tr("Interventi automatici sui servizi, con runbook e consenso")}</span>
+        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Aggiorna")}</hxk-button></div>
       <hxk-stat .items=${this.stats()}></hxk-stat>
-      ${this.info ? html`<div class="note">Modalità: ${this.info.mode === 'policy_gated_execution' ? 'esecuzione con regole di consenso' : this.info.mode}
-        · ${this.info.runbook_count} runbook · in produzione ${this.info.production_execution_allowed ? 'consentita' : 'mai senza di te'}</div>` : nothing}
-      <div class="filter"><hxk-field label="Mostra" type="enum" .options=${FILTERS} .value=${this.filter}
+      ${this.info ? html`<div class="note">${tr("Modalità:")} ${this.info.mode === 'policy_gated_execution' ? tr('esecuzione con regole di consenso') : this.info.mode}
+        · ${this.info.runbook_count} ${tr("runbook · in produzione")} ${this.info.production_execution_allowed ? 'consentita' : tr('mai senza di te')}</div>` : nothing}
+      <div class="filter"><hxk-field label=${tr("Mostra")} type="enum" .options=${FILTERS} .value=${this.filter}
         @change=${(e: any) => (this.filter = e.detail || '')}></hxk-field></div>
       ${list.length ? html`<div class="card">${list.map(t => {
         const st = STATE[t.state] || { label: t.state, tone: 'neutral' };
@@ -111,11 +111,11 @@ export class HephaestusRepairs extends HestiaElement {
         return html`<div class="t" @click=${() => (this.open = this.open === t.task_id ? '' : t.task_id)}>
           <div class="top"><div class="grow"><b>${t.service}</b> · ${t.issue}</div><hxk-badge tone=${st.tone}>${st.label}</hxk-badge></div>
           <div class="meta small muted"><span>${rb?.title || t.runbook_id}</span><span>${t.dry_run ? 'prova' : 'reale'}</span>
-            <span>${when(t.updated_at || t.created_at)}</span>${(t.attempts || 1) > 1 ? html`<span>${t.attempts} tentativi</span>` : nothing}</div>
+            <span>${when(t.updated_at || t.created_at)}</span>${(t.attempts || 1) > 1 ? html`<span>${t.attempts} ${tr("tentativi")}</span>` : nothing}</div>
           ${this.open === t.task_id ? this.renderDetail(t) : nothing}
         </div>`;
       })}</div>`
-        : html`<hxk-state kind="empty" text=${this.filter ? 'Nessuna riparazione in questo stato.' : 'Nessuna riparazione: i servizi non ne hanno avuto bisogno.'}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${this.filter ? tr('Nessuna riparazione in questo stato.') : tr('Nessuna riparazione: i servizi non ne hanno avuto bisogno.')}></hxk-state>`}
     </div>`;
   }
 }

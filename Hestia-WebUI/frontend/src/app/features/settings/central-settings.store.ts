@@ -3,6 +3,7 @@ import { ToastService } from '../../ui';
 import {
   CentralSettingsApi, ModuleInfo, PresetGroup, Proposal, SettingItem, apiError,
 } from './central-settings.api';
+import { tr } from '../../core/i18n';
 
 /** Pretty module names (Hub service names are lowercase ids). */
 export function moduleLabel(id: string): string {
@@ -115,7 +116,7 @@ export class CentralSettingsStore {
 
   dependencyLabel(i: SettingItem): string {
     const dep = this.items().find(x => x.key === i.depends_on?.key);
-    return dep ? `Attiva solo con «${dep.label}»` : '';
+    return dep ? tr("Attiva solo con «{0}»", dep.label) : '';
   }
 
   // ── loading ───────────────────────────────────────────────────────────
@@ -209,8 +210,8 @@ export class CentralSettingsStore {
       await this.loadItems();
       void this.loadModules();
       const restart = item.apply === 'restart';
-      this.toast.show(restart ? `${item.label}: salvato, serve il riavvio di ${moduleLabel(item.module)}` : `${item.label}: salvato`,
-        restart ? 'warning' : 'success', { label: 'Annulla', run: () => void this.set({ ...item, value }, before) });
+      this.toast.show(restart ? tr("{0}: salvato, serve il riavvio di {1}", item.label, moduleLabel(item.module)) : tr("{0}: salvato", item.label),
+        restart ? 'warning' : 'success', { label: tr('Annulla'), run: () => void this.set({ ...item, value }, before) });
     } catch (e) {
       this.toast.error(apiError(e, 'Salvataggio non riuscito'));
       await this.loadItems();
@@ -224,7 +225,7 @@ export class CentralSettingsStore {
     try {
       await this.api.reset(item.key);
       await this.loadItems();
-      this.toast.success(`${item.label}: ripristinato il predefinito`);
+      this.toast.success(tr("{0}: ripristinato il predefinito", item.label));
     } catch (e) {
       this.toast.error(apiError(e));
     } finally {
@@ -236,7 +237,7 @@ export class CentralSettingsStore {
     try {
       await this.api.undo(item.key);
       await this.loadItems();
-      this.toast.success(`${item.label}: modifica annullata`);
+      this.toast.success(tr("{0}: modifica annullata", item.label));
     } catch (e) {
       this.toast.error(apiError(e, 'Niente da annullare'));
     }
@@ -258,7 +259,7 @@ export class CentralSettingsStore {
   async decide(p: Proposal, approve: boolean): Promise<void> {
     try {
       await this.api.decide(p.proposal_id, approve);
-      this.toast.success(approve ? 'Proposta approvata' : 'Proposta rifiutata');
+      this.toast.success(approve ? tr('Proposta approvata') : tr('Proposta rifiutata'));
     } catch (e) {
       this.toast.error(apiError(e, 'Proposta già decisa altrove'));
     }

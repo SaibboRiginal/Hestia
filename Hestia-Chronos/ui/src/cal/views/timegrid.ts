@@ -6,7 +6,7 @@
  * - drag a block to move (15-min snap, across days), drag its bottom edge to resize
  * Events: cal-select {ev, rect} · cal-create (Date) · cal-move {ev,start,end} · cal-day (Date).
  */
-import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
+import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';
 import { type CalEvent, type CalWeather, NO_WEATHER, TYPE_META, fire } from '../models';
 import { extLines } from './month';
 import { DAY_MS, addDays, addMinutes, dayKey, fmt, isSameDay, isToday, minutesOfDay, snap, startOfDay } from '../date';
@@ -267,7 +267,7 @@ export class ChronosCalGrid extends LitElement {
       const rz = html`<div class="rz" @pointerdown=${(e: PointerEvent) => this.startDrag(e, b.ev, 'resize')}></div>`;
       if (this.windowsMode === 'lane') return html`
         <div class="tint" style="top:${b.top}px;height:${b.height}px;${st}"></div>
-        <div class="lane ${cls}" style="top:${b.top}px;height:${b.height}px;left:${b.lane * LANE}px;${st}" title=${`Finestra · ${b.ev.occ.title} · ${this.time(b.ev)}`}
+        <div class="lane ${cls}" style="top:${b.top}px;height:${b.height}px;left:${b.lane * LANE}px;${st}" title=${tr("Finestra · {0} · {1}", b.ev.occ.title, this.time(b.ev))}
              @pointerdown=${(e: PointerEvent) => this.startDrag(e, b.ev, 'move')} @click=${(e: Event) => e.stopPropagation()}>${rz}</div>
         <div class="lane-label ${b.ev.occ.status === 'paused' ? 'paused' : ''}" style="top:${this.labelTop(b)}px;left:${this.segs.lanes[i] * LANE + 2}px;${st}"
              @pointerdown=${(e: PointerEvent) => this.startDrag(e, b.ev, 'move')} @click=${(e: Event) => e.stopPropagation()}>
@@ -300,10 +300,10 @@ export class ChronosCalGrid extends LitElement {
     return html`
       <div class="head" style="grid-template-columns:${cols}"><div></div>
         ${this.days.map(d => html`<button class="dh ${isToday(d) ? 'today' : ''} ${this.days.length > 1 && isSameDay(d, this.focusDay) ? 'sel' : ''}"
-          @click=${() => fire(this, 'cal-day', d)} title=${'Apri ' + fmt.dayLong(d)}><span class="wd">${fmt.weekdayShort(d)}</span><span class="dn">${d.getDate()}</span>${wxChip(this.weather?.days[dayKey(d)], extLines(this.weather ?? NO_WEATHER, dayKey(d)))}</button>`)}
+          @click=${() => fire(this, 'cal-day', d)} title=${tr('Apri ') + fmt.dayLong(d)}><span class="wd">${fmt.weekdayShort(d)}</span><span class="dn">${d.getDate()}</span>${wxChip(this.weather?.days[dayKey(d)], extLines(this.weather ?? NO_WEATHER, dayKey(d)))}</button>`)}
       </div>
       ${hasSummary ? html`<div class="sum" style="grid-template-columns:${cols}">
-        <div class="sum-h" title="Attività che si ripetono spesso, raggruppate (Vista → Ricorrenze frequenti)">Ricorrenti</div>
+        <div class="sum-h" title=${tr("Attività che si ripetono spesso, raggruppate (Vista → Ricorrenze frequenti)")}>${tr("Ricorrenti")}</div>
         ${this.days.map((_, i) => html`<div class="sum-c">${this.segs.groups[i].map(g => {
           const l = g.group ?? [g];
           return html`<button class="schip ${g.occ.status === 'paused' ? 'paused' : ''}" style="--c:${g.color}" @click=${(e: Event) => this.sel(g, e.currentTarget as HTMLElement)}

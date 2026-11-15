@@ -13,6 +13,7 @@ import { ButtonComponent, DialogService, IconComponent, SegmentedComponent, Segm
 import { CentralSettingsStore, matches } from './central-settings.store';
 import { SettingRowComponent } from './setting-row.component';
 import { SettingShellComponent } from './setting-shell.component';
+import { tr, TrPipe } from '../../core/i18n';
 
 export { PERSONAL_ROWS, PERSONAL_SECTIONS } from './personal-rows';
 
@@ -32,7 +33,7 @@ export function personalHits(query: string): Map<string, number> {
  */
 @Component({
   selector: 'app-personal-settings',
-  imports: [FormsModule, RouterLink, SettingShellComponent, SettingRowComponent, ButtonComponent, IconComponent, SegmentedComponent, ToggleComponent],
+  imports: [TrPipe, FormsModule, RouterLink, SettingShellComponent, SettingRowComponent, ButtonComponent, IconComponent, SegmentedComponent, ToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @for (s of shown(); track s.section.id) {
@@ -44,7 +45,7 @@ export function personalHits(query: string): Map<string, number> {
               @case ('theme') {
                 <div class="themes">
                   <button class="th" [class.on]="theme.selected() === 'auto'" (click)="theme.set('auto')">
-                    <span class="pv auto"><i></i><i></i></span><span>Automatico (sistema)</span>
+                    <span class="pv auto"><i></i><i></i></span><span>{{ "Automatico (sistema)" | tr }}</span>
                   </button>
                   @for (t of themesSorted; track t.id) {
                     <button class="th" [class.on]="theme.selected() === t.id" (click)="theme.set(t.id)">
@@ -75,26 +76,26 @@ export function personalHits(query: string): Map<string, number> {
                       <hx-segmented [options]="k.options" [value]="theme.knobs()[k.key]" (changed)="theme.setKnob(k.key, $any($event))" />
                     </div>
                   }
-                  @if (customised()) { <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="theme.setStyle(theme.style().id)">Torna allo stile</button> }
+                  @if (customised()) { <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="theme.setStyle(theme.style().id)">{{ "Torna allo stile" | tr }}</button> }
                 </div>
               }
               @case ('look') {
                 <div class="look">
-                  <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { Aspetto standard }</span>
-                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">Scegli</a>
+                  <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { {{ "Aspetto standard" | tr }} }</span>
+                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">{{ "Scegli" | tr }}</a>
                 </div>
               }
               @case ('push') {
                 <div class="look">
                   <span>{{ pushLabel() }}</span>
-                  @if (push.state() === 'on') { <button hx-btn size="sm" (click)="push.disable()">Disattiva</button> }
+                  @if (push.state() === 'on') { <button hx-btn size="sm" (click)="push.disable()">{{ "Disattiva" | tr }}</button> }
                   @else if (push.state() === 'off' || push.state() === 'busy') {
-                    <button hx-btn size="sm" variant="primary" icon="bell" [loading]="push.state() === 'busy'" (click)="enablePush()">Attiva</button>
+                    <button hx-btn size="sm" variant="primary" icon="bell" [loading]="push.state() === 'busy'" (click)="enablePush()">{{ "Attiva" | tr }}</button>
                   }
                 </div>
               }
               @case ('tone') {
-                <select class="hx-select" aria-label="Tono" (change)="save({ tone: $any($event.target).value })">
+                <select class="hx-select"  [attr.aria-label]="'Tono' | tr" (change)="save({ tone: $any($event.target).value })">
                   @for (o of tones; track o.value) { <option [value]="o.value" [selected]="settings.settings().tone === o.value">{{ o.label }}</option> }
                 </select>
               }
@@ -102,12 +103,12 @@ export function personalHits(query: string): Map<string, number> {
                 <hx-segmented [options]="thinking" [value]="settings.settings().thinkingDisplay" (changed)="save({ thinkingDisplay: $event })" />
               }
               @case ('instructions') {
-                <textarea class="hx-textarea" rows="4" [(ngModel)]="custom" aria-label="Istruzioni personali"></textarea>
+                <textarea class="hx-textarea" rows="4" [(ngModel)]="custom"  [attr.aria-label]="'Istruzioni personali' | tr"></textarea>
                 <button hx-btn size="sm" variant="primary" [disabled]="custom === settings.settings().customPrompt"
-                        (click)="save({ customPrompt: custom })">Salva istruzioni</button>
+                        (click)="save({ customPrompt: custom })">{{ "Salva istruzioni" | tr }}</button>
               }
               @case ('notice_mode') {
-                <select class="hx-select" aria-label="Dove mostrarli" (change)="notices.update({ mode: $any($event.target).value })">
+                <select class="hx-select"  [attr.aria-label]="'Dove mostrarli' | tr" (change)="notices.update({ mode: $any($event.target).value })">
                   @for (o of noticeModes; track o.value) { <option [value]="o.value" [selected]="notices.prefs().mode === o.value">{{ o.label }}</option> }
                 </select>
               }
@@ -121,8 +122,8 @@ export function personalHits(query: string): Map<string, number> {
                   }
                 </div>
               }
-              @case ('new_session') { <button hx-btn size="sm" (click)="newSession()">Nuova sessione</button> }
-              @case ('reset') { <button hx-btn size="sm" icon="refresh" (click)="reset()">Ripristina</button> }
+              @case ('new_session') { <button hx-btn size="sm" (click)="newSession()">{{ "Nuova sessione" | tr }}</button> }
+              @case ('reset') { <button hx-btn size="sm" icon="refresh" (click)="reset()">{{ "Ripristina" | tr }}</button> }
             }
           </hx-setting-shell>
         }
@@ -186,10 +187,10 @@ export class PersonalSettingsComponent implements OnInit {
   /** Light themes first, then dark (the original order inside each). */
   readonly themesSorted = [...this.theme.themes].sort((a, b) => (a.mode === b.mode ? 0 : a.mode === 'light' ? -1 : 1));
   readonly knobRows: { key: keyof LookKnobs; label: string; options: SegmentOption[] }[] = [
-    { key: 'corners', label: 'Angoli', options: [...KNOB_OPTIONS.corners] },
-    { key: 'borders', label: 'Bordi', options: [...KNOB_OPTIONS.borders] },
-    { key: 'glass', label: 'Trasparenze', options: [...KNOB_OPTIONS.glass] },
-    { key: 'motion', label: 'Animazioni', options: [...KNOB_OPTIONS.motion] },
+    { key: 'corners', label: tr('Angoli'), options: [...KNOB_OPTIONS.corners] },
+    { key: 'borders', label: tr('Bordi'), options: [...KNOB_OPTIONS.borders] },
+    { key: 'glass', label: tr('Trasparenze'), options: [...KNOB_OPTIONS.glass] },
+    { key: 'motion', label: tr('Animazioni'), options: [...KNOB_OPTIONS.motion] },
   ];
   readonly customised = computed(() => Object.keys(this.theme.look().knobs).length > 0);
 
@@ -203,30 +204,30 @@ export class PersonalSettingsComponent implements OnInit {
   });
 
   readonly tones: SegmentOption[] = [
-    { value: 'neutral', label: 'Neutro' }, { value: 'warm', label: 'Caldo' }, { value: 'direct', label: 'Diretto' }, { value: 'formal', label: 'Formale' },
+    { value: 'neutral', label: tr('Neutro') }, { value: 'warm', label: tr('Caldo') }, { value: 'direct', label: tr('Diretto') }, { value: 'formal', label: tr('Formale') },
   ];
   readonly thinking: SegmentOption[] = THINKING_DISPLAY_OPTIONS;
   readonly noticeModes: SegmentOption[] = [
-    { value: 'inline', label: 'Sotto la risposta' }, { value: 'toast', label: 'Popup' }, { value: 'both', label: 'Entrambi' },
-    { value: 'important', label: 'Solo importanti' }, { value: 'hidden', label: 'Nascosti' },
+    { value: 'inline', label: tr('Sotto la risposta') }, { value: 'toast', label: tr('Popup') }, { value: 'both', label: tr('Entrambi') },
+    { value: 'important', label: tr('Solo importanti') }, { value: 'hidden', label: tr('Nascosti') },
   ] satisfies { value: NoticeMode; label: string }[];
   readonly noticeStyles: SegmentOption[] = [
-    { value: 'compact', label: 'Compatto' }, { value: 'rich', label: 'Dettagliato' },
+    { value: 'compact', label: tr('Compatto') }, { value: 'rich', label: tr('Dettagliato') },
   ] satisfies { value: NoticeStyle; label: string }[];
   readonly noticeGroups: { id: NoticeGroup; label: string }[] = [
-    { id: 'memory', label: 'Memoria' }, { id: 'actions', label: 'Azioni' },
-    { id: 'subscriptions', label: 'Notifiche' }, { id: 'other', label: 'Altro (documenti, agenda, sviluppo)' },
+    { id: 'memory', label: tr('Memoria') }, { id: 'actions', label: tr('Azioni') },
+    { id: 'subscriptions', label: tr('Notifiche') }, { id: 'other', label: tr('Altro (documenti, agenda, sviluppo)') },
   ];
   readonly pushLabel = computed(() => ({
-    unsupported: 'Questo browser non riceve notifiche push.', unavailable: 'Non ancora attive sul server.',
-    denied: 'Il browser le blocca: consentile dalle impostazioni del sito.', off: 'Spente su questo dispositivo.',
-    on: 'Attive su questo dispositivo.', busy: 'Un momento…',
+    unsupported: tr('Questo browser non riceve notifiche push.'), unavailable: tr('Non ancora attive sul server.'),
+    denied: tr('Il browser le blocca: consentile dalle impostazioni del sito.'), off: tr('Spente su questo dispositivo.'),
+    on: tr('Attive su questo dispositivo.'), busy: tr('Un momento…'),
   })[this.push.state()]);
 
   ngOnInit(): void { void this.push.refresh(); }
 
   async enablePush() {
-    if (await this.push.enable()) this.toast.success('Notifiche attive su questo dispositivo');
+    if (await this.push.enable()) this.toast.success(tr('Notifiche attive su questo dispositivo'));
     else if (this.push.state() === 'off') this.toast.error('Non riuscito, riprova');
   }
 
@@ -235,16 +236,16 @@ export class PersonalSettingsComponent implements OnInit {
   }
 
   async save(p: Record<string, string>) {
-    try { await this.settings.update(p); this.toast.success('Salvato'); } catch { this.toast.error('Salvataggio non riuscito'); }
+    try { await this.settings.update(p); this.toast.success(tr('Salvato')); } catch { this.toast.error('Salvataggio non riuscito'); }
   }
   async newSession() {
-    if (await this.dialogs.confirm('Nuova sessione?')) { await this.session.clear(); this.toast.success('Nuova sessione'); }
+    if (await this.dialogs.confirm(tr('Nuova sessione?'))) { await this.session.clear(); this.toast.success(tr('Nuova sessione')); }
   }
   async reset() {
-    if (!await this.dialogs.confirm('Ripristinare le impostazioni personali?')) return;
+    if (!await this.dialogs.confirm(tr('Ripristinare le impostazioni personali?'))) return;
     await this.settings.reset();
     this.notices.reset();
     this.custom = this.settings.settings().customPrompt ?? '';
-    this.toast.success('Impostazioni ripristinate');
+    this.toast.success(tr('Impostazioni ripristinate'));
   }
 }

@@ -2,7 +2,7 @@
  * <hephaestus-transcript> — conversation of a Forge engine run, Claude Code style: messages, collapsible thinking,
  * tool calls merged with their result. Port of the WebUI forge/transcript.component.
  */
-import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
+import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';
 import { icon } from './icons';
 import type { TranscriptEvent } from './models';
 
@@ -45,7 +45,7 @@ function brief(ev: TranscriptEvent): string {
   const i = ev.input ?? {};
   const v = i['file_path'] ?? i['path'] ?? i['command'] ?? i['pattern'] ?? i['glob'] ?? i['summary'] ?? i['paths'];
   if (v !== undefined) return Array.isArray(v) ? v.join(' ') : String(v);
-  if (ev.tool === 'TodoWrite' && Array.isArray(i['todos'])) return `${(i['todos'] as unknown[]).length} attività`;
+  if (ev.tool === 'TodoWrite' && Array.isArray(i['todos'])) return tr("{0} attività", (i['todos'] as unknown[]).length);
   return '';
 }
 function stats(ev: TranscriptEvent): string {
@@ -109,32 +109,32 @@ export class HephaestusTranscript extends LitElement {
     return html`<details class="tool ${r.result?.is_error ? 'err' : ''} ${r.result ? '' : 'pending'}">
       <summary>${icon(TOOL_ICON[t] ?? 'code', 14)}<b>${t}</b><span class="arg">${brief(ev)}</span>
         ${!r.result && this.working ? html`<span class="dot"></span>` : nothing}
-        ${r.result?.is_error ? html`<span class="tag">errore</span>` : nothing}</summary>
+        ${r.result?.is_error ? html`<span class="tag">${tr("errore")}</span>` : nothing}</summary>
       <div class="io">
-        ${shape === 'edit' ? html`<div class="lbl">Modifica</div><div class="mini">
+        ${shape === 'edit' ? html`<div class="lbl">${tr("Modifica")}</div><div class="mini">
             ${lines(str(i['old_string'] ?? i['old'])).map(l => html`<div class="del">-${l}</div>`)}
             ${lines(str(i['new_string'] ?? i['new'])).map(l => html`<div class="add">+${l}</div>`)}</div>`
-          : shape === 'write' ? html`<div class="lbl">Contenuto</div><pre class="pre">${str(i['content'])}</pre>`
-          : shape === 'bash' ? html`<div class="lbl">Comando</div><pre class="pre">$ ${str(i['command'])}</pre>`
-          : html`<div class="lbl">Input</div><pre class="pre">${json(ev.input)}</pre>`}
-        ${r.result ? html`<div class="lbl">${r.result.is_error ? 'Errore' : 'Risultato'}</div><pre class="pre">${r.result.text || '(vuoto)'}</pre>` : nothing}
+          : shape === 'write' ? html`<div class="lbl">${tr("Contenuto")}</div><pre class="pre">${str(i['content'])}</pre>`
+          : shape === 'bash' ? html`<div class="lbl">${tr("Comando")}</div><pre class="pre">$ ${str(i['command'])}</pre>`
+          : html`<div class="lbl">${tr("Input")}</div><pre class="pre">${json(ev.input)}</pre>`}
+        ${r.result ? html`<div class="lbl">${r.result.is_error ? tr('Errore') : tr('Risultato')}</div><pre class="pre">${r.result.text || '(vuoto)'}</pre>` : nothing}
       </div></details>`;
   }
 
   private row(r: Row) {
     const ev = r.ev;
     switch (r.kind) {
-      case 'prompt': return html`<details class="card"><summary>${icon('user', 14)} <b>Istruzioni date al motore</b>
+      case 'prompt': return html`<details class="card"><summary>${icon('user', 14)} <b>${tr("Istruzioni date al motore")}</b>
         <span class="muted">${firstLine(ev.text)}</span></summary><pre class="pre">${ev.text}</pre></details>`;
       case 'user': return html`<div class="user">${ev.text}</div>`;
       case 'text': return html`<div class="text"><hephaestus-md .text=${ev.text || ''}></hephaestus-md></div>`;
-      case 'thinking': return html`<details class="think"><summary>${icon('brain', 14)} Ragionamento <span class="muted">${firstLine(ev.text)}</span></summary>
+      case 'thinking': return html`<details class="think"><summary>${icon('brain', 14)} ${tr("Ragionamento")} <span class="muted">${firstLine(ev.text)}</span></summary>
         <div class="think-body">${ev.text}</div></details>`;
       case 'tool': return this.tool(r);
       case 'system': return html`<div class="sys">${icon('info', 13)} ${ev.text}${ev.meta?.['model'] ? ` · ${ev.meta['model']}` : ''}</div>`;
-      case 'result': return html`<div class="end ok">${icon('check', 15)}<div><div class="eh"><b>Fine del lavoro del motore</b><span>${stats(ev)}</span></div>
+      case 'result': return html`<div class="end ok">${icon('check', 15)}<div><div class="eh"><b>${tr("Fine del lavoro del motore")}</b><span>${stats(ev)}</span></div>
         <hephaestus-md .text=${ev.text || ''}></hephaestus-md></div></div>`;
-      case 'error': return html`<div class="end ko">${icon('alert', 15)}<div><div class="eh"><b>Il motore si è fermato</b><span>${stats(ev)}</span></div>
+      case 'error': return html`<div class="end ko">${icon('alert', 15)}<div><div class="eh"><b>${tr("Il motore si è fermato")}</b><span>${stats(ev)}</span></div>
         <div class="pre-wrap">${ev.text}</div></div></div>`;
     }
     return nothing;
@@ -142,9 +142,9 @@ export class HephaestusTranscript extends LitElement {
 
   render() {
     if (this.rowsFrom !== this.events) { this.rows = transcriptRows(this.events || []); this.rowsFrom = this.events; }
-    if (!this.rows.length) return html`<div class="none">${this.working ? html`<span class="dot"></span> Il motore sta partendo…`
-      : 'Nessuna conversazione registrata per questo task (task precedente alla registrazione, o mai avviato).'}</div>`;
+    if (!this.rows.length) return html`<div class="none">${this.working ? html`<span class="dot"></span> ${tr("Il motore sta partendo…")}`
+      : tr('Nessuna conversazione registrata per questo task (task precedente alla registrazione, o mai avviato).')}</div>`;
     return html`${this.rows.map(r => this.row(r))}
-      ${this.working ? html`<div class="live"><span class="dot"></span> In lavorazione… la conversazione si aggiorna da sola.</div>` : nothing}`;
+      ${this.working ? html`<div class="live"><span class="dot"></span> ${tr("In lavorazione… la conversazione si aggiorna da sola.")}</div>` : nothing}`;
   }
 }

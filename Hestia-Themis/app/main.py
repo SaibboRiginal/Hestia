@@ -151,6 +151,20 @@ def settings_modules():
     return {"revision": themis.revision, "modules": out, "other_services": others}
 
 
+# ── texts for people ─────────────────────────────────────────────────────────
+
+@app.get("/api/settings/i18n")
+def settings_i18n(lang: str = ""):
+    """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages}`` where ``messages`` maps
+    the Italian source text to the owner's language (English fills what a language lacks; Italian = empty map)."""
+    code = (lang or themis.owner_language() or _i18n.FALLBACK)[:2]
+    messages: dict = {}
+    if code != _i18n.FALLBACK:
+        for c in reversed(tuple(dict.fromkeys((code, "en")))):
+            messages.update({k: v for k, v in _i18n.catalog("messages", c).items() if isinstance(v, str) and v})
+    return {"language": code, "messages": messages}
+
+
 # ── settings ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/settings")

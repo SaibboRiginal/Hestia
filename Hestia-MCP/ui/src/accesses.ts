@@ -6,13 +6,13 @@
  * nothing is granted without it. Second list: Servizi esterni (third-party MCP servers, credentials in Hecate).
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3, §B6.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 
 // The «hestia» mod in this repo's Claude Code marketplace (claude-plugins/hestia, dossier 2026-10-30-hestia-in-claude).
 const PLUGIN_INSTALL = '/plugin install hestia --marketplace SaibboRiginal/Hestia';
 const API = '/api/mcp';
-const SCOPES = [{ value: 'read', label: 'Solo lettura' }, { value: 'write', label: 'Lettura e scrittura (task, note, branch, proposte)' }];
-const EXPIRY = [{ value: '30', label: '30 giorni' }, { value: '90', label: '90 giorni' }, { value: '365', label: '1 anno' }, { value: '0', label: 'Mai' }];
+const SCOPES = [{ value: 'read', label: tr('Solo lettura') }, { value: 'write', label: tr('Lettura e scrittura (task, note, branch, proposte)') }];
+const EXPIRY = [{ value: '30', label: tr('30 giorni') }, { value: '90', label: tr('90 giorni') }, { value: '365', label: tr('1 anno') }, { value: '0', label: tr('Mai') }];
 
 function when(iso?: string | null): string {
   if (!iso) return '–';
@@ -64,14 +64,14 @@ export class McpAccesses extends HestiaElement {
           { body: { scope: c.scope, tools: c.all ? [] : c.tools, expires_days: Number(c.days) || null, name: c.name } })
       : await this.host.api('POST', `${API}/oauth/requests/${encodeURIComponent(c.id)}/deny`);
     this.busy = false;
-    if (!r.ok || !r.data?.redirect) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
-    this.host.toast(allow ? `${c.name} collegato: torno all'app` : 'Collegamento rifiutato', allow ? 'success' : 'neutral');
+    if (!r.ok || !r.data?.redirect) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
+    this.host.toast(allow ? `${c.name} collegato: torno all'app` : tr('Collegamento rifiutato'), allow ? 'success' : 'neutral');
     window.location.assign(r.data.redirect);   // back to the AI (its registered redirect_uri, checked by Hestia-MCP)
   }
 
   private async load() {
     const [a, t] = await Promise.all([this.host.api('GET', `${API}/accesses`), this.host.api('GET', `${API}/accesses/tools`)]);
-    if (!a.ok) { this.error = a.error || 'Hestia-MCP non raggiungibile'; return; }
+    if (!a.ok) { this.error = a.error || tr('Hestia-MCP non raggiungibile'); return; }
     this.error = ''; this.accesses = a.data.accesses || []; this.tools = t.ok ? t.data.tools || [] : [];
     const o = await this.host.api('GET', `${API}/outbound`);
     this.outbound = o.ok ? o.data : null;
@@ -81,47 +81,47 @@ export class McpAccesses extends HestiaElement {
 
   private async create() {
     const f = this.form;
-    if (!String(f.name || '').trim()) { this.host.toast('Dai un nome all\'accesso', 'warning'); return; }
+    if (!String(f.name || '').trim()) { this.host.toast(tr('Dai un nome all\'accesso'), 'warning'); return; }
     this.busy = true;
     const r = await this.host.api('POST', `${API}/accesses`, { query: { base_url: this.base() },
       body: { name: f.name, scope: f.scope, tools: f.all ? [] : f.tools, expires_days: Number(f.days) || null } });
     this.busy = false;
-    if (!r.ok) { this.host.toast(r.error || 'Accesso non creato', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Accesso non creato'), 'danger'); return; }
     this.form = null; this.created = r.data; this.load();
   }
 
   private async act(a: any, what: 'revoke' | 'renew' | 'delete') {
-    const asks = { revoke: ['Revocare l\'accesso?', `${a.name} smette subito di funzionare. Puoi rinnovarlo dopo.`],
-                   renew: a.kind === 'oauth' ? ['Riattivare?', `${a.name} torna a funzionare per altri 90 giorni.`]
-                     : ['Nuovo token?', `Il token attuale di ${a.name} smette subito di funzionare.`],
-                   delete: ['Eliminare l\'accesso?', `${a.name} sparisce dall'elenco.`] }[what];
-    if (!(await this.host.confirm(asks[0], asks[1], { label: 'Conferma', danger: what !== 'renew' }))) return;
+    const asks = { revoke: [tr('Revocare l\'accesso?'), tr("{0} smette subito di funzionare. Puoi rinnovarlo dopo.", a.name)],
+                   renew: a.kind === 'oauth' ? ['Riattivare?', tr("{0} torna a funzionare per altri 90 giorni.", a.name)]
+                     : [tr('Nuovo token?'), tr("Il token attuale di {0} smette subito di funzionare.", a.name)],
+                   delete: [tr('Eliminare l\'accesso?'), `${a.name} sparisce dall'elenco.`] }[what];
+    if (!(await this.host.confirm(asks[0], asks[1], { label: tr('Conferma'), danger: what !== 'renew' }))) return;
     const r = what === 'delete' ? await this.host.api('DELETE', `${API}/accesses/${a.access_id}`)
       : await this.host.api('POST', `${API}/accesses/${a.access_id}/${what}`, { query: what === 'renew' ? { base_url: this.base() } : undefined });
-    if (!r.ok) { this.host.toast(r.error || 'Non riuscito', 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
     if (what === 'renew' && r.data?.token) this.created = r.data;
     else if (what === 'renew') this.host.toast(`${a.name} riattivato`, 'success');
     this.load();
   }
 
   private async copy(text: string) {
-    try { await navigator.clipboard.writeText(text); this.host.toast('Copiato', 'success'); }
-    catch { this.host.toast('Copia non riuscita: selezionalo a mano', 'warning'); }
+    try { await navigator.clipboard.writeText(text); this.host.toast(tr('Copiato'), 'success'); }
+    catch { this.host.toast(tr('Copia non riuscita: selezionalo a mano'), 'warning'); }
   }
 
   private copyRow(label: string, text: string) {
     return html`<div class="small muted">${label}</div>
-      <div class="copyrow"><pre>${text}</pre><hxk-button size="sm" icon="check" @click=${() => this.copy(text)}>Copia</hxk-button></div>`;
+      <div class="copyrow"><pre>${text}</pre><hxk-button size="sm" icon="check" @click=${() => this.copy(text)}>${tr("Copia")}</hxk-button></div>`;
   }
 
   private renderCreated() {
     const c = this.created; if (!c) return nothing;
-    return html`<hxk-card heading="Token per ${c.access.name}" subtitle="Lo vedi solo ora: copialo adesso.">
-      ${this.copyRow('Claude Code (terminale)', c.setup.claude_code)}
+    return html`<hxk-card heading="Token per ${c.access.name}" subtitle=${tr("Lo vedi solo ora: copialo adesso.")}>
+      ${this.copyRow(tr('Claude Code (terminale)'), c.setup.claude_code)}
       ${this.copyRow('Claude Desktop, Cursor, VS Code, Gemini CLI… (configurazione JSON)', c.setup.json)}
-      ${this.copyRow('Solo il token', c.token)}
-      <p class="note">Indirizzo: ${c.setup.url}. Fuori casa serve l'indirizzo del tunnel con nome (vedi README, "Collegare un'AI esterna").</p>
-      <hxk-button variant="primary" @click=${() => (this.created = null)}>Fatto</hxk-button>
+      ${this.copyRow(tr('Solo il token'), c.token)}
+      <p class="note">Indirizzo: ${c.setup.url}${tr(". Fuori casa serve l'indirizzo del tunnel con nome (vedi README, \"Collegare un'AI esterna\").")}</p>
+      <hxk-button variant="primary" @click=${() => (this.created = null)}>${tr("Fatto")}</hxk-button>
     </hxk-card>`;
   }
 
@@ -133,24 +133,24 @@ export class McpAccesses extends HestiaElement {
       this.form = { ...this.form, tools: [...tools] };
     };
     const visible = this.tools.filter(t => f.scope === 'write' || !t.writes);
-    return html`<hxk-card heading="Nuovo accesso"><div class="form">
-      <hxk-field label="Nome" placeholder="Claude Code PC" .value=${f.name} @change=${set('name')}></hxk-field>
-      <hxk-field label="Cosa può fare" type="enum" .options=${SCOPES} .value=${f.scope} @change=${set('scope')}></hxk-field>
-      <hxk-field label="Scade dopo" type="enum" .options=${EXPIRY} .value=${f.days} @change=${set('days')}></hxk-field>
-      <hxk-field label="Tutti gli strumenti aperti alle AI esterne" type="bool" .value=${f.all} @change=${set('all')}></hxk-field>
+    return html`<hxk-card heading=${tr("Nuovo accesso")}><div class="form">
+      <hxk-field label=${tr("Nome")} placeholder=${tr("Claude Code PC")} .value=${f.name} @change=${set('name')}></hxk-field>
+      <hxk-field label=${tr("Cosa può fare")} type="enum" .options=${SCOPES} .value=${f.scope} @change=${set('scope')}></hxk-field>
+      <hxk-field label=${tr("Scade dopo")} type="enum" .options=${EXPIRY} .value=${f.days} @change=${set('days')}></hxk-field>
+      <hxk-field label=${tr("Tutti gli strumenti aperti alle AI esterne")} type="bool" .value=${f.all} @change=${set('all')}></hxk-field>
       ${f.all ? nothing : html`<div class="tools">${visible.map(t => html`<label title=${t.description || ''}>
         <input type="checkbox" .checked=${f.tools.includes(t.name)} @change=${(e: any) => toggle(t.name, e.target.checked)}>
-        ${t.title || t.name}${t.writes ? html` <span class="pill w">scrive</span>` : nothing}</label>`)}</div>`}
-      <p class="note">Approvare, unire o annullare uno sviluppo resta sempre a te, su Hestia.</p>
-      <div class="acts"><hxk-button variant="primary" ?loading=${this.busy} @click=${() => this.create()}>Crea token</hxk-button>
-        <hxk-button variant="ghost" @click=${() => (this.form = null)}>Annulla</hxk-button></div>
+        ${t.title || t.name}${t.writes ? html` <span class="pill w">${tr("scrive")}</span>` : nothing}</label>`)}</div>`}
+      <p class="note">${tr("Approvare, unire o annullare uno sviluppo resta sempre a te, su Hestia.")}</p>
+      <div class="acts"><hxk-button variant="primary" ?loading=${this.busy} @click=${() => this.create()}>${tr("Crea token")}</hxk-button>
+        <hxk-button variant="ghost" @click=${() => (this.form = null)}>${tr("Annulla")}</hxk-button></div>
     </div></hxk-card>`;
   }
 
   private renderConsent() {
     const c = this.consent; if (!c) return nothing;
-    if (c.error) return html`<hxk-card heading="Collegamento AI"><p>${c.error}</p>
-      <hxk-button variant="ghost" @click=${() => (this.consent = null)}>Chiudi</hxk-button></hxk-card>`;
+    if (c.error) return html`<hxk-card heading=${tr("Collegamento AI")}><p>${c.error}</p>
+      <hxk-button variant="ghost" @click=${() => (this.consent = null)}>${tr("Chiudi")}</hxk-button></hxk-card>`;
     const set = (k: string) => (e: any) => (this.consent = { ...this.consent, [k]: e.detail });
     const toggle = (name: string, on: boolean) => {
       const tools = new Set<string>(this.consent.tools); on ? tools.add(name) : tools.delete(name);
@@ -158,37 +158,37 @@ export class McpAccesses extends HestiaElement {
     };
     const visible = (c.req.tools || []).filter((t: any) => c.scope === 'write' || !t.writes);
     return html`<hxk-card heading="Collegare ${c.req.client_name}?" subtitle="Chiede di usare Hestia via MCP · torna a ${c.req.redirect_host}"><div class="form">
-      <hxk-field label="Nome nell'elenco" .value=${c.name} @change=${set('name')}></hxk-field>
-      <hxk-field label="Cosa può fare" type="enum" .options=${SCOPES} .value=${c.scope} @change=${set('scope')}></hxk-field>
-      <hxk-field label="Scade dopo" type="enum" .options=${EXPIRY} .value=${c.days} @change=${set('days')}></hxk-field>
-      <hxk-field label="Tutti gli strumenti aperti alle AI esterne" type="bool" .value=${c.all} @change=${set('all')}></hxk-field>
+      <hxk-field label=${tr("Nome nell'elenco")} .value=${c.name} @change=${set('name')}></hxk-field>
+      <hxk-field label=${tr("Cosa può fare")} type="enum" .options=${SCOPES} .value=${c.scope} @change=${set('scope')}></hxk-field>
+      <hxk-field label=${tr("Scade dopo")} type="enum" .options=${EXPIRY} .value=${c.days} @change=${set('days')}></hxk-field>
+      <hxk-field label=${tr("Tutti gli strumenti aperti alle AI esterne")} type="bool" .value=${c.all} @change=${set('all')}></hxk-field>
       ${c.all ? nothing : html`<div class="tools">${visible.map((t: any) => html`<label title=${t.description || ''}>
         <input type="checkbox" .checked=${c.tools.includes(t.name)} @change=${(e: any) => toggle(t.name, e.target.checked)}>
-        ${t.title || t.name}${t.writes ? html` <span class="pill w">scrive</span>` : nothing}</label>`)}</div>`}
-      <p class="note">Se non hai avviato tu il collegamento, rifiuta. Puoi revocarlo quando vuoi da questa pagina.</p>
-      <div class="acts"><hxk-button variant="primary" ?loading=${this.busy} @click=${() => this.decide(true)}>Consenti</hxk-button>
-        <hxk-button variant="ghost" ?disabled=${this.busy} @click=${() => this.decide(false)}>Rifiuta</hxk-button></div>
+        ${t.title || t.name}${t.writes ? html` <span class="pill w">${tr("scrive")}</span>` : nothing}</label>`)}</div>`}
+      <p class="note">${tr("Se non hai avviato tu il collegamento, rifiuta. Puoi revocarlo quando vuoi da questa pagina.")}</p>
+      <div class="acts"><hxk-button variant="primary" ?loading=${this.busy} @click=${() => this.decide(true)}>${tr("Consenti")}</hxk-button>
+        <hxk-button variant="ghost" ?disabled=${this.busy} @click=${() => this.decide(false)}>${tr("Rifiuta")}</hxk-button></div>
     </div></hxk-card>`;
   }
 
   private renderOutbound() {
     const o = this.outbound; if (!o) return nothing;
-    const label: Record<string, string> = { configured: 'configurato', invalid_url: 'indirizzo non valido' };
-    return html`<h2>Servizi esterni</h2><p class="sub">Server MCP di terzi che Hestia può usare. Le chiavi restano nel .env (Hecate).</p>
+    const label: Record<string, string> = { configured: 'configurato', invalid_url: tr('indirizzo non valido') };
+    return html`<h2>${tr("Servizi esterni")}</h2><p class="sub">${tr("Server MCP di terzi che Hestia può usare. Le chiavi restano nel .env (Hecate).")}</p>
       ${o.servers.length ? html`<div class="card">${o.servers.map(s => html`<div class="acc"><div class="grow">
           <div><b>${s.name}</b> <span class="pill ${s.status === 'configured' ? '' : 'off'}">${label[s.status] || s.status}</span></div>
-          <div class="small muted">${s.host || '–'} · ${s.auth === 'key' ? 'con chiave' : 'senza chiave'}</div></div></div>`)}</div>`
-        : html`<p class="note">${o.how_to || 'Nessun servizio esterno.'}</p>`}`;
+          <div class="small muted">${s.host || '–'} · ${s.auth === 'key' ? tr('con chiave') : 'senza chiave'}</div></div></div>`)}</div>`
+        : html`<p class="note">${o.how_to || tr('Nessun servizio esterno.')}</p>`}`;
   }
 
   private status(a: any) {
-    if (a.revoked_at) return html`<span class="pill off">revocato</span>`;
-    if (a.expires_at && Date.parse(a.expires_at) <= Date.now()) return html`<span class="pill off">scaduto</span>`;
-    return html`<span class="pill">${a.scope === 'write' ? 'lettura e scrittura' : 'solo lettura'}</span>`;
+    if (a.revoked_at) return html`<span class="pill off">${tr("revocato")}</span>`;
+    if (a.expires_at && Date.parse(a.expires_at) <= Date.now()) return html`<span class="pill off">${tr("scaduto")}</span>`;
+    return html`<span class="pill">${a.scope === 'write' ? tr('lettura e scrittura') : tr('solo lettura')}</span>`;
   }
 
   private kind(a: any) {
-    return a.kind === 'oauth' ? html` <span class="pill">OAuth${a.meta?.client_name && a.meta.client_name !== a.name ? ` · ${a.meta.client_name}` : ''}</span>` : nothing;
+    return a.kind === 'oauth' ? html` <span class="pill">${tr("OAuth")}${a.meta?.client_name && a.meta.client_name !== a.name ? ` · ${a.meta.client_name}` : ''}</span>` : nothing;
   }
 
   render() {
@@ -196,26 +196,25 @@ export class McpAccesses extends HestiaElement {
     if (!this.accesses) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const list = this.accesses;
     return html`<div class="page">
-      <div class="head"><h1>Accessi AI</h1><span class="sub">AI esterne che possono usare Hestia via MCP</span><span class="grow"></span>
+      <div class="head"><h1>${tr("Accessi AI")}</h1><span class="sub">${tr("AI esterne che possono usare Hestia via MCP")}</span><span class="grow"></span>
         ${this.form ? nothing : html`<hxk-button variant="primary" icon="plus"
-          @click=${() => (this.form = { name: '', scope: 'read', days: '90', all: true, tools: [] })}>Nuovo token</hxk-button>`}</div>
+          @click=${() => (this.form = { name: '', scope: 'read', days: '90', all: true, tools: [] })}>${tr("Nuovo token")}</hxk-button>`}</div>
       ${this.renderConsent()}${this.renderCreated()}${this.renderForm()}
       ${list.length ? html`<div class="card">${list.map(a => html`<div class="acc"><div class="grow">
           <div><b>${a.name}</b> ${this.status(a)}${this.kind(a)}</div>
-          <div class="small muted">${a.tools?.length ? `${a.tools.length} strumenti` : 'tutti gli strumenti aperti'}
-            · scade ${a.expires_at ? when(a.expires_at) : 'mai'} · ultimo uso ${when(a.last_used_at)} · oggi ${a.calls_today} chiamate</div></div>
-          <div class="acts">${a.revoked_at ? nothing : html`<hxk-button size="sm" variant="ghost" @click=${() => this.act(a, 'revoke')}>Revoca</hxk-button>`}
-            <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.act(a, 'renew')}>${a.kind === 'oauth' ? 'Riattiva' : 'Rinnova'}</hxk-button>
-            <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.act(a, 'delete')}>Elimina</hxk-button></div>
+          <div class="small muted">${a.tools?.length ? `${a.tools.length} strumenti` : tr('tutti gli strumenti aperti')}
+            · scade ${a.expires_at ? when(a.expires_at) : 'mai'} ${tr("· ultimo uso")} ${when(a.last_used_at)} ${tr("· oggi")} ${a.calls_today} ${tr("chiamate")}</div></div>
+          <div class="acts">${a.revoked_at ? nothing : html`<hxk-button size="sm" variant="ghost" @click=${() => this.act(a, 'revoke')}>${tr("Revoca")}</hxk-button>`}
+            <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.act(a, 'renew')}>${a.kind === 'oauth' ? tr('Riattiva') : tr('Rinnova')}</hxk-button>
+            <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.act(a, 'delete')}>${tr("Elimina")}</hxk-button></div>
         </div>`)}</div>`
-        : this.form || this.created ? nothing : html`<hxk-state kind="empty" text="Nessun accesso: crea un token per collegare Claude Code o un'altra AI."></hxk-state>`}
-      <p class="note">claude.ai (web e telefono) e ChatGPT: aggiungi un connettore personalizzato con l'indirizzo pubblico
+        : this.form || this.created ? nothing : html`<hxk-state kind="empty" text=${tr("Nessun accesso: crea un token per collegare Claude Code o un'altra AI.")}></hxk-state>`}
+      <p class="note">${tr("claude.ai (web e telefono) e ChatGPT: aggiungi un connettore personalizzato con l'indirizzo pubblico")}
         ${this.base()}/mcp; Hestia ti chiede qui il consenso.</p>
-      <hxk-card heading="Hestia dentro Claude Code" subtitle="Una barra sopra il prompt: la accendi solo quando vuoi">
-        ${this.copyRow('Installa (terminale di Claude Code)', PLUGIN_INSTALL)}
-        ${this.copyRow('Indirizzo da dare all\'installazione', this.base())}
-        <p class="note">Alla prima accensione Claude apre questa pagina per il consenso. Personalità, istruzioni e ricordi
-          arrivano da Hestia; quello che Claude impara di te torna nella pagina Memoria.</p>
+      <hxk-card heading=${tr("Hestia dentro Claude Code")} subtitle=${tr("Una barra sopra il prompt: la accendi solo quando vuoi")}>
+        ${this.copyRow(tr('Installa (terminale di Claude Code)'), PLUGIN_INSTALL)}
+        ${this.copyRow(tr('Indirizzo da dare all\'installazione'), this.base())}
+        <p class="note">${tr("Alla prima accensione Claude apre questa pagina per il consenso. Personalità, istruzioni e ricordi arrivano da Hestia; quello che Claude impara di te torna nella pagina Memoria.")}</p>
       </hxk-card>
       ${this.renderOutbound()}
     </div>`;

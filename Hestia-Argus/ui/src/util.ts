@@ -1,13 +1,13 @@
-import { css } from '@hestia/webui-sdk';
+import { css, tr } from '@hestia/webui-sdk';
 
 export const API = '/api/argus';
 
 export const STATUS: Record<string, [string, string]> = {
-  up: ['success', 'ok'], degraded: ['warning', 'degradato'], down: ['danger', 'giù'],
+  up: ['success', 'ok'], degraded: ['warning', 'degradato'], down: ['danger', tr('giù')],
 };
 
 export function statusOf(s?: string | null): [string, string] {
-  return (s && STATUS[s]) || ['neutral', s || 'nessun dato'];
+  return (s && STATUS[s]) || ['neutral', s || tr('nessun dato')];
 }
 
 /** epoch seconds → "12 s fa" / "5 min fa" / date. */

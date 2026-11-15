@@ -465,4 +465,6 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    `SettingsClient.follow_personal()` → `hestia_common.i18n` (process reader) → `tr("Testo")` looks up
    `locales/<lang>/messages.json` (fallback English, then the Italian source) → Telegram buttons, cards, keyboard,
    commands, and every module's notices, error details and cards; Themis serves setting texts translated. Model
-   text stays English in code; tool people texts come from `locales/<lang>/tools.json`.
+   text stays English in code; tool people texts come from `locales/<lang>/tools.json`. WebUI: `index.html` →
+   `/api/webui/i18n.js` → Hub → Themis `/api/settings/i18n` → `globalThis.__hestiaI18n` → Angular `tr`/`| tr`
+   and the SDK `tr` in every plugin; saving «Lingua» reloads the page.

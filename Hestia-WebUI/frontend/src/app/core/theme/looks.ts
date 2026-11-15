@@ -1,3 +1,4 @@
+import { tr } from '../i18n';
 /**
  * Interface styles — the second axis of the look, independent from the colour theme (themes.ts).
  *
@@ -24,15 +25,15 @@ export interface StyleDef {
 
 export const STYLES: StyleDef[] = [
   {
-    id: 'classico', label: 'Classico', help: 'Caldo e tranquillo: titoli con le grazie, angoli morbidi, superfici piene.',
+    id: 'classico', label: tr('Classico'), help: tr('Caldo e tranquillo: titoli con le grazie, angoli morbidi, superfici piene.'),
     knobs: { corners: 'normali', borders: 'normali', glass: 'no', motion: 'normali' }, tokens: {},
   },
   {
-    id: 'vetro', label: 'Vetro', help: 'Leggero: pannelli trasparenti e sfocati su uno sfondo sfumato, angoli più tondi, animazioni vive.',
+    id: 'vetro', label: tr('Vetro'), help: tr('Leggero: pannelli trasparenti e sfocati su uno sfondo sfumato, angoli più tondi, animazioni vive.'),
     knobs: { corners: 'arrotondati', borders: 'leggeri', glass: 'vetro', motion: 'vivaci' }, tokens: {},
   },
   {
-    id: 'netto', label: 'Netto', help: 'Preciso: tutto senza grazie, angoli quasi dritti, bordi marcati e niente ombre.',
+    id: 'netto', label: tr('Netto'), help: tr('Preciso: tutto senza grazie, angoli quasi dritti, bordi marcati e niente ombre.'),
     knobs: { corners: 'squadrati', borders: 'marcati', glass: 'no', motion: 'ridotte' },
     tokens: {
       '--font-serif': 'var(--font-sans)', '--font-chat': 'var(--font-sans)',
@@ -66,8 +67,8 @@ export const GLASS: Record<Glass, { surface: number; subtle: number; surface2: n
 
 /** Labels for the settings page. */
 export const KNOB_OPTIONS = {
-  corners: [{ value: 'squadrati', label: 'Squadrati' }, { value: 'normali', label: 'Normali' }, { value: 'arrotondati', label: 'Arrotondati' }],
-  borders: [{ value: 'leggeri', label: 'Leggeri' }, { value: 'normali', label: 'Normali' }, { value: 'marcati', label: 'Marcati' }],
-  glass: [{ value: 'no', label: 'Nessuna' }, { value: 'leggera', label: 'Leggera' }, { value: 'vetro', label: 'Vetro' }],
-  motion: [{ value: 'nessuna', label: 'Nessuna' }, { value: 'ridotte', label: 'Ridotte' }, { value: 'normali', label: 'Normali' }, { value: 'vivaci', label: 'Vivaci' }],
+  corners: [{ value: 'squadrati', label: tr('Squadrati') }, { value: 'normali', label: tr('Normali') }, { value: 'arrotondati', label: tr('Arrotondati') }],
+  borders: [{ value: 'leggeri', label: tr('Leggeri') }, { value: 'normali', label: tr('Normali') }, { value: 'marcati', label: tr('Marcati') }],
+  glass: [{ value: 'no', label: tr('Nessuna') }, { value: 'leggera', label: tr('Leggera') }, { value: 'vetro', label: tr('Vetro') }],
+  motion: [{ value: 'nessuna', label: tr('Nessuna') }, { value: 'ridotte', label: tr('Ridotte') }, { value: 'normali', label: tr('Normali') }, { value: 'vivaci', label: tr('Vivaci') }],
 } as const;

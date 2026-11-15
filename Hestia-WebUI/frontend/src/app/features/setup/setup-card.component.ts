@@ -2,19 +2,20 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { SetupApi, SetupState } from './setup.api';
+import { TrPipe } from '../../core/i18n';
 
 const LABELS: Record<string, string> = { cervello: 'cervello', voce: 'voce', telegram: 'Telegram', backup: 'backup', esterni: 'account esterni' };
 
 /** Home card «Da finire»: what the guided setup left for later (no nag, it just stays here until done). */
 @Component({
   selector: 'hx-setup-card',
-  imports: [...UI, RouterLink],
+  imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (open().length) {
       <a class="card hx-card" routerLink="/setup">
         <hx-icon name="sparkle" [size]="18" tone="accent" />
-        <span class="t"><b>Da finire</b><small>{{ open().join(' · ') }}</small></span>
+        <span class="t"><b>{{ "Da finire" | tr }}</b><small>{{ open().join(' · ') }}</small></span>
         <hx-icon name="chevron-right" [size]="16" tone="muted" />
       </a>
     }`,

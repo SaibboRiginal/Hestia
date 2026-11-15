@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { tr } from '../../core/i18n';
 
 /** Guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click §4.2): browser → WebUI → Hub → Hephaestus. */
 export interface SetupState {
@@ -113,9 +114,9 @@ export class SetupApi {
 
 /** Plain words for an HTTP error of these endpoints. */
 export function setupError(e: any): string {
-  if (e?.status === 0) return 'Hestia non risponde: controlla che sia accesa.';
+  if (e?.status === 0) return tr('Hestia non risponde: controlla che sia accesa.');
   const d = e?.error?.detail;
   if (typeof d === 'string' && d) return d.replace(/^\d+$/, 'Qualcosa non ha funzionato.');
-  if (Array.isArray(d)) return 'Controlla il valore inserito.';
-  return 'Qualcosa non ha funzionato, riprova tra poco.';
+  if (Array.isArray(d)) return tr('Controlla il valore inserito.');
+  return tr('Qualcosa non ha funzionato, riprova tra poco.');
 }

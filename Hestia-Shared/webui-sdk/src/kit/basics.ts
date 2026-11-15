@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing, svg } from 'lit';
 import { kitStyles, toneColor, tokens } from '../styles';
+import { tr } from '../i18n';
 
 /** Small inline icon set (stroke icons, same style as the WebUI hx-icon). */
 const ICONS: Record<string, string> = {
@@ -249,12 +250,12 @@ export class HxkState extends LitElement {
     .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
   `];
   render() {
-    const def = { loading: 'Carico…', empty: 'Niente da mostrare', error: 'Qualcosa è andato storto', offline: 'Modulo non raggiungibile' }[this.kind];
+    const def = { loading: 'Carico…', empty: tr('Niente da mostrare'), error: tr('Qualcosa è andato storto'), offline: tr('Modulo non raggiungibile') }[this.kind];
     const icon = { loading: 'refresh', empty: 'search', error: 'x', offline: 'offline' }[this.kind];
     return html`<hxk-icon name=${icon} size="20" class=${this.kind === 'loading' ? 'spin' : ''}></hxk-icon>
       <div>${this.text || def}</div>
       ${this.kind === 'error' || this.kind === 'offline'
-        ? html`<hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.dispatchEvent(new CustomEvent('retry', { bubbles: true, composed: true }))}>Riprova</hxk-button>`
+        ? html`<hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.dispatchEvent(new CustomEvent('retry', { bubbles: true, composed: true }))}>${tr("Riprova")}</hxk-button>`
         : nothing}`;
   }
 }

@@ -4,6 +4,7 @@
  */
 import type { HestiaHost } from '@hestia/webui-sdk';
 import { API } from '../util';
+import { tr } from '@hestia/webui-sdk';
 
 export const REPO = `${API}/repo`;
 
@@ -76,29 +77,29 @@ export const CLOSED: string[] = ['merged', 'deployed', 'failed', 'rejected', 'ro
 
 export const STATE_META: Record<string, { label: string; tone: string }> = {
   new: { label: 'nuovo', tone: 'neutral' },
-  proposed: { label: 'da approvare', tone: 'warning' },
+  proposed: { label: tr('da approvare'), tone: 'warning' },
   scheduled: { label: 'programmato', tone: 'info' },
-  queued: { label: 'in coda', tone: 'info' },
-  running: { label: 'in lavorazione', tone: 'accent' },
+  queued: { label: tr('in coda'), tone: 'info' },
+  running: { label: tr('in lavorazione'), tone: 'accent' },
   reviewing: { label: 'revisione automatica', tone: 'accent' },
-  waiting_limit: { label: 'attende il limite di Claude', tone: 'info' },
-  awaiting_review: { label: 'diff da rivedere', tone: 'warning' },
-  approved: { label: 'merge in corso', tone: 'accent' },
-  merging: { label: 'merge in corso', tone: 'accent' },
+  waiting_limit: { label: tr('attende il limite di Claude'), tone: 'info' },
+  awaiting_review: { label: tr('diff da rivedere'), tone: 'warning' },
+  approved: { label: tr('merge in corso'), tone: 'accent' },
+  merging: { label: tr('merge in corso'), tone: 'accent' },
   merged: { label: 'applicato', tone: 'success' },
-  deployed: { label: 'in produzione', tone: 'success' },
+  deployed: { label: tr('in produzione'), tone: 'success' },
   failed: { label: 'fallito', tone: 'danger' },
   rejected: { label: 'rifiutato', tone: 'neutral' },
   rolled_back: { label: 'annullato (rollback)', tone: 'neutral' },
-  no_changes: { label: 'nessuna modifica', tone: 'neutral' },
+  no_changes: { label: tr('nessuna modifica'), tone: 'neutral' },
 };
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
 
 export const ENGINES = ['', 'oracle', 'claude'];
 // oracle = Oracle's chain of use case forge.codice (Cervello → Modelli); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
-  '': 'Predefinito', auto: 'Predefinito', oracle: 'Catena di Oracle', local: 'Catena di Oracle', cloud: 'Catena di Oracle',
-  claude: 'Claude Code',
+  '': tr('Predefinito'), auto: tr('Predefinito'), oracle: tr('Catena di Oracle'), local: tr('Catena di Oracle'), cloud: tr('Catena di Oracle'),
+  claude: tr('Claude Code'),
 };
 export const engineLabel = (e: string) => ENGINE_LABEL[e] ?? e;
 export const engineOf = (t: ForgeTask) => ENGINE_LABEL[t.engine || t.engine_requested || ''] ?? t.engine ?? '—';
@@ -106,8 +107,8 @@ export const engineOf = (t: ForgeTask) => ENGINE_LABEL[t.engine || t.engine_requ
 /** Who asked for a task (Forge ``source``): you, or a module that proposed it on its own. */
 export const USER_SOURCES = ['user', 'telegram', 'ui', 'oracle'];
 const SOURCE_LABEL: Record<string, string> = {
-  user: 'Tu', telegram: 'Tu (Telegram)', ui: 'Tu (WebUI)', oracle: 'Tu (chat)', external: 'AI esterna',
-  athena: 'Athena', argus: 'Argus', 'hephaestus.remediation': 'Riparazioni', metis: 'Metis',
+  user: 'Tu', telegram: tr('Tu (Telegram)'), ui: tr('Tu (WebUI)'), oracle: tr('Tu (chat)'), external: tr('AI esterna'),
+  athena: 'Athena', argus: 'Argus', 'hephaestus.remediation': tr('Riparazioni'), metis: 'Metis',
 };
 export const sourceLabel = (source?: string) => SOURCE_LABEL[source || 'user'] ?? (source || 'Tu');
 export const byModule = (t: ForgeTask) => !USER_SOURCES.includes(t.source || 'user');
@@ -151,7 +152,7 @@ export async function call<T = any>(host: HestiaHost, method: 'GET' | 'POST', pa
   const r = await host.api<T>(method, path, opts);
   if (!r.ok) {
     const offline = r.status === 0 || r.error === 'offline' || r.error === 'unreachable';
-    throw new ApiError(offline ? 'Hephaestus non raggiungibile' : (r.error || `Errore ${r.status}`), r.status);
+    throw new ApiError(offline ? tr('Hephaestus non raggiungibile') : (r.error || tr("Errore {0}", r.status)), r.status);
   }
   return r.data;
 }

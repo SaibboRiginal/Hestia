@@ -5,6 +5,7 @@ import { filter, map } from 'rxjs';
 import { IconComponent, ToastService } from '../ui';
 import { AssistantService } from '../services/assistant.service';
 import { LiveVoiceService } from '../services/live-voice.service';
+import { TrPipe } from '../core/i18n';
 
 /**
  * The bubble at the bottom right of every page (docs/work/2026-11-13-sidebar-e-chat §3.4): the two ways to reach the
@@ -15,7 +16,7 @@ import { LiveVoiceService } from '../services/live-voice.service';
  */
 @Component({
   selector: 'hx-quick-bubble',
-  imports: [IconComponent],
+  imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (shown()) {
@@ -24,16 +25,16 @@ import { LiveVoiceService } from '../services/live-voice.service';
           <div class="acts hx-fade-in" role="menu">
             <button type="button" role="menuitem" (click)="write()">
               <hx-icon name="edit" [size]="18" />
-              <span><b>Scrivi qui</b><i>Chiedi o fai fare qualcosa su questa pagina, senza lasciarla</i></span><kbd>Ctrl J</kbd>
+              <span><b>{{ "Scrivi qui" | tr }}</b><i>{{ "Chiedi o fai fare qualcosa su questa pagina, senza lasciarla" | tr }}</i></span><kbd>{{ "Ctrl J" | tr }}</kbd>
             </button>
             <button type="button" role="menuitem" (click)="talk()">
               <hx-icon name="waveform" [size]="18" />
-              <span><b>{{ live.on ? 'Ferma Parla' : 'Parla' }}</b><i>Conversazione a voce: parli e ti risponde a voce, anche mentre cambi pagina</i></span>
+              <span><b>{{ live.on ? ('Ferma Parla' | tr) : ('Parla' | tr) }}</b><i>{{ "Conversazione a voce: parli e ti risponde a voce, anche mentre cambi pagina" | tr }}</i></span>
             </button>
           </div>
         }
         <button type="button" class="fab" [class.live]="live.on" (click)="toggle($event)" aria-haspopup="menu" [attr.aria-expanded]="open()"
-                aria-label="Scrivi o parla con l'assistente" title="Scrivi o parla con l'assistente">
+                 [attr.aria-label]="'Scrivi o parla con l\\'assistente' | tr"  [title]="'Scrivi o parla con l\\'assistente' | tr">
           <hx-icon [name]="open() ? 'x' : live.on ? 'waveform' : 'sparkle'" [size]="22" />
         </button>
       </div>

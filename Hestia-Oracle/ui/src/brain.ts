@@ -4,7 +4,7 @@
  * Reads GET /api/ui/activity · /api/ui/stats · /api/ui/code. Numbers are counted since Oracle started (in memory).
  * Tabs «Uso» (<oracle-usage>, calls kept in Archive) and «Modelli» (<oracle-models>, providers/chains/use cases).
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, ROUTES, ago, cost, dayLabel, ms, num, when } from './util';
 
 export class OracleBrain extends HestiaElement {
@@ -55,7 +55,7 @@ export class OracleBrain extends HestiaElement {
       this.host.api('GET', `${API}/code`),
     ]);
     this.loading = false;
-    if (!a.ok && !s.ok) { this.error = a.status === 0 ? 'Oracle non raggiungibile' : a.error || 'Oracle non raggiungibile'; return; }
+    if (!a.ok && !s.ok) { this.error = a.status === 0 ? tr('Oracle non raggiungibile') : a.error || tr('Oracle non raggiungibile'); return; }
     this.error = '';
     this.activity = a.ok ? a.data : null;
     this.stats = s.ok ? s.data : null;
@@ -66,10 +66,10 @@ export class OracleBrain extends HestiaElement {
     const t = this.stats?.today || {};
     const turnsToday = (this.activity?.turns || []).filter((r: any) => new Date(r.at * 1000).toDateString() === new Date().toDateString()).length;
     return html`<hxk-stat .items=${[
-      { label: 'Richieste oggi', value: turnsToday, hint: 'Chat concluse oggi (ultime 40 viste)' },
-      { label: 'Chiamate ai modelli', value: num(t.calls) },
-      { label: 'Token in / out', value: `${num(t.input_tokens)} / ${num(t.output_tokens)}` },
-      { label: 'Costo oggi', value: cost(t.cost_usd), hint: 'Solo provider cloud che riportano il costo' },
+      { label: tr('Richieste oggi'), value: turnsToday, hint: tr('Chat concluse oggi (ultime 40 viste)') },
+      { label: tr('Chiamate ai modelli'), value: num(t.calls) },
+      { label: tr('Token in / out'), value: `${num(t.input_tokens)} / ${num(t.output_tokens)}` },
+      { label: tr('Costo oggi'), value: cost(t.cost_usd), hint: tr('Solo provider cloud che riportano il costo') },
     ]}></hxk-stat>`;
   }
 
@@ -78,37 +78,37 @@ export class OracleBrain extends HestiaElement {
     if (!days.length) return nothing;
     const labels = days.map(d => dayLabel(d.day));
     const anyCost = days.some(d => d.cost_usd > 0);
-    return html`<hxk-card heading="Token per giorno" subtitle="Ultimi 14 giorni · da quando Oracle è partito il ${when(this.stats.since)}">
-      <hxk-chart type="bar" unit="token" .labels=${labels} .series=${[
-        { name: 'In ingresso', values: days.map(d => d.input_tokens) },
-        { name: 'In uscita', values: days.map(d => d.output_tokens) },
+    return html`<hxk-card heading=${tr("Token per giorno")} subtitle="Ultimi 14 giorni · da quando Oracle è partito il ${when(this.stats.since)}">
+      <hxk-chart type="bar" unit=${tr("token")} .labels=${labels} .series=${[
+        { name: tr('In ingresso'), values: days.map(d => d.input_tokens) },
+        { name: tr('In uscita'), values: days.map(d => d.output_tokens) },
       ]}></hxk-chart>
-      ${anyCost ? html`<div style="margin-top:10px"><div class="small muted">Costo ($)</div>
-        <hxk-chart type="line" unit="$" .height=${110} .labels=${labels} .series=${[{ name: 'Costo', values: days.map(d => d.cost_usd) }]}></hxk-chart></div>` : nothing}
+      ${anyCost ? html`<div style="margin-top:10px"><div class="small muted">${tr("Costo ($)")}</div>
+        <hxk-chart type="line" unit="$" .height=${110} .labels=${labels} .series=${[{ name: tr('Costo'), values: days.map(d => d.cost_usd) }]}></hxk-chart></div>` : nothing}
     </hxk-card>`;
   }
 
   private renderToday() {
     const rows: any[] = this.stats?.today_by_model || [];
-    return html`<hxk-card heading="Oggi per caso d'uso e modello">
+    return html`<hxk-card heading=${tr("Oggi per caso d'uso e modello")}>
       ${rows.length ? rows.map(r => html`<div class="row2"><div class="grow">
           <div class="truncate"><b>${r.label || r.use_case}</b></div>
           <div class="small muted truncate">${r.provider} · ${r.model}</div></div>
-        <div class="num"><div>${num(r.calls)} chiamate</div>
-          <div class="small muted">${num(r.input_tokens)} / ${num(r.output_tokens)} token${r.cost_usd ? ` · ${cost(r.cost_usd)}` : ''}</div></div></div>`)
-        : html`<hxk-state kind="empty" text="Nessuna chiamata ai modelli oggi."></hxk-state>`}
+        <div class="num"><div>${num(r.calls)} ${tr("chiamate")}</div>
+          <div class="small muted">${num(r.input_tokens)} / ${num(r.output_tokens)} ${tr("token")}${r.cost_usd ? ` · ${cost(r.cost_usd)}` : ''}</div></div></div>`)
+        : html`<hxk-state kind="empty" text=${tr("Nessuna chiamata ai modelli oggi.")}></hxk-state>`}
     </hxk-card>`;
   }
 
   private renderUseCases() {
     const rows: any[] = this.stats?.use_cases || [];
     if (!rows.length) return nothing;
-    return html`<hxk-card heading="Come rispondono i modelli" subtitle="Media delle ultime chiamate per caso d'uso">
+    return html`<hxk-card heading=${tr("Come rispondono i modelli")} subtitle=${tr("Media delle ultime chiamate per caso d'uso")}>
       ${rows.map(r => html`<div class="row2"><div class="grow">
-          <div class="truncate"><b>${r.label || r.use_case}</b> <span class="small muted">${r.calls} chiamate</span></div>
+          <div class="truncate"><b>${r.label || r.use_case}</b> <span class="small muted">${r.calls} ${tr("chiamate")}</span></div>
           <div class="small muted truncate">${r.provider} · ${r.model}</div></div>
-        <div class="num small"><div>prompt ~${num(r.avg_prompt_tokens)} token · cache ${r.cache_hit_pct}%${r.cache_estimated ? '≈' : ''}</div>
-          <div class="muted">${r.tokens_per_second ? `${r.tokens_per_second} token/s · ` : ''}${r.avg_load_ms ? `caricamento ${ms(r.avg_load_ms)} · ` : ''}ultima ${when(r.last_at)}</div></div></div>`)}
+        <div class="num small"><div>${"prompt ~"}${num(r.avg_prompt_tokens)} ${tr("token · cache")} ${r.cache_hit_pct}%${r.cache_estimated ? '≈' : ''}</div>
+          <div class="muted">${r.tokens_per_second ? `${r.tokens_per_second} token/s · ` : ''}${r.avg_load_ms ? tr("caricamento {0} · ", ms(r.avg_load_ms)) : ''}${tr("ultima")} ${when(r.last_at)}</div></div></div>`)}
     </hxk-card>`;
   }
 
@@ -122,42 +122,42 @@ export class OracleBrain extends HestiaElement {
         <span class="grow"></span><span class="small muted num">${ms(t.ms)}</span></div>
       ${t.preview ? html`<div class="preview" title=${t.preview}>${t.preview}</div>` : nothing}
       ${(t.tools || []).length ? html`<div class="line">${t.tools.map((x: any) => html`<span class=${x.ok ? (x.writes ? 'chip w' : 'chip') : 'chip ko'}
-          title=${x.ok ? (x.writes ? 'ha modificato qualcosa' : 'lettura') : 'non riuscito'}>${x.ok ? '' : html`<hxk-icon name="x" size=${11}></hxk-icon> `}${x.tool}</span>`)}</div>` : nothing}
+          title=${x.ok ? (x.writes ? tr('ha modificato qualcosa') : 'lettura') : tr('non riuscito')}>${x.ok ? '' : html`<hxk-icon name="x" size=${11}></hxk-icon> `}${x.tool}</span>`)}</div>` : nothing}
       <div class="small muted">${t.provider} · ${t.model}${t.usage?.calls ? ` · ${t.usage.calls} chiamate · ${num(t.usage.input_tokens)} / ${num(t.usage.output_tokens)} token` : ''}${t.usage?.cost_usd ? ` · ${cost(t.usage.cost_usd)}` : ''}</div>
     </div>`;
   }
 
   private renderActivity() {
     const a = this.activity;
-    if (!a) return html`<hxk-card heading="Ultime richieste"><hxk-state kind="error" text="Attività non disponibile"></hxk-state></hxk-card>`;
+    if (!a) return html`<hxk-card heading=${tr("Ultime richieste")}><hxk-state kind="error" text=${tr("Attività non disponibile")}></hxk-state></hxk-card>`;
     const turns: any[] = a.turns || [];
-    return html`<hxk-card heading="Ultime richieste" subtitle="Ultima chat dell'utente: ${ago(a.idle_seconds)}">
+    return html`<hxk-card heading=${tr("Ultime richieste")} subtitle="Ultima chat dell'utente: ${ago(a.idle_seconds)}">
       ${turns.length ? turns.map(t => this.renderTurn(t))
-        : html`<hxk-state kind="empty" text="Nessuna richiesta da quando Oracle è partito."></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("Nessuna richiesta da quando Oracle è partito.")}></hxk-state>`}
     </hxk-card>`;
   }
 
   private renderCode() {
     const c = this.code;
-    if (!c) return html`<hxk-card heading="Claude Code"><hxk-state kind="error" text="Stato non disponibile"></hxk-state></hxk-card>`;
+    if (!c) return html`<hxk-card heading=${tr("Claude Code")}><hxk-state kind="error" text=${tr("Stato non disponibile")}></hxk-state></hxk-card>`;
     const runs: any[] = c.runs || [];
-    return html`<hxk-card heading="Claude Code" subtitle="Motore di sviluppo (abbonamento Claude)">
+    return html`<hxk-card heading=${tr("Claude Code")} subtitle=${tr("Motore di sviluppo (abbonamento Claude)")}>
       <div class="line" style="margin-bottom:8px">
-        <hxk-badge tone=${c.available ? 'success' : 'warning'}>${c.available ? 'pronto' : 'non pronto'}</hxk-badge>
-        ${c.available && c.model ? html`<span class="chip">modello ${c.model}</span>` : nothing}
-        ${c.running ? html`<hxk-badge tone="info">${c.running} in corso</hxk-badge>` : nothing}</div>
+        <hxk-badge tone=${c.available ? 'success' : 'warning'}>${c.available ? 'pronto' : tr('non pronto')}</hxk-badge>
+        ${c.available && c.model ? html`<span class="chip">${tr("modello")} ${c.model}</span>` : nothing}
+        ${c.running ? html`<hxk-badge tone="info">${c.running} ${tr("in corso")}</hxk-badge>` : nothing}</div>
       ${c.available ? nothing : html`<div class="note">${c.detail}</div>`}
       ${runs.map(r => html`<div class="row2"><div class="grow"><div class="truncate">${r.task || 'task'}</div>
           <div class="small muted">${when(r.started_at)}${r.error ? ` · ${r.error}` : ''}</div></div>
-        <div class="num small">${r.state === 'running' ? html`<hxk-badge tone="info">in corso</hxk-badge>`
+        <div class="num small">${r.state === 'running' ? html`<hxk-badge tone="info">${tr("in corso")}</hxk-badge>`
           : html`<hxk-badge tone=${r.ok ? 'success' : 'danger'}>${r.ok ? 'ok' : 'fallito'}</hxk-badge>`}
           <div class="muted">${r.state === 'running' ? '' : `${ms(r.ms)} · ${r.turns} turni${r.cost_usd ? ` · ${cost(r.cost_usd)}` : ''}`}</div></div></div>`)}
-      ${!runs.length && c.available ? html`<div class="note">Nessun lavoro da quando Oracle è partito.</div>` : nothing}
+      ${!runs.length && c.available ? html`<div class="note">${tr("Nessun lavoro da quando Oracle è partito.")}</div>` : nothing}
     </hxk-card>`;
   }
 
   private tabs() {
-    const items = [['attivita', 'Attività'], ['uso', 'Uso'], ['modelli', 'Modelli']];
+    const items = [['attivita', tr('Attività')], ['uso', tr('Uso')], ['modelli', tr('Modelli')]];
     return html`<div class="tabs" role="tablist">${items.map(([id, label]) => html`<button role="tab" aria-selected=${this.tab === id}
       @click=${() => { this.tab = id; }}>${label}</button>`)}</div>`;
   }
@@ -170,13 +170,13 @@ export class OracleBrain extends HestiaElement {
         <div class="col" style="gap:16px">${this.renderActivity()}</div>
         <div class="col" style="gap:16px">${this.renderDays()}${this.stats ? this.renderToday() : nothing}${this.renderUseCases()}${this.renderCode()}</div>
       </div>
-      <p class="note">I numeri di questa scheda sono in memoria: si azzerano quando Oracle riparte. La scheda Uso li conserva.</p>`;
+      <p class="note">${tr("I numeri di questa scheda sono in memoria: si azzerano quando Oracle riparte. La scheda Uso li conserva.")}</p>`;
   }
 
   render() {
     return html`<div class="page">
-      <div class="head"><h1>Richieste e modelli</h1><span class="sub">Cosa fa l'assistente: richieste, modelli, token</span><span class="grow"></span>
-        ${this.tab === 'attivita' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>Aggiorna</hxk-button>` : nothing}</div>
+      <div class="head"><h1>${tr("Richieste e modelli")}</h1><span class="sub">${tr("Cosa fa l'assistente: richieste, modelli, token")}</span><span class="grow"></span>
+        ${this.tab === 'attivita' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>${tr("Aggiorna")}</hxk-button>` : nothing}</div>
       ${this.tabs()}
       ${this.tab === 'uso' ? html`<oracle-usage .host=${this.host}></oracle-usage>`
         : this.tab === 'modelli' ? html`<oracle-models .host=${this.host}></oracle-models>` : this.activityTab()}

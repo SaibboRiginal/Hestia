@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { UI } from '../../ui';
 import { MetisService, ScopriItem } from '../../services/metis.service';
+import { tr, TrPipe } from '../../core/i18n';
 
 /**
  * «Scopri» (dossier 2026-10-24-tutto-brainstorm-cindy C14, W7): the things Hestia can do that you never or rarely
@@ -8,22 +9,22 @@ import { MetisService, ScopriItem } from '../../services/metis.service';
  */
 @Component({
   selector: 'app-scopri-page',
-  imports: [...UI],
+  imports: [TrPipe, ...UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header title="Scopri" [subtitle]="subtitle()">
-      <button hx-btn variant="ghost" size="sm" icon="refresh" [loading]="loading()" (click)="load()">Aggiorna</button>
+    <hx-page-header  [title]="'Scopri' | tr" [subtitle]="subtitle()">
+      <button hx-btn variant="ghost" size="sm" icon="refresh" [loading]="loading()" (click)="load()">{{ "Aggiorna" | tr }}</button>
     </hx-page-header>
     <div class="body">
       <div class="search"><hx-icon name="search" [size]="15" />
-        <input class="hx-input" placeholder="Cerca tra le funzioni" [value]="query()" (input)="query.set($any($event.target).value)" aria-label="Cerca"></div>
+        <input class="hx-input"  [placeholder]="'Cerca tra le funzioni' | tr" [value]="query()" (input)="query.set($any($event.target).value)"  [attr.aria-label]="'Cerca' | tr"></div>
       @if (loading() && !items().length) {
         <div class="center"><hx-spinner /></div>
       } @else if (error()) {
-        <hx-empty icon="offline" title="Non disponibile">Riprova tra poco.
-          <button hx-btn size="sm" icon="refresh" (click)="load()">Riprova</button></hx-empty>
+        <hx-empty icon="offline"  [title]="'Non disponibile' | tr">{{ "Riprova tra poco." | tr }}
+          <button hx-btn size="sm" icon="refresh" (click)="load()">{{ "Riprova" | tr }}</button></hx-empty>
       } @else if (!shown().length) {
-        <hx-empty icon="check-circle" title="Hai già provato tutto">{{ query() ? 'Niente con queste parole.' : 'Quando arrivano funzioni nuove le trovi qui.' }}</hx-empty>
+        <hx-empty icon="check-circle"  [title]="'Hai già provato tutto' | tr">{{ query() ? ('Niente con queste parole.' | tr) : ('Quando arrivano funzioni nuove le trovi qui.' | tr) }}</hx-empty>
       } @else {
         @for (g of groups(); track g.key) {
           <section>
@@ -34,8 +35,8 @@ import { MetisService, ScopriItem } from '../../services/metis.service';
                   <div class="t">{{ it.title }}</div>
                   @if (it.description) { <div class="d">{{ it.description }}</div> }
                   <div class="f">
-                    <span class="r">{{ it.reason || (it.uses ? 'Usata ' + it.uses + (it.uses === 1 ? ' volta' : ' volte') : 'Mai usata') }}</span>
-                    <button hx-btn size="sm" variant="primary" icon="play" (click)="metis.open(it.tool, {}, it.title)">Prova</button>
+                    <span class="r">{{ it.reason || (it.uses ? ('Usata ' | tr) + it.uses + (it.uses === 1 ? ' volta' : ' volte') : ('Mai usata' | tr)) }}</span>
+                    <button hx-btn size="sm" variant="primary" icon="play" (click)="metis.open(it.tool, {}, it.title)">{{ "Prova" | tr }}</button>
                   </div>
                 </article>
               }
@@ -79,11 +80,11 @@ export class ScopriPageComponent implements OnInit {
   readonly groups = computed(() => {
     const by = new Map<string, ScopriItem[]>();
     for (const it of this.shown()) { const k = it.area || 'altro'; by.set(k, [...(by.get(k) ?? []), it]); }
-    return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || 'Altro',
+    return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || tr('Altro'),
       icon: items[0].area_icon || 'puzzle', order: items[0].area_order ?? 999 }))
       .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
   });
-  readonly subtitle = computed(() => this.total() ? `${this.total()} cose da provare` : 'Quello che sai fare con Hestia e non hai ancora provato');
+  readonly subtitle = computed(() => this.total() ? tr("{0} cose da provare", this.total()) : tr('Quello che sai fare con Hestia e non hai ancora provato'));
 
   ngOnInit(): void { void this.load(); }
 

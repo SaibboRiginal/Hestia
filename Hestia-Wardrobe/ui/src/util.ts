@@ -1,5 +1,5 @@
 /** Wardrobe UI helpers: API calls, meta cache, labels, photo URLs and shared styles. */
-import { HestiaElement, css, html, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, css, html, nothing, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 export const API = '/api/wardrobe';
@@ -25,7 +25,7 @@ export function resetMeta() { _meta = null; }
 
 export async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string, body?: unknown, query?: Record<string, any>): Promise<ApiResult<T>> {
   const r = await host.api<T>(method, `${API}${path}`, { body, query });
-  if (!r.ok) host.toast(r.status === 0 ? 'Sei offline: riprova quando torni in linea' : (r.error || (r.data as any)?.detail || `Errore ${r.status}`), 'danger');
+  if (!r.ok) host.toast(r.status === 0 ? tr('Sei offline: riprova quando torni in linea') : (r.error || (r.data as any)?.detail || tr("Errore {0}", r.status)), 'danger');
   return r;
 }
 
@@ -48,14 +48,14 @@ export function localDay(d = new Date()): string {
 export function dayLabel(iso?: string | null): string {
   if (!iso) return '';
   const t = localDay(), y = localDay(new Date(Date.now() - 86400000));
-  if (iso.slice(0, 10) === t) return 'Oggi';
-  if (iso.slice(0, 10) === y) return 'Ieri';
+  if (iso.slice(0, 10) === t) return tr('Oggi');
+  if (iso.slice(0, 10) === y) return tr('Ieri');
   return new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
 }
 export function relDays(iso?: string | null): string {
-  if (!iso) return 'mai segnato';
+  if (!iso) return tr('mai segnato');
   const days = Math.round((Date.parse(localDay() + 'T12:00:00') - Date.parse(iso.slice(0, 10) + 'T12:00:00')) / 86400000);
-  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? `${days} giorni fa` : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
+  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} giorni fa", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
 }
 export const money = (v: number | null | undefined, cur = 'EUR') =>
   v === null || v === undefined ? '–' : new Intl.NumberFormat('it-IT', { style: 'currency', currency: cur || 'EUR', maximumFractionDigits: v % 1 ? 2 : 0 }).format(v);

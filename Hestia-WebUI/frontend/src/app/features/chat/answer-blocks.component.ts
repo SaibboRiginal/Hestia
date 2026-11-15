@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { IconComponent } from '../../ui';
+import { TrPipe } from '../../core/i18n';
 
 /** One component of a ```hestia-ui block (hestia_common.ui_blocks, Cindy 9). */
 export interface UiComp {
@@ -75,7 +76,7 @@ export function splitAnswer(content: string): AnswerPart[] {
  */
 @Component({
   selector: 'hx-answer-blocks',
-  imports: [IconComponent],
+  imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="blocks">
@@ -110,7 +111,7 @@ export function splitAnswer(content: string): AnswerPart[] {
           }
           @case ('chart') {
             <div class="chart">
-              <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img" [attr.aria-label]="b.title || 'Grafico'">
+              <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img" [attr.aria-label]="b.title || ('Grafico' | tr)">
                 @if (b.kind === 'line') {
                   <polyline [attr.points]="linePoints(b.values ?? [])" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" />
                 } @else {

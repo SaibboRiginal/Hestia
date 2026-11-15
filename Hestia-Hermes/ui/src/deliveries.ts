@@ -3,13 +3,13 @@
  * the answers, the active subscriptions and the clients reached. Read-only; the inbox is the Notifiche page.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, CLIENT_STATE, LEVEL_TONE, hermesStyles, todayStart, when } from './util';
 
 const FILTERS = [
-  { id: '', label: 'Tutte' }, { id: 'held', label: 'Trattenute' }, { id: 'quiet', label: 'Silenziose' },
-  { id: 'retracted', label: 'Ritirate' }, { id: 'failed', label: 'Fallite' }, { id: 'answered', label: 'Con risposta' },
-  { id: 'pending', label: 'In attesa' }, { id: 'superseded', label: 'Sostituite' },
+  { id: '', label: tr('Tutte') }, { id: 'held', label: tr('Trattenute') }, { id: 'quiet', label: tr('Silenziose') },
+  { id: 'retracted', label: tr('Ritirate') }, { id: 'failed', label: tr('Fallite') }, { id: 'answered', label: tr('Con risposta') },
+  { id: 'pending', label: tr('In attesa') }, { id: 'superseded', label: tr('Sostituite') },
 ];
 
 export class HermesDeliveries extends HestiaElement {
@@ -62,9 +62,9 @@ export class HermesDeliveries extends HestiaElement {
     const r = await this.host.api('GET', `${API}/deliveries`, { query });
     this.more = false;
     if (!r.ok) {
-      if (append) { this.host.toast(r.error || 'Non caricato', 'danger'); return; }
-      this.error = r.status === 0 || r.error === 'offline' || r.error === 'unreachable' ? 'Hermes non raggiungibile'
-        : r.error || 'Hermes non raggiungibile';
+      if (append) { this.host.toast(r.error || tr('Non caricato'), 'danger'); return; }
+      this.error = r.status === 0 || r.error === 'offline' || r.error === 'unreachable' ? tr('Hermes non raggiungibile')
+        : r.error || tr('Hermes non raggiungibile');
       return;
     }
     this.error = '';
@@ -90,20 +90,20 @@ export class HermesDeliveries extends HestiaElement {
   private renderStats() {
     const s = this.summary; if (!s) return nothing;
     return html`<hxk-stat .items=${[
-      { label: 'Oggi', value: s.total },
-      { label: 'Trattenute', value: s.held, hint: 'presenza: solo elenco' },
-      { label: 'Fallite', value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed ? 'da riprovare' : '' },
-      { label: 'In attesa', value: s.pending, hint: 'aspettano una risposta' },
+      { label: tr('Oggi'), value: s.total },
+      { label: tr('Trattenute'), value: s.held, hint: tr('presenza: solo elenco') },
+      { label: tr('Fallite'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed ? tr('da riprovare') : '' },
+      { label: tr('In attesa'), value: s.pending, hint: tr('aspettano una risposta') },
     ]}></hxk-stat>`;
   }
 
   private flags(n: any) {
     const f = n.flags || {};
-    return html`${f.held ? html`<hxk-badge tone="warning" title=${`Trattenuta: livello notifiche «${f.held}»${f.held_released ? ' · rilasciata nel riepilogo' : ''}`}>trattenuta${f.held_released ? ' · rilasciata' : ''}</hxk-badge>` : nothing}
-      ${f.quiet ? html`<hxk-badge tone="neutral" title="Copia in elenco senza avviso (la domanda era in chat)">silenziosa</hxk-badge>` : nothing}
-      ${f.retracted ? html`<hxk-badge tone="neutral" title="Tolta dalla chat dopo che era stata vista o gestita">ritirata</hxk-badge>` : nothing}
-      ${f.superseded ? html`<hxk-badge tone="neutral" title="Sostituita da una nuova occorrenza dello stesso promemoria">sostituita</hxk-badge>` : nothing}
-      ${f.pending ? html`<hxk-badge tone="accent">in attesa</hxk-badge>` : nothing}
+    return html`${f.held ? html`<hxk-badge tone="warning" title=${tr("Trattenuta: livello notifiche «{0}»{1}", f.held, f.held_released ? ' · rilasciata nel riepilogo' : '')}>${tr("trattenuta")}${f.held_released ? ' · rilasciata' : ''}</hxk-badge>` : nothing}
+      ${f.quiet ? html`<hxk-badge tone="neutral" title=${tr("Copia in elenco senza avviso (la domanda era in chat)")}>${tr("silenziosa")}</hxk-badge>` : nothing}
+      ${f.retracted ? html`<hxk-badge tone="neutral" title=${tr("Tolta dalla chat dopo che era stata vista o gestita")}>${tr("ritirata")}</hxk-badge>` : nothing}
+      ${f.superseded ? html`<hxk-badge tone="neutral" title=${tr("Sostituita da una nuova occorrenza dello stesso promemoria")}>${tr("sostituita")}</hxk-badge>` : nothing}
+      ${f.pending ? html`<hxk-badge tone="accent">${tr("in attesa")}</hxk-badge>` : nothing}
       ${n.repeat?.count > 1 ? html`<hxk-badge tone="info">${n.repeat.count}ª volta</hxk-badge>` : nothing}`;
   }
 
@@ -119,48 +119,48 @@ export class HermesDeliveries extends HestiaElement {
         ${clients.length ? clients.map(([name, c]) => {
           const st = CLIENT_STATE[c.state] || { text: c.state || '–', tone: 'neutral' };
           return html`<hxk-badge tone=${st.tone} title=${[when(c.at), c.attempts > 1 ? `${c.attempts} tentativi` : '', c.detail || ''].filter(Boolean).join(' · ')}>${name}: ${st.text}${c.retracted ? ' · ritirata' : ''}</hxk-badge>`;
-        }) : html`<span class="small muted">nessun client raggiunto</span>`}
-        ${n.audience === 'origin' && n.origin_client ? html`<span class="pill">solo ${n.origin_client}</span>` : nothing}
+        }) : html`<span class="small muted">${tr("nessun client raggiunto")}</span>`}
+        ${n.audience === 'origin' && n.origin_client ? html`<span class="pill">${tr("solo")} ${n.origin_client}</span>` : nothing}
         ${this.flags(n)}
       </div>
       ${n.answer ? html`<div class="small">Risposta: <b>${n.answer.label || n.answer.action_id || '–'}</b>
           ${n.answer.by ? html` da ${n.answer.by}` : nothing} · ${when(n.answer.at)}
           ${n.answer.outcome_text ? html` · <span class="muted">${n.answer.outcome_text}</span>` : nothing}</div>`
         : n.actions?.length ? html`<div class="small muted">Azioni: ${n.actions.join(' · ')}</div>` : nothing}
-      ${isOpen ? html`<div class="small muted">Tipo <code>${n.event_type}</code> · stato <code>${n.state}</code>
+      ${isOpen ? html`<div class="small muted">${tr("Tipo")} <code>${n.event_type}</code> · stato <code>${n.state}</code>
           ${n.seen?.at ? html` · vista ${when(n.seen.at)}${n.seen.by ? ` su ${n.seen.by}` : ''}` : nothing} · id <code>${n.id}</code></div>` : nothing}
-      <div><hxk-button size="sm" variant="ghost" @click=${() => (this.open = isOpen ? '' : n.id)}>${isOpen ? 'Meno' : 'Dettagli'}</hxk-button></div>
+      <div><hxk-button size="sm" variant="ghost" @click=${() => (this.open = isOpen ? '' : n.id)}>${isOpen ? tr('Meno') : tr('Dettagli')}</hxk-button></div>
     </div>`;
   }
 
   private renderSubs() {
     if (this.subs === null) return nothing;
-    return html`<hxk-card heading="Iscrizioni attive" subtitle="Quali eventi diventano notifiche e per chi">
+    return html`<hxk-card heading=${tr("Iscrizioni attive")} subtitle=${tr("Quali eventi diventano notifiche e per chi")}>
       ${this.subs.length ? this.subs.map(s => html`<div class="subrow">
           <b>${s.domain || '*'}</b> · <code>${s.event_type || '*'}</code>
-          → ${(s.channels || []).map((c: any) => c.type === 'client' ? `solo ${c.client}` : 'tutti i client').join(', ') || 'tutti i client'}
+          → ${(s.channels || []).map((c: any) => c.type === 'client' ? `solo ${c.client}` : tr('tutti i client')).join(', ') || tr('tutti i client')}
           ${Object.keys(s.filters || {}).length ? html`<div class="small muted">Filtri: ${Object.entries(s.filters).map(([k, v]) => `${k} = ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ')}</div>` : nothing}
-        </div>`) : html`<hxk-state kind="empty" text="Nessuna iscrizione attiva"></hxk-state>`}
+        </div>`) : html`<hxk-state kind="empty" text=${tr("Nessuna iscrizione attiva")}></hxk-state>`}
     </hxk-card>`;
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>Consegne</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("Consegne")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>Consegne</h1><span class="sub">Cosa è stato mandato, a chi e com'è andata</span></div>
+      <div class="head"><h1>${tr("Consegne")}</h1><span class="sub">${tr("Cosa è stato mandato, a chi e com'è andata")}</span></div>
       ${this.renderStats()}
       <div class="row wrap">
         <div class="chips grow">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.flag === f.id} @click=${() => this.setFlag(f.id)}>${f.label}</button>`)}</div>
-        ${this.clients.length ? html`<select aria-label="Client" @change=${(e: Event) => this.setClient(e)}>
-          <option value="">Tutti i client</option>${this.clients.map(c => html`<option value=${c} ?selected=${this.client === c}>${c}</option>`)}</select>` : nothing}
+        ${this.clients.length ? html`<select aria-label=${tr("Client")} @change=${(e: Event) => this.setClient(e)}>
+          <option value="">${tr("Tutti i client")}</option>${this.clients.map(c => html`<option value=${c} ?selected=${this.client === c}>${c}</option>`)}</select>` : nothing}
       </div>
       ${this.items === null ? html`<hxk-state kind="loading"></hxk-state>`
         : this.items.length ? html`<div class="card">${this.items.map(n => this.renderItem(n))}
-            ${this.next ? html`<div style="padding-top:8px"><hxk-button size="sm" ?loading=${this.more} @click=${() => this.load(true)}>Carica altre</hxk-button></div>` : nothing}</div>`
-        : html`<hxk-state kind="empty" text="Nessuna notifica con questo filtro"></hxk-state>`}
+            ${this.next ? html`<div style="padding-top:8px"><hxk-button size="sm" ?loading=${this.more} @click=${() => this.load(true)}>${tr("Carica altre")}</hxk-button></div>` : nothing}</div>`
+        : html`<hxk-state kind="empty" text=${tr("Nessuna notifica con questo filtro")}></hxk-state>`}
       <div class="sec">
         ${this.renderSubs()}
-        <p class="small muted">Client raggiunti ora: ${this.clients.length ? this.clients.join(', ') : 'nessuno'}. Le notifiche da leggere e a cui rispondere sono in Notifiche.</p>
+        <p class="small muted">${tr("Client raggiunti ora:")} ${this.clients.length ? this.clients.join(', ') : 'nessuno'}${tr(". Le notifiche da leggere e a cui rispondere sono in Notifiche.")}</p>
       </div>
     </div>`;
   }

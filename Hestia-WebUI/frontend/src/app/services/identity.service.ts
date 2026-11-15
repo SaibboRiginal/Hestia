@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { CentralSettingsApi } from '../features/settings/central-settings.api';
+import { tr } from '../core/i18n';
 
 /** Who the assistant is and whose it is, and the owner's language: five personal settings (Themis `themis.personal.*`, dossier
  * docs/work/2026-11-12-identita-e-proattivita). The pages that talk to the owner show the chosen name; the product
@@ -8,8 +9,8 @@ export interface Identity { assistant: string; gender: 'lei' | 'lui'; ownerName:
 
 /** The languages of `themis.personal.language` (notifications, recaps, messages she writes on her own). */
 export const LANGUAGES: { value: string; label: string }[] = [
-  { value: 'it', label: 'Italiano' }, { value: 'en', label: 'English' }, { value: 'de', label: 'Deutsch' },
-  { value: 'fr', label: 'Français' }, { value: 'es', label: 'Español' },
+  { value: 'it', label: tr('Italiano') }, { value: 'en', label: tr('English') }, { value: 'de', label: tr('Deutsch') },
+  { value: 'fr', label: tr('Français') }, { value: 'es', label: tr('Español') },
 ];
 const DEFAULT_LANGUAGE = 'it';
 

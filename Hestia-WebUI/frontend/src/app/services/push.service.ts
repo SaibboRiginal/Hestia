@@ -1,5 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { PluginsService } from '../features/plugins/plugins.service';
+import { tr } from '../core/i18n';
 
 export type PushState = 'unsupported' | 'unavailable' | 'denied' | 'off' | 'on' | 'busy';
 
@@ -81,7 +82,7 @@ function b64url(s: string): Uint8Array {
 /** A readable device name for the list of subscriptions (no personal data: browser + platform only). */
 function device(): string {
   const ua = navigator.userAgent;
-  const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';
-  const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
+  const browser = /Edg\//.test(ua) ? tr('Edge') : /Firefox\//.test(ua) ? tr('Firefox') : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? tr('Safari') : tr('Browser');
+  const os = /Android/.test(ua) ? tr('Android') : /iPhone|iPad/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '';
   return [browser, os].filter(Boolean).join(' su ');
 }

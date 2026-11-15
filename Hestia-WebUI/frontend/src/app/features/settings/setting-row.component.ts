@@ -4,11 +4,12 @@ import { fmt } from '../../ui/date-utils';
 import { CentralSettingsApi, HistoryRow, SettingItem } from './central-settings.api';
 import { CentralSettingsStore, isModified } from './central-settings.store';
 import { SettingControlComponent } from './setting-control.component';
+import { tr, TrPipe } from '../../core/i18n';
 
 /** Human text for a stored value (option label, sì/no…). */
 export function showValue(item: SettingItem, v: unknown): string {
   if (v === null || v === undefined) return 'predefinito';
-  if (item.type === 'bool') return v ? 'sì' : 'no';
+  if (item.type === 'bool') return v ? tr('sì') : 'no';
   const opt = item.options?.find(o => JSON.stringify(o.value) === JSON.stringify(v));
   if (opt) return opt.label;
   if (Array.isArray(v)) return v.join(', ') || '—';
@@ -18,7 +19,7 @@ export function showValue(item: SettingItem, v: unknown): string {
 }
 
 const ACTORS: Record<string, string> = {
-  webui: 'tu (WebUI)', telegram: 'tu (Telegram)', user: 'tu', oracle: 'proposta di Hestia', athena: 'proposta di Athena',
+  webui: tr('tu (WebUI)'), telegram: tr('tu (Telegram)'), user: 'tu', oracle: tr('proposta di Hestia'), athena: tr('proposta di Athena'),
 };
 
 /**
@@ -27,22 +28,22 @@ const ACTORS: Record<string, string> = {
  */
 @Component({
   selector: 'hx-setting',
-  imports: [SettingControlComponent, BadgeComponent, ButtonComponent, IconComponent, PopoverComponent, SpinnerComponent],
+  imports: [TrPipe, SettingControlComponent, BadgeComponent, ButtonComponent, IconComponent, PopoverComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let it = item();
     <div class="meta">
       <div class="lbl">
         <span>{{ it.label }}</span>
-        @if (modified()) { <hx-badge tone="accent" dot title="Diverso dal predefinito">modificato</hx-badge> }
+        @if (modified()) { <hx-badge tone="accent" dot  [title]="'Diverso dal predefinito' | tr">{{ "modificato" | tr }}</hx-badge> }
         @if (it.status === 'restart_required') {
-          <hx-badge tone="warning" dot title="Il valore salvato vale dal prossimo riavvio del modulo">riavvio necessario</hx-badge>
+          <hx-badge tone="warning" dot  [title]="'Il valore salvato vale dal prossimo riavvio del modulo' | tr">{{ "riavvio necessario" | tr }}</hx-badge>
         } @else if (it.status === 'offline') {
-          <hx-badge tone="danger" dot title="Il modulo non risponde: il valore è salvato e verrà usato quando torna">modulo offline</hx-badge>
+          <hx-badge tone="danger" dot  [title]="'Il modulo non risponde: il valore è salvato e verrà usato quando torna' | tr">{{ "modulo offline" | tr }}</hx-badge>
         } @else if (it.apply === 'restart') {
-          <hx-badge title="Cambiarlo richiede il riavvio del modulo">al riavvio</hx-badge>
+          <hx-badge  [title]="'Cambiarlo richiede il riavvio del modulo' | tr">{{ "al riavvio" | tr }}</hx-badge>
         }
-        @if (it.scope === 'user') { <hx-badge tone="info" title="Personale: profilo → client → sessione">personale</hx-badge> }
+        @if (it.scope === 'user') { <hx-badge tone="info"  [title]="'Personale: profilo → client → sessione' | tr">{{ "personale" | tr }}</hx-badge> }
       </div>
       @if (!enabled()) { <div class="dep"><hx-icon name="info" [size]="13" /> {{ store.dependencyLabel(it) }}</div> }
       @else if (it.help) { <div class="help">{{ it.help }}</div> }
@@ -52,15 +53,15 @@ const ACTORS: Record<string, string> = {
     </div>
     <div class="act">
       @if (store.saving() === it.key) { <hx-spinner [size]="14" /> }
-      <button hx-btn variant="ghost" size="sm" icon="clock" iconOnly aria-label="Cronologia e ripristino"
-              title="Cronologia e ripristino" (click)="openHistory($event)"></button>
+      <button hx-btn variant="ghost" size="sm" icon="clock" iconOnly  [attr.aria-label]="'Cronologia e ripristino' | tr"
+               [title]="'Cronologia e ripristino' | tr" (click)="openHistory($event)"></button>
     </div>
     <hx-popover [open]="historyOpen()" [anchor]="anchor()" [width]="330" (closed)="historyOpen.set(false)">
       <div class="pop">
         <div class="ph">{{ it.label }}</div>
         <div class="pk">{{ it.key }} · predefinito: {{ show(it.default) }}</div>
         @if (loadingHistory()) { <div class="row-c"><hx-spinner [size]="16" /></div> }
-        @else if (!history().length) { <div class="empty">Nessuna modifica registrata.</div> }
+        @else if (!history().length) { <div class="empty">{{ "Nessuna modifica registrata." | tr }}</div> }
         @else {
           <ol>
             @for (h of history(); track $index) {
@@ -72,8 +73,8 @@ const ACTORS: Record<string, string> = {
           </ol>
         }
         <div class="pa">
-          <button hx-btn size="sm" icon="undo" [disabled]="!history().length" (click)="undo()">Annulla ultima</button>
-          <button hx-btn size="sm" variant="ghost" icon="refresh" [disabled]="!modified()" (click)="reset()">Ripristina predefinito</button>
+          <button hx-btn size="sm" icon="undo" [disabled]="!history().length" (click)="undo()">{{ "Annulla ultima" | tr }}</button>
+          <button hx-btn size="sm" variant="ghost" icon="refresh" [disabled]="!modified()" (click)="reset()">{{ "Ripristina predefinito" | tr }}</button>
         </div>
       </div>
     </hx-popover>`,

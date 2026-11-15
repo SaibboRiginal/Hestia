@@ -1,5 +1,5 @@
 /** <chronos-cal-mini> — small month navigator for the sidebar: today, selected day, days with items. Event `cal-pick` (Date). */
-import { LitElement, css, html, nothing, tokens } from '@hestia/webui-sdk';
+import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';
 import { addMonths, dayKey, fmt, isSameDay, isToday, monthGrid } from './date';
 import { calStyles, ic } from './ui';
 import { fire } from './models';
@@ -32,8 +32,8 @@ export class ChronosCalMini extends LitElement {
   render() {
     const m = this.month;
     return html`<div class="hd"><span>${fmt.monthYear(m)}</span>
-        <button @click=${() => (this.month = addMonths(m, -1))} aria-label="Mese precedente">${ic('chevron-left', 15)}</button>
-        <button @click=${() => (this.month = addMonths(m, 1))} aria-label="Mese successivo">${ic('chevron-right', 15)}</button></div>
+        <button @click=${() => (this.month = addMonths(m, -1))} aria-label=${tr("Mese precedente")}>${ic('chevron-left', 15)}</button>
+        <button @click=${() => (this.month = addMonths(m, 1))} aria-label=${tr("Mese successivo")}>${ic('chevron-right', 15)}</button></div>
       <div class="grid">${['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(w => html`<span class="wd">${w}</span>`)}
         ${monthGrid(m).map(d => html`<button class="d ${d.getMonth() !== m.getMonth() ? 'out' : ''} ${isToday(d) ? 'today' : ''} ${isSameDay(d, this.selected) ? 'sel' : ''}"
           @click=${() => fire(this, 'cal-pick', d)}>${d.getDate()}${this.marked.has(dayKey(d)) ? html`<i></i>` : nothing}</button>`)}</div>`;

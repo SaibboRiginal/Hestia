@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { tokens } from '../styles';
 import type { HestiaHost, Upload } from '../types';
+import { tr } from '../i18n';
 
 /**
  * One labelled control: type text | textarea | int | float | bool | enum | date | time | list | password | email.
@@ -75,7 +76,7 @@ export class HxkImagePicker extends LitElement {
   declare value: Upload[];
   declare multiple: boolean;
   declare label: string;
-  constructor() { super(); this.value = []; this.multiple = false; this.label = 'Aggiungi foto'; }
+  constructor() { super(); this.value = []; this.multiple = false; this.label = tr('Aggiungi foto'); }
   static styles = [tokens, css`
     :host { display: flex; flex-wrap: wrap; gap: 8px; }
     .th { position: relative; width: 84px; height: 84px; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); }
@@ -98,7 +99,7 @@ export class HxkImagePicker extends LitElement {
   }
   render() {
     return html`${this.value.map((u, i) => html`<div class="th"><img src="data:${u.mime};base64,${u.data_b64}" alt="">
-        <button title="Rimuovi" @click=${() => this.removeAt(i)}><hxk-icon name="x" size="12"></hxk-icon></button></div>`)}
+        <button title=${tr("Rimuovi")} @click=${() => this.removeAt(i)}><hxk-icon name="x" size="12"></hxk-icon></button></div>`)}
       ${this.multiple || !this.value.length ? html`<button class="add" @click=${this.pick}><hxk-icon name="camera" size="20"></hxk-icon>${this.label}</button>` : nothing}`;
   }
 }

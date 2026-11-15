@@ -16,5 +16,7 @@
 - [x] Phase 2c: notices and errors of every module (Oracle warnings, llm_setup details, Forge, backup, health,
       wardrobe, expenses, mood…) through `tr`; English catalog +1128 texts; model-facing leftovers (Forge export
       for an AI, reaction lines, presence lines) rewritten in English; test `test_every_module_text_has_an_english_translation`
-- [ ] Phase 2d: WebUI
+- [x] Phase 2d: WebUI shell, every plugin and the SDK kit through `tr` (TS codemod, ~5000 literals); Themis
+      `/api/settings/i18n`, WebUI `/api/webui/i18n(.js)` loaded before the bundles; English catalog +3094 texts;
+      «Lingua» saved → page reload; test `test_every_webui_and_plugin_text_has_an_english_translation`
 - [ ] German, French, Spanish catalogs

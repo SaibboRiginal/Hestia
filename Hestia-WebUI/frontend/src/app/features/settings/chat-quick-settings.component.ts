@@ -4,6 +4,7 @@ import { ButtonComponent, PopoverComponent, SegmentedComponent, SettingLinkCompo
 import { SettingsService, THINKING_DISPLAY_OPTIONS } from '../../services/settings.service';
 import { CentralSettingsApi, SettingItem, apiError } from './central-settings.api';
 import { SettingControlComponent } from './setting-control.component';
+import { tr, TrPipe } from '../../core/i18n';
 
 const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
 
@@ -15,32 +16,32 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
  */
 @Component({
   selector: 'hx-chat-quick-settings',
-  imports: [RouterLink, ButtonComponent, PopoverComponent, SegmentedComponent, SettingLinkComponent, SpinnerComponent, SettingControlComponent],
+  imports: [TrPipe, RouterLink, ButtonComponent, PopoverComponent, SegmentedComponent, SettingLinkComponent, SpinnerComponent, SettingControlComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <button hx-btn variant="ghost" size="sm" icon="settings" iconOnly aria-label="Impostazioni di questa chat"
-            title="Impostazioni di questa chat" (click)="toggle($event)"></button>
+    <button hx-btn variant="ghost" size="sm" icon="settings" iconOnly  [attr.aria-label]="'Impostazioni di questa chat' | tr"
+             [title]="'Impostazioni di questa chat' | tr" (click)="toggle($event)"></button>
     <hx-popover [open]="open()" [anchor]="anchor()" [width]="370" (closed)="open.set(false)">
       <div class="pop">
-        <div class="ph">Questa conversazione</div>
+        <div class="ph">{{ "Questa conversazione" | tr }}</div>
         @if (loading()) { <div class="c"><hx-spinner [size]="16" /></div> }
         @for (it of items(); track it.key) {
           <div class="row">
             <div class="lbl">
               <span>{{ it.label }}</span>
               @if (it.source === 'session') {
-                <button class="def" (click)="followDefault(it)">Come predefinito</button>
-              } @else { <hx-setting-link [key]="it.key" label="predefinito" title="Cambia il predefinito" (go)="open.set(false)" /> }
+                <button class="def" (click)="followDefault(it)">{{ "Come predefinito" | tr }}</button>
+              } @else { <hx-setting-link [key]="it.key"  [label]="'predefinito' | tr"  [title]="'Cambia il predefinito' | tr" (go)="open.set(false)" /> }
             </div>
             <hx-setting-control [item]="it" (commit)="set(it, $event)" />
           </div>
         }
         <div class="row">
-          <div class="lbl"><span>Ragionamento</span>
-            <hx-setting-link section="assistente" row="thinking" label="su questo browser" title="Apri in Impostazioni" (go)="open.set(false)" /></div>
+          <div class="lbl"><span>{{ "Ragionamento" | tr }}</span>
+            <hx-setting-link section="assistente" row="thinking"  [label]="'su questo browser' | tr"  [title]="'Apri in Impostazioni' | tr" (go)="open.set(false)" /></div>
           <hx-segmented [options]="thinking" [value]="prefs.settings().thinkingDisplay" (changed)="setThinking($event)" />
         </div>
-        <a class="more" routerLink="/settings" (click)="open.set(false)">Predefiniti e altre impostazioni…</a>
+        <a class="more" routerLink="/settings" (click)="open.set(false)">{{ "Predefiniti e altre impostazioni…" | tr }}</a>
       </div>
     </hx-popover>`,
   styles: [`
@@ -90,7 +91,7 @@ export class ChatQuickSettingsComponent {
     try {
       await this.api.set(it.key, value, 'session');
       await this.load();
-      this.toast.success(`${it.label}: vale per questa conversazione`);
+      this.toast.success(tr("{0}: vale per questa conversazione", it.label));
     } catch (e) { this.toast.error(apiError(e, 'Salvataggio non riuscito')); }
   }
 

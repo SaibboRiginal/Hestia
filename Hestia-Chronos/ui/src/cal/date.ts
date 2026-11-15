@@ -1,3 +1,4 @@
+import { tr } from '@hestia/webui-sdk';
 /** Date helpers (local time, Monday-first weeks, Italian labels). Ported from the WebUI calendar. */
 
 export const DAY_MS = 86_400_000;
@@ -49,7 +50,7 @@ export function toLocalInput(d: Date): string {
 export function fromLocalInput(v: string): Date | null { if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
 
 export const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const;
-export const WEEKDAY_LABELS: Record<string, string> = { MO: 'Lun', TU: 'Mar', WE: 'Mer', TH: 'Gio', FR: 'Ven', SA: 'Sab', SU: 'Dom' };
+export const WEEKDAY_LABELS: Record<string, string> = { MO: tr('Lun'), TU: tr('Mar'), WE: tr('Mer'), TH: tr('Gio'), FR: tr('Ven'), SA: tr('Sab'), SU: tr('Dom') };
 
 function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 

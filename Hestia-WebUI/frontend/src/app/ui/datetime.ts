@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, computed, input, model, viewChild } from '@angular/core';
 import { IconComponent } from './icon.component';
+import { TrPipe } from '../core/i18n';
 
 /**
  * Date / time fields that never depend on the browser or OS locale (Italian format, 24h only).
@@ -37,12 +38,12 @@ const TIMES = Array.from({ length: 96 }, (_, i) => `${pad(Math.floor(i / 4))}:${
 
 @Component({
   selector: 'hx-date',
-  imports: [IconComponent],
+  imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <input #txt class="hx-input" [class.bad]="bad" [value]="shown()" placeholder="gg/mm/aaaa" [disabled]="disabled()"
-           (change)="commit(txt.value)" (keydown.enter)="commit(txt.value)" [attr.aria-label]="label() || 'Data'" />
-    <button type="button" class="pick" (click)="openPicker()" [disabled]="disabled()" aria-label="Scegli data"><hx-icon name="calendar" [size]="15" /></button>
+           (change)="commit(txt.value)" (keydown.enter)="commit(txt.value)" [attr.aria-label]="label() || ('Data' | tr)" />
+    <button type="button" class="pick" (click)="openPicker()" [disabled]="disabled()"  [attr.aria-label]="'Scegli data' | tr"><hx-icon name="calendar" [size]="15" /></button>
     <input #native type="date" class="native" tabindex="-1" aria-hidden="true" [value]="value()" (change)="value.set(native.value)" />`,
   styles: [`
     :host { position: relative; display: block; }
@@ -74,9 +75,10 @@ let seq = 0;
 @Component({
   selector: 'hx-time',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TrPipe],
   template: `
     <input #txt class="hx-input" [class.bad]="bad" [value]="value()" placeholder="hh:mm" maxlength="5" [disabled]="disabled()"
-           [attr.list]="listId" (change)="commit(txt.value)" (keydown.enter)="commit(txt.value)" [attr.aria-label]="label() || 'Ora'" />
+           [attr.list]="listId" (change)="commit(txt.value)" (keydown.enter)="commit(txt.value)" [attr.aria-label]="label() || ('Ora' | tr)" />
     <datalist [id]="listId">@for (t of times; track t) { <option [value]="t"></option> }</datalist>`,
   styles: [`:host { display: block; } .hx-input { font-variant-numeric: tabular-nums; } .hx-input.bad { border-color: var(--danger); }`],
 })

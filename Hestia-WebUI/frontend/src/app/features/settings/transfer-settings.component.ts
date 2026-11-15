@@ -8,6 +8,7 @@ import {
   FORMAT, ImportReport, ModuleExport, RestorePoint, SectionReport, TransferApi, TransferFile, TransferItem, TransferMode,
   decodeFile, encodeFile, fileName,
 } from './transfer.api';
+import { tr, TrPipe } from '../../core/i18n';
 
 /** One row of the tree: a section of a module's data, or its settings (served by Themis). */
 interface Sec {
@@ -26,9 +27,9 @@ interface Pick { on: boolean; keys: string[] | null; }
 
 const SETTINGS = 'themis';
 const MODES: { value: TransferMode; label: string; title: string }[] = [
-  { value: 'append', label: 'Aggiungi', title: 'Solo le cose nuove; quelle che hai già restano come sono' },
-  { value: 'merge', label: 'Unisci', title: 'Nuove + aggiorna quelle già presenti se nel file sono più recenti' },
-  { value: 'replace', label: 'Sostituisci', title: 'Vince il file; quello che c’è solo qui viene eliminato (solo nelle sezioni spuntate e intere)' },
+  { value: 'append', label: tr('Aggiungi'), title: tr('Solo le cose nuove; quelle che hai già restano come sono') },
+  { value: 'merge', label: tr('Unisci'), title: tr('Nuove + aggiorna quelle già presenti se nel file sono più recenti') },
+  { value: 'replace', label: tr('Sostituisci'), title: tr('Vince il file; quello che c’è solo qui viene eliminato (solo nelle sezioni spuntate e intere)') },
 ];
 const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string }[] = [
   { key: 'added', label: 'nuovi', tone: 'success' },
@@ -45,7 +46,7 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
  */
 @Component({
   selector: 'app-transfer-settings',
-  imports: [...UI, DateFieldComponent, DatePipe],
+  imports: [TrPipe, ...UI, DateFieldComponent, DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="head">
@@ -55,9 +56,8 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
     </div>
 
     @if (tab() === 'export') {
-      <p class="hx-small hx-muted intro">Scegli cosa portare su un altro Hestia: moduli interi, sezioni o singoli elementi.
-        Mai chiavi, token o password.</p>
-      @if (!nodes().length && !busy()) { <hx-empty icon="download" title="Niente da esportare" /> }
+      <p class="hx-small hx-muted intro">{{ "Scegli cosa portare su un altro Hestia: moduli interi, sezioni o singoli elementi. Mai chiavi, token o password." | tr }}</p>
+      @if (!nodes().length && !busy()) { <hx-empty icon="download"  [title]="'Niente da esportare' | tr" /> }
       <div class="tree">
         @for (n of nodes(); track n.module) {
           <div class="mod">
@@ -78,11 +78,11 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                          [attr.aria-label]="s.label" />
                   <hx-icon [name]="s.icon" [size]="15" class="si" />
                   <span class="label" [title]="s.help || ''">{{ s.label }}</span>
-                  @if (s.hasFiles) { <hx-badge tone="info">file</hx-badge> }
+                  @if (s.hasFiles) { <hx-badge tone="info">{{ "file" | tr }}</hx-badge> }
                   <span class="hx-grow"></span>
-                  @if (pick(s.uid).keys; as k) { <span class="hx-small accent">{{ k.length }} scelti</span> }
+                  @if (pick(s.uid).keys; as k) { <span class="hx-small accent">{{ k.length }} {{ "scelti" | tr }}</span> }
                   <span class="n">{{ s.count ?? '–' }}</span>
-                  @if (s.count) { <button hx-btn variant="ghost" size="sm" (click)="openPicker(s)">Scegli</button> }
+                  @if (s.count) { <button hx-btn variant="ghost" size="sm" (click)="openPicker(s)">{{ "Scegli" | tr }}</button> }
                 </div>
               }
             }
@@ -90,11 +90,11 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
         }
       </div>
       <div class="opts">
-        <label class="opt"><span>Solo modifiche dal</span><hx-date [(value)]="since" /></label>
-        @if (since()) { <button hx-btn variant="ghost" size="sm" icon="x" (click)="since.set('')">Tutto</button> }
-        <hx-toggle [(checked)]="includeFiles" label="Includi foto" />
+        <label class="opt"><span>{{ "Solo modifiche dal" | tr }}</span><hx-date [(value)]="since" /></label>
+        @if (since()) { <button hx-btn variant="ghost" size="sm" icon="x" (click)="since.set('')">{{ "Tutto" | tr }}</button> }
+        <hx-toggle [(checked)]="includeFiles"  [label]="'Includi foto' | tr" />
         <span class="hx-grow"></span>
-        <button hx-btn variant="primary" icon="download" [disabled]="!selectedCount() || !!busy()" (click)="doExport()">Esporta</button>
+        <button hx-btn variant="primary" icon="download" [disabled]="!selectedCount() || !!busy()" (click)="doExport()">{{ "Esporta" | tr }}</button>
       </div>
     }
 
@@ -102,19 +102,19 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
       @if (!file()) {
         <label class="drop" (dragover)="$event.preventDefault()" (drop)="onDrop($event)">
           <hx-icon name="upload" [size]="22" />
-          <span>Scegli o trascina qui un file <b>.hestia</b></span>
+          <span>{{ "Scegli o trascina qui un file" | tr }} <b>.hestia</b></span>
           <input type="file" accept=".hestia,.json,.gz" (change)="onFile($any($event.target).files?.[0])" hidden />
         </label>
       } @else {
         <div class="filebar">
           <hx-icon name="file" [size]="16" /><b>{{ fileLabel() }}</b>
-          <span class="hx-small hx-muted">esportato il {{ file()!.exported_at | date:'d/M/yyyy HH:mm' }}
-            @if (file()!.since) { · solo modifiche dal {{ file()!.since | date:'d/M/yyyy' }} }</span>
+          <span class="hx-small hx-muted">{{ "esportato il" | tr }} {{ file()!.exported_at | date:'d/M/yyyy HH:mm' }}
+            @if (file()!.since) { {{ "· solo modifiche dal" | tr }} {{ file()!.since | date:'d/M/yyyy' }} }</span>
           <span class="hx-grow"></span>
-          <button hx-btn variant="ghost" size="sm" icon="x" (click)="clearFile()">Chiudi</button>
+          <button hx-btn variant="ghost" size="sm" icon="x" (click)="clearFile()">{{ "Chiudi" | tr }}</button>
         </div>
         <div class="opts">
-          <span class="hx-small">Modo</span>
+          <span class="hx-small">{{ "Modo" | tr }}</span>
           <hx-segmented [options]="modes" [(value)]="mode" (changed)="report.set(null)" />
           <span class="hx-small hx-muted">{{ modeHelp() }}</span>
         </div>
@@ -132,13 +132,13 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                          (change)="toggle(s.uid, $any($event.target).checked)" [attr.aria-label]="s.label" />
                   <hx-icon [name]="s.icon" [size]="15" class="si" />
                   <span class="label">{{ s.label }}</span>
-                  @if (s.missing) { <hx-badge tone="warning">non presente qui</hx-badge> }
+                  @if (s.missing) { <hx-badge tone="warning">{{ "non presente qui" | tr }}</hx-badge> }
                   <span class="hx-grow"></span>
                   <span class="n">{{ s.count }}</span>
                   @if (!s.missing) {
                     <select class="hx-select mini" [value]="sectionMode(s.uid)" (change)="setSectionMode(s.uid, $any($event.target).value)"
-                            title="Modo di questa sezione">
-                      <option value="">come sopra</option>
+                             [title]="'Modo di questa sezione' | tr">
+                      <option value="">{{ "come sopra" | tr }}</option>
                       @for (m of modes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
                     </select>
                   }
@@ -150,13 +150,13 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                         <button class="chip" [attr.data-tone]="o.tone" (click)="toggleDetail(s.uid + ':' + o.key)">{{ r[o.key] }} {{ o.label }}</button>
                       }
                     }
-                    @if (!r.added && !r.updated && !r.deleted && !r.skipped && !r.problems) { <span class="hx-small hx-muted">nessuna modifica</span> }
-                    @if (r.partial && sectionModeOf(s.uid) === 'replace') { <span class="hx-small hx-muted">sezione parziale: niente eliminazioni</span> }
+                    @if (!r.added && !r.updated && !r.deleted && !r.skipped && !r.problems) { <span class="hx-small hx-muted">{{ "nessuna modifica" | tr }}</span> }
+                    @if (r.partial && sectionModeOf(s.uid) === 'replace') { <span class="hx-small hx-muted">{{ "sezione parziale: niente eliminazioni" | tr }}</span> }
                   </div>
                   @for (o of outcomes; track o.key) {
                     @if (detail().has(s.uid + ':' + o.key)) {
                       <ul class="det">@for (t of r.items[o.key]; track $index) { <li>{{ t }}</li> }
-                        @if (r[o.key] > r.items[o.key].length) { <li class="hx-muted">… e altri {{ r[o.key] - r.items[o.key].length }}</li> }</ul>
+                        @if (r[o.key] > r.items[o.key].length) { <li class="hx-muted">{{ "… e altri" | tr }} {{ r[o.key] - r.items[o.key].length }}</li> }</ul>
                     }
                   }
                 }
@@ -166,34 +166,33 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
         </div>
         <div class="opts">
           @if (reportDone()) {
-            <span class="ok"><hx-icon name="check-circle" [size]="16" /> Importazione completata</span>
+            <span class="ok"><hx-icon name="check-circle" [size]="16" /> {{ "Importazione completata" | tr }}</span>
           }
           <span class="hx-grow"></span>
-          <button hx-btn variant="secondary" icon="eye" [disabled]="!selectedCount() || !!busy()" (click)="preview()">Anteprima</button>
-          <button hx-btn variant="primary" icon="upload" [disabled]="!report() || reportDone() || !!busy()" (click)="doImport()">Importa</button>
+          <button hx-btn variant="secondary" icon="eye" [disabled]="!selectedCount() || !!busy()" (click)="preview()">{{ "Anteprima" | tr }}</button>
+          <button hx-btn variant="primary" icon="upload" [disabled]="!report() || reportDone() || !!busy()" (click)="doImport()">{{ "Importa" | tr }}</button>
         </div>
       }
     }
 
     @if (tab() === 'restore') {
-      <p class="hx-small hx-muted intro">Prima di ogni importazione Hestia salva com'erano le sezioni coinvolte.
-        Ripristina = le riapre nell'importazione con «Sostituisci». Ne tiene {{ keep() }} (impostazione «Punti di ripristino da tenere»).</p>
-      @if (!points().length && !busy()) { <hx-empty icon="history" title="Nessun punto di ripristino" /> }
+      <p class="hx-small hx-muted intro">{{ "Prima di ogni importazione Hestia salva com'erano le sezioni coinvolte. Ripristina = le riapre nell'importazione con «Sostituisci». Ne tiene" | tr }} {{ keep() }} {{ "(impostazione «Punti di ripristino da tenere»)." | tr }}</p>
+      @if (!points().length && !busy()) { <hx-empty icon="history"  [title]="'Nessun punto di ripristino' | tr" /> }
       @for (p of points(); track p.id) {
         <div class="row point">
           <hx-icon name="history" [size]="16" class="si" />
           <span class="label">{{ p.created_at | date:'d/M/yyyy HH:mm' }}</span>
           <span class="hx-small hx-muted hx-truncate">{{ p.label }} · {{ moduleNames(p.modules) }}</span>
           <span class="hx-grow"></span>
-          <button hx-btn variant="secondary" size="sm" icon="undo" (click)="openRestore(p)">Ripristina</button>
-          <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly title="Elimina" (click)="deletePoint(p)"></button>
+          <button hx-btn variant="secondary" size="sm" icon="undo" (click)="openRestore(p)">{{ "Ripristina" | tr }}</button>
+          <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly  [title]="'Elimina' | tr" (click)="deletePoint(p)"></button>
         </div>
       }
     }
 
     <hx-modal [open]="!!picker()" [title]="picker()?.title || ''" size="md" (closed)="picker.set(null)">
       @if (picker(); as p) {
-        <input class="hx-input" type="search" placeholder="Cerca" [value]="p.q" (input)="searchPicker($any($event.target).value)" />
+        <input class="hx-input" type="search"  [placeholder]="'Cerca' | tr" [value]="p.q" (input)="searchPicker($any($event.target).value)" />
         <div class="plist">
           @for (it of p.items; track it.key) {
             <label class="pitem">
@@ -202,12 +201,12 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                 @if (it.subtitle) { <span class="hx-small hx-muted"> · {{ it.subtitle }}</span> }</span>
             </label>
           }
-          @if (!p.items.length) { <span class="hx-small hx-muted">Nessun elemento</span> }
+          @if (!p.items.length) { <span class="hx-small hx-muted">{{ "Nessun elemento" | tr }}</span> }
         </div>
       }
       <div footer>
-        <button hx-btn variant="ghost" (click)="clearPicker()">Tutta la sezione</button>
-        <button hx-btn variant="primary" (click)="applyPicker()">Usa {{ picker()?.chosen?.size || 0 }} scelti</button>
+        <button hx-btn variant="ghost" (click)="clearPicker()">{{ "Tutta la sezione" | tr }}</button>
+        <button hx-btn variant="primary" (click)="applyPicker()">{{ "Usa" | tr }} {{ picker()?.chosen?.size || 0 }} {{ "scelti" | tr }}</button>
       </div>
     </hx-modal>
   `,
@@ -256,9 +255,9 @@ export class TransferSettingsComponent implements OnInit {
   private dialogs = inject(DialogService);
 
   readonly tabs = [
-    { value: 'export', label: 'Esporta', icon: 'download' },
-    { value: 'import', label: 'Importa', icon: 'upload' },
-    { value: 'restore', label: 'Ripristino', icon: 'history' },
+    { value: 'export', label: tr('Esporta'), icon: 'download' },
+    { value: 'import', label: tr('Importa'), icon: 'upload' },
+    { value: 'restore', label: tr('Ripristino'), icon: 'history' },
   ];
   readonly modes = MODES;
   readonly outcomes = OUTCOMES;
@@ -305,7 +304,7 @@ export class TransferSettingsComponent implements OnInit {
   // ── tree helpers (shared by export and import) ────────────────────────────
   private meta(module: string) {
     const m = this.plugins.modules().get(module);
-    if (module === SETTINGS) return { title: 'Personali', icon: 'user', core: true };
+    if (module === SETTINGS) return { title: tr('Personali'), icon: 'user', core: true };
     return { title: m?.title || moduleLabel(module), icon: m?.icon || 'puzzle', core: m?.kind === 'core' };
   }
   private sortNodes(nodes: Node[]): Node[] {
@@ -338,7 +337,7 @@ export class TransferSettingsComponent implements OnInit {
 
   // ── export ────────────────────────────────────────────────────────────────
   private async loadExport() {
-    this.busy.set('Carico i moduli…');
+    this.busy.set(tr('Carico i moduli…'));
     try {
       const { modules } = await this.api.modules();
       this.here.set(new Set(modules.map(m => m.module)));
@@ -422,7 +421,7 @@ export class TransferSettingsComponent implements OnInit {
     const file: TransferFile = { hestia: 'transfer', format: FORMAT, exported_at: new Date().toISOString(), since,
       include_files: includeFiles, modules: {}, files: {} };
     for (const [owner, sections] of groups) {
-      this.busy.set(`Esporto ${this.meta(owner).title}…`);
+      this.busy.set(tr("Esporto {0}…", this.meta(owner).title));
       const out = await this.api.export(owner, { sections, since, include_files: includeFiles });
       file.modules[owner] = out;
       for (const id of out.files ?? []) {
@@ -444,7 +443,7 @@ export class TransferSettingsComponent implements OnInit {
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
       const pulled = Object.values(file.modules).reduce((n, m) => n + Object.values(m.pulled ?? {}).reduce((k, v) => k + v.length, 0), 0);
-      this.toast.success(pulled ? `File pronto (aggiunti ${pulled} elementi collegati)` : 'File pronto');
+      this.toast.success(pulled ? tr("File pronto (aggiunti {0} elementi collegati)", pulled) : tr('File pronto'));
     } catch (e) {
       this.toast.error(apiError(e, 'Esportazione non riuscita'));
     } finally { this.busy.set(''); }
@@ -536,29 +535,29 @@ export class TransferSettingsComponent implements OnInit {
     const groups = this.grouped(this.importNodes(), false);
     const deletes = Object.values(this.report() ?? {}).reduce((n, r) => n + (r.totals?.['deleted'] ?? 0), 0);
     const ok = await this.dialogs.confirm('Importare?',
-      deletes ? `Verranno eliminati ${deletes} elementi. Prima salvo un punto di ripristino.` : 'Prima salvo un punto di ripristino.',
-      'Importa', deletes > 0);
+      deletes ? tr("Verranno eliminati {0} elementi. Prima salvo un punto di ripristino.", deletes) : tr('Prima salvo un punto di ripristino.'),
+      tr('Importa'), deletes > 0);
     if (!ok) return;
     try {
-      this.busy.set('Salvo il punto di ripristino…');
+      this.busy.set(tr('Salvo il punto di ripristino…'));
       const before = await this.buildFile(groups, null, false);
-      await this.api.saveRestorePoint({ label: `Prima di importare ${this.fileLabel()}`, modules: [...groups.keys()], file: before });
+      await this.api.saveRestorePoint({ label: tr("Prima di importare {0}", this.fileLabel()), modules: [...groups.keys()], file: before });
       const out: Record<string, ImportReport> = {};
       for (const [owner, sections] of groups) {
         const map: Record<string, string> = {};
         const files = this.file()!.files?.[owner] ?? {};
         const ids = Object.keys(files);
         for (const [i, id] of ids.entries()) {
-          this.busy.set(`Carico i file di ${this.meta(owner).title} (${i + 1}/${ids.length})…`);
+          this.busy.set(tr("Carico i file di {0} ({1}/{2})…", this.meta(owner).title, i + 1, ids.length));
           const r = await this.api.upload(owner, { id, ...files[id] });
           map[r.old_id] = r.new_id;
         }
-        this.busy.set(`Importo ${this.meta(owner).title}…`);
+        this.busy.set(tr("Importo {0}…", this.meta(owner).title));
         out[owner] = await this.api.import(owner, this.body(owner, sections, false, map));
       }
       this.report.set(out);
       this.reportDone.set(true);
-      this.toast.success('Importazione completata');
+      this.toast.success(tr('Importazione completata'));
     } catch (e) {
       this.toast.error(apiError(e, 'Importazione non riuscita: puoi tornare indietro da «Ripristino»'));
     } finally { this.busy.set(''); }
@@ -579,7 +578,7 @@ export class TransferSettingsComponent implements OnInit {
       const file = await this.api.restorePoint(p.id);
       this.tab.set('import');
       this.file.set(file);
-      this.fileLabel.set('Punto di ripristino');
+      this.fileLabel.set(tr('Punto di ripristino'));
       this.reset();
       this.mode.set('replace');
       await this.loadHere();
@@ -588,7 +587,7 @@ export class TransferSettingsComponent implements OnInit {
   }
 
   async deletePoint(p: RestorePoint) {
-    if (!await this.dialogs.confirm('Eliminare il punto di ripristino?', '', 'Elimina', true)) return;
+    if (!await this.dialogs.confirm(tr('Eliminare il punto di ripristino?'), '', tr('Elimina'), true)) return;
     try { await this.api.deleteRestorePoint(p.id); this.points.update(l => l.filter(x => x.id !== p.id)); }
     catch (e) { this.toast.error(apiError(e)); }
   }

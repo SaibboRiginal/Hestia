@@ -1,18 +1,19 @@
+import { tr } from '@hestia/webui-sdk';
 /** Helpers shared by the Voce page: API prefix, labels, audio in the browser (play base64, record the mic). */
 export const API = '/api/voice';
 
 export const STATES: Record<string, { label: string; tone: string }> = {
   ready: { label: 'pronto', tone: 'success' },
-  no_key: { label: 'manca la chiave', tone: 'warning' },
-  no_url: { label: 'manca l\'indirizzo', tone: 'warning' },
-  not_installed: { label: 'non installato', tone: 'warning' },
-  downloading: { label: 'scarico il modello', tone: 'info' },
+  no_key: { label: tr('manca la chiave'), tone: 'warning' },
+  no_url: { label: tr('manca l\'indirizzo'), tone: 'warning' },
+  not_installed: { label: tr('non installato'), tone: 'warning' },
+  downloading: { label: tr('scarico il modello'), tone: 'info' },
   quota: { label: 'senza quota', tone: 'warning' },
   missing: { label: 'fornitore tolto', tone: 'danger' },
   wrong_direction: { label: 'direzione sbagliata', tone: 'danger' },
 };
 
-export const DIRECTIONS = [{ value: 'ascolto', label: 'Ascolto (voce → testo)' }, { value: 'voce', label: 'Voce (testo → voce)' }];
+export const DIRECTIONS = [{ value: 'ascolto', label: tr('Ascolto (voce → testo)') }, { value: 'voce', label: tr('Voce (testo → voce)') }];
 
 export function slug(s: string): string {
   return s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');

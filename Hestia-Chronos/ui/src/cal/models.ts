@@ -1,3 +1,4 @@
+import { tr } from '@hestia/webui-sdk';
 /** Assistant agenda (Chronos /api/agenda/*) types and labels used by the calendar page. Ported from the WebUI calendar. */
 
 export type AgendaType = 'event' | 'task' | 'job' | 'window';
@@ -102,23 +103,23 @@ export interface CalWeather { days: Record<string, WxDay>; events: Record<string
 export const NO_WEATHER: CalWeather = { days: {}, events: {}, external: [] };
 
 export const TYPE_META: Record<AgendaType, { label: string; icon: string; hint: string }> = {
-  event: { label: 'Evento', icon: 'event', hint: 'Informativo: qualcosa che un modulo ha pianificato' },
-  task: { label: 'Task', icon: 'task', hint: 'Azione una tantum eseguita all\'orario indicato' },
-  job: { label: 'Job ricorrente', icon: 'repeat', hint: 'Azione ripetuta secondo la regola' },
-  window: { label: 'Finestra', icon: 'window', hint: 'Periodo in cui un modulo può lavorare' },
+  event: { label: tr('Evento'), icon: 'event', hint: tr('Informativo: qualcosa che un modulo ha pianificato') },
+  task: { label: tr('Task'), icon: 'task', hint: tr('Azione una tantum eseguita all\'orario indicato') },
+  job: { label: tr('Job ricorrente'), icon: 'repeat', hint: tr('Azione ripetuta secondo la regola') },
+  window: { label: tr('Finestra'), icon: 'window', hint: tr('Periodo in cui un modulo può lavorare') },
 };
 
 export const STATUS_META: Record<AgendaStatus, { label: string; tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info' }> = {
-  confirmed: { label: 'Attivo', tone: 'success' },
-  paused: { label: 'In pausa', tone: 'warning' },
-  cancelled: { label: 'Annullato', tone: 'neutral' },
-  completed: { label: 'Completato', tone: 'info' },
-  failed: { label: 'Fallito', tone: 'danger' },
+  confirmed: { label: tr('Attivo'), tone: 'success' },
+  paused: { label: tr('In pausa'), tone: 'warning' },
+  cancelled: { label: tr('Annullato'), tone: 'neutral' },
+  completed: { label: tr('Completato'), tone: 'info' },
+  failed: { label: tr('Fallito'), tone: 'danger' },
 };
 
 /** Friendly names for module owners (fallback: capitalized owner). */
 export const OWNER_LABELS: Record<string, string> = {
-  user: 'Tu', hephaestus: 'Hephaestus (Forge)', athena: 'Athena', scout: 'Scout', chronos: 'Chronos',
+  user: 'Tu', hephaestus: tr('Hephaestus (Forge)'), athena: 'Athena', scout: 'Scout', chronos: 'Chronos',
   metis: 'Metis', argus: 'Argus', oracle: 'Oracle', hermes: 'Hermes',
 };
 
@@ -155,9 +156,9 @@ export function colorFor(owner: string): string {
 
 /** Plain-language meaning of a window, by module (fallback: generic). */
 export const WINDOW_TEXT: Record<string, string> = {
-  athena: 'Athena può lavorare (consolidare memoria, analisi) solo in questo intervallo, di solito quando sei inattivo. Fuori dalla finestra non parte.',
-  metis: 'Metis può addestrare i modelli solo in questo intervallo, per non rallentare il PC mentre lo usi.',
-  hephaestus: 'Forge può usare il motore indicato (es. Claude Pro) solo in questo intervallo.',
+  athena: tr('Athena può lavorare (consolidare memoria, analisi) solo in questo intervallo, di solito quando sei inattivo. Fuori dalla finestra non parte.'),
+  metis: tr('Metis può addestrare i modelli solo in questo intervallo, per non rallentare il PC mentre lo usi.'),
+  hephaestus: tr('Forge può usare il motore indicato (es. Claude Pro) solo in questo intervallo.'),
 };
 
 export interface MoveRequest { ev: CalEvent; start: Date; end: Date | null; }

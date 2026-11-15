@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { PluginsService } from '../plugins/plugins.service';
 import { PluginPage } from '../plugins/plugins.types';
+import { TrPipe } from '../../core/i18n';
 
 /**
  * «Sistema» (brainstorm C13, W7): the one sidebar entry of the system modules. Every page of the core modules,
@@ -11,20 +12,20 @@ import { PluginPage } from '../plugins/plugins.types';
  */
 @Component({
   selector: 'app-system-page',
-  imports: [...UI, RouterLink],
+  imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header title="Sistema" subtitle="Come sta Hestia e come lavora: salute, modelli, notifiche, agenda, impostazioni, sviluppo">
-      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">Aggiornamenti</a>
-      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">Macchine</a>
-      <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">Download</a>
-      @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/sistema">Dashboard</a> }
+    <hx-page-header  [title]="'Sistema' | tr"  [subtitle]="'Come sta Hestia e come lavora: salute, modelli, notifiche, agenda, impostazioni, sviluppo' | tr">
+      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">{{ "Aggiornamenti" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">{{ "Macchine" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">{{ "Download" | tr }}</a>
+      @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/sistema">{{ "Dashboard" | tr }}</a> }
     </hx-page-header>
     <div class="body">
       @for (g of groups(); track g.module) {
         <section class="mod">
           <h2><hx-icon [name]="g.icon" [size]="16" />{{ g.title }}
-            @if (!g.online) { <hx-badge tone="warning">non raggiungibile</hx-badge> }</h2>
+            @if (!g.online) { <hx-badge tone="warning">{{ "non raggiungibile" | tr }}</hx-badge> }</h2>
           @if (g.description) { <p class="d">{{ g.description }}</p> }
           <div class="pages">
             @for (p of g.pages; track p.id) {
@@ -34,14 +35,14 @@ import { PluginPage } from '../plugins/plugins.types';
                   @if (badge(p); as n) { <b class="count">{{ n > 99 ? '99+' : n }}</b> }
                 </a>
                 <button class="pin" [class.on]="pinned(p)" (click)="plugins.toggleNavPin(p.id)"
-                        [attr.aria-label]="pinned(p) ? 'Togli da Fissati' : 'Fissa nella barra laterale'" [attr.title]="pinned(p) ? 'In Fissati' : 'Fissa nella barra laterale'">
+                        [attr.aria-label]="pinned(p) ? ('Togli da Fissati' | tr) : ('Fissa nella barra laterale' | tr)" [attr.title]="pinned(p) ? ('In Fissati' | tr) : ('Fissa nella barra laterale' | tr)">
                   <hx-icon name="pin" [size]="14" /></button>
               </div>
             }
           </div>
         </section>
       } @empty {
-        <hx-empty icon="host" title="Nessun modulo di sistema">I moduli compaiono qui quando si registrano.</hx-empty>
+        <hx-empty icon="host"  [title]="'Nessun modulo di sistema' | tr">{{ "I moduli compaiono qui quando si registrano." | tr }}</hx-empty>
       }
     </div>`,
   styles: [`
