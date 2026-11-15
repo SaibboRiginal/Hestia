@@ -21,6 +21,7 @@ from .forge.router import create_forge_router, create_repo_router
 from .forge.service import Forge
 from .forge import forge_settings
 from .setup.router import create_setup_router
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils",
@@ -131,7 +132,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
                      name="hub-keepalive").start()
     forge_settings.settings.start()
     _update_agenda.register_async([_job_rule(
-        "hephaestus.update_check", "Cerca aggiornamenti di Hestia", service="hephaestus",
+        "hephaestus.update_check", tr("Cerca aggiornamenti di Hestia"), service="hephaestus",
         path="/api/setup/update/daily", recurrence="FREQ=DAILY", start_at="2026-01-01T11:00:00",
         tz=os.getenv("TZ") or None, timeout_seconds=240,
         description="Se c'è una versione nuova ti chiedo se installarla (Sistema → Aggiornamenti).")])

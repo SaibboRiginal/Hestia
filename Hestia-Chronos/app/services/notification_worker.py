@@ -29,6 +29,7 @@ from datetime import datetime, timedelta, timezone
 
 from core import archive_client, hermes_client
 from core import chronos_settings as CS
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.notification_worker")
 
@@ -92,7 +93,7 @@ def _format_datetime(iso_str: str) -> str:
 
         dt = datetime.fromisoformat(str(iso_str).replace("Z", "+00:00"))
         if len(str(iso_str)) == 10:            # all-day: date only
-            return f"{dt.day} {_IT_MONTHS[dt.month - 1]} {dt.year} (tutto il giorno)"
+            return tr("{0} {1} {2} (tutto il giorno)", dt.day, _IT_MONTHS[dt.month - 1], dt.year)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         tz_name = os.getenv("TZ") or "Europe/Rome"
@@ -107,7 +108,7 @@ def _build_notification(item: dict, bucket: str) -> str:
     from html import escape   # user content in Telegram HTML must be escaped
 
     label = _BUCKET_LABELS.get(bucket, bucket)
-    title = escape(str(item.get("title") or "Evento"))
+    title = escape(str(item.get("title") or tr("Evento")))
     start = item.get("start_at", "")
     location = escape(str(item.get("location") or ""))
     description = escape(str(item.get("description") or ""))

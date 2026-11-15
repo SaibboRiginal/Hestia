@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 from core import chronos_settings as CS
 from core import hermes_client
 from services import agenda
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.catchup")
 
@@ -75,17 +76,17 @@ def run(since: datetime | None, now: datetime | None = None) -> dict:
     logger.info("event=catchup_done redone=%d failed=%d too_old=%d", len(redone), len(still_failed), len(too_old))
     if redone or still_failed or too_old:
         hermes_client.publish_event("assistant", NOTICE_EVENT, "assistant.catchup", {
-            "_message": message(now - window_start, redone, still_failed, too_old), "_title": "Mentre non c'ero",
+            "_message": message(now - window_start, redone, still_failed, too_old), "_title": tr("Mentre non c'ero"),
             "_level": "info", "_source": "chronos", "redone": redone, "failed": still_failed, "too_old": too_old})
     return result
 
 
 def message(away: timedelta, redone: list[str], failed: list[str], too_old: list[str]) -> str:
-    lines = [f"🕒 <b>Mentre non c'ero</b> ({_duration(away.total_seconds())}):"]
+    lines = [tr("🕒 <b>Mentre non c'ero</b> ({0}):", _duration(away.total_seconds()))]
     if redone:
-        lines.append("• recuperato ora: " + ", ".join(redone))
+        lines.append(tr("• recuperato ora: ") + ", ".join(redone))
     if failed:
-        lines.append("• ancora non riuscito: " + ", ".join(failed) + " (riprovo con l'agenda)")
+        lines.append(tr("• ancora non riuscito: ") + ", ".join(failed) + tr(" (riprovo con l'agenda)"))
     if too_old:
-        lines.append("• saltato, troppo vecchio per rifarlo: " + ", ".join(too_old))
+        lines.append(tr("• saltato, troppo vecchio per rifarlo: ") + ", ".join(too_old))
     return "\n".join(lines)

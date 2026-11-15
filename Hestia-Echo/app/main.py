@@ -18,6 +18,7 @@ import requests
 from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -171,12 +172,12 @@ async def _not_found(_: Request, exc: NotFound):
 
 @app.exception_handler(ChainExhausted)
 async def _exhausted(_: Request, exc: ChainExhausted):
-    return JSONResponse(status_code=503, content={"detail": f"nessun motore disponibile: {exc}"})
+    return JSONResponse(status_code=503, content={"detail": tr("nessun motore disponibile: {0}", exc)})
 
 
 @app.exception_handler(HubError)
 async def _store_down(_: Request, exc: HubError):
-    return JSONResponse(status_code=503, content={"detail": "archivio non raggiungibile, riprova tra poco"})
+    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
 
 
 @app.get("/health")
@@ -279,17 +280,17 @@ def blocks_write(part: str, body: dict = Body(...)):
     if not key:
         raise NotFound("parte sconosciuta: providers, chains o usecases")
     if not isinstance(value, dict) or any(not isinstance(v, dict) for v in value.values()):
-        raise Invalid("serve un oggetto nome → impostazioni")
+        raise Invalid(tr("serve un oggetto nome → impostazioni"))
     if part == "providers":
         bad = [n for n, p in value.items() if p.get("type") not in STANDARDS]
         if bad or not value:
-            raise Invalid(f"standard sconosciuto per: {', '.join(bad) or 'nessun fornitore'}")
+            raise Invalid(tr("standard sconosciuto per: {0}", ', '.join(bad) or 'nessun fornitore'))
     elif part == "chains":
         if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
                             for c in value.values()):
-            raise Invalid("ogni catena vuole una direzione (ascolto o voce) e una lista di passi")
+            raise Invalid(tr("ogni catena vuole una direzione (ascolto o voce) e una lista di passi"))
     if not settings.put(key, value, actor="user", reason="WebUI Voce"):
-        raise HTTPException(status_code=502, detail="Le impostazioni non hanno accettato la modifica")
+        raise HTTPException(status_code=502, detail=tr("Le impostazioni non hanno accettato la modifica"))
     return {"status": "ok", "key": key}
 
 
@@ -349,7 +350,7 @@ def audio_for(ref_id: str, format: str = ""):
     """Kept audio of a message or notification (an old voice note plays the original)."""
     row = keep.find(ref_id)
     if row is None:
-        raise NotFound("nessun audio per questo messaggio")
+        raise NotFound(tr("nessun audio per questo messaggio"))
     keep.touch(row)
     return {**audio_get(row["id"], format), **(row.get("data") or {})}
 
@@ -358,7 +359,7 @@ def audio_for(ref_id: str, format: str = ""):
 def audio_delete(blob_id: str):
     rows = [r for r in keep.list("", 20000) if r["id"] == blob_id]
     if not rows:
-        raise NotFound("audio non trovato")
+        raise NotFound(tr("audio non trovato"))
     keep.delete(rows[0])
     return {"status": "deleted", "blob_id": blob_id}
 
@@ -389,7 +390,7 @@ def dictionary_list():
 def dictionary_add(body: dict = Body(...)):
     try:
         return {"status": "ok", "word": dictionary.add(str(body.get("word") or ""), source="manual"),
-                "message": "Parola aggiunta"}
+                "message": tr("Parola aggiunta")}
     except ValueError as exc:
         raise Invalid(str(exc))
 
@@ -397,8 +398,8 @@ def dictionary_add(body: dict = Body(...)):
 @app.delete(API + "/dictionary/{word}")
 def dictionary_remove(word: str):
     if not dictionary.remove(word):
-        raise NotFound("parola non nel dizionario")
-    return {"status": "ok", "message": "Parola tolta"}
+        raise NotFound(tr("parola non nel dizionario"))
+    return {"status": "ok", "message": tr("Parola tolta")}
 
 
 @app.post(f"{API}/dictionary/learn")
@@ -427,11 +428,11 @@ def voiceprint_enroll(body: dict = Body(...)):
     try:
         pcm = audio.to_pcm16k(raw, mime)
     except audio.AudioError as exc:
-        raise Invalid(f"audio non leggibile: {exc}")
+        raise Invalid(tr("audio non leggibile: {0}", exc))
     blob = None
     try:
         blob = keep.save("recording", audio.keep_encode(raw), audio.KEEP_MIME,
-                         {"use_case": "echo.impronta", "text": "impronta della voce"})
+                         {"use_case": "echo.impronta", "text": tr("impronta della voce")})
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=voiceprint_recording_not_kept error=%s", exc)
     try:
@@ -440,17 +441,17 @@ def voiceprint_enroll(body: dict = Body(...)):
         raise Invalid(str(exc))
     except Exception as exc:  # noqa: BLE001 — engine not available
         logger.warning("[🔄] event=voiceprint_engine_unavailable error=%s", exc)
-        raise HTTPException(status_code=503, detail="riconoscimento della voce non disponibile ora")
-    return {**out, "status": "ok", "message": "Impronta della voce salvata"}
+        raise HTTPException(status_code=503, detail=tr("riconoscimento della voce non disponibile ora"))
+    return {**out, "status": "ok", "message": tr("Impronta della voce salvata")}
 
 
 @app.delete(f"{API}/voiceprint")
 def voiceprint_forget():
-    return {**voiceprint.forget(), "status": "ok", "message": "Impronta tolta: ascolto tutte le voci"}
+    return {**voiceprint.forget(), "status": "ok", "message": tr("Impronta tolta: ascolto tutte le voci")}
 
 
 def _agenda_rules() -> list[dict]:
-    return [job_rule("echo.audio_cleanup", "Voce: pulizia degli audio", service="echo", path=f"{API}/audio/cleanup",
+    return [job_rule("echo.audio_cleanup", tr("Voce: pulizia degli audio"), service="echo", path=f"{API}/audio/cleanup",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T04:30:00", tz=TZ,
                      description="Toglie gli audio generati non ascoltati da tempo e tiene lo spazio sotto il limite. "
                                  "Le registrazioni non si toccano.")]
@@ -474,7 +475,7 @@ def _t(name, title, description, method, path, props=None, required=None, label=
                    handler=lambda **_kw: {"status": "ok"}, method=method, path=path,
                    clients=["telegram", "ui"], response_mode="oracle_natural",
                    telegram_visible=True, telegram_group="sistema",
-                   telegram={"section": "Voce", **({"label": label} if label else {})})
+                   telegram={"section": tr("Voce"), **({"label": label} if label else {})})
 
 
 _echo_tools = [

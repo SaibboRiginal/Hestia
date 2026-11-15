@@ -26,6 +26,7 @@ from core import argus_settings as cfg
 from core import hermes_client, oracle_client
 from schemas.reports import ServiceAlert
 from services import oracle_watch
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
@@ -208,7 +209,7 @@ def send_recovery(service: str) -> None:
     if narrated and narrated.strip():
         text = f"✅ <b>Hestia Monitor</b>\n\n{narrated.strip()}"
     else:
-        text = f"✅ <b>Hestia Monitor</b>\n<code>{service}</code> è di nuovo online."
+        text = tr("✅ <b>Hestia Monitor</b>\n<code>{0}</code> è di nuovo online.", service)
 
     hermes_client.publish_event(
         domain="system",

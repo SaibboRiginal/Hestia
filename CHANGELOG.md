@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-15
+- Every module now speaks your language: notices, errors, confirmations and cards of backup, health, updates, development, voice, links to Google/Garmin, workouts, self care, wardrobe, expenses, mood, deadlines, home and the others follow «Lingua» (Italian and English ready) → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
+
 ## 2026-11-14
 - Settings and tools speak your language too: names, explanations, groups and choices of every setting, and the titles and descriptions of the tools in «Comandi» and «Scopri», follow «Lingua» (Italian and English ready) → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 - Telegram speaks your language: buttons, cards, notes, errors, the keyboard at the bottom, the command list and the bot description follow «Lingua» (English ready; other languages show English until their translation arrives) → `docs/work/2026-11-14-backend-inglese/` [ext-chat]

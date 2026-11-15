@@ -10,6 +10,7 @@ from pathlib import Path
 
 from fastapi import Body
 from fastapi.responses import Response
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -84,16 +85,16 @@ def _create(title: str, html: str, format: str = "pdf", theme: str = "", must_co
                                lines=[f"{out['pages']} {'pagine' if out['format'] == 'pdf' else 'parti'}, "
                                       f"{max(1, out['size'] // 1024)} KB · controllato"],
                                files=[file(out["blob_id"], out["name"], out["mime"])],
-                               actions=[action("Elimina", "documento_creato_elimina", {"document": out["id"]})])}
+                               actions=[action(tr("Elimina"), "documento_creato_elimina", {"document": out["id"]})])}
 
 
 def _list() -> dict:
     rows = docs.list()
     return {"items": [{"id": d["id"], "title": d["title"], "format": d["format"], "created_at": d["created_at"]}
                       for d in rows],
-            "display": display("Documenti creati", items=[item(d["title"], [d["format"].upper(), d["created_at"][:10]])
+            "display": display(tr("Documenti creati"), items=[item(d["title"], [d["format"].upper(), d["created_at"][:10]])
                                                           for d in rows[:20]],
-                               lines=[] if rows else ["Nessun documento creato."])}
+                               lines=[] if rows else [tr("Nessun documento creato.")])}
 
 
 def _send(document: str) -> dict:

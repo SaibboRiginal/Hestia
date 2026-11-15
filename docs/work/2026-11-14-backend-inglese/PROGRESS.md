@@ -13,6 +13,8 @@
       edge translation in `ui`, keyboard, commands, labels, dates); test `Hestia-Telegram/tests/test_language.py`
 - [x] Phase 2b: settings labels/help/groups/options translated by Themis (`settings_client.translated`), tool titles
       (MCP `ui_tools`), English `locales/en/tools.json` (276 tools), `follow_personal()` in every module showing texts
-- [ ] Phase 2c: notices and errors of the modules, Oracle warnings, llm_setup details
+- [x] Phase 2c: notices and errors of every module (Oracle warnings, llm_setup details, Forge, backup, health,
+      wardrobe, expenses, mood…) through `tr`; English catalog +1128 texts; model-facing leftovers (Forge export
+      for an AI, reaction lines, presence lines) rewritten in English; test `test_every_module_text_has_an_english_translation`
 - [ ] Phase 2d: WebUI
 - [ ] German, French, Spanish catalogs

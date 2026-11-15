@@ -8,6 +8,7 @@ import re
 import uuid
 from datetime import date, datetime
 from typing import Any
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 class Invalid(ValueError):
@@ -117,7 +118,7 @@ def _keys(value: Any, allowed: dict | set | None = None, limit: int = 30) -> lis
         if not k or k in out:
             continue
         if allowed is not None and k not in allowed:
-            raise Invalid(f"valore '{v}' non valido (ammessi: {', '.join(sorted(allowed))})")
+            raise Invalid(tr("valore '{0}' non valido (ammessi: {1})", v, ', '.join(sorted(allowed))))
         out.append(k)
     return out[:limit]
 
@@ -134,7 +135,7 @@ def _int(value: Any, lo: int, hi: int, default: int | None = None) -> int | None
     try:
         n = int(round(float(str(value).replace(",", "."))))
     except ValueError:
-        raise Invalid(f"numero non valido: {value!r}")
+        raise Invalid(tr("numero non valido: {0!r}", value))
     return max(lo, min(hi, n))
 
 
@@ -144,7 +145,7 @@ def _float(value: Any) -> float | None:
     try:
         return round(float(str(value).replace(",", ".").replace("€", "").strip()), 2)
     except ValueError:
-        raise Invalid(f"numero non valido: {value!r}")
+        raise Invalid(tr("numero non valido: {0!r}", value))
 
 
 def iso_date(value: Any, *, required: bool = False) -> str | None:
@@ -158,11 +159,11 @@ def iso_date(value: Any, *, required: bool = False) -> str | None:
         return value.isoformat()
     s = str(value).strip()[:10]
     if not _DATE.match(s):
-        raise Invalid(f"data non valida: {value!r} (formato AAAA-MM-GG)")
+        raise Invalid(tr("data non valida: {0!r} (formato AAAA-MM-GG)", value))
     try:
         date.fromisoformat(s)
     except ValueError:
-        raise Invalid(f"data non valida: {value!r}")
+        raise Invalid(tr("data non valida: {0!r}", value))
     return s
 
 
@@ -206,7 +207,7 @@ def piece(data: dict, categories: dict[str, dict], color_vocab: dict[str, dict] 
     """Normalise a piece (garment, shoes or accessory). Only ``name`` and ``category`` are required."""
     name = _text(data.get("name"), 120)
     if not name:
-        raise Invalid("il nome del capo è obbligatorio")
+        raise Invalid(tr("il nome del capo è obbligatorio"))
     cat_key = slug(data.get("category") or data.get("subcategory"))
     cat = categories.get(cat_key)
     if not cat:
@@ -220,11 +221,11 @@ def piece(data: dict, categories: dict[str, dict], color_vocab: dict[str, dict] 
     sub = categories.get(sub_key) if sub_key else None
     kind = slug(data.get("kind")) or (sub or cat).get("kind") or "garment"
     if kind not in KINDS:
-        raise Invalid(f"tipo '{kind}' non valido")
+        raise Invalid(tr("tipo '{0}' non valido", kind))
     hint = sub or cat
     status = slug(data.get("status")) or "active"
     if status not in STATUSES:
-        raise Invalid(f"stato '{status}' non valido")
+        raise Invalid(tr("stato '{0}' non valido", status))
     condition = slug(data.get("condition")) or "good"
     if condition not in CONDITIONS:
         condition = "good"
@@ -268,16 +269,16 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
         if not pid:
             continue
         if pid not in pieces:
-            raise Invalid(f"capo {pid} non trovato")
+            raise Invalid(tr("capo {0} non trovato", pid))
         slot = slug(s.get("slot")) or "top"
         if slot not in SLOTS:
-            raise Invalid(f"posizione '{slot}' non valida")
+            raise Invalid(tr("posizione '{0}' non valida", slot))
         slots.append({"slot": slot, "piece_id": pid})
     for pid in data.get("piece_ids") or []:          # shortcut: pieces without slot → their category's slot
         if pid in pieces and pid not in {s["piece_id"] for s in slots}:
             slots.append({"slot": pieces[pid].get("_slot") or "top", "piece_id": pid})
     if not slots:
-        raise Invalid("un outfit ha bisogno di almeno un capo")
+        raise Invalid(tr("un outfit ha bisogno di almeno un capo"))
     slots.sort(key=lambda s: SLOT_ORDER.index(s["slot"]))
     if not name:
         name = " + ".join(pieces[s["piece_id"]]["name"] for s in slots[:3])[:120]
@@ -301,18 +302,18 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
 def wear(data: dict, pieces: dict[str, dict], outfits: dict[str, dict], today: date) -> dict:
     oid = str(data.get("outfit_id") or "") or None
     if oid and oid not in outfits:
-        raise Invalid("outfit non trovato")
+        raise Invalid(tr("outfit non trovato"))
     pids = [str(p) for p in (data.get("piece_ids") or []) if p]
     for p in pids:
         if p not in pieces:
-            raise Invalid(f"capo {p} non trovato")
+            raise Invalid(tr("capo {0} non trovato", p))
     if oid and not pids:
         pids = [s["piece_id"] for s in outfits[oid].get("slots") or []]
     if not pids:
-        raise Invalid("indica un outfit o almeno un capo")
+        raise Invalid(tr("indica un outfit o almeno un capo"))
     day = iso_date(data.get("date")) or today.isoformat()
     if day > today.isoformat():
-        raise Invalid("non si può segnare un giorno futuro")
+        raise Invalid(tr("non si può segnare un giorno futuro"))
     w = data.get("weather") if isinstance(data.get("weather"), dict) else {}
     return {"date": day, "outfit_id": oid, "piece_ids": list(dict.fromkeys(pids)),
             "occasion": slug(data.get("occasion")) or "", "rating": _int(data.get("rating"), 1, 5),
@@ -335,10 +336,10 @@ def _trip_weather(w: dict) -> dict:
 def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) -> dict:
     name = _text(data.get("name"), 120)
     if not name:
-        raise Invalid("il nome della lista è obbligatorio")
+        raise Invalid(tr("il nome della lista è obbligatorio"))
     ctype = slug(data.get("type")) or "custom"
     if ctype not in COLLECTION_TYPES:
-        raise Invalid(f"tipo di lista '{ctype}' non valido")
+        raise Invalid(tr("tipo di lista '{0}' non valido", ctype))
     pids = [p for p in dict.fromkeys(str(x) for x in data.get("piece_ids") or []) if p in pieces]
     oids = [o for o in dict.fromkeys(str(x) for x in data.get("outfit_ids") or []) if o in outfits]
     trip = data.get("trip") if isinstance(data.get("trip"), dict) else {}

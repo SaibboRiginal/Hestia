@@ -20,6 +20,7 @@ from typing import Any
 import requests
 
 from . import athena_settings as S
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_athena.learning")
 
@@ -106,14 +107,14 @@ class Learning:
         changed = {k: v for k, v in after.items() if k in ("is_active", "weight") and current.get(k) != v}
         if changed:
             # The owner (or something else) changed it after the assistant: their edit wins.
-            return 409, {"status": "changed_since", "detail": "La memoria è stata cambiata dopo: resta com'è."}
+            return 409, {"status": "changed_since", "detail": tr("La memoria è stata cambiata dopo: resta com'è.")}
         before = entry.get("before") or {"is_active": False}
         if not self._patch_memory(entry["memory_id"], {k: v for k, v in before.items() if k in ("is_active", "weight")}):
-            return 502, {"status": "error", "detail": "archivio non disponibile"}
+            return 502, {"status": "error", "detail": tr("archivio non disponibile")}
         entry["undone"] = {"by": by, "at": _now()}
         self._put("learning", entry_id, entry, ref_id=str(entry["memory_id"]))
         logger.info("event=athena_learning_undone entry=%s action=%s by=%s", entry_id, entry["action"], by)
-        return 200, {"status": "ok", "entry": entry, "message": "Annullato"}
+        return 200, {"status": "ok", "entry": entry, "message": tr("Annullato")}
 
     # ── memory review (proposals only) ──────────────────────────────────────
     def _active(self) -> list[dict]:
@@ -130,7 +131,7 @@ class Learning:
                 continue
             if key in seen:
                 out.append({"kind": "doppione", "keep": seen[key]["id"], "retire": [m["id"]],
-                            "why": "Stessa cosa scritta due volte.", "facts": [seen[key]["fact"], m["fact"]]})
+                            "why": tr("Stessa cosa scritta due volte."), "facts": [seen[key]["fact"], m["fact"]]})
             else:
                 seen[key] = m
         return out
@@ -177,12 +178,12 @@ class Learning:
             label = {"doppione": "Doppione", "contraddizione": "Contraddizione"}.get(f["kind"], "Forse vecchia")
             lines = "\n".join(f"• {str(t)[:160]}" for t in f["facts"][:4])
             publish("service.action_required", f"memory.proposal.{pid}", {
-                "_title": f"Memoria · {label}", "_source": "Memoria", "_level": "info",
+                "_title": tr("Memoria · {0}", label), "_source": tr("Memoria"), "_level": "info",
                 "_message": f"{f['why']}\n{lines}" + (f"\nDiventa: <i>{f['merged'][:200]}</i>" if f.get("merged") else ""),
                 "dedupe_key": f"memory.proposal:{','.join(map(str, sorted(f['retire'])))}",
-                "_actions": [{"id": "apply", "label": "Applica", "style": "primary", "service": "athena",
+                "_actions": [{"id": "apply", "label": tr("Applica"), "style": "primary", "service": "athena",
                               "method": "POST", "path": f"/api/athena/memory/proposals/{pid}/apply"},
-                             {"id": "keep", "label": "Lascia", "service": "athena", "method": "POST",
+                             {"id": "keep", "label": tr("Lascia"), "service": "athena", "method": "POST",
                               "path": f"/api/athena/memory/proposals/{pid}/dismiss"}],
                 "_link": {"module": "athena", "page": "imparato"}})
         logger.info("event=athena_memory_review memories=%d proposals=%d", len(memories), min(10, len(findings)))
@@ -213,7 +214,7 @@ class Learning:
                             fact=f"rivista: {p.get('why') or ''}")
         p.update({"status": "applied", "by": by, "decided_at": _now()})
         self._put("memory_proposal", pid, p)
-        return 200, {"status": "ok", "message": "Fatto: memoria sistemata"}
+        return 200, {"status": "ok", "message": tr("Fatto: memoria sistemata")}
 
     def dismiss(self, pid: str, by: str = "user") -> tuple[int, dict]:
         p = self._proposal(pid)
@@ -221,4 +222,4 @@ class Learning:
             return 404, {"status": "not_found"}
         p.update({"status": "dismissed", "by": by, "decided_at": _now()})
         self._put("memory_proposal", pid, p)
-        return 200, {"status": "ok", "message": "Lasciata com'è"}
+        return 200, {"status": "ok", "message": tr("Lasciata com'è")}

@@ -17,6 +17,7 @@ import requests
 
 from . import athena_settings as S
 from .athena_settings import get_bool, get_float, get_int
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_athena.skill_curator")
 
@@ -223,7 +224,7 @@ class SkillCurator:
         # Generate skill name + description (simple heuristic — no LLM call)
         tool_names = [t.get("tool", "") for t in best_seq if t.get("tool")]
         skill_name = f"{domain}_{'_'.join(tool_names[:3])}".replace(".", "_")[:64]
-        description = f"Sequenza {', '.join(tool_names)} per dominio {domain}"
+        description = tr("Sequenza {0} per dominio {1}", ', '.join(tool_names), domain)
 
         # Check if similar skill already exists
         existing = self._find_similar_skill(centroid, domain)
@@ -289,7 +290,7 @@ class SkillCurator:
             })
             logger.info("event=skill_created name=%s domain=%s tools=%d",
                         name, domain, len(tool_sequence))
-            self._emit_hint(f"Nuova skill creata: {name} ({domain})")
+            self._emit_hint(tr("Nuova skill creata: {0} ({1})", name, domain))
         except Exception as exc:
             logger.warning("event=skill_create_failed name=%s error=%s", name, exc)
 

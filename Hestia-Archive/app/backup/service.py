@@ -21,6 +21,7 @@ from hestia_common.crypto import DecryptError
 from .container import ContainerError, seal, sha256_file, unseal
 from .pg import PgError
 from .remote import RemoteError
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_archive.backup")
 
@@ -180,14 +181,13 @@ class BackupService:
         problem = self.state().get("problem") or {}
         if problem and problem.get("code") in codes:
             self._save(problem=None)
-            self.notify({"key": PROBLEM_KEY, "closes": True, "title": "Backup di nuovo regolare",
-                         "text": "Il backup è di nuovo regolare.", "level": "success"})
+            self.notify({"key": PROBLEM_KEY, "closes": True, "title": tr("Backup di nuovo regolare"),
+                         "text": tr("Il backup è di nuovo regolare."), "level": "success"})
 
     def _secret(self) -> str:
         pw = (self.passphrase() or "").strip()
         if not pw:
-            self._problem("passphrase", "Backup fermo", "Backup fermo: manca la passphrase "
-                          "(HESTIA_BACKUP_PASSPHRASE nel file .env). Senza, non posso cifrare né aprire i backup.",
+            self._problem("passphrase", tr("Backup fermo"), tr("Backup fermo: manca la passphrase (HESTIA_BACKUP_PASSPHRASE nel file .env). Senza, non posso cifrare né aprire i backup."),
                           level="error")
             raise BackupFailed("passphrase", "passphrase missing")
         return pw
@@ -223,8 +223,7 @@ class BackupService:
         except BackupFailed:
             raise
         except Exception as exc:
-            self._problem("backup", "Backup non riuscito", f"Il backup non è riuscito ({_short(exc)}). "
-                          "Riprovo al prossimo giro.", level="error")
+            self._problem("backup", tr("Backup non riuscito"), tr("Il backup non è riuscito ({0}). Riprovo al prossimo giro.", _short(exc)), level="error")
             logger.error("event=backup_failed step=%s error=%s", (self._job or {}).get("step"), _short(exc))
             raise
         uploaded = self.flush_pending()
@@ -254,13 +253,11 @@ class BackupService:
             except RemoteError as exc:
                 self._prune_pending()
                 if exc.code in ("drive_scope_missing", "no_token", "drive_forbidden", "drive_api_disabled"):
-                    self._problem("drive", "Backup in attesa", "Backup in attesa: Google Drive non collegato. "
-                                  "La copia cifrata resta sul PC e la carico appena ricolleghi Google.",
+                    self._problem("drive", tr("Backup in attesa"), tr("Backup in attesa: Google Drive non collegato. La copia cifrata resta sul PC e la carico appena ricolleghi Google."),
                                   actions=[REAUTH_ACTION])
                 else:
-                    why = "Google Drive non raggiungibile ora" if exc.code == "unreachable" else _short(exc)
-                    self._problem("drive", "Backup in attesa", f"Backup in attesa: {why}. La copia cifrata resta "
-                                  "sul PC e riprovo al prossimo giro.")
+                    why = tr("Google Drive non raggiungibile ora") if exc.code == "unreachable" else _short(exc)
+                    self._problem("drive", tr("Backup in attesa"), tr("Backup in attesa: {0}. La copia cifrata resta sul PC e riprovo al prossimo giro.", why))
                 return None
             path.unlink(missing_ok=True)
             meta_path.unlink(missing_ok=True)
@@ -324,20 +321,20 @@ class BackupService:
         files = sorted((f for f in self.remote.list() if is_backup(f)), key=created_at, reverse=True)
         f = next((x for x in files if x["id"] == file_id), None) if file_id else (files[0] if files else None)
         if not f:
-            raise BackupFailed("download", "backup non trovato su Google Drive")
+            raise BackupFailed("download", tr("backup non trovato su Google Drive"))
         self._fetching = f
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
         enc = self.tmp_dir / "fetch.enc"
         self.remote.download(f["id"], enc)
         want = (f.get("app_properties") or {}).get("sha256")
         if want and sha256_file(enc) != want:
-            raise BackupFailed("checksum", "il file su Drive è diverso da quello caricato (checksum)")
+            raise BackupFailed("checksum", tr("il file su Drive è diverso da quello caricato (checksum)"))
         self._step("decrypt")
         dump = self.tmp_dir / "fetch.dump"
         try:
             manifest = unseal(enc, dump, pw)
         except (DecryptError, ContainerError) as exc:
-            raise BackupFailed("decrypt", f"non riesco ad aprirlo ({exc}): passphrase diversa o file rovinato")
+            raise BackupFailed("decrypt", tr("non riesco ad aprirlo ({0}): passphrase diversa o file rovinato", exc))
         enc.unlink(missing_ok=True)
         return f, manifest, dump
 
@@ -345,13 +342,13 @@ class BackupService:
         self._step("decrypt")
         enc = self.import_dir / Path(name).name
         if not enc.is_file():
-            raise BackupFailed("download", f"file {Path(name).name} non trovato tra quelli importati")
+            raise BackupFailed("download", tr("file {0} non trovato tra quelli importati", Path(name).name))
         self.tmp_dir.mkdir(parents=True, exist_ok=True)
         dump = self.tmp_dir / "fetch.dump"
         try:
             manifest = unseal(enc, dump, pw)
         except (DecryptError, ContainerError) as exc:
-            raise BackupFailed("decrypt", f"non riesco ad aprirlo ({exc}): passphrase diversa o file rovinato")
+            raise BackupFailed("decrypt", tr("non riesco ad aprirlo ({0}): passphrase diversa o file rovinato", exc))
         return {"id": None, "name": enc.name, "created_at": manifest.get("created_at")}, manifest, dump
 
     def _compare(self, dbname: str, manifest: dict) -> list[str]:
@@ -403,7 +400,7 @@ class BackupService:
         self._mark(f, "fail")
         self._save(last_verify={"name": (f or {}).get("name"), "verified_at": now_iso(), "ok": False, "error": why})
         logger.error("event=backup_verify ok=false name=%s error=%s", (f or {}).get("name"), why)
-        self._problem("verify", "Verifica del backup fallita", f"Verifica del backup fallita: {why}.", level="error")
+        self._problem("verify", tr("Verifica del backup fallita"), tr("Verifica del backup fallita: {0}.", why), level="error")
 
     # ── rollback ────────────────────────────────────────────────────────────
     def restore(self, file_id: str | None = None, local: str | None = None) -> dict:
@@ -434,24 +431,23 @@ class BackupService:
                 "undone": False}
         self._save(last_restore=info)
         logger.info("event=backup_restore ok=true step=done name=%s", f["name"])
-        self.notify({"key": "archive.backup.restore", "title": "Dati ripristinati",
-                     "text": f"Dati ripristinati al {when.astimezone(self.tz):%d/%m/%Y %H:%M}. Se non era quello che "
-                             "volevi, nel pannello Backup delle impostazioni c'è «Annulla ripristino».",
+        self.notify({"key": "archive.backup.restore", "title": tr("Dati ripristinati"),
+                     "text": tr("Dati ripristinati al {0:%d/%m/%Y %H:%M}. Se non era quello che volevi, nel pannello Backup delle impostazioni c'è «Annulla ripristino».", when.astimezone(self.tz)),
                      "level": "success"})
         return info
 
     def undo(self) -> dict:
         if not self.pg.exists(self.previous):
-            raise BackupFailed("undo", "non c'è un ripristino da annullare")
+            raise BackupFailed("undo", tr("non c'è un ripristino da annullare"))
         self._step("swap")
         self._swap(lambda: self.pg.exchange(self.live, self.previous))
         st = self.state().get("last_restore") or {}
         info = {**st, "undone": not st.get("undone"), "undo_at": now_iso()}
         self._save(last_restore=info)
         logger.info("event=backup_restore_undo undone=%s", info["undone"])
-        self.notify({"key": "archive.backup.restore", "title": "Ripristino annullato" if info["undone"]
-                     else "Ripristino rifatto", "text": "I dati sono tornati com'erano prima del ripristino."
-                     if info["undone"] else "I dati sono di nuovo quelli del backup ripristinato.", "level": "info"})
+        self.notify({"key": "archive.backup.restore", "title": tr("Ripristino annullato") if info["undone"]
+                     else tr("Ripristino rifatto"), "text": tr("I dati sono tornati com'erano prima del ripristino.")
+                     if info["undone"] else tr("I dati sono di nuovo quelli del backup ripristinato."), "level": "info"})
         return info
 
     def _swap(self, rename: Callable[[], None]) -> None:

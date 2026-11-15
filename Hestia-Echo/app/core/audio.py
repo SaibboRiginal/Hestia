@@ -13,6 +13,7 @@ import shutil
 import struct
 import subprocess
 import wave
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 FORMATS = {
     "ogg_opus": ("audio/ogg", ["-c:a", "libopus", "-b:a", "32k", "-application", "voip", "-f", "ogg"]),
@@ -33,7 +34,7 @@ def ffmpeg_available() -> bool:
 
 def _ffmpeg(data: bytes, out_args: list[str], timeout: float = 120) -> bytes:
     if not ffmpeg_available():
-        raise AudioError("ffmpeg non installato")
+        raise AudioError(tr("ffmpeg non installato"))
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vn", *out_args, "pipe:1"],
                           input=data, capture_output=True, timeout=timeout)
     if proc.returncode != 0 or not proc.stdout:

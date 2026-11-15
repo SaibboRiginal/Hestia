@@ -29,6 +29,7 @@ from typing import Any, Callable
 from hestia_common.module_kit import Invalid, now_iso
 
 from .traces import STORE
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_metis.review")
 
@@ -302,12 +303,12 @@ class Review:
             raise Invalid("decision: accept | reject | edit")
         rows = self._rows(kind="review", ids=tid, limit=1)
         if not rows:
-            raise Invalid("revisione non trovata")
+            raise Invalid(tr("revisione non trovata"))
         row = rows[0]
         data = dict(row.get("data") or {})
         if decision == "edit":
             if not str(answer or "").strip():
-                raise Invalid("answer: la risposta giusta")
+                raise Invalid(tr("answer: la risposta giusta"))
             data.update(answer=str(answer).strip()[:8000], verdict="fix", status="edited")
         else:
             data["status"] = "accepted" if decision == "accept" else "rejected"

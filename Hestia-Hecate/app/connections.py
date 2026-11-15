@@ -20,6 +20,7 @@ import logging
 from typing import Any, Callable
 
 from fastapi import APIRouter, Body, HTTPException
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hecate.connections")
 router = APIRouter()
@@ -45,20 +46,20 @@ class Connector:
         raise NotImplementedError
 
     def submit(self, values: dict) -> dict:        # → {message?, open_url?}
-        raise ConnectError("Niente da fare qui.")
+        raise ConnectError(tr("Niente da fare qui."))
 
     def action(self, name: str) -> dict:
-        raise ConnectError("Azione sconosciuta.")
+        raise ConnectError(tr("Azione sconosciuta."))
 
     def forget(self) -> dict:
-        raise ConnectError("Non si scollega da qui.")
+        raise ConnectError(tr("Non si scollega da qui."))
 
     def item(self) -> dict:
         try:
             st = self.state()
         except Exception as exc:  # noqa: BLE001 — one broken service never hides the others
             logger.warning("[🔄] event=connection_state_failed id=%s error=%s fallback=unavailable", self.id, exc)
-            st = {"state": "not_connected", "detail": "Stato non disponibile.", "step": None, "actions": []}
+            st = {"state": "not_connected", "detail": tr("Stato non disponibile."), "step": None, "actions": []}
         return {"id": self.id, "label": self.label, "icon": self.icon, "what": self.what, "in_setup": self.in_setup,
                 "state": st.get("state", "not_connected"), "detail": st.get("detail", ""), "step": st.get("step"),
                 "actions": st.get("actions", [])}
@@ -79,7 +80,7 @@ def items(place: str = "") -> list[dict]:
 def _get(cid: str) -> Connector:
     c = _REGISTRY.get(cid)
     if c is None:
-        raise HTTPException(status_code=404, detail="Servizio sconosciuto.")
+        raise HTTPException(status_code=404, detail=tr("Servizio sconosciuto."))
     return c
 
 
@@ -92,7 +93,7 @@ def _run(c: Connector, fn: Callable[[], dict | None], what: str) -> dict:
         raise
     except Exception as exc:  # noqa: BLE001 — the reason in words, never a stack trace
         logger.warning("[🔄] event=connection_%s_failed id=%s error=%s", what, c.id, type(exc).__name__)
-        raise HTTPException(status_code=422, detail=f"{c.label} non ha risposto ({type(exc).__name__}): riprova.")
+        raise HTTPException(status_code=422, detail=tr("{0} non ha risposto ({1}): riprova.", c.label, type(exc).__name__))
     return {"status": "ok", **out, "item": c.item()}
 
 
@@ -135,21 +136,21 @@ class GarminConnector(Connector):
         s = self.g.status()
         if s["connected"]:
             last = s.get("last_sync") or {}
-            detail = f"Ultima lettura {str(last.get('at', ''))[:16].replace('T', ' ')}" if last.get("at") else "Collegato."
+            detail = tr("Ultima lettura {0}", str(last.get('at', ''))[:16].replace('T', ' ')) if last.get("at") else "Collegato."
             if s.get("last_error"):
                 detail += f" · {s['last_error']}"
-            actions = [{"id": "sync", "label": "Leggi adesso", "icon": "refresh"}]
+            actions = [{"id": "sync", "label": tr("Leggi adesso"), "icon": "refresh"}]
             return {"state": "connected", "detail": detail, "step": None,
-                    "actions": actions + ([{"id": "forget", "label": "Scollega", "icon": "trash", "danger": True}]
+                    "actions": actions + ([{"id": "forget", "label": tr("Scollega"), "icon": "trash", "danger": True}]
                                           if s.get("tokens") else [])}
         if s.get("waiting_code"):
-            return {"state": "waiting", "detail": "Aspetto il codice.", "actions": [],
-                    "step": {"kind": "form", "text": "Garmin ti ha mandato un codice (mail o SMS): scrivilo qui.",
-                             "fields": [field("code", "Codice di Garmin", "text", "123456")], "submit": "Conferma"}}
+            return {"state": "waiting", "detail": tr("Aspetto il codice."), "actions": [],
+                    "step": {"kind": "form", "text": tr("Garmin ti ha mandato un codice (mail o SMS): scrivilo qui."),
+                             "fields": [field("code", tr("Codice di Garmin"), "text", "123456")], "submit": tr("Conferma")}}
         return {"state": "not_connected", "detail": "", "actions": [],
-                "step": {"kind": "form", "text": "Email e password di Garmin Connect: le uso una volta sola e non le salvo.",
-                         "fields": [field("email", "Email", "email"), field("password", "Password", "password")],
-                         "submit": "Collega"}}
+                "step": {"kind": "form", "text": tr("Email e password di Garmin Connect: le uso una volta sola e non le salvo."),
+                         "fields": [field("email", tr("Email"), "email"), field("password", "Password", "password")],
+                         "submit": tr("Collega")}}
 
     def submit(self, values: dict) -> dict:
         from providers.garmin import GarminError
@@ -165,20 +166,20 @@ class GarminConnector(Connector):
             raise ConnectError(self.g.explain(exc))
         if out["status"] == "connected":
             self.first_sync()
-            return {"message": "Garmin collegato."}
+            return {"message": tr("Garmin collegato.")}
         return {}
 
     def action(self, name: str) -> dict:
         if name != "sync":
-            raise ConnectError("Azione sconosciuta.")
+            raise ConnectError(tr("Azione sconosciuta."))
         out = self.sync() or {}
         if out.get("status") == "error":
-            raise ConnectError(out.get("detail") or "Garmin non risponde.")
+            raise ConnectError(out.get("detail") or tr("Garmin non risponde."))
         return {"message": "Letto."}
 
     def forget(self) -> dict:
         self.g.forget()
-        return {"message": "Garmin scollegato."}
+        return {"message": tr("Garmin scollegato.")}
 
 
 class GoogleConnector(Connector):
@@ -193,48 +194,48 @@ class GoogleConnector(Connector):
         self.editing = False
 
     def _client_step(self) -> dict:
-        return {"kind": "form", "text": "Serve un accesso di Google Cloud (gratis), una volta sola.",
-                "guide": ["Apri Google Cloud, Credenziali, e crea un progetto se non ne hai uno.",
+        return {"kind": "form", "text": tr("Serve un accesso di Google Cloud (gratis), una volta sola."),
+                "guide": [tr("Apri Google Cloud, Credenziali, e crea un progetto se non ne hai uno."),
                           "Attiva Google Calendar API, Gmail API e Google Drive API.",
                           "«Crea credenziali» → «ID client OAuth» → tipo App desktop.",
-                          "Copia qui ID client e segreto, oppure incolla il file JSON che fa scaricare."],
-                "link": {"label": "Apri Google Cloud", "url": self.CONSOLE},
-                "fields": [field("client_id", "ID client", "text", "…apps.googleusercontent.com"),
-                           field("client_secret", "Segreto del client", "password"),
-                           field("json", "Oppure il file JSON", "textarea")],
-                "submit": "Salva e collega"}
+                          tr("Copia qui ID client e segreto, oppure incolla il file JSON che fa scaricare.")],
+                "link": {"label": tr("Apri Google Cloud"), "url": self.CONSOLE},
+                "fields": [field("client_id", tr("ID client"), "text", "…apps.googleusercontent.com"),
+                           field("client_secret", tr("Segreto del client"), "password"),
+                           field("json", tr("Oppure il file JSON"), "textarea")],
+                "submit": tr("Salva e collega")}
 
     def state(self) -> dict:
         s = self._state()
         if s.get("linked") and not self.editing:
             return {"state": "connected", "detail": "Collegato.", "step": None,
-                    "actions": [{"id": "again", "label": "Collega di nuovo", "icon": "refresh"}]}
+                    "actions": [{"id": "again", "label": tr("Collega di nuovo"), "icon": "refresh"}]}
         if not s.get("client_set") or self.editing:
             return {"state": "not_connected", "detail": "", "step": self._client_step(), "actions": []}
         if s.get("pending"):
-            paste = [] if s.get("public_redirect") else [field("code", "Indirizzo dell'ultima pagina (o solo il codice)")]
-            return {"state": "waiting", "detail": "Aspetto Google.", "actions": [{"id": "cancel", "label": "Annulla", "icon": "x"}],
+            paste = [] if s.get("public_redirect") else [field("code", tr("Indirizzo dell'ultima pagina (o solo il codice)"))]
+            return {"state": "waiting", "detail": tr("Aspetto Google."), "actions": [{"id": "cancel", "label": tr("Annulla"), "icon": "x"}],
                     "step": {"kind": "wait", "url": s.get("auth_url") or "",
-                             "text": "Nella pagina di Google scegli l'account e concedi l'accesso: qui si aggiorna da solo."
+                             "text": tr("Nella pagina di Google scegli l'account e concedi l'accesso: qui si aggiorna da solo.")
                                      + ("" if s.get("public_redirect") else
-                                        " Se alla fine la pagina non si apre (dal telefono), incolla qui il suo indirizzo."),
-                             "fields": paste, "submit": "Conferma" if paste else ""}}
+                                        tr(" Se alla fine la pagina non si apre (dal telefono), incolla qui il suo indirizzo.")),
+                             "fields": paste, "submit": tr("Conferma") if paste else ""}}
         err = str(s.get("error") or "")
         return {"state": "not_connected", "detail": "" if err.startswith("Google not authorized") else err[:200],
                 "actions": [{"id": "client", "label": "Cambia accesso Google Cloud", "icon": "edit"}],
-                "step": {"kind": "form", "text": "Si apre la pagina di Google: scegli l'account e concedi l'accesso.",
-                         "fields": [], "submit": "Collega Google"}}
+                "step": {"kind": "form", "text": tr("Si apre la pagina di Google: scegli l'account e concedi l'accesso."),
+                         "fields": [], "submit": tr("Collega Google")}}
 
     def submit(self, values: dict) -> dict:
         s = self._state()
         if not s.get("client_set") or self.editing:
             if not any(str(values.get(k) or "").strip() for k in ("client_id", "json")):
-                raise ConnectError("Scrivi ID client e segreto, oppure incolla il file JSON.")
+                raise ConnectError(tr("Scrivi ID client e segreto, oppure incolla il file JSON."))
             self._save(values)
             self.editing = False
         elif s.get("pending") and values.get("code"):
             self._complete(str(values["code"]))
-            return {"message": "Google collegato."}
+            return {"message": tr("Google collegato.")}
         out = self._initiate()
         return {"open_url": out.get("auth_url") or ""}
 
@@ -247,7 +248,7 @@ class GoogleConnector(Connector):
             return {}
         if name == "again":
             return {"open_url": (self._initiate() or {}).get("auth_url") or ""}
-        raise ConnectError("Azione sconosciuta.")
+        raise ConnectError(tr("Azione sconosciuta."))
 
 
 class PhoneConnector(Connector):
@@ -268,10 +269,10 @@ class PhoneConnector(Connector):
                 bits.append(f"batteria {last['battery']}%")
             when = str(last.get("at") or "")[:16].replace("T", " ")
             return {"state": "connected", "step": None, "actions": [],
-                    "detail": (f"Ultimo segnale {when}" + (f" · {', '.join(bits)}" if bits else "")) if when
-                    else "Configurato, nessun segnale ancora."}
+                    "detail": (tr("Ultimo segnale {0}", when) + (f" · {', '.join(bits)}" if bits else "")) if when
+                    else tr("Configurato, nessun segnale ancora.")}
         return {"state": "not_connected", "detail": "", "actions": [],
-                "step": {"kind": "form", "fields": [], "submit": "", "text": "Si collega dal telefono, in tre passi:",
-                         "guide": ["Nel file di configurazione del server metti il segreto del telefono (la guida di installazione dice dove).",
-                                   "Su Tasker o MacroDroid crea un'azione HTTP POST verso /api/gateway/phone/push con l'intestazione X-Hestia-Phone-Token: quando cambia il Wi-Fi o la carica, e alle notifiche delle app che vuoi.",
-                                   "Torna qui: vedrai l'ultimo segnale."]}}
+                "step": {"kind": "form", "fields": [], "submit": "", "text": tr("Si collega dal telefono, in tre passi:"),
+                         "guide": [tr("Nel file di configurazione del server metti il segreto del telefono (la guida di installazione dice dove)."),
+                                   tr("Su Tasker o MacroDroid crea un'azione HTTP POST verso /api/gateway/phone/push con l'intestazione X-Hestia-Phone-Token: quando cambia il Wi-Fi o la carica, e alle notifiche delle app che vuoi."),
+                                   tr("Torna qui: vedrai l'ultimo segnale.")]}}

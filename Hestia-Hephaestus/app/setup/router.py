@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from . import secrets, tunnel
 from .updater import UpdateRefused, Updater
 from .service import STEPS, SetupService
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.setup.router")
 
@@ -183,7 +184,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
                 refused(exc)
             oracle = done["services"].get("oracle", {})
             if not oracle.get("applied"):
-                return {"status": "ok", "ok": False, "detail": "Non sono riuscito a salvare la chiave."}
+                return {"status": "ok", "ok": False, "detail": tr("Non sono riuscito a salvare la chiave.")}
             if oracle.get("recreated"):
                 service._wait_oracle()
         return service.oracle("POST", "/api/llm/setup/test", body={"provider": req.provider, "model": req.model},
@@ -211,7 +212,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         if req.key:
             try:
                 if not service.voice_key(req.provider, req.key):
-                    return {"status": "ok", "ok": False, "detail": "Non sono riuscito a salvare la chiave."}
+                    return {"status": "ok", "ok": False, "detail": tr("Non sono riuscito a salvare la chiave.")}
             except secrets.SecretRefused as exc:
                 refused(exc)
         return service.echo("POST", "/api/voice/setup/test", body={"provider": req.provider}, timeout=30)
@@ -254,7 +255,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         except secrets.SecretRefused as exc:
             refused(exc)
         ok = done["services"].get("telegram", {}).get("recreated", False)
-        return {"status": "ok", "ok": ok, **(service.new_code() if ok else {"detail": "Il bot non è ripartito."})}
+        return {"status": "ok", "ok": ok, **(service.new_code() if ok else {"detail": tr("Il bot non è ripartito.")})}
 
     @router.post("/telegram/code")
     def telegram_code():
@@ -345,12 +346,12 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     def update_answer(req: UpdateAnswer):
         """The answer to the «Installo?» notification (Hermes question)."""
         if req.answer.strip().lower() not in {"si", "sì", "yes", "ok"}:
-            return {"status": "ok", "message": "Va bene, non installo. Lo trovi in Sistema → Aggiornamenti."}
+            return {"status": "ok", "message": tr("Va bene, non installo. Lo trovi in Sistema → Aggiornamenti.")}
         try:
             updater.apply()
         except UpdateRefused as exc:
             return {"status": "ok", "message": str(exc)}
-        return {"status": "ok", "message": "Installo l'aggiornamento: ti scrivo quando ho finito."}
+        return {"status": "ok", "message": tr("Installo l'aggiornamento: ti scrivo quando ho finito.")}
 
     # ── Da fuori casa (Cloudflare quick tunnel, setup/tunnel.py) ──
     @router.get("/tunnel")
@@ -367,8 +368,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
             out = tunnel.start(wait=15) if req.on else tunnel.stop()
         except Exception as exc:
             logger.warning("[🔄] event=setup_tunnel_failed on=%s error=%s", req.on, str(exc)[:200])
-            raise HTTPException(status_code=502, detail="Non sono riuscito a cambiare il collegamento da fuori casa: "
-                                                        "controlla che Docker sia acceso e riprova.")
+            raise HTTPException(status_code=502, detail=tr("Non sono riuscito a cambiare il collegamento da fuori casa: controlla che Docker sia acceso e riprova."))
         service.mark("fuori")
         return {"status": "ok", **out}
 

@@ -15,6 +15,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -161,7 +162,7 @@ async def _conflict(_: Request, exc: Conflict):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": "archivio non raggiungibile, riprova (i dati offline restano sul telefono)"})
+    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova (i dati offline restano sul telefono)")})
 
 
 @app.get("/health")
@@ -332,9 +333,9 @@ def session_start_next(body: dict = Body(default={})):
     nxt = hercules.next_workout()
     act = hercules.active_session()
     if act:
-        return {"session_id": act["id"], "resumed": True, "label": f"Ripreso {act.get('name')}"}
+        return {"session_id": act["id"], "resumed": True, "label": tr("Ripreso {0}", act.get('name'))}
     sess = hercules.start_session((nxt.get("template") or {}).get("id"))
-    return {"session_id": sess["id"], "label": f"Iniziato {sess.get('name')}"}
+    return {"session_id": sess["id"], "label": tr("Iniziato {0}", sess.get('name'))}
 
 
 @app.post(f"{API}/sessions/log-text")
@@ -410,7 +411,7 @@ def plans(days: int = 21):
 @app.post(f"{API}/days/skip")
 def day_skip(body: dict = Body(default={})):
     hercules.skip_day(body.get("date"), body.get("note") or "")
-    return {"label": "Oggi saltato", "date": body.get("date") or hercules.today().isoformat()}
+    return {"label": tr("Oggi saltato"), "date": body.get("date") or hercules.today().isoformat()}
 
 
 @app.delete(f"{API}/days/skip")
@@ -513,7 +514,7 @@ def _summary_with_plan() -> dict:
     planned = coach.next_planned()
     if planned:
         s["planned"] = planned
-        s["text"] = f"{s['text']} · Nel piano: {planned['label']}"
+        s["text"] = tr("{0} · Nel piano: {1}", s['text'], planned['label'])
     return s
 
 
@@ -542,7 +543,7 @@ def _recap_piece(day, nxt) -> dict:
             facts[k] = [*facts.get(k, []), *outdoor[k]]
     except Exception as exc:
         logger.warning("[🔄] event=hercules_activity_recap_failed error=%s fallback=gym_only", exc)
-    return recap.piece("hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30, **facts)
+    return recap.piece("hercules", tr("Allenamento"), icon="dumbbell", emoji="🏋️", order=30, **facts)
 
 
 app.include_router(recap.recap_router("hercules", _recap_piece, today=lambda: hercules.today()))
@@ -557,7 +558,7 @@ def module_context(budget: int = 400, topic: str = ""):
         if len(detail) > budget:
             detail = detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
         return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": detail}
-    text = "Allenamento: " + _summary_with_plan()["text"]
+    text = tr("Allenamento: ") + _summary_with_plan()["text"]
     hints = [a["hint"] for a in _activity_hints()]
     if hints:
         text += " · All'aperto: " + ", ".join(hints)
@@ -577,10 +578,10 @@ def quick_done(id: str, body: dict = Body(default={})):
     if id.startswith("resume:"):        # chip of the live session: nothing to log, the WebUI opens the page
         act = hercules.active_session()
         return {"session_id": act["id"] if act else None, "resumed": bool(act),
-                "label": f"Ripreso {act.get('name')}" if act else "Nessun allenamento in corso"}
+                "label": tr("Ripreso {0}", act.get('name')) if act else tr("Nessun allenamento in corso")}
     out = hercules.quick_done(id, day=body.get("date"))
     signals.changed()
-    return {**out, "label": f"{out['name']} segnato fatto"}
+    return {**out, "label": tr("{0} segnato fatto", out['name'])}
 
 
 @app.delete(f"{API}/quick/{{id}}")
@@ -591,7 +592,7 @@ def quick_undo(id: str, date: str = ""):
     rows = [s for s in hercules.store.items("session") if s.get("template_id") == id and s.get("source") == "quick"
             and str(rec.local_date(s.get("started_at"), hercules.tz)) == day]
     if not rows:
-        raise NotFound("niente da annullare")
+        raise NotFound(tr("niente da annullare"))
     rows.sort(key=lambda s: s.get("started_at") or "")
     out = hercules.delete("session", rows[-1]["id"])
     signals.changed()
@@ -603,7 +604,7 @@ def quick_bodyweight(body: dict = Body(...)):
     value = body.get("peso", body.get("weight"))
     taken = f"{body['date']}T08:00:00+00:00" if body.get("date") else None
     m = hercules.log_measurement("bodyweight", float(str(value).replace(",", ".")), taken)
-    return {**m, "label": f"Peso {m['value']} kg"}
+    return {**m, "label": tr("Peso {0} kg", m['value'])}
 
 
 # ── import / export ──────────────────────────────────────────────────────────
@@ -636,22 +637,22 @@ def reminder_check():
     goal, nxt = decision["goal"], decision.get("next") or {}
     tpl = nxt.get("template") or {}
     planned = coach.next_planned()
-    text = f"🏋️ Oggi: {tpl.get('name', 'allenamento')}"
+    text = tr("🏋️ Oggi: {0}", tpl.get('name', 'allenamento'))
     if planned and planned["label"].startswith("oggi"):
-        text += f" alle {planned['label'].split()[-1]}"
+        text += tr(" alle {0}", planned['label'].split()[-1])
     if nxt.get("estimated_minutes"):
         text += f" · {nxt['estimated_minutes']} min"
     text += f" · {goal['hint']}"
     actions = []
     if tpl:
-        actions.append({"id": "done", "label": "Segna fatto", "text": "✅ Segna fatto", "style": "primary",
+        actions.append({"id": "done", "label": tr("Segna fatto"), "text": tr("✅ Segna fatto"), "style": "primary",
                         "service": "hercules", "method": "POST", "path": f"{API}/quick/{tpl['id']}", "body": {},
                         "resolves": True})
-    actions.append({"id": "skip", "label": "Salta oggi", "text": "⏭ Salta oggi", "service": "hercules",
+    actions.append({"id": "skip", "label": tr("Salta oggi"), "text": tr("⏭ Salta oggi"), "service": "hercules",
                     "method": "POST", "path": f"{API}/days/skip", "body": {}})
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
-            module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento", text=text,
+            module="hercules", domain="fitness", key="hercules.reminder", title=tr("Allenamento"), text=text,
             actions=actions, page="allenamento", voice=bool(settings.get("hercules.notifiche.voce", True))),
             timeout=8)
         hercules.mark_reminder_sent()
@@ -717,7 +718,7 @@ def activities_morning():
     msg = activities.morning()
     if not msg or msg.get("skip"):
         return {"send": False, "why": (msg or {}).get("skip") or "nothing_to_say"}
-    if not _notify(msg, "Allenamento all'aperto"):
+    if not _notify(msg, tr("Allenamento all'aperto")):
         return {"send": False, "why": "hermes_unreachable"}
     activities.mark_nudge()
     logger.info("event=hercules_activity_morning_sent key=%s", msg["key"])
@@ -772,7 +773,7 @@ def activities_slot_ask(plan_id: str, slot_id: str):
     msg = activities.ask(plan_id, slot_id)
     if not msg:
         return {"send": False, "why": "already_answered"}
-    return {"send": _notify(msg, "Allenamento all'aperto")}
+    return {"send": _notify(msg, tr("Allenamento all'aperto"))}
 
 
 # ── reflection signals (agenda job hercules.signals) ─────────────────────────
@@ -783,13 +784,13 @@ def signals_run():
 
 
 def _agenda_rules() -> list[dict]:
-    return [signals_rule("hercules", "Allenamento", path=f"{API}/signals/run", tz=TZ),
-            job_rule("hercules.reminder", "Promemoria allenamento (Hercules)", service="hercules",
+    return [signals_rule("hercules", tr("Allenamento"), path=f"{API}/signals/run", tz=TZ),
+            job_rule("hercules.reminder", tr("Promemoria allenamento (Hercules)"), service="hercules",
                      path=f"{API}/reminder/check", recurrence="FREQ=DAILY", start_at="2026-01-01T18:30:00",
                      description="Controlla se sei indietro con l'obiettivo di allenamento. Non invia nulla se il "
                                  "promemoria è spento nelle impostazioni (default) o se oggi ti sei già allenato.",
                      tz=TZ),
-            job_rule("hercules.activity_morning", "Coach attività all'aperto (Hercules)", service="hercules",
+            job_rule("hercules.activity_morning", tr("Coach attività all'aperto (Hercules)"), service="hercules",
                      path=f"{API}/activities/morning", recurrence="FREQ=DAILY", start_at="2026-01-01T07:30:00",
                      description="Solo mentre hai un'intenzione aperta (es. correre 2 volte questa settimana): "
                                  "«Ottimo giorno per…» quando il meteo è buono, o propone di spostare se piove.",
@@ -854,7 +855,7 @@ transfer = Transfer("hercules", hub, sections=[
     StoreSection("schede", "Schede e programmi", store, ["template", "program"], icon="list",
                  depends_on=["esercizi"]),
     StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"], icon="history",
-                 title=lambda r: r["data"].get("name") or "Sessione",
+                 title=lambda r: r["data"].get("name") or tr("Sessione"),
                  subtitle=lambda r: str(r["data"].get("started_at") or r.get("at") or "")[:10],
                  depends_on=["esercizi", "schede"]),
     StoreSection("misure", "Misure", store, ["measurement"], icon="scale",
@@ -872,32 +873,32 @@ app.include_router(transfer.router())
 # ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
 def _summary_display(s: dict) -> dict:
     act = s.get("active_session")
-    acts = ([action("Registra serie", "fitness_log_sets", style="primary"), action("Concludi", "fitness_finish_session")]
-            if act else [action("Inizia", "fitness_start_session", style="primary"), action("Come mi sento", "fitness_checkin")])
+    acts = ([action(tr("Registra serie"), "fitness_log_sets", style="primary"), action(tr("Concludi"), "fitness_finish_session")]
+            if act else [action(tr("Inizia"), "fitness_start_session", style="primary"), action(tr("Come mi sento"), "fitness_checkin")])
     lines = s.get("lines") or [x for x in str(s.get("text") or "").split(" · ") if x]
-    return display("Allenamento", subtitle=f"In corso: {act['name']}" if act else "",
+    return display(tr("Allenamento"), subtitle=tr("In corso: {0}", act['name']) if act else "",
                    lines=[x for x in lines if not (act and x.startswith("In corso:"))],
-                   actions=acts + [action("Storico", "fitness_history")],
+                   actions=acts + [action(tr("Storico"), "fitness_history")],
                    tone="warning" if "deload_suggested" in (s.get("flags") or []) else "")
 
 
 def _next_display(n: dict) -> dict:
     t = n.get("template")
     if not t:
-        return display("Allenamento di oggi", lines=[n.get("reason") or "Nessun allenamento in programma."],
-                       actions=[action("Le mie schede", "fitness_templates")])
+        return display(tr("Allenamento di oggi"), lines=[n.get("reason") or tr("Nessun allenamento in programma.")],
+                       actions=[action(tr("Le mie schede"), "fitness_templates")])
     def _target(pairs: list) -> str:
         kg = [w for w, _ in pairs if w]
         reps = [r for _, r in pairs if r]
         return " · ".join(x for x in (f"{_kg(max(kg))}" if kg else "", f"{reps[0]} rip" if reps else "") if x)
-    items = [item(p["exercise"] or "Esercizio", [f"{p['sets']} serie", _target(p.get("target") or [])])
+    items = [item(p["exercise"] or tr("Esercizio"), [f"{p['sets']} serie", _target(p.get("target") or [])])
              for p in n.get("plan") or []]
     minutes = n.get("estimated_minutes")
     subtitle = " · ".join(x for x in (n.get("reason") or "", f"{minutes} min" if minutes else "") if x)
-    acts = [] if n.get("rest_day") else [action("Inizia", "fitness_start_session", {"template": t["name"]}, style="primary"),
-                                         action("Adatta a come sto", "fitness_adapt_today")]
+    acts = [] if n.get("rest_day") else [action(tr("Inizia"), "fitness_start_session", {"template": t["name"]}, style="primary"),
+                                         action(tr("Adatta a come sto"), "fitness_adapt_today")]
     return display(t["name"], subtitle=subtitle, items=items,
-                   actions=acts + [action("Sposta", "fitness_postpone"), action("Salta oggi", "fitness_skip_day")])
+                   actions=acts + [action(tr("Sposta"), "fitness_postpone"), action(tr("Salta oggi"), "fitness_skip_day")])
 
 
 def _kg(value) -> str:
@@ -939,7 +940,7 @@ try:
     def _exercise_stats(exercise: str = "") -> dict:
         ex = hercules._find_exercise(exercise, hercules.store.items("exercise"))
         if not ex:
-            return {"error": f"esercizio '{exercise}' non trovato"}
+            return {"error": tr("esercizio '{0}' non trovato", exercise)}
         d = hercules.exercise_detail(ex["id"])
         return {"exercise": ex["name"], "records": d["records"], "stall": d["stall"],
                 "last_sessions": [{k: h[k] for k in ("date", "top_weight", "top_reps", "best_e1rm", "sets", "volume")}
@@ -958,7 +959,7 @@ try:
         if template:
             match = [t for t in hercules.templates() if template.lower() in t["name"].lower() or t["id"] == template]
             if not match:
-                return {"error": f"scheda '{template}' non trovata"}
+                return {"error": tr("scheda '{0}' non trovata", template)}
             tid = match[0]["id"]
         else:
             tid = (hercules.next_workout().get("template") or {}).get("id")
@@ -972,7 +973,7 @@ try:
     def _finish(notes: str = "", effort: int | None = None) -> dict:
         act = hercules.active_session()
         if not act:
-            return {"error": "nessun allenamento in corso"}
+            return {"error": tr("nessun allenamento in corso")}
         d = hercules.finish_session(act["id"], notes=notes or None, perceived_effort=effort)
         signals.changed()
         return {"summary": d.get("summary"), "prs": d.get("prs")}
@@ -1020,7 +1021,7 @@ try:
                        reps_max: int | None = None) -> dict:
         match = [t for t in hercules.store.items("template") if template.lower() in t["name"].lower() or t["id"] == template]
         if not match:
-            return {"error": f"scheda '{template}' non trovata"}
+            return {"error": tr("scheda '{0}' non trovata", template)}
         t = dict(match[0])
         exs = hercules.store.items("exercise")
         items = list(t.get("items") or [])
@@ -1030,7 +1031,7 @@ try:
         if add_exercise:
             ex = hercules._find_exercise(add_exercise, exs)
             if not ex:
-                return {"error": f"esercizio '{add_exercise}' non trovato"}
+                return {"error": tr("esercizio '{0}' non trovato", add_exercise)}
             n = sets or 3
             items.append({"exercise_id": ex["id"], "sets": [{"reps_min": reps_min or 8, "reps_max": reps_max or 12}
                                                             for _ in range(n)]})
@@ -1045,7 +1046,7 @@ try:
     def _undo_template(template: str = "") -> dict:
         match = [t for t in hercules.store.items("template") if template.lower() in t["name"].lower() or t["id"] == template]
         if not match:
-            return {"error": f"scheda '{template}' non trovata"}
+            return {"error": tr("scheda '{0}' non trovata", template)}
         return {"restored": hercules.undo_template(match[0]["id"])["name"]}
 
     def _measure(value: float = 0, kind: str = "bodyweight") -> dict:

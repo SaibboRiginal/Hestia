@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 from starlette.responses import JSONResponse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 BACKUP_DIR = Path(os.getenv("ARCHIVE_BACKUP_DIR", "/code/backups"))
 _EPOCH_FILE = BACKUP_DIR / "epoch"
@@ -73,7 +74,7 @@ class Gate:
         if path in self.OPEN_PATHS:
             return await call_next(request)
         if self.closed:
-            return JSONResponse({"detail": "archivio in manutenzione per pochi secondi, riprova"}, status_code=503,
+            return JSONResponse({"detail": tr("archivio in manutenzione per pochi secondi, riprova")}, status_code=503,
                                 headers={"Retry-After": "5"})
         with self._lock:
             self.inflight += 1

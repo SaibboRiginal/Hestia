@@ -15,6 +15,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -104,13 +105,13 @@ async def _not_found(_: Request, exc: NotFound):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": "archivio non raggiungibile, riprova tra poco"})
+    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
 
 
 @app.exception_handler(HubError)
 async def _hub_error(_: Request, exc: HubError):
     logger.warning("[🔄] event=wardrobe_hub_call_failed status=%s", exc.status)
-    return JSONResponse(status_code=502, content={"detail": "servizio non raggiungibile, riprova tra poco"})
+    return JSONResponse(status_code=502, content={"detail": tr("servizio non raggiungibile, riprova tra poco")})
 
 
 def _refresh() -> None:
@@ -327,7 +328,7 @@ def summary():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("wardrobe", "Guardaroba", icon="shirt", emoji="👕", order=50, **wardrobe.recap(day, nxt))
+    return recap.piece("wardrobe", tr("Guardaroba"), icon="shirt", emoji="👕", order=50, **wardrobe.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("wardrobe", _recap_piece, today=lambda: wardrobe.today()))
@@ -460,10 +461,10 @@ def reminder_check():
     actions = [{"id": f"wear-{i}", "label": c["label"], "text": f"👕 {c['label']}", "style": "primary" if i == 0 else None,
                 "service": "wardrobe", "method": "POST", "path": f"{API}/quick/{c['id']}", "body": {"source": "reminder"},
                 "resolves": True} for i, c in enumerate(decision.get("chips") or [])]
-    actions.append({"id": "skip", "label": "Salta", "text": "⏭ Salta", "service": "wardrobe", "method": "POST",
+    actions.append({"id": "skip", "label": tr("Salta"), "text": "⏭ Salta", "service": "wardrobe", "method": "POST",
                     "path": f"{API}/reminder/skip", "body": {}})
     try:
-        _notify("wardrobe.reminder", "Guardaroba", f"👕 Cosa indossi oggi? · {goal['hint']}", actions, replaces=True,
+        _notify("wardrobe.reminder", tr("Guardaroba"), tr("👕 Cosa indossi oggi? · {0}", goal['hint']), actions, replaces=True,
                 page="outfit")
         wardrobe.mark_reminder_sent()
     except Exception as exc:
@@ -476,7 +477,7 @@ def reminder_check():
 @app.post(f"{API}/reminder/skip")
 def reminder_skip(body: dict = Body(default={})):
     """«Non oggi» on the reminder, «Tieni» on a delete question: nothing to do, Hermes closes the card."""
-    return {"ok": True, "message": str((body or {}).get("message") or "Ok, niente per oggi")[:120]}
+    return {"ok": True, "message": str((body or {}).get("message") or tr("Ok, niente per oggi"))[:120]}
 
 
 @app.post(f"{API}/review/run")
@@ -493,15 +494,15 @@ def review_run():
     if s["forgotten"]:
         lines.append(f"• Dimenticati: {len(s['forgotten'])} (es. {', '.join(f['name'] for f in s['forgotten'][:3])})")
     if repair:
-        lines.append(f"• Da riparare: {', '.join(repair[:5])}")
+        lines.append(tr("• Da riparare: {0}", ', '.join(repair[:5])))
     if laundry:
-        lines.append(f"• In lavanderia da tanto: {', '.join(laundry[:5])}")
+        lines.append(tr("• In lavanderia da tanto: {0}", ', '.join(laundry[:5])))
     if review:
-        lines.append(f"• Outfit da rivedere: {', '.join(review[:5])}")
+        lines.append(tr("• Outfit da rivedere: {0}", ', '.join(review[:5])))
     if not lines:
         return {"send": False, "why": "nothing_to_say"}
     try:
-        _notify("wardrobe.review", "Guardaroba del mese", "👕 Revisione del guardaroba\n" + "\n".join(lines), [],
+        _notify("wardrobe.review", tr("Guardaroba del mese"), tr("👕 Revisione del guardaroba\n") + "\n".join(lines), [],
                 replaces=True, page="statistiche")
     except Exception as exc:
         logger.warning("[🔄] event=wardrobe_review_emit_failed error=%s fallback=next_month", exc)
@@ -510,15 +511,15 @@ def review_run():
 
 
 def _agenda_rules() -> list[dict]:
-    return [job_rule("wardrobe.reminder", "Promemoria guardaroba", service="wardrobe", path=f"{API}/reminder/check",
+    return [job_rule("wardrobe.reminder", tr("Promemoria guardaroba"), service="wardrobe", path=f"{API}/reminder/check",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=TZ,
                      description="Chiede cosa indossi solo se hai un obiettivo «Indossato», sei indietro e oggi non hai "
                                  "segnato nulla. Spento nelle impostazioni = non invia niente (default)."),
-            job_rule("wardrobe.review", "Revisione mensile del guardaroba", service="wardrobe", path=f"{API}/review/run",
+            job_rule("wardrobe.review", tr("Revisione mensile del guardaroba"), service="wardrobe", path=f"{API}/review/run",
                      recurrence="FREQ=MONTHLY;BYDAY=1SU", start_at="2026-01-04T10:00:00", tz=TZ,
                      description="Capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere. "
                                  "Solo se la revisione mensile è accesa nelle impostazioni."),
-            signals_rule("wardrobe", "Guardaroba", path=f"{API}/signals/run", tz=TZ)]
+            signals_rule("wardrobe", tr("Guardaroba"), path=f"{API}/signals/run", tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
@@ -567,11 +568,11 @@ transfer = Transfer("wardrobe", hub, sections=[
                  depends_on=["vocabolari", "foto"]),
     StoreSection("outfit", "Outfit", store, ["outfit"], icon="sparkle", depends_on=["capi", "foto"]),
     StoreSection("indossati", "Indossati", store, ["wear"], icon="history",
-                 title=lambda r: f"Indossato il {r['data'].get('date')}", depends_on=["capi", "outfit"]),
+                 title=lambda r: tr("Indossato il {0}", r['data'].get('date')), depends_on=["capi", "outfit"]),
     StoreSection("liste", "Liste", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
     StoreSection("vocabolari", "Vocabolari", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
     StoreSection("foto", "Foto", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
-                 title=lambda r: r["data"].get("name") or "Foto", subtitle=lambda r: r["data"].get("owner") or ""),
+                 title=lambda r: r["data"].get("name") or tr("Foto"), subtitle=lambda r: r["data"].get("owner") or ""),
 ])
 app.include_router(transfer.router())
 
@@ -597,26 +598,26 @@ def _brief_piece(p: dict) -> dict:
 def summary_display(s: dict) -> dict:
     lines = [x for x in str(s.get("text") or "").split(" · ") if x]
     if s.get("laundry"):
-        lines.append("In lavanderia: " + ", ".join(s["laundry"][:5]))
+        lines.append(tr("In lavanderia: ") + ", ".join(s["laundry"][:5]))
     if s.get("forgotten"):
-        lines.append("Da riprendere: " + ", ".join(s["forgotten"][:4]))
-    return display("Guardaroba", lines=[x for x in lines if not x.startswith("in lavanderia ")],
-                   actions=[action("Cosa mi metto", "wardrobe_suggest", style="primary"), action("Cerca", "wardrobe_search"),
-                            action("Aggiungi capo", "wardrobe_add")])
+        lines.append(tr("Da riprendere: ") + ", ".join(s["forgotten"][:4]))
+    return display(tr("Guardaroba"), lines=[x for x in lines if not x.startswith("in lavanderia ")],
+                   actions=[action(tr("Cosa mi metto"), "wardrobe_suggest", style="primary"), action(tr("Cerca"), "wardrobe_search"),
+                            action(tr("Aggiungi capo"), "wardrobe_add")])
 
 
 def suggest_display(r: dict) -> dict:
     w = r.get("weather") or {}
     sub = " · ".join(str(x) for x in (r.get("hint"), f"{w['temp_c']:.0f}°" if isinstance(w.get("temp_c"), (int, float)) else "")
                      if x)
-    rows = [item(o["name"] or f"Idea {n}", [", ".join(o["pieces"]), (o.get("why") or [""])[0]])
+    rows = [item(o["name"] or tr("Idea {0}", n), [", ".join(o["pieces"]), (o.get("why") or [""])[0]])
             for n, o in enumerate(r.get("items") or [], 1)]
     acts = [action(f"Metto {o['name'] or f'idea {n}'}"[:24], "wardrobe_log_worn",
                    {"outfit": o["name"]} if o.get("saved") else {"pieces": o["piece_ids"]}, style="primary" if n == 1 else "")
             for n, o in enumerate((r.get("items") or [])[:3], 1)]
-    return display("Cosa mi metto", subtitle=sub, items=rows,
-                   lines=[] if rows else ["Non trovo una combinazione adatta tra i capi disponibili."],
-                   actions=acts + [action("Altre idee", "wardrobe_suggest")])
+    return display(tr("Cosa mi metto"), subtitle=sub, items=rows,
+                   lines=[] if rows else [tr("Non trovo una combinazione adatta tra i capi disponibili.")],
+                   actions=acts + [action(tr("Altre idee"), "wardrobe_suggest")])
 
 
 try:
@@ -631,7 +632,7 @@ try:
     def _piece(piece: str = "") -> dict:
         p = wardrobe.find_piece(piece)
         if not p:
-            return {"error": f"capo '{piece}' non trovato"}
+            return {"error": tr("capo '{0}' non trovato", piece)}
         d = wardrobe.piece_detail(p["id"])
         return {**_brief_piece(d), "brand": d.get("brand"), "size": d.get("size"), "materials": d.get("materials"),
                 "purchase": d.get("purchase"), "wear_count": d.get("wear_count"), "cost_per_wear": d.get("cost_per_wear"),
@@ -651,7 +652,7 @@ try:
               location: str = "") -> dict:
         p = wardrobe.find_piece(piece)
         if not p:
-            return {"error": f"capo '{piece}' non trovato"}
+            return {"error": tr("capo '{0}' non trovato", piece)}
         upd = {k: v for k, v in (changes or {}).items() if k not in ("id", "photos")}
         if status:
             upd["status"] = status
@@ -677,7 +678,7 @@ try:
             p = wardrobe.find_piece(str(text))
             (ids.append(p["id"]) if p else missing.append(text))
         if missing:
-            return {"error": f"capi non trovati: {', '.join(map(str, missing))}"}
+            return {"error": tr("capi non trovati: {0}", ', '.join(map(str, missing)))}
         o = wardrobe.save_outfit({"name": name, "piece_ids": ids, "occasions": occasions, "styles": styles,
                                   "favorite": favorite, "source": "assistant"})
         return {"saved": True, "id": o["id"], "name": o["name"], "pieces": [x["name"] for x in o["pieces"]]}
@@ -697,13 +698,13 @@ try:
         if outfit:
             o = wardrobe.find_outfit(outfit)
             if not o:
-                return {"error": f"outfit '{outfit}' non trovato"}
+                return {"error": tr("outfit '{0}' non trovato", outfit)}
             body["outfit_id"] = o["id"]
         ids = []
         for text in pieces or []:
             p = wardrobe.find_piece(str(text))
             if not p:
-                return {"error": f"capo '{text}' non trovato"}
+                return {"error": tr("capo '{0}' non trovato", text)}
             ids.append(p["id"])
         if ids:
             body["piece_ids"] = ids
@@ -731,20 +732,20 @@ try:
         """Never deletes by itself: asks the user through Hermes (button), the button does the delete."""
         target = wardrobe.find_piece(piece) if piece else wardrobe.find_outfit(outfit) if outfit else None
         if not target:
-            return {"error": "indica il capo o l'outfit da eliminare"}
+            return {"error": tr("indica il capo o l'outfit da eliminare")}
         kind = "pieces" if piece else "outfits"
-        label = "il capo" if piece else "l'outfit"
+        label = tr("il capo") if piece else "l'outfit"
         try:
-            _notify(f"wardrobe.delete.{target['id']}", "Guardaroba", f"🗑 Elimino {label} «{target['name']}»?",
-                    [{"id": "delete", "label": "Elimina", "text": "🗑 Elimina", "style": "danger", "service": "wardrobe",
+            _notify(f"wardrobe.delete.{target['id']}", tr("Guardaroba"), f"🗑 Elimino {label} «{target['name']}»?",
+                    [{"id": "delete", "label": tr("Elimina"), "text": "🗑 Elimina", "style": "danger", "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}?hard=true", "body": {}, "resolves": True},
-                     {"id": "archive", "label": "Archivia", "text": "📦 Solo archivia", "service": "wardrobe",
+                     {"id": "archive", "label": tr("Archivia"), "text": tr("📦 Solo archivia"), "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}", "body": {}, "resolves": True},
-                     {"id": "keep", "label": "Tieni", "text": "Tieni", "service": "wardrobe", "method": "POST",
-                      "path": f"{API}/reminder/skip", "body": {"message": "Tenuto"}, "resolves": True}], replaces=False)
+                     {"id": "keep", "label": tr("Tieni"), "text": tr("Tieni"), "service": "wardrobe", "method": "POST",
+                      "path": f"{API}/reminder/skip", "body": {"message": tr("Tenuto")}, "resolves": True}], replaces=False)
         except Exception as exc:
-            return {"error": f"non riesco a chiedere conferma ora ({exc}); usa la pagina Guardaroba"}
-        return {"asked": True, "message": f"Ho chiesto conferma per eliminare {label} «{target['name']}»"}
+            return {"error": tr("non riesco a chiedere conferma ora ({0}); usa la pagina Guardaroba", exc)}
+        return {"asked": True, "message": tr("Ho chiesto conferma per eliminare {0} «{1}»", label, target['name'])}
 
     S = {"type": "string"}
     I = {"type": "integer"}

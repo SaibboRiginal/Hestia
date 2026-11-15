@@ -16,6 +16,7 @@ import requests
 
 from core import archive_client, hermes_client
 from core import chronos_settings as CS
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.sync_worker")
 
@@ -49,14 +50,14 @@ _HUB_API_URL = os.getenv(
 
 def _format_event_notification(record: dict) -> str:
     """Build an HTML notification message for a new calendar event."""
-    title = str((record or {}).get("title") or "Nuovo evento")
+    title = str((record or {}).get("title") or tr("Nuovo evento"))
     start = str((record or {}).get("start_datetime") or "")
     end = str((record or {}).get("end_datetime") or "")
     location = str((record or {}).get("location") or "")
     provider = str((record or {}).get("provider") or "calendar")
 
     lines = [
-        f"🆕 <b>Nuovo evento nel calendario</b>",
+        tr("🆕 <b>Nuovo evento nel calendario</b>"),
         f"<b>{title}</b>",
     ]
     if start:
@@ -68,7 +69,7 @@ def _format_event_notification(record: dict) -> str:
     html_link = (record or {}).get("html_link")
     if html_link:
         lines.append(
-            f'<a href="{html_link}">Apri in {provider.capitalize()}</a>')
+            tr("<a href=\"{0}\">Apri in {1}</a>", html_link, provider.capitalize()))
     return "\n".join(lines)
 
 
@@ -162,7 +163,7 @@ def _tick() -> None:
                 external_id=ext_id or None,
                 source=provider,
                 kind="event",
-                title=(record or {}).get("title") or "Evento senza titolo",
+                title=(record or {}).get("title") or tr("Evento senza titolo"),
                 description=(record or {}).get("description"),
                 start_at=(record or {}).get(
                     "start_datetime") or now.isoformat(),
@@ -264,8 +265,8 @@ def agenda_rules() -> list[dict]:
     """Calendar sync as a recurring job of the assistant agenda (fired via Hub)."""
     minutes = max(1, _DEFAULT_INTERVAL_SECONDS // 60)
     return [{
-        "key": AGENDA_JOB_KEY, "type": "job", "title": "Sincronizza i calendari",
-        "description": "Importa gli eventi da Google/Outlook (via Hecate) e avvisa dei nuovi.",
+        "key": AGENDA_JOB_KEY, "type": "job", "title": tr("Sincronizza i calendari"),
+        "description": tr("Importa gli eventi da Google/Outlook (via Hecate) e avvisa dei nuovi."),
         "start_at": "2026-01-01T00:00:00", "recurrence": f"FREQ=MINUTELY;INTERVAL={minutes}",
         "action": {"service": "chronos", "path": "/api/calendar/sync", "method": "POST",
                    "body": {"trigger": "agenda"}, "timeout_seconds": 20},

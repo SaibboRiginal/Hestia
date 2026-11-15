@@ -15,6 +15,7 @@ from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
 
 from .parse import parse
 from .render import FORMATS, THEMES, RenderError, check, render
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_calliope.service")
 MAX_HTML = 200_000
@@ -34,7 +35,7 @@ class Documents:
     def create(self, title: str, html: str, fmt: str = "pdf", theme: str = "", must_contain: Any = None) -> dict:
         title = str(title or "").strip()[:120]
         if not title:
-            raise Invalid("serve un titolo")
+            raise Invalid(tr("serve un titolo"))
         fmt = str(fmt or "pdf").lower().lstrip(".")
         if fmt not in FORMATS:
             raise Invalid("formato: pdf, docx o xlsx")
@@ -44,7 +45,7 @@ class Documents:
         must = [must_contain] if isinstance(must_contain, str) else list(must_contain or [])
         blocks = parse(html)
         if not blocks:
-            raise Invalid("il testo del documento è vuoto")
+            raise Invalid(tr("il testo del documento è vuoto"))
         try:
             data = render(fmt, blocks, title, theme)
         except RenderError as exc:
@@ -53,14 +54,14 @@ class Documents:
         if not verdict["ok"]:
             logger.warning("event=calliope_check_failed format=%s missing=%d", fmt, len(verdict["missing"]))
             return {"created": False, "check": verdict,
-                    "error": "il documento non ha passato il controllo: manca " + "; ".join(verdict["missing"][:5])}
+                    "error": tr("il documento non ha passato il controllo: manca ") + "; ".join(verdict["missing"][:5])}
         mime, ext = FORMATS[fmt]
         name = filename(title, ext)
         meta = self.hub.ok("archive", "POST", "api/blobs", body={
             "owner_module": "calliope", "content_type": mime, "data_base64": base64.b64encode(data).decode(),
             "meta": {"name": name, "kind": "document"}}, timeout=30) or {}
         if not meta.get("blob_id"):
-            raise Invalid("non riesco a salvare il file, riprova tra poco")
+            raise Invalid(tr("non riesco a salvare il file, riprova tra poco"))
         did = new_id("doc")
         rec = {"title": title, "format": fmt, "theme": theme, "name": name, "mime": mime, "blob_id": meta["blob_id"],
                "size": len(data), "pages": verdict["pages"], "check": verdict, "created_at": now_iso()}
@@ -77,7 +78,7 @@ class Documents:
         self.store.refresh()
         d = self.store.data("document", did)
         if not d:
-            raise NotFound("documento non trovato")
+            raise NotFound(tr("documento non trovato"))
         return d
 
     def file(self, did: str) -> tuple[dict, bytes]:

@@ -31,6 +31,7 @@ from . import athena_settings as S
 from .athena_settings import get_int
 from .reflection import DOMAIN_WORDS, local_day
 from .shared_imports import import_shared_symbol
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SignalReader = import_shared_symbol("hestia_common.signals_client", "SignalReader")
 
@@ -255,11 +256,11 @@ class Talk:
         except Exception as exc:
             logger.warning("[🔄] event=talk_oracle_failed trace_id=%s error=%s fallback=retry_later", trace_id, exc)
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": "modello non disponibile"}
+            return {"status": "failed", "detail": tr("modello non disponibile")}
         if status >= 400 or not isinstance(payload, dict):
             logger.warning("[🔄] event=talk_oracle_failed trace_id=%s status=%s fallback=retry_later", trace_id, status)
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": "modello non disponibile"}
+            return {"status": "failed", "detail": tr("modello non disponibile")}
         text = str(payload.get("text") or "").strip()
         if not text:
             logger.info("event=talk_nothing_to_say trace_id=%s reasons=%d", trace_id, len(reasons))
@@ -270,7 +271,7 @@ class Talk:
                "answered": None}
         if not self._deliver(row):
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": "messaggio non consegnato"}
+            return {"status": "failed", "detail": tr("messaggio non consegnato")}
         self._store(row, now)
         with self._lock:
             self._sent.insert(0, {**row, "at": now.isoformat()})

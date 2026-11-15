@@ -12,6 +12,7 @@ import logging
 import re
 import time
 import unicodedata
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.dictionary")
 
@@ -77,7 +78,7 @@ class Dictionary:
     def add(self, word: str, source: str = "manual") -> dict:
         w = str(word or "").strip()
         if not _WORD.fullmatch(w) and not all(_WORD.fullmatch(p) for p in w.split()):
-            raise ValueError("parola non valida")
+            raise ValueError(tr("parola non valida"))
         data = {"word": w, "status": "confirmed", "count": self.needed(), "source": source}
         self._put(norm(w), data)
         logger.info("event=voice_word_added source=%s", source)

@@ -13,6 +13,7 @@ import logging
 from typing import Any, Iterator
 
 from agents.providers.base import LLMProvider, split_static, think_level, tool_result
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_oracle.providers.anthropic")
 
@@ -158,7 +159,7 @@ class AnthropicProvider(LLMProvider):
             logger.warning("event=anthropic_refusal category=%s",
                            getattr(getattr(response, "stop_details", None), "category", None))
             if not texts:
-                texts.append("Non posso aiutarti con questa richiesta.")
+                texts.append(tr("Non posso aiutarti con questa richiesta."))
         return "".join(texts).strip(), "\n".join(reasoning).strip(), calls
 
     # ── Calls ─────────────────────────────────────────────────────────────

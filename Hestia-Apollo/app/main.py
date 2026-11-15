@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -88,7 +89,7 @@ def job_image(jid: str, n: int):
     j = images.job(jid)
     blobs = j.get("blob_ids") or []
     if not 0 <= n < len(blobs):
-        raise NotFound("immagine non trovata")
+        raise NotFound(tr("immagine non trovata"))
     blob = kit.hub.ok("archive", "GET", f"api/blobs/{blobs[n]}/base64", timeout=30) or {}
     return {"mime": blob.get("mime") or "image/png", "data_b64": blob.get("data_b64") or ""}
 
@@ -96,13 +97,13 @@ def job_image(jid: str, n: int):
 def _job_display(j: dict) -> dict:
     files = [file(b, f"immagine-{n + 1}.png", "image/png") for n, b in enumerate(j.get("blob_ids") or [])]
     if j["status"] == "done":
-        return display("Immagine pronta", subtitle=PURPOSES.get(j["purpose"], ""), lines=[j["prompt"][:200]],
+        return display(tr("Immagine pronta"), subtitle=PURPOSES.get(j["purpose"], ""), lines=[j["prompt"][:200]],
                        files=files)
     if j["status"] == "failed":
         why = {"missing_flow": "manca un flusso per questo tipo di immagine: caricalo in Immagini → Flussi.",
                "not_configured": "il generatore di immagini non è ancora collegato."}.get(j["error"], j["error"])
-        return display("Immagine non riuscita", lines=[why], tone="warning")
-    return display("Immagine in preparazione", lines=["Ti avviso quando è pronta."])
+        return display(tr("Immagine non riuscita"), lines=[why], tone="warning")
+    return display(tr("Immagine in preparazione"), lines=[tr("Ti avviso quando è pronta.")])
 
 
 def _create(prompt: str, purpose: str = "generico", negative: str = "", width: int | None = None,
@@ -131,18 +132,18 @@ kit.tools([
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": [{"id": j["id"], "status": j["status"], "purpose": j["purpose"],
                                                       "prompt": j["prompt"][:80]} for j in rows],
-                                           "display": display("Immagini", items=[
+                                           "display": display(tr("Immagini"), items=[
                                                item(j["prompt"][:60], [PURPOSES.get(j["purpose"], ""), j["status"]])
-                                               for j in rows[:20]], lines=[] if rows else ["Nessuna immagine."])})(
+                                               for j in rows[:20]], lines=[] if rows else [tr("Nessuna immagine.")])})(
                 images.jobs(20)),
             title="Immagini recenti", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Immagini", "primary": 2}),
     MCPTool(name="immagine_flussi", description="The loaded flows (one per purpose) and whether the generator is connected.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda fl: {"configured": comfy.configured, "items": fl, "display": display(
-                "Flussi immagini", items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],
-                lines=([] if comfy.configured else ["Generatore non collegato."]) +
-                      ([] if fl else ["Nessun flusso: caricalo dalla pagina Immagini."]))})(images.flows()),
+                tr("Flussi immagini"), items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],
+                lines=([] if comfy.configured else [tr("Generatore non collegato.")]) +
+                      ([] if fl else [tr("Nessun flusso: caricalo dalla pagina Immagini.")]))})(images.flows()),
             title="Flussi immagini", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Immagini"}),
 ], prefix="immagine_")
 

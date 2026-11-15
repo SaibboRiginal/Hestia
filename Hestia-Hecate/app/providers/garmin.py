@@ -17,6 +17,7 @@ import threading
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hecate.garmin")
 
@@ -39,7 +40,7 @@ def _default_factory(email: str | None = None, password: str | None = None):
     try:
         from garminconnect import Garmin
     except ModuleNotFoundError as exc:          # optional dependency (requirements.txt): explain, never crash
-        raise GarminError("libreria garminconnect non installata") from exc
+        raise GarminError(tr("libreria garminconnect non installata")) from exc
     if email:
         return Garmin(email, password, return_on_mfa=True)
     return Garmin()
@@ -120,17 +121,17 @@ class GarminService:
         """A failed login in words, from the kind of error garminconnect raises."""
         kind = type(exc).__name__
         if "TooManyRequests" in kind or "429" in str(exc):
-            return "Garmin ha bloccato i tentativi per un po' (troppi accessi): riprova tra un'ora."
+            return tr("Garmin ha bloccato i tentativi per un po' (troppi accessi): riprova tra un'ora.")
         if "Authentication" in kind:
-            return "Garmin non ha accettato email o password. Se sono giuste, accedi una volta su connect.garmin.com e riprova."
+            return tr("Garmin non ha accettato email o password. Se sono giuste, accedi una volta su connect.garmin.com e riprova.")
         if "Connection" in kind or "Timeout" in kind:
-            return "Garmin non risponde in questo momento: riprova tra poco."
-        return f"Garmin non ha accettato l'accesso ({kind}): riprova."
+            return tr("Garmin non risponde in questo momento: riprova tra poco.")
+        return tr("Garmin non ha accettato l'accesso ({0}): riprova.", kind)
 
     def login(self, email: str, password: str) -> dict:
         """First step: email + password (never stored). → ``{status: connected | needs_code}``."""
         if not email or not password:
-            raise GarminError("servono email e password di Garmin Connect")
+            raise GarminError(tr("servono email e password di Garmin Connect"))
         with self._lock:
             client = self.factory(email, password)
             result = client.login()
@@ -147,7 +148,7 @@ class GarminService:
     def login_code(self, code: str) -> dict:
         with self._lock:
             if not self._pending:
-                raise GarminError("nessun accesso in attesa del codice: ricomincia da «Collega Garmin»")
+                raise GarminError(tr("nessun accesso in attesa del codice: ricomincia da «Collega Garmin»"))
             client, state = self._pending
             client.resume_login(state, str(code).strip())
             self._pending = None
@@ -178,8 +179,8 @@ class GarminService:
             out = self.login(email, password)
             if out["status"] == "connected":
                 return self._client
-            raise GarminError("Garmin chiede un codice: collegalo dalla notifica «Collega Garmin»")
-        raise GarminError("Garmin non collegato")
+            raise GarminError(tr("Garmin chiede un codice: collegalo dalla notifica «Collega Garmin»"))
+        raise GarminError(tr("Garmin non collegato"))
 
     # ── data ─────────────────────────────────────────────────────────────────
     def day(self, d: date) -> dict:

@@ -28,6 +28,7 @@ from .athena_settings import get_float, get_int
 from .schemas import ActionCandidate
 from .shared_imports import import_shared_symbol
 from .strategist import _map_to_action_candidates, _parse_candidates
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SignalReader = import_shared_symbol("hestia_common.signals_client", "SignalReader")
 iso_week = import_shared_symbol("hestia_common.signals_client", "iso_week")
@@ -99,7 +100,7 @@ def correlate(series: dict[str, dict], *, min_weeks: int, min_r: float, current_
 
 def link_text(link: dict) -> str:
     """Caveman line for the prompt and the page: «Allenamenti ↔ Routine rispettate %: r=0.72 su 9 settimane»."""
-    when = "stessa settimana" if not link["lag"] else "la settimana dopo"
+    when = "stessa settimana" if not link["lag"] else tr("la settimana dopo")
     return (f"{link['a_label']} → {link['b_label']} ({when}): r={link['r']:+.2f} su {link['weeks']} settimane, "
             f"{'salgono insieme' if link['r'] > 0 else 'uno sale, l altro scende'}")
 
@@ -129,8 +130,7 @@ def _prompt(topics: list[dict], info: list[dict], details: dict[str, str], setti
             lines.append(f"T{i} LINK: {link_text(t['link'])}")
         else:
             s = t["signal"]
-            lines.append(f"T{i} SIGNAL [{DOMAIN_WORDS.get(s.get('domain'), s.get('domain'))}, {s.get('severity')}]: "
-                         f"{s.get('text')}")
+            lines.append(f"T{i} SIGNAL [{DOMAIN_WORDS.get(s.get('domain'), s.get('domain'))}, {s.get('severity')}]: {s.get('text')}")
         if details.get(t["key"]):
             lines.append(f"   details: {details[t['key']]}")
     ctx = "; ".join(f"{DOMAIN_WORDS.get(s.get('domain'), s.get('domain'))}: {s.get('text')}" for s in info[:6])
@@ -237,7 +237,7 @@ class LifeReflection:
     def recap_piece(self, day: str) -> dict:
         """Athena's piece of the daily recap (contract of docs/work/2026-10-20-recap-giornaliero §3.2)."""
         items = [o for o in self.observations(since_days=3) if o.get("day") == day]
-        base = {"module": "athena", "title": "Da tenere d'occhio", "icon": "eye", "emoji": "👀", "order": 900}
+        base = {"module": "athena", "title": tr("Da tenere d'occhio"), "icon": "eye", "emoji": "👀", "order": 900}
         if not items:
             return {**base, "empty": True}
         items.sort(key=lambda o: -float(o.get("score") or 0))
@@ -252,7 +252,7 @@ class LifeReflection:
             series = self.reader.series(weeks=26)
         except Exception as exc:
             logger.warning("event=reflection_read_failed error=%s", exc)
-            return {"candidates": [], "life": life, "error": f"segnali non leggibili: {exc}"}
+            return {"candidates": [], "life": life, "error": tr("segnali non leggibili: {0}", exc)}
         links = correlate(series, min_weeks=get_int(S.REFLECTION_MIN_WEEKS),
                           min_r=get_float(S.REFLECTION_MIN_CORRELATION))
         life["signals"] = [{k: s.get(k) for k in ("module", "domain", "key", "kind", "severity", "text", "page")}
@@ -289,7 +289,7 @@ class LifeReflection:
         info = [s for s in signals if s.get("severity") == "info"]
         raw = self._ask_oracle(_prompt(topics, info, details, settings_lines, left))
         if raw is None:
-            return {"candidates": [], "life": life, "error": "modello non disponibile"}
+            return {"candidates": [], "life": life, "error": tr("modello non disponibile")}
         parsed = _parse_candidates(raw)
         candidates = _map_to_action_candidates(parsed)
         stored: list[dict] = []
@@ -310,7 +310,7 @@ class LifeReflection:
                 continue
             if len(stored) >= left or (cand.topic_key and cand.topic_key in told):
                 cand.outcome = "discarded"
-                cand.gate_reason += " · già detto o limite del giorno"
+                cand.gate_reason += tr(" · già detto o limite del giorno")
                 continue
             sig = topic.get("signal") if topic and topic["type"] == "signal" else {}
             link = topic.get("link") if topic and topic["type"] == "link" else {}

@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.2 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools) done |
+| 1.2 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools), 2c (module texts) done |
 
 ## Goal
 Every text the model reads is English; every fixed text a person reads comes from translation files in the
@@ -35,7 +35,9 @@ what the assistant writes on its own follows the language setting (dossier `2026
   language.
 - **2b Settings and tools** (done): Themis serves every setting text translated (`settings_client.translated`);
   tool titles through `tr`; English `locales/en/tools.json`; tool texts fall back lang → English → Italian.
-- **2c** notices and errors of the modules, Oracle warnings, llm_setup details.
+- **2c Module texts** (done): every Italian literal a person reads in the modules' function bodies goes through
+  `tr`; technical strings (SQL, headers, document styles) and model-facing lines are never translated: those are
+  English in the code.
 - **2d** WebUI (Angular): same catalogs, language from the identity service.
 - German, French and Spanish catalogs (until then they show English).
 

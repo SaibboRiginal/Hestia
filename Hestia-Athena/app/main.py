@@ -9,6 +9,7 @@ from .core.schemas import CommitmentResolveRequest, TriggerRequest
 from .core.service_contract import HestiaServiceBase, ServiceDescriptor
 from .core.shared_imports import import_shared_symbol
 from .core.athena_settings import settings as athena_settings
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 setup_service_logging = import_shared_symbol(
     "hestia_common.logging_utils", "setup_service_logging"
@@ -385,7 +386,7 @@ def athena_signals(domain: str | None = None, limit: int = 50, weeks: int = 12) 
         series = runtime.reflection.reader.series(weeks=max(4, min(int(weeks), 52)))
     except Exception as exc:
         logger.warning("[🔄] event=athena_signals_read_failed error=%s fallback=503", exc)
-        raise HTTPException(status_code=503, detail="segnali non disponibili")
+        raise HTTPException(status_code=503, detail=tr("segnali non disponibili"))
     if domain:
         series = {k: v for k, v in series.items() if v.get("domain") == domain}
     links = correlate(series, min_weeks=AS.get_int(AS.REFLECTION_MIN_WEEKS),
@@ -435,8 +436,8 @@ def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
 def athena_recap_now() -> dict[str, Any]:
     """Quick action «Recap adesso»: evening recap now, delivered like the scheduled one."""
     out = runtime.recap.compose(momento="sera", trigger="quick")
-    label = ("Niente da raccontare oggi" if out.get("status") == "empty"
-             else "Recap inviato" if out.get("delivered") else "Recap pronto (consegna in ritardo)")
+    label = (tr("Niente da raccontare oggi") if out.get("status") == "empty"
+             else tr("Recap inviato") if out.get("delivered") else tr("Recap pronto (consegna in ritardo)"))
     return {**out, "label": label}
 
 
@@ -452,7 +453,7 @@ def _recap_today_handler(momento: str = "", **_kw) -> dict:
     moment = momento if momento in {"sera", "mattina"} else ("mattina" if _dt.now().hour < 14 else "sera")
     out = runtime.recap.compose(momento=moment, deliver=False, trigger="chat")
     if out.get("status") == "empty":
-        return {"status": "empty", "text": "Niente da raccontare: nessuna area ha registrato qualcosa."}
+        return {"status": "empty", "text": tr("Niente da raccontare: nessuna area ha registrato qualcosa.")}
     return {"status": "ok", "momento": moment, "day": out.get("day"), "text": out.get("text")}
 
 

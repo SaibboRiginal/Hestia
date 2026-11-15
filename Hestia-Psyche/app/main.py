@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -119,7 +120,7 @@ def checkin():
     ask = psyche.checkin()
     if not ask:
         return {"sent": False, "reason": "already_logged"}
-    sent = kit.hub.notify(reminder_event(module="psyche", domain=DOMAIN, key=ask["key"], title="Umore",
+    sent = kit.hub.notify(reminder_event(module="psyche", domain=DOMAIN, key=ask["key"], title=tr("Umore"),
                                          text=ask["text"], actions=ask["actions"], page="umore"))
     return {"sent": sent}
 
@@ -144,7 +145,7 @@ def delete_mood(mid: str):
     return _changed(psyche.delete(mid))
 
 
-app.include_router(recap.recap_router("psyche", lambda d, n: recap.piece("psyche", "Umore", icon="smile", order=28,
+app.include_router(recap.recap_router("psyche", lambda d, n: recap.piece("psyche", tr("Umore"), icon="smile", order=28,
                                                                          **psyche.recap(d, n)),
                                       today=psyche.today))
 
@@ -168,19 +169,19 @@ def _log(mood: int, energy: int | None = None, stress: int | None = None, labels
     r = _changed(psyche.log({"mood": mood, "energy": energy, "stress": stress, "labels": labels or [],
                              "causes": causes or [], "note": note, "date": date, "source": source or "telegram"}))
     return {"saved": True, "id": r["id"], "mood": r["mood"], "undo": undo("mood_delete", id=r["id"]),
-            "display": display("Umore segnato", lines=[" · ".join(_line(r))],
-                               actions=[action("Andamento", "mood_insights")])}
+            "display": display(tr("Umore segnato"), lines=[" · ".join(_line(r))],
+                               actions=[action(tr("Andamento"), "mood_insights")])}
 
 
 def _today() -> dict:
     t = psyche.today_view()
     s = t["summary"]
-    return {**t, "display": display("Umore di oggi",
+    return {**t, "display": display(tr("Umore di oggi"),
                                     subtitle=f"{s['mood']}/5 · {s['mood_word']}" if s else "",
                                     items=[item(str(r.get("at", ""))[11:16] or r["date"], _line(r),
                                                 tone=_tone(r["mood"])) for r in t["items"][:10]],
-                                    lines=[] if s else ["Oggi non hai ancora detto come stai."],
-                                    actions=[action("Come stai?", "mood_log", style="primary")])}
+                                    lines=[] if s else [tr("Oggi non hai ancora detto come stai.")],
+                                    actions=[action(tr("Come stai?"), "mood_log", style="primary")])}
 
 
 def _history(days: int = 30) -> dict:
@@ -189,23 +190,23 @@ def _history(days: int = 30) -> dict:
     sub = (f"media {st['mood_avg']:.1f}/5 · {st['good_days']} giorni buoni · {st['bad_days']} no"
            if st["mood_avg"] is not None else "")
     return {"days": h["days"], "stats": st,
-            "display": display(f"Umore, ultimi {days} giorni", subtitle=sub,
+            "display": display(tr("Umore, ultimi {0} giorni", days), subtitle=sub,
                                items=[item(f"{d['date'][8:10]}/{d['date'][5:7]}", [f"{d['mood']}/5 {d['mood_word']}",
                                                                                  ", ".join(d["labels"][:3])],
                                            tone=_tone(d["mood"])) for d in reversed(h["days"][-20:])],
-                               lines=[] if h["days"] else ["Nessun dato in questo periodo."])}
+                               lines=[] if h["days"] else [tr("Nessun dato in questo periodo.")])}
 
 
 def _insights() -> dict:
     out = psyche.insights()
-    return {**out, "display": display("Andamento dell'umore", lines=out["sentences"])}
+    return {**out, "display": display(tr("Andamento dell'umore"), lines=out["sentences"])}
 
 
 def _delete(id: str = "", last: bool = False) -> dict:
     if not id and last:
         rows = psyche.entries(psyche.today(), psyche.today())
         if not rows:
-            return {"deleted": False, "error": "oggi non c'è niente da togliere"}
+            return {"deleted": False, "error": tr("oggi non c'è niente da togliere")}
         id = rows[-1]["id"]
     return _changed(psyche.delete(id))
 
@@ -249,10 +250,10 @@ app.include_router(transfer.router())
 kit.caps.update({"mood_capture_endpoint": f"{API}/capture", **recap.capabilities()})
 kit.capabilities(transfer.capabilities)
 kit.agenda_rules(lambda: [
-    job_rule("psyche.checkin", "Umore: com'è andata oggi", service="psyche", path=f"{API}/checkin",
+    job_rule("psyche.checkin", tr("Umore: com'è andata oggi"), service="psyche", path=f"{API}/checkin",
              recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=kit.tz,
              description="La sera, se oggi non hai detto come stai e i promemoria dell'umore sono accesi."),
-    signals_rule("psyche", "Umore", path=f"{API}/signals/run", tz=kit.tz),
+    signals_rule("psyche", tr("Umore"), path=f"{API}/signals/run", tz=kit.tz),
 ])
 kit.on_warm(signals.changed)
 kit.webui(icon="smile", color="yellow", description="Come stai nel tempo: giornate, energia, andamento.",

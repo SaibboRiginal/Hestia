@@ -24,6 +24,7 @@ from fastapi import APIRouter, Body, Header, HTTPException
 
 from core.hecate_settings import PHONE_APPS, PHONE_HOME_WIFI, settings as hecate_settings
 from providers.garmin import GarminError, GarminService
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hecate.devices")
 
@@ -72,15 +73,14 @@ def _hermes(event: dict) -> bool:
 
 def _ask_secret(step: str) -> bool:
     """Hermes secret form: email + password, or the two-step code. Hecate receives the values, never Hermes."""
-    fields = ([{"name": "code", "label": "Codice ricevuto da Garmin", "type": "text"}] if step == "code" else
-              [{"name": "email", "label": "Email di Garmin Connect", "type": "text"},
+    fields = ([{"name": "code", "label": tr("Codice ricevuto da Garmin"), "type": "text"}] if step == "code" else
+              [{"name": "email", "label": tr("Email di Garmin Connect"), "type": "text"},
                {"name": "password", "label": "Password", "type": "password"}])
-    message = ("Garmin ti ha mandato un codice: scrivilo qui." if step == "code" else
-               "Inserisci l'accesso a Garmin Connect: lo uso una volta sola per collegare l'orologio, "
-               "la password non viene salvata.")
+    message = (tr("Garmin ti ha mandato un codice: scrivilo qui.") if step == "code" else
+               tr("Inserisci l'accesso a Garmin Connect: lo uso una volta sola per collegare l'orologio, la password non viene salvata."))
     return _hermes({"event_type": "service.action_required", "domain": "system", "entity_id": f"hecate-garmin-{step}",
                     "payload": {"kind": "hecate.garmin.login", "service": "hecate", "source": "hecate",
-                                "_source": "hecate", "_title": "Collega Garmin", "_message": message, "level": "info",
+                                "_source": "hecate", "_title": tr("Collega Garmin"), "_message": message, "level": "info",
                                 "target": "owner", "replaces": "hecate.garmin.login", "icon": "watch", "tone": "info",
                                 "_secret": {"service": "hecate", "path": LOGIN_PATH, "fields": fields}}})
 
@@ -96,7 +96,7 @@ def garmin_connect():
     """«Collega Garmin»: a secret form reaches the owner (WebUI / Telegram Mini App)."""
     sent = _ask_secret("login")
     return {"status": "asked" if sent else "error",
-            "message": "Ti ho mandato il modulo per collegare Garmin." if sent else "Non riesco a mandarti il modulo."}
+            "message": tr("Ti ho mandato il modulo per collegare Garmin.") if sent else tr("Non riesco a mandarti il modulo.")}
 
 
 @router.post(LOGIN_PATH)
@@ -119,11 +119,11 @@ def garmin_login(body: dict = Body(...)):
         raise HTTPException(status_code=422, detail=garmin.explain(exc))
     if out["status"] == "needs_code":
         if direct:
-            return {**out, "message": "Garmin ti ha mandato un codice: scrivilo qui."}
+            return {**out, "message": tr("Garmin ti ha mandato un codice: scrivilo qui.")}
         _ask_secret("code")
-        return {**out, "message": "Serve il codice che Garmin ti ha mandato: ti ho mandato il modulo."}
+        return {**out, "message": tr("Serve il codice che Garmin ti ha mandato: ti ho mandato il modulo.")}
     threading.Thread(target=lambda: garmin_sync({"days": 2}), daemon=True, name="garmin-first-sync").start()
-    return {**out, "message": "Garmin collegato: leggo sonno e attività ogni mattina."}
+    return {**out, "message": tr("Garmin collegato: leggo sonno e attività ogni mattina.")}
 
 
 @router.delete("/api/gateway/garmin")
@@ -167,7 +167,7 @@ def garmin_sync(body: dict = Body(default={})):
     except Exception as exc:  # noqa: BLE001
         garmin.last_error = type(exc).__name__
         logger.warning("[🔄] event=garmin_sync_failed error=%s fallback=next_job", exc)
-        return {"status": "error", "detail": "Garmin non risponde"}
+        return {"status": "error", "detail": tr("Garmin non risponde")}
     garmin.last_error = ""
     garmin.last_sync = {"at": datetime.now(timezone.utc).isoformat(), "days": [p["date"] for p in pushed]}
     logger.info("event=garmin_synced days=%d", len(pushed))
@@ -176,7 +176,7 @@ def garmin_sync(body: dict = Body(default={})):
 
 def agenda_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
-    return [job_rule(GARMIN_JOB, "Garmin: sonno e attività", service="hecate", path="/api/gateway/garmin/sync",
+    return [job_rule(GARMIN_JOB, tr("Garmin: sonno e attività"), service="hecate", path="/api/gateway/garmin/sync",
                      body={"days": 2}, recurrence="FREQ=DAILY", start_at="2026-01-01T09:30:00", tz=TZ,
                      description="Legge dall'orologio la notte e le attività di ieri e oggi e le passa ad "
                                  "allenamento e cura di sé. Senza Garmin collegato non fa niente.",
@@ -203,10 +203,10 @@ def phone_push(body: dict = Body(...), x_hestia_phone_token: str = Header(defaul
     """Webhook of the phone (Tasker, MacroDroid…): ``{type: state|notification, …}``."""
     secret = os.getenv("HECATE_PHONE_TOKEN", "")
     if not secret:
-        raise HTTPException(status_code=503, detail="telefono non configurato (HECATE_PHONE_TOKEN)")
+        raise HTTPException(status_code=503, detail=tr("telefono non configurato (HECATE_PHONE_TOKEN)"))
     if not hmac.compare_digest(str(x_hestia_phone_token or ""), secret):
         logger.warning("event=phone_push_refused reason=token")
-        raise HTTPException(status_code=401, detail="token non valido")
+        raise HTTPException(status_code=401, detail=tr("token non valido"))
     at = str(body.get("at") or datetime.now(timezone.utc).isoformat())
     kind = str(body.get("type") or "state")
     if kind == "notification":
@@ -266,7 +266,7 @@ def tools(MCPTool) -> list:
                        parameters={"type": "object", "properties": props or {}, "required": required or []},
                        handler=lambda **kw: {"status": "ok", "tool": name, "params": kw}, method=method, path=path,
                        clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="sistema",
-                       telegram={"section": "Dispositivi", **({"label": label} if label else {})})
+                       telegram={"section": tr("Dispositivi"), **({"label": label} if label else {})})
     return [
         t("garmin_stato", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
           "/api/gateway/garmin/status", label="Garmin"),

@@ -28,6 +28,7 @@ from core.services.memory_parsers import (
     parse_subscription_actions,
 )
 from core.services import prompt_config
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -240,7 +241,7 @@ class MemoryService:
                 if saved:
                     signals.append({
                         "event": "memory.preference.added",
-                        "message": f"Preferenza salvata: {action['fact']}",
+                        "message": tr("Preferenza salvata: {0}", action['fact']),
                         "data": {"domain": action.get("domain", "general"), "fact": action["fact"]},
                     })
 
@@ -253,7 +254,7 @@ class MemoryService:
                 updated = self._route_archive(
                     "PATCH", f"/memory/{pref_id}", body={"is_active": False})
                 if updated is not None:
-                    message_text = f"Preferenza rimossa: {removed_fact}" if removed_fact else "Preferenza rimossa."
+                    message_text = tr("Preferenza rimossa: {0}", removed_fact) if removed_fact else tr("Preferenza rimossa.")
                     signals.append({
                         "event": "memory.preference.removed",
                         "message": message_text,
@@ -299,7 +300,7 @@ class MemoryService:
                 if updated is not None:
                     signals.append({
                         "event": "subscription.removed",
-                        "message": "Notifiche automatiche disattivate.",
+                        "message": tr("Notifiche automatiche disattivate."),
                         "data": {
                             "subscription_id": sub_id,
                             "domain": disabled_payload.get("domain"),
@@ -352,7 +353,7 @@ class MemoryService:
             if not previous:
                 signals.append({
                     "event": "subscription.added",
-                    "message": "Notifica automatica attivata.",
+                    "message": tr("Notifica automatica attivata."),
                     "data": {
                         "subscription_id": sub_id,
                         "domain": sub_payload.get("domain"),
@@ -385,7 +386,7 @@ class MemoryService:
             elif _normalize_signature(previous) != _normalize_signature(sub_payload):
                 signals.append({
                     "event": "subscription.changed",
-                    "message": "Regole notifica aggiornate.",
+                    "message": tr("Regole notifica aggiornate."),
                     "data": {
                         "subscription_id": sub_id,
                         "domain": sub_payload.get("domain"),

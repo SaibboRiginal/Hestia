@@ -14,6 +14,7 @@ from typing import Any, Literal, Optional
 from core.oracle_engine import OracleEngine
 from core.services import assistant_profile, chat_sessions
 from core.services import turn_trace
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -1287,15 +1288,15 @@ def chat_reaction(req: ChatReactionRequest):
     quoted = " ".join(str(req.text or "").split())[:120]
     if not req.session_id.strip():
         raise HTTPException(status_code=400, detail="session_id mancante")
-    line = (f"(reazione {emoji} al tuo messaggio «{quoted}»)" if emoji and quoted
-            else f"(reazione {emoji} al tuo ultimo messaggio)" if emoji
-            else f"(ha tolto la reazione al tuo messaggio «{quoted}»)" if quoted
-            else "(ha tolto la reazione al tuo ultimo messaggio)")
+    line = (f"(the owner reacted {emoji} to your message «{quoted}»)" if emoji and quoted
+            else f"(the owner reacted {emoji} to your last message)" if emoji
+            else f"(the owner removed the reaction to your message «{quoted}»)" if quoted
+            else "(the owner removed the reaction to your last message)")
     try:
         engine._hub.post("/chat/history", {"session_id": req.session_id, "role": "user", "content": line})
     except Exception as exc:
         logger.warning("[🔄] event=chat_reaction_not_saved session_id=%s error=%s", req.session_id, exc)
-        raise HTTPException(status_code=502, detail="reazione non salvata, riprova")
+        raise HTTPException(status_code=502, detail=tr("reazione non salvata, riprova"))
     logger.info("event=chat_reaction_saved session_id=%s emoji=%s", req.session_id, emoji or "-")
     return {"ok": True, "line": line}
 
@@ -1320,7 +1321,7 @@ def chat_opener(req: ChatOpenerRequest):
                             now_context=engine._current_datetime_context())
     except Exception as exc:
         logger.warning("[🔄] event=chat_opener_failed error=%s fallback=no_message", str(exc)[:200])
-        raise HTTPException(status_code=503, detail="opener non scritto")
+        raise HTTPException(status_code=503, detail=tr("opener non scritto"))
 
 
 @app.post("/api/chat/question-answer")

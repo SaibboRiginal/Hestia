@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
 from .hub import Hub
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.keep")
 
@@ -171,10 +172,8 @@ class Keep:
         if total > limit:
             # Only what cannot be made again is left: never dropped, Marko decides.
             warned = True
-            self.notify({"title": "Spazio per gli audio", "text":
-                         f"Le tue registrazioni occupano {total / 1048576:.0f} MB, più del limite di "
-                         f"{limit / 1048576:.0f} MB. Non le cancello: alza il limite o scaricale e togli quelle che "
-                         f"non ti servono."})
+            self.notify({"title": tr("Spazio per gli audio"), "text":
+                         tr("Le tue registrazioni occupano {0:.0f} MB, più del limite di {1:.0f} MB. Non le cancello: alza il limite o scaricale e togli quelle che non ti servono.", total / 1048576, limit / 1048576)})
         out = {"expired": len(expired), "dropped_for_space": dropped_for_space, "total_bytes": total,
                "limit_bytes": limit, "warned": warned}
         logger.info("event=voice_audio_cleanup expired=%d dropped=%d total=%d limit=%d warned=%s", len(expired),

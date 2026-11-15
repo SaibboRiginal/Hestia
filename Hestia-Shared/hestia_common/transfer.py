@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_common.transfer")
 
@@ -366,7 +367,7 @@ class Transfer:
     def file_get(self, blob_id: str) -> dict:
         meta = self.hub.ok("archive", "GET", f"api/blobs/{blob_id}/meta", timeout=10) or {}
         if str(meta.get("owner_module") or "") != self.module:
-            raise TransferError("file non di questo modulo", 404)
+            raise TransferError(tr("file non di questo modulo"), 404)
         data = self.hub.ok("archive", "GET", f"api/blobs/{blob_id}/base64", timeout=60) or {}
         return {"id": blob_id, "mime": data.get("mime") or meta.get("content_type"), "sha256": meta.get("sha256"),
                 "meta": meta.get("meta") or {}, "data_b64": data.get("data_b64")}
@@ -389,7 +390,7 @@ class Transfer:
             raise TransferError(f"modo {mode}: ammessi {', '.join(MODES)}")
         sections_in = (payload or {}).get("sections") or {}
         if int((payload or {}).get("format") or FORMAT) > FORMAT:
-            raise TransferError("file di una versione di Hestia più recente: aggiorna Hestia", 422)
+            raise TransferError(tr("file di una versione di Hestia più recente: aggiorna Hestia"), 422)
         files_map = {str(k): str(v) for k, v in (files_map or {}).items() if k and v}
         report: dict[str, Any] = {"module": self.module, "dry_run": dry_run, "sections": {}}
         for sid, block in sections_in.items():
@@ -427,11 +428,11 @@ class Transfer:
 
         s = self.sections.get(sid)
         if not s:
-            note("problems", f"sezione «{sid}» non presente qui")
+            note("problems", tr("sezione «{0}» non presente qui", sid))
             return out
         schema = int(block.get("schema") or 1)
         if schema > s.schema:
-            note("problems", "sezione di una versione di Hestia più recente: aggiorna Hestia")
+            note("problems", tr("sezione di una versione di Hestia più recente: aggiorna Hestia"))
             return out
         incoming = [r for r in (block.get("records") or []) if isinstance(r, dict) and r.get("key")]
         if schema < s.schema:
@@ -462,12 +463,12 @@ class Transfer:
                 out["unchanged"] += int(item)
                 continue
             if mode == "append":
-                tally("skipped", item, f"{label} ({'eliminato qui' if have.get('deleted') else 'già presente'})")
+                tally("skipped", item, f"{label} ({tr('eliminato qui') if have.get('deleted') else tr('già presente')})")
                 continue
             if mode == "merge":
                 a, b = parse_dt(r.get("updated_at")), parse_dt(have.get("updated_at"))
                 if a and b and a <= b:
-                    tally("skipped", item, f"{label} (qui è più recente)")
+                    tally("skipped", item, tr("{0} (qui è più recente)", label))
                     continue
             writes.append(r)
             if r.get("deleted"):
@@ -491,7 +492,7 @@ class Transfer:
             except Exception as exc:
                 logger.warning("[🔄] event=transfer_import_write_failed module=%s section=%s error=%s",
                                self.module, sid, exc)
-                raise TransferError(f"{s.label}: scrittura non riuscita ({exc})", 503)
+                raise TransferError(tr("{0}: scrittura non riuscita ({1})", s.label, exc), 503)
         return out
 
     # ── HTTP ────────────────────────────────────────────────────────────────

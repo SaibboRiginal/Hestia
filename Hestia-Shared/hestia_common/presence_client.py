@@ -29,6 +29,7 @@ from contextlib import contextmanager
 from typing import Any, Iterator
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_common.presence")
 
@@ -139,15 +140,15 @@ class PresenceClient:
         state = state if state is not None else self.get()
         if not state:
             return ""
-        parts = [f"Stato assistente: {state.get('label') or state.get('base')}"]
+        parts = [f"Assistant state: {state.get('label') or state.get('base')}"]
         if state.get("last_interaction_at"):
             client = state.get("last_interaction_client") or ""
             parts.append(f"ultima interazione {ago(state.get('idle_minutes'))}" + (f" ({client})" if client else ""))
         else:
-            parts.append("nessuna interazione registrata")
+            parts.append(tr("nessuna interazione registrata"))
         notice = (state.get("effects") or {}).get("chat.notice")
         if notice:
-            parts.append(f"avvisa se utile: {notice}")
+            parts.append(f"notify if useful: {notice}")
         return " · ".join(parts)
 
     # ── reporting ───────────────────────────────────────────────────────────

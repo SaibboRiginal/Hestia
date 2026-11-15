@@ -40,6 +40,7 @@ from dateutil.rrule import rrulestr
 
 from core import archive_client
 from core import chronos_settings as CS
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.agenda")
 
@@ -386,7 +387,7 @@ def restore(key: str, by: str = "user") -> dict:
     with _lock:
         item = get(key)
         if item["created_by"] != item["owner"] or item["created_by"] in {"user", ""}:
-            raise AgendaError("solo le attività standard di un modulo si ripristinano", 400)
+            raise AgendaError(tr("solo le attività standard di un modulo si ripristinano"), 400)
         declared = (_DECLARED.get(item["owner"]) or {}).get(item["key"]) or {}
         for f in ("title", "description", "start_at", "end_at", "recurrence", "action", "params"):
             if f in declared:

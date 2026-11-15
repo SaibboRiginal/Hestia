@@ -22,6 +22,7 @@ from . import lang
 from .blocks import Blocks, ChainExhausted
 from .keep import Keep
 from .standards import STANDARDS
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.service")
 
@@ -42,7 +43,7 @@ def _b64(value: str) -> bytes:
     try:
         return base64.b64decode(str(value or "").split(",", 1)[-1], validate=False)
     except (binascii.Error, ValueError):
-        raise Invalid("audio non valido (base64)")
+        raise Invalid(tr("audio non valido (base64)"))
 
 
 def _opts(std, provider: dict, step: dict, direction: str) -> dict:
@@ -123,10 +124,10 @@ class Echo:
         try:
             pcm = audio.to_pcm16k(raw, mime)
         except audio.AudioError as exc:
-            raise Invalid(f"audio non leggibile: {exc}")
+            raise Invalid(tr("audio non leggibile: {0}", exc))
         pcm, vstats = self._filtered(pcm, uc, vcache)
         if vstats.get("applied") and vstats.get("muted") and not vstats.get("kept"):
-            raise Invalid("non ho sentito la tua voce")
+            raise Invalid(tr("non ho sentito la tua voce"))
         hint = self._hint()
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.1:
@@ -197,11 +198,11 @@ class Echo:
     def _setup_provider(self, name: str, direction: str) -> tuple[dict | None, str]:
         p = self.blocks.providers().get(name)
         if p is None or direction not in STANDARDS[p["type"]].directions:
-            return None, "Non si può provare da qui."
+            return None, tr("Non si può provare da qui.")
         state = self.blocks.provider_state(p)
         if state != "ready":
-            return None, ("Si può provare quando è scaricata: la scarico quando confermi."
-                          if p["type"] in {"whisper_local", "piper", "kokoro"} else "Prima metti la chiave.")
+            return None, (tr("Si può provare quando è scaricata: la scarico quando confermi.")
+                          if p["type"] in {"whisper_local", "piper", "kokoro"} else tr("Prima metti la chiave."))
         return p, ""
 
     def setup_preview(self, body: dict) -> dict:
@@ -220,11 +221,11 @@ class Echo:
             out, out_mime = audio.encode(data, str(body.get("format") or "mp3"))
         except Exception as exc:  # noqa: BLE001 — a failed try is an answer, not an error page
             logger.warning("[🔄] event=voice_setup_preview_failed provider=%s error=%s", p["name"], str(exc)[:200])
-            return {"ok": False, "detail": f"Non ha risposto: {str(exc)[:160]}"}
+            return {"ok": False, "detail": tr("Non ha risposto: {0}", str(exc)[:160])}
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:
             logger.warning("[🔄] event=voice_setup_preview_mute provider=%s bytes=%s seconds=%s", p["name"], len(data), seconds)
-            return {"ok": False, "detail": "Ha risposto con un audio muto: prova un'altra voce."}
+            return {"ok": False, "detail": tr("Ha risposto con un audio muto: prova un'altra voce.")}
         return {"ok": True, "audio_b64": base64.b64encode(out).decode(), "mime_type": out_mime, "duration_s": seconds}
 
     def setup_hear(self, body: dict) -> dict:
@@ -239,21 +240,21 @@ class Echo:
         except audio.AudioError:
             pcm = b""
         if not pcm or audio.wav_duration(pcm) <= 0.3:
-            return {"ok": False, "detail": "Non ho sentito niente: riprova parlando un po' più a lungo."}
+            return {"ok": False, "detail": tr("Non ho sentito niente: riprova parlando un po' più a lungo.")}
         std = STANDARDS[p["type"]]
         step = {"provider": p["name"], "model": str(body.get("model") or ""), "voice": ""}
         try:
             result = std.transcribe(p, step["model"], pcm, "audio/wav", self.language(), _opts(std, p, step, "ascolto"))
         except Exception as exc:  # noqa: BLE001
             logger.warning("[🔄] event=voice_setup_hear_failed provider=%s error=%s", p["name"], str(exc)[:200])
-            return {"ok": False, "detail": f"Non ha risposto: {str(exc)[:160]}"}
+            return {"ok": False, "detail": tr("Non ha risposto: {0}", str(exc)[:160])}
         text = str((result or {}).get("text") or "").strip()
-        return {"ok": bool(text), "text": text, "detail": "" if text else "Non ho capito niente: riprova."}
+        return {"ok": bool(text), "text": text, "detail": "" if text else tr("Non ho capito niente: riprova.")}
 
     def prepare_text(self, text: str) -> str:
         clean = audio.speakable(text)
         short, cut = audio.shorten(clean, int(self.get("echo.voce.max_chars", 1200) or 1200))
-        return short + (" Il resto è nel testo." if cut else "")
+        return short + (tr(" Il resto è nel testo.") if cut else "")
 
     def speak(self, body: dict) -> dict:
         text = str(body.get("text") or "").strip()
@@ -279,7 +280,7 @@ class Echo:
                 logger.debug("event=voice_reuse_failed ref=%s error=%s", ref, exc)
         clean = self.prepare_text(text)
         if not clean:
-            raise Invalid("niente da leggere")
+            raise Invalid(tr("niente da leggere"))
         data, mime, info = self._spoken(clean, uc, str(body.get("voice") or ""),
                                         self.speak_language(clean, body.get("language")))
         try:
@@ -290,7 +291,7 @@ class Echo:
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:   # «Ascolta» that plays nothing: say why instead
             logger.warning("[🔄] event=voice_speak_mute provider=%s bytes=%s seconds=%s", info["provider"], len(data), seconds)
-            raise Invalid(f"la voce ({info['provider']}) ha risposto con un audio muto")
+            raise Invalid(tr("la voce ({0}) ha risposto con un audio muto", info['provider']))
         blob_id = None
         if keep:
             kept = out if fmt == "ogg_opus" else audio.encode(data, "ogg_opus")[0]

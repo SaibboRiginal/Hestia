@@ -15,6 +15,7 @@ import os
 from typing import Any
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_common.weather")
 
@@ -40,7 +41,7 @@ def day_summary(day: dict | None) -> str:
     out = f"{day.get('min_c')}–{day.get('max_c')}°, {day.get('condition') or ''}".rstrip(", ")
     hours = day.get("rain_hours") or []
     if hours:
-        out += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else f", pioggia alle {hours[0]}"
+        out += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else tr(", pioggia alle {0}", hours[0])
     return out
 
 
@@ -58,7 +59,7 @@ class WeatherClient:
             status = int((routed or {}).get("status_code") or resp.status_code)
             payload = (routed or {}).get("payload")
             if status >= 400 or not isinstance(payload, dict):
-                raise RuntimeError(f"HTTP {status}")
+                raise RuntimeError(tr("HTTP {0}", status))
             return payload
         except Exception as exc:
             logger.warning("[🔄] event=weather_client_failed path=%s error=%s fallback=no_weather", path, exc)

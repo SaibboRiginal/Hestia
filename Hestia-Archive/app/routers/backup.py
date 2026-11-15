@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..backup.service import BackupService, JobBusy
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 class VerifyReq(BaseModel):
@@ -40,7 +41,7 @@ def build_router(service: BackupService, *, passphrase_set, drive_status, settin
             return {"status": "started", **service.start(kind, fn, *args)}
         except JobBusy as exc:
             raise HTTPException(status_code=409, detail={"error": "busy", "job": str(exc),
-                                                         "message": "c'è già un'operazione di backup in corso"})
+                                                         "message": tr("c'è già un'operazione di backup in corso")})
 
     @router.get("/status")
     def status(fresh: bool = False):
@@ -74,9 +75,9 @@ def build_router(service: BackupService, *, passphrase_set, drive_status, settin
     def restore(req: RestoreReq):
         if not req.confirm:
             raise HTTPException(status_code=422, detail={"error": "confirm",
-                                                         "message": "conferma il ripristino (confirm=true)"})
+                                                         "message": tr("conferma il ripristino (confirm=true)")})
         if not (req.file_id or req.local):
-            raise HTTPException(status_code=422, detail={"error": "file", "message": "indica file_id oppure local"})
+            raise HTTPException(status_code=422, detail={"error": "file", "message": tr("indica file_id oppure local")})
         return _start("restore", service.restore, req.file_id, req.local)
 
     @router.post("/undo")
@@ -86,7 +87,7 @@ def build_router(service: BackupService, *, passphrase_set, drive_status, settin
                                                          "message": "conferma l'annullamento (confirm=true)"})
         if not service.undo_available():
             raise HTTPException(status_code=404, detail={"error": "nothing_to_undo",
-                                                         "message": "non c'è un ripristino da annullare"})
+                                                         "message": tr("non c'è un ripristino da annullare")})
         return _start("undo", service.undo)
 
     return router

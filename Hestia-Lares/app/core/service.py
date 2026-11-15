@@ -14,6 +14,7 @@ from typing import Any, Callable
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
 
 from .ha import HAError
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_lares.service")
 
@@ -73,7 +74,7 @@ class Home:
 
     def _ensure(self) -> None:
         if not self.ha.configured:
-            raise Invalid("la casa non è collegata: servono indirizzo e token di Home Assistant nel file .env")
+            raise Invalid(tr("la casa non è collegata: servono indirizzo e token di Home Assistant nel file .env"))
         if not self.entities:
             try:
                 self.load()
@@ -98,8 +99,8 @@ class Home:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(f"in casa non trovo «{ref}»")
-        raise Invalid("più dispositivi corrispondono: " + ", ".join(h["name"] for h in hits[:6]))
+            raise NotFound(tr("in casa non trovo «{0}»", ref))
+        raise Invalid(tr("più dispositivi corrispondono: ") + ", ".join(h["name"] for h in hits[:6]))
 
     def status(self) -> dict:
         if not self.ha.configured:
@@ -163,12 +164,12 @@ class Home:
     def run_favorite(self, fid: str) -> dict:
         f = self.store.data("favorite", fid)
         if not f:
-            raise NotFound("azione rapida non trovata")
+            raise NotFound(tr("azione rapida non trovata"))
         return self.command(f["entity_id"], f.get("command") or "toggle")
 
     def delete_favorite(self, fid: str) -> dict:
         if not self.store.delete("favorite", fid):
-            raise NotFound("azione rapida non trovata")
+            raise NotFound(tr("azione rapida non trovata"))
         return {"deleted": True}
 
     @staticmethod

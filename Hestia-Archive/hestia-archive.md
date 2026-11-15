@@ -265,3 +265,5 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: the command manifest (descriptions, `response_prompt`) is English; people texts of those commands are in the shared catalog. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
 **2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».

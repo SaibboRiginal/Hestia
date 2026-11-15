@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge.review")
 
@@ -170,10 +171,10 @@ def card(review: dict) -> str:
     """Italian lines for the owner (no module names)."""
     verdict = review.get("verdict")
     if verdict == "non_disponibile":
-        return "Revisione automatica: non disponibile ora."
+        return tr("Revisione automatica: non disponibile ora.")
     if verdict == "ok":
-        return "Revisione automatica: nessun problema trovato."
+        return tr("Revisione automatica: nessun problema trovato.")
     rounds = review.get("rounds") or 0
-    head = f"Revisione automatica: {len(review['issues'])} punti" + (" (dopo un giro di correzioni)" if rounds else "")
+    head = tr("Revisione automatica: {0} punti", len(review['issues'])) + (tr(" (dopo un giro di correzioni)") if rounds else "")
     rows = [f"• {i['priority']} · {i['file'] or '-'}: {i['problem'][:160]}" for i in review["issues"][:5]]
     return "\n".join([head, *rows])

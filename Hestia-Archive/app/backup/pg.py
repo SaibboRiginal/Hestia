@@ -148,7 +148,7 @@ class Pg:
         """Fresh ``dbname`` (dropped first if left over) filled from the dump; any error → PgError."""
         self.drop(dbname)
         with self.admin() as cur:
-            cur.execute(f'CREATE DATABASE "{dbname}"')
+            cur.execute(f"CREATE DATABASE \"{dbname}\"")
         self._run([self.binary("pg_restore", self.server_major()), "--no-owner", "--no-privileges",
                    "--exit-on-error", "-d", dbname, str(dump_path)], "pg_restore")
 

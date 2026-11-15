@@ -12,6 +12,7 @@ from .export import MAX_EXPORT, export_markdown
 from .inspector import TaskInspector
 from .repo_browser import RepoBrowser, RepoError
 from .service import BRANCH_SUBMIT_STATES, USER_SOURCES, Forge, ForgeError
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge")
 
@@ -186,7 +187,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
                             x_hestia_access: str = Header(default="")) -> dict[str, Any]:
         task = _guard(forge.submit_branch, task_id, body.branch, body.summary, x_hestia_access or body.by)
         return {"status": "ok", "task": _public(task),
-                "next": "Forge scarica il branch, esegue i test e chiede l'approvazione al proprietario."}
+                "next": tr("Forge scarica il branch, esegue i test e chiede l'approvazione al proprietario.")}
 
     @router.get("/tasks/{task_id}/diff", response_class=PlainTextResponse)
     def forge_diff(task_id: str) -> str:
@@ -323,7 +324,7 @@ def brief(rows: list[dict]) -> dict[str, Any]:
         services = ",".join(t.get("services") or t.get("touched_services") or [])
         head = f"{str(t.get('id') or '')[:6]} · {t.get('state') or '?'}" + (f" · {services}" if services else "")
         if t.get("source") and t.get("source") not in USER_SOURCES:   # proposed by a module, not by you
-            head += f" · da {t['source']}"
+            head += tr(" · da {0}", t['source'])
         if t.get("state") == "failed" and t.get("error"):
             head += f" · err: {' '.join(str(t['error']).split())[:60]}"
         heads.append(head)
@@ -341,7 +342,7 @@ def brief(rows: list[dict]) -> dict[str, Any]:
         omitted += 1
     out: dict[str, Any] = {"total": len(rows), "by_state": by_state, "tasks": [line for _, line in lines]}
     if omitted:
-        out["omitted"] = f"{omitted} task più vecchi non elencati (conteggio in by_state)"
+        out["omitted"] = tr("{0} task più vecchi non elencati (conteggio in by_state)", omitted)
     return out
 
 

@@ -15,6 +15,7 @@ import re
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_oracle.conversation_goal")
 
@@ -124,10 +125,10 @@ def tool_specs() -> list[dict[str, Any]]:
                                             "long multi-step work: after each answer you keep working on it for a few "
                                             "rounds and update it.",
          "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "The goal"}},
-                        "required": ["text"]}, "title": "Obiettivo"},
+                        "required": ["text"]}, "title": tr("Obiettivo")},
         {"name": "goal_done", "description": "The conversation goal is reached: close it with a summary.",
          "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": []},
-         "title": "Obiettivo raggiunto"},
+         "title": tr("Obiettivo raggiunto")},
         {"name": "goal_stop", "description": "Stop the conversation goal (the user asks so).",
-         "parameters": {"type": "object", "properties": {}}, "title": "Ferma obiettivo"},
+         "parameters": {"type": "object", "properties": {}}, "title": tr("Ferma obiettivo")},
     ]

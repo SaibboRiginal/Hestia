@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from core.archive_client import ArchiveClient
 from domain.listing_key import listing_key
 from domain.listing_status import ListingStatus
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -154,7 +155,7 @@ def to_view(record: dict) -> dict:
     return {
         "id": listing_key(entity_id),
         "url": str(p.get("url") or entity_id),
-        "title": p.get("title") or p.get("address") or "Annuncio",
+        "title": p.get("title") or p.get("address") or tr("Annuncio"),
         "address": p.get("address") or "",
         "city": city_of(p),
         "price": int(price) if price else None,
@@ -235,11 +236,11 @@ class ListingStore:
     def patch(self, key: str, fields: dict) -> dict:
         record = self.find(key)
         if not record:
-            raise HTTPException(status_code=404, detail="annuncio non trovato")
+            raise HTTPException(status_code=404, detail=tr("annuncio non trovato"))
         ok = self.archive.upsert_entity({"entity_id": record["entity_id"], "domain": record.get("domain") or self.domain,
                                          "status": record.get("status") or "active", "payload": fields})
         if not ok:
-            raise HTTPException(status_code=502, detail="archivio non raggiungibile")
+            raise HTTPException(status_code=502, detail=tr("archivio non raggiungibile"))
         with self._lock:   # local copy updated at once, so the next read shows the change
             record["payload"] = {**(record.get("payload") or {}), **fields}
         logger.info("event=scout_listing_patched key=%s fields=%s", key, ",".join(fields))
@@ -353,7 +354,7 @@ def recap_facts(views: list[dict], day) -> dict:
     new.sort(key=lambda v: (v.get("price") is None, v.get("price") or 0))
     names = []
     for v in new[:2]:
-        bits = [str(v.get("title") or "Annuncio")[:48], v.get("city") or "",
+        bits = [str(v.get("title") or tr("Annuncio"))[:48], v.get("city") or "",
                 f"€ {v['price']:,}".replace(",", ".") if v.get("price") else ""]
         names.append(", ".join(b for b in bits if b))
     text = f"{len(new)} nuov{'o annuncio' if len(new) == 1 else 'i annunci'}: " + "; ".join(names)
@@ -383,7 +384,7 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
     def listing(key: str):
         record = store.find(key)
         if not record:
-            raise HTTPException(status_code=404, detail="annuncio non trovato")
+            raise HTTPException(status_code=404, detail=tr("annuncio non trovato"))
         return _public(detail_view(record))
 
     @router.patch("/listings/{key}")
@@ -397,9 +398,9 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
             try:
                 fields["listing_status"] = ListingStatus(body.status).value
             except ValueError:
-                raise HTTPException(status_code=422, detail="status non valido")
+                raise HTTPException(status_code=422, detail=tr("status non valido"))
         if not fields:
-            raise HTTPException(status_code=422, detail="niente da cambiare")
+            raise HTTPException(status_code=422, detail=tr("niente da cambiare"))
         return _public(store.patch(key, fields))
 
     @router.post("/listings/{key}/favorite")

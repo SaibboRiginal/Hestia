@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from typing import Any
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 _DURATION = re.compile(r"^\d+(\.\d+)?\s*(ms|s|m|h|d)?$")
@@ -34,7 +35,7 @@ def validate(defn: dict, value: Any) -> Any:
     """Return the value coerced to the declared type, or raise SettingValueError (Italian message)."""
     kind = defn.get("type", "string")
     if value is None:
-        raise SettingValueError("valore mancante (per tornare al predefinito usa Ripristina)")
+        raise SettingValueError(tr("valore mancante (per tornare al predefinito usa Ripristina)"))
     if kind == "bool":
         if isinstance(value, bool):
             return value
@@ -43,7 +44,7 @@ def validate(defn: dict, value: Any) -> Any:
             return True
         if text in _FALSE:
             return False
-        raise SettingValueError("sì/no atteso")
+        raise SettingValueError(tr("sì/no atteso"))
     if kind == "int":
         return _number(defn, value, int)
     if kind == "float":
@@ -56,7 +57,7 @@ def validate(defn: dict, value: Any) -> Any:
         for option in allowed:
             if str(option) == text:
                 return option
-        raise SettingValueError("valore non ammesso: " + ", ".join(str(a) for a in allowed))
+        raise SettingValueError(tr("valore non ammesso: ") + ", ".join(str(a) for a in allowed))
     if kind in {"string", "text", "model"}:
         if not isinstance(value, (str, int, float)) or isinstance(value, bool):
             raise SettingValueError("testo atteso")

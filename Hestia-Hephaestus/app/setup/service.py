@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import secrets
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.setup")
 
@@ -188,7 +189,7 @@ class SetupService:
             done = self.set_secrets(values)
             oracle = done["services"].get("oracle", {})
             if not oracle.get("applied", True):
-                return {"ok": False, "detail": "Non sono riuscito a riavviare il cervello con le chiavi nuove."}
+                return {"ok": False, "detail": tr("Non sono riuscito a riavviare il cervello con le chiavi nuove.")}
             if oracle.get("recreated"):
                 self._wait_oracle()
         local_provider = local_provider or "ollama"
@@ -235,10 +236,10 @@ class SetupService:
                               timeout=120)
         except Exception as exc:
             logger.warning("[🔄] event=setup_hello_failed error=%s", str(exc)[:200])
-            return {"ok": False, "detail": "I modelli non hanno risposto. Controlla le chiavi o il programma locale."}
+            return {"ok": False, "detail": tr("I modelli non hanno risposto. Controlla le chiavi o il programma locale.")}
         text = str(out.get("response") or "").strip()
         if not text:
-            return {"ok": False, "detail": str(out.get("detail") or "I modelli non hanno risposto.")[:300]}
+            return {"ok": False, "detail": str(out.get("detail") or tr("I modelli non hanno risposto."))[:300]}
         return {"ok": True, "text": text[:600], "model": out.get("model", ""), "provider": out.get("provider", "")}
 
     def echo(self, method: str, path: str, body: dict | None = None, timeout: float = 30,

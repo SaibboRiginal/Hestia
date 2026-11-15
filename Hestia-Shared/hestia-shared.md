@@ -372,7 +372,8 @@ Settings: `settings_client.translated(definition, lang)` returns a setting defin
 `group`, `unit` and option labels in `lang` (keys and values never change); Themis applies it to everything it
 serves (`/api/settings`, presets, options), so WebUI and Telegram show settings in the owner's language. Tool titles
 shown by MCP/«Comandi» go through `tr` too, and `areas.for_people` translates a tool's own `summary` with the
-process language when no `lang` is given. Every module that shows fixed texts calls `settings.follow_personal()`.
+process language when no `lang` is given. Every module that shows fixed texts calls `settings.follow_personal()` (`ModuleKit` does it for its modules).
+Technical strings (SQL, HTTP headers, document style names) and text for the model never go through `tr`.
 
 ## Encryption (`hestia_common.crypto`)
 

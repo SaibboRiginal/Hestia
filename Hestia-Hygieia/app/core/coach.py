@@ -12,6 +12,7 @@ import math
 from datetime import date, timedelta
 
 from .planner import goal_state, period_next, period_start
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SLOT_TOD = {"morning": "morning", "evening": "evening", "anytime": "any"}
 
@@ -33,7 +34,7 @@ class HygieiaCoach:
             if mode == "as_needed":
                 continue
             plan = day.plan_routine(r)
-            base = {"id": f"routine.{r['id']}", "title": r.get("name") or "Routine", "kind": "slot",
+            base = {"id": f"routine.{r['id']}", "title": r.get("name") or tr("Routine"), "kind": "slot",
                     "time_of_day": SLOT_TOD.get(r.get("slot") or "anytime", "any"),
                     "minutes": int(plan.get("minutes") or 0), "tags": [f"routine.{r['id']}"],
                     "not_same_day": sorted(f"routine.{pid}" for pid in day.implicit_partners(r)),

@@ -27,6 +27,7 @@ from . import athena_settings as S
 from .athena_settings import get_int
 from .reflection import local_day
 from .shared_imports import import_shared_symbol
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SignalReader = import_shared_symbol("hestia_common.signals_client", "SignalReader")
 
@@ -146,8 +147,8 @@ class Evidence:
             known = (date.fromisoformat(today) - date.fromisoformat(self.start_day(now))).days
         except Exception:
             if on_demand:
-                return {"ready": True, "note": "Chiesto da te: proposto senza attendere altre prove."}
-            return {"ready": False, "note": "Registro delle prove non leggibile: riprovo al prossimo giro.",
+                return {"ready": True, "note": tr("Chiesto da te: proposto senza attendere altre prove.")}
+            return {"ready": False, "note": tr("Registro delle prove non leggibile: riprovo al prossimo giro."),
                     "seen_days": 0, "need_days": need_days, "known_days": 0, "need_known": need_known}
         oldest = (date.fromisoformat(today) - timedelta(days=window - 1)).isoformat()
         with self._lock:
@@ -159,11 +160,9 @@ class Evidence:
             out = {"seen_days": len(days), "need_days": need_days, "known_days": max(0, known),
                    "need_known": need_known, "first_day": days[0]}
             if on_demand:
-                out.update(ready=True, note="Chiesto da te: proposto senza attendere altre prove "
-                                            f"(visto in {len(days)} {_giorni(len(days))}).")
+                out.update(ready=True, note=tr("Chiesto da te: proposto senza attendere altre prove (visto in {0} {1}).", len(days), _giorni(len(days))))
             elif known < need_known:
-                out.update(ready=False, note=f"Sto ancora osservando: {max(0, known)} {_giorni(known)} su "
-                                             f"{need_known} prima di proporre miglioramenti.")
+                out.update(ready=False, note=tr("Sto ancora osservando: {0} {1} su {2} prima di proporre miglioramenti.", max(0, known), _giorni(known), need_known))
             elif len(days) < need_days:
                 out.update(ready=False, note=f"Raccolgo prove: visto in {len(days)} {_giorni(len(days))} su "
                                              f"{need_days} richiesti (dal {_short(days[0])}).")

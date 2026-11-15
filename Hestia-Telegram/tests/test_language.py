@@ -1,6 +1,8 @@
 """Fixed texts follow the owner's language setting (dossier docs/work/2026-11-14-backend-inglese)."""
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from hestia_common import i18n
@@ -58,3 +60,31 @@ def test_english_tools_catalog_covers_every_italian_tool():
         assert set(en[name].get("params") or {}) == set(entry.get("params") or {}), name
     assert i18n.tool_summary("agenda", "en").startswith("Shows")
     assert i18n.tool_summary("agenda", "de").startswith("Shows")  # no German catalog yet → English
+
+
+_IT = re.compile(r"[àèéìòù]|\b(il|la|le|non|per|che|della|del|una|sono|nessun[ao]?|serve|riprova|trovat[oa])\b", re.I)
+
+
+@pytest.mark.unit
+def test_every_module_text_has_an_english_translation():
+    """Every ``tr("…")`` literal in the modules (Telegram excluded: its own test above) is in the English catalog."""
+    import ast
+    from pathlib import Path
+    from hestia_common import i18n
+    en = i18n.catalog("messages", "en")
+    root = Path(__file__).resolve().parents[2]
+    missing = []
+    for path in root.glob("Hestia-*/**/*.py"):
+        if "/tests/" in str(path) or "Hestia-Telegram" in str(path):
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError):
+            continue
+        for n in ast.walk(tree):
+            if (isinstance(n, ast.Call) and getattr(n.func, "id", "") == "tr" and n.args
+                    and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str)):
+                text = n.args[0].value
+                if text not in en and _IT.search(text):
+                    missing.append(f"{path.relative_to(root)}: {text[:60]}")
+    assert not missing, missing[:20]

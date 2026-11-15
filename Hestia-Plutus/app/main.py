@@ -19,6 +19,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -170,7 +171,7 @@ async def _not_found(_: Request, exc: NotFound):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": "archivio non raggiungibile, riprova tra poco"})
+    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
 
 
 @app.get("/health")
@@ -218,7 +219,7 @@ def rules():
 def rule_create(body: dict = Body(...)):
     out = plutus.learn_rule(str(body.get("pattern") or ""), plutus.resolve_category(body.get("category")) or "")
     if not out:
-        raise Invalid("serve un testo di almeno 3 lettere e una categoria esistente")
+        raise Invalid(tr("serve un testo di almeno 3 lettere e una categoria esistente"))
     return out
 
 
@@ -324,7 +325,7 @@ def export():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("plutus", "Spese", icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
+    return recap.piece("plutus", tr("Spese"), icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("plutus", _recap_piece, today=lambda: plutus.today()))
@@ -406,15 +407,13 @@ def attachment(body: dict = Body(...)):
     new, dup, link = c.get("new", 0), c.get("duplicate", 0), c.get("link", 0)
     period = " → ".join(_day(d) for d in v["period"])
     if not new and not link:
-        text = f"Ho letto l'estratto conto ({period}): i movimenti ci sono già tutti ({dup}), non aggiungo niente."
+        text = tr("Ho letto l'estratto conto ({0}): i movimenti ci sono già tutti ({1}), non aggiungo niente.", period, dup)
     else:
         n = new + link
-        text = (f"Ho letto l'estratto conto ({period}): {n} {'movimento' if n == 1 else 'movimenti'} da aggiungere, "
-                f"spese nuove {_money(v['total_new_spent'], cur)}"
-                + (f", {link} {'collegato a un pagamento' if link == 1 else 'collegati a pagamenti'} PayPal già "
-                   f"{'registrato' if link == 1 else 'registrati'} (contati una volta)" if link else "")
-                + (f", {dup} già {'presente' if dup == 1 else 'presenti'}" if dup else "")
-                + f". Li registro? Rispondi «sì» oppure controllali in Spese › Importa. (import_id {v['id']})")
+        text = (tr("Ho letto l'estratto conto ({0}): {1} {2} da aggiungere, spese nuove {3}", period, n, 'movimento' if n == 1 else 'movimenti', _money(v['total_new_spent'], cur))
+                + (tr(", {0} {1} PayPal già {2} (contati una volta)", link, 'collegato a un pagamento' if link == 1 else 'collegati a pagamenti', 'registrato' if link == 1 else 'registrati') if link else "")
+                + (tr(", {0} già {1}", dup, 'presente' if dup == 1 else 'presenti') if dup else "")
+                + tr(". Li registro? Rispondi «sì» oppure controllali in Spese › Importa. (import_id {0})", v['id']))
     return {"handled": True, "text": text, "import_id": v["id"], "counts": c}
 
 
@@ -425,7 +424,7 @@ _mail_stats: dict[str, Any] = {"last_run": None, "processed": 0, "added": 0, "la
 
 def _mail_rules() -> list[dict]:
     senders = settings.get("plutus.mail.senders") or DEFAULT_PAYPAL_SENDERS
-    return [mail_rule(MAIL_KEY, "Pagamenti PayPal", path=f"{API}/mail", domain=DOMAIN, senders=senders,
+    return [mail_rule(MAIL_KEY, tr("Pagamenti PayPal"), path=f"{API}/mail", domain=DOMAIN, senders=senders,
                       description="Ricevute, rimborsi e denaro ricevuto: Spese li registra da sola.")]
 
 
@@ -524,7 +523,7 @@ def quick_expense_undo(id: str, date: str = ""):
     day = date or plutus.today().isoformat()
     rows = [t for t in plutus._tx_rows() if t.get("category") == id and t.get("source") == "quick" and t["date"] == day]
     if not rows:
-        raise NotFound("nessuna spesa veloce da annullare")
+        raise NotFound(tr("nessuna spesa veloce da annullare"))
     last = max(rows, key=lambda t: t.get("created_at") or "")
     out = plutus.delete_tx(last["id"])
     signals.changed()
@@ -551,7 +550,7 @@ def alerts_run():
         if store.data("alert", sid):
             continue
         try:
-            _emit(a["key"], "Spese", a["text"], [], level="warning" if a["level"] == 100 else "info", page_="budget")
+            _emit(a["key"], tr("Spese"), a["text"], [], level="warning" if a["level"] == 100 else "info", page_="budget")
             store.upsert("alert", sid, {"sent": now_iso(), **a})
             sent.append(a["key"])
         except Exception as exc:
@@ -568,15 +567,15 @@ def _review_text(r: dict) -> str:
     if text:
         return text[:1200]
     parts = [f"{r['month']}: spesi {r['spent']:.2f} {cur}"
-             + (f" su un budget di {r['budget']:.2f}" if r.get("budget") else "")
-             + f" (mese prima {r['previous_spent']:.2f})."]
+             + (tr(" su un budget di {0:.2f}", r['budget']) if r.get("budget") else "")
+             + tr(" (mese prima {0:.2f}).", r['previous_spent'])]
     if r["over_budget"]:
-        parts.append("Oltre il budget: " + ", ".join(r["over_budget"]) + ".")
+        parts.append(tr("Oltre il budget: ") + ", ".join(r["over_budget"]) + ".")
     if r["biggest_changes"]:
         c = r["biggest_changes"][0]
-        parts.append(f"Cambiata di più: {c['label']} ({'+' if c['delta'] >= 0 else ''}{c['delta']:.2f}).")
+        parts.append(tr("Cambiata di più: {0} ({1}{2:.2f}).", c['label'], '+' if c['delta'] >= 0 else '', c['delta']))
     if r["to_review"]:
-        parts.append(f"{r['to_review']} movimenti da rivedere.")
+        parts.append(tr("{0} movimenti da rivedere.", r['to_review']))
     return " ".join(parts)
 
 
@@ -587,7 +586,7 @@ def review_run(body: dict = Body(default={})):
         return {"sent": False, "why": "disabled"}
     r = plutus.review()
     text = _review_text(r)
-    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", f"Spese di {r['month']}", text, [], page_="panoramica")
+    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Spese di {0}", r['month']), text, [], page_="panoramica")
     return {"sent": True, "text": text, "review": r}
 
 
@@ -608,13 +607,12 @@ def reminders_run():
     if today.isoformat() in week or len(week) >= int(plutus.setting("plutus.reminder.max_per_week", 2) or 2):
         return {"sent": False, "why": "limit"}
     label = plutus.month_label(prev_start)
-    actions = [{"id": "skip", "label": "Non questo mese", "text": "🌙 Non questo mese", "service": "plutus",
+    actions = [{"id": "skip", "label": tr("Non questo mese"), "text": tr("🌙 Non questo mese"), "service": "plutus",
                 "method": "POST", "path": f"{API}/reminders/skip", "body": {"month": prev_start.isoformat()},
                 "resolves": True}]
     try:
-        _emit("finance.reminder.statement", "Spese",
-              f"Manca l'estratto conto di {label}: scarica la lista movimenti in PDF dall'app della banca e "
-              "caricala nella pagina Importa (o mandala in chat).", actions, page_="importa")
+        _emit("finance.reminder.statement", tr("Spese"),
+              tr("Manca l'estratto conto di {0}: scarica la lista movimenti in PDF dall'app della banca e caricala nella pagina Importa (o mandala in chat).", label), actions, page_="importa")
     except Exception as exc:
         logger.warning("[🔄] event=plutus_reminder_emit_failed error=%s fallback=next_run", exc)
         return {"sent": False, "why": "hermes_unreachable"}
@@ -626,7 +624,7 @@ def reminders_run():
 def reminders_skip(body: dict = Body(default={})):
     state = store.data("reminder", "statement") or {}
     store.upsert("reminder", "statement", {**state, "skip_month": body.get("month")})
-    return {"status": "ok", "label": "Promemoria estratto conto: salto questo mese"}
+    return {"status": "ok", "label": tr("Promemoria estratto conto: salto questo mese")}
 
 
 def _agenda_rules() -> list[dict]:
@@ -635,13 +633,13 @@ def _agenda_rules() -> list[dict]:
                  recurrence="FREQ=DAILY", start_at="2026-01-01T21:00:00", tz=TZ,
                  description="Controlla i budget del mese (avviso alla soglia e al superamento, uno per categoria) "
                              "e riconosce i pagamenti ricorrenti."),
-        job_rule("plutus.review", "Spese: riepilogo del mese", service="plutus", path=f"{API}/review/run",
+        job_rule("plutus.review", tr("Spese: riepilogo del mese"), service="plutus", path=f"{API}/review/run",
                  recurrence="FREQ=MONTHLY;BYMONTHDAY=1", start_at="2026-01-01T09:00:00", tz=TZ,
                  description="Solo se il riepilogo mensile è attivo: com'è andato il mese passato."),
         job_rule("plutus.statement_reminder", "Spese: promemoria estratto conto", service="plutus",
                  path=f"{API}/reminders/run", recurrence="FREQ=MONTHLY;BYMONTHDAY=3,6,9", start_at="2026-01-01T10:00:00",
                  tz=TZ, description="Solo se il promemoria è attivo e manca l'estratto del mese passato."),
-        signals_rule("plutus", "Spese", path=f"{API}/signals/run", tz=TZ),
+        signals_rule("plutus", tr("Spese"), path=f"{API}/signals/run", tz=TZ),
     ]
 
 
@@ -681,7 +679,7 @@ app.include_router(settings.router())
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("plutus", hub, sections=[
     StoreSection("movimenti", "Movimenti", store, ["tx"], icon="wallet",
-                 title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or 'Movimento'} "
+                 title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or tr('Movimento')} "
                                  f"{r['data'].get('amount')} {r['data'].get('currency') or ''}".strip(),
                  subtitle=lambda r: r["data"].get("date") or "", depends_on=["categorie", "conti"]),
     StoreSection("categorie", "Categorie", store, ["category"], icon="tag"),
@@ -715,43 +713,43 @@ def _short(t: dict) -> dict:
 def _tx_item(t: dict) -> dict:
     amount = t.get("amount") or 0
     when = str(t.get("date") or "")[:10]
-    return item(t.get("merchant") or t.get("category_label") or "Movimento",
+    return item(t.get("merchant") or t.get("category_label") or tr("Movimento"),
                 [("+" if amount > 0 else "") + money(abs(amount)),
                  t.get("category_label"), f"{when[8:10]}/{when[5:7]}" if len(when) == 10 else "",
-                 "da rivedere" if t.get("status") == "to_review" else ""],
+                 tr("da rivedere") if t.get("status") == "to_review" else ""],
                 tone="success" if amount > 0 else "")
 
 
 def summary_display(s: dict) -> dict:
-    lines = [f"Speso {money(s.get('spent'))}" + (f" su {money(s['budget'])}" if s.get("budget") else "")
+    lines = [tr("Speso {0}", money(s.get('spent'))) + (f" su {money(s['budget'])}" if s.get("budget") else "")
              + (f" · restano {money(s['left'])}" if s.get("budget") and s.get("left") is not None else "")]
     if s.get("income"):
-        lines.append(f"Entrate {money(s['income'])}")
+        lines.append(tr("Entrate {0}", money(s['income'])))
     if s.get("pace") and s.get("budget") and s["pace"] > s["budget"]:
-        lines.append(f"A questo ritmo arrivi a {money(s['pace'])}")
-    rows = [item(c["label"], [money(c["spent"]), f"{c['pct']}% del budget" if c.get("budget") else ""],
+        lines.append(tr("A questo ritmo arrivi a {0}", money(s['pace'])))
+    rows = [item(c["label"], [money(c["spent"]), tr("{0}% del budget", c['pct']) if c.get("budget") else ""],
                  tone="danger" if (c.get("pct") or 0) >= 100 else ("warning" if (c.get("pct") or 0) >= 80 else ""))
             for c in (s.get("categories") or [])[:8]]
     over = s.get("budget") and (s.get("left") or 0) < 0
-    acts = [action("Aggiungi spesa", "finance_add", style="primary"), action("Cerca", "finance_search")]
+    acts = [action(tr("Aggiungi spesa"), "finance_add", style="primary"), action(tr("Cerca"), "finance_search")]
     if s.get("to_review"):
-        acts.append(action(f"Da rivedere ({s['to_review']})", "finance_search", {"to_review": True}))
-    return display(f"Spese · {s.get('label') or 'questo mese'}", lines=lines, items=rows, actions=acts,
+        acts.append(action(tr("Da rivedere ({0})", s['to_review']), "finance_search", {"to_review": True}))
+    return display(tr("Spese · {0}", s.get('label') or 'questo mese'), lines=lines, items=rows, actions=acts,
                    tone="danger" if over else "")
 
 
 def search_display(items: list[dict], total: float) -> dict:
-    return display("Movimenti", subtitle=f"{len(items)} · totale {money(abs(total))}" if items else "",
-                   items=[_tx_item(t) for t in items[:20]], lines=[] if items else ["Nessun movimento trovato."],
+    return display(tr("Movimenti"), subtitle=f"{len(items)} · totale {money(abs(total))}" if items else "",
+                   items=[_tx_item(t) for t in items[:20]], lines=[] if items else [tr("Nessun movimento trovato.")],
                    footer=f"e altri {len(items) - 20}" if len(items) > 20 else "",
-                   actions=[action("Aggiungi spesa", "finance_add", style="primary")])
+                   actions=[action(tr("Aggiungi spesa"), "finance_add", style="primary")])
 
 
 def added_display(t: dict) -> dict:
-    return display("Salvato", tone="success", items=[_tx_item(t)],
-                   actions=[action("Cambia categoria", "finance_update", {"id": t.get("id")}),
-                            action("Elimina", "finance_delete", {"id": t.get("id")}, style="danger"),
-                            action("Riepilogo", "finance_summary")])
+    return display(tr("Salvato"), tone="success", items=[_tx_item(t)],
+                   actions=[action(tr("Cambia categoria"), "finance_update", {"id": t.get("id")}),
+                            action(tr("Elimina"), "finance_delete", {"id": t.get("id")}, style="danger"),
+                            action(tr("Riepilogo"), "finance_summary")])
 
 
 try:
@@ -763,7 +761,7 @@ try:
             "categories": [f"{c['label']} {c['spent']:.2f}" + (f"/{c['budget']:.0f} ({c['pct']}%)" if c.get("budget") else "")
                            for c in s["categories"]],
             "top_merchants": [f"{m['merchant']} {m['spent']:.2f}" for m in s["top_merchants"]],
-            "recurring_next": [f"{r['merchant']} {r['amount']:.2f} il {r['next']}" for r in s["recurring_next"]],
+            "recurring_next": [tr("{0} {1:.2f} il {2}", r['merchant'], r['amount'], r['next']) for r in s["recurring_next"]],
             "display": summary_display(s)}
 
     def _search(query: str = "", category: str = "", month: str = "", since: str = "", until: str = "",
@@ -787,7 +785,7 @@ try:
         body = {k: v for k, v in {"category": category, "amount": amount, "date": date, "merchant": merchant,
                                   "notes": note}.items() if v not in (None, "")}
         if not body:
-            return {"error": "nessuna modifica indicata"}
+            return {"error": tr("nessuna modifica indicata")}
         out = plutus.update_tx(id, body, learn=always)
         signals.changed()
         _coach_check()
@@ -820,7 +818,7 @@ try:
         v = statements.preview(blob_id=blob_id, account=account, source="chat")
         return {"import_id": v["id"], "period": v["period"], "counts": v["counts"], "how": v["how"],
                 "total_new_spent": v["total_new_spent"], "currency": v["currency"],
-                "next": "chiedi conferma all'utente, poi finance_import_statement con import_id e commit=true",
+                "next": "ask the user to confirm, then finance_import_statement with import_id and commit=true",
                 "sample": [f"{r['date']} {r['merchant']} {r['amount']:.2f} [{r['state']}]" for r in v["rows"][:8]]}
 
     def _recurring() -> dict:

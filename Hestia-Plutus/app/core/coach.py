@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 from datetime import date
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 REVIEW_NEED = "finance.review"
 
@@ -42,7 +43,7 @@ class PlutusCoach:
         weeks_left = max(1, math.ceil((s["days_total"] - s["days_gone"] + 1) / 7))
         items = [c for c in s["categories"] if c.get("budget")]
         if s.get("budget"):
-            items.append({"id": "total", "label": "Totale", "spent": s["spent"], "budget": s["budget"]})
+            items.append({"id": "total", "label": tr("Totale"), "spent": s["spent"], "budget": s["budget"]})
         out: list[dict] = []
         for c in items:
             left = round(c["budget"] - c["spent"], 2)
@@ -50,13 +51,13 @@ class PlutusCoach:
             out.append({"id": f"finance.budget.{c['id']}", "title": c["label"], "kind": "target", "count": 1,
                         "value": week, "unit": cur, "progress": round(c["spent"] / c["budget"], 2),
                         "tags": ["budget"], "priority": "could",
-                        "reason": (f"restano {left:.2f} {cur} nel mese, circa {week:.2f} a settimana" if left >= 0
-                                   else f"budget superato di {-left:.2f} {cur}")})
+                        "reason": (tr("restano {0:.2f} {1} nel mese, circa {2:.2f} a settimana", left, cur, week) if left >= 0
+                                   else tr("budget superato di {0:.2f} {1}", -left, cur))})
         self.review_open = s.get("to_review", 0) >= self._threshold()
         if self.review_open:
-            out.append({"id": REVIEW_NEED, "title": "Rivedi spese", "kind": "block", "count": 1, "minutes": 15,
+            out.append({"id": REVIEW_NEED, "title": tr("Rivedi spese"), "kind": "block", "count": 1, "minutes": 15,
                         "time_of_day": "evening", "tags": ["admin"], "priority": "could",
-                        "reason": f"{s['to_review']} movimenti da controllare", "link": "movimenti"})
+                        "reason": tr("{0} movimenti da controllare", s['to_review']), "link": "movimenti"})
         state = f"speso {s['spent']:.2f} {cur}" + (f" su {s['budget']:.2f}" if s.get("budget") else "")
         return {"state": state, "needs": out}
 

@@ -11,6 +11,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -129,7 +130,7 @@ def take(sid: str, body: dict = Body(default={})):
 app.include_router(CoachRouter("demeter", "food", "Alimentazione", needs=lambda s, e: food.needs(s, e),
                                review=lambda s, e: food.review(s, e)).router)
 app.include_router(recap.recap_router(
-    "demeter", lambda d, n: recap.piece("demeter", "Alimentazione", icon="leaf", order=45, **food.recap(d, n)),
+    "demeter", lambda d, n: recap.piece("demeter", tr("Alimentazione"), icon="leaf", order=45, **food.recap(d, n)),
     today=food.today))
 
 
@@ -142,11 +143,11 @@ def _today_display(t: dict) -> dict:
     items = [item(f"{SLOTS.get(m['slot'], m['slot'])}: {m['text']}",
                   [f"{'~' if m.get('estimated') else ''}{m['kcal']} kcal" if m["kcal"] is not None else "—"])
              for m in t["meals"]]
-    items += [item(("Preso: " if s["taken"] else "Da prendere: ") + s["name"], [TIMES[s["time_of_day"]]])
+    items += [item((tr("Preso: ") if s["taken"] else tr("Da prendere: ")) + s["name"], [TIMES[s["time_of_day"]]])
               for s in t["supplements"]]
-    return display("Oggi a tavola", lines=lines, items=items,
-                   actions=[action("Registra pasto", "cibo_pasto", style="primary")] +
-                           [action(f"Preso {s['name']}", "cibo_preso", {"supplement": s["id"]})
+    return display(tr("Oggi a tavola"), lines=lines, items=items,
+                   actions=[action(tr("Registra pasto"), "cibo_pasto", style="primary")] +
+                           [action(tr("Preso {0}", s['name']), "cibo_preso", {"supplement": s["id"]})
                             for s in t["supplements"] if not s["taken"]][:3])
 
 
@@ -164,15 +165,15 @@ def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", 
     else:
         d = {**food.diet(), "unchanged": True}   # read only: no «Fatto» in the chat
     lines = [f"Obiettivo: {d['kcal'] or '—'} kcal · {d['protein'] or '—'} g proteine"] + d["rules"][:10]
-    return {**d, "display": display("Dieta", lines=lines, actions=[action("Modifica", "cibo_dieta")])}
+    return {**d, "display": display(tr("Dieta"), lines=lines, actions=[action(tr("Modifica"), "cibo_dieta")])}
 
 
 def _supplements() -> dict:
     items = food.supplements(True)
-    return {"items": items, "display": display("Integratori", items=[
+    return {"items": items, "display": display(tr("Integratori"), items=[
         item(s["name"], [s.get("dose") or "", TIMES[s["time_of_day"]], "in pausa" if s["status"] == "paused" else ""])
-        for s in items], lines=[] if items else ["Nessun integratore."],
-        actions=[action("Aggiungi", "cibo_integratore", style="primary")])}
+        for s in items], lines=[] if items else [tr("Nessun integratore.")],
+        actions=[action(tr("Aggiungi"), "cibo_integratore", style="primary")])}
 
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}

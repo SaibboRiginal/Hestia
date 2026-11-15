@@ -20,6 +20,7 @@ Event types:
 """
 import json
 import re
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 def emit_status(message: str) -> str:
@@ -98,7 +99,7 @@ def changes_from_log(tool_log: list[dict]) -> list[dict]:
             undo = {"tool": undo.strip(), "args": {"id": params["id"]} if params.get("id") else {}}
         if isinstance(undo, dict) and undo.get("tool"):
             undo = {"tool": str(undo["tool"]), "args": dict(undo.get("args") or {}),
-                    "label": str(undo.get("label") or "Annulla")}
+                    "label": str(undo.get("label") or tr("Annulla"))}
         else:
             undo = None
         out.append({"tool": str(entry.get("tool") or ""), "title": str(entry.get("title") or entry.get("tool") or ""),
@@ -234,6 +235,6 @@ def emit_tool_summary(tool_log: list[dict]) -> str:
     """
     return emit_signal(
         event="tool.summary",
-        message="Riepilogo strumenti utilizzati",
+        message=tr("Riepilogo strumenti utilizzati"),
         data={"calls": [{k: v for k, v in e.items() if k != "result_text"} for e in tool_log]},
     )

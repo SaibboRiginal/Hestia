@@ -36,6 +36,7 @@ import requests
 from core import archive_client
 from core import presence_settings as PS
 from core.hermes_client import publish_event
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.presence")
 
@@ -167,7 +168,7 @@ def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[
     labels = [render(s.get("label") or s["key"], activities) for s in [base, *overlays] if s]
     return {
         "base": base["key"] if base else "idle",
-        "base_label": labels[0] if labels else "In attesa",
+        "base_label": labels[0] if labels else tr("In attesa"),
         "emoji": (base or {}).get("emoji") or "",
         "icon": (base or {}).get("icon") or "",
         "tone": (base or {}).get("tone") or "",
@@ -383,8 +384,8 @@ class PresenceEngine:
         if enabled:
             decision = decide(states, values, PS.threshold, activities)
         else:
-            decision = {"base": "awake", "base_label": "Sveglio", "emoji": "", "overlays": [],
-                        "label": "Sveglio", "help": "Stato spento: nessun effetto sul sistema.", "effects": dict(PS.DEFAULT_EFFECTS),
+            decision = {"base": "awake", "base_label": tr("Sveglio"), "emoji": "", "overlays": [],
+                        "label": tr("Sveglio"), "help": tr("Stato spento: nessun effetto sul sistema."), "effects": dict(PS.DEFAULT_EFFECTS),
                         "decided_by": {k: "disabled" for k in PS.DEFAULT_EFFECTS}}
         idle = values["user.idle_minutes"]
         now_iso = _iso(_now())

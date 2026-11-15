@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 from core import archive_client
 from services import agenda as A
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.day_view")
 
@@ -62,9 +63,9 @@ def busy(start: datetime, end: datetime) -> list[tuple[datetime, datetime, str]]
 
 
 def _event_line(r: dict) -> str:
-    title = str(r.get("title") or "Impegno").strip()
+    title = str(r.get("title") or tr("Impegno")).strip()
     if r.get("all_day"):
-        return f"{title} (tutto il giorno)"
+        return tr("{0} (tutto il giorno)", title)
     return f"{r['_start'].strftime('%H:%M')} {title}"
 
 
@@ -87,7 +88,7 @@ def recap(day: date, nxt: date) -> dict:
 
     events = user_events(d0, d1)
     if events:
-        done.append({"text": "Impegni: " + ", ".join(_cap([_event_line(r) for r in events]))})
+        done.append({"text": tr("Impegni: ") + ", ".join(_cap([_event_line(r) for r in events]))})
 
     tasks_done, tasks_skipped, failed = [], [], []
     for o in A.agenda(d0, d1, include_done=True):
@@ -102,11 +103,11 @@ def recap(day: date, nxt: date) -> dict:
         elif o["type"] == "job" and (o.get("run") or {}).get("ok") is False:
             failed.append(o["title"])
     if tasks_done:
-        done.append({"text": "Fatto: " + ", ".join(_cap(list(dict.fromkeys(tasks_done)))), "tone": "success"})
+        done.append({"text": tr("Fatto: ") + ", ".join(_cap(list(dict.fromkeys(tasks_done)))), "tone": "success"})
     if tasks_skipped:
-        missed.append({"text": "Saltato: " + ", ".join(_cap(list(dict.fromkeys(tasks_skipped)))), "tone": "warning"})
+        missed.append({"text": tr("Saltato: ") + ", ".join(_cap(list(dict.fromkeys(tasks_skipped)))), "tone": "warning"})
     if failed:
-        missed.append({"text": "Non riuscito: " + ", ".join(_cap(list(dict.fromkeys(failed)))), "tone": "danger"})
+        missed.append({"text": tr("Non riuscito: ") + ", ".join(_cap(list(dict.fromkeys(failed)))), "tone": "danger"})
 
     for r in user_events(n0, n1):
         upcoming.append({"text": _event_line(r), "at": r["_start"].isoformat()})

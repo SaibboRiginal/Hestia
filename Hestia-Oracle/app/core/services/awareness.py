@@ -61,12 +61,12 @@ def mood_line(payload: Any) -> str:
         return ""
     parts = [str(summary["mood_word"])]
     if summary.get("energy"):
-        parts.append(f"energia {summary['energy']}/5")
+        parts.append(f"energy {summary['energy']}/5")
     if summary.get("stress"):
         parts.append(f"stress {summary['stress']}/5")
     causes = [str(c) for c in (summary.get("causes") or [])][:3]
     if causes:
-        parts.append("per " + ", ".join(causes))
+        parts.append("because of " + ", ".join(causes))
     return "The owner's mood today: " + ", ".join(parts) + "."
 
 

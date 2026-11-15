@@ -10,6 +10,7 @@ from core.docker_client import get_events
 from core.health_poller import poll_all
 from core.hub_client import discover_services, fetch_service_log_events
 from schemas.reports import LogEvent, SystemReport
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 
 def _since_to_timedelta(since: str) -> timedelta:
@@ -91,9 +92,9 @@ def build_raw_report() -> SystemReport:
         parts.append("All services appear healthy with no recent warnings.")
     else:
         if down_services:
-            parts.append(f"DOWN: {', '.join(down_services)}.")
+            parts.append(tr("DOWN: {0}.", ', '.join(down_services)))
         if degraded_services:
-            parts.append(f"Degraded: {', '.join(degraded_services)}.")
+            parts.append(tr("Degraded: {0}.", ', '.join(degraded_services)))
         if recent_events:
             parts.append(
                 f"{len(recent_events)} recent log event(s) at WARNING or higher."

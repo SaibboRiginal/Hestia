@@ -10,6 +10,7 @@ import hashlib
 from typing import Callable
 
 from hestia_common.transfer import Section
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SKIP_CLASSES = {"conversational_history"}
 CLASS_LABELS = {"durable_user_preference": "Preferenza", "domain_fact_entity": "Fatto", "skill": "Abilità",
@@ -25,14 +26,14 @@ class MemorySection(Section):
     """``route(method, endpoint, body=None, query=None)`` = MemoryService._route_archive (``/memory…`` paths)."""
 
     def __init__(self, route: Callable[..., object]):
-        super().__init__("memorie", "Memorie", icon="memory",
-                         help="Quello che l'assistente ricorda di te (preferenze, fatti, abilità). Non le chat.")
+        super().__init__("memorie", tr("Memorie"), icon="memory",
+                         help=tr("Quello che l'assistente ricorda di te (preferenze, fatti, abilità). Non le chat."))
         self.route = route
 
     def _rows(self) -> list[dict]:
         rows = self.route("GET", "/memory/active", query={"limit": 5000})
         if not isinstance(rows, list):
-            raise RuntimeError("archivio non raggiungibile")
+            raise RuntimeError(tr("archivio non raggiungibile"))
         return [r for r in rows if isinstance(r, dict) and r.get("memory_class") not in SKIP_CLASSES]
 
     def records(self, *, deleted: bool = False) -> list[dict]:
@@ -72,8 +73,8 @@ class MemorySection(Section):
                     "memory_class": r.get("memory_class"), "domains": r.get("domains"),
                     "extra_data": {**(r.get("extra_data") or {}), "imported": True}})
             if ok is None:
-                raise RuntimeError("archivio non raggiungibile")
+                raise RuntimeError(tr("archivio non raggiungibile"))
         for d in deletes:
             if d.get("row_id") is not None and self.route("PATCH", f"/memory/{d['row_id']}",
                                                           body={"is_active": False}) is None:
-                raise RuntimeError("archivio non raggiungibile")
+                raise RuntimeError(tr("archivio non raggiungibile"))

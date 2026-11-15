@@ -39,6 +39,7 @@ from services import coach as weekly_coach
 from services import notification_worker, sync_worker
 from services import presence as assistant_presence
 from core import presence_settings
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -765,7 +766,7 @@ def _recap_with_life(day, nxt) -> dict:
 
 # Daily recap piece (docs/work/2026-10-20-recap-giornaliero): the user's events, assistant tasks, failed jobs.
 app.include_router(recap_contract.recap_router(
-    "chronos", lambda day, nxt: recap_contract.piece("chronos", "Agenda", icon="calendar", emoji="📅", order=10,
+    "chronos", lambda day, nxt: recap_contract.piece("chronos", tr("Agenda"), icon="calendar", emoji="📅", order=10,
                                                      **_recap_with_life(day, nxt))))
 app.include_router(presence_settings.settings.router())
 
@@ -920,17 +921,17 @@ def agenda_display(items: list[dict], days: int, start: datetime) -> dict:
         except (TypeError, ValueError):
             continue
         day = at.date()
-        when = "tutto il giorno" if it.get("all_day") else at.strftime("%H:%M")
+        when = tr("tutto il giorno") if it.get("all_day") else at.strftime("%H:%M")
         if days > 1 and day != last_day:
             rows.append(item(f"{_WD[day.weekday()]} {day.day} {_MO[day.month - 1]}".capitalize(), [when, it.get("title")]))
             last_day = day
         else:
-            rows.append(item(it.get("title") or "Evento", [when, it.get("location")]))
-    title = "Agenda di oggi" if days == 1 else f"Agenda · prossimi {days} giorni"
-    return display(title, items=rows, lines=[] if rows else ["Niente in agenda."],
+            rows.append(item(it.get("title") or tr("Evento"), [when, it.get("location")]))
+    title = tr("Agenda di oggi") if days == 1 else tr("Agenda · prossimi {0} giorni", days)
+    return display(title, items=rows, lines=[] if rows else [tr("Niente in agenda.")],
                    footer=f"e altri {len(items) - 30}" if len(items) > 30 else "",
-                   actions=[action("Nuovo evento", "create_event", style="primary"),
-                            action("Prossimi giorni" if days == 1 else "Solo oggi", "agenda" if days == 1 else "agenda_today")])
+                   actions=[action(tr("Nuovo evento"), "create_event", style="primary"),
+                            action(tr("Prossimi giorni") if days == 1 else tr("Solo oggi"), "agenda" if days == 1 else "agenda_today")])
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -1241,10 +1242,10 @@ def agenda_logs(service: str, at: str, minutes: int = Query(5, ge=1, le=120), le
         routed = resp.json() if resp.content else {}
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=agenda_logs_failed service=%s error=%s", service, exc)
-        raise HTTPException(status_code=502, detail=f"{service} non raggiungibile")
+        raise HTTPException(status_code=502, detail=tr("{0} non raggiungibile", service))
     status = int((routed or {}).get("status_code", 502))
     if status >= 400:
-        raise HTTPException(status_code=502 if status >= 500 else status, detail=f"{service}: log non disponibili")
+        raise HTTPException(status_code=502 if status >= 500 else status, detail=tr("{0}: log non disponibili", service))
     rows, oldest = [], None
     for row in ((routed.get("payload") or {}).get("logs") or []):
         try:

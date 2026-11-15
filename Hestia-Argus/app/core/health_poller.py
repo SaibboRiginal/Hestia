@@ -8,6 +8,7 @@ from datetime import datetime
 import requests
 
 from schemas.reports import HealthReport
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_argus.{__name__}")
 
@@ -43,7 +44,7 @@ def _poll(name: str, health_url: str) -> HealthReport:
             return HealthReport(
                 service=name,
                 status="degraded",
-                error=f"HTTP {resp.status_code}",
+                error=tr("HTTP {0}", resp.status_code),
                 checked_at=datetime.utcnow(),
             )
     except requests.exceptions.ConnectionError:

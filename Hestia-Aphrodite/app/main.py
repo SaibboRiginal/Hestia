@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     import hestia_common  # noqa: F401
@@ -79,7 +80,7 @@ def image(bid: str):
     used = {p.get("background") for p in look.profiles()} | {
         b for p in look.pets() for b in (p.get("images") or {}).values()}
     if not bid or bid not in used:
-        raise NotFound("immagine non trovata")
+        raise NotFound(tr("immagine non trovata"))
     blob = kit.hub.ok("archive", "GET", f"api/blobs/{bid}/base64", timeout=30) or {}
     return {"mime": blob.get("mime") or "image/png", "data_b64": blob.get("data_b64") or ""}
 
@@ -127,14 +128,14 @@ def image_done(body: dict = Body(...)):
 def _now(client: str = "webui") -> dict:
     n = look.now(client)
     p = n["profile"]
-    lines = [f"Tema: {p['name']}" + ("" if n["auto"] else " (temi spenti)"), f"Perché: {n['why']}"]
+    lines = [tr("Tema: {0}", p['name']) + ("" if n["auto"] else " (temi spenti)"), tr("Perché: {0}", n['why'])]
     if n["pet"]:
-        lines.append(f"Animaletto: {n['pet']['name']}")
+        lines.append(tr("Animaletto: {0}", n['pet']['name']))
     files = [file(p["background"], "sfondo.png", "image/png")] if p.get("background") else []
-    return {**n, "display": display("Aspetto adesso", lines=lines, files=files, actions=[
-        action("Spegni i temi" if n["auto"] else "Riaccendi i temi", "aspetto_scelta",
+    return {**n, "display": display(tr("Aspetto adesso"), lines=lines, files=files, actions=[
+        action(tr("Spegni i temi") if n["auto"] else tr("Riaccendi i temi"), "aspetto_scelta",
                {"client": client, "auto": not n["auto"]}),
-        action("Prossimi temi", "aspetto_prossimi")])}
+        action(tr("Prossimi temi"), "aspetto_prossimi")])}
 
 
 def _choice(client: str = "webui", auto: bool | None = None, pet: str | None = None) -> dict:
@@ -147,9 +148,8 @@ def _pet(name: str, species: str = "gatto", look_: str = "") -> dict:
     p = look.save_pet({"name": name, "species": species, "look": look_})
     gen = look.generate("pet", p["id"])
     return {"saved": True, "id": p["id"], "name": p["name"], "images_asked": gen["asked"],
-            "display": display(p["name"], subtitle=p["species"], lines=["Sto preparando le sue immagini: arrivano da "
-                                                                        "sole quando sono pronte."],
-                               actions=[action("Usalo sul sito", "aspetto_scelta", {"client": "webui", "pet": p["id"]},
+            "display": display(p["name"], subtitle=p["species"], lines=[tr("Sto preparando le sue immagini: arrivano da sole quando sono pronte.")],
+                               actions=[action(tr("Usalo sul sito"), "aspetto_scelta", {"client": "webui", "pet": p["id"]},
                                                style="primary")])}
 
 
@@ -167,7 +167,7 @@ kit.tools([
             telegram={"section": "Aspetto", "primary": 4}),
     MCPTool(name="aspetto_prossimi", description="The themes of the next days (days, default 60).",
             parameters={"type": "object", "properties": {"days": {"type": "integer"}}},
-            handler=lambda days=60: (lambda rows: {"items": rows, "display": display("Prossimi temi", items=[
+            handler=lambda days=60: (lambda rows: {"items": rows, "display": display(tr("Prossimi temi"), items=[
                 item(r["why"], [r["date"][8:10] + "/" + r["date"][5:7]]) for r in rows[:15]])})(look.upcoming(days)),
             title="Prossimi temi", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
     MCPTool(name="aspetto_animale", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
@@ -175,9 +175,9 @@ kit.tools([
             handler=lambda name, species="gatto", look="": _pet(name, species, look), title="Nuovo animaletto",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
     MCPTool(name="aspetto_animali", description="The pets created.", parameters={"type": "object", "properties": {}},
-            handler=lambda: (lambda rows: {"items": rows, "display": display("Animaletti", items=[
+            handler=lambda: (lambda rows: {"items": rows, "display": display(tr("Animaletti"), items=[
                 item(p["name"], [p["species"], f"{len(p.get('images') or {})}/3 immagini"]) for p in rows],
-                lines=[] if rows else ["Nessun animaletto."])})(look.pets()),
+                lines=[] if rows else [tr("Nessun animaletto.")])})(look.pets()),
             title="Animaletti", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
     MCPTool(name="aspetto_genera", description=("Ask for the images again: target profile (background) or pet; ref = profile key or the pet's "
                                                 "id/name."),

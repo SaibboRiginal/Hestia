@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.setup.tunnel")
 
@@ -104,12 +105,12 @@ def status(client=None) -> dict[str, Any]:
         return {"on": False, "url": "", "phase": "error", "detail": error}
     if phase:
         return {"on": True, "url": "", "phase": phase,
-                "detail": "Scarico il programma di Cloudflare…" if phase == "download" else "Avvio il collegamento…"}
+                "detail": tr("Scarico il programma di Cloudflare…") if phase == "download" else tr("Avvio il collegamento…")}
     try:
         client = client or _client()
         box = _container(client)
     except Exception as exc:
-        return {"on": False, "url": "", "detail": f"Docker non risponde: {str(exc)[:80]}"}
+        return {"on": False, "url": "", "detail": tr("Docker non risponde: {0}", str(exc)[:80])}
     on = bool(box) and box.status == "running"
     url = address(client, box) if on else ""
     return {"on": on, "url": url, "phase": "ready" if url else ("address" if on else "")}
@@ -174,11 +175,11 @@ def _start_now(client=None) -> None:
                 with _slock:
                     _starting["phase"] = "download"
                 if _downloads is not None:
-                    _downloads.add(f"docker:{IMAGE}", "Collegamento da fuori casa (Cloudflare)", "docker",
+                    _downloads.add(f"docker:{IMAGE}", tr("Collegamento da fuori casa (Cloudflare)"), "docker",
                                    {"image": IMAGE}, size_hint=25_000_000)
                     job = _downloads.wait(f"docker:{IMAGE}", timeout=900)
                     if job.get("state") != "fatto":
-                        raise RuntimeError(job.get("error") or "download non riuscito")
+                        raise RuntimeError(job.get("error") or tr("download non riuscito"))
                 else:
                     client.images.pull(IMAGE)
                 with _slock:
@@ -194,7 +195,7 @@ def _start_now(client=None) -> None:
     except Exception as exc:
         logger.warning("[🔄] event=setup_tunnel_start_failed error=%s", str(exc)[:200])
         with _slock:
-            _starting.update(phase="", error="Non sono riuscito ad avviarlo: " + str(exc)[:120])
+            _starting.update(phase="", error=tr("Non sono riuscito ad avviarlo: ") + str(exc)[:120])
 
 
 def stop(client=None) -> dict[str, Any]:

@@ -28,6 +28,7 @@ import requests
 from .blocks import CHAINS_KEY, DEFAULT_CHAINS, DEFAULT_PROVIDERS, DIRECTIONS, PROVIDERS_KEY
 from .standards import STANDARDS
 from . import lang
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.voice_setup")
 
@@ -153,8 +154,8 @@ def _probe_wyoming(host: str, port: int) -> dict[str, list[dict]] | None:
               for p in data.get("tts") or [] for v in p.get("voices") or [] if v.get("name")]
     if not listen and not voices and not (data.get("asr") or data.get("tts")):
         return None
-    return {"ascolto": listen or ([{"id": "", "label": "Predefinito"}] if data.get("asr") else []),
-            "voce": [], "voices": voices or ([{"id": "", "label": "Predefinita"}] if data.get("tts") else [])}
+    return {"ascolto": listen or ([{"id": "", "label": tr("Predefinito")}] if data.get("asr") else []),
+            "voce": [], "voices": voices or ([{"id": "", "label": tr("Predefinita")}] if data.get("tts") else [])}
 
 
 def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
@@ -179,7 +180,7 @@ def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
         here = host == THIS_COMPUTER
         out.append({"name": spec["name"] if here else f"{spec['name']}-{re.sub(r'[^a-z0-9]+', '-', host.lower()).strip('-')}",
                     "label": spec["label"] if here else f"{spec['label']} · {host}", "type": spec["type"], "url": url,
-                    "where": "questo computer" if here else host, **got})
+                    "where": tr("questo computer") if here else host, **got})
     return out
 
 
@@ -240,13 +241,13 @@ def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
     """«Prova» for a cloud speech service: its list read with the key (no audio made, nothing spent)."""
     p = blocks.providers().get(name)
     if p is None:
-        return {"ok": False, "detail": "Questo servizio non è configurato."}
+        return {"ok": False, "detail": tr("Questo servizio non è configurato.")}
     std = STANDARDS[p["type"]]
     if p["type"] in LOCAL_TYPES:
-        return {"ok": True, "detail": "Funziona sul tuo computer.", "models": _items(std.models(p)),
+        return {"ok": True, "detail": tr("Funziona sul tuo computer."), "models": _items(std.models(p)),
                 "voices": _items(std.voices(p, language))}
     if blocks.provider_state(p) == "no_key" or (std.needs_key and not p["key"]):
-        return {"ok": False, "detail": "Manca la chiave."}
+        return {"ok": False, "detail": tr("Manca la chiave.")}
     url = std.url(p).rstrip("/")
     try:
         if p["type"] == "openai":
@@ -260,16 +261,16 @@ def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
             resp = None
     except Exception as exc:
         logger.info("[🔄] event=voice_setup_check_failed provider=%s error=%s", name, str(exc)[:160])
-        return {"ok": False, "detail": "Non risponde: controlla la connessione."}
+        return {"ok": False, "detail": tr("Non risponde: controlla la connessione.")}
     if resp is not None:
         if resp.status_code in (400, 401, 403):
-            return {"ok": False, "detail": "La chiave non è valida."}
+            return {"ok": False, "detail": tr("La chiave non è valida.")}
         if not resp.ok and resp.status_code != 429:
-            return {"ok": False, "detail": f"Non risponde (errore {resp.status_code})."}
+            return {"ok": False, "detail": tr("Non risponde (errore {0}).", resp.status_code)}
     logger.info("event=voice_setup_check_ok provider=%s", name)
     models, voices = _items(std.models(p)), _items(std.voices(p, language))
     # Preselected once the key works, so nothing is asked: the first model and the first voice it lists.
-    return {"ok": True, "detail": "La chiave funziona.", "models": models, "voices": voices,
+    return {"ok": True, "detail": tr("La chiave funziona."), "models": models, "voices": voices,
             "recommended": {"ascolto": [m["id"] for m in models[:1]], "voce": [v["id"] for v in voices[:1]]}}
 
 
@@ -325,10 +326,10 @@ def _add_found(blocks, put: Callable[..., Any], steps: list[dict]) -> bool:
 
 def apply(blocks, put: Callable[..., Any], listen: dict | list | None, speak: dict | list | None) -> dict[str, Any]:
     if not _add_found(blocks, put, _steps(listen) + _steps(speak)):
-        return {"ok": False, "detail": "Le impostazioni non hanno accettato il programma vocale."}
+        return {"ok": False, "detail": tr("Le impostazioni non hanno accettato il programma vocale.")}
     chains = plan(blocks.chains(), listen, speak)
     if not put(CHAINS_KEY, chains, actor="user", reason="Setup guidato: voce"):
-        return {"ok": False, "detail": "Le impostazioni non hanno accettato la scelta."}
+        return {"ok": False, "detail": tr("Le impostazioni non hanno accettato la scelta.")}
     logger.info("event=voice_setup_applied listen=%s speak=%s", ",".join(s["provider"] for s in _steps(listen)) or "-",
                 ",".join(s["provider"] for s in _steps(speak)) or "-")
     return {"ok": True, "chains": chains}
