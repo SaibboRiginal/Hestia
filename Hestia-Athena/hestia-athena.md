@@ -425,3 +425,5 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: every internal prompt (strategist, reflection, learning, docs check, auditor, consolidator) is English; proposals, reasons and findings are asked in the owner's language (`athena_settings.owner_language()`); the strategist parser still accepts the old Italian keys. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.

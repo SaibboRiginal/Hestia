@@ -149,3 +149,5 @@ checks Hercules, Hygieia and Plutus.
 filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Mappa del sistema»; catalog tool/command entries carry `summary` and `telegram_group` (area, `hestia_common.areas`); map offline text «Mappa non raggiungibile».
+
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
