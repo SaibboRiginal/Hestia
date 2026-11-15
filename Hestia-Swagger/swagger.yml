@@ -5,6 +5,8 @@ info:
   description: |
     Aggregated API reference for all Hestia services.
     Each path overrides the server URL to route to the correct service.
+    Error `detail` texts and notice texts meant for people follow the owner's language (themis.personal.language,
+    hestia_common.locales/<lang>/messages.json); keys, codes and values never change.
 
     | Service   | Port  |
     |-----------|-------|
