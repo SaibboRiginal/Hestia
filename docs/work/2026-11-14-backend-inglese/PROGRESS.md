@@ -19,4 +19,5 @@
 - [x] Phase 2d: WebUI shell, every plugin and the SDK kit through `tr` (TS codemod, ~5000 literals); Themis
       `/api/settings/i18n`, WebUI `/api/webui/i18n(.js)` loaded before the bundles; English catalog +3094 texts;
       «Lingua» saved → page reload; test `test_every_webui_and_plugin_text_has_an_english_translation`
-- [ ] German, French, Spanish catalogs
+- [x] Italian and English only («Lingua» it/en); standard `docs/LANGUAGES.md`; gate `check_i18n.py` (precheck, CI,
+      `--todo`/`--merge` to fill missing texts); links in CLAUDE.md, AI-GUIDE, REGOLE R9, SPEC template

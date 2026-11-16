@@ -71,6 +71,12 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
   improvement or setting proposal on a new install, only after days of data and the same thing seen on several
   days (faults are reported at once; on demand always works).
 
+## R9 — Backend English, the owner reads his language (2026-11-14, 2026-11-16)
+- Everything the model reads is English; every fixed text a person reads comes from the catalog in the owner's
+  language; chat answers follow the language he writes in, what she writes on her own follows «Lingua».
+- (2026-11-16) Only **Italian and English** are needed: «Lingua» offers those two. Another language only if he asks.
+- How, for every module: `docs/LANGUAGES.md`. Check: `python tools/governance/check_i18n.py` (precheck and CI).
+
 ## R7 — Working style (2026-10-22, 2026-10-24)
 - Threads merge their own PR once CI is green, unless they need an answer from the owner; main must always be ready
   for a `git pull` and a test.
@@ -86,3 +92,4 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
 6. Does it work on every client: WebUI (icons, no emoji) and Telegram (tool + display) (R5)?
 7. Can the owner stop it, correct it and undo it?
 8. Which docs change (module doc, swagger, ARCHITECTURE, AI-GUIDE, flow map, readme)?
+9. Texts: model text in English, people texts wrapped in `tr` with their English entry (R9, `docs/LANGUAGES.md`)?

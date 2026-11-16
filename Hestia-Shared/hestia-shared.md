@@ -266,7 +266,7 @@ text = identity.render("You are {assistant}, {g:a woman|a man}, a friend of {own
 ```
 `{assistant}` name · `{owner}` how to call him (`the person writing to you` while unknown) · `{owner_rule}` one
 English sentence (his name, or «ask») · `{g:lei|lui}` gendered words · `{owner_language}` the English name of the
-personal language `themis.personal.language` (it/en/de/fr/es, default it; `identity.language_code()`,
+personal language `themis.personal.language` (it/en, default it; `identity.language_code()`,
 `language_name()`, dossier `docs/work/2026-11-14-lingua-personale`): what she writes on her own follows it, the chat
 follows the language of the owner's last message. Other braces are untouched, so the template
 can be formatted after. The rendered text is English like every text the model reads
