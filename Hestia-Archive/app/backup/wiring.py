@@ -51,7 +51,7 @@ def agenda_rules() -> list[dict]:
 
 
 ui = PluginClient("archive", title="Archive", icon="memory", color="gray", kind="core", dist=UI_DIST,
-                  description="Backup su Google Drive: storico, verifica, ripristino.", version=SERVICE_VERSION)
+                  description="Backup on Google Drive: history, check, restore.", version=SERVICE_VERSION)
 ui.webui(entry="archive.js", api_prefix="/api/backup/",
          settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history",
                                          help="Backup history on Google Drive, check and restore.")])

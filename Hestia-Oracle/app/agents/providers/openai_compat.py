@@ -22,13 +22,13 @@ logger = logging.getLogger("hestia_oracle.providers.openai")
 
 class OpenAICompatProvider(LLMProvider):
     TYPE = "openai"
-    LABEL = "Compatibile OpenAI"
+    LABEL = "OpenAI compatible"
     BILLING = "Local server · free"
     CONFIG_FIELDS = (
-        {"key": "base_url", "type": "string", "label": "Indirizzo (…/v1)"},
-        {"key": "api_key", "type": "secret_ref", "label": "Chiave API (ORACLE_KEY_<NOME>)"},
+        {"key": "base_url", "type": "string", "label": "Address (…/v1)"},
+        {"key": "api_key", "type": "secret_ref", "label": "API key (ORACLE_KEY_<NAME>)"},
         {"key": "cache_prompt", "type": "bool", "label": "Reuse the prompt cache", "default": True},
-        {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 180},
+        {"key": "timeout_sec", "type": "int", "label": "Timeout (seconds)", "default": 180},
     )
     CAPABILITIES = frozenset({"chat", "tools", "stream", "vision", "embed", "thinking"})
 
@@ -63,7 +63,7 @@ class OpenAICompatProvider(LLMProvider):
         system_text = "\n\n".join(p for p in (system, static) if p)
         messages = [{"role": "system", "content": system_text}] if system_text else []
         messages.append({"role": "user", "content": user_content if user_content is not None
-                         else (dynamic or prompt or "(vuoto)")})
+                         else (dynamic or prompt or "(empty)")})
         return messages
 
     def _body(self, model: str, messages: list[dict], thinking: Any, **extra) -> dict:

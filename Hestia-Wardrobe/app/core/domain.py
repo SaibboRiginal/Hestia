@@ -151,7 +151,7 @@ def _float(value: Any) -> float | None:
 def iso_date(value: Any, *, required: bool = False) -> str | None:
     if value in (None, ""):
         if required:
-            raise Invalid("data mancante")
+            raise Invalid(tr("missing date"))
         return None
     if isinstance(value, datetime):
         return value.date().isoformat()

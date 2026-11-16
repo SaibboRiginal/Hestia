@@ -275,13 +275,13 @@ transfer = Transfer("kairos", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
-    usecase(ADVICE_USE, "Scadenze · consigli", chain="veloce", help="A short practical tip about a deadline.")])})
+    usecase(ADVICE_USE, "Deadlines · tips", chain="veloce", help="A short practical tip about a deadline.")])})
 kit.capabilities(transfer.capabilities)
 kit.agenda_rules(lambda: [job_rule("kairos.daily", tr("Deadlines: notices"), service="kairos", path=f"{API}/daily",
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=kit.tz,
                                    description="A notice at the advance warning and one on the day of the deadline.")])
 kit.on_warm(lambda: (mail.subscribe_async(_mail_rules), process_pending_mail()))
-kit.webui(icon="clock", color="orange", description="Bollette, assicurazioni, bollo, revisione, documenti: avvisi e consigli.",
+kit.webui(icon="clock", color="orange", description="Bills, insurance, car tax, inspection, documents: alerts and tips.",
           pages=[page("scadenze", "Deadlines", element="kairos-list", icon="clock", order=70,
                       help="The deadlines with the advance warning, those found in emails to confirm, a tip for each. «Done» moves recurring ones to the next date."),
                  page("scadenza/:id", "Deadline", element="kairos-detail", detail=True, parent="scadenze")],

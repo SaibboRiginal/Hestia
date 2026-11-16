@@ -163,7 +163,7 @@ class Day:
                     continue
                 p = self.products.get(s.get("product_id") or "") or {}
                 for f in self.product_families(s.get("product_id")):
-                    out.setdefault(f, p.get("name") or (r or {}).get("name") or "un prodotto")
+                    out.setdefault(f, p.get("name") or (r or {}).get("name") or tr("a product"))
         return out
 
     # ── per routine ────────────────────────────────────────────────────────
@@ -277,7 +277,7 @@ class Day:
                              if conflict_notes(fam, chosen[p], self.custom_conflicts)]
                     reason = tr("not today: ") + (names[0] if names else (clash[0] if clash else "conflitto"))
             elif not include:
-                reason = {"ok": "obiettivo raggiunto", "wait": tr("done recently"), "off": tr("not the day"),
+                reason = {"ok": tr("goal reached"), "wait": tr("done recently"), "off": tr("not the day"),
                           "rest": tr("when needed")}.get(g["state"], "")
             if include:
                 chosen[s["id"]] = fam

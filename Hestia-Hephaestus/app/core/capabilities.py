@@ -17,9 +17,9 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
 FORGE_USECASE = "forge.codice"
 LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · sviluppo", chain="codice",
                             help="The model that writes the code when Forge uses the Oracle engine."),
-                llm_usecase("forge.revisione", "Forge · revisione automatica", chain="potente",
+                llm_usecase("forge.revisione", "Forge · automatic review", chain="potente",
                             help="The independent reviewer that reads diff and tests before you approve."),
-                llm_usecase("forge.piano", "Forge · divisione in pezzi", chain="potente",
+                llm_usecase("forge.piano", "Forge · split into pieces", chain="potente",
                             help="Splits a big job into pieces and chooses for each one whether it is simple or hard."),
                 llm_usecase("hephaestus.aggiornamenti", "What's new in an update", chain="veloce",
                             help="Rewrites in plain words what's new in a new version before asking whether to install it."),

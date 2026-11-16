@@ -123,7 +123,7 @@ class SpeakerEngine:
                     try:
                         fetch("impronta:resnet34", tr("Recognise your voice"), MODEL_URL, path, 27)
                     except EngineError as exc:
-                        raise VoiceprintError(f"download modello voce: {exc}")
+                        raise VoiceprintError(tr("voice model download: {0}", exc))
                     logger.info("event=voiceprint_model_downloaded")
                 self._session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
             return self._session

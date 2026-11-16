@@ -80,7 +80,7 @@ settings.declare([
 hub = Hub(HUB_API_URL)
 store = Store(hub)
 voice = VoiceClient(HUB_API_URL)
-VOICE_USECASES = [voice_usecase(DIARY_VOICE_USE, "Diario a voce", direction="ascolto",
+VOICE_USECASES = [voice_usecase(DIARY_VOICE_USE, "Spoken diary", direction="ascolto",
                                 help="The story of the day after the evening recap.")]
 hygieia = Hygieia(store, settings.get, tz_name=TZ)
 coach = HygieiaCoach(hygieia)
@@ -508,7 +508,7 @@ def reminders_run():
         actions = [
             {"id": "done", "label": tr("Done"), "text": tr("✅ Done"), "style": "primary", "service": "hygieia", "method": "POST",
              "path": f"{API}/quick/routine/{rid}", "body": {"source": "reminder_button"}, "resolves": True},
-            {"id": "skip", "label": tr("Skip"), "text": "⏭ Salta", "service": "hygieia", "method": "POST",
+            {"id": "skip", "label": tr("Skip"), "text": "⏭ Skip", "service": "hygieia", "method": "POST",
              "path": f"{API}/routines/{rid}/skip", "body": {"source": "reminder_button"}},
             {"id": "week", "label": tr("Not this week"), "text": tr("🌙 Not this week"), "service": "hygieia",
              "method": "POST", "path": f"{API}/routines/{rid}/snooze", "body": {}, "resolves": True},
@@ -539,10 +539,10 @@ def alerts_run():
             continue
         pid = a["product_id"]
         if a["type"] == "expiry":
-            actions = [{"id": "discard", "label": tr("Thrown away"), "text": "🗑 Buttato", "service": "hygieia", "method": "POST",
+            actions = [{"id": "discard", "label": tr("Thrown away"), "text": "🗑 Thrown away", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/status", "body": {"status": "discarded"}, "resolves": True}]
         else:
-            actions = [{"id": "bought", "label": tr("Bought again"), "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
+            actions = [{"id": "bought", "label": tr("Bought again"), "text": "🛒 Bought again", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
             _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
@@ -565,10 +565,10 @@ def signals_run():
 def _agenda_rules() -> list[dict]:
     return [
         signals_rule("hygieia", tr("alt::Self care"), path=f"{API}/signals/run", tz=TZ),
-        job_rule("hygieia.planner", "Promemoria self care (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
+        job_rule("hygieia.planner", "Self care reminders (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=TZ,
                  description="Checks the routines with the reminder on that are behind their goal. At most 2 a week per routine, only one visible at a time."),
-        job_rule("hygieia.alerts", "Avvisi prodotti self care (Hygieia)", service="hygieia", path=f"{API}/alerts/run",
+        job_rule("hygieia.alerts", "Self care product alerts (Hygieia)", service="hygieia", path=f"{API}/alerts/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T10:00:00", tz=TZ,
                  description="Products expiring or running out. One notice per product, no more than one a week."),
     ]
@@ -587,21 +587,21 @@ ui.webui(
            page("prodotti", "Products", element="hygieia-products", icon="drop", order=42, parent="oggi"),
            page("prodotti/:id", "Product", element="hygieia-product", detail=True, parent="oggi"),
            page("diario", "Diary", element="hygieia-journal", icon="edit", order=43, parent="oggi"),
-           page("statistiche", "Statistiche e storia", element="hygieia-stats", icon="chart", order=44, parent="oggi"),
+           page("statistiche", "Statistics and history", element="hygieia-stats", icon="chart", order=44, parent="oggi"),
            page("spesa", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="oggi")],
     widgets=[widget("oggi", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
                     open_page="oggi", icon="sparkle"),
-             widget("prossima", "Prossima routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="oggi",
+             widget("prossima", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="oggi",
                     icon="clock"),
              widget("prodotti", "Expiring and to buy again", element="hygieia-alerts-widget", sizes=["m", "l"],
                     open_page="spesa", icon="drop"),
              widget("settimana", "Self care week", element="hygieia-week-widget", sizes=["s", "m", "l"],
                     open_page="statistiche", icon="calendar")],
     quick_actions=[
-        quick_action("fatta", "Routine fatta", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
+        quick_action("fatta", "Routine done", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
                      source=f"{API}/quick/routines", undo={"method": "DELETE", "path": f"{API}/quick/routine/{{id}}"},
                      favorite=True, order=40),
-        quick_action("uso", "Prodotto usato", "POST", f"{API}/quick/product/{{id}}", icon="drop", group="Self care",
+        quick_action("uso", "Product used", "POST", f"{API}/quick/product/{{id}}", icon="drop", group="Self care",
                      source=f"{API}/quick/products", undo={"method": "DELETE", "path": f"{API}/quick/product/{{id}}"},
                      order=41),
     ],
@@ -621,7 +621,7 @@ transfer = Transfer("hygieia", hub, sections=[
     StoreSection("diario", "Diary", store, ["journal"], icon="note",
                  title=lambda r: f"{r['data'].get('date')} · {r['data'].get('area') or ''}",
                  subtitle=lambda r: r["data"].get("note") or ""),
-    StoreSection("liste", "Liste personali", store, ["option"], icon="list"),
+    StoreSection("liste", "Personal lists", store, ["option"], icon="list"),
 ])
 app.include_router(transfer.router())
 
@@ -757,7 +757,7 @@ try:
         body = {"name": name, "slot": slot, "areas": areas or [], "reminder": reminder, "favorite": favorite,
                 "cadence": _cadence(cadence_mode, times or (1 if cadence_mode == "target" else None), per, days),
                 "steps": [_step_from_text(s) for s in steps or []]}
-        d = hygieia.save_routine(body, reason="creata dall'assistente", source="assistant")
+        d = hygieia.save_routine(body, reason=tr("created by the assistant"), source="assistant")
         return {"saved": True, "name": d["name"], "cadence": d["cadence_label"],
                 "steps": [s.get("label") or (s.get("product") or {}).get("name") for s in d["steps"]],
                 "notes": [n["text"] for n in d["check"]]}
@@ -821,7 +821,7 @@ try:
             body["plan_with"] = "" if catalog.slug(plan_with) in ("nessuno", "no", "none") else plan_with
         if not body:
             return {"error": tr("no change given")}
-        d = hygieia.save_routine(body, id=r["id"], reason=reason or "modificata dall'assistente", source="assistant")
+        d = hygieia.save_routine(body, id=r["id"], reason=reason or tr("edited by the assistant"), source="assistant")
         return {"saved": True, "name": d["name"], "version": d.get("version"), "cadence": d["cadence_label"],
                 "steps": [(s.get("label") or (s.get("product") or {}).get("name"))
                           + (f" [{s['cadence_label']}]" if s.get("cadence_label") else "")
@@ -895,9 +895,7 @@ try:
                 handler=_t(_product_get), title="Product detail", path=f"{API}/products/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Products"}),
-        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'ho comprato il siero X 30ml'). status in_use (open, default) | stock "
-                                                          "(closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glicolico, bha_salicilico, "
-                                                          "vitamina_c…). category e.g. detergente, siero, crema, spf, shampoo."),
+        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'I bought serum X 30ml'). status in_use (open, default) | stock (closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glicolico, bha_salicilico, vitamina_c…). category e.g. detergente, siero, crema, spf, shampoo."),
                 parameters={"type": "object", "properties": {"name": S, "brand": S, "category": S, "areas": L, "actives": L,
                                                              "size": N, "unit": S, "price": N, "status": S, "pao_months": I,
                                                              "notes": S, "favorite": B}, "required": ["name"]},
@@ -976,7 +974,7 @@ try:
                 parameters={"type": "object", "properties": {"days": I, "since": S, "until": S}}, handler=_t(_timeline),
                 title="Self care history", path=f"{API}/timeline", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diary", "label": "alt::History"}),
-        MCPTool(name="selfcare_period", description="Routines and products in use on a given date (e.g. 'cosa usavo a marzo').",
+        MCPTool(name="selfcare_period", description="Routines and products in use on a given date (e.g. 'what was I using in March').",
                 parameters={"type": "object", "properties": {"date": S}, "required": ["date"]}, handler=_t(_period),
                 title="Self care on a date", path=f"{API}/period", clients=["ui"], telegram_visible=False,
                 telegram_group="selfcare",

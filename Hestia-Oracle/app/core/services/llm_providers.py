@@ -21,11 +21,11 @@ KEY_PREFIX = "ORACLE_KEY_"
 # Standards Oracle speaks. Label = what the WebUI shows in the type picker.
 TYPES: dict[str, str] = {
     "ollama": "Ollama",
-    "openai": "Compatibile OpenAI",
-    "llamacpp": "llama-server (slot e contesto salvato)",
-    "anthropic": "Compatibile Anthropic",
+    "openai": "OpenAI compatible",
+    "llamacpp": "llama-server (slots and saved context)",
+    "anthropic": "Anthropic compatible",
     "gemini": "Gemini",
-    "claude_cli": "Claude (abbonamento, CLI)",
+    "claude_cli": "Claude (subscription, CLI)",
 }
 
 # Default addresses per type ("" = not needed / from infrastructure env).
@@ -38,11 +38,11 @@ _DEFAULT_URL = {
 # its CLI login is simply skipped by every chain.
 DEFAULT_PROVIDERS: dict[str, dict[str, str]] = {
     "ollama": {"type": "ollama", "label": "Ollama (local)", "url": ""},
-    "llamacpp": {"type": "llamacpp", "label": "llama-server (locale)", "url": "http://hestia_llamacpp:8080/v1"},
+    "llamacpp": {"type": "llamacpp", "label": "llama-server (local)", "url": "http://hestia_llamacpp:8080/v1"},
     "gemini": {"type": "gemini", "label": "Gemini", "url": ""},
     "deepseek": {"type": "openai", "label": "DeepSeek", "url": "https://api.deepseek.com/v1"},
-    "claude-api": {"type": "anthropic", "label": "Claude (chiave API)", "url": ""},
-    "claude": {"type": "claude_cli", "label": "Claude (abbonamento)", "url": ""},
+    "claude-api": {"type": "anthropic", "label": "Claude (API key)", "url": ""},
+    "claude": {"type": "claude_cli", "label": "Claude (subscription)", "url": ""},
 }
 
 # Types that need a key to be usable (local servers and the CLI do not).

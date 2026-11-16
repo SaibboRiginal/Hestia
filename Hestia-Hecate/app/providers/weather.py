@@ -310,7 +310,7 @@ class WeatherService:
         blob, cached, stale = self._forecast(r["lat"], r["lon"])
         days = self._days(blob)
         if not days:
-            raise WeatherError("error", "previsione vuota")
+            raise WeatherError("error", tr("empty forecast"))
         first, last = date.fromisoformat(days[0]["date"]), date.fromisoformat(days[-1]["date"])
         try:
             d_from = date.fromisoformat(date_from) if date_from else first

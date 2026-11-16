@@ -250,7 +250,7 @@ def _choose(n: dict, candidates: list[date], chosen: list[date], grid: dict[date
         if variant and variant.get("ok") and 0 < int(variant.get("minutes") or 0) <= minutes:
             out = _block(n, d, gaps, int(variant["minutes"]), tz, module)
             out["variant"] = {"minutes": int(variant["minutes"]), "title": variant.get("title") or "",
-                              "note": variant.get("note") or "versione corta"}
+                              "note": variant.get("note") or tr("short version")}
             if variant.get("title"):
                 out["title"] = variant["title"]
             return out

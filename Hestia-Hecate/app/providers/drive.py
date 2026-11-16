@@ -93,7 +93,7 @@ class DriveFiles:
         body: dict[str, Any] = {"name": name, "mimeType": FOLDER_MIME, "appProperties": {"hestia": marker}}
         if parent:
             body["parents"] = [parent]
-        created = self._check(s.post(API, json=body, params={"fields": "id"}), "crea cartella").json()
+        created = self._check(s.post(API, json=body, params={"fields": "id"}), tr("create folder")).json()
         logger.info("event=drive_folder_created name=%s", name)
         return created["id"]
 
@@ -140,7 +140,7 @@ class DriveFiles:
     def update(self, file_id: str, app_properties: dict) -> dict:
         body = {"appProperties": {str(k): (None if v is None else str(v)) for k, v in (app_properties or {}).items()}}
         resp = self._session().patch(f"{API}/{file_id}", json=body, params={"fields": FIELDS})
-        return _view(self._check(resp, "aggiorna file").json())
+        return _view(self._check(resp, tr("update file")).json())
 
     def trash(self, file_id: str) -> None:
         self._check(self._session().patch(f"{API}/{file_id}", json={"trashed": True}, params={"fields": "id"}),
@@ -156,7 +156,7 @@ class DriveFiles:
         end = min(size, offset + max(1, int(length))) - 1
         resp = self._session().get(f"{API}/{file_id}", params={"alt": "media"},
                                    headers={"Range": f"bytes={offset}-{end}"})
-        data = self._check(resp, "scarica file").content
+        data = self._check(resp, tr("download file")).content
         logger.info("event=drive_download file=%s offset=%d bytes=%d", file_id, offset, len(data))
         return data, size
 
@@ -164,13 +164,13 @@ class DriveFiles:
     def upload_start(self, folder: str, name: str, size: int, mime: str = "application/octet-stream",
                      app_properties: dict | None = None) -> str:
         if size <= 0:
-            raise DriveError("file vuoto", 422, "empty")
+            raise DriveError(tr("empty file"), 422, "empty")
         fid = self.folder_id(folder)
         meta = {"name": name, "parents": [fid], "mimeType": mime,
                 "appProperties": {str(k): str(v) for k, v in (app_properties or {}).items()}}
         resp = self._session().post(UPLOAD, params={"uploadType": "resumable", "fields": FIELDS}, json=meta,
                                     headers={"X-Upload-Content-Type": mime, "X-Upload-Content-Length": str(size)})
-        url = self._check(resp, "avvia caricamento").headers.get("Location")
+        url = self._check(resp, tr("start upload")).headers.get("Location")
         if not url:
             raise DriveError(tr("Google did not give the upload address"))
         upload_id = uuid.uuid4().hex
@@ -187,7 +187,7 @@ class DriveFiles:
         with self._lock:
             up = self._uploads.get(upload_id)
         if not up:
-            raise DriveError("caricamento sconosciuto o scaduto", 404, "unknown_upload")
+            raise DriveError(tr("unknown or expired upload"), 404, "unknown_upload")
         if offset != up["received"]:
             raise DriveError(f"posizione attesa {up['received']}, ricevuta {offset}", 409, "bad_offset")
         last = offset + len(data) >= up["size"]
@@ -199,7 +199,7 @@ class DriveFiles:
         if resp.status_code == 308:
             up["received"] = end + 1
             return {"received": up["received"], "done": False}
-        f = self._check(resp, "carica pezzo").json()
+        f = self._check(resp, tr("upload piece")).json()
         with self._lock:
             self._uploads.pop(upload_id, None)
         logger.info("event=drive_upload folder=%s name=%s bytes=%d", up["folder"], up["name"], up["size"])

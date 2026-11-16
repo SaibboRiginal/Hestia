@@ -34,9 +34,9 @@ FALLBACK_KEY = "echo.external.fallback"
 DIRECTIONS = ("ascolto", "voce")
 
 DEFAULT_PROVIDERS: dict[str, dict] = {
-    "whisper-locale": {"type": "whisper_local", "label": "Whisper (locale)", "url": "", "options": {}},
-    "kokoro": {"type": "kokoro", "label": "Kokoro (locale)", "url": "", "options": {}},
-    "piper": {"type": "piper", "label": "Piper (locale)", "url": "", "options": {}},
+    "whisper-locale": {"type": "whisper_local", "label": "Whisper (local)", "url": "", "options": {}},
+    "kokoro": {"type": "kokoro", "label": "Kokoro (local)", "url": "", "options": {}},
+    "piper": {"type": "piper", "label": "Piper (local)", "url": "", "options": {}},
     "groq": {"type": "openai", "label": "Groq", "url": "https://api.groq.com/openai/v1", "options": {}},
     "openai": {"type": "openai", "label": "OpenAI", "url": "https://api.openai.com/v1", "options": {}},
     "google": {"type": "google", "label": "Google Cloud", "url": "", "options": {}},
@@ -51,20 +51,20 @@ def _step(provider: str, model: str = "", voice: str = "", **options) -> dict:
 DEFAULT_CHAINS: dict[str, dict] = {
     "ascolto": {"label": "Listening", "direction": "ascolto", "steps": [
         _step("whisper-locale", "small"), _step("groq", "whisper-large-v3-turbo")]},
-    "ascolto-preciso": {"label": "Ascolto preciso", "direction": "ascolto", "steps": [
+    "ascolto-preciso": {"label": "Precise listening", "direction": "ascolto", "steps": [
         _step("groq", "whisper-large-v3"), _step("whisper-locale", "medium")]},
     "voce": {"label": "Voice", "direction": "voce", "steps": [
         _step("kokoro", voice="if_sara"), _step("piper", voice="it_IT-paola-medium")]},
-    "voce-naturale": {"label": "Voce naturale", "direction": "voce", "steps": [
+    "voce-naturale": {"label": "Natural voice", "direction": "voce", "steps": [
         _step("kokoro", voice="if_sara"), _step("google", voice="it-IT-Neural2-A"),
         _step("piper", voice="it_IT-paola-medium")]},
 }
 
 # Echo's own uses (the plugin's test box); callers declare theirs.
 ECHO_USECASES = {
-    "echo.prova.ascolto": {"label": "Prova · ascolto", "direction": "ascolto", "chain": "ascolto",
+    "echo.prova.ascolto": {"label": "Test · listening", "direction": "ascolto", "chain": "ascolto",
                            "help": "The microphone of the Voice page."},
-    "echo.prova.voce": {"label": "Prova · voce", "direction": "voce", "chain": "voce",
+    "echo.prova.voce": {"label": "Test · voice", "direction": "voce", "chain": "voce",
                         "help": "The «speak» button of the Voice page."},
 }
 
@@ -290,8 +290,8 @@ class Blocks:
         for i, s in enumerate(chain["steps"]):
             p = provs.get(s["provider"])
             what = s["model"] or s["voice"]
-            reason = ("fornitore mancante" if p is None else
-                      "direzione sbagliata" if direction not in STANDARDS[p["type"]].directions else
+            reason = (tr("missing provider") if p is None else
+                      tr("wrong direction") if direction not in STANDARDS[p["type"]].directions else
                       self.provider_state(p) if self.provider_state(p) != "ready" else
                       "quota" if self.exhausted_until(s["provider"], what) else "")
             if reason:
@@ -311,7 +311,7 @@ class Blocks:
                             "provider": s["provider"], "model": s["model"], "voice": s["voice"],
                             "fallback": i > 0 or cfg["mode"] == "esterna"}
         logger.error("event=voice_chain_exhausted use_case=%s chain=%s errors=%s", cfg["id"], cfg["chain"], errors)
-        raise ChainExhausted("; ".join(errors) or "catena vuota")
+        raise ChainExhausted("; ".join(errors) or tr("empty chain"))
 
     def _log_unavailable(self, provider: str, model: str, reason: str) -> None:
         key = (provider, model)

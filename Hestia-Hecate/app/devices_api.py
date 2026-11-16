@@ -276,7 +276,7 @@ def tools(MCPTool) -> list:
         t("garmin_giorno", "Garmin data of one day", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
                                                         "YYYY-MM-DD, empty = today)."), "GET", "/api/gateway/garmin/day",
           {"day": {"type": "string", "format": "date", "title": "Day"}}),
-        t("garmin_scollega", "Scollega Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
+        t("garmin_scollega", "Disconnect Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
           "/api/gateway/garmin"),
         t("telefono_stato", "Phone", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Phone"),
     ]

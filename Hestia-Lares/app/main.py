@@ -125,7 +125,7 @@ def _status() -> dict:
 def _devices(domain: str = "", query: str = "") -> dict:
     rows = home.list(domain, query)
     return {"count": len(rows), "items": rows[:80], "display": display(
-        LABELS.get(domain, "Dispositivi"), items=[item(e["name"], [home.say(e)]) for e in rows[:30]],
+        LABELS.get(domain, "Devices"), items=[item(e["name"], [home.say(e)]) for e in rows[:30]],
         lines=[] if rows else [tr("No devices.")])}
 
 
@@ -142,7 +142,7 @@ G = "casa"
 kit.tools([
     MCPTool(name="casa_stato", description="How the house is now: lights on, temperatures, open doors/windows, quick actions.", parameters={"type": "object", "properties": {}}, handler=_status, title="Home now",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Home", "primary": 1}),
-    MCPTool(name="casa_dispositivi", description="Dispositivi di un tipo (domain: " + ", ".join(DOMAINS) + ").",
+    MCPTool(name="casa_dispositivi", description="Devices of one type (domain: " + ", ".join(DOMAINS) + ").",
             parameters={"type": "object", "properties": {"domain": {"type": "string", "enum": list(DOMAINS)},
                                                          "query": S}},
             handler=_devices, title="Devices", clients=["telegram", "ui"], telegram_group=G,

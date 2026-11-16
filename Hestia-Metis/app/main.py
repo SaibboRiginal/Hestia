@@ -359,7 +359,7 @@ def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> d
     out = exporter.build(not in_chiaro, include_unreviewed)
     lines = [tr("{0} examples for training, {1} for testing, {2} corrected/original pairs", out['sft'], out['eval'], out['dpo']),
              tr("{0} turns left out (not reviewed, discarded or waiting)", out['skipped']),
-             "Nomi e contatti oscurati" if out["masked"] else tr("Data in clear: don't share the file")]
+             tr("Names and contacts masked") if out["masked"] else tr("Data in clear: don't share the file")]
     return {**out, "display": display(tr("Dataset exported"), subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
                                       lines=lines, files=[file(out["blob_id"], out["name"], "application/zip")])}
 
@@ -824,8 +824,7 @@ try:
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_rivedi",
-            description=("The nightly corrections of answers waiting for the user before entering the training dataset: "
-                         "original answer, correction, Accetta / Scarta / Correggi io."),
+            description=("The nightly corrections of answers waiting for the user before entering the training dataset: original answer, correction, Accept / Discard / I correct it."),
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: _traces_call(_review_card),
             title="To review", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
@@ -926,7 +925,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
-        **llm_capabilities([usecase(IDEAS_USE, "Adesso · idee", chain="veloce",
+        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="veloce",
                                     help="Three useful actions for the next hours, different from the habits."),
                             usecase(REVIEW_USE, "Dataset review", chain="cloud", thinking="true",
                                     help="At night it rereads the answers and fixes the wrong ones. Choose a model stronger than the local one: your personal data is hidden.")]),

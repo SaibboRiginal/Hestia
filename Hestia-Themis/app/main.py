@@ -61,7 +61,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 # ── WebUI plugin (core module, Sistema section): Registro ────────────────────
 UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
-ui = PluginClient("themis", title="Registro impostazioni", icon="settings", color="gray", kind="core", dist=UI_DIST,
+ui = PluginClient("themis", title="Settings log", icon="settings", color="gray", kind="core", dist=UI_DIST,
                   description="Who changed which setting, when and how: changes, proposals, undo.",
                   version=SERVICE_VERSION)
 ui.webui(entry="themis.js", api_prefix="/api/settings/",
@@ -307,7 +307,7 @@ try:
         MCPTool(name="settings_search",
                 description="Search the assistant's settings (all modules) by words: what they do, current value.",
                 parameters={"type": "object", "properties": {
-                    "query": {"type": "string", "description": "words to search (e.g. modello codice)"},
+                    "query": {"type": "string", "description": "words to search (e.g. code model)"},
                     "module": {"type": "string", "description": "optional module (oracle, argus…)"},
                     "limit": {"type": "integer"}}},
                 handler=_tool_search, title="Search settings", method="GET",

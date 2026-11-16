@@ -119,7 +119,7 @@ class Suggester:
         accents = {c["key"] for p in ps for c in (p.get("colors") or [])[:1] if c.get("key") not in NEUTRAL_COLORS}
         if len(accents) <= 1:
             score += 6
-            reasons.append(tr("colours that go well together") if accents else "colori neutri, facile")
+            reasons.append(tr("colours that go well together") if accents else tr("neutral colours, easy"))
         elif len(accents) > 2:
             score -= 7 * (len(accents) - 2)
         patterned = [p for p in ps if p.get("pattern") not in ("", "plain", None)]
@@ -136,7 +136,7 @@ class Suggester:
         if saved:
             if saved.get("favorite"):
                 score += 8
-                reasons.append("tra i preferiti")
+                reasons.append(tr("among the favourites"))
             if saved.get("rating"):
                 score += 2 * (int(saved["rating"]) - 3)
         else:

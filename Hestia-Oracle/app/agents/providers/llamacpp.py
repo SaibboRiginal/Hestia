@@ -54,7 +54,7 @@ def slot_count() -> int:
 
 class LlamaCppProvider(OpenAICompatProvider):
     TYPE = "llamacpp"
-    LABEL = "llama-server (slot e contesto salvato)"
+    LABEL = "llama-server (slots and saved context)"
     BILLING = "Local server · free"
 
     # ── health ───────────────────────────────────────────────────────────

@@ -31,7 +31,7 @@ logger = logging.getLogger("hestia_oracle.llm_setup")
 
 # Tier → models. Sizes are the download size in GB (what the user waits for), "good" is one short line.
 CATALOG: list[dict[str, Any]] = [
-    {"tier": "cpu", "label": "Senza scheda video", "max_vram": 5.9, "chat": [
+    {"tier": "cpu", "label": "Without a graphics card", "max_vram": 5.9, "chat": [
         {"model": "gemma4:e4b", "size_gb": 3.3, "good": "Light, answers everyday things well."}]},
     {"tier": "8gb", "label": "Graphics card with 6–11 GB", "max_vram": 11.9, "chat": [
         {"model": "qwen3:8b", "size_gb": 5.2, "good": "Good balance between speed and reasoning."},

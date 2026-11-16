@@ -225,7 +225,7 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
                                            message_id=status_msg.message_id, parse_mode="HTML")
                 return
         logger.warning("event=chat_turn_failed chat_id=%s error=%s", chat_id, error)
-        core.bot.edit_message_text(ui.error(tr("I couldn't answer"), "Riscrivimi tra poco."),
+        core.bot.edit_message_text(ui.error(tr("I couldn't answer"), tr("Write to me again in a moment.")),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
     finally:
         stop_typing.set()
@@ -346,7 +346,7 @@ def handle_confirmation(call) -> None:
             "client_instructions": core.build_client_instructions_for_chat(str(call.message.chat.id))},
             timeout=35, trace_id=payload.get("trace_id"))
         if status == 404:
-            _done(call, "<i>Scaduta</i>", tr("Expired"))
+            _done(call, tr("<i>Expired</i>"), tr("Expired"))
             return
         if not 0 < status < 400:
             logger.warning("event=oracle_action_approval_failed status=%s", status)
@@ -354,7 +354,7 @@ def handle_confirmation(call) -> None:
             core.bot.answer_callback_query(call.id, tr("Failed, try again"))
             return
         if cancel or str(result.get("status") or "") == "canceled":
-            _done(call, "<i>Annullato</i>", tr("Cancelled"))
+            _done(call, tr("<i>Cancelled</i>"), tr("Cancelled"))
             return
         text = str((result.get("result") or {}).get("text") or "").strip() if isinstance(result.get("result"),
                                                                                        dict) else ""
@@ -466,8 +466,7 @@ def handle_file_as_document(message) -> None:
         "application/json", "application/xml", "application/yaml", "application/x-yaml")
     if mime_type not in ACCEPTED_MIMES and not is_text_like:
         core.bot.reply_to(message, ui.error(tr("I don't read this format"),
-                                            "Mandami foto, PDF, audio, video, documenti Word o LibreOffice, "
-                                            "fogli Excel, testo, JSON o CSV."), parse_mode="HTML")
+                                            tr("Send me photos, PDFs, audio, video, Word or LibreOffice documents, Excel sheets, text, JSON or CSV.")), parse_mode="HTML")
         return
     user_text = (message.caption or "").strip() or _default_request(message.content_type)
     status_msg = core.bot.reply_to(message, tr("<i>Reading the file…</i>"), parse_mode="HTML")

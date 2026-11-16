@@ -205,7 +205,7 @@ def area(chat_id, key: str, message_id: int | None = None) -> None:
     rows = ui.grid(primary)
     if len(a.names) > len(primary):
         rows.append([ui.button(tr("All actions ›"), f"n:all:{a.key}:0")])
-    rows.append([ui.button("‹ Aree", "n:aree")])
+    rows.append([ui.button(tr("‹ Areas"), "n:aree")])
     place(chat_id, ui.card(a.label, lines, marker=a.emoji), ui.keyboard(rows), message_id)
 
 

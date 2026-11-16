@@ -35,7 +35,7 @@ class DeployPlan:
     def summary(self) -> str:
         parts = []
         if self.restart or self.restart_self:
-            parts.append("riavvio: " + ", ".join(self.restart + (["hephaestus"] if self.restart_self else [])))
+            parts.append(tr("restart: ") + ", ".join(self.restart + (["hephaestus"] if self.restart_self else [])))
         if self.rebuild:
             parts.append(tr("to rebuild by hand: ") + ", ".join(self.rebuild))
         return "; ".join(parts) or tr("no service to restart")

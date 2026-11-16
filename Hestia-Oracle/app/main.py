@@ -59,7 +59,7 @@ _oracle_mcp_tools = [
         title="Remember this", method="POST", path="/api/memory/note",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memoria",
-                telegram={"section": "Note e preferenze", "primary": 1}),
+                telegram={"section": "Notes and preferences", "primary": 1}),
     MCPTool(
         name="memory_recall",
         description=(("What the assistant already knows about the user on a topic (keywords), so your answer and its "
@@ -74,7 +74,7 @@ _oracle_mcp_tools = [
         title="What do you remember", method="GET", path="/api/memory/recall",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memoria",
-                telegram={"section": "Note e preferenze", "primary": 2}),
+                telegram={"section": "Notes and preferences", "primary": 2}),
     # ── Hestia inside another AI (docs/work/2026-10-30-hestia-in-claude) ────
     MCPTool(
         name="assistant_profile",
@@ -139,7 +139,7 @@ _oracle_mcp_tools = [
         handler=lambda **kw: _llm_setup.pull(str(kw.get("model", ""))),
         title="Download a model", method="POST", path="/api/llm/setup/pull",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Scarica modello"}),
+        telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Download model"}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -181,7 +181,7 @@ _oracle_mcp_tools = [
         title="Model status", method="GET", path="/api/sessions",
         clients=["telegram", "ui"], response_mode="raw_json",
         telegram_visible=False, telegram_group="sistema",
-                telegram={"section": "Salute e log"}),
+                telegram={"section": "Health and logs"}),
     MCPTool(
         name="oracle.logs_query",
         description="Query Oracle's in-memory log buffer by level and text filter.",
@@ -201,7 +201,7 @@ _oracle_mcp_tools = [
         title="Model logs", method="GET", path="/api/logs",
         clients=["telegram", "ui"], response_mode="raw_json",
         telegram_visible=False, telegram_group="sistema",
-                telegram={"section": "Salute e log"}),
+                telegram={"section": "Health and logs"}),
 ]
 try:
     app.include_router(create_mcp_router(_oracle_mcp_tools, service_name="oracle"))
@@ -338,7 +338,7 @@ def ui_models_write(part: str, req: UiModelsWrite):
     elif part == "usecases":
         if any(not isinstance(v, dict) for v in value.values()):
             raise HTTPException(status_code=400, detail="every use case needs an object")
-    if not _oracle_settings.settings.put(key, value, actor="user", reason="WebUI Cervello → Modelli"):
+    if not _oracle_settings.settings.put(key, value, actor="user", reason=tr("WebUI Brain → Models")):
         raise HTTPException(status_code=502, detail="Themis did not accept the change")
     return {"status": "ok", "key": key}
 
@@ -1283,7 +1283,7 @@ def chat_reaction(req: ChatReactionRequest):
     emoji = str(req.emoji or "").strip()[:8]
     quoted = " ".join(str(req.text or "").split())[:120]
     if not req.session_id.strip():
-        raise HTTPException(status_code=400, detail="session_id mancante")
+        raise HTTPException(status_code=400, detail=tr("missing session_id"))
     line = (f"(the owner reacted {emoji} to your message «{quoted}»)" if emoji and quoted
             else f"(the owner reacted {emoji} to your last message)" if emoji
             else f"(the owner removed the reaction to your message «{quoted}»)" if quoted

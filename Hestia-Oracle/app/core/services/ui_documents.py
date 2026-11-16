@@ -110,7 +110,7 @@ def ingest(engine, name: str, mime: str, data_b64: str, max_bytes: int) -> dict:
     except (binascii.Error, ValueError):
         raise DocumentError(400, tr("data_b64 is not valid base64"))
     if not file_bytes:
-        raise DocumentError(400, "file vuoto")
+        raise DocumentError(400, tr("empty file"))
     if len(file_bytes) > max_bytes:
         raise DocumentError(413, f"File troppo grande: massimo {max_bytes // (1024 * 1024)} MB")
     document_id = uuid.uuid4().hex

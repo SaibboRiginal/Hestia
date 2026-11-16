@@ -208,14 +208,14 @@ def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
                 return render(json.loads(s), title, marker)
             except ValueError:
                 pass
-        body = ui.esc(s[:MAX_CHARS]) if s else ui.note("Fatto.")
+        body = ui.esc(s[:MAX_CHARS]) if s else ui.note(tr("Done."))
         return Rendered(ui.card(title, [body], marker=marker))
     if isinstance(payload, list):
         if not payload:
             return Rendered(ui.card(title, [ui.note(tr("Nothing to show."))], marker=marker))
         return Rendered(_cap(ui.card(title, _items(payload), marker=marker)))
     if not isinstance(payload, dict):
-        return Rendered(ui.card(title, [ui.esc(value_text(payload) or "Fatto.")], marker=marker))
+        return Rendered(ui.card(title, [ui.esc(value_text(payload) or tr("Done."))], marker=marker))
     if isinstance(payload.get("display"), dict):
         return _display(payload["display"], title, marker)
     if isinstance(payload.get("result"), (dict, list)) and len(payload) <= 3:
@@ -236,7 +236,7 @@ def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
     else:
         lines.extend(_fields(payload, skip))
     if not lines:
-        lines = [ui.note("Fatto.")]
+        lines = [ui.note(tr("Done."))]
     if payload.get("ok") is False or str(payload.get("status") or "").lower() in ("error", "failed"):
         return Rendered(_cap(ui.card(title, lines, tone="danger")))
     return Rendered(_cap(ui.card(title, lines, subtitle=subtitle, marker=marker)))

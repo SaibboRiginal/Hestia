@@ -64,12 +64,12 @@ SERVICE_AREAS = {
 # What people call each part of Hestia (the WebUI plugin titles say the same): never the module's name.
 MODULE_LABELS = {
     "hub": "System map", "archive": "Archive", "argus": "System health", "athena": "Thoughts",
-    "chronos": "Agenda", "hecate": "Account e dispositivi", "hephaestus": "Development", "hermes": "Notifications",
-    "iris": "Email", "metis": "Improvement", "oracle": "Assistant", "themis": "Settings", "mcp": "Comandi",
-    "echo": "Voice", "atlas": "Ricerca sul web", "scout": "alt::Houses", "hercules": "Training",
+    "chronos": "Agenda", "hecate": "Accounts and devices", "hephaestus": "Development", "hermes": "Notifications",
+    "iris": "Email", "metis": "Improvement", "oracle": "Assistant", "themis": "Settings", "mcp": "Commands",
+    "echo": "Voice", "atlas": "Web search", "scout": "alt::Houses", "hercules": "Training",
     "hygieia": "Self care", "wardrobe": "Wardrobe", "plutus": "Expenses", "kairos": "Deadlines", "hera": "People",
     "demeter": "Nutrition", "lares": "Home", "apollo": "Images", "aphrodite": "Look",
-    "calliope": "Documents", "psyche": "Mood", "webui": "Sito", "telegram": "Telegram", "dummy": "alt::Test",
+    "calliope": "Documents", "psyche": "Mood", "webui": "Site", "telegram": "Telegram", "dummy": "alt::Test",
 }
 
 

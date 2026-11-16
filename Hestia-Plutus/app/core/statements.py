@@ -164,7 +164,7 @@ class Statements:
         iid = _id("imp")
         if raw and self.hub is not None and not blob_id:
             blob_id = self._save_blob(raw, name)
-        data = {"name": name or "estratto conto", "account": account, "status": "preview", "how": how,
+        data = {"name": name or tr("bank statement"), "account": account, "status": "preview", "how": how,
                 "source": source, "blob_id": blob_id or None, "period": [dates[0], dates[-1]],
                 "rows": out_rows, "counts": dict(Counter(r["state"] for r in out_rows)), "created_at": now_iso()}
         self.p.store.upsert("import", iid, data)

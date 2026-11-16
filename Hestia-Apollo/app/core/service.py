@@ -22,7 +22,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_apollo.service")
 
-PURPOSES = {"generico": "Immagine generica", "ritratto": "Ritratto", "sfondo": "Sfondo", "mascotte": "Mascotte",
+PURPOSES = {"generico": "Generic image", "ritratto": "Ritratto", "sfondo": "Background", "mascotte": "Mascot",
             "icona": "Icona", "illustrazione": "Illustrazione"}
 INPUTS = ("prompt", "negative", "width", "height", "seed")
 
@@ -117,11 +117,11 @@ class Images:
                 ref: str = "", by: str = "user", notify: bool = False) -> dict:
         prompt = str(prompt or "").strip()[:2000]
         if not prompt:
-            raise Invalid("descrivi l'immagine")
+            raise Invalid(tr("describe the image"))
         purpose = purpose if purpose in PURPOSES else "generico"
         for v in (width, height):
             if v is not None and not 64 <= int(v) <= 2048:
-                raise Invalid("larghezza e altezza tra 64 e 2048")
+                raise Invalid(tr("width and height between 64 and 2048"))
         jid = new_id("job")
         job = {"prompt": prompt, "negative": str(negative or "")[:1000], "purpose": purpose, "width": width,
                "height": height, "seed": seed, "status": "queued", "blob_ids": [], "error": "", "by": by,

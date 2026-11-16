@@ -557,7 +557,7 @@ class Wardrobe:
         last = (self.wears(limit=1)["items"] or [None])[0]
         parts = [f"{t['garments']} capi, {t['shoes']} scarpe, {t['accessories']} accessori, {t['outfits']} outfit"]
         if styles:
-            parts.append("stile " + "/".join(x["key"].replace("_", " ") for x in styles))
+            parts.append(tr("style ") + "/".join(x["key"].replace("_", " ") for x in styles))
         if laundry:
             parts.append(f"in lavanderia {len(laundry)}")
         if s["forgotten"]:
@@ -877,7 +877,7 @@ class Wardrobe:
         if not fields.get("category"):
             return {"handled": True, "text": tr("I couldn't tell what item it is from the photo. Tell me what it is (for example «light blue shirt») and I'll add it to the wardrobe.")}
         fields.setdefault("name", self.vocab_map("category").get(fields.get("subcategory") or fields["category"],
-                                                                   {}).get("label") or "Nuovo capo")
+                                                                   {}).get("label") or tr("New garment"))
         created = self.save_piece(fields)
         created = self.add_photo("piece", created["id"], upload, cover=True)["item"]
         colors = self.vocab_map("color")

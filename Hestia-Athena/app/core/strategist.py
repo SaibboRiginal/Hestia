@@ -65,7 +65,7 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
         lines.append(tr("Answer quality: ") + "; ".join(snapshot.quality_issues[:4]))
 
     if snapshot.settings:
-        lines.append("IMPOSTAZIONI (chiave=valore [scelte]): " + "; ".join(snapshot.settings))
+        lines.append("SETTINGS (key=value [choices]): " + "; ".join(snapshot.settings))
     if snapshot.presence:
         lines.append(snapshot.presence)
 
@@ -178,7 +178,7 @@ def _map_to_action_candidates(
         candidates.append(
             ActionCandidate(
                 domain=domain,
-                title=item.get("title", "Azione"),
+                title=item.get("title", tr("Action")),
                 summary=item.get("riassunto") or item.get("motivo", ""),
                 kind=kind,
                 priority=priority,

@@ -95,7 +95,7 @@ def list_special(today: date | None = None) -> list[dict]:
             continue
         nxt = next_on(item, today)
         out.append({"key": item["key"], "title": item["title"], "kind": sp.get("kind") or "custom",
-                    "kind_label": KIND_LABEL.get(sp.get("kind"), "Evento importante"),
+                    "kind_label": KIND_LABEL.get(sp.get("kind"), tr("Important event")),
                     "lead_days": int(sp.get("lead_days") if sp.get("lead_days") is not None else DEFAULT_LEAD),
                     "person": sp.get("person"), "person_id": sp.get("person_id"), "note": sp.get("note"),
                     "source": sp.get("source") or "utente", "yearly": bool(item.get("recurrence")),
@@ -154,7 +154,7 @@ def sync_birthday(birth_date: Any) -> dict | None:
     start = datetime(day.year, day.month, day.day, 9, 0, tzinfo=_tz())
     rule = {"key": BIRTH_KEY, "type": "event", "title": tr("Your birthday"), "start_at": start.isoformat(),
             "end_at": (start + timedelta(hours=1)).isoformat(), "recurrence": "FREQ=YEARLY",
-            "params": {"special": {"kind": "birthday", "lead_days": 0, "source": "impostazioni personali"}}}
+            "params": {"special": {"kind": "birthday", "lead_days": 0, "source": tr("personal settings")}}}
     return agenda.register_rules(OWNER, [rule])[0]
 
 
@@ -163,7 +163,7 @@ def propose(*, title: str, day: str, kind: str = "custom", person: str = "", evi
             lead_days: int | None = None) -> dict:
     _parse_day(day)
     body = {"title": title, "day": str(day)[:10], "kind": kind if kind in KINDS else "custom", "person": person,
-            "lead_days": lead_days, "source": "proposta dell'assistente"}
+            "lead_days": lead_days, "source": tr("assistant's proposal")}
     pid = uuid.uuid4().hex[:8]
     when = _parse_day(day).strftime("%d/%m")
     text = tr("I found an important date: <b>{0}</b> on {1}.", title, when)

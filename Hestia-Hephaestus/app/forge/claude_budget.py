@@ -111,7 +111,7 @@ class ClaudeBudget:
         elif hours_left <= self.schedule.window_hours and in_night:
             allowed = used_tonight < self.schedule.night_max_tasks
             phase = "night"
-            reason = ("finestra notturna" if allowed
+            reason = (tr("night window") if allowed
                       else f"tetto notturno raggiunto ({used_tonight}/{self.schedule.night_max_tasks})")
         else:
             phase, allowed, reason = "closed", False, tr("outside the window (nights before the reset)")

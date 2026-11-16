@@ -280,7 +280,7 @@ class Themis:
         if d.get("scope") == "user":
             scope = scope or "profile"
             if scope not in USER_SCOPES:
-                raise ThemisError("scope ammessi: profile, client, session")
+                raise ThemisError(tr("allowed scopes: profile, client, session"))
             scope_id = PROFILE_ID if scope == "profile" else (scope_id or "")
             if not scope_id:
                 raise ThemisError(tr("scope_id required for scope {0}", scope))
@@ -378,7 +378,7 @@ class Themis:
     def apply_preset(self, module: str, preset_id: str, *, actor: str = "user") -> dict:
         preset = next((p for p in self.registry.presets(module) if p.get("id") == preset_id), None)
         if not preset:
-            raise ThemisError("preset sconosciuto", 404)
+            raise ThemisError(tr("unknown preset"), 404)
         applied = {}
         for key, value in (preset.get("values") or {}).items():
             applied[key] = self.set(key, value, actor=actor, reason=f"preset {preset.get('label')}")["value"]
@@ -392,7 +392,7 @@ class Themis:
         for key, value in merged.items():
             self.hub.ok("archive", "PUT", "api/settings-store/values", body={
                 "key": key, "scope": "session", "scope_id": session, "value": value,
-                "actor": client or "user", "reason": "nuova sessione", "history_keep": 1})
+                "actor": client or "user", "reason": tr("new session"), "history_keep": 1})
         if merged:
             self._bump(f"session:{session}")
         return {"session": session, "copied": sorted(merged), "revision": self.revision}
@@ -512,7 +512,7 @@ class Themis:
             raise
         self._bump(f"proposal_{status}:{proposal['proposal_id']}")
         if notify:
-            outcome = {"approved": "Approvata", "rejected": "Rifiutata", "expired": "Expired"}.get(status, status)
+            outcome = {"approved": tr("alt::Approved"), "rejected": tr("alt::Rejected"), "expired": "Expired"}.get(status, status)
             self._emit("settings.proposal_closed", f"settings.proposal_closed:{proposal['proposal_id']}",
                        {"proposal_id": proposal["proposal_id"], "decision": status, "key": proposal.get("key"),
                         "closes": f"settings.proposal:{proposal['proposal_id']}",
@@ -522,7 +522,7 @@ class Themis:
     def decide(self, proposal_id: str, approve: bool, *, by: str = "user") -> dict:
         found = [p for p in self.proposals() if p.get("proposal_id") == proposal_id]
         if not found:
-            raise ThemisError("proposta sconosciuta", 404)
+            raise ThemisError(tr("unknown proposal"), 404)
         proposal = found[0]
         if proposal.get("status") != "pending":
             raise ThemisError(tr("proposal already {0}", proposal.get('status')), 409,

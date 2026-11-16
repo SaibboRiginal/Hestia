@@ -131,7 +131,7 @@ class Consent(BaseModel):
     scope: str = Field("read", description="read | write")
     tools: list[str] = Field(default_factory=list, description="[] = every tool open to external AIs")
     expires_days: int | None = Field(90, description="0 or null = no expiry")
-    name: str | None = Field(None, description="Name in the Accessi list (default: the client's name)")
+    name: str | None = Field(None, description="Name in the Accesses list (default: the client's name)")
 
 
 class OAuthServer:

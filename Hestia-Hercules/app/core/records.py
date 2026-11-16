@@ -157,8 +157,8 @@ def exercise_records(data: Data, exercise_id: str, formula: str = "epley", *, be
     return rec
 
 
-_PR_LABELS = {"heaviest": "peso massimo", "best_e1rm": "massimale stimato", "best_set_volume": "miglior serie",
-              "best_session_volume": "volume", "most_reps": "più ripetizioni", "longest_s": "durata"}
+_PR_LABELS = {"heaviest": "heaviest weight", "best_e1rm": "estimated max", "best_set_volume": "best set",
+              "best_session_volume": "volume", "most_reps": "most reps", "longest_s": "durata"}
 
 
 def session_prs(data: Data, session: dict, formula: str = "epley") -> list[dict]:

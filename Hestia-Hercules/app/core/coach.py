@@ -158,9 +158,9 @@ class HerculesCoach:
             notes.append(f"obiettivo {goal.get('times')} a settimana: {len(done)} fatti")
         flags = set(h.summary().get("flags") or [])
         if "deload_suggested" in flags:
-            notes.append("energia bassa spesso: scarico consigliato")
+            notes.append(tr("low energy often: deload advised"))
         if "stall" in flags:
-            notes.append("qualche esercizio fermo")
+            notes.append(tr("some exercises stalled"))
         target = goal.get("times") if goal else None
         return {"done": len(done), "missed": len(skipped), "notes": notes,
                 "adherence": round(len(done) / target, 2) if target else None}

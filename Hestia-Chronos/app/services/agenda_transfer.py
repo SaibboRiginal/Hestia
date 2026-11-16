@@ -13,7 +13,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 FIELDS = ("type", "owner", "title", "description", "start_at", "end_at", "recurrence", "tz", "status", "action",
           "params", "skips", "overrides", "parent", "created_by", "user_modified")
-TYPE_LABELS = {"event": "Event", "task": "Activity", "job": "Regola ricorrente", "window": "Window"}
+TYPE_LABELS = {"event": "Event", "task": "Activity", "job": "Recurring rule", "window": "Window"}
 
 
 def _mine(item: dict) -> bool:

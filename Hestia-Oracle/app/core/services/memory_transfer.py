@@ -13,7 +13,7 @@ from hestia_common.transfer import Section
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 SKIP_CLASSES = {"conversational_history"}
-CLASS_LABELS = {"durable_user_preference": "Preferenza", "domain_fact_entity": "Done", "skill": "Skill",
+CLASS_LABELS = {"durable_user_preference": "Preference", "domain_fact_entity": "Done", "skill": "Skill",
                 "assistant_commitment": "Appointment", "task_goal_state": "Goal"}
 
 

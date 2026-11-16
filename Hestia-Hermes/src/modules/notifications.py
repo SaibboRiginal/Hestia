@@ -52,6 +52,7 @@ from .hermes_settings import (ACTIVE_CLIENT_MINUTES, DELIVERY_MAX_ATTEMPTS, PEND
 from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import usecase as voice_usecase
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hermes.notifications")
 
@@ -681,7 +682,7 @@ class NotificationCenter:
         logger.info("event=notification_secret_forwarded notification_id=%s service=%s fields=%s status=%s",
                     notification_id, secret["service"], ",".join(names), code)
         if 200 <= code < 300:
-            return self._finish(notification_id, answer, "done", _outcome_text(payload, "Ricevuto"))
+            return self._finish(notification_id, answer, "done", _outcome_text(payload, tr("Received")))
         self.archive.patch_outbound_event(
             notification_id, "seen", only_if_states=["answered"],
             payload_merge={"answer": {**answer, "status": "error"}}, detail=f"secret form failed: {code}")
@@ -758,7 +759,7 @@ class NotificationCenter:
         import html
         lines = [f"• {html.escape(v['title'] or v['message'][:80])}" for _, v in due[:8]]
         more = len(due) - len(lines)
-        message = ("Aspettano ancora una tua risposta:\n" + "\n".join(lines)
+        message = (tr("Still waiting for your answer:\n") + "\n".join(lines)
                    + (f"\n…e altre {more}." if more > 0 else ""))
         self.publish(message=message, event_type="assistant.pending_reminder", domain="assistant",
                      title=f"Da decidere: {len(due)}", level="info", source="hermes",
@@ -873,11 +874,11 @@ class NotificationCenter:
             important = [v["title"] for v in todays if v["level"] in ("warning", "error") and v["title"]]
             text = f"{len(todays)} notific{'a' if len(todays) == 1 else 'he'}"
             if important:
-                text += " · importanti: " + ", ".join(dict.fromkeys(important[:3]))
+                text += tr(" · important: ") + ", ".join(dict.fromkeys(important[:3]))
             done.append({"text": text})
         waiting = [v["title"] or v["message"][:60] for v in views if v["pending"]]
         if waiting:
-            missed.append({"text": "In attesa di una tua risposta: " + ", ".join(dict.fromkeys(waiting[:4]))
+            missed.append({"text": tr("Waiting for your answer: ") + ", ".join(dict.fromkeys(waiting[:4]))
                                    + (f" e altre {len(waiting) - 4}" if len(waiting) > 4 else ""),
                            "tone": "warning"})
         return {"done": done, "missed": missed}
@@ -961,7 +962,7 @@ class NotificationCenter:
             message = (f"<b>{len(unread)} notific{'a' if len(unread) == 1 else 'he'}</b> mentre riposavo:\n"
                        + "\n".join(lines) + (f"\n…e altre {more} nella posta." if more > 0 else ""))
             self.publish(message=message, event_type="assistant.digest", domain="assistant",
-                         title="Mentre riposavo", level="info", source="hermes",
+                         title=tr("While I was resting"), level="info", source="hermes",
                          event_payload={"_urgent": True, "count": len(unread)})
         logger.info("event=notification_held_released released=%d digest=%d level=%s",
                     len(released), len(unread), level)

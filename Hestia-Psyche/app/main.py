@@ -261,6 +261,6 @@ kit.webui(icon="smile", color="yellow", description="How you are over time: days
           widgets=[widget("umore", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
                           open_page="umore", icon="smile")],
           quick_actions=[quick_action("come-stai", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
-                                      params={"mood": {"type": "int", "label": "Umore 1-5", "min": 1, "max": 5}},
+                                      params={"mood": {"type": "int", "label": "Mood 1-5", "min": 1, "max": 5}},
                                       order=240)])
 kit.finish()

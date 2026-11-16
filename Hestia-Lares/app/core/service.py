@@ -22,7 +22,7 @@ DOMAINS = ("light", "switch", "cover", "climate", "fan", "media_player", "lock",
            "binary_sensor", "person")
 COMMANDS = {"on": "turn_on", "off": "turn_off", "toggle": "toggle", "open": "open_cover", "close": "close_cover",
             "lock": "lock", "unlock": "unlock"}
-LABELS = {"light": "Lights", "switch": "Prese", "cover": "Tapparelle", "climate": "Clima", "fan": "Ventilatori",
+LABELS = {"light": "Lights", "switch": "Prese", "cover": "Shutters", "climate": "Climate", "fan": "Ventilatori",
           "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Actions", "sensor": "Sensori",
           "binary_sensor": "Sensori", "person": "People"}
 STATE_IT = {"on": "acceso", "off": "spento", "open": "aperta", "closed": "chiusa", "locked": "chiusa",
@@ -123,7 +123,7 @@ class Home:
     # ── commands ────────────────────────────────────────────────────────────
     def command(self, ref: str, command: str, value: Any = None) -> dict:
         if command not in COMMANDS:
-            raise Invalid("comando: " + ", ".join(COMMANDS))
+            raise Invalid(tr("command: ") + ", ".join(COMMANDS))
         e = self.find(ref, ("light", "switch", "cover", "climate", "fan", "media_player", "lock", "scene", "script"))
         domain, service = e["domain"], COMMANDS[command]
         data: dict[str, Any] = {"entity_id": e["id"]}
@@ -154,7 +154,7 @@ class Home:
     def add_favorite(self, entity: str, label: str = "", room: str = "", command: str = "toggle") -> dict:
         e = self.find(entity)
         if command not in COMMANDS:
-            raise Invalid("comando: " + ", ".join(COMMANDS))
+            raise Invalid(tr("command: ") + ", ".join(COMMANDS))
         fid = new_id("f")
         data = {"entity_id": e["id"], "label": (label or e["name"])[:60], "room": room[:40], "command": command,
                 "at": now_iso()}

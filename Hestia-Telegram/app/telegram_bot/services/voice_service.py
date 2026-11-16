@@ -26,7 +26,7 @@ USE_LISTEN = "telegram.vocale"
 USE_SPEAK = "telegram.risposta"
 VOICE_USECASES = [
     voice_usecase(USE_LISTEN, "Telegram · voice messages", direction="ascolto", help="The voice messages you send to the bot."),
-    voice_usecase(USE_SPEAK, "Telegram · risposte a voce", direction="voce",
+    voice_usecase(USE_SPEAK, "Telegram · spoken answers", direction="voce",
                   help="«Listen» under the answers and the answers in live mode."),
 ]
 LIVE_KEY = "voice_live"

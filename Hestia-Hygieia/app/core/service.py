@@ -153,12 +153,12 @@ class Hygieia:
         label = str(body.get("label") or body.get("value") or "").strip()
         if name == "conflicts":
             if not body.get("a") or not body.get("b"):
-                raise Invalid("servono due attivi (a, b)")
+                raise Invalid(tr("two actives are needed (a, b)"))
             data = {"list": name, "a": catalog.slug(body["a"]), "b": catalog.slug(body["b"]),
                     "note": body.get("note") or tr("{0} and {1} not on the same day", body['a'], body['b'])}
         else:
             if not label:
-                raise Invalid("nome mancante")
+                raise Invalid(tr("missing name"))
             data = {"list": name, "value": catalog.slug(body.get("value") or label), "label": label}
             for k in ("family", "area", "icon", "lower_better"):
                 if body.get(k) not in (None, ""):
@@ -482,7 +482,7 @@ class Hygieia:
         parts += [f"~ {n}" for n in changed]
         if not parts and [s.get("product_id") or s.get("label") for s in before or []] != \
                 [s.get("product_id") or s.get("label") for s in after]:
-            parts.append("ordine cambiato")
+            parts.append(tr("order changed"))
         return ", ".join(parts) if before is not None else ""
 
     def routines(self, include_archived: bool = False) -> list[dict]:
@@ -648,7 +648,7 @@ class Hygieia:
         for e in entries:
             area = catalog.slug(e.get("area") or "")
             if not area:
-                raise Invalid("area mancante")
+                raise Invalid(tr("missing area"))
             scores = {}
             for k, v in (e.get("scores") or {}).items():
                 n = _num(v)
@@ -1015,7 +1015,7 @@ class Hygieia:
         today_bits = []
         for p in plan["routines"]:
             mark = {"done": "✓", "due": "to do", "suggested": "consigliata", "blocked": "not today", "wait": tr("alt::done recently"),
-                    "ok": "obiettivo ok", "off": "", "rest": ""}.get(p["state"], p["state"])
+                    "ok": tr("goal ok"), "off": "", "rest": ""}.get(p["state"], p["state"])
             if p["state"] in ("off", "rest"):
                 continue
             bit = f"{p['name']} {mark}".strip()
@@ -1028,7 +1028,7 @@ class Hygieia:
             parts.append(f"in uso {len(in_use)} prodotti")
         supplements = [p["name"] for p in in_use if p.get("category") == "integratore"]
         if supplements:
-            parts.append("integratori: " + ", ".join(supplements[:5]))
+            parts.append(tr("supplements: ") + ", ".join(supplements[:5]))
         for a in alerts[:3]:
             parts.append(a["text"])
         text = " · ".join(parts) or tr("no routine yet")

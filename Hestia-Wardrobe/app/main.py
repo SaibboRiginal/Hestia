@@ -460,7 +460,7 @@ def reminder_check():
     actions = [{"id": f"wear-{i}", "label": c["label"], "text": f"👕 {c['label']}", "style": "primary" if i == 0 else None,
                 "service": "wardrobe", "method": "POST", "path": f"{API}/quick/{c['id']}", "body": {"source": "reminder"},
                 "resolves": True} for i, c in enumerate(decision.get("chips") or [])]
-    actions.append({"id": "skip", "label": tr("Skip"), "text": "⏭ Salta", "service": "wardrobe", "method": "POST",
+    actions.append({"id": "skip", "label": tr("Skip"), "text": "⏭ Skip", "service": "wardrobe", "method": "POST",
                     "path": f"{API}/reminder/skip", "body": {}})
     try:
         _notify("wardrobe.reminder", tr("Wardrobe"), tr("👕 What are you wearing today? · {0}", goal['hint']), actions, replaces=True,
@@ -533,24 +533,24 @@ ui.webui(
            page("cosa-mi-metto", "What should I wear", element="wardrobe-suggest", icon="sparkle", order=53, parent="capi"),
            page("statistiche", "Statistics", element="wardrobe-stats", icon="chart", order=54, parent="capi"),
            page("liste", "Suitcases and lists", element="wardrobe-collections", icon="list", order=55, parent="capi"),
-           page("liste/:id", "Lista", element="wardrobe-collection", detail=True, parent="capi"),
+           page("liste/:id", "alt::List", element="wardrobe-collection", detail=True, parent="capi"),
            page("vocabolari", "Vocabularies", element="wardrobe-vocab", icon="settings", order=56, parent="capi")],
     widgets=[widget("oggi", "Wearing today", element="wardrobe-today-widget", sizes=["m", "l"], auto=True,
                     open_page="outfit", icon="shirt",
-                    params={"occasion": {"type": "string", "label": "Occasione (es. ufficio)"}}),
+                    params={"occasion": {"type": "string", "label": "Occasion (e.g. office)"}}),
              widget("suggerito", "Today's outfit", element="wardrobe-suggest-widget", sizes=["m", "l"],
                     open_page="cosa-mi-metto", icon="sparkle",
                     params={"occasion": {"type": "string", "label": "Occasion"}}),
              widget("lavanderia", "In the laundry", element="wardrobe-laundry-widget", sizes=["s", "m"], open_page="capi",
                     icon="refresh"),
-             widget("dimenticati", "Capi dimenticati", element="wardrobe-forgotten-widget", sizes=["m", "l"], auto=True,
+             widget("dimenticati", "Forgotten clothes", element="wardrobe-forgotten-widget", sizes=["m", "l"], auto=True,
                     open_page="statistiche", icon="clock"),
-             widget("numeri", "Guardaroba in numeri", element="wardrobe-kpi-widget", sizes=["s", "m"], auto=True,
+             widget("numeri", "Wardrobe in numbers", element="wardrobe-kpi-widget", sizes=["s", "m"], auto=True,
                     open_page="statistiche", icon="chart"),
-             widget("ultimi", "Ultimi outfit", element="wardrobe-recent-widget", sizes=["m", "l"], open_page="outfit",
+             widget("ultimi", "Latest outfits", element="wardrobe-recent-widget", sizes=["m", "l"], open_page="outfit",
                     icon="clock")],
     quick_actions=[
-        quick_action("indossato", "Outfit indossato", "POST", f"{API}/quick/{{id}}", icon="shirt", group="Wardrobe",
+        quick_action("indossato", "Outfit worn", "POST", f"{API}/quick/{{id}}", icon="shirt", group="Wardrobe",
                      source=f"{API}/quick/outfits", undo={"method": "DELETE", "path": f"{API}/quick/{{id}}"},
                      favorite=True, order=50),
     ],
@@ -564,9 +564,9 @@ transfer = Transfer("wardrobe", hub, sections=[
                  subtitle=lambda r: " · ".join(x for x in (r["data"].get("category"), r["data"].get("brand")) if x),
                  depends_on=["vocabolari", "foto"]),
     StoreSection("outfit", "Outfit", store, ["outfit"], icon="sparkle", depends_on=["capi", "foto"]),
-    StoreSection("indossati", "Indossati", store, ["wear"], icon="history",
+    StoreSection("indossati", "alt::Worn", store, ["wear"], icon="history",
                  title=lambda r: tr("Worn on {0}", r['data'].get('date')), depends_on=["capi", "outfit"]),
-    StoreSection("liste", "Liste", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
+    StoreSection("liste", "Lists", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
     StoreSection("vocabolari", "Vocabularies", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
     StoreSection("foto", "Photo", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
                  title=lambda r: r["data"].get("name") or tr("Photo"), subtitle=lambda r: r["data"].get("owner") or ""),
@@ -731,10 +731,10 @@ try:
         if not target:
             return {"error": tr("give the item or the outfit to delete")}
         kind = "pieces" if piece else "outfits"
-        label = tr("the item") if piece else "l'outfit"
+        label = tr("the item") if piece else tr("the outfit")
         try:
             _notify(f"wardrobe.delete.{target['id']}", tr("Wardrobe"), f"🗑 Elimino {label} «{target['name']}»?",
-                    [{"id": "delete", "label": tr("Delete"), "text": "🗑 Elimina", "style": "danger", "service": "wardrobe",
+                    [{"id": "delete", "label": tr("Delete"), "text": "🗑 Delete", "style": "danger", "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}?hard=true", "body": {}, "resolves": True},
                      {"id": "archive", "label": tr("f::Archive"), "text": tr("📦 Archive only"), "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}", "body": {}, "resolves": True},
@@ -794,11 +794,7 @@ try:
                 handler=_t(_create_outfit), title="Create outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Outfit"}),
-        MCPTool(name="wardrobe_suggest", description=("«Cosa mi metto»: outfits from the available garments (not in the laundry, right season and "
-                                                      "temperature, not worn recently) with the reasons. occasion: work, office, evening, date, "
-                                                      "travel, home, sport, ceremony, weekend, party. temp_c/rain: leave them empty to use the day's "
-                                                      "forecast (place = place, empty = home); set them only if the user says them. Add your own taste "
-                                                      "and explanation."),
+        MCPTool(name="wardrobe_suggest", description=("«What do I wear»: outfits from the available garments (not in the laundry, right season and temperature, not worn recently) with the reasons. occasion: work, office, evening, date, travel, home, sport, ceremony, weekend, party. temp_c/rain: leave them empty to use the day's forecast (place = place, empty = home); set them only if the user says them. Add your own taste and explanation."),
                 parameters={"type": "object", "properties": {"occasion": S, "temp_c": N, "rain": B, "date": S,
                                                              "styles": L, "count": I, "place": S}},
                 handler=_t(_suggest), title="What should I wear", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
@@ -821,8 +817,7 @@ try:
                 handler=_t(_packing), title="Suitcase", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Viaggi"}),
-        MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation "
-                                                     "with the buttons Elimina / Archivia / Tieni."),
+        MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation with the buttons Delete / Archive / Keep."),
                 parameters={"type": "object", "properties": {"piece": S, "outfit": S}},
                 handler=_t(_delete), title="Delete item or outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",

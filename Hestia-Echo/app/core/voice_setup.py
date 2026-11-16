@@ -43,8 +43,8 @@ ENGINE_NOTES = {
     "wyoming": "The Home Assistant voice server you have at home.",
     "openai": "A voice program you have at home (Chatterbox, Speaches, LocalAI…).",
 }
-WHISPER_NOTES = {"tiny": "The lightest, makes more mistakes.", "base": "Leggero.",
-                 "small": "Buon equilibrio: consigliato.", "medium": "More accurate, slower.",
+WHISPER_NOTES = {"tiny": "The lightest, makes more mistakes.", "base": "Light.",
+                 "small": "Good balance: recommended.", "medium": "More accurate, slower.",
                  "large-v3": "The most accurate, needs a good graphics card."}
 
 
@@ -57,7 +57,7 @@ SPEECH_PROGRAMS = [
     {"name": "chatterbox", "label": "Chatterbox", "port": 8004, "type": "openai", "model": "chatterbox",
      "site": "https://github.com/devnen/Chatterbox-TTS-Server", "dirs": ("voce",),
      "note": "The most natural voice, in 23 languages (Italian included). Uses the graphics card, works without it too but slowly."},
-    {"name": "kokoro-fastapi", "label": "Kokoro (programma)", "port": 8880, "type": "openai", "model": "kokoro",
+    {"name": "kokoro-fastapi", "label": "Kokoro (program)", "port": 8880, "type": "openai", "model": "kokoro",
      "site": "https://github.com/remsky/Kokoro-FastAPI", "dirs": ("voce",),
      "note": "Kokoro as a separate program, faster with the graphics card."},
     {"name": "speaches", "label": "Speaches", "port": 8000, "type": "openai",
@@ -319,7 +319,7 @@ def _add_found(blocks, put: Callable[..., Any], steps: list[dict]) -> bool:
     provs = {k: dict(v) for k, v in (current if isinstance(current, dict) and current else DEFAULT_PROVIDERS).items()}
     for name, d in new.items():
         provs[name] = {"type": d["type"], "label": d["label"] or name, "url": d["url"], "options": {}}
-    ok = put(PROVIDERS_KEY, provs, actor="user", reason="Setup guidato: programma vocale in casa")
+    ok = put(PROVIDERS_KEY, provs, actor="user", reason=tr("Guided setup: voice program at home"))
     logger.info("event=voice_setup_programs_added names=%s ok=%s", ",".join(new), bool(ok))
     return bool(ok)
 
@@ -328,7 +328,7 @@ def apply(blocks, put: Callable[..., Any], listen: dict | list | None, speak: di
     if not _add_found(blocks, put, _steps(listen) + _steps(speak)):
         return {"ok": False, "detail": tr("The settings did not accept the voice program.")}
     chains = plan(blocks.chains(), listen, speak)
-    if not put(CHAINS_KEY, chains, actor="user", reason="Setup guidato: voce"):
+    if not put(CHAINS_KEY, chains, actor="user", reason=tr("Guided setup: voice")):
         return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     logger.info("event=voice_setup_applied listen=%s speak=%s", ",".join(s["provider"] for s in _steps(listen)) or "-",
                 ",".join(s["provider"] for s in _steps(speak)) or "-")

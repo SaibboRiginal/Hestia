@@ -82,7 +82,7 @@ def docs_check_run(propose: bool = True) -> dict[str, Any]:
         for f in found:
             status, _ = learning._route("hephaestus", "POST", "api/hephaestus/forge/tasks", {
                 "request": docs_check.request_text(f), "source": "athena", "requested_by": "athena.docs_check",
-                "services": [f["module"]], "context": "Controllo mensile documenti ↔ codice (Cindy 29)."})
+                "services": [f["module"]], "context": "Monthly docs ↔ code check (Cindy 29)."})
             sent += int(bool(status) and status < 400)
     logger.info("event=athena_docs_check modules=%d proposals=%d", len(found), sent)
     return {"findings": found, "proposals": sent}
@@ -109,9 +109,8 @@ def mcp_tools() -> list:
                        telegram_group=group, telegram={"section": section, **({"label": label} if label else {})})
 
     return [
-        tool("memory_rivedi", ("«Rivedi cosa sai di me»: look for duplicates, contradictions and old things in the memory and "
-                               "propose them (the user confirms each). It deletes nothing by itself."), "POST",
-             "/api/athena/memory/review", "Review what you know about me", label="Rivedi memoria"),
+        tool("memory_rivedi", ("«Review what you know about me»: look for duplicates, contradictions and old things in the memory and propose them (the user confirms each). It deletes nothing by itself."), "POST",
+             "/api/athena/memory/review", "Review what you know about me", label="Review memory"),
         tool("memory_learning", ("What the assistant learned recently (memories added, removed, reinforced), with the user's "
                                  "exact words each one comes from."), "GET", "/api/athena/learning",
              "What I learned", params={"limit": {"type": "integer"}}, label="What I learned",
@@ -119,16 +118,15 @@ def mcp_tools() -> list:
         tool("memory_learning_undo", "Undo something learned (id from memory_learning).", "POST",
              "/api/athena/learning/{entry_id}/undo", "Undo what was learned", params={"entry_id": {"type": "string"}},
              required=["entry_id"]),
-        tool("memory_proposals", ("The memory cleanups proposed by «Rivedi cosa sai di me» still waiting for an answer "
-                                  "(duplicates, contradictions, old things)."), "GET", "/api/athena/memory/proposals",
+        tool("memory_proposals", ("The memory cleanups proposed by «Review what you know about me» still waiting for an answer (duplicates, contradictions, old things)."), "GET", "/api/athena/memory/proposals",
              "Clean-ups to decide", label="Clean-ups to decide",
              prompt="Short list: what it proposes and why. No ids."),
         tool("memory_proposal_apply", "Apply a proposed cleanup (id from memory_proposals): only if the user says yes.",
-             "POST", "/api/athena/memory/proposals/{pid}/apply", "Applica pulizia", params={"pid": {"type": "string"}},
+             "POST", "/api/athena/memory/proposals/{pid}/apply", "Apply cleanup", params={"pid": {"type": "string"}},
              required=["pid"]),
         tool("memory_proposal_dismiss", "Drop a proposed cleanup (id from memory_proposals).", "POST",
-             "/api/athena/memory/proposals/{pid}/dismiss", "Scarta pulizia", params={"pid": {"type": "string"}},
+             "/api/athena/memory/proposals/{pid}/dismiss", "Discard cleanup", params={"pid": {"type": "string"}},
              required=["pid"]),
-        tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Controlla i documenti", section="Development",
-             group="sviluppo", label="Controlla documenti"),
+        tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Check the documents", section="Development",
+             group="sviluppo", label="Check documents"),
     ]

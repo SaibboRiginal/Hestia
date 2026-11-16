@@ -53,7 +53,7 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_scout")
 
 # What Scout asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
-LLM_USECASES = [llm_usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
+LLM_USECASES = [llm_usecase("scout.annunci", "Scout · reading listings", chain="veloce",
                             help="Extracts the listing data from Scout's emails.")]
 
 TARGET_DOMAIN = "real_estate"
@@ -437,7 +437,7 @@ if _HAS_MCP:
     def stats_display(total: int, by_status: dict, newest) -> dict:
         from hestia_common.display import action, display, item
         names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
-                 "unknown": "senza stato"}
+                 "unknown": "without a state"}
         when = str(newest or "")[:10]
         return display(tr("Houses"), subtitle=f"{total} annunci", footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",
                        items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),

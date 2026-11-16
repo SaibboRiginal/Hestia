@@ -17,13 +17,13 @@ class SettingValueError(ValueError):
 
 def _number(defn: dict, value: Any, cast) -> Any:
     if isinstance(value, bool):
-        raise SettingValueError("numero atteso")
+        raise SettingValueError(tr("number expected"))
     try:
         number = cast(value)
     except (TypeError, ValueError):
-        raise SettingValueError("numero atteso")
+        raise SettingValueError(tr("number expected"))
     if cast is int and isinstance(value, float) and value != int(value):
-        raise SettingValueError("numero intero atteso")
+        raise SettingValueError(tr("whole number expected"))
     if defn.get("min") is not None and number < defn["min"]:
         raise SettingValueError(f"minimo {defn['min']}")
     if defn.get("max") is not None and number > defn["max"]:
@@ -60,33 +60,33 @@ def validate(defn: dict, value: Any) -> Any:
         raise SettingValueError(tr("value not allowed: ") + ", ".join(str(a) for a in allowed))
     if kind in {"string", "text", "model"}:
         if not isinstance(value, (str, int, float)) or isinstance(value, bool):
-            raise SettingValueError("testo atteso")
+            raise SettingValueError(tr("text expected"))
         text = str(value)
         if kind != "text" and len(text) > 500:
-            raise SettingValueError("testo troppo lungo")
+            raise SettingValueError(tr("text too long"))
         if kind == "text" and len(text) > 20000:
-            raise SettingValueError("testo troppo lungo")
+            raise SettingValueError(tr("text too long"))
         return text
     if kind == "time":
         text = str(value).strip()
         if not _TIME.match(text):
-            raise SettingValueError("orario HH:MM atteso")
+            raise SettingValueError(tr("time HH:MM expected"))
         return text
     if kind == "duration":
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             return value
         text = str(value).strip().lower()
         if not _DURATION.match(text):
-            raise SettingValueError("durata attesa (es. 30s, 5m, 2h)")
+            raise SettingValueError(tr("duration expected (e.g. 30s, 5m, 2h)"))
         return text
     if kind == "list":
         if not isinstance(value, list):
-            raise SettingValueError("lista attesa")
+            raise SettingValueError(tr("list expected"))
         item = defn.get("item")
         return [validate(item, v) for v in value] if isinstance(item, dict) else value
     if kind == "object":
         if not isinstance(value, dict):
-            raise SettingValueError("oggetto atteso")
+            raise SettingValueError(tr("object expected"))
         fields = defn.get("fields") or {}
         out = dict(value)
         for name, sub in fields.items():

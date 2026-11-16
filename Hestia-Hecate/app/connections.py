@@ -136,7 +136,7 @@ class GarminConnector(Connector):
         s = self.g.status()
         if s["connected"]:
             last = s.get("last_sync") or {}
-            detail = tr("Last reading {0}", str(last.get('at', ''))[:16].replace('T', ' ')) if last.get("at") else "Collegato."
+            detail = tr("Last reading {0}", str(last.get('at', ''))[:16].replace('T', ' ')) if last.get("at") else tr("Connected.")
             if s.get("last_error"):
                 detail += f" · {s['last_error']}"
             actions = [{"id": "sync", "label": tr("Read now"), "icon": "refresh"}]
@@ -175,7 +175,7 @@ class GarminConnector(Connector):
         out = self.sync() or {}
         if out.get("status") == "error":
             raise ConnectError(out.get("detail") or tr("Garmin does not answer."))
-        return {"message": "Letto."}
+        return {"message": tr("Read.")}
 
     def forget(self) -> dict:
         self.g.forget()
@@ -196,8 +196,8 @@ class GoogleConnector(Connector):
     def _client_step(self) -> dict:
         return {"kind": "form", "text": tr("A Google Cloud access (free) is needed, only once."),
                 "guide": [tr("Open Google Cloud, Credentials, and create a project if you don't have one."),
-                          "Attiva Google Calendar API, Gmail API e Google Drive API.",
-                          "«Crea credenziali» → «ID client OAuth» → tipo App desktop.",
+                          "Enable Google Calendar API, Gmail API and Google Drive API.",
+                          "«Create credentials» → «OAuth client ID» → type Desktop app.",
                           tr("Copy the client ID and secret here, or paste the JSON file it lets you download.")],
                 "link": {"label": tr("Open Google Cloud"), "url": self.CONSOLE},
                 "fields": [field("client_id", tr("Client ID"), "text", "…apps.googleusercontent.com"),
@@ -208,7 +208,7 @@ class GoogleConnector(Connector):
     def state(self) -> dict:
         s = self._state()
         if s.get("linked") and not self.editing:
-            return {"state": "connected", "detail": "Collegato.", "step": None,
+            return {"state": "connected", "detail": tr("Connected."), "step": None,
                     "actions": [{"id": "again", "label": tr("Link again"), "icon": "refresh"}]}
         if not s.get("client_set") or self.editing:
             return {"state": "not_connected", "detail": "", "step": self._client_step(), "actions": []}
@@ -222,7 +222,7 @@ class GoogleConnector(Connector):
                              "fields": paste, "submit": tr("Confirm") if paste else ""}}
         err = str(s.get("error") or "")
         return {"state": "not_connected", "detail": "" if err.startswith("Google not authorized") else err[:200],
-                "actions": [{"id": "client", "label": "Cambia accesso Google Cloud", "icon": "edit"}],
+                "actions": [{"id": "client", "label": "Change Google Cloud access", "icon": "edit"}],
                 "step": {"kind": "form", "text": tr("Google's page opens: choose the account and grant access."),
                          "fields": [], "submit": tr("Link Google")}}
 
@@ -252,7 +252,7 @@ class GoogleConnector(Connector):
 
 
 class PhoneConnector(Connector):
-    id, label, icon, order, in_setup = "phone", "Telefono Android", "map-pin", 30, False
+    id, label, icon, order, in_setup = "phone", "Android phone", "map-pin", 30, False
     what = "It tells by itself whether you are at home and charging; notifications of the chosen apps become expenses to review."
 
     def __init__(self, status: Callable[[], dict]):
@@ -264,7 +264,7 @@ class PhoneConnector(Connector):
         if p.get("configured"):
             bits = []
             if last.get("home") is not None:
-                bits.append("at home" if last["home"] else "fuori casa")
+                bits.append("at home" if last["home"] else tr("away from home"))
             if last.get("battery") is not None:
                 bits.append(f"batteria {last['battery']}%")
             when = str(last.get("at") or "")[:16].replace("T", " ")

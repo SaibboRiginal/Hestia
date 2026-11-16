@@ -61,7 +61,7 @@ def root(chat_id, message_id=None) -> None:
     rows = ui.grid([ui.button(a.button_text, f"m:a:{a.key}", icon=a.icon) for a in menu.all_areas
                     if a.sections or a.key != "altro"])
     rows.append([ui.button(tr("New area"), "m:new"), ui.button(tr("Restore everything"), "m:reset")])
-    rows.append([ui.button("‹ Impostazioni", "n:imp")])
+    rows.append([ui.button(tr("‹ Settings"), "n:imp")])
     lines = [ui.note(tr("Choose an area to change name, emoji, order and main actions."))]
     _place(chat_id, ui.card(tr("Menu"), lines, crumbs=[tr("Settings")]), rows, message_id)
 

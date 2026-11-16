@@ -106,9 +106,7 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                ("List the state of each provider and say clearly whether notifications were sent for the broken "
-                 "ones. If Google is not signed in, remind the user to use the 'Riautentica Google' button in the "
-                 "notification they received.")
+                ("List the state of each provider and say clearly whether notifications were sent for the broken ones. If Google is not signed in, remind the user to use the button to sign in to Google again in the notification they received.")
             ),
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Linked accounts"}),
@@ -183,10 +181,9 @@ try:
                 telegram={"section": "Advanced"}),
         MCPTool(
             name="weather_now",
-            description=(("Weather now and today in a place: temperature, feels like, conditions, wind, hours of rain. "
-                          "place: name of a saved place (casa, lavoro, palestra…), address or city; empty = Casa.")),
+            description=(("Weather now and today in a place: temperature, feels like, conditions, wind, hours of rain. place: name of a saved place (home, work, gym…), address or city; empty = home.")),
             parameters={"type": "object", "properties": {
-                "place": {"type": "string", "description": "Saved place, address or city (empty = Casa)"}}},
+                "place": {"type": "string", "description": "Saved place, address or city (empty = home)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "weather_now", "params": kw},
             title="Weather now", method="GET", path="/api/gateway/weather/now",
             clients=["telegram", "ui"], response_mode="oracle_natural",
@@ -200,7 +197,7 @@ try:
                           "wind, sunrise/sunset. date_from/date_to YYYY-MM-DD (empty = today + 2 days); hourly=true adds "
                           "the hours. place as in weather_now.")),
             parameters={"type": "object", "properties": {
-                "place": {"type": "string", "description": "Saved place, address or city (empty = Casa)"},
+                "place": {"type": "string", "description": "Saved place, address or city (empty = home)"},
                 "date_from": {"type": "string", "description": "First day YYYY-MM-DD"},
                 "date_to": {"type": "string", "description": "Last day YYYY-MM-DD"},
                 "hourly": {"type": "boolean", "description": "Include the hours"}}},
@@ -210,7 +207,7 @@ try:
             response_prompt=(("Summarise the forecast day by day, briefly (min–max, conditions, rain with hours). If status is "
                               "not ok explain what is needed.")),
             telegram_visible=True, telegram_group="giornata",
-                telegram={"section": "Weather", "label": "Previsioni"}),
+                telegram={"section": "Weather", "label": "alt::Forecast"}),
         *devices_api.tools(MCPTool),
     ]
     app.include_router(create_mcp_router(_hecate_mcp_tools, service_name="hecate"))
@@ -225,7 +222,7 @@ app.include_router(devices_api.router)
 # ── WebUI plugin «Dispositivi» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
 from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
 UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
-ui = PluginClient("hecate", title="Account e dispositivi", icon="link", color="teal", kind="core", dist=UI_DIST,
+ui = PluginClient("hecate", title="Accounts and devices", icon="link", color="teal", kind="core", dist=UI_DIST,
                   description="The linked accounts and devices: calendar, mail, weather, watch, phone.",
                   version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
@@ -318,7 +315,7 @@ def _check_auth_and_notify() -> None:
     Hermes deduplicates duplicate notifications.
     """
     _reauth_actions = [
-        {"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"},
+        {"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"},
     ]
 
     # 1) Calendar provider check
@@ -1037,7 +1034,7 @@ def gateway_weather_places():
                         for r in rows]}
 
 
-_REAUTH_ACTIONS = [{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}]
+_REAUTH_ACTIONS = [{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}]
 
 
 class MailSendRequest(BaseModel):
@@ -1693,7 +1690,7 @@ def _start_google_device_auto_poll() -> None:
                 _notify_action_required(
                     "google_reauth_failed",
                     tr("❌ <b>Google sign-in failed:</b> {0}\n\nTry again with the button below.", result.get('error', 'unknown')),
-                    actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
+                    actions=[{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}],
                 )
                 return
             if result.get("error") == "slow_down":
@@ -1705,7 +1702,7 @@ def _start_google_device_auto_poll() -> None:
         _notify_action_required(
             "google_reauth_timeout",
             tr("⏰ <b>Google sign-in expired.</b>\n\nRestart it with the button below."),
-            actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
+            actions=[{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}],
         )
 
     threading.Thread(target=_auto_poller, daemon=True, name="google-auto-poll").start()

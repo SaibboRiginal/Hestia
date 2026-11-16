@@ -25,7 +25,7 @@ LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "ner
           "arrabbiato", "malato")
 CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
-MOOD_WORDS = {1: "a terra", 2: "down", 3: "così così", 4: "bene", 5: "benissimo"}
+MOOD_WORDS = {1: "very low", 2: "down", 3: "so-so", 4: "bene", 5: "benissimo"}
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "sabato", "domenica")
 QUOTE_MAX = 200
 NOTE_MAX = 1000

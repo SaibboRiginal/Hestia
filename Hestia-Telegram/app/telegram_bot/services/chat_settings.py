@@ -31,11 +31,11 @@ SETTINGS: tuple[Setting, ...] = (
             "auto", "How much I reason before answering."),
     Setting("thinking_display", "Reasoning",
             (("hidden", "Hidden"), ("compact", "Compact · box closed"),
-             ("detailed", "Detailed · box open"), ("live", "In diretta · i passi mentre lavoro")),
+             ("detailed", "Detailed · box open"), ("live", "Live · the steps while I work")),
             "compact", "How you see the steps and tools I use."),
     Setting("notice_mode", "System messages",
             (("inline", "Under the answer"), ("important", "Only important ones"), ("hidden", "pl::Hidden")),
-            "inline", "Memoria salvata, azioni fatte, errori."),
+            "inline", "Saved memory, actions done, errors."),
 )
 
 BY_KEY = {s.key: s for s in SETTINGS}
@@ -97,7 +97,7 @@ def panel(chat_id, message_id=None) -> None:
     buttons = [ui.button(s.label, f"set:param:{s.key}") for s in SETTINGS]
     buttons += [ui.button(tr("Voice replies"), "set:voce"), ui.button(tr("Personal instructions"), "set:param:custom_prompt")]
     rows = ui.grid(buttons)
-    rows.append([ui.button(tr("f::Restore"), "set:reset"), ui.button("‹ Impostazioni", "n:imp")])
+    rows.append([ui.button(tr("f::Restore"), "set:reset"), ui.button(tr("‹ Settings"), "n:imp")])
     nav.place(chat_id, ui.card(tr("Chat"), lines, crumbs=[tr("Settings")]), ui.keyboard(rows), message_id)
 
 

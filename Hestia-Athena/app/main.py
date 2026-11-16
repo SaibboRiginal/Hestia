@@ -24,9 +24,9 @@ llm_capabilities = import_shared_symbol("hestia_common.oracle_usecases", "capabi
 
 # What Athena asks Oracle for (chains chosen by Marko in Oracle → Cervello → Modelli).
 LLM_USECASES = [
-    llm_usecase("athena.strategia", "Athena · strategia e memoria", chain="potente",
+    llm_usecase("athena.strategia", "Athena · strategy and memory", chain="potente",
                 help="Athena's reasoning (proposals, memory consolidation)."),
-    llm_usecase("athena.revisione", "Athena · revisione risposte", chain="veloce",
+    llm_usecase("athena.revisione", "Athena · answer review", chain="veloce",
                 help="Rates the quality of the assistant's answers."),
     llm_usecase("athena.recap", "Athena · daily recap", chain="veloce",
                 help="Writes the evening or morning recap from the facts of the areas (training, expenses, agenda…)."),
@@ -174,7 +174,7 @@ ui.webui(
                        help="Everything the assistant learned, changed or let go about your memory, with your own sentence it comes from. «Undo» removes it; «Review what you know about me» proposes to fix duplicates and contradictions.")],
     widgets=[plugin_widget("ultimo", "Latest thought", element="athena-last-widget", sizes=["m", "l"], auto=True,
                            open_page="pensieri", icon="zap", help="Athena's latest cycle and what came out of it.")],
-    quick_actions=[plugin_quick_action("pensa", "Fai pensare Athena", "POST", f"{API}/think", icon="zap",
+    quick_actions=[plugin_quick_action("pensa", "Make Athena think", "POST", f"{API}/think", icon="zap",
                                        group="System"),
                    plugin_quick_action("recap", "Recap now", "POST", f"{API}/recap/now", icon="note",
                                        group="System")],
@@ -543,9 +543,7 @@ try:
         MCPTool(
             name="athena_signals",
             description=(
-                ("Short signals each area (training, self care, expenses, wardrobe…) publishes on its data, the "
-                 "weekly numbers, links found across weeks and the recent observations of the reflection. Useful "
-                 "for «com'è andata la settimana?» or «cosa noti di me?».")
+                ("Short signals each area (training, self care, expenses, wardrobe…) publishes on its data, the weekly numbers, links found across weeks and the recent observations of the reflection. Useful for «how did the week go?» or «what do you notice about me?».")
             ),
             parameters={
                 "type": "object",

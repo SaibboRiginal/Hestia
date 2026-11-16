@@ -62,7 +62,7 @@ def send_buttons(chat_id, buttons: list[dict]) -> None:
     rows = [[ui.button(str(b["label"]), f"{SEND_PREFIX}{store.sid('send:' + str(b.get('send') or b['label']))}",
                        limit=40)] for b in buttons[:8]]
     try:
-        core.bot.send_message(int(chat_id), "<i>Scegli</i>", parse_mode="HTML", reply_markup=ui.keyboard(rows))
+        core.bot.send_message(int(chat_id), tr("<i>Choose</i>"), parse_mode="HTML", reply_markup=ui.keyboard(rows))
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=answer_buttons_send_failed chat_id=%s error=%s", chat_id, exc)
 

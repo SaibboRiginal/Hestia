@@ -146,7 +146,7 @@ def normalize_states(stored: Any, declared: dict[str, dict] | None = None) -> di
 
 def render(text: str, activities: list[dict]) -> str:
     heavy = [a.get("label") or a.get("key") for a in activities if a.get("load") == "heavy"]
-    return str(text or "").replace("{activities}", ", ".join(heavy) or "lavoro in corso")
+    return str(text or "").replace("{activities}", ", ".join(heavy) or tr("work in progress"))
 
 
 def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[str], Any],

@@ -372,7 +372,7 @@ class BackupService:
                 except PgError as exc:
                     logger.warning("[🔄] event=backup_check_drop_failed error=%s", exc)
             if bad:
-                raise BackupFailed("compare", "righe diverse in " + ", ".join(bad[:5]))
+                raise BackupFailed("compare", tr("different rows in ") + ", ".join(bad[:5]))
         except BackupFailed as exc:
             if exc.step != "passphrase":
                 self._verify_failed(f or self._fetching, str(exc))
@@ -417,7 +417,7 @@ class BackupService:
             self._step("compare")
             bad = self._compare(self.scratch, manifest)
             if bad:
-                raise BackupFailed("compare", "righe diverse in " + ", ".join(bad[:5]))
+                raise BackupFailed("compare", tr("different rows in ") + ", ".join(bad[:5]))
         except Exception as exc:
             self._drop_quietly(self.scratch)
             logger.error("event=backup_restore ok=false step=%s error=%s", (self._job or {}).get("step"),

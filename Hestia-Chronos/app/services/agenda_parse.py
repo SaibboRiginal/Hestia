@@ -115,7 +115,7 @@ def normalize(data: dict, text: str, now: datetime, tz: ZoneInfo) -> dict:
 def parse(text: str, now: datetime | None = None, tz_name: str | None = None) -> dict:
     text = (text or "").strip()
     if len(text) < 3:
-        raise ParseError("testo troppo corto")
+        raise ParseError(tr("text too short"))
     try:
         tz = ZoneInfo(tz_name or _TZ_DEFAULT)
     except Exception:

@@ -92,7 +92,7 @@ class Nutrition:
         try:
             d = date.fromisoformat(day[:10]) if day else now.date()
         except ValueError:
-            raise Invalid("data AAAA-MM-GG") from None
+            raise Invalid(tr("date YYYY-MM-DD")) from None
         slot = slot if slot in SLOTS else guess_slot(now)
         meal = {"date": d.isoformat(), "slot": slot, "text": text,
                 "kcal": int(kcal) if kcal not in (None, "") else None,
@@ -183,7 +183,7 @@ class Nutrition:
             raise Invalid(tr("the name is needed"))
         tod = body.get("time_of_day") or old.get("time_of_day") or "morning"
         if tod not in TIMES:
-            raise Invalid("momento: " + ", ".join(TIMES))
+            raise Invalid(tr("time: ") + ", ".join(TIMES))
         days = body.get("days", old.get("days") or [])
         data = {"name": name, "dose": str(body.get("dose", old.get("dose") or ""))[:60], "time_of_day": tod,
                 "days": sorted({int(d) for d in days if 0 <= int(d) <= 6}),
@@ -228,7 +228,7 @@ class Nutrition:
             n = {"id": f"supplement.{s['id']}", "title": s["name"] + (f" ({s['dose']})" if s.get("dose") else ""),
                  "kind": "slot", "per": "day", "count": 1, "time_of_day": s["time_of_day"], "days": s.get("days") or [],
                  "tags": [f"supplement.{s['id']}"], "priority": "should", "link": "integratori",
-                 "reason": "a stomaco pieno" if s.get("with_food") else ""}
+                 "reason": tr("on a full stomach") if s.get("with_food") else ""}
             if s.get("training_days_only"):
                 n["with"] = {"tag": "workout", "relation": "same_day"}
             out.append(n)

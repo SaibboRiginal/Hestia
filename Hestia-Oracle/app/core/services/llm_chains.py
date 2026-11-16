@@ -33,7 +33,7 @@ def _step(provider: str, model: str, **extra) -> dict:
 DEFAULT_CHAINS: dict[str, dict] = {
     # llama-server first (brainstorm D17: slots + saved context); skipped at once when it is not running.
     # Gemini by alias (…-latest): Google retires dated models for new keys (2.0-flash, 2.5-flash-lite in 2026-10).
-    "veloce": {"label": "Veloce", "steps": [
+    "veloce": {"label": "Fast", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-lite-latest"),
         _step("gemini", "gemini-flash-latest")]},
     "potente": {"label": "Potente", "steps": [
@@ -58,16 +58,16 @@ DESCRIBE_PROMPT = ("Describe this image for someone who cannot see it: what is i
 
 # Oracle's own use cases: id → (label, chain, thinking, help). Internal slot names (AgentBundle) in SLOTS.
 ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
-    "oracle.generale": ("Uso generale", "veloce", "auto",
-                        "Chat, classificazione, scelta degli strumenti, memoria."),
-    "oracle.ragionamento": ("Reasoning", "potente", "true", "Analisi lunghe e ragionamenti complessi."),
+    "oracle.generale": ("General use", "veloce", "auto",
+                        "Chat, classification, tool choice, memory."),
+    "oracle.ragionamento": ("Reasoning", "potente", "true", "Long analyses and complex reasoning."),
     "oracle.codice": ("Code", "codice", "auto", "Code generation and fixing in chat."),
-    "oracle.documenti": ("Documenti e immagini", "visione", "false", "Reading documents, images and audio."),
+    "oracle.documenti": ("Documents and images", "visione", "false", "Reading documents, images and audio."),
     "oracle.descrivi_immagine": ("Image description", "visione", "false",
                                  "When the answering model can't see images, a model that sees them describes them first."),
     "oracle.controllo_giri": ("Idle-loop check", "veloce", "false",
                               "When the assistant repeats the same calls: a quick look to understand whether it is waiting or looping."),
-    "oracle.embedding": ("Embedding (ricerca)", "embedding", "false",
+    "oracle.embedding": ("Embedding (search)", "embedding", "false",
                          "Vectors for memory and documents. Changing it makes the vectors already saved different."),
 }
 SLOTS = {"generic": "oracle.generale", "reasoning": "oracle.ragionamento", "code": "oracle.codice",

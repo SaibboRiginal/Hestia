@@ -59,7 +59,7 @@ def _aiuto(chat_id, args):
         tr("• <b>Today</b>: your day"),
         tr("• <b>Areas</b>: everything I can do, by topic"),
         tr("• <b>Notifications</b>: what waits for an answer"),
-        "• <b>Impostazioni</b>: chat, menu, voce",
+        tr("• <b>Settings</b>: chat, menu, voice"),
         ui.note(tr("Reply to one of my messages to talk about exactly that.")),
     ]
     shortcuts = "\n".join(f"/{t.command} — {ui.esc(menu.label(t.name))}"
@@ -234,7 +234,7 @@ def tools() -> list[catalog.Tool]:
           handler=lambda c, a: _voce(c, a, on=True)),
         T("voce_off", "Turn off voice replies", "", group="sistema", hints={"section": "interno"},
           handler=lambda c, a: _voce(c, a, on=False)),
-        T("aiuto", "How to use it", "Guida rapida e scorciatoie", group="sistema", hints={"section": "Chat"},
+        T("aiuto", "How to use it", "Quick guide and shortcuts", group="sistema", hints={"section": "Chat"},
           handler=_aiuto),
         T("webui_token", "Access to the web page", "A code to enter the web page", group="sistema",
           hints={"section": "Web page", "primary": 3, "label": "Web access"}, writes=False,
@@ -265,7 +265,7 @@ def tools() -> list[catalog.Tool]:
         T("nuovo_avviso", "New automatic alert", "Tell me what to keep an eye on and when to alert you",
           group="notifiche", hints={"section": "Automatic alerts", "primary": 1},
           schema=_schema({"request": {**S, "title": "What should I keep an eye on?",
-                                      "examples": ["case a Udine sotto 150.000 €"]}}, ["request"]),
+                                      "examples": ["houses in Udine under €150,000"]}}, ["request"]),
           writes=True, handler=_nuovo_avviso),
         T("pausa_voto", "No more rating requests", "For a few days I won't ask you to rate answers",
           group="sistema", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),

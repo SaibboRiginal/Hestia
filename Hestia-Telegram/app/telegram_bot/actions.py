@@ -472,7 +472,7 @@ def from_command(chat_id, name: str, args_text: str) -> bool:
 def cancel(chat_id, message_id: int | None = None) -> None:
     flow = store.clear_flow(chat_id)
     tool = catalog.get(flow.get("tool", "")) if flow else None
-    title = _title(_menu(), tool) if tool else "l'azione"
+    title = _title(_menu(), tool) if tool else tr("the action")
     mid = message_id or (flow or {}).get("message_id")
     from telegram_bot import nav
     area = _area(_menu(), tool) if tool else None

@@ -149,7 +149,7 @@ async def execute(page: Any, recipe: dict, values: dict[str, str], timeout_ms: i
             empty_required.append(field)
     if empty_required:
         return {"status": "broken", "step": "extract", "field": ",".join(empty_required),
-                "error": "campi obbligatori vuoti", "fields": fields}
+                "error": tr("required fields are empty"), "fields": fields}
     return {"status": "ok", "fields": fields, "url": getattr(page, "url", None)}
 
 

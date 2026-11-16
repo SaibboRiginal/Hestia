@@ -164,7 +164,7 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
         missed = [x for x in cur["routines"] if x["done"] < x["need"]]
         head = tr("Self care · week {0}%", cur['percent'])
         if missed:
-            head += ", indietro: " + ", ".join(x["name"] for x in missed)
+            head += tr(", behind: ") + ", ".join(x["name"] for x in missed)
         return head + (" · " + "; ".join(bits) if bits else "")
     if kind in ("goal", "streak") and ref:
         r = h.store.data("routine", ref)

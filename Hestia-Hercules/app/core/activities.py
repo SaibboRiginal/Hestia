@@ -41,7 +41,7 @@ def kind_of(text: Any) -> str:
 
 
 def label(kind: str) -> str:
-    return KINDS.get(kind, "Attività")
+    return KINDS.get(kind, tr("Activity"))
 
 
 # ── normalizers (registered in domain.NORMALIZERS) ─────────────────────────
@@ -63,7 +63,7 @@ def norm_plan(d: dict) -> dict:
 
 def norm_activity(d: dict) -> dict:
     if not d.get("date"):
-        raise domain.Invalid("data mancante")
+        raise domain.Invalid(tr("missing date"))
     return {**d, "kind": kind_of(d.get("kind")), "date": domain._str(d.get("date"), 10),
             "minutes": domain._num(d.get("minutes"), lo=1, hi=1440, integer=True),
             "km": domain._num(d.get("km"), lo=0, hi=1000), "note": domain._str(d.get("note"), 300),
@@ -563,7 +563,7 @@ class Activities:
                 continue
             end = s.get("ended_at") or s.get("started_at")
             self._create_event(f"session:{s['id']}", s.get("name") or tr("Gym"), s["started_at"], end,
-                               description="Allenamento registrato in Hestia")
+                               description=tr("Workout logged in Hestia"))
             n += 1
         return n
 

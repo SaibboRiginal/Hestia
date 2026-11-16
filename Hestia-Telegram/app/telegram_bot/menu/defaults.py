@@ -23,7 +23,7 @@ COMMANDS = [
     ("adesso", "What you need now"),
     ("scopri", "Features you haven't tried yet"),
     ("notifiche", "Notifications to see or answer"),
-    ("impostazioni", "Chat, menu e impostazioni"),
+    ("impostazioni", "Chat, menu and settings"),
     ("nuova", "New conversation"),
     ("voce", "Voice replies on or off"),
     ("stato", "Assistant status"),

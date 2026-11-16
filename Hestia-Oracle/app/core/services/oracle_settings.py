@@ -143,8 +143,8 @@ COMPACT_KEEP = "oracle.context.compact_keep_recent"
 TODAY_AGENDA = "oracle.context.today_agenda"
 # Time limits per request source (s)
 TIMEOUTS = {
-    "foreground_chat": ("Risposta in chat", 8),
-    "action_selection": ("Scelta dell'azione", 12),
+    "foreground_chat": ("Chat answer", 8),
+    "action_selection": ("Choice of the action", 12),
     "action_service_route": ("Action on a module", 25),
     "memory_extraction": ("Memory extraction", 10),
     "background_compaction": ("Compattazione in background", 8),
@@ -183,7 +183,7 @@ VISION_MODELS = "oracle.documents.vision_models"
 AUDIO_MODELS = "oracle.documents.audio_models"
 # Prompt A/B experiments: surface → key prefix
 AB_SURFACES = {"alert_formatter": ("oracle.prompt_ab.alert", "Notifications"),
-               "planner_behavior": ("oracle.prompt_ab.planner", "Pianificatore")}
+               "planner_behavior": ("oracle.prompt_ab.planner", "Planner")}
 
 DEFAULT_PREFERENCE_DOMAINS = {
     "general": "Universal preferences, default catch-all for anything not fitting other domains",

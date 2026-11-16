@@ -71,7 +71,7 @@ def progress(data: Data, goal: dict, tz, week_start: int = 0, today: date | None
 def label(goal: dict, data: Data | None = None, templates: dict | None = None) -> str:
     if goal.get("label"):
         return goal["label"]
-    per = {"day": "al giorno", "week": "a settimana", "month": "al mese"}.get(goal.get("per") or "week", "")
+    per = {"day": tr("per day"), "week": tr("per week"), "month": tr("per month")}.get(goal.get("per") or "week", "")
     times = goal.get("times") or 1
     scope = goal.get("scope") or "any"
     if scope == "any":

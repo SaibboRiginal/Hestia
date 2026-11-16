@@ -88,7 +88,7 @@ ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
          widgets=[widget("oggi-nel-piano", "Today in the plan", element="chronos-today-widget", sizes=["s", "m"],
                          auto=True, open_page="settimana", icon="calendar",
                          help="What is on today in the week plan, with the time."),
-                  widget("falliti", "Job falliti", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
+                  widget("falliti", "Failed jobs", element="chronos-failed-widget", sizes=["s", "m"], auto=True,
                          open_page="esecuzioni", icon="alert",
                          help="Agenda jobs failed in the last 24 hours, with «Retry».")],
          quick_actions=[quick_action("riprova", "Retry job", "POST", "/api/agenda/items/{id}/run", icon="refresh",
@@ -461,15 +461,14 @@ try:
                 telegram={"section": "Assistant", "primary": 1, "label": "Status"}),
         MCPTool(
             name="nondisturbare",
-            description=(("Turn on «Non disturbare» (do not disturb): only urgent notifications get through. minutes = "
-                          "duration (empty = default), until = until an ISO 8601 time.")),
+            description=(("Turn on «Do not disturb»: only urgent notifications get through. minutes = duration (empty = default), until = until an ISO 8601 time.")),
             parameters={"type": "object", "properties": {
                 "minutes": {"type": "integer", "description": "Duration in minutes (empty = default)"},
                 "until": {"type": "string", "description": "Until when, ISO 8601"}}},
             handler=lambda **kw: {"status": "ok", "tool": "nondisturbare", "params": kw},
             title="Do not disturb", method="POST", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="Confirm in one line that «Non disturbare» is on and until when (dnd_until, local time).",
+            response_prompt="Confirm in one line that «Do not disturb» is on and until when (dnd_until, local time).",
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Assistant", "primary": 2}),
         MCPTool(
@@ -479,15 +478,13 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "disturbami", "params": kw},
             title="Remove do not disturb", method="DELETE", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            response_prompt="Confirm in one line that «Non disturbare» is off and say the new state (label).",
+            response_prompt="Confirm in one line that «Do not disturb» is off and say the new state (label).",
             telegram_visible=True, telegram_group="sistema",
                 telegram={"section": "Assistant"}),
         # ── Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §6) ──
         MCPTool(
             name="coach_week",
-            description=(("The user's week plan: workouts, routines and the rest placed in their free time, goals, what "
-                          "does not fit and why. Use it for «cosa ho in programma questa settimana», «quando mi alleno», "
-                          "«com'è il piano».")),
+            description=(("The user's week plan: workouts, routines and the rest placed in their free time, goals, what does not fit and why. Use it for «what do I have planned this week», «when do I train», «how is the plan».")),
             parameters={"type": "object", "properties": {
                 "date": {"type": "string", "description": "a day of the wanted week YYYY-MM-DD (empty = this one)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "coach_week", "params": kw},
@@ -693,7 +690,7 @@ def _presence_boot() -> None:
         if not registered:
             try:
                 assistant_agenda.register_rules("chronos", [daily_window(
-                    presence_settings.SLEEP_WINDOW, "Hestia: notte (sonno profondo)", 1, 7,
+                    presence_settings.SLEEP_WINDOW, "Hestia: night (deep sleep)", 1, 7,
                     description="At night the assistant goes into deep sleep: heavy jobs allowed, only urgent notifications. Move or skip to change the night."),
                     weekly_coach.week_job_rule(), *life_api.boot_rules()])
                 registered = True

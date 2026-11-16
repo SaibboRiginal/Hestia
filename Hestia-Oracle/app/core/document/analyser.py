@@ -73,9 +73,9 @@ class DocumentAnalyser:
         needs_local_audio = (is_audio or is_video) and not model_has_audio
 
         if is_audio or is_video:
-            yield stream_emitter.emit_status("🎙️ Trascrizione audio in corso...")
+            yield stream_emitter.emit_status(tr("🎙️ Transcribing the audio..."))
         else:
-            yield stream_emitter.emit_status("📄 Analisi documento in corso...")
+            yield stream_emitter.emit_status(tr("📄 Analysing the document..."))
 
         full_prompt = (
             f"{self._style_contract()}\n\n"
@@ -125,7 +125,7 @@ class DocumentAnalyser:
             ).start()
             yield stream_emitter.emit_signal(
                 event="document_saved",
-                message="📎 Documento salvato nell'archivio.",
+                message=tr("📎 Document saved in the archive."),
                 data={
                     "document_id": document_id,
                     "filename": filename,
@@ -168,7 +168,7 @@ class DocumentAnalyser:
         client_instructions: str | None,
     ) -> Generator[str, None, str]:
         """Transcribe audio (voice module) then answer via text LLM. Yields status lines."""
-        yield stream_emitter.emit_status("🔊 Trascrizione...")
+        yield stream_emitter.emit_status(tr("🔊 Transcribing..."))
         transcript = transcription.transcribe_audio(file_bytes, mime_type)
         if not transcript:
             return tr("⚠️ I can't transcribe the audio. Try sending a file in a supported format (mp3, wav, ogg, m4a).")
@@ -182,7 +182,7 @@ class DocumentAnalyser:
         if client_instructions and str(client_instructions).strip():
             text_prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{str(client_instructions).strip()}"
 
-        yield stream_emitter.emit_status("🤖 Analisi trascrizione...")
+        yield stream_emitter.emit_status(tr("🤖 Analysing the transcript..."))
         try:
             return self._analyst.ask(text_prompt)
         except Exception:

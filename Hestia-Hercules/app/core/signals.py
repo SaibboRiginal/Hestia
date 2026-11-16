@@ -83,7 +83,7 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
     data = h.data()
     out: list[dict] = []
     for s in _stalls(h, data, today):
-        what = "massimale stimato" if s["metric"] == "best_e1rm" else "ripetizioni"
+        what = tr("estimated max") if s["metric"] == "best_e1rm" else "ripetizioni"
         best = progression.fmt_kg(s["best"]) + (" kg" if s["metric"] == "best_e1rm" else "")
         out.append(signal(f"stall:{s['exercise_id']}", tr("{0} stuck for {1} sessions: {2} does not go past {3}", s['exercise'], s['exposures'], what, best), kind="trend", severity="attenzione",
                           metrics={"exposures": s["exposures"], "best": s["best"], "recent": s["recent"]},
@@ -179,7 +179,7 @@ def detail(h: "Hercules", topic: str, today: date | None = None) -> str | None:
         low = low_checkins(h, today)
         if not low:
             return None
-        return "Allenamento · check-in energia bassa: " + "; ".join(
+        return tr("Workout · low energy check-in: ") + "; ".join(
             f"{(local_date(c.get('at'), h.tz) or today).strftime('%d/%m')} energia {c.get('energy')}"
             + (f", sonno {c['sleep']}" if c.get("sleep") else "") for c in low)
     if topic == "week_goal":

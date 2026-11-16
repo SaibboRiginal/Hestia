@@ -891,7 +891,7 @@ class AthenaRuntime:
             daily_window(WINDOW_TALK, tr("Writes to you first"),
                          *TALK_WINDOW_DEFAULT,
                          description="The hours when she may write to you first, for a question or a chat (how often: setting «Writes to you first»). Paused = she never writes first."),
-            daily_window(WINDOW_THINKING, "Riflessione nei momenti liberi",
+            daily_window(WINDOW_THINKING, "Reflection in the free moments",
                          t_start, t_end,
                          description="Thinking cycles (observe → evaluate → propose) only when you are not chatting. Skip/pause to stop Athena."),
             job_rule(JOB_EVENING, tr("Evening recap"), service="athena", path="/api/athena/recap",

@@ -23,12 +23,12 @@ logger = logging.getLogger("hestia_kairos.service")
 
 CATEGORIES = {
     "bolletta": ("Bolletta", 5, "Check the reading and that the charge went through; compare with the same month last year."),
-    "assicurazione": ("Assicurazione", 30, "A month before, ask for two quotes: the automatic renewal often costs more."),
-    "bollo": ("Bollo auto", 15, "You pay online (PagoPA) or at the tobacconist; check the region and the amount."),
+    "assicurazione": ("Insurance", 30, "A month before, ask for two quotes: the automatic renewal often costs more."),
+    "bollo": ("Car tax", 15, "You pay online (PagoPA) or at the tobacconist; check the region and the amount."),
     "revisione": ("Review", 30, "Book the centre in time; bring the logbook and the previous certificate."),
     "tagliando": ("Tagliando", 21, "Ask for the quote first and check what the service booklet foresees."),
     "documento": ("Document", 60, "ID card and passport: the appointment at the town hall or police station can take weeks."),
-    "abbonamento": ("Abbonamento", 7, "Decide whether to keep it before the renewal: cancelling afterwards costs a month."),
+    "abbonamento": ("Subscription", 7, "Decide whether to keep it before the renewal: cancelling afterwards costs a month."),
     "tassa": ("Tasse", 15, "Check the F24 or the notice; record the receipt after paying."),
     "altro": ("Deadline", 7, ""),
 }
@@ -143,7 +143,7 @@ class Deadlines:
         category = category if category in CATEGORIES else "altro"
         recurrence = body.get("recurrence") or old.get("recurrence") or "none"
         if recurrence not in RECURRENCES:
-            raise Invalid("ricorrenza: " + ", ".join(RECURRENCES))
+            raise Invalid(tr("recurrence: ") + ", ".join(RECURRENCES))
         amount = body.get("amount", old.get("amount"))
         data = {**{k: v for k, v in old.items() if k != "id"}, "title": title, "due": due.isoformat(),
                 "category": category, "recurrence": recurrence,

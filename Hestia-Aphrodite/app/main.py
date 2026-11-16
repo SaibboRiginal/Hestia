@@ -128,7 +128,7 @@ def image_done(body: dict = Body(...)):
 def _now(client: str = "webui") -> dict:
     n = look.now(client)
     p = n["profile"]
-    lines = [tr("Theme: {0}", p['name']) + ("" if n["auto"] else " (temi spenti)"), tr("Why: {0}", n['why'])]
+    lines = [tr("Theme: {0}", p['name']) + ("" if n["auto"] else tr(" (themes off)")), tr("Why: {0}", n['why'])]
     if n["pet"]:
         lines.append(tr("Pet: {0}", n['pet']['name']))
     files = [file(p["background"], "sfondo.png", "image/png")] if p.get("background") else []

@@ -84,7 +84,7 @@ def build_router(service: BackupService, *, passphrase_set, drive_status, settin
     def undo(req: UndoReq):
         if not req.confirm:
             raise HTTPException(status_code=422, detail={"error": "confirm",
-                                                         "message": "conferma l'annullamento (confirm=true)"})
+                                                         "message": tr("confirm the cancellation (confirm=true)")})
         if not service.undo_available():
             raise HTTPException(status_code=404, detail={"error": "nothing_to_undo",
                                                          "message": tr("there is no restore to undo")})

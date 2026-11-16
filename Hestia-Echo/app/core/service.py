@@ -131,9 +131,9 @@ class Echo:
         hint = self._hint()
         seconds = audio.wav_duration(pcm)
         if seconds <= 0.1:
-            raise Invalid("audio vuoto")
+            raise Invalid(tr("empty audio"))
         if seconds > float(self.get("echo.ascolto.max_seconds", 600) or 600):
-            raise Invalid("audio troppo lungo")
+            raise Invalid(tr("audio too long"))
 
         def call(provider, step):
             std = STANDARDS[provider["type"]]
@@ -164,7 +164,7 @@ class Echo:
     def transcribe(self, body: dict) -> dict:
         raw = _b64(body.get("audio_b64"))
         if not raw:
-            raise Invalid("audio vuoto")
+            raise Invalid(tr("empty audio"))
         mime = str(body.get("mime_type") or "audio/ogg").split(";")[0].strip().lower()
         uc = str(body.get("use_case") or "echo.prova.ascolto")
         result, info, _ = self._heard(raw, mime, uc, self.language(body.get("language")))
@@ -259,7 +259,7 @@ class Echo:
     def speak(self, body: dict) -> dict:
         text = str(body.get("text") or "").strip()
         if not text:
-            raise Invalid("testo vuoto")
+            raise Invalid(tr("empty text"))
         fmt = str(body.get("format") or "ogg_opus")
         uc = str(body.get("use_case") or "echo.prova.voce")
         keep = body.get("keep") if isinstance(body.get("keep"), dict) else None
@@ -315,7 +315,7 @@ class Echo:
         with self._lock:
             st = self._streams.get(sid)
         if not st or st["kind"] != kind:
-            raise NotFound("stream chiuso o inesistente")
+            raise NotFound(tr("stream closed or missing"))
         st["last"] = time.monotonic()
         return st
 

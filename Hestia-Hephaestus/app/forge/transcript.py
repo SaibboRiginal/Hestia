@@ -63,7 +63,7 @@ def normalize_claude(raw_events: Iterable[dict]) -> list[dict]:
         ts = ev.get("timestamp") or ""
         if kind == "system":
             if ev.get("subtype") == "init":
-                out.append({"kind": "system", "ts": ts, "text": "Sessione Claude Code avviata",
+                out.append({"kind": "system", "ts": ts, "text": "Claude Code session started",
                             "meta": {"model": ev.get("model"), "cwd": ev.get("cwd"),
                                      "tools": ev.get("tools"), "session_id": ev.get("session_id"),
                                      "permission_mode": ev.get("permissionMode")}})
@@ -83,7 +83,7 @@ def normalize_claude(raw_events: Iterable[dict]) -> list[dict]:
                                 "text": _clip(block.get("text"))})
                 elif btype in ("thinking", "redacted_thinking"):
                     out.append({"kind": "thinking", "ts": ts,
-                                "text": _clip(block.get("thinking") or "[ragionamento oscurato]")})
+                                "text": _clip(block.get("thinking") or tr("[reasoning hidden]"))})
                 elif btype == "tool_use":
                     out.append({"kind": "tool_use", "ts": ts, "tool": block.get("name"), "id": block.get("id"),
                                 "input": block.get("input") or {}})

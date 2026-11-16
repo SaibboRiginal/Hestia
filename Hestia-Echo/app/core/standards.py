@@ -158,16 +158,16 @@ class Standard:
 # ── local engines ────────────────────────────────────────────────────────────
 
 class WhisperLocal(Standard):
-    id, label, directions, wants_pcm = "whisper_local", "Whisper locale (faster-whisper)", ("ascolto",), True
+    id, label, directions, wants_pcm = "whisper_local", "Local Whisper (faster-whisper)", ("ascolto",), True
     SIZES = ["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo"]
     options = [
         opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Higher = more accurate and slower."),
-        opt("vad", "Salta i silenzi", "bool", True),
+        opt("vad", "Skip silences", "bool", True),
         opt("initial_prompt", "Words to recognise", "string", "",
             help="Your names and words (e.g. Hestia, Hercules), separated by commas: it writes them right."),
         opt("device", "Where it runs", "enum", "auto", options=[{"value": "auto", "label": "Automatic"},
                                                             {"value": "cpu", "label": "CPU"},
-                                                            {"value": "cuda", "label": "Scheda video"}]),
+                                                            {"value": "cuda", "label": "Graphics card"}]),
     ]
 
     def __init__(self):
@@ -237,7 +237,7 @@ PIPER_MALE = {"riccardo", "ryan", "davefx", "tom", "thorsten", "faber"}
 
 
 class Piper(Standard):
-    id, label, directions = "piper", "Piper (locale, veloce)", ("voce",)
+    id, label, directions = "piper", "Piper (local, fast)", ("voce",)
     options = [
         opt("length_scale", "Lentezza", "float", 1.0, min=0.5, max=2.0, help="1 = normal; higher = slower."),
         opt("noise_scale", "alt::Change", "float", 0.667, min=0.0, max=1.0),
@@ -271,7 +271,7 @@ class Piper(Standard):
     def title(name: str, suffix: str = ".onnx") -> str:
         """«Voce Paola» for it_IT-paola-medium (the small .json is its settings)."""
         speaker = name.split("-")[1].capitalize() if name.count("-") >= 2 else name
-        return tr("Voice {0}", speaker) + (" · impostazioni" if suffix.endswith(".json") else "")
+        return tr("Voice {0}", speaker) + (tr(" · settings") if suffix.endswith(".json") else "")
 
     @staticmethod
     def files(name: str) -> list[tuple[str, str, int]]:
@@ -351,14 +351,14 @@ KOKORO_ALL = ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_
               "bm_lewis", "ef_dora", "em_alex", "em_santa", "ff_siwis", "hf_alpha", "hf_beta", "hm_omega", "hm_psi",
               "if_sara", "im_nicola", "jf_alpha", "jf_gongitsune", "jf_nezumi", "jf_tebukuro", "jm_kumo", "pf_dora", "pm_alex",
               "pm_santa", "zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi", "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"]
-KOKORO_TITLES = {"kokoro-v1.0.onnx": "Voce naturale", "voices-v1.0.bin": "Voce naturale · timbri"}
+KOKORO_TITLES = {"kokoro-v1.0.onnx": "Natural voice", "voices-v1.0.bin": "Natural voice · timbres"}
 KOKORO_MB = {"kokoro-v1.0.onnx": 326, "voices-v1.0.bin": 28}
 KOKORO_FILES = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx",
                 "voices-v1.0.bin": "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin"}
 
 
 class Kokoro(Standard):
-    id, label, directions = "kokoro", "Kokoro (locale, naturale)", ("voce",)
+    id, label, directions = "kokoro", "Kokoro (local, natural)", ("voce",)
     options = [opt("speed", "Speed", "float", 1.0, min=0.5, max=2.0)]
 
     def __init__(self):
@@ -420,7 +420,7 @@ class Kokoro(Standard):
 # ── cloud / remote engines ───────────────────────────────────────────────────
 
 class OpenAICompatible(Standard):
-    id, label, directions = "openai", "Compatibile OpenAI (OpenAI, Groq, Speaches, LocalAI…)", ("ascolto", "voce")
+    id, label, directions = "openai", "OpenAI compatible (OpenAI, Groq, Speaches, LocalAI…)", ("ascolto", "voce")
     needs_key, needs_url, default_url = True, True, "https://api.openai.com/v1"
     options = [
         opt("prompt", "Words to recognise", "string", "", direction="ascolto"),
@@ -494,15 +494,15 @@ class Google(Standard):
     needs_key = True
     options = [
         opt("recognition_model", "Listening model", "enum", "latest_short", direction="ascolto",
-            options=[{"value": "latest_short", "label": "Frasi brevi"}, {"value": "latest_long", "label": "Audio lunghi"},
+            options=[{"value": "latest_short", "label": "Short sentences"}, {"value": "latest_long", "label": "Long audio"},
                      {"value": "default", "label": "Default"}]),
         opt("punctuation", "Punteggiatura", "bool", True, direction="ascolto"),
         opt("speaking_rate", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voce"),
         opt("pitch", "Tone", "float", 0.0, min=-20.0, max=20.0, direction="voce"),
-        opt("profile", "Profilo audio", "enum", "headphone-class-device", direction="voce",
+        opt("profile", "Audio profile", "enum", "headphone-class-device", direction="voce",
             options=[{"value": "headphone-class-device", "label": "Cuffie"},
                      {"value": "handset-class-device", "label": "Phone"},
-                     {"value": "small-bluetooth-speaker-class-device", "label": "Cassa piccola"},
+                     {"value": "small-bluetooth-speaker-class-device", "label": "Small speaker"},
                      {"value": "large-home-entertainment-class-device", "label": "Impianto"}]),
     ]
 
@@ -553,7 +553,7 @@ class ElevenLabs(Standard):
     needs_key, default_url = True, "https://api.elevenlabs.io/v1"
     options = [
         opt("stability", "Stability", "float", 0.5, min=0.0, max=1.0, direction="voce"),
-        opt("similarity", "Somiglianza", "float", 0.75, min=0.0, max=1.0, direction="voce"),
+        opt("similarity", "Similarity", "float", 0.75, min=0.0, max=1.0, direction="voce"),
         opt("style", "Expressiveness", "float", 0.0, min=0.0, max=1.0, direction="voce"),
     ]
 

@@ -20,9 +20,7 @@ Route = Callable[..., Any]   # MemoryService._route_archive(method, endpoint, bo
 
 
 # Tool schemas, shared by the MCP tools (main.py: Telegram, Hestia-MCP) and the chat's own tool set (oracle_engine).
-TAG_DESCRIPTION = ("Put coloured tags on this conversation (e.g. lavoro, salute, viaggio) so the owner finds it "
-                   "later; also remove tags, give it a title or pin it. Without session_id: the conversation "
-                   "you are in.")
+TAG_DESCRIPTION = ("Put coloured tags on this conversation (e.g. work, health, travel) so the owner finds it later; also remove tags, give it a title or pin it. Without session_id: the conversation you are in.")
 TAG_PARAMETERS = {
     "type": "object",
     "properties": {
@@ -82,7 +80,7 @@ def messages(route: Route, session_id: str, limit: int = 200) -> dict:
 
 def set_meta(route: Route, session_id: str, body: dict) -> dict:
     if not str(session_id or "").strip():
-        raise ChatSessionsError(422, "conversazione mancante")
+        raise ChatSessionsError(422, tr("missing conversation"))
     allowed = {k: body[k] for k in ("title", "tags", "add_tags", "remove_tags", "pinned", "training_off", "client")
                if k in body}
     return _need(route("PUT", f"/chat/sessions/{session_id}/meta", body=allowed))
@@ -91,7 +89,7 @@ def set_meta(route: Route, session_id: str, body: dict) -> dict:
 def delete(route: Route, session_id: str) -> dict:
     """The owner deletes a conversation: messages and its title, tags, pin."""
     if not str(session_id or "").strip():
-        raise ChatSessionsError(422, "conversazione mancante")
+        raise ChatSessionsError(422, tr("missing conversation"))
     out = _need(route("DELETE", f"/chat/sessions/{session_id}"))
     logger.info("event=chat_deleted session_id=%s messages=%s", session_id, (out or {}).get("deleted_messages"))
     return out
@@ -155,5 +153,5 @@ def tool_list(route: Route, tag: str = "", query: str = "", limit: int = 10) -> 
     sub = f"{out.get('total', len(items))} conversazioni" + (tr(" with «{0}»", tag) if tag else "")
     return {**out, "display": display(
         tr("Conversations"), subtitle=sub, lines=[] if items else [tr("No conversations.")],
-        items=[item(i["title"], [", ".join(t["name"] for t in i.get("tags") or []) or "senza etichette",
+        items=[item(i["title"], [", ".join(t["name"] for t in i.get("tags") or []) or tr("without labels"),
                                  str(i.get("last_at") or "")[:16].replace("T", " ")]) for i in items])}

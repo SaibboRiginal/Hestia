@@ -42,8 +42,8 @@ def get_provider(name: str) -> LLMProvider:
 
 # Inline types (UniversalAgent): label, context window (0 = local num_ctx setting), billing.
 _INLINE = {
-    "ollama": ("Ollama (local)", 0, "Locale · gratis"),
-    "gemini": ("Gemini (cloud)", 1_048_576, "API Gemini · a consumo"),
+    "ollama": ("Ollama (local)", 0, "Local · free"),
+    "gemini": ("Gemini (cloud)", 1_048_576, "Gemini API · pay per use"),
 }
 
 

@@ -52,15 +52,15 @@ _results: list[dict] = []          # today's results kept for the recap (in memo
 # Cindy 27: gallery of ready-made routines. Fields are filled by the owner; `{name}` placeholders in the
 # instruction / pre-check arguments take their values.
 TEMPLATES: list[dict] = [
-    {"id": "radar", "label": "Radar notizie", "icon": "search",
+    {"id": "radar", "label": "News radar", "icon": "search",
      "help": "Every morning the important news on a topic, with the source and why it matters to you.",
      "fields": {"topic": {"label": "alt::Topic", "required": True}},
      "recurrence": "FREQ=DAILY;BYHOUR=7;BYMINUTE=30", "deliver": "recap",
      "precheck": {"tool": "web_search", "args": {"q": "{topic} news today"}},
      "instruction": ("From the results below pick at most 5 important news items of today about «{topic}». For each: title, source (link) and one line «why it matters to you». If there is nothing new answer only NOTHING.")},
-    {"id": "case", "label": "Case nuove", "icon": "home",
+    {"id": "case", "label": "New houses", "icon": "home",
      "help": "When there are new listings, the best ones with the reason.",
-     "fields": {"query": {"label": "Zona", "required": False}},
+     "fields": {"query": {"label": "alt2::Area", "required": False}},
      "recurrence": "FREQ=DAILY;BYHOUR=19;BYMINUTE=0", "deliver": "hermes",
      "precheck": {"tool": "scout.search", "args": {"query": "{query}", "limit": 10}},
      "instruction": "Among the listings below tell me the 3 best suited to me and why, briefly."},
@@ -342,7 +342,7 @@ def on_mail(key: str, reference_ids: list[str]) -> dict:
                                  if data.get(k)}, ensure_ascii=False, default=str)[:2500])
         archive_client._route_archive("PATCH", f"api/archive/{rec['id']}", body={"evaluation": {"routine": key}},
                                       timeout=8)
-    threading.Thread(target=_safe_run, args=(key, "\n".join(texts) or "mail arrivata"), daemon=True).start()
+    threading.Thread(target=_safe_run, args=(key, "\n".join(texts) or "mail arrived"), daemon=True).start()
     return {"ok": True, "key": key, "mails": len(texts)}
 
 

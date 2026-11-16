@@ -951,7 +951,7 @@ class OracleEngine:
         )
 
         # ── Phase 1: INIT ─────────────────────────────────────────────────────
-        yield stream_emitter.emit_status("📂 Recupero cronologia e routing...")
+        yield stream_emitter.emit_status(tr("📂 Loading history and routing..."))
         t_init = time.perf_counter()
         history_text, available_domains, schemas = self._phase_init(
             session_id,
@@ -1029,7 +1029,7 @@ class OracleEngine:
         # Pensata / CoT were chosen by the user: always reason with the agent loop.
         if (intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD
                 and mode not in ("thinking", "cot") and not external):
-            yield stream_emitter.emit_status("💬 Conversazione rapida...")
+            yield stream_emitter.emit_status(tr("💬 Quick conversation..."))
             extra_context = ""
             if self._doc_rag.message_is_about_docs(user_message):
                 extra_context = self._doc_rag.list_user_docs_brief(
@@ -1226,7 +1226,7 @@ class OracleEngine:
             for tok in self._agents.generic.ask_stream(prompt):
                 yield tok
 
-        yield stream_emitter.emit_status("🔄 Ciclo agente in corso...")
+        yield stream_emitter.emit_status(tr("🔄 Agent loop running..."))
         t_agent_loop = time.perf_counter()
 
         # Resolve max turns: higher when action_intent is True (complex tasks)

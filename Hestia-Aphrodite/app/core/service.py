@@ -20,7 +20,7 @@ logger = logging.getLogger("hestia_aphrodite.service")
 
 EFFECTS = ("none", "snow", "leaves", "petals", "sun", "hearts", "confetti", "pumpkins", "stars")
 POSES = ("idle", "happy", "sleep")
-CLIENTS = {"webui": "Sito"}
+CLIENTS = {"webui": "Site"}
 
 
 def easter(year: int) -> date:
@@ -42,7 +42,7 @@ BUILTIN: dict[str, dict] = {
     "standard": {"name": "Standard", "palette": {}, "effect": "none", "prompt": ""},
     "compleanno": {"name": "Birthday", "palette": {"accent": "#D97706", "accent2": "#DB2777"}, "effect": "confetti",
                    "prompt": "soft festive birthday background, balloons, warm light, minimal, no text"},
-    "evento": {"name": "Giornata speciale", "palette": {"accent": "#7C3AED"}, "effect": "stars",
+    "evento": {"name": "Special day", "palette": {"accent": "#7C3AED"}, "effect": "stars",
                "prompt": "soft celebratory background, gentle sparkles, minimal, no text"},
     "capodanno": {"name": "Capodanno", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
                   "prompt": "new year night, gold fireworks, elegant minimal, no text"},
@@ -117,7 +117,7 @@ class Appearance:
             raise Invalid(tr("a name is needed"))
         effect = body.get("effect") or old.get("effect") or "none"
         if effect not in EFFECTS:
-            raise Invalid("effetto: " + ", ".join(EFFECTS))
+            raise Invalid(tr("effect: ") + ", ".join(EFFECTS))
         palette = body.get("palette") if isinstance(body.get("palette"), dict) else old.get("palette") or {}
         when = body.get("when") if isinstance(body.get("when"), dict) else old.get("when")
         if when and not all(isinstance(when.get(k), str) and len(when[k]) == 5 for k in ("from", "to")):

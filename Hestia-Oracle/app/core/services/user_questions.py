@@ -36,7 +36,7 @@ TOOL_PARAMETERS = {
         "kind": {"type": "string", "enum": list(KINDS), "description": "confirm | single_choice | multi_choice | free_text"},
         "options": {"type": "array", "items": {"type": "string"},
                     "description": "Choices for single_choice / multi_choice (2-8 short labels)"},
-        "allow_other": {"type": "boolean", "description": "Also accept a free answer («Altro…»)"},
+        "allow_other": {"type": "boolean", "description": "Also accept a free answer («Other…»)"},
     },
     "required": ["prompt"],
 }

@@ -23,7 +23,7 @@ class PhotoError(ValueError):
 def decode(upload: dict, max_mb: float) -> tuple[bytes, str]:
     """``{name, mime, data_b64}`` (plugin contract upload) → raw bytes + mime."""
     if not isinstance(upload, dict):
-        raise PhotoError("foto mancante")
+        raise PhotoError(tr("missing photo"))
     mime = str(upload.get("mime") or upload.get("content_type") or "").split(";")[0].strip().lower()
     raw64 = str(upload.get("data_b64") or upload.get("data_base64") or "")
     if raw64.startswith("data:") and "," in raw64:
@@ -36,7 +36,7 @@ def decode(upload: dict, max_mb: float) -> tuple[bytes, str]:
     except (binascii.Error, ValueError):
         raise PhotoError(tr("photo not readable"))
     if not raw:
-        raise PhotoError("foto vuota")
+        raise PhotoError(tr("empty photo"))
     if len(raw) > max_mb * 1024 * 1024:
         raise PhotoError(tr("photo larger than {0:g} MB", max_mb))
     return raw, mime or "image/jpeg"

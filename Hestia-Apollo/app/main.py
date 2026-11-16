@@ -150,7 +150,7 @@ kit.tools([
 transfer = Transfer("apollo", kit.hub, sections=[
     StoreSection("flussi", "Image workflows", kit.store, ["workflow"], icon="camera",
                  title=lambda r: r["data"].get("name", "")),
-    StoreSection("immagini", "Immagini create", kit.store, ["job"], icon="camera",
+    StoreSection("immagini", "Created images", kit.store, ["job"], icon="camera",
                  title=lambda r: r["data"].get("prompt", "")[:60], file_fields=["blob_ids"]),
 ])
 app.include_router(transfer.router())

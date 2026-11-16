@@ -58,7 +58,7 @@ try:
             title="Search messages", method="GET", path="/api/email/messages",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
-                telegram={"section": "Messaggi", "primary": 1}),
+                telegram={"section": "Messages", "primary": 1}),
         MCPTool(
             name="email_send",
             description="Send an email",
@@ -76,7 +76,7 @@ try:
             title="Write a message", method="POST", path="/api/email/send",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
-                telegram={"section": "Messaggi", "primary": 2, "label": "Scrivi"}),
+                telegram={"section": "Messages", "primary": 2, "label": "Write"}),
         MCPTool(
             name="email_thread",
             description="Show an email thread",
@@ -91,7 +91,7 @@ try:
             title="Open conversation", method="GET", path="/api/email/threads/$arg.id",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
-                telegram={"section": "Messaggi"}),
+                telegram={"section": "Messages"}),
         MCPTool(
             name="email_subscriptions",
             description="Show which modules receive which emails (subscriptions to Iris) and the last deliveries",
@@ -100,7 +100,7 @@ try:
             title="Email subscriptions", method="GET", path="/api/email/dispatch",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
-                telegram={"section": "Iscrizioni", "primary": 3, "label": "Iscrizioni"}),
+                telegram={"section": "alt::Subscriptions", "primary": 3, "label": "alt::Subscriptions"}),
         MCPTool(
             name="iris_reconcile",
             description="Run reconciliation maintenance in the Iris module",

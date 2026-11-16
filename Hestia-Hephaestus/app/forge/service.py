@@ -336,13 +336,13 @@ class Forge:
     # ── assistant agenda mirror ─────────────────────────────────────────────
     _AGENDA_LABELS = {
         "proposed": "⏳ to approve",
-        "queued": "🔨 in coda",
-        "running": "🔨 in lavorazione",
-        "reviewing": "🔎 revisione automatica",
+        "queued": "🔨 queued",
+        "running": "🔨 in progress",
+        "reviewing": "🔎 automatic review",
         "awaiting_review": "👀 diff to review",
         "waiting_limit": "⏸ waiting for Claude's limit",
-        "approved": "🔀 merge in corso",
-        "merging": "🔀 merge in corso",
+        "approved": "🔀 merging",
+        "merging": "🔀 merging",
     }
 
     def _mirror_agenda(self, task: dict) -> None:
@@ -689,10 +689,10 @@ class Forge:
                 cap = int((nights.get("params") or {}).get("night_max_tasks",
                                                            self.claude_budget.schedule.night_max_tasks))
                 if st["used_tonight"] < cap:
-                    return True, "agenda: finestra notturna"
+                    return True, tr("agenda: night window")
                 return False, f"agenda: tetto notturno raggiunto ({st['used_tonight']}/{cap})"
             skipped = nights.get("skipped_now") or final.get("skipped_now")
-            return False, "agenda: finestra saltata dall'utente" if skipped else "agenda: finestra chiusa"
+            return False, tr("agenda: window skipped by the user") if skipped else tr("agenda: window closed")
         return self.claude_budget.can_start()
 
     def presence_allows_autonomous(self) -> tuple[bool, str]:
@@ -1007,7 +1007,7 @@ class Forge:
                 logger.warning("[🔄] event=forge_push_failed task_id=%s error=%s", task["id"], exc)
 
         self._set_state(task, "awaiting_review", f"engine_ok={engine_ok} tests_ok={tests_ok}")
-        tests_label = {True: "✅ test ok", False: "❌ test falliti", None: tr("➖ no tests")}[tests_ok]
+        tests_label = {True: "✅ test ok", False: "❌ tests failed", None: tr("➖ no tests")}[tests_ok]
         short = task["id"][:6]
         self._notify(task, (
             tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nAnswer \"approva sviluppo {6}\" to apply it, \"rifiuta {7}\" to discard it.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))
@@ -1220,4 +1220,4 @@ def notes_text(task: dict) -> str:
     if not notes:
         return ""
     lines = [f"- [{n.get('by')}] {' '.join(str(n.get('text') or '').split())[:1500]}" for n in notes[-10:]]
-    return "\nNote sul task (analisi e indicazioni):\n" + "\n".join(lines)
+    return "\nNotes on the task (analysis and directions):\n" + "\n".join(lines)

@@ -177,7 +177,7 @@ def _supplements() -> dict:
 
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
-SUP = {"type": "string", "description": "id o nome dell'integratore"}
+SUP = {"type": "string", "description": "supplement id or name"}
 G = "alimentazione"
 kit.tools([
     MCPTool(name="cibo_oggi", description="Today's summary: meals, kcal and protein against the diet, supplements.",
@@ -235,7 +235,7 @@ transfer = Transfer("demeter", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
-    usecase(ESTIMATE_USE, "Alimentazione · stima kcal", chain="veloce",
+    usecase(ESTIMATE_USE, "Nutrition · kcal estimate", chain="veloce",
             help="Estimates kcal and protein of a meal described in words.")])})
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="leaf", color="green", description="Diet, meals with estimated calories, supplements in the week plan.",

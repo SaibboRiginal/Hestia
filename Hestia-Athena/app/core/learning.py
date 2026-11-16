@@ -175,7 +175,7 @@ class Learning:
         for f in findings[:10]:
             pid = uuid.uuid4().hex[:10]
             self._put("memory_proposal", pid, {**f, "id": pid, "at": _now(), "status": "pending"})
-            label = {"doppione": "alt::Duplicate", "contraddizione": "Contradiction"}.get(f["kind"], "Forse vecchia")
+            label = {"doppione": "alt::Duplicate", "contraddizione": "Contradiction"}.get(f["kind"], "Maybe outdated")
             lines = "\n".join(f"• {str(t)[:160]}" for t in f["facts"][:4])
             publish("service.action_required", f"memory.proposal.{pid}", {
                 "_title": tr("Memory · {0}", label), "_source": tr("Memory"), "_level": "info",

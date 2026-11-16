@@ -57,7 +57,7 @@ def _dist_dir() -> Path:
 
 
 plugin = PluginClient("scout", title="alt::Houses", icon="home", color="amber",
-                      description="Case trovate dalle email degli annunci: elenco, preferite, statistiche.",
+                      description="Houses found in the listing emails: list, favourites, statistics.",
                       dist=_dist_dir(), version=os.getenv("SCOUT_SERVICE_VERSION", "1.0.0"))
 plugin.webui(
     entry="scout.js", api_prefix="/api/ui/",
@@ -69,22 +69,22 @@ plugin.webui(
              help="Prices per city, new houses per week, state of the listings."),
     ],
     widgets=[
-        widget("numeri", "Case in numeri", element="scout-kpi-widget", sizes=["m", "xl"], size="m", auto=True,
+        widget("numeri", "Houses in numbers", element="scout-kpi-widget", sizes=["m", "xl"], size="m", auto=True,
                open_page="case", icon="home"),
-        widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
+        widget("nuove", "alt::New houses", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
                open_page="case", icon="home",
                params={"city": {"type": "string", "label": "City (empty = all)"},
                        "days": {"type": "int", "label": "Last days", "default": NEW_DAYS}}),
-        widget("preferite", "Case preferite", element="scout-favorites-widget", sizes=["m", "l"], size="l",
+        widget("preferite", "Favourite houses", element="scout-favorites-widget", sizes=["m", "l"], size="l",
                open_page="case", icon="star"),
         widget("prezzi", "Prices per city", element="scout-prices-widget", sizes=["l", "xl"], size="l",
                open_page="statistiche", icon="chart"),
     ],
     quick_actions=[
-        quick_action("controlla", "Controlla email annunci", "POST", "/api/ui/cycle", icon="refresh",
+        quick_action("controlla", "Check listing emails", "POST", "/api/ui/cycle", icon="refresh",
                      group="Houses", order=21),
         quick_action("preferita", "f::Favourite", "POST", "/api/ui/listings/{id}/favorite", icon="star",
-                     group="Nuove case", source="/api/ui/quick/new", order=20,
+                     group="alt::New houses", source="/api/ui/quick/new", order=20,
                      undo={"method": "DELETE", "path": "/api/ui/listings/{id}/favorite"}),
     ],
 )

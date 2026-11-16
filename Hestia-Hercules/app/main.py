@@ -561,7 +561,7 @@ def module_context(budget: int = 400, topic: str = ""):
     text = tr("Workout: ") + _summary_with_plan()["text"]
     hints = [a["hint"] for a in _activity_hints()]
     if hints:
-        text += " · All'aperto: " + ", ".join(hints)
+        text += tr(" · Outdoors: ") + ", ".join(hints)
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
     return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": text}
@@ -819,15 +819,15 @@ ui.webui(
                     icon="check"),
              widget("record", "Recent records", element="hercules-prs-widget", sizes=["m", "l"], open_page="progressi",
                     icon="trophy"),
-             widget("esercizio", "Progresso esercizio", element="hercules-exercise-widget", sizes=["m", "l", "xl"],
-                    params={"exercise": {"type": "string", "label": "Esercizio (nome)"}}, open_page="esercizi",
+             widget("esercizio", "Exercise progress", element="hercules-exercise-widget", sizes=["m", "l", "xl"],
+                    params={"exercise": {"type": "string", "label": "Exercise (name)"}}, open_page="esercizi",
                     icon="chart"),
              widget("muscoli", "Volume per muscle", element="hercules-volume-widget", sizes=["m", "l"],
                     params={"weeks": {"type": "int", "label": "Weeks", "default": 4}}, open_page="progressi",
                     icon="chart"),
              widget("peso", "Body weight", element="hercules-weight-widget", sizes=["s", "m", "l"], open_page="corpo",
                     icon="scale"),
-             widget("live", "Allenamento in corso", element="hercules-live-widget", sizes=["m", "l"],
+             widget("live", "Workout in progress", element="hercules-live-widget", sizes=["m", "l"],
                     open_page="allenamento", icon="timer")],
     quick_actions=[
         quick_action("fatto", "Mark done", "POST", f"{API}/quick/{{id}}", icon="check", group="Training",
@@ -835,10 +835,10 @@ ui.webui(
                      favorite=True, order=30),
         quick_action("inizia", "Start today's workout", "POST", f"{API}/sessions/start-next", icon="play",
                      group="Training", order=31),
-        quick_action("peso", "Registra peso corporeo", "POST", f"{API}/quick-bodyweight", icon="scale",
-                     group="Training", params={"peso": {"type": "float", "label": "Peso (kg)"}}, order=32),
+        quick_action("peso", "Log body weight", "POST", f"{API}/quick-bodyweight", icon="scale",
+                     group="Training", params={"peso": {"type": "float", "label": "Weight (kg)"}}, order=32),
         quick_action("corsa", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
-                     params={"km": {"type": "float", "label": "Km (facoltativo)"}},
+                     params={"km": {"type": "float", "label": "Km (optional)"}},
                      undo={"method": "DELETE", "path": f"{API}/activities/quick-run"}, order=34),
         quick_action("salta", "Skip today", "POST", f"{API}/days/skip", icon="skip", group="Training",
                      undo={"method": "DELETE", "path": f"{API}/days/skip"}, order=33),
@@ -850,15 +850,15 @@ app.include_router(settings.router())
 # ── export / import (hestia_common.transfer; reminder and adaptation rows are runtime state) ────────────────
 transfer = Transfer("hercules", hub, sections=[
     StoreSection("esercizi", "Exercises", store, ["exercise"], icon="dumbbell"),
-    StoreSection("schede", "Schede e programmi", store, ["template", "program"], icon="list",
+    StoreSection("schede", "Workouts and programs", store, ["template", "program"], icon="list",
                  depends_on=["esercizi"]),
     StoreSection("sessioni", "Sessions", store, ["session", "set"], item_kinds=["session"], icon="history",
                  title=lambda r: r["data"].get("name") or tr("Session"),
                  subtitle=lambda r: str(r["data"].get("started_at") or r.get("at") or "")[:10],
                  depends_on=["esercizi", "schede"]),
-    StoreSection("misure", "Misure", store, ["measurement"], icon="scale",
+    StoreSection("misure", "Measurements", store, ["measurement"], icon="scale",
                  title=lambda r: f"{r['data'].get('kind')}: {r['data'].get('value')} {r['data'].get('unit') or ''}"),
-    StoreSection("obiettivi", "Obiettivi e piani", store, ["goal", "plan"], icon="target",
+    StoreSection("obiettivi", "Goals and plans", store, ["goal", "plan"], icon="target",
                  title=lambda r: r["data"].get("label") or r["data"].get("note") or r["data"].get("date") or r["id"],
                  depends_on=["esercizi", "schede"]),
     StoreSection("feedback", "Check-in e note", store, ["checkin", "feedback"], icon="note",
@@ -1101,13 +1101,13 @@ try:
                 parameters={"type": "object", "properties": {"days": I, "exercise": S, "limit": I}},
                 handler=_t(_history), title="Workout history", path=f"{API}/sessions", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Storico e statistiche", "label": "History"}),
+                telegram={"section": "History and statistics", "label": "History"}),
         MCPTool(name="fitness_exercise_stats", description="Records and trend of an exercise (estimated max, top weight, last sessions, plateau).", parameters={"type": "object", "properties": {"exercise": S},
                                                                        "required": ["exercise"]},
                 handler=_t(_exercise_stats), title="Exercise statistics", path=f"{API}/records", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Storico e statistiche"}),
-        MCPTool(name="fitness_search_exercises", description="Search exercises in the catalogue (name or muscle: petto, spalle, braccia, schiena, core, gambe).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
+                telegram={"section": "History and statistics"}),
+        MCPTool(name="fitness_search_exercises", description="Search exercises in the catalogue (name or muscle: chest, shoulders, arms, back, core, legs).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
                 handler=_t(_search), title="Search exercises", path=f"{API}/exercises", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
                 telegram={"section": "Workout plans"}),
@@ -1131,8 +1131,7 @@ try:
                 title="End workout", method="POST", path=f"{API}/sessions/{{id}}/finish",
                 clients=["telegram", "ui"], telegram_group="allenamento",
                 telegram={"section": "Today"}),
-        MCPTool(name="fitness_checkin", description=("Save how the user feels today: energy 1-5, sleep 1-5, soreness, pain (spalla, ginocchio, "
-                                                     "schiena…), minutes available."),
+        MCPTool(name="fitness_checkin", description=("Save how the user feels today: energy 1-5, sleep 1-5, soreness, pain (shoulder, knee, back…), minutes available."),
                 parameters={"type": "object", "properties": {"energy": I, "sleep": I, "soreness": L, "pain_areas": L,
                                                              "time_minutes": I, "free_text": S}},
                 handler=_t(_checkin), title="How are you today", method="POST", path=f"{API}/checkin", clients=["ui"],
@@ -1190,14 +1189,14 @@ try:
                     "value": {"type": "number"}, "kind": S}, "required": ["value"]},
                 handler=_t(_measure), title="Log weight", method="POST", path=f"{API}/measurements",
                 clients=["telegram", "ui"], telegram_group="allenamento",
-                telegram={"section": "Obiettivi e corpo", "primary": 3}),
+                telegram={"section": "Goals and body", "primary": 3}),
         MCPTool(name="fitness_set_goal", description=("Set a training goal: times per day|week|month; scope any, template (target = template name) or "
                                                       "muscle (petto, spalle, braccia, schiena, core, gambe)."),
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
                 handler=_t(_goal), title="Workout goal", method="POST", path=f"{API}/goals", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Obiettivi e corpo"}),
+                telegram={"section": "Goals and body"}),
         MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («ho voglia di correre 2 volte questa settimana»): kind "
                                                            "corsa|bici|camminata|nuoto|altro, times, place (name of a saved place or a city; empty = Casa), "
                                                            "minutes, week (empty = this one, 'next' = next). Proposes the best moments from weather and "
@@ -1214,8 +1213,7 @@ try:
                 path=f"{API}/activities/{{plan_id}}/confirm", clients=["ui"], telegram_visible=False,
                 telegram_group="allenamento",
                 telegram={"section": "Activity"}),
-        MCPTool(name="fitness_log_activity", description=("Log an activity done («ho corso 5 km»): kind, date (empty = today), minutes, km, note. Closes "
-                                                          "the planned moment of that day if there is one."),
+        MCPTool(name="fitness_log_activity", description=("Log an activity done («I ran 5 km»): kind, date (empty = today), minutes, km, note. Closes the planned moment of that day if there is one."),
                 parameters={"type": "object", "properties": {"kind": S, "date": S, "minutes": I,
                                                              "km": {"type": "number"}, "note": S}},
                 handler=_t(_log_activity), title="Log activity", method="POST", path=f"{API}/activities/log",

@@ -123,7 +123,7 @@ def recheck(service: str) -> dict:
     logger.info("[🔄] event=argus_recheck_still_unhealthy service=%s status=%s remediation_ok=%s next_attempt=%d",
                 service, report_status, ok, _repair_attempts.get(service, 0))
     return {"status": "ok", "service": service, "health": report_status,
-            "message": f"{service}: {report_status}" + (" · riparazione richiesta" if ok else ""),
+            "message": f"{service}: {report_status}" + (tr(" · repair requested") if ok else ""),
             "remediation_requested": ok, "remediation": response,
             "next_attempt": _repair_attempts.get(service, 0)}
 
@@ -386,7 +386,7 @@ def _run_once() -> None:
                 )
                 health_history.note_action(
                     name, "remediation",
-                    "Riparazione richiesta a Hephaestus" + (" (prova, dry-run)" if dry_run else ""), ok=ok)
+                    tr("Repair requested") + (tr(" (test, dry-run)") if dry_run else ""), ok=ok)
                 logger.info(
                     "event=argus_autoremediate_requested service=%s ok=%s dry_run=%s response=%s",
                     name,

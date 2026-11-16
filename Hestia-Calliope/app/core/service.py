@@ -38,9 +38,9 @@ class Documents:
             raise Invalid(tr("a title is needed"))
         fmt = str(fmt or "pdf").lower().lstrip(".")
         if fmt not in FORMATS:
-            raise Invalid("formato: pdf, docx o xlsx")
+            raise Invalid(tr("format: pdf, docx or xlsx"))
         if len(html or "") > MAX_HTML:
-            raise Invalid("testo troppo lungo")
+            raise Invalid(tr("text too long"))
         theme = theme if theme in THEMES else (self.get("calliope.tema", "moderno") or "moderno")
         must = [must_contain] if isinstance(must_contain, str) else list(must_contain or [])
         blocks = parse(html)

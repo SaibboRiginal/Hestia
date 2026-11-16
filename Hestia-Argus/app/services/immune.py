@@ -93,7 +93,7 @@ def _restart(service: str, attempt: int, limit: int) -> None:
     status = str(res.get("status") or ("error" if not ok else ""))
     text = {"ok": tr("Restarted and healthy again") if healthy else tr("Restarted, still not answering"),
             "skipped": tr("Restart left to the release in progress"), "refused": tr("Restart not allowed")}.get(
-        status, "Riavvio non riuscito")
+        status, tr("Restart failed"))
     health_history.note_action(service, "restart_result", text, ok=healthy)
     logger.info("[🔄] event=immune_restart_done service=%s attempt=%s status=%s healthy=%s",
                 service, attempt, status, healthy)

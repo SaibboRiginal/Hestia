@@ -27,14 +27,14 @@ REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
 PENDING_REMIND_HOURS = "hermes.attesa.richiamo_ore"
 ACTIVE_CLIENT_MINUTES = "hermes.consegna.client_attivo_minuti"
 NOTIFICATION_STYLE = "hermes.notifiche.stile"
-STYLES = [("scheda", "Workout plan"), ("frase", "Frase di Hestia")]
+STYLES = [("scheda", "Workout plan"), ("frase", "Hestia's sentence")]
 
 settings = SettingsClient("hermes")
 settings.declare([
-    setting(DELIVERY_MAX_ATTEMPTS, "Delivery attempts per client", "int", 6, group="Consegna",
+    setting(DELIVERY_MAX_ATTEMPTS, "Delivery attempts per client", "int", 6, group="Delivery",
             min=1, max=50,
             help="How many times I try to deliver a notification to a client (Telegram, WebUI) before giving up for that client."),
-    setting(DELIVERY_RETRY_INTERVAL, "Intervallo tra i tentativi", "int", 120, group="Consegna",
+    setting(DELIVERY_RETRY_INTERVAL, "Interval between attempts", "int", 120, group="Delivery",
             min=15, max=3600, unit="s", advanced=True,
             help="How often I retry failed deliveries."),
     setting(DEDUPE_RECURRING_MAX_AGE, "Repeat recurring notices after", "int", 3600, group="Anti-duplicati",
@@ -49,7 +49,7 @@ settings.declare([
     setting(BATCH_MAX_ATTEMPTS, "Attempts for a group of listings", "int", 6, group="Raggruppamento",
             min=1, max=20, advanced=True,
             help="How many times I retry sending a group of listings (with growing waits) before giving up."),
-    setting(RETRACT_AFTER, "Remove handled notifications from the chat after", "int", 6, group="Pulizia",
+    setting(RETRACT_AFTER, "Remove handled notifications from the chat after", "int", 6, group="Cleanup",
             min=1, max=46, unit="h",
             help="Notifications already seen or handled disappear from the Telegram chat after this time (they stay in the WebUI list). Telegram allows deleting them only within 48 h."),
     setting(REPEAT_RESET_AFTER_DAYS, "Reset the reminder counter after", "int", 30, group="Reminders",
@@ -58,12 +58,11 @@ settings.declare([
     setting(PENDING_REMIND_HOURS, "Remind me of things to decide after", "int", 4, group="To decide",
             min=1, max=72, unit="h",
             help="If a notification waiting for your answer stays there for this long, I send you a single reminder with all those waiting (once for each)."),
-    setting(ACTIVE_CLIENT_MINUTES, "Ring only where you are using me, for", "int", 10, group="Consegna",
+    setting(ACTIVE_CLIENT_MINUTES, "Ring only where you are using me, for", "int", 10, group="Delivery",
             min=0, max=240, unit="min",
             help="If you used me from an app (Telegram, WebUI) in these minutes, the notification rings only there; in the others it arrives silently. 0 = rings everywhere."),
-    setting(NOTIFICATION_STYLE, "Notification style", "enum", "scheda", group="Consegna", options=STYLES,
-            help="Scheda: come sempre. Frase di Hestia: le notifiche informative arrivano come una sua frase "
-                 "breve, come in chat; avvisi, errori e quelle con pulsanti o domande restano schede."),
+    setting(NOTIFICATION_STYLE, "Notification style", "enum", "scheda", group="Delivery", options=STYLES,
+            help="Card: as always. Hestia's sentence: informative notifications arrive as a short sentence of hers, as in chat; warnings, errors and those with buttons or questions stay cards."),
 ]).declare_log_level().follow_personal()   # assistant name, she/he, owner: the «frase» style speaks as her
 
 

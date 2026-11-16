@@ -269,7 +269,7 @@ def blocks_write(part: str, body: dict = Body(...)):
     key = _PARTS.get(part)
     value = body.get("value")
     if not key:
-        raise NotFound("parte sconosciuta: providers, chains o usecases")
+        raise NotFound(tr("unknown part: providers, chains or usecases"))
     if not isinstance(value, dict) or any(not isinstance(v, dict) for v in value.values()):
         raise Invalid(tr("an object name → settings is needed"))
     if part == "providers":
@@ -280,7 +280,7 @@ def blocks_write(part: str, body: dict = Body(...)):
         if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
                             for c in value.values()):
             raise Invalid(tr("each chain needs a direction (listening or voice) and a list of steps"))
-    if not settings.put(key, value, actor="user", reason="WebUI Voce"):
+    if not settings.put(key, value, actor="user", reason=tr("WebUI Voice")):
         raise HTTPException(status_code=502, detail=tr("The settings did not accept the change"))
     return {"status": "ok", "key": key}
 
@@ -403,7 +403,7 @@ def _audio_body(body: dict) -> tuple[bytes, str]:
     f = body.get("audio") if isinstance(body.get("audio"), dict) else {}
     raw = base64.b64decode(str(body.get("audio_b64") or f.get("data_b64") or "").split(",", 1)[-1] or b"")
     if not raw:
-        raise Invalid("audio vuoto")
+        raise Invalid(tr("empty audio"))
     return raw, str(body.get("mime_type") or f.get("mime") or "audio/ogg").split(";")[0].strip().lower()
 
 
@@ -470,16 +470,15 @@ def _t(name, title, description, method, path, props=None, required=None, label=
 _echo_tools = [
     _t("voce_download", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
     _t("voce_scarica", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
-                                           "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Scarica voci"),
+                                           "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Download voices"),
     _t("voce_dizionario", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
                                                     "their corrections."), "GET", f"{API}/dictionary",
-       label="Dizionario"),
+       label="Dictionary"),
     _t("voce_parola", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
        {"word": {"type": "string", "description": "The word, spelled right"}}, ["word"]),
     _t("voce_parola_togli", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
        API + "/dictionary/{word}", {"word": {"type": "string", "description": "The word to remove"}}, ["word"]),
-    _t("voce_correzione", "Fix a transcription", ("When the user corrects a badly transcribed voice message («volevo dire …»): text heard and "
-                                                        "right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
+    _t("voce_correzione", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
        {"heard": {"type": "string", "description": "What was transcribed"},
         "corrected": {"type": "string", "description": "The right text"}}, ["heard", "corrected"]),
     _t("voce_impronta", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",

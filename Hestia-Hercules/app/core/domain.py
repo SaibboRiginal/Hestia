@@ -122,7 +122,7 @@ def program(d: dict) -> dict:
         raise Invalid(tr("the programme needs a name"))
     mode = d.get("mode") or "weekly"
     if mode not in ("weekly", "rotation"):
-        raise Invalid("modo programma: weekly o rotation")
+        raise Invalid(tr("program mode: weekly or rotation"))
     days = []
     for day in d.get("days") or []:
         if not day.get("template_id"):
@@ -136,7 +136,7 @@ def program(d: dict) -> dict:
 
 def session_exercise(d: dict) -> dict:
     if not d.get("exercise_id"):
-        raise Invalid("esercizio mancante")
+        raise Invalid(tr("missing exercise"))
     return {"id": d.get("id") or new_id(), "exercise_id": str(d["exercise_id"]),
             "superset": _str(d.get("superset"), 10) or None, "notes": _str(d.get("notes")),
             "rest_seconds": _num(d.get("rest_seconds"), lo=0, hi=1800, integer=True),
@@ -149,7 +149,7 @@ def session(d: dict) -> dict:
     if status not in SESSION_STATUS:
         raise Invalid(tr("invalid state: {0}", status))
     if not d.get("started_at"):
-        raise Invalid("started_at mancante")
+        raise Invalid(tr("missing started_at"))
     readiness = d.get("readiness") or {}
     return {**d, "name": _str(d.get("name"), 120) or tr("Training"), "status": status,
             "started_at": d["started_at"], "ended_at": d.get("ended_at") or None,
@@ -184,9 +184,9 @@ def measurement(d: dict) -> dict:
     kind = _str(d.get("kind"), 40) or "bodyweight"
     value = _num(d.get("value"), lo=0, hi=1000)
     if value is None:
-        raise Invalid("valore mancante")
+        raise Invalid(tr("missing value"))
     if not d.get("taken_at"):
-        raise Invalid("taken_at mancante")
+        raise Invalid(tr("missing taken_at"))
     return {**d, "kind": kind, "value": value, "unit": _str(d.get("unit"), 10) or MEASUREMENTS.get(kind, ""),
             "taken_at": d["taken_at"], "notes": _str(d.get("notes"), 300)}
 
@@ -195,7 +195,7 @@ def feedback(d: dict) -> dict:
     tags = _list(d.get("tags"), FEEDBACK_TAGS)
     text = _str(d.get("text"), 1000)
     if not tags and not text:
-        raise Invalid("feedback vuoto")
+        raise Invalid(tr("empty feedback"))
     return {**d, "tags": tags, "text": text, "session_id": d.get("session_id") or None,
             "exercise_id": d.get("exercise_id") or None, "at": d.get("at"),
             "joints": _list(d.get("joints"), JOINTS), "source": d.get("source") or "ui"}
@@ -204,15 +204,15 @@ def feedback(d: dict) -> dict:
 def goal(d: dict) -> dict:
     scope = d.get("scope") or "any"
     if scope not in ("any", "template", "muscle"):
-        raise Invalid("ambito obiettivo: any, template o muscle")
+        raise Invalid(tr("goal scope: any, template or muscle"))
     per = d.get("per") or "week"
     if per not in PERIODS:
-        raise Invalid("periodo: day, week o month")
+        raise Invalid(tr("period: day, week or month"))
     times = _num(d.get("times"), lo=1, hi=31, integer=True)
     if not times:
-        raise Invalid("quante volte?")
+        raise Invalid(tr("how many times?"))
     if scope != "any" and not d.get("target_id"):
-        raise Invalid("obiettivo specifico senza scheda o muscolo")
+        raise Invalid(tr("specific goal without workout or muscle"))
     return {**d, "scope": scope, "target_id": d.get("target_id") or None, "times": times, "per": per,
             "active": bool(d.get("active", True)), "min_hard_sets": _num(d.get("min_hard_sets"), lo=1, hi=30, integer=True) or 4,
             "label": _str(d.get("label"), 80)}
@@ -222,7 +222,7 @@ def plan(d: dict) -> dict:
     """A day override of the program: do template X on date D, or skip D, or D moved elsewhere."""
     day = _str(d.get("date"), 10)
     if len(day) != 10:
-        raise Invalid("data mancante (YYYY-MM-DD)")
+        raise Invalid(tr("missing date (YYYY-MM-DD)"))
     status = d.get("status") or "planned"
     if status not in PLAN_STATUS:
         raise Invalid(tr("invalid state: {0}", status))
@@ -233,7 +233,7 @@ def plan(d: dict) -> dict:
 def checkin(d: dict) -> dict:
     """How I feel today (energy 1–5, sleep 1–5, soreness/pain areas, minutes available)."""
     if not d.get("at"):
-        raise Invalid("at mancante")
+        raise Invalid(tr("missing at"))
     return {**d, "energy": _num(d.get("energy"), lo=1, hi=5, integer=True),
             "sleep": _num(d.get("sleep"), lo=1, hi=5, integer=True), "stress": _num(d.get("stress"), lo=1, hi=5, integer=True),
             "soreness": _list(d.get("soreness")), "pain_areas": _list(d.get("pain_areas")),

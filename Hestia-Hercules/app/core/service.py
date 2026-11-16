@@ -610,7 +610,7 @@ class Hercules:
             return None
         return self.checkin({"sleep": sleep, "energy": energy, "source": "device",
                              "free_text": f"dall'orologio · prontezza {item['readiness']}" if item.get("readiness")
-                             is not None else "dall'orologio"})
+                             is not None else tr("from the watch")})
 
     def feedback(self, body: dict) -> dict:
         return self.save("feedback", {**body, "at": body.get("at") or now_iso()})
@@ -787,7 +787,7 @@ class Hercules:
                          f" · {nxt.get('estimated_minutes', '?')} min")
         if goals:
             g = goals[0]["progress"]
-            lines.append(f"{g['label']}: {g['hint']}" + (" (indietro)" if g["behind"] else ""))
+            lines.append(f"{g['label']}: {g['hint']}" + (tr(" (behind)") if g["behind"] else ""))
         else:
             lines.append(tr("Week: {0} workouts", week[-1]['sessions']))
         # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km di corsa» logged, then
@@ -936,7 +936,7 @@ class Hercules:
                 if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder", "activity_plan", "activity"):
                     raise domain.Invalid(f"tipo sconosciuto: {kind}")
                 if not rid:
-                    raise domain.Invalid("id mancante")
+                    raise domain.Invalid(tr("missing id"))
                 updated = op.get("updated_at") or now_iso()
                 if op.get("action") == "delete":
                     cur = self.store.get(kind, rid, deleted=True)
