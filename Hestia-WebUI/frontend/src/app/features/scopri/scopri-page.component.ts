@@ -12,19 +12,19 @@ import { tr, TrPipe } from '../../core/i18n';
   imports: [TrPipe, ...UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'Scopri' | tr" [subtitle]="subtitle()">
-      <button hx-btn variant="ghost" size="sm" icon="refresh" [loading]="loading()" (click)="load()">{{ "Aggiorna" | tr }}</button>
+    <hx-page-header  [title]="'Discover' | tr" [subtitle]="subtitle()">
+      <button hx-btn variant="ghost" size="sm" icon="refresh" [loading]="loading()" (click)="load()">{{ "Refresh" | tr }}</button>
     </hx-page-header>
     <div class="body">
       <div class="search"><hx-icon name="search" [size]="15" />
-        <input class="hx-input"  [placeholder]="'Cerca tra le funzioni' | tr" [value]="query()" (input)="query.set($any($event.target).value)"  [attr.aria-label]="'Cerca' | tr"></div>
+        <input class="hx-input"  [placeholder]="'Search among the functions' | tr" [value]="query()" (input)="query.set($any($event.target).value)"  [attr.aria-label]="'Search' | tr"></div>
       @if (loading() && !items().length) {
         <div class="center"><hx-spinner /></div>
       } @else if (error()) {
-        <hx-empty icon="offline"  [title]="'Non disponibile' | tr">{{ "Riprova tra poco." | tr }}
-          <button hx-btn size="sm" icon="refresh" (click)="load()">{{ "Riprova" | tr }}</button></hx-empty>
+        <hx-empty icon="offline"  [title]="'Unavailable' | tr">{{ "Try again shortly." | tr }}
+          <button hx-btn size="sm" icon="refresh" (click)="load()">{{ "Try again" | tr }}</button></hx-empty>
       } @else if (!shown().length) {
-        <hx-empty icon="check-circle"  [title]="'Hai già provato tutto' | tr">{{ query() ? ('Niente con queste parole.' | tr) : ('Quando arrivano funzioni nuove le trovi qui.' | tr) }}</hx-empty>
+        <hx-empty icon="check-circle"  [title]="'You\\'ve already tried everything' | tr">{{ query() ? ('Nothing with these words.' | tr) : ('When new features arrive you find them here.' | tr) }}</hx-empty>
       } @else {
         @for (g of groups(); track g.key) {
           <section>
@@ -35,8 +35,8 @@ import { tr, TrPipe } from '../../core/i18n';
                   <div class="t">{{ it.title }}</div>
                   @if (it.description) { <div class="d">{{ it.description }}</div> }
                   <div class="f">
-                    <span class="r">{{ it.reason || (it.uses ? ('Usata ' | tr) + it.uses + (it.uses === 1 ? ' volta' : ' volte') : ('Mai usata' | tr)) }}</span>
-                    <button hx-btn size="sm" variant="primary" icon="play" (click)="metis.open(it.tool, {}, it.title)">{{ "Prova" | tr }}</button>
+                    <span class="r">{{ it.reason || (it.uses ? ('Used ' | tr) + it.uses + (it.uses === 1 ? ' volta' : ' volte') : ('Never used' | tr)) }}</span>
+                    <button hx-btn size="sm" variant="primary" icon="play" (click)="metis.open(it.tool, {}, it.title)">{{ "alt::Test" | tr }}</button>
                   </div>
                 </article>
               }
@@ -80,11 +80,11 @@ export class ScopriPageComponent implements OnInit {
   readonly groups = computed(() => {
     const by = new Map<string, ScopriItem[]>();
     for (const it of this.shown()) { const k = it.area || 'altro'; by.set(k, [...(by.get(k) ?? []), it]); }
-    return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || tr('Altro'),
+    return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || tr('Other'),
       icon: items[0].area_icon || 'puzzle', order: items[0].area_order ?? 999 }))
       .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
   });
-  readonly subtitle = computed(() => this.total() ? tr("{0} cose da provare", this.total()) : tr('Quello che sai fare con Hestia e non hai ancora provato'));
+  readonly subtitle = computed(() => this.total() ? tr("{0} things to try", this.total()) : tr('What you can do with Hestia and haven\'t tried yet'));
 
   ngOnInit(): void { void this.load(); }
 

@@ -49,11 +49,11 @@ def _step(provider: str, model: str = "", voice: str = "", **options) -> dict:
 
 
 DEFAULT_CHAINS: dict[str, dict] = {
-    "ascolto": {"label": "Ascolto", "direction": "ascolto", "steps": [
+    "ascolto": {"label": "Listening", "direction": "ascolto", "steps": [
         _step("whisper-locale", "small"), _step("groq", "whisper-large-v3-turbo")]},
     "ascolto-preciso": {"label": "Ascolto preciso", "direction": "ascolto", "steps": [
         _step("groq", "whisper-large-v3"), _step("whisper-locale", "medium")]},
-    "voce": {"label": "Voce", "direction": "voce", "steps": [
+    "voce": {"label": "Voice", "direction": "voce", "steps": [
         _step("kokoro", voice="if_sara"), _step("piper", voice="it_IT-paola-medium")]},
     "voce-naturale": {"label": "Voce naturale", "direction": "voce", "steps": [
         _step("kokoro", voice="if_sara"), _step("google", voice="it-IT-Neural2-A"),
@@ -63,9 +63,9 @@ DEFAULT_CHAINS: dict[str, dict] = {
 # Echo's own uses (the plugin's test box); callers declare theirs.
 ECHO_USECASES = {
     "echo.prova.ascolto": {"label": "Prova · ascolto", "direction": "ascolto", "chain": "ascolto",
-                           "help": "Il microfono della pagina Voce."},
+                           "help": "The microphone of the Voice page."},
     "echo.prova.voce": {"label": "Prova · voce", "direction": "voce", "chain": "voce",
-                        "help": "Il tasto «parla» della pagina Voce."},
+                        "help": "The «speak» button of the Voice page."},
 }
 
 
@@ -219,7 +219,7 @@ class Blocks:
         for uc, direction in seen.items():
             out.setdefault(uc, {"id": uc, "module": uc.split(".", 1)[0], "label": uc, "direction": direction,
                                 "chain": direction, "mode": "segui", "undeclared": True,
-                                "help": "Non dichiarato: usa la catena predefinita della direzione."})
+                                "help": tr("Not declared: uses the default chain of the direction.")})
         return out
 
     def describe_usecases(self) -> list[dict]:
@@ -280,12 +280,12 @@ class Blocks:
                     errors.append(f"{p['name']}: {exc}")
                     logger.warning("[🔄] event=voice_external_failed provider=%s error=%s", p["name"], str(exc)[:200])
             else:
-                errors.append(tr("motore esterno non pronto"))
+                errors.append(tr("external engine not ready"))
             if str(self.get(FALLBACK_KEY, "interna") or "interna") != "interna":
                 raise ChainExhausted("; ".join(errors))
         chain = self.chains().get(cfg["chain"])
         if not chain:
-            raise ChainExhausted(tr("nessuna catena di {0}", direction))
+            raise ChainExhausted(tr("no {0} chain", direction))
         provs = self.providers()
         for i, s in enumerate(chain["steps"]):
             p = provs.get(s["provider"])

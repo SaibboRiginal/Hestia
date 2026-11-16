@@ -25,36 +25,36 @@ export class PlutusTxForm extends HestiaElement {
   private set(k: string, v: any) { this.f = { ...this.f, [k]: v }; }
   private async save() {
     const f = this.f;
-    if (!String(f.amount).trim()) { this.host.toast(tr('Manca l\'importo'), 'warning'); return; }
+    if (!String(f.amount).trim()) { this.host.toast(tr('The amount is missing'), 'warning'); return; }
     this.busy = true;
     const body: any = { amount: f.amount, type: f.type, merchant: f.merchant, date: f.date, account: f.account, notes: f.notes };
     if (f.category) body.category = f.category;
     const r = this.tx?.id ? await call(this.host, 'PUT', `${API}/transactions/${this.tx.id}`, { body: { ...body, learn: f.learn } })
       : await call(this.host, 'POST', `${API}/transactions`, { body: { ...body, source: 'manual' } });
     this.busy = false;
-    if (r.ok) { this.host.toast(this.tx?.id ? tr('Salvato') : `Registrato: ${money(r.data.amount, r.data.currency, true)}`, 'success'); this.close(r.data); }
+    if (r.ok) { this.host.toast(this.tx?.id ? tr('Saved') : `Registrato: ${money(r.data.amount, r.data.currency, true)}`, 'success'); this.close(r.data); }
   }
   private close(saved: any = null) { this.dispatchEvent(new CustomEvent('close', { detail: saved, bubbles: true, composed: true })); }
   render() {
     const f = this.f;
     const cats = (this.m?.categories || []).filter((c: any) => f.type === 'income' ? c.kind !== 'expense' : c.kind !== 'income');
     return html`<div class="sheet" @click=${(e: Event) => { if (e.target === e.currentTarget) this.close(); }}><div class="card col">
-      <div class="between"><h2>${this.tx?.id ? tr('Modifica movimento') : tr('Nuovo movimento')}</h2><hxk-button variant="ghost" icon="x" @click=${() => this.close()}></hxk-button></div>
-      <div class="tabs">${[['expense', tr('Spesa')], ['income', tr('Entrata')]].map(([k, l]) => html`<button class="tab" aria-pressed=${f.type === k} @click=${() => this.set('type', k)}>${l}</button>`)}</div>
+      <div class="between"><h2>${this.tx?.id ? tr('Edit transaction') : tr('New transaction')}</h2><hxk-button variant="ghost" icon="x" @click=${() => this.close()}></hxk-button></div>
+      <div class="tabs">${[['expense', tr('Expense')], ['income', tr('Income')]].map(([k, l]) => html`<button class="tab" aria-pressed=${f.type === k} @click=${() => this.set('type', k)}>${l}</button>`)}</div>
       <div class="form">
-        <label>${tr("Importo")}<input class="in money" inputmode="decimal" placeholder="0,00" .value=${f.amount} @input=${(e: any) => this.set('amount', e.target.value)}></label>
-        <label>${tr("Data")}<input class="in" type="date" .value=${f.date} @change=${(e: any) => this.set('date', e.target.value)}></label>
-        <label class="full">${tr("Dove / cosa")}<input class="in" placeholder=${tr("es. Esselunga, bar, affitto")} .value=${f.merchant} @input=${(e: any) => this.set('merchant', e.target.value)}></label>
-        <label>${tr("Conto")}<select class="in" @change=${(e: any) => this.set('account', e.target.value)}>
+        <label>${tr("Amount")}<input class="in money" inputmode="decimal" placeholder="0,00" .value=${f.amount} @input=${(e: any) => this.set('amount', e.target.value)}></label>
+        <label>${tr("Date")}<input class="in" type="date" .value=${f.date} @change=${(e: any) => this.set('date', e.target.value)}></label>
+        <label class="full">${tr("Where / what")}<input class="in" placeholder=${tr("e.g. supermarket, bar, rent")} .value=${f.merchant} @input=${(e: any) => this.set('merchant', e.target.value)}></label>
+        <label>${tr("Account")}<select class="in" @change=${(e: any) => this.set('account', e.target.value)}>
           ${(this.m?.accounts || []).map((a: any) => html`<option value=${a.id} ?selected=${a.id === f.account}>${a.name}</option>`)}</select></label>
-        <label>${tr("Categoria")}<select class="in" @change=${(e: any) => this.set('category', e.target.value)}>
-          <option value="" ?selected=${!f.category}>${tr("Automatica (dalle regole)")}</option>
+        <label>${tr("Category")}<select class="in" @change=${(e: any) => this.set('category', e.target.value)}>
+          <option value="" ?selected=${!f.category}>${tr("Automatic (from the rules)")}</option>
           ${cats.map((c: any) => html`<option value=${c.id} ?selected=${c.id === f.category}>${c.label}</option>`)}</select></label>
-        <label class="full">${tr("Note")}<input class="in" .value=${f.notes} @input=${(e: any) => this.set('notes', e.target.value)}></label>
+        <label class="full">${tr("Notes")}<input class="in" .value=${f.notes} @input=${(e: any) => this.set('notes', e.target.value)}></label>
         ${this.tx?.id && f.merchant ? html`<label class="full" style="flex-direction:row;align-items:center;gap:8px">
-          <input type="checkbox" .checked=${f.learn} @change=${(e: any) => this.set('learn', e.target.checked)}> ${tr("Da ora in poi stessa categoria per «")}${f.merchant}»</label>` : nothing}
+          <input type="checkbox" .checked=${f.learn} @change=${(e: any) => this.set('learn', e.target.checked)}> ${tr("From now on same category for «")}${f.merchant}»</label>` : nothing}
       </div>
-      <div class="row"><hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.save()}>${tr("Salva")}</hxk-button></div>
+      <div class="row"><hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.save()}>${tr("Save")}</hxk-button></div>
     </div></div>`;
   }
 }
@@ -103,23 +103,23 @@ export class PlutusTransactions extends HestiaElement {
     const days: Record<string, any[]> = {};
     for (const t of items || []) (days[t.date] ||= []).push(t);
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Movimenti")}</h1></div>
-        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Nuovo")}</hxk-button></div>
+      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Transactions")}</h1></div>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div>
       <div class="row wrap">
-        ${this.review ? html`<span class="pill warn">${tr("Solo da rivedere")}</span>` : html`<hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
+        ${this.review ? html`<span class="pill warn">${tr("Only to review")}</span>` : html`<hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
           <b style="min-width:120px;text-align:center">${this.label}</b>
           <hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.shift(1)}></hxk-button>`}
-        <button class="tab" aria-pressed=${this.review} @click=${() => { this.review = !this.review; this.load(); }}>${tr("Da rivedere")}</button>
+        <button class="tab" aria-pressed=${this.review} @click=${() => { this.review = !this.review; this.load(); }}>${tr("To review")}</button>
         <select class="in" @change=${(e: any) => { this.cat = e.target.value; this.load(); }}>
-          <option value="">${tr("Tutte le categorie")}</option>
+          <option value="">${tr("All categories")}</option>
           ${(this.m?.categories || []).map((c: any) => html`<option value=${c.id} ?selected=${c.id === this.cat}>${c.label}</option>`)}</select>
         <select class="in" @change=${(e: any) => { this.account = e.target.value; this.load(); }}>
-          <option value="">${tr("Tutti i conti")}</option>
+          <option value="">${tr("All accounts")}</option>
           ${(this.m?.accounts || []).map((a: any) => html`<option value=${a.id} ?selected=${a.id === this.account}>${a.name}</option>`)}</select>
-        <input class="in grow" type="search" placeholder=${tr("Cerca esercente o nota")} .value=${this.q} @input=${(e: any) => this.search(e.target.value)}>
+        <input class="in grow" type="search" placeholder=${tr("Search merchant or note")} .value=${this.q} @input=${(e: any) => this.search(e.target.value)}>
       </div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`
-        : !items.length ? html`<div class="card"><hxk-state kind="empty" text=${this.review ? tr('Niente da rivedere') : tr('Nessun movimento.')}></hxk-state></div>` : html`
+        : !items.length ? html`<div class="card"><hxk-state kind="empty" text=${this.review ? tr('Nothing to review') : tr('No transactions.')}></hxk-state></div>` : html`
         <div class="small muted">${plural(items.length, 'movimento', 'movimenti')} · saldo ${money(total, cur, true)}</div>
         ${Object.entries(days).map(([d, list]) => html`<h3 style="margin-top:6px">${dayLabel(d)}</h3>
           <div class="card list">${list.map(t => txRow(this.host, t, cur))}</div>`)}`}
@@ -144,13 +144,13 @@ export class PlutusTransaction extends HestiaElement {
   }
   private async setCategory(id: string, always: boolean) {
     const r = await call(this.host, 'PUT', `${API}/transactions/${this.t.id}`, { body: { category: id, learn: always } });
-    if (r.ok) this.host.toast(always ? tr("Categoria salvata, anche per i prossimi «{0}»", this.t.merchant) : tr('Categoria salvata'), 'success');
+    if (r.ok) this.host.toast(always ? tr("Category saved, also for the next «{0}»", this.t.merchant) : tr('Category saved'), 'success');
     this.load();
   }
   private async confirmOk() { await call(this.host, 'PUT', `${API}/transactions/${this.t.id}`, { body: { status: 'confirmed' } }); this.load(); }
   private async unlink() { await call(this.host, 'PUT', `${API}/transactions/${this.t.id}`, { body: { linked_to: null } }); this.load(); }
   private async deleteTx() {
-    if (!(await this.host.confirm(tr('Eliminare il movimento?'), `${this.t.merchant || tr('Movimento')} ${money(this.t.amount, this.t.currency, true)}`, { label: tr('Elimina'), danger: true }))) return;
+    if (!(await this.host.confirm(tr('Delete the transaction?'), `${this.t.merchant || tr('Transaction')} ${money(this.t.amount, this.t.currency, true)}`, { label: tr('Delete'), danger: true }))) return;
     const r = await call(this.host, 'DELETE', `${API}/transactions/${this.t.id}`);
     if (r.ok) { this.host.toast(r.data.label, 'success'); this.host.navigate('movimenti'); }
   }
@@ -158,30 +158,30 @@ export class PlutusTransaction extends HestiaElement {
     const t = this.t;
     if (t === undefined) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     if (t === null) return html`<div class="page"><hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
-    if (t === false) return html`<div class="page"><hxk-state kind="empty" text=${tr("Movimento non trovato")}></hxk-state></div>`;
+    if (t === false) return html`<div class="page"><hxk-state kind="empty" text=${tr("Transaction not found")}></hxk-state></div>`;
     const cur = t.currency || this.m?.currency || 'EUR';
     const cats = (this.m?.categories || []).filter((c: any) => t.amount > 0 ? c.kind !== 'expense' : c.kind !== 'income');
     const accounts: Record<string, string> = Object.fromEntries((this.m?.accounts || []).map((a: any) => [a.id, a.name]));
     return html`<div class="page">
       <div class="head"><button class="link" @click=${() => this.host.navigate('movimenti')}>‹ Movimenti</button></div>
       <div class="card col">
-        <div class="between"><div><h1>${t.merchant || tr('Movimento')}</h1><div class="muted small">${dayLabel(t.date)} · ${accounts[t.account] || t.account} · ${SOURCE[t.source] || t.source}</div></div>
+        <div class="between"><div><h1>${t.merchant || tr('Transaction')}</h1><div class="muted small">${dayLabel(t.date)} · ${accounts[t.account] || t.account} · ${SOURCE[t.source] || t.source}</div></div>
           <div class="big amt ${t.amount > 0 ? 'in' : ''}">${money(t.amount, cur, true)}</div></div>
-        ${t.status === 'to_review' ? html`<div class="note warning between"><span>${tr("Categoria da controllare (")}${t.category_label}).</span>
-          <hxk-button size="sm" icon="check" @click=${() => this.confirmOk()}>${tr("Va bene così")}</hxk-button></div>` : nothing}
-        ${!t.counted && t.linked_to ? html`<div class="note">${tr("Collegato a un pagamento PayPal: è lo stesso soldo visto due volte, conta una volta sola.")}
-          <button class="link" @click=${() => this.unlink()}>${tr("Scollega")}</button></div>` : nothing}
+        ${t.status === 'to_review' ? html`<div class="note warning between"><span>${tr("Category to check (")}${t.category_label}).</span>
+          <hxk-button size="sm" icon="check" @click=${() => this.confirmOk()}>${tr("That's fine")}</hxk-button></div>` : nothing}
+        ${!t.counted && t.linked_to ? html`<div class="note">${tr("Linked to a PayPal payment: it's the same money seen twice, it counts only once.")}
+          <button class="link" @click=${() => this.unlink()}>${tr("Unlink")}</button></div>` : nothing}
         ${t.description && t.description !== t.merchant ? html`<div class="small muted">${t.description}</div>` : nothing}
         ${t.notes ? html`<div>${t.notes}</div>` : nothing}
-        <h3>${tr("Categoria")}</h3>
+        <h3>${tr("Category")}</h3>
         <div class="chips">${cats.map((c: any) => html`<button class="chip" aria-pressed=${c.id === t.category} @click=${() => this.setCategory(c.id, false)}>${c.label}</button>`)}</div>
-        ${t.merchant ? html`<div class="small muted"><button class="link" @click=${() => this.setCategory(t.category, true)}>${tr("Usa sempre")} ${t.category_label}</button>
-          ${tr("per «")}${t.merchant}${tr("» (anche per i prossimi movimenti).")}</div>` : nothing}
-        <div class="row wrap"><hxk-button icon="edit" @click=${() => (this.edit = true)}>${tr("Modifica")}</hxk-button>
-          <hxk-button variant="danger" icon="trash" @click=${() => this.deleteTx()}>${tr("Elimina")}</hxk-button></div>
+        ${t.merchant ? html`<div class="small muted"><button class="link" @click=${() => this.setCategory(t.category, true)}>${tr("Always use")} ${t.category_label}</button>
+          ${tr("for «")}${t.merchant}${tr("» (also for the next transactions).")}</div>` : nothing}
+        <div class="row wrap"><hxk-button icon="edit" @click=${() => (this.edit = true)}>${tr("Edit")}</hxk-button>
+          <hxk-button variant="danger" icon="trash" @click=${() => this.deleteTx()}>${tr("Delete")}</hxk-button></div>
       </div>
-      ${(t.linked || []).length ? html`<div class="card col"><h2>${tr("Collegati")}</h2><div class="list">${t.linked.map((x: any) => txRow(this.host, x, cur))}</div></div>` : nothing}
-      ${(t.similar || []).filter((x: any) => x.id !== t.id).length ? html`<div class="card col"><h2>${tr("Altri da")} ${t.merchant}</h2>
+      ${(t.linked || []).length ? html`<div class="card col"><h2>${tr("pl::Linked")}</h2><div class="list">${t.linked.map((x: any) => txRow(this.host, x, cur))}</div></div>` : nothing}
+      ${(t.similar || []).filter((x: any) => x.id !== t.id).length ? html`<div class="card col"><h2>${tr("Others from")} ${t.merchant}</h2>
         <div class="list">${t.similar.filter((x: any) => x.id !== t.id).map((x: any) => txRow(this.host, x, cur))}</div></div>` : nothing}
       ${this.edit ? html`<plutus-tx-form .host=${this.host} .tx=${t} @close=${() => { this.edit = false; this.load(); }}></plutus-tx-form>` : nothing}
     </div>`;

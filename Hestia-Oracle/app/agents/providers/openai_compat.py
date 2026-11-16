@@ -23,11 +23,11 @@ logger = logging.getLogger("hestia_oracle.providers.openai")
 class OpenAICompatProvider(LLMProvider):
     TYPE = "openai"
     LABEL = "Compatibile OpenAI"
-    BILLING = "Server locale · gratis"
+    BILLING = "Local server · free"
     CONFIG_FIELDS = (
         {"key": "base_url", "type": "string", "label": "Indirizzo (…/v1)"},
         {"key": "api_key", "type": "secret_ref", "label": "Chiave API (ORACLE_KEY_<NOME>)"},
-        {"key": "cache_prompt", "type": "bool", "label": "Riusa la cache del prompt", "default": True},
+        {"key": "cache_prompt", "type": "bool", "label": "Reuse the prompt cache", "default": True},
         {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 180},
     )
     CAPABILITIES = frozenset({"chat", "tools", "stream", "vision", "embed", "thinking"})

@@ -53,7 +53,7 @@ def detect(text: str) -> str:
         return "hevy"
     if "exercise name" in head and "set order" in head:
         return "strong"
-    raise ValueError(tr("formato non riconosciuto: serve un export CSV di Strong o Hevy"))
+    raise ValueError(tr("format not recognised: a CSV export from Strong or Hevy is needed"))
 
 
 def _parse_dt(s: str, tz) -> datetime | None:
@@ -102,7 +102,7 @@ def parse(text: str, tz, unit: str = "kg") -> dict:
             if not start:
                 continue
             key = f"strong|{r.get('Date')}|{r.get('Workout Name')}"
-            w = workouts.setdefault(key, {"key": key, "name": r.get("Workout Name") or "Allenamento",
+            w = workouts.setdefault(key, {"key": key, "name": r.get("Workout Name") or "Training",
                                           "started_at": start, "ended_at": start + _duration(r.get("Duration", "")),
                                           "notes": r.get("Workout Notes") or "", "exercises": OrderedDict()})
             order = str(r.get("Set Order") or "")
@@ -121,7 +121,7 @@ def parse(text: str, tz, unit: str = "kg") -> dict:
                 continue
             key = f"hevy|{r.get('start_time')}|{r.get('title')}"
             end = _parse_dt(r.get("end_time", ""), tz) or start + timedelta(hours=1)
-            w = workouts.setdefault(key, {"key": key, "name": r.get("title") or "Allenamento", "started_at": start,
+            w = workouts.setdefault(key, {"key": key, "name": r.get("title") or "Training", "started_at": start,
                                           "ended_at": end, "notes": r.get("description") or "",
                                           "exercises": OrderedDict()})
             km = _f(r.get("distance_km"))
@@ -171,7 +171,7 @@ def build(text: str, mapping: dict[str, str], exercises: list[dict], tz, unit: s
             base, equip = _split(name)
             new_ex[eid] = {"id": eid, "name": name, "aliases": [], "primary_muscles": [], "secondary_muscles": [],
                            "equipment": equip or "other", "kind": "weight_reps", "movement_pattern": "isolation",
-                           "stress_joints": [], "is_custom": True, "notes": tr("Importato da {0}", parsed['format'])}
+                           "stress_joints": [], "is_custom": True, "notes": tr("Imported from {0}", parsed['format'])}
             target = eid
         resolved[name] = target
     sessions, sets = [], []

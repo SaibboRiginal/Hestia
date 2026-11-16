@@ -34,12 +34,12 @@ class ClaudeCliProvider(LLMProvider):
     TYPE = "claude_cli"
     LABEL = "Claude (abbonamento)"
     CONTEXT_WINDOW = 200_000
-    BILLING = "Abbonamento Claude · limiti condivisi con Forge"
+    BILLING = "Claude subscription · limits shared with Forge"
     CONFIG_FIELDS = (
         {"key": "bin", "type": "string", "label": "Comando claude", "default": "claude"},
         {"key": "authed", "type": "bool", "label": "Login abbonamento presente", "default": False},
-        {"key": "env", "type": "object", "label": "Ambiente del processo", "default": None},
-        {"key": "effort_by_mode", "type": "object", "label": "Ragionamento per modalità",
+        {"key": "env", "type": "object", "label": "Process environment", "default": None},
+        {"key": "effort_by_mode", "type": "object", "label": "Reasoning per mode",
          "default": {"fast": "low", "normal": "medium", "deep": "high"}},
         {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 300},
     )

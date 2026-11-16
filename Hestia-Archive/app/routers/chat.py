@@ -105,7 +105,7 @@ def list_chat_sessions_rich(q: str = "", tag: str = "", since: Optional[str] = N
             firsts.setdefault(sid, content)
         for i in page:
             if not i["title"]:
-                i["title"] = " ".join(str(firsts.get(i["session_id"]) or "Conversazione").split())[:70]
+                i["title"] = " ".join(str(firsts.get(i["session_id"]) or "Conversation").split())[:70]
     return {"items": page, "total": len(items)}
 
 

@@ -2,39 +2,39 @@
 import { css, tr } from '@hestia/webui-sdk';
 
 export const MUSCLES: Record<string, string> = {
-  chest: tr('Petto'), front_delts: tr('Deltoide anteriore'), side_delts: tr('Deltoide laterale'), rear_delts: tr('Deltoide posteriore'),
-  triceps: tr('Tricipiti'), biceps: tr('Bicipiti'), forearms: tr('Avambracci'), lats: tr('Dorsali'), upper_back: tr('Parte alta schiena'),
-  traps: tr('Trapezi'), lower_back: tr('Lombari'), abs: tr('Addominali'), obliques: tr('Obliqui'), glutes: tr('Glutei'), quads: tr('Quadricipiti'),
-  hamstrings: tr('Femorali'), adductors: tr('Adduttori'), abductors: tr('Abduttori'), calves: tr('Polpacci'), neck: tr('Collo'),
+  chest: tr('Chest'), front_delts: tr('Front delt'), side_delts: tr('Side delt'), rear_delts: tr('Rear delt'),
+  triceps: tr('Triceps'), biceps: tr('Biceps'), forearms: tr('Forearms'), lats: tr('Lats'), upper_back: tr('Upper back'),
+  traps: tr('Traps'), lower_back: tr('Lower back'), abs: tr('Abs'), obliques: tr('Obliques'), glutes: tr('Glutes'), quads: tr('Quads'),
+  hamstrings: tr('Hamstrings'), adductors: tr('Adductors'), abductors: tr('Abductors'), calves: tr('Calves'), neck: tr('Neck'),
 };
 export const GROUPS: Record<string, string[]> = {
   petto: ['chest'], spalle: ['front_delts', 'side_delts', 'rear_delts'], braccia: ['biceps', 'triceps', 'forearms'],
   schiena: ['lats', 'upper_back', 'traps', 'lower_back'], core: ['abs', 'obliques'],
   gambe: ['quads', 'hamstrings', 'glutes', 'adductors', 'abductors', 'calves'],
 };
-export const GROUP_LABEL: Record<string, string> = { petto: tr('Petto'), spalle: tr('Spalle'), braccia: tr('Braccia'), schiena: tr('Schiena'), core: tr('Core'), gambe: tr('Gambe') };
+export const GROUP_LABEL: Record<string, string> = { petto: tr('Chest'), spalle: tr('Shoulders'), braccia: tr('Arms'), schiena: tr('alt::Back'), core: tr('Core'), gambe: tr('Legs') };
 export const EQUIPMENT: Record<string, string> = {
-  barbell: tr('Bilanciere'), dumbbell: tr('Manubri'), machine: tr('Macchina'), cable: tr('Cavi'), kettlebell: tr('Kettlebell'), band: tr('Elastico'),
-  bodyweight: tr('Corpo libero'), smith: tr('Multipower'), ez_bar: tr('Bilanciere EZ'), trap_bar: tr('Trap bar'), other: tr('Altro'),
+  barbell: tr('Barbell'), dumbbell: tr('Dumbbells'), machine: tr('Machine'), cable: tr('Cables'), kettlebell: tr('Kettlebell'), band: tr('Elastic band'),
+  bodyweight: tr('Bodyweight'), smith: tr('Smith machine'), ez_bar: tr('EZ bar'), trap_bar: tr('Trap bar'), other: tr('Other'),
 };
 export const KINDS: Record<string, string> = {
-  weight_reps: tr('Peso × ripetizioni'), bodyweight_reps: tr('Corpo libero'), weighted_bodyweight: tr('Corpo libero zavorrato'),
-  assisted_bodyweight: tr('Corpo libero assistito'), reps_only: tr('Solo ripetizioni'), duration: tr('Durata'), distance_duration: tr('Distanza e durata'),
+  weight_reps: tr('Weight × reps'), bodyweight_reps: tr('Bodyweight'), weighted_bodyweight: tr('Weighted bodyweight'),
+  assisted_bodyweight: tr('Assisted bodyweight'), reps_only: tr('Reps only'), duration: tr('Duration'), distance_duration: tr('Distance and duration'),
 };
 export const SET_TYPES: Record<string, string> = { warmup: 'R', normal: '', drop: 'D', failure: 'C' };
-export const SET_TYPE_LABEL: Record<string, string> = { warmup: tr('Riscaldamento'), normal: tr('Normale'), drop: tr('Drop set'), failure: tr('Cedimento') };
-export const PROGRESSION: Record<string, string> = { double: tr('Doppia progressione'), linear: tr('Lineare'), rpe: 'RPE', none: tr('Nessuna') };
+export const SET_TYPE_LABEL: Record<string, string> = { warmup: tr('Warm-up'), normal: tr('Normal'), drop: tr('Drop set'), failure: tr('Failure') };
+export const PROGRESSION: Record<string, string> = { double: tr('Double progression'), linear: tr('Linear'), rpe: 'RPE', none: tr('f::None') };
 export const FEEDBACK_TAGS: Record<string, string> = {
-  too_heavy: tr('Troppo pesante'), too_light: tr('Troppo leggero'), pain: tr('Dolore'), great: tr('Ottimo'), tired: tr('Stanco'),
-  bored: tr('Mi annoia'), short_time: tr('Poco tempo'), technique: tr('Tecnica da sistemare'),
+  too_heavy: tr('Too heavy'), too_light: tr('Too light'), pain: tr('Pain'), great: tr('Great'), tired: tr('Tired'),
+  bored: tr('It bores me'), short_time: tr('Little time'), technique: tr('Technique to fix'),
 };
 export const PAIN_AREAS = ['spalla', 'gomito', 'polso', 'schiena bassa', 'anca', 'ginocchio', 'caviglia', 'collo'];
 export const MEASURES: Record<string, string> = {
-  bodyweight: tr('Peso corporeo'), body_fat: tr('Massa grassa'), waist: tr('Vita'), chest: tr('Torace'), arm: tr('Braccio'), thigh: tr('Coscia'),
-  hips: tr('Fianchi'), neck: tr('Collo'), calf: tr('Polpaccio'),
+  bodyweight: tr('Body weight'), body_fat: tr('Body fat'), waist: tr('Waist'), chest: tr('alt::Chest'), arm: tr('Arm'), thigh: tr('Thigh'),
+  hips: tr('Hips'), neck: tr('Neck'), calf: tr('Calf'),
 };
 export const MEASURE_UNIT: Record<string, string> = { bodyweight: 'kg', body_fat: '%' };
-export const WEEKDAYS = [tr('Lun'), tr('Mar'), tr('Mer'), tr('Gio'), tr('Ven'), tr('Sab'), tr('Dom')];
+export const WEEKDAYS = [tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat'), tr('Sun')];
 
 export const isBodyweight = (kind?: string) => kind === 'bodyweight_reps' || kind === 'weighted_bodyweight' || kind === 'assisted_bodyweight' || kind === 'reps_only';
 export const usesWeight = (kind?: string) => !kind || kind === 'weight_reps' || kind === 'weighted_bodyweight' || kind === 'assisted_bodyweight';
@@ -74,8 +74,8 @@ export function dayLabel(iso: string, withWeekday = true): string {
   const d = iso.length === 10 ? new Date(iso + 'T12:00:00') : new Date(iso);
   const t = today(), ld = localDay(d);
   const y = localDay(new Date(Date.now() - 86400000));
-  if (ld === t) return tr('Oggi');
-  if (ld === y) return tr('Ieri');
+  if (ld === t) return tr('Today');
+  if (ld === y) return tr('Yesterday');
   return d.toLocaleDateString('it-IT', withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
 }
 export function timeLabel(iso: string): string {
@@ -84,7 +84,7 @@ export function timeLabel(iso: string): string {
 export function relDays(iso: string | null | undefined): string {
   if (!iso) return 'mai';
   const days = Math.floor((Date.parse(today() + 'T12:00:00') - Date.parse(localDay(iso) + 'T12:00:00')) / 86400000);
-  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} giorni fa", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
+  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} days ago", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
 }
 
 export function e1rm(weight: number | null | undefined, reps: number | null | undefined, formula = 'epley'): number | null {

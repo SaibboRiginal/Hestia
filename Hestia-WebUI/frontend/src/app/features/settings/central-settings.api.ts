@@ -85,11 +85,11 @@ export interface Proposal {
 }
 
 /** Italian message from a Themis error ({detail}), for toasts. */
-export function apiError(e: unknown, fallback = tr('Operazione non riuscita')): string {
+export function apiError(e: unknown, fallback = tr('Operation failed')): string {
   if (e instanceof HttpErrorResponse) {
     const d = e.error?.detail;
     if (typeof d === 'string' && d) return d;
-    if (e.status === 0) return tr('WebUI non raggiungibile');
+    if (e.status === 0) return tr('WebUI unreachable');
   }
   return fallback;
 }

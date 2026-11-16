@@ -98,7 +98,7 @@ export class ChronosDialog extends LitElement {
     if (!this.open) return nothing;
     return html`<div class="bd" @click=${(e: Event) => { if (e.target === e.currentTarget) this.close(); }}>
       <div class="dlg" role="dialog" aria-modal="true" aria-label=${this.heading}>
-        <header><h2>${this.heading}</h2><button class="x" aria-label=${tr("Chiudi")} @click=${this.close}><hxk-icon name="x" size="18"></hxk-icon></button></header>
+        <header><h2>${this.heading}</h2><button class="x" aria-label=${tr("Close")} @click=${this.close}><hxk-icon name="x" size="18"></hxk-icon></button></header>
         <div class="body"><slot></slot></div>
         <footer><slot name="footer"></slot></footer>
       </div></div>`;

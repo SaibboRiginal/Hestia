@@ -18,7 +18,7 @@ function richText(text: string) {
 }
 
 const MOMENTS: Record<string, string> = { sera: 'sera', mattina: 'mattina' };
-const TRIGGERS: Record<string, string> = { agenda: tr('dal calendario'), quick: tr('a richiesta'), manual: tr('a richiesta') };
+const TRIGGERS: Record<string, string> = { agenda: tr('from the calendar'), quick: tr('on request'), manual: tr('on request') };
 
 export class AthenaRecaps extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, error: { state: true },
@@ -50,7 +50,7 @@ export class AthenaRecaps extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/recaps`, { query: { limit: 30 } });
-    if (!r.ok) { this.error = r.status === 0 ? tr('Athena non raggiungibile') : r.error || tr('Athena non raggiungibile'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Athena not reachable') : r.error || tr('Athena not reachable'); return; }
     this.error = '';
     this.data = r.data.recaps || [];
   }
@@ -59,8 +59,8 @@ export class AthenaRecaps extends HestiaElement {
     this.busy = true;
     const r = await this.host.api('POST', `${API}/recap/now`);
     this.busy = false;
-    if (!r.ok) { this.host.toast(r.error || tr('Recap non riuscito'), 'danger'); return; }
-    this.host.toast(r.data?.label || tr('Recap pronto'), r.data?.status === 'empty' ? 'info' : 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('Recap failed'), 'danger'); return; }
+    this.host.toast(r.data?.label || tr('Recap ready'), r.data?.status === 'empty' ? 'info' : 'success');
     this.load();
   }
 
@@ -86,11 +86,11 @@ export class AthenaRecaps extends HestiaElement {
       <div class="line"><b class="grow">${when(r.created_at)}</b>
         <hxk-badge tone="neutral">${MOMENTS[r.momento] || r.momento}</hxk-badge>
         <span class="small muted">${TRIGGERS[r.trigger] || ''}</span>
-        ${r.fallback ? html`<hxk-badge tone="warning">${tr("elenco semplice")}</hxk-badge>` : nothing}
-        ${r.delivered ? nothing : html`<hxk-badge tone="danger">${tr("non consegnato")}</hxk-badge>`}</div>
+        ${r.fallback ? html`<hxk-badge tone="warning">${tr("simple list")}</hxk-badge>` : nothing}
+        ${r.delivered ? nothing : html`<hxk-badge tone="danger">${tr("not delivered")}</hxk-badge>`}</div>
       <div class="text">${richText(r.text)}</div>
       ${pieces.length ? html`<div class="line"><button class="link" @click=${() => (this.open = { ...this.open, [r.id]: !isOpen })}>
-          ${isOpen ? tr('Nascondi i fatti') : tr("I fatti di {0} {1}", pieces.length, pieces.length === 1 ? 'area' : 'aree')}</button></div>` : nothing}
+          ${isOpen ? tr('Hide the facts') : tr("The facts of {0} {1}", pieces.length, pieces.length === 1 ? 'area' : 'aree')}</button></div>` : nothing}
       ${isOpen ? html`<div class="areas">${pieces.map(p => this.area(p))}</div>` : nothing}
     </hxk-card>`;
   }
@@ -99,13 +99,13 @@ export class AthenaRecaps extends HestiaElement {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (this.data === null) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Recap")}</h1><span class="sub">${tr("Com'è andata e cosa c'è dopo, un messaggio al giorno")}</span>
+      <div class="head"><h1>${tr("Recap")}</h1><span class="sub">${tr("How it went and what comes next, one message a day")}</span>
         <span class="grow"></span>
-        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Aggiorna")}</hxk-button>
-        <hxk-button variant="primary" icon="note" ?loading=${this.busy} @click=${() => this.now()}>${tr("Recap adesso")}</hxk-button></div>
+        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button>
+        <hxk-button variant="primary" icon="note" ?loading=${this.busy} @click=${() => this.now()}>${tr("Recap now")}</hxk-button></div>
       ${this.data.length ? this.data.map(r => this.recap(r))
-        : html`<hxk-state kind="empty" text=${tr("Nessun recap ancora. Arriva la sera; se la giornata è tranquilla non ti scrivo.")}></hxk-state>`}
-      <p class="small muted">${tr("L'orario è nel calendario («Recap della sera», spostabile tra le 20:00 e le 23:30 per non cadere sui tuoi impegni). Il recap del mattino si aggiunge da «Da un modulo…». Tono e lunghezza in Impostazioni → Sistema → Athena.")}</p>
+        : html`<hxk-state kind="empty" text=${tr("No recap yet. It arrives in the evening; if the day is quiet I don't write.")}></hxk-state>`}
+      <p class="small muted">${tr("The time is in the calendar («Evening recap», movable between 20:00 and 23:30 so it doesn't fall on your appointments). The morning recap is added from «From a module…». Tone and length in Settings → System → Athena.")}</p>
     </div>`;
   }
 }

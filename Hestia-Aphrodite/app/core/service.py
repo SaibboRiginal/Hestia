@@ -40,7 +40,7 @@ def easter(year: int) -> date:
 # key: (name, palette, effect, background prompt). Palettes are accents over the client's own light/dark theme.
 BUILTIN: dict[str, dict] = {
     "standard": {"name": "Standard", "palette": {}, "effect": "none", "prompt": ""},
-    "compleanno": {"name": "Compleanno", "palette": {"accent": "#D97706", "accent2": "#DB2777"}, "effect": "confetti",
+    "compleanno": {"name": "Birthday", "palette": {"accent": "#D97706", "accent2": "#DB2777"}, "effect": "confetti",
                    "prompt": "soft festive birthday background, balloons, warm light, minimal, no text"},
     "evento": {"name": "Giornata speciale", "palette": {"accent": "#7C3AED"}, "effect": "stars",
                "prompt": "soft celebratory background, gentle sparkles, minimal, no text"},
@@ -107,21 +107,21 @@ class Appearance:
     def profile(self, key: str) -> dict:
         p = next((p for p in self.profiles() if p["id"] == key), None)
         if not p:
-            raise NotFound(tr("nessun profilo «{0}»", key))
+            raise NotFound(tr("no profile «{0}»", key))
         return p
 
     def save_profile(self, body: dict, key: str | None = None) -> dict:
         old = self.profile(key) if key else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:40]
         if not name:
-            raise Invalid(tr("serve un nome"))
+            raise Invalid(tr("a name is needed"))
         effect = body.get("effect") or old.get("effect") or "none"
         if effect not in EFFECTS:
             raise Invalid("effetto: " + ", ".join(EFFECTS))
         palette = body.get("palette") if isinstance(body.get("palette"), dict) else old.get("palette") or {}
         when = body.get("when") if isinstance(body.get("when"), dict) else old.get("when")
         if when and not all(isinstance(when.get(k), str) and len(when[k]) == 5 for k in ("from", "to")):
-            raise Invalid(tr("quando: {from: MM-GG, to: MM-GG}"))
+            raise Invalid(tr("when: {from: MM-DD, to: MM-DD}"))
         data = {"name": name, "palette": {k: str(v)[:9] for k, v in palette.items() if k in ("accent", "accent2")},
                 "effect": effect, "prompt": str(body.get("prompt", old.get("prompt") or ""))[:400], "when": when,
                 "background": old.get("background"), "updated_at": now_iso()}
@@ -175,7 +175,7 @@ class Appearance:
 
     def now(self, client: str = "webui") -> dict:
         c = self.choice(client)
-        key, why = self.active() if c["auto"] else ("standard", tr("scelto da te"))
+        key, why = self.active() if c["auto"] else ("standard", tr("chosen by you"))
         p = self.profile(key)
         pet = None
         if c["pet"]:
@@ -198,14 +198,14 @@ class Appearance:
         p = self.store.data("pet", ref) or next((p for p in self.store.items("pet")
                                                   if p["name"].casefold() == str(ref).casefold()), None)
         if not p:
-            raise NotFound(tr("nessun animaletto «{0}»", ref))
+            raise NotFound(tr("no pet «{0}»", ref))
         return p
 
     def save_pet(self, body: dict, pid: str | None = None) -> dict:
         old = self.pet(pid) if pid else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:30]
         if not name:
-            raise Invalid(tr("come si chiama?"))
+            raise Invalid(tr("what is its name?"))
         data = {"name": name, "species": str(body.get("species", old.get("species") or "gatto"))[:30],
                 "look": str(body.get("look", old.get("look") or ""))[:300], "images": old.get("images") or {},
                 "updated_at": now_iso()}
@@ -228,7 +228,7 @@ class Appearance:
         if target == "profile":
             p = self.profile(ref)
             if not p.get("prompt"):
-                raise Invalid(tr("questo profilo non ha una descrizione per lo sfondo"))
+                raise Invalid(tr("this profile has no description for the background"))
             asks.append((f"profile:{p['id']}:background", p["prompt"], "sfondo", 1536, 864))
         elif target == "pet":
             p = self.pet(ref)

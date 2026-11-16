@@ -139,8 +139,8 @@ def _observe_limited(limited: bool, now: float) -> str | None:
         _limited_signal(since)
         hermes_client.publish_event(
             domain="system", event_type=NOTICE_EVENT, entity_id=f"{NOTICE_KEY}.limited",
-            payload={"_message": tr("🔋 <b>Limitato</b>: rispondo, ma in modo ridotto finché i modelli principali non tornano disponibili. I lavori pesanti aspettano."),
-                     "_title": tr("Limitato"), "_level": "warning", "_source": "argus",
+            payload={"_message": tr("🔋 <b>Limited</b>: I answer, but in a reduced way until the main models are available again. Heavy jobs wait."),
+                     "_title": tr("Limited"), "_level": "warning", "_source": "argus",
                      "replaces": NOTICE_KEY, "service": ORACLE, "status": "oracle_limited"})
         return "limited"
     return None
@@ -164,9 +164,9 @@ def _end_limited(now: float, notify: bool) -> None:
         logger.info("event=oracle_full")
         hermes_client.publish_event(
             domain="system", event_type=NOTICE_EVENT, entity_id=f"{NOTICE_KEY}.full",
-            payload={"_message": tr("✅ <b>Di nuovo al completo</b>: rispondo di nuovo come sempre."),
-                     "_title": tr("Di nuovo al completo"), "_level": "success", "_source": "argus",
-                     "closes": NOTICE_KEY, "decision": "resolved", "outcome_text": tr("Di nuovo al completo"),
+            payload={"_message": tr("✅ <b>Fully back</b>: I answer as always again."),
+                     "_title": tr("Fully back"), "_level": "success", "_source": "argus",
+                     "closes": NOTICE_KEY, "decision": "resolved", "outcome_text": tr("Fully back"),
                      "service": ORACLE, "status": "oracle_full"})
 
 
@@ -175,8 +175,8 @@ def _go_offline(since: float, reason: str, error: str | None) -> None:
     _signal(since, reason)
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=NOTICE_KEY,
-        payload={"_message": tr("⏳ <b>Non disponibile</b>: non posso rispondere adesso. Comandi, notifiche e agenda funzionano; i messaggi in chat restano in coda e avranno risposta appena possibile."),
-                 "_title": tr("Non disponibile"), "_level": "warning", "_source": "argus",
+        payload={"_message": tr("⏳ <b>Unavailable</b>: I can't answer right now. Commands, notifications and agenda work; chat messages stay in the queue and get an answer as soon as possible."),
+                 "_title": tr("Unavailable"), "_level": "warning", "_source": "argus",
                  "replaces": NOTICE_KEY, "service": ORACLE, "status": "oracle_offline", "reason": reason})
 
 
@@ -186,9 +186,9 @@ def _go_online(seconds_offline: float) -> None:
         _presence.clear(SIGNAL)
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=f"{NOTICE_KEY}.online",
-        payload={"_message": tr("✅ <b>Di nuovo disponibile</b> dopo {0}: rispondo ai messaggi rimasti in coda.", _minutes(seconds_offline)),
-                 "_title": tr("Di nuovo disponibile"), "_level": "success", "_source": "argus",
-                 "closes": NOTICE_KEY, "decision": "resolved", "outcome_text": tr("Di nuovo disponibile"),
+        payload={"_message": tr("✅ <b>Available again</b> after {0}: I'm answering the messages left in the queue.", _minutes(seconds_offline)),
+                 "_title": tr("Available again"), "_level": "success", "_source": "argus",
+                 "closes": NOTICE_KEY, "decision": "resolved", "outcome_text": tr("Available again"),
                  "service": ORACLE, "status": "oracle_online"})
 
 

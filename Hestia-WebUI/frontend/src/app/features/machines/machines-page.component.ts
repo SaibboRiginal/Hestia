@@ -17,10 +17,10 @@ interface MachinesState {
 interface Pairing { code: string; expires_in: number; central: string; }
 
 const ROLE: Record<string, string> = {
-  tutto: tr('Fa tutto da sola'), centrale: tr('Casa centrale, sempre accesa'), satellite: tr('Satellite'),
+  tutto: tr('Does everything by herself'), centrale: tr('Central home, always on'), satellite: tr('Satellite'),
 };
 /** What a satellite does for you, in plain words (user texts never name modules). */
-const JOB: Record<string, string> = { echo: 'voce', metis: tr('allenamento dei modelli') };
+const JOB: Record<string, string> = { echo: 'voce', metis: tr('model training') };
 const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
 
 /**
@@ -33,12 +33,12 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
   imports: [TrPipe, ...UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'Macchine' | tr"  [subtitle]="'La casa centrale e i computer che lavorano con lei: voce e modelli dove c\\'è la scheda video' | tr">
-      <button hx-btn size="sm" icon="link" [loading]="busy() === 'pair'" (click)="pair()"  [title]="'Collega una macchina' | tr"><span class="lbl">{{ "Collega una macchina" | tr }}</span></button>
+    <hx-page-header  [title]="'Machines' | tr"  [subtitle]="'The central home and the computers that work with it: voice and models where the graphics card is' | tr">
+      <button hx-btn size="sm" icon="link" [loading]="busy() === 'pair'" (click)="pair()"  [title]="'Link a machine' | tr"><span class="lbl">{{ "Link a machine" | tr }}</span></button>
     </hx-page-header>
     <div class="body">
       @if (error()) {
-        <hx-empty icon="offline"  [title]="'Non riesco a leggere le macchine' | tr">{{ error() }}</hx-empty>
+        <hx-empty icon="offline"  [title]="'I can\\'t read the machines' | tr">{{ error() }}</hx-empty>
       } @else if (!state()) {
         <div class="center"><hx-spinner /></div>
       } @else {
@@ -46,18 +46,18 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
           <section class="pair hx-card">
             <div class="code-line">
               <span class="code">{{ p.code }}</span>
-              <span class="ttl">{{ "vale" | tr }} {{ minutesLeft() }} {{ "min, una volta sola" | tr }}</span>
-              <button hx-btn size="sm" variant="ghost" icon="x" iconOnly  [attr.aria-label]="'Chiudi' | tr"  [title]="'Chiudi' | tr" (click)="pairing.set(null)"></button>
+              <span class="ttl">{{ "is worth" | tr }} {{ minutesLeft() }} {{ "min, only once" | tr }}</span>
+              <button hx-btn size="sm" variant="ghost" icon="x" iconOnly  [attr.aria-label]="'Close' | tr"  [title]="'Close' | tr" (click)="pairing.set(null)"></button>
             </div>
-            <p>{{ "Sul computer da collegare, nella stessa rete di casa, apri il terminale e incolla:" | tr }}</p>
+            <p>{{ "On the computer to link, on the same home network, open the terminal and paste:" | tr }}</p>
             <div class="cmd"><span class="os">Windows (PowerShell)</span><code>{{ windowsCmd() }}</code>
-              <button hx-btn size="sm" variant="ghost" icon="copy" iconOnly  [attr.aria-label]="'Copia' | tr"  [title]="'Copia' | tr" (click)="copy(windowsCmd())"></button></div>
+              <button hx-btn size="sm" variant="ghost" icon="copy" iconOnly  [attr.aria-label]="'Copy' | tr"  [title]="'Copy' | tr" (click)="copy(windowsCmd())"></button></div>
             <div class="cmd"><span class="os">Linux</span><code>{{ linuxCmd() }}</code>
-              <button hx-btn size="sm" variant="ghost" icon="copy" iconOnly  [attr.aria-label]="'Copia' | tr"  [title]="'Copia' | tr" (click)="copy(linuxCmd())"></button></div>
+              <button hx-btn size="sm" variant="ghost" icon="copy" iconOnly  [attr.aria-label]="'Copy' | tr"  [title]="'Copy' | tr" (click)="copy(linuxCmd())"></button></div>
             @if (!p.central) {
-              <p class="warn"><hx-icon name="alert" [size]="14" tone="warning" /> {{ "Non conosco l'indirizzo di questa macchina in casa: sostituisci" | tr }} <b>{{ central() }}</b> {{ "con il suo indirizzo (es. 192.168.1.10)." | tr }}</p>
+              <p class="warn"><hx-icon name="alert" [size]="14" tone="warning" /> {{ "I don't know the home address of this machine: replace" | tr }} <b>{{ central() }}</b> {{ "with its address (e.g. 192.168.1.10)." | tr }}</p>
             }
-            <p class="hint">{{ "Installa quello che serve e si collega da solo: qui compare appena è pronto." | tr }}</p>
+            <p class="hint">{{ "It installs what is needed and links by itself: it appears here as soon as it's ready." | tr }}</p>
           </section>
         }
 
@@ -65,13 +65,13 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
           <li class="row hx-card">
             <hx-icon name="home" [size]="20" tone="accent" />
             <div class="main">
-              <div class="top"><b>{{ "Questa macchina" | tr }}</b><span class="tag">{{ role(state()!.this.role) }}</span></div>
+              <div class="top"><b>{{ "This machine" | tr }}</b><span class="tag">{{ role(state()!.this.role) }}</span></div>
               <div class="sub">{{ hardware() }}</div>
             </div>
             <div class="acts">
               @if (state()!.brain_on) {
-                <button hx-btn size="sm" variant="ghost" icon="brain" [loading]="busy() === 'brain:'" (click)="brain('', '')">{{ "Riporta qui i modelli" | tr }}</button>
-              } @else { <span class="using"><hx-icon name="brain" [size]="14" /> {{ "modelli locali qui" | tr }}</span> }
+                <button hx-btn size="sm" variant="ghost" icon="brain" [loading]="busy() === 'brain:'" (click)="brain('', '')">{{ "Bring the models back here" | tr }}</button>
+              } @else { <span class="using"><hx-icon name="brain" [size]="14" /> {{ "local models here" | tr }}</span> }
             </div>
           </li>
           @for (n of state()!.nodes; track n.id) {
@@ -79,16 +79,16 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
               <hx-icon name="host" [size]="20" [tone]="n.online ? 'success' : 'muted'" />
               <div class="main">
                 <div class="top"><b>{{ n.name }}</b><span class="tag">{{ n.address }}</span>
-                  @if (!n.online) { <hx-badge tone="warning">{{ "spenta o non raggiungibile" | tr }}</hx-badge> }</div>
+                  @if (!n.online) { <hx-badge tone="warning">{{ "off or unreachable" | tr }}</hx-badge> }</div>
                 <div class="sub">{{ jobs(n) }}</div>
               </div>
               <div class="acts">
                 @if (state()!.brain_on === n.address) {
-                  <span class="using"><hx-icon name="brain" [size]="14" tone="accent" /> {{ "modelli locali qui" | tr }}</span>
+                  <span class="using"><hx-icon name="brain" [size]="14" tone="accent" /> {{ "local models here" | tr }}</span>
                 } @else {
-                  <button hx-btn size="sm" variant="ghost" icon="brain" [loading]="busy() === 'brain:' + n.address" (click)="brain(n.address, n.name)">{{ "Usa la sua scheda video" | tr }}</button>
+                  <button hx-btn size="sm" variant="ghost" icon="brain" [loading]="busy() === 'brain:' + n.address" (click)="brain(n.address, n.name)">{{ "Use its graphics card" | tr }}</button>
                 }
-                <button hx-btn size="sm" variant="ghost" icon="x" [loading]="busy() === 'revoke:' + n.id" (click)="revoke(n)">{{ "Scollega" | tr }}</button>
+                <button hx-btn size="sm" variant="ghost" icon="x" [loading]="busy() === 'revoke:' + n.id" (click)="revoke(n)">{{ "Unlink" | tr }}</button>
               </div>
             </li>
           }
@@ -96,21 +96,21 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
         <section class="row hx-card outside">
           <hx-icon name="cloud" [size]="20" [tone]="tunnel()?.on ? 'success' : 'muted'" />
           <div class="main">
-            <div class="top"><b>{{ "Da fuori casa" | tr }}</b>
-              @if (tunnel()?.on) { <span class="tag">{{ "attivo" | tr }}</span> } @else { <span class="tag">{{ "solo in casa e da Telegram" | tr }}</span> }</div>
+            <div class="top"><b>{{ "From outside home" | tr }}</b>
+              @if (tunnel()?.on) { <span class="tag">{{ "active" | tr }}</span> } @else { <span class="tag">{{ "only at home and from Telegram" | tr }}</span> }</div>
             <div class="sub">
-              @if (tunnel()?.on && tunnel()!.url) { <a [href]="tunnel()!.url" target="_blank" rel="noopener">{{ tunnel()!.url }}</a> {{ "· chiede sempre l'accesso; cambia a ogni riavvio" | tr }}
-              } @else if (tunnel()?.on) { {{ "L'indirizzo compare tra poco." | tr }}
-              } @else { {{ "Un indirizzo sicuro (Cloudflare, gratis) per aprire Hestia dal telefono quando sei fuori." | tr }} }
+              @if (tunnel()?.on && tunnel()!.url) { <a [href]="tunnel()!.url" target="_blank" rel="noopener">{{ tunnel()!.url }}</a> {{ "· always asks for access; changes at every restart" | tr }}
+              } @else if (tunnel()?.on) { {{ "The address appears shortly." | tr }}
+              } @else { {{ "A secure address (Cloudflare, free) to open Hestia from your phone when you are out." | tr }} }
             </div>
           </div>
           <div class="acts">
             <button hx-btn size="sm" [variant]="tunnel()?.on ? 'ghost' : 'primary'" [icon]="tunnel()?.on ? 'x' : 'cloud'"
-                    [loading]="busy() === 'tunnel'" (click)="switchTunnel(!tunnel()?.on)">{{ tunnel()?.on ? ('Spegni' | tr) : ('Attiva' | tr) }}</button>
+                    [loading]="busy() === 'tunnel'" (click)="switchTunnel(!tunnel()?.on)">{{ tunnel()?.on ? ('Turn off' | tr) : ('f::Active' | tr) }}</button>
           </div>
         </section>
         @if (!state()!.nodes.length && !pairing()) {
-          <p class="note">{{ "Hestia gira tutta qui. Se hai un altro computer con una buona scheda video, collegalo: voce e modelli locali girano lì, il resto (memoria, impostazioni, questa pagina) resta su questa macchina sempre accesa." | tr }}</p>
+          <p class="note">{{ "Hestia runs entirely here. If you have another computer with a good graphics card, link it: voice and local models run there, the rest (memory, settings, this page) stays on this always-on machine." | tr }}</p>
         }
       }
     </div>`,
@@ -190,7 +190,7 @@ export class MachinesPageComponent {
       const fresh = (s.nodes || []).find(n => !before.has(n.id));
       if (fresh && this.pairing() && this.state()) {
         this.pairing.set(null);
-        this.toasts.success(tr("{0} è collegata.", fresh.name));
+        this.toasts.success(tr("{0} is linked.", fresh.name));
       }
       this.state.set({ ...s, nodes: s.nodes || [] });
       this.error.set('');
@@ -206,15 +206,15 @@ export class MachinesPageComponent {
     const h = this.state()?.this.hardware || {};
     const parts: string[] = [];
     if (h.gpu) parts.push(h.vram_gb ? `${h.gpu}, ${h.vram_gb} GB` : h.gpu);
-    else parts.push(tr('nessuna scheda video dedicata'));
-    if (h.ram_gb) parts.push(tr("{0} GB di RAM", h.ram_gb));
+    else parts.push(tr('no dedicated graphics card'));
+    if (h.ram_gb) parts.push(tr("{0} GB of RAM", h.ram_gb));
     if (h.lan_ip) parts.push(h.lan_ip);
     return parts.join(' · ');
   }
 
   jobs(n: MachineNode): string {
     const names = n.modules.filter(m => m.online).map(m => JOB[m.name] || 'altro');
-    if (!names.length) return n.online ? 'collegata' : tr('non lavora ora: riaccendila e torna da sola');
+    if (!names.length) return n.online ? 'collegata' : tr('not working now: turn it back on and it comes back by itself');
     return 'Qui: ' + [...new Set(names)].join(', ');
   }
 
@@ -233,7 +233,7 @@ export class MachinesPageComponent {
   }
 
   async copy(text: string) {
-    try { await navigator.clipboard.writeText(text); this.toasts.success(tr('Copiato')); } catch { /* no clipboard: select by hand */ }
+    try { await navigator.clipboard.writeText(text); this.toasts.success(tr('Copied')); } catch { /* no clipboard: select by hand */ }
   }
 
   async brain(address: string, name: string) {
@@ -250,8 +250,8 @@ export class MachinesPageComponent {
   }
 
   async switchTunnel(on: boolean) {
-    if (on && !await this.dialogs.confirm(tr('Aprire Hestia da fuori casa?'),
-      tr('Hestia avrà un indirizzo su internet. Da lì chiede sempre l\'accesso; puoi spegnerlo quando vuoi.'), tr('Attiva'))) return;
+    if (on && !await this.dialogs.confirm(tr('Open Hestia from outside home?'),
+      tr('Hestia will have an address on the internet. From there it always asks for access; you can turn it off whenever you want.'), tr('f::Active'))) return;
     this.busy.set('tunnel');
     try {
       const t = await firstValueFrom(this.http.post<TunnelState>('/api/webui/setup/tunnel', { on }));
@@ -267,14 +267,14 @@ export class MachinesPageComponent {
   async revoke(n: MachineNode) {
     const using = this.state()?.brain_on === n.address;
     const text = using
-      ? tr('I modelli locali tornano su questa macchina. Per ricollegarla serve un codice nuovo.')
-      : tr('Smette di lavorare per Hestia. Per ricollegarla serve un codice nuovo.');
-    if (!await this.dialogs.confirm(tr("Scollegare {0}?", n.name), text, tr('Scollega'), true)) return;
+      ? tr('Local models go back to this machine. To link it again a new code is needed.')
+      : tr('It stops working for Hestia. To link it again a new code is needed.');
+    if (!await this.dialogs.confirm(tr("Unlink {0}?", n.name), text, tr('Unlink'), true)) return;
     this.busy.set('revoke:' + n.id);
     try {
       if (using) await firstValueFrom(this.http.post('/api/webui/setup/machines/brain', { address: '', name: '' }));
       await firstValueFrom(this.http.post('/api/webui/setup/machines/revoke', { id: n.id }));
-      this.toasts.success(tr("{0} è scollegata.", n.name));
+      this.toasts.success(tr("{0} is unlinked.", n.name));
     } catch (e: any) {
       this.toasts.error(setupError(e));
     } finally {

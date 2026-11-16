@@ -8,7 +8,7 @@ import { API, DIRECTIONS, STATES, clone, slug } from './util';
 
 type Opt = { value: string; label: string };
 type Part = 'providers' | 'chains' | 'usecases';
-const MODES: Opt[] = [{ value: 'interna', label: tr('Interna') }, { value: 'esterna', label: tr('Esterna') }];
+const MODES: Opt[] = [{ value: 'interna', label: tr('Internal') }, { value: 'esterna', label: tr('External') }];
 
 export class EchoBlocks extends HestiaElement {
   static properties = { ...HestiaElement.properties, live: { state: true }, error: { state: true }, providers: { state: true },
@@ -52,7 +52,7 @@ export class EchoBlocks extends HestiaElement {
   async load() {
     const [p, c, u, s] = await Promise.all([this.host.api('GET', `${API}/providers`), this.host.api('GET', `${API}/chains`),
       this.host.api('GET', `${API}/usecases`), this.host.api('GET', `${API}/standards`)]);
-    if (!p.ok) { this.error = p.error || tr('Non raggiungibile'); return; }
+    if (!p.ok) { this.error = p.error || tr('Not reachable'); return; }
     this.error = '';
     this.live = { providers: p.data.items || [], chains: c.ok ? c.data.items || {} : {}, usecases: u.ok ? u.data.items || [] : [],
                   standards: s.ok ? s.data.items || [] : [] };
@@ -77,8 +77,8 @@ export class EchoBlocks extends HestiaElement {
     this.saving = part;
     const r = await this.host.api('PUT', `${API}/blocks/${part}`, { body: { value } });
     this.saving = '';
-    if (!r.ok) { this.host.toast(r.error || tr('Non salvato'), 'danger'); return; }
-    this.host.toast(tr('Salvato'), 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('Not saved'), 'danger'); return; }
+    this.host.toast(tr('Saved'), 'success');
     this.dirty = { ...this.dirty, [part]: false };
     window.setTimeout(() => this.load(), 800);
   }
@@ -96,11 +96,11 @@ export class EchoBlocks extends HestiaElement {
     const st = STATES[live.state] || { label: live.state || '–', tone: 'neutral' };
     const types: Opt[] = (this.live?.standards || []).map((s: any) => ({ value: s.id, label: s.label }));
     return html`<hxk-card heading=${p.label || name} subtitle=${`${name} · ${(std.directions || []).join(' e ')}`}>
-      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeProvider(name)}>${tr("Rimuovi")}</hxk-button>
+      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeProvider(name)}>${tr("alt::Remove")}</hxk-button>
       <div class="grid2">
-        <hxk-field label=${tr("Nome visibile")} .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Visible name")} .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
         <hxk-field type="enum" label=${tr("Standard")} .options=${types} .value=${p.type} @change=${(e: CustomEvent) => set('type', e.detail)}></hxk-field>
-        ${std.needs_url || std.default_url ? html`<hxk-field label=${tr("Indirizzo")} .value=${p.url} placeholder=${std.default_url || ''}
+        ${std.needs_url || std.default_url ? html`<hxk-field label=${tr("Address")} .value=${p.url} placeholder=${std.default_url || ''}
           @change=${(e: CustomEvent) => set('url', e.detail)}></hxk-field>` : nothing}
         ${(std.options || []).map((o: any) => html`<hxk-field type=${o.type === 'string' ? 'text' : o.type} label=${o.label}
           .options=${o.options || []} help=${o.help || ''} .value=${p.options?.[o.key] ?? o.default}
@@ -108,10 +108,10 @@ export class EchoBlocks extends HestiaElement {
       </div>
       <div class="state" style="margin-top:8px">
         <hxk-badge tone=${st.tone}>${st.label}</hxk-badge>
-        ${live.needs_key ? html`<span>${tr("Chiave in .env:")} <span class="key">${live.key_env}</span>
-          ${live.key ? html`<hxk-icon name="check" size=${13} tone="success" title=${tr("impostata")}></hxk-icon>` : tr(' — manca')}</span>` : nothing}
-        ${Object.keys(live.quota || {}).length ? html`<hxk-badge tone="warning">${tr("senza quota")}</hxk-badge>
-          <hxk-button variant="ghost" @click=${() => this.retry(name)}>${tr("Riprova adesso")}</hxk-button>` : nothing}
+        ${live.needs_key ? html`<span>${tr("Key in .env:")} <span class="key">${live.key_env}</span>
+          ${live.key ? html`<hxk-icon name="check" size=${13} tone="success" title=${tr("set")}></hxk-icon>` : tr(' — missing')}</span>` : nothing}
+        ${Object.keys(live.quota || {}).length ? html`<hxk-badge tone="warning">${tr("no quota")}</hxk-badge>
+          <hxk-button variant="ghost" @click=${() => this.retry(name)}>${tr("Try again now")}</hxk-button>` : nothing}
       </div>
     </hxk-card>`;
   }
@@ -131,8 +131,8 @@ export class EchoBlocks extends HestiaElement {
 
   private async removeProvider(name: string) {
     const used = Object.entries<any>(this.chains).filter(([, c]) => c.steps.some((s: any) => s.provider === name)).map(([n]) => n);
-    const text = used.length ? tr("È usato dalle catene {0}: quei passi verranno saltati.", used.join(', ')) : tr('Non è usato da nessuna catena.');
-    if (!(await this.host.confirm(tr("Rimuovere {0}?", name), text, { label: tr('Rimuovi'), danger: true }))) return;
+    const text = used.length ? tr("It's used by the chains {0}: those steps will be skipped.", used.join(', ')) : tr('It\'s not used by any chain.');
+    if (!(await this.host.confirm(tr("Remove {0}?", name), text, { label: tr('alt::Remove'), danger: true }))) return;
     const next = { ...this.providers }; delete next[name];
     this.providers = next; this.touch('providers');
   }
@@ -154,21 +154,21 @@ export class EchoBlocks extends HestiaElement {
     const st = live ? STATES[live.state] : null;
     return html`<div class="step">
       <span class="idx">${i + 1}</span>
-      <hxk-field type="enum" label=${tr("Fornitore")} .options=${provOpts} .value=${step.provider}
+      <hxk-field type="enum" label=${tr("Provider")} .options=${provOpts} .value=${step.provider}
         @change=${(e: CustomEvent) => update({ provider: e.detail })}></hxk-field>
       <div>
-        <label class="small muted">${speaking ? tr('Voce') : tr('Modello')}</label>
+        <label class="small muted">${speaking ? tr('Voice') : tr('Model')}</label>
         <input class="pick" list=${listId} .value=${speaking ? step.voice : step.model}
           @change=${(e: any) => update(speaking ? { voice: String(e.target.value).trim() } : { model: String(e.target.value).trim() })}>
         <datalist id=${listId}>${choices.map((m: any) => html`<option value=${m.id}>${m.label || m.id}</option>`)}</datalist>
       </div>
       <div class="tools">
-        <hxk-button variant="ghost" ?disabled=${i === 0} @click=${() => move(-1)} title=${tr("Prima")}>↑</hxk-button>
-        <hxk-button variant="ghost" ?disabled=${i === steps.length - 1} @click=${() => move(1)} title=${tr("Dopo")}>↓</hxk-button>
-        <hxk-button variant="ghost" icon="trash" @click=${() => this.setSteps(chain, steps.filter((_, j) => j !== i))} title=${tr("Togli")}></hxk-button>
+        <hxk-button variant="ghost" ?disabled=${i === 0} @click=${() => move(-1)} title=${tr("Before")}>↑</hxk-button>
+        <hxk-button variant="ghost" ?disabled=${i === steps.length - 1} @click=${() => move(1)} title=${tr("After")}>↓</hxk-button>
+        <hxk-button variant="ghost" icon="trash" @click=${() => this.setSteps(chain, steps.filter((_, j) => j !== i))} title=${tr("Remove")}></hxk-button>
       </div>
-      ${live && live.state !== 'ready' && st ? html`<div class="state"><hxk-badge tone=${st.tone}>${st.label}${live.until ? tr(" fino alle {0}", String(live.until).slice(11, 16)) : ''}</hxk-badge>
-        ${live.state === 'quota' ? html`<hxk-button variant="ghost" @click=${() => this.retry(step.provider)}>${tr("Riprova adesso")}</hxk-button>` : nothing}</div>` : nothing}
+      ${live && live.state !== 'ready' && st ? html`<div class="state"><hxk-badge tone=${st.tone}>${st.label}${live.until ? tr(" until {0}", String(live.until).slice(11, 16)) : ''}</hxk-badge>
+        ${live.state === 'quota' ? html`<hxk-button variant="ghost" @click=${() => this.retry(step.provider)}>${tr("Try again now")}</hxk-button>` : nothing}</div>` : nothing}
     </div>`;
   }
 
@@ -181,12 +181,12 @@ export class EchoBlocks extends HestiaElement {
     const c = this.chains[name];
     const first = Object.entries<any>(this.providers).find(([, p]) => (this.std(p.type).directions || []).includes(c.direction));
     return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voce' ? 'voce' : 'ascolto'}`}>
-      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Elimina")}</hxk-button>
-      <hxk-field label=${tr("Nome visibile")} .value=${c.label}
+      <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Delete")}</hxk-button>
+      <hxk-field label=${tr("Visible name")} .value=${c.label}
         @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>
       ${c.steps.map((s: any, i: number) => this.stepRow(name, i, s))}
       <hxk-button variant="ghost" icon="plus" ?disabled=${!first}
-        @click=${() => this.setSteps(name, [...c.steps, { provider: first?.[0] || '', model: '', voice: '', options: {} }])}>${tr("Aggiungi un passo")}</hxk-button>
+        @click=${() => this.setSteps(name, [...c.steps, { provider: first?.[0] || '', model: '', voice: '', options: {} }])}>${tr("Add a step")}</hxk-button>
     </hxk-card>`;
   }
 
@@ -201,8 +201,8 @@ export class EchoBlocks extends HestiaElement {
 
   private async removeChain(name: string) {
     const users = (this.live?.usecases || []).filter((u: any) => u.chain === name).map((u: any) => u.label);
-    const text = users.length ? tr("La usano: {0}. Torneranno alla catena predefinita.", users.join(', ')) : tr('Nessun uso la sceglie.');
-    if (!(await this.host.confirm(tr("Eliminare la catena {0}?", name), text, { label: tr('Elimina'), danger: true }))) return;
+    const text = users.length ? tr("Used by: {0}. They'll go back to the default chain.", users.join(', ')) : tr('No use picks it.');
+    if (!(await this.host.confirm(tr("Delete the chain {0}?", name), text, { label: tr('Delete'), danger: true }))) return;
     const next = { ...this.chains }; delete next[name];
     this.chains = next; this.touch('chains');
   }
@@ -210,19 +210,19 @@ export class EchoBlocks extends HestiaElement {
   // ── use cases ──────────────────────────────────────────────────────────
   private ucRow(u: any) {
     const o = this.overrides[u.id] || {};
-    const chainOpts: Opt[] = [{ value: '', label: tr("Suggerita ({0})", u.suggested_chain || u.direction) },
+    const chainOpts: Opt[] = [{ value: '', label: tr("Suggested ({0})", u.suggested_chain || u.direction) },
       ...Object.entries<any>(this.chains).filter(([, c]) => c.direction === u.direction).map(([n, c]) => ({ value: n, label: c.label || n }))];
-    const modeOpts: Opt[] = [{ value: '', label: tr('Come tutta la voce') }, ...MODES];
+    const modeOpts: Opt[] = [{ value: '', label: tr('Like the whole item') }, ...MODES];
     const set = (k: string, v: string) => {
       const next = { ...o, [k]: v }; if (!v) delete next[k];
       const all: Record<string, any> = { ...this.overrides, [u.id]: next }; if (!Object.keys(next).length) delete all[u.id];
       this.overrides = all; this.touch('usecases');
     };
     return html`<div class="uc">
-      <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">${tr("non dichiarato")}</hxk-badge>` : nothing}</div>
+      <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">${tr("not declared")}</hxk-badge>` : nothing}</div>
         <div class="small muted truncate" title=${u.help || ''}>${u.direction} · ${u.id}${u.help ? ` · ${u.help}` : ''}</div></div>
-      <hxk-field type="enum" label=${tr("Catena")} .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
-      <hxk-field type="enum" label=${tr("Modalità")} .options=${modeOpts} .value=${o.mode && o.mode !== 'segui' ? o.mode : ''}
+      <hxk-field type="enum" label=${tr("Chain")} .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
+      <hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode && o.mode !== 'segui' ? o.mode : ''}
         @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
     </div>`;
   }
@@ -235,8 +235,8 @@ export class EchoBlocks extends HestiaElement {
 
   private saveBar(part: Part) {
     if (!this.dirty[part]) return nothing;
-    return html`<div class="actions"><hxk-button variant="ghost" @click=${() => this.load()}>${tr("Annulla")}</hxk-button>
-      <hxk-button variant="primary" icon="check" ?loading=${this.saving === part} @click=${() => this.save(part)}>${tr("Salva")}</hxk-button></div>`;
+    return html`<div class="actions"><hxk-button variant="ghost" @click=${() => this.load()}>${tr("Cancel")}</hxk-button>
+      <hxk-button variant="primary" icon="check" ?loading=${this.saving === part} @click=${() => this.save(part)}>${tr("Save")}</hxk-button></div>`;
   }
 
   render() {
@@ -244,18 +244,18 @@ export class EchoBlocks extends HestiaElement {
     if (!this.live) return html`<hxk-state kind="loading"></hxk-state>`;
     const byDir = (d: string) => Object.keys(this.chains).filter(n => this.chains[n].direction === d);
     return html`
-      <div class="section"><h2>${tr("Usi dei moduli")}</h2>
-        <div class="hint">${tr("Ogni modulo dichiara dove ascolta o parla; qui scegli la catena e la modalità (Interna = catene di questa pagina, Esterna = il motore scelto in Impostazioni fa tutto). Vuoto = la scelta suggerita.")}</div>
+      <div class="section"><h2>${tr("Module uses")}</h2>
+        <div class="hint">${tr("Each module declares where it listens or speaks; here you choose the chain and the mode (Internal = chains of this page, External = the engine chosen in Settings does everything). Empty = the suggested choice.")}</div>
         ${this.usecases()}${this.saveBar('usecases')}</div>
-      ${DIRECTIONS.map(d => html`<div class="section"><h2>${tr("Catene di")} ${d.value}</h2>
-        <div class="hint">${d.label}${tr(". Si usa il primo passo pronto; se un motore non va o finisce la quota passo al successivo.")}</div>
+      ${DIRECTIONS.map(d => html`<div class="section"><h2>${tr("Chains of")} ${d.value}</h2>
+        <div class="hint">${d.label}${tr(". The first ready step is used; if an engine fails or its quota ends I move to the next.")}</div>
         ${byDir(d.value).map(n => this.chainCard(n))}</div>`)}
-      <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addChain()}>${tr("Nuova catena")}</hxk-button></div>
+      <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addChain()}>${tr("New chain")}</hxk-button></div>
       ${this.saveBar('chains')}
-      <div class="section"><h2>${tr("Fornitori")}</h2>
-        <div class="hint">${tr("Dove stanno i motori della voce. La chiave non si scrive qui: va nel file .env come ECHO_KEY_<NOME>.")}</div>
+      <div class="section"><h2>${tr("Providers")}</h2>
+        <div class="hint">${tr("Where the voice engines are. The key is not written here: it goes in the .env file as ECHO_KEY_<NAME>.")}</div>
         ${Object.keys(this.providers).map(n => this.providerCard(n))}
-        <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addProvider()}>${tr("Nuovo fornitore")}</hxk-button></div>
+        <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addProvider()}>${tr("New provider")}</hxk-button></div>
         ${this.saveBar('providers')}</div>`;
   }
 }

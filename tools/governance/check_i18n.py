@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Every fixed text a person reads has its English translation (standard: docs/LANGUAGES.md).
+"""Every fixed text a person reads has its Italian translation (standard: docs/LANGUAGES.md).
 
-Scans ``tr("…")`` in the Python modules and ``tr('…')`` / ``'…' | tr`` in the WebUI shell, the plugins and the
-SDK kit, and checks each Italian source text is a key of ``Hestia-Shared/hestia_common/locales/en/messages.json``.
+The code is English. Scans ``tr("…")`` in the Python modules and ``tr('…')`` / ``'…' | tr`` in the WebUI shell, the
+plugins and the SDK kit, and checks each English source text is a key of
+``Hestia-Shared/hestia_common/locales/it/messages.json``.
 
     python tools/governance/check_i18n.py                  # list what is missing (exit 1 if any)
-    python tools/governance/check_i18n.py --todo todo.json # also write {"Testo": ""} to fill in
-    python tools/governance/check_i18n.py --merge todo.json  # add the filled entries to the English catalog
+    python tools/governance/check_i18n.py --todo todo.json # also write {"Text": ""} to fill in
+    python tools/governance/check_i18n.py --merge todo.json  # add the filled entries to the Italian catalog
 
 No network, no imports of the modules: it reads the sources only.
 """
@@ -20,10 +21,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CATALOG = ROOT / "Hestia-Shared" / "hestia_common" / "locales" / "en" / "messages.json"
+CATALOG = ROOT / "Hestia-Shared" / "hestia_common" / "locales" / "it" / "messages.json"
 
-# Only texts that look Italian: a technical string passed to tr by mistake is not a missing translation.
-_IT = re.compile(r"[àèéìòù]|\b(il|la|le|non|per|che|della|del|una|sono|nessun[ao]?|serve|riprova|trovat[oa])\b", re.I)
+# A text with no letters ("{0} · {1}") needs no translation.
+_WORDS = re.compile(r"[A-Za-z]{2,}")
 # A quoted TS literal; `\\'` is an Angular template quote escaped inside a TS string.
 _Q = r"""'(?:\\\\.|[^'\\\n]|\\.)*'""" + r'''|"(?:\\\\.|[^"\\\n]|\\.)*"'''
 _TS_TR = re.compile(rf"""\btr\(\s*({_Q})\s*[,)]|({_Q})\s*\|\s*tr\b""")
@@ -53,7 +54,7 @@ def python_texts():
         for n in ast.walk(tree):
             if (isinstance(n, ast.Call) and getattr(n.func, "id", "") == "tr" and n.args
                     and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str)
-                    and _IT.search(n.args[0].value)):
+                    and _WORDS.search(re.sub(r"\{[^{}]*\}", "", n.args[0].value))):
                 yield path, n.args[0].value
 
 
@@ -66,12 +67,12 @@ def web_texts():
             continue
         for m in _TS_TR.finditer(path.read_text(encoding="utf-8")):
             text = _ts_unquote(m.group(1) or m.group(2))
-            if text:
+            if text and _WORDS.search(re.sub(r"\{[^{}]*\}", "", text)):
                 yield path, text
 
 
 def missing() -> dict[str, str]:
-    """Italian source text → first file that uses it, for every text without an English entry."""
+    """English source text → first file that uses it, for every text without an Italian entry."""
     en = json.loads(CATALOG.read_text(encoding="utf-8"))
     out: dict[str, str] = {}
     for path, text in [*python_texts(), *web_texts()]:
@@ -81,19 +82,19 @@ def missing() -> dict[str, str]:
 
 
 def merge(todo: Path) -> int:
-    """Add the filled entries of ``todo`` to the English catalog (empty ones are skipped)."""
+    """Add the filled entries of ``todo`` to the Italian catalog (empty ones are skipped)."""
     en = json.loads(CATALOG.read_text(encoding="utf-8"))
     filled = {k: v for k, v in json.loads(todo.read_text(encoding="utf-8")).items() if isinstance(v, str) and v}
     en.update(filled)
     CATALOG.write_text(json.dumps(en, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    print(f"check_i18n: {len(filled)} English texts added to {CATALOG.relative_to(ROOT)}")
+    print(f"check_i18n: {len(filled)} Italian texts added to {CATALOG.relative_to(ROOT)}")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--todo", type=Path, help="write the missing texts as {text: ''} to this file")
-    parser.add_argument("--merge", type=Path, help="add the filled entries of this file to the English catalog")
+    parser.add_argument("--merge", type=Path, help="add the filled entries of this file to the Italian catalog")
     args = parser.parse_args()
     if args.merge:
         return merge(args.merge)
@@ -101,9 +102,9 @@ def main() -> int:
     if args.todo:
         args.todo.write_text(json.dumps({k: "" for k in gaps}, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     if not gaps:
-        print("check_i18n: every text has its English translation")
+        print("check_i18n: every text has its Italian translation")
         return 0
-    print(f"check_i18n: {len(gaps)} texts without English (add them to {CATALOG.relative_to(ROOT)}, "
+    print(f"check_i18n: {len(gaps)} texts without Italian (add them to {CATALOG.relative_to(ROOT)}, "
           "or run with --todo file, fill it, then --merge file):")
     for text, where in list(gaps.items())[:50]:
         print(f"- {where}: {text[:80]!r}")

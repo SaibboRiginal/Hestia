@@ -136,17 +136,17 @@ export class HephaestusDiff extends LitElement {
     const tot = shown.reduce((t, f) => ({ a: t.a + f.added, d: t.d + f.deleted }), { a: 0, d: 0 });
     return html`
       <div class="bar">
-        <span class="sum">${shown.length} ${tr("file ·")} <b class="a">+${tot.a}</b> <b class="d">−${tot.d}</b></span>
+        <span class="sum">${shown.length} ${tr("files ·")} <b class="a">+${tot.a}</b> <b class="d">−${tot.d}</b></span>
         <span class="grow"></span>
         ${shown.length > 1 ? html`
-          <button class="lnk" @click=${() => { this.closed = new Set(shown.map(f => f.path)); this.opened = new Set(); }}>${tr("Comprimi tutti")}</button>
-          <button class="lnk" @click=${() => { this.opened = new Set(shown.map(f => f.path)); this.closed = new Set(); }}>${tr("Espandi tutti")}</button>` : nothing}
+          <button class="lnk" @click=${() => { this.closed = new Set(shown.map(f => f.path)); this.opened = new Set(); }}>${tr("Collapse all")}</button>
+          <button class="lnk" @click=${() => { this.opened = new Set(shown.map(f => f.path)); this.closed = new Set(); }}>${tr("Expand all")}</button>` : nothing}
         <div class="seg">
-          <button class=${this.mode === 'unified' ? 'on' : ''} @click=${() => this.setMode('unified')}>${tr("Unificato")}</button>
-          <button class=${this.mode === 'split' ? 'on' : ''} @click=${() => this.setMode('split')}>${tr("Affiancato")}</button>
+          <button class=${this.mode === 'unified' ? 'on' : ''} @click=${() => this.setMode('unified')}>${tr("Unified")}</button>
+          <button class=${this.mode === 'split' ? 'on' : ''} @click=${() => this.setMode('split')}>${tr("Side by side")}</button>
         </div>
       </div>
-      ${!shown.length ? html`<div class="empty">${tr("Nessuna differenza.")}</div>` : nothing}
+      ${!shown.length ? html`<div class="empty">${tr("No difference.")}</div>` : nothing}
       ${shown.map(f => {
         const c = this.collapsed(f, shown.length);
         return html`<section class="file">
@@ -156,7 +156,7 @@ export class HephaestusDiff extends LitElement {
             <span class="path">${f.status === 'R' ? html`<s>${f.oldPath}</s> → ` : nothing}${f.path}</span>
             <span class="cnt"><b class="a">+${f.added}</b> <b class="d">−${f.deleted}</b></span>
           </header>
-          ${c ? nothing : f.binary ? html`<div class="empty">${tr("File binario.")}</div>` : this.mode === 'unified'
+          ${c ? nothing : f.binary ? html`<div class="empty">${tr("Binary file.")}</div>` : this.mode === 'unified'
             ? html`<div class="code">${f.hunks.map(h => html`<div class="hunk">${h.header}</div>${h.lines.map(l =>
                 html`<div class="ln" data-k=${l.kind}><i>${l.old ?? ''}</i><i>${l.new ?? ''}</i><span>${this.sign(l)}${l.text}</span></div>`)}`)}</div>`
             : html`<div class="code split">${toSplit(f.hunks).map(r => r.hunk ? html`<div class="hunk wide">${r.hunk}</div>` : html`
@@ -164,6 +164,6 @@ export class HephaestusDiff extends LitElement {
                 <div class="ln" data-k=${r.right ? (r.right.kind === 'ctx' ? 'ctx' : 'add') : 'none'}><i>${r.right?.new ?? ''}</i><span>${r.right?.text ?? ''}</span></div>`)}</div>`}
         </section>`;
       })}
-      ${this.truncated ? html`<div class="empty">${tr("Diff troncato: troppo grande da mostrare per intero.")}</div>` : nothing}`;
+      ${this.truncated ? html`<div class="empty">${tr("Diff truncated: too big to show in full.")}</div>` : nothing}`;
   }
 }

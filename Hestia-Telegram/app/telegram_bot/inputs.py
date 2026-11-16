@@ -14,37 +14,37 @@ from typing import Any
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 LABELS = {
-    "title": "Titolo", "name": "Nome", "q": "Cosa cerchi", "query": "Cosa cerchi", "text": "Testo",
-    "note": "Nota", "notes": "Note", "description": "Descrizione", "date": "Data", "days": "Giorni",
-    "limit": "Quanti", "amount": "Importo", "category": "Categoria", "merchant": "Dove", "account": "Conto",
-    "income": "È un'entrata", "month": "Mese", "months": "Mesi", "place": "Luogo", "location": "Luogo",
-    "start_datetime": "Inizio", "end_datetime": "Fine", "start_at": "Inizio", "end_at": "Fine",
-    "date_from": "Dal", "date_to": "Al", "since": "Dal", "until": "Al", "kind": "Tipo", "status": "Stato",
-    "service": "Servizio", "issue": "Problema", "severity": "Gravità", "reason": "Motivo", "task_id": "Lavoro",
-    "url": "Indirizzo web", "subject": "Oggetto", "body": "Testo", "exercise": "Esercizio", "template": "Scheda",
-    "routine": "Routine", "product": "Prodotto", "piece": "Capo", "outfit": "Outfit", "pieces": "Capi",
-    "minutes": "Minuti", "km": "Km", "energy": "Energia", "effort": "Fatica", "sleep": "Sonno",
-    "soreness": "Indolenzimento", "key": "Impostazione", "value": "Valore", "request": "Cosa vuoi",
-    "fact": "Cosa ricordare", "facts": "Cosa ricordare", "topic": "Argomento", "domain": "Ambito",
-    "occasion": "Occasione", "season": "Stagione", "color": "Colore", "colors": "Colori", "brand": "Marca",
-    "size": "Taglia", "price": "Prezzo", "times": "Quante volte", "per": "Ogni", "time_minutes": "Minuti a disposizione",
-    "provider": "Calendario", "event_id": "Evento", "ref": "Voce", "occurrence": "Quale volta", "to": "A",
-    "id": "Quale", "momento": "Momento", "level": "Livello", "contains": "Contiene", "candidate_model": "Modello",
-    "dataset_name": "Dataset", "adapter_name": "Nome adattatore", "branch": "Branch", "summary": "Riepilogo",
-    "paused": "In pausa", "dry_run": "Solo prova", "minutes_dnd": "Minuti", "code": "Codice", "type": "Tipo",
-    "recurrence": "Ripetizione", "favorite": "Preferito", "rating": "Voto", "areas": "Zone", "actives": "Attivi",
-    "temp_c": "Temperatura", "rain": "Pioggia", "styles": "Stili", "count": "Quanti", "hourly": "Ora per ora",
-    "owner": "Per chi", "template_id": "Modello", "parent": "Collegata a", "engine": "Motore", "now": "Subito",
-    "weight": "Peso", "measurement": "Misura", "goal": "Obiettivo", "target": "Obiettivo", "scope": "Ambito",
-    "pain_areas": "Dove fa male", "free_text": "Altro da dire", "intent": "Cosa vuoi fare", "week": "Settimana",
-    "slots": "Quando", "outcome": "Com'è andata", "plan_id": "Piano", "slot_id": "Quale volta",
+    "title": "Title", "name": "Name", "q": "What are you looking for", "query": "What are you looking for", "text": "Text",
+    "note": "Note", "notes": "Notes", "description": "Description", "date": "Date", "days": "Days",
+    "limit": "How many", "amount": "Amount", "category": "Category", "merchant": "Where", "account": "Account",
+    "income": "It's income", "month": "Month", "months": "Months", "place": "Place", "location": "Place",
+    "start_datetime": "Start", "end_datetime": "End", "start_at": "Start", "end_at": "End",
+    "date_from": "From", "date_to": "Al", "since": "From", "until": "Al", "kind": "Type", "status": "Status",
+    "service": "Service", "issue": "Problem", "severity": "Severity", "reason": "Reason", "task_id": "Work",
+    "url": "Web address", "subject": "Subject", "body": "Text", "exercise": "Exercise", "template": "Workout plan",
+    "routine": "Routine", "product": "Product", "piece": "Item", "outfit": "Outfit", "pieces": "Items",
+    "minutes": "Minutes", "km": "Km", "energy": "Energy", "effort": "Effort", "sleep": "Sleep",
+    "soreness": "Soreness", "key": "Setting", "value": "Value", "request": "What do you want",
+    "fact": "What to remember", "facts": "What to remember", "topic": "Topic", "domain": "Scope",
+    "occasion": "Occasion", "season": "Season", "color": "Colour", "colors": "Colours", "brand": "Brand",
+    "size": "Size", "price": "Price", "times": "How many times", "per": "Every", "time_minutes": "Minutes available",
+    "provider": "Calendar", "event_id": "Event", "ref": "Voice", "occurrence": "Which time", "to": "A",
+    "id": "Which", "momento": "Moment", "level": "Level", "contains": "Contains", "candidate_model": "Model",
+    "dataset_name": "Dataset", "adapter_name": "Adapter name", "branch": "alt::Branch", "summary": "Summary",
+    "paused": "Paused", "dry_run": "Test only", "minutes_dnd": "Minutes", "code": "Code", "type": "Type",
+    "recurrence": "Repetition", "favorite": "Favourite", "rating": "Rating", "areas": "Zones", "actives": "pl::Active",
+    "temp_c": "Temperature", "rain": "Rain", "styles": "Styles", "count": "How many", "hourly": "Hour by hour",
+    "owner": "For whom", "template_id": "Model", "parent": "Linked to", "engine": "Engine", "now": "Right away",
+    "weight": "Weight", "measurement": "Measure", "goal": "Goal", "target": "Goal", "scope": "Scope",
+    "pain_areas": "Where it hurts", "free_text": "Something else to say", "intent": "What do you want to do", "week": "Week",
+    "slots": "When", "outcome": "How it went", "plan_id": "Plan", "slot_id": "Which time",
 }
 
 PLACEHOLDERS = {
-    "amount": "12,50", "title": "Cena con Luca", "q": "bolletta luce", "query": "giacca blu",
-    "start_datetime": "domani 18:30", "start_at": "domani 18:30", "date": "domani o 25/10", "value": "78,4",
-    "text": "panca 4x8 62,5", "place": "Casa", "request": "aggiungi il meteo al recap", "url": "https://…",
-    "to": "nome@esempio.it", "facts": "ho il dentista il martedì", "fact": "preferisco la mattina",
+    "amount": "12,50", "title": "Dinner with Luca", "q": "bolletta luce", "query": "giacca blu",
+    "start_datetime": "tomorrow 18:30", "start_at": "tomorrow 18:30", "date": "tomorrow or 25/10", "value": "78,4",
+    "text": "panca 4x8 62,5", "place": "Home", "request": "add the weather to the recap", "url": "https://…",
+    "to": "nome@esempio.it", "facts": "I have the dentist on Tuesdays", "fact": "I prefer the morning",
 }
 
 WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
@@ -143,10 +143,10 @@ def quick_values(f: Field, today: date | None = None) -> list[tuple[str, str]]:
     if f.kind == "choice":
         return [(lbl, v) for v, lbl in f.options][:12]
     if f.kind == "bool":
-        return [(tr("Sì"), "true"), ("No", "false")]
+        return [(tr("Yes"), "true"), ("No", "false")]
     if f.kind in ("date", "datetime"):
-        return [(tr("Oggi"), today.isoformat()), (tr("Domani"), (today + timedelta(days=1)).isoformat()),
-                (tr("Dopodomani"), (today + timedelta(days=2)).isoformat())]
+        return [(tr("Today"), today.isoformat()), (tr("Tomorrow"), (today + timedelta(days=1)).isoformat()),
+                (tr("Day after tomorrow"), (today + timedelta(days=2)).isoformat())]
     if f.kind == "time":
         return [(t, t) for t in ("08:00", "09:00", "12:30", "18:00", "20:00")]
     if f.kind == "int":
@@ -236,38 +236,38 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
     """``(ok, value, problem)`` — ``problem`` is a short sentence for the user."""
     s = str(text or "").strip()
     if not s:
-        return False, None, tr("Scrivi qualcosa, oppure Annulla.")
+        return False, None, tr("Write something, or Cancel.")
     if f.kind == "choice":
         for v, lbl in f.options:
             if s.casefold() in (v.casefold(), lbl.casefold()):
                 return True, v, ""
-        return False, None, tr("Scegli una delle opzioni.")
+        return False, None, tr("Choose one of the options.")
     if f.kind == "bool":
         low = s.casefold()
-        if low in (tr("sì"), "si", "s", "yes", "true", "1", "vero"):
+        if low in (tr("yes"), "si", "s", "yes", "true", "1", "vero"):
             return True, True, ""
         if low in ("no", "n", "false", "0", "falso"):
             return True, False, ""
-        return False, None, tr("Rispondi sì o no.")
+        return False, None, tr("Answer yes or no.")
     if f.kind in ("int", "number"):
         m = re.fullmatch(r"[-+]?\d+(?:[.,]\d+)?", s.replace("€", "").replace(" ", ""))
         if not m:
-            return False, None, tr("Scrivi un numero.")
+            return False, None, tr("Write a number.")
         num = float(m[0].replace(",", "."))
         if f.minimum is not None and num < f.minimum or f.maximum is not None and num > f.maximum:
-            return False, None, tr("Un numero tra {0:g} e {1:g}.", f.minimum, f.maximum) if f.minimum is not None \
+            return False, None, tr("A number between {0:g} and {1:g}.", f.minimum, f.maximum) if f.minimum is not None \
                 and f.maximum is not None else "Numero fuori dai limiti."
         return True, (int(num) if f.kind == "int" else num), ""
     if f.kind == "date":
         d = parse_date(s)
-        return (True, d.isoformat(), "") if d else (False, None, tr("Non capisco la data: prova «domani» o «25/10»."))
+        return (True, d.isoformat(), "") if d else (False, None, tr("I don't understand the date: try «tomorrow» or «25/10»."))
     if f.kind == "time":
         t = parse_time(s)
-        return (True, t, "") if t else (False, None, tr("Non capisco l'ora: prova «18:30»."))
+        return (True, t, "") if t else (False, None, tr("I don't understand the time: try «18:30»."))
     if f.kind == "datetime":
         value, full = parse_datetime(s)
         if not value:
-            return False, None, tr("Non capisco: prova «domani 18:30» o «25/10 9:00».")
+            return False, None, tr("I don't understand: try «tomorrow 18:30» or «25/10 9:00».")
         return True, value, "" if full else "time"
     if f.kind == "list":
         return True, [p.strip() for p in re.split(r"[,;\n]", s) if p.strip()], ""
@@ -281,7 +281,7 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
         pairs = [p.split("=", 1) for p in re.split(r"[;\n]", s) if "=" in p]
         if pairs:
             return True, {k.strip(): v.strip() for k, v in pairs}, ""
-        return False, None, tr("Scrivi le modifiche come «campo=valore; campo=valore».")
+        return False, None, tr("Write the changes as «field=value; field=value».")
     return True, s, ""
 
 
@@ -290,7 +290,7 @@ def shown_value(f: Field, value: Any) -> str:
     if value is None or value == "":
         return "—"
     if f.kind == "bool":
-        return tr("Sì") if value in (True, "true") else "No"
+        return tr("Yes") if value in (True, "true") else "No"
     if f.kind == "choice":
         return dict(f.options).get(str(value), str(value))
     if f.kind in ("date", "datetime"):

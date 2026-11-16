@@ -61,15 +61,15 @@ const UNIT: Record<string, [string, string]> = {
 };
 
 export function describeRRule(rule?: string | null): string {
-  if (!rule) return tr('Non si ripete');
+  if (!rule) return tr('Doesn\'t repeat');
   const m = parseRRule(rule);
   if (m.freq === 'custom') return `Regola: ${m.raw}`;
   const [one, many] = UNIT[m.freq] ?? ['', ''];
-  let s = m.interval === 1 ? tr("Ogni {0}", one) : tr("Ogni {0} {1}", m.interval, many);
-  if (m.freq === 'DAILY' && m.interval === 1) s = tr('Ogni giorno');
+  let s = m.interval === 1 ? tr("Every {0}", one) : tr("Every {0} {1}", m.interval, many);
+  if (m.freq === 'DAILY' && m.interval === 1) s = tr('Every day');
   if (m.freq === 'WEEKLY' && m.byday.length) s += `: ${m.byday.map(d => WEEKDAY_LABELS[d]).join(', ')}`;
   if (m.count) s += `, ${m.count} volte`;
-  else if (m.until) s += tr(", fino al {0}", new Date(m.until).toLocaleDateString('it-IT'));
+  else if (m.until) s += tr(", until {0}", new Date(m.until).toLocaleDateString('it-IT'));
   return s;
 }
 

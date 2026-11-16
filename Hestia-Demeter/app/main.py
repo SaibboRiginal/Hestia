@@ -30,7 +30,7 @@ from hestia_common.transfer import StoreSection, Transfer
 from .core.service import ESTIMATE_USE, SLOTS, TIMES, Nutrition
 
 API = "/api/food"
-kit = ModuleKit("demeter", port=19026, api=API, domain="food", title="Alimentazione", store="food-store",
+kit = ModuleKit("demeter", port=19026, api=API, domain="food", title="Nutrition", store="food-store",
                 tags=("coach",),
                 when_to_use="nutrition: diet, meals eaten, calories, supplements to take",
                 manual="Diet (cibo_dieta: daily kcal and protein, rules), meals (cibo_pasto logs what was eaten; if no kcal given the assistant estimates them), day summary (cibo_oggi), supplements with time of day (cibo_integratori, cibo_preso).")
@@ -127,10 +127,10 @@ def take(sid: str, body: dict = Body(default={})):
     return food.take(sid, str(body.get("date") or ""))
 
 
-app.include_router(CoachRouter("demeter", "food", "Alimentazione", needs=lambda s, e: food.needs(s, e),
+app.include_router(CoachRouter("demeter", "food", "Nutrition", needs=lambda s, e: food.needs(s, e),
                                review=lambda s, e: food.review(s, e)).router)
 app.include_router(recap.recap_router(
-    "demeter", lambda d, n: recap.piece("demeter", tr("Alimentazione"), icon="leaf", order=45, **food.recap(d, n)),
+    "demeter", lambda d, n: recap.piece("demeter", tr("Nutrition"), icon="leaf", order=45, **food.recap(d, n)),
     today=food.today))
 
 
@@ -143,11 +143,11 @@ def _today_display(t: dict) -> dict:
     items = [item(f"{SLOTS.get(m['slot'], m['slot'])}: {m['text']}",
                   [f"{'~' if m.get('estimated') else ''}{m['kcal']} kcal" if m["kcal"] is not None else "—"])
              for m in t["meals"]]
-    items += [item((tr("Preso: ") if s["taken"] else tr("Da prendere: ")) + s["name"], [TIMES[s["time_of_day"]]])
+    items += [item((tr("Taken: ") if s["taken"] else tr("To take: ")) + s["name"], [TIMES[s["time_of_day"]]])
               for s in t["supplements"]]
-    return display(tr("Oggi a tavola"), lines=lines, items=items,
-                   actions=[action(tr("Registra pasto"), "cibo_pasto", style="primary")] +
-                           [action(tr("Preso {0}", s['name']), "cibo_preso", {"supplement": s["id"]})
+    return display(tr("At the table today"), lines=lines, items=items,
+                   actions=[action(tr("Log meal"), "cibo_pasto", style="primary")] +
+                           [action(tr("Taken {0}", s['name']), "cibo_preso", {"supplement": s["id"]})
                             for s in t["supplements"] if not s["taken"]][:3])
 
 
@@ -165,15 +165,15 @@ def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", 
     else:
         d = {**food.diet(), "unchanged": True}   # read only: no «Fatto» in the chat
     lines = [f"Obiettivo: {d['kcal'] or '—'} kcal · {d['protein'] or '—'} g proteine"] + d["rules"][:10]
-    return {**d, "display": display(tr("Dieta"), lines=lines, actions=[action(tr("Modifica"), "cibo_dieta")])}
+    return {**d, "display": display(tr("Diet"), lines=lines, actions=[action(tr("Edit"), "cibo_dieta")])}
 
 
 def _supplements() -> dict:
     items = food.supplements(True)
-    return {"items": items, "display": display(tr("Integratori"), items=[
-        item(s["name"], [s.get("dose") or "", TIMES[s["time_of_day"]], "in pausa" if s["status"] == "paused" else ""])
-        for s in items], lines=[] if items else [tr("Nessun integratore.")],
-        actions=[action(tr("Aggiungi"), "cibo_integratore", style="primary")])}
+    return {"items": items, "display": display(tr("Supplements"), items=[
+        item(s["name"], [s.get("dose") or "", TIMES[s["time_of_day"]], "paused" if s["status"] == "paused" else ""])
+        for s in items], lines=[] if items else [tr("No supplements.")],
+        actions=[action(tr("Add"), "cibo_integratore", style="primary")])}
 
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
@@ -184,29 +184,29 @@ kit.tools([
             parameters={"type": "object", "properties": {"date": S}},
             handler=lambda date="": (lambda t: {**t, "display": _today_display(t)})(
                 food.day_summary(__import__("datetime").date.fromisoformat(date) if date else None)),
-            title="Oggi", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Pasti", "primary": 1}),
+            title="Today", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Meals", "primary": 1}),
     MCPTool(name="cibo_pasto", description=("Log a meal: text (what), slot colazione|pranzo|cena|spuntino, kcal and protein if known "
                                             "(otherwise the assistant estimates them)."),
             parameters={"type": "object", "properties": {"text": S, "slot": {"type": "string", "enum": list(SLOTS)},
                                                          "kcal": I, "protein": I, "date": S}, "required": ["text"]},
-            handler=_meal, title="Registra pasto", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Pasti", "primary": 2}),
+            handler=_meal, title="Log meal", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Meals", "primary": 2}),
     MCPTool(name="cibo_pasti", description="Meals of the last days (days, default 7).",
             parameters={"type": "object", "properties": {"days": I}},
-            handler=lambda days=7: {"items": food.meals("", days)}, title="Pasti", clients=["telegram", "ui"],
-            telegram_group=G, telegram={"section": "Pasti"}),
+            handler=lambda days=7: {"items": food.meals("", days)}, title="Meals", clients=["telegram", "ui"],
+            telegram_group=G, telegram={"section": "Meals"}),
     MCPTool(name="cibo_pasto_elimina", description="Delete a logged meal.",
             parameters={"type": "object", "properties": {"meal": S}, "required": ["meal"]},
-            handler=lambda meal: food.delete_meal(meal), title="Elimina pasto", method="POST",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Pasti"}),
+            handler=lambda meal: food.delete_meal(meal), title="Delete meal", method="POST",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Meals"}),
     MCPTool(name="cibo_dieta", description=("The diet: with no arguments it shows it; kcal, protein (g), rules (one per line) and notes "
                                             "change it."),
             parameters={"type": "object", "properties": {"kcal": I, "protein": I, "rules": S, "notes": S}},
-            handler=_diet, title="Dieta", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Dieta", "primary": 3}),
+            handler=_diet, title="Diet", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Diet", "primary": 3}),
     MCPTool(name="cibo_integratori", description="The supplements the user takes.",
-            parameters={"type": "object", "properties": {}}, handler=_supplements, title="Integratori",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Integratori", "primary": 4}),
+            parameters={"type": "object", "properties": {}}, handler=_supplements, title="Supplements",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Supplements", "primary": 4}),
     MCPTool(name="cibo_integratore", description=("Add or edit a supplement: name, dose, time_of_day morning|midday|afternoon|evening|any, days "
                                                   "(0=Mon..6=Sun, empty = every day), training_days_only, with_food, status active|paused."),
             parameters={"type": "object", "properties": {
@@ -215,36 +215,35 @@ kit.tools([
                 "status": {"type": "string", "enum": ["active", "paused"]}}},
             handler=lambda supplement="", **kw: food.save_supplement(
                 kw, food.find_supplement(supplement)["id"] if supplement else None),
-            title="Integratore", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Integratori"}),
+            title="Supplement", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Supplements"}),
     MCPTool(name="cibo_preso", description="Mark a supplement as taken (today or date).",
             parameters={"type": "object", "properties": {"supplement": SUP, "date": S}, "required": ["supplement"]},
-            handler=lambda supplement, date="": food.take(supplement, date), title="Preso", method="POST",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Integratori", "primary": 5}),
+            handler=lambda supplement, date="": food.take(supplement, date), title="Taken", method="POST",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Supplements", "primary": 5}),
     MCPTool(name="cibo_integratore_elimina", description="Delete a supplement.",
             parameters={"type": "object", "properties": {"supplement": SUP}, "required": ["supplement"]},
-            handler=lambda supplement: food.delete_supplement(supplement), title="Elimina integratore",
-            method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Integratori"}),
+            handler=lambda supplement: food.delete_supplement(supplement), title="Delete supplement",
+            method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Supplements"}),
 ], prefix="cibo_")
 
 transfer = Transfer("demeter", kit.hub, sections=[
-    StoreSection("dieta", "Dieta", kit.store, ["diet"], icon="leaf"),
-    StoreSection("pasti", "Pasti", kit.store, ["meal"], icon="list", title=lambda r: r["data"].get("text", "")),
-    StoreSection("integratori", "Integratori", kit.store, ["supplement", "intake"], icon="droplet",
+    StoreSection("dieta", "Diet", kit.store, ["diet"], icon="leaf"),
+    StoreSection("pasti", "Meals", kit.store, ["meal"], icon="list", title=lambda r: r["data"].get("text", "")),
+    StoreSection("integratori", "Supplements", kit.store, ["supplement", "intake"], icon="droplet",
                  title=lambda r: r["data"].get("name", "")),
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
     usecase(ESTIMATE_USE, "Alimentazione · stima kcal", chain="veloce",
-            help="Stima kcal e proteine di un pasto descritto a parole.")])})
+            help="Estimates kcal and protein of a meal described in words.")])})
 kit.capabilities(transfer.capabilities)
-kit.webui(icon="leaf", color="green", description="Dieta, pasti con calorie stimate, integratori nel piano della settimana.",
-          pages=[page("oggi", "Alimentazione", element="demeter-today", icon="leaf", order=80,
-                      help="I pasti del giorno con calorie e proteine (stimate dall'assistente se non le scrivi), "
-                           "gli integratori da prendere."),
-                 page("dieta", "Dieta", element="demeter-diet", icon="target", order=81, parent="oggi"),
-                 page("integratori", "Integratori", element="demeter-supplements", icon="droplet", order=82,
+kit.webui(icon="leaf", color="green", description="Diet, meals with estimated calories, supplements in the week plan.",
+          pages=[page("oggi", "Nutrition", element="demeter-today", icon="leaf", order=80,
+                      help="The meals of the day with calories and protein (estimated by the assistant if you don't write them), the supplements to take."),
+                 page("dieta", "Diet", element="demeter-diet", icon="target", order=81, parent="oggi"),
+                 page("integratori", "Supplements", element="demeter-supplements", icon="droplet", order=82,
                       parent="oggi")],
-          widgets=[widget("oggi", "Alimentazione di oggi", element="demeter-widget", sizes=["s", "m"], size="m",
+          widgets=[widget("oggi", "Today's nutrition", element="demeter-widget", sizes=["s", "m"], size="m",
                           auto=True, open_page="oggi", icon="leaf")])
 kit.finish()

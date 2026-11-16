@@ -24,11 +24,11 @@ export class WardrobeTodayWidget extends Widget {
     const action: QuickAction = { method: 'POST', path: `${API}/quick/{id}`, undo: { method: 'DELETE', path: `${API}/quick/{id}` } };
     const g = this.goal;
     return html`<div class="w">
-      ${g ? html`<div class="between"><span class="small muted">${g.hint}${g.met ? html` <hxk-icon name="check" size=${12} tone="success"></hxk-icon>` : ''}</span>${g.behind ? html`<hxk-badge tone="warning">${tr("indietro")}</hxk-badge>` : nothing}</div>` : nothing}
+      ${g ? html`<div class="between"><span class="small muted">${g.hint}${g.met ? html` <hxk-icon name="check" size=${12} tone="success"></hxk-icon>` : ''}</span>${g.behind ? html`<hxk-badge tone="warning">${tr("behind")}</hxk-badge>` : nothing}</div>` : nothing}
       <hxk-quicklog .host=${this.host} ?compact=${this.size === 's'} source=${`${API}/quick/outfits`} .action=${action}
         @logged=${() => this.reload(true)}></hxk-quicklog>
-      <div class="row small"><button class="link" @click=${() => this.host.navigate('outfit')}>${tr("Tutti gli outfit")}</button><span class="grow"></span>
-        <button class="link" @click=${() => this.host.navigate('cosa-mi-metto', this.ctx?.params?.occasion ? { occasione: this.ctx.params.occasion } : undefined)}>${tr("Cosa mi metto?")}</button></div>
+      <div class="row small"><button class="link" @click=${() => this.host.navigate('outfit')}>${tr("All outfits")}</button><span class="grow"></span>
+        <button class="link" @click=${() => this.host.navigate('cosa-mi-metto', this.ctx?.params?.occasion ? { occasione: this.ctx.params.occasion } : undefined)}>${tr("What do I wear?")}</button></div>
     </div>`;
   }
 }
@@ -45,20 +45,20 @@ export class WardrobeSuggestWidget extends Widget {
     let id = s.outfit_id;
     if (!id) { const r = await call(this.host, 'POST', '/suggest/save', { slots: s.slots, name: s.name }); if (!r.ok) return; id = r.data.id; }
     const r = await call(this.host, 'POST', `/outfits/${id}/worn`, {});
-    if (r.ok) this.host.toast(r.data.label || tr('Segnato'), 'success', { label: tr('Annulla'), run: () => call(this.host, 'DELETE', `/wears/${r.data.id}`) });
+    if (r.ok) this.host.toast(r.data.label || tr('Marked'), 'success', { label: tr('Cancel'), run: () => call(this.host, 'DELETE', `/wears/${r.data.id}`) });
   }
   render() {
     const res = this.res;
     if (res === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     const s = res?.items?.[0];
-    if (!s) return html`<div class="w"><span class="muted small">${res?.hint || tr('Nessuna idea per ora.')}</span>
-      <div><hxk-button size="sm" icon="plus" @click=${() => this.host.navigate('capi', { nuovo: '1' })}>${tr("Aggiungi capi")}</hxk-button></div></div>`;
+    if (!s) return html`<div class="w"><span class="muted small">${res?.hint || tr('No idea for now.')}</span>
+      <div><hxk-button size="sm" icon="plus" @click=${() => this.host.navigate('capi', { nuovo: '1' })}>${tr("Add items")}</hxk-button></div></div>`;
     return html`<div class="w">
-      <div class="click" @click=${() => this.host.navigate('cosa-mi-metto')}><b class="truncate">${s.saved ? s.name : tr('Idea per oggi')}</b>
+      <div class="click" @click=${() => this.host.navigate('cosa-mi-metto')}><b class="truncate">${s.saved ? s.name : tr('Idea for today')}</b>
         <div class="strip" style="margin-top:6px">${s.pieces.slice(0, this.size === 'l' ? 7 : 4).map((p: any) => html`<span class="thumb" title=${p.name}>${img(this.host, p.photo, p.name)}</span>`)}</div></div>
       <div class="reasons">${s.reasons.slice(0, this.size === 'l' ? 4 : 2).map((r: string) => html`<span class="pill">${r}</span>`)}</div>
-      <div class="row"><hxk-button size="sm" variant="primary" icon="check" @click=${() => this.wear(s)}>${tr("Indosso questo")}</hxk-button>
-        <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.host.navigate('cosa-mi-metto')}>${tr("Altre")}</hxk-button></div>
+      <div class="row"><hxk-button size="sm" variant="primary" icon="check" @click=${() => this.wear(s)}>${tr("I'm wearing this")}</hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.host.navigate('cosa-mi-metto')}>${tr("Others")}</hxk-button></div>
     </div>`;
   }
 }
@@ -73,18 +73,18 @@ export class WardrobeLaundryWidget extends Widget {
   }
   private async clean(p: any) {
     const r = await call(this.host, 'PATCH', `/pieces/${p.id}`, { status: 'active' });
-    if (r.ok) { this.host.toast(tr("«{0}» di nuovo nell'armadio", p.name), 'success', { label: tr('Annulla'), run: async () => { await call(this.host, 'PATCH', `/pieces/${p.id}`, { status: 'laundry' }); this.load(); } }); this.load(); }
+    if (r.ok) { this.host.toast(tr("«{0}» back in the wardrobe", p.name), 'success', { label: tr('Cancel'), run: async () => { await call(this.host, 'PATCH', `/pieces/${p.id}`, { status: 'laundry' }); this.load(); } }); this.load(); }
   }
   render() {
     const items = this.items;
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.size === 's') return html`<div class="w click" @click=${() => this.host.navigate('capi', { status: 'laundry' })}>
-      <span class="small muted">${tr("In lavanderia")}</span><div class="big">${items.length}</div><span class="small muted">${items.length ? 'capi' : html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("tutto pulito")}`}</span></div>`;
+      <span class="small muted">${tr("In the laundry")}</span><div class="big">${items.length}</div><span class="small muted">${items.length ? 'capi' : html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("all clean")}`}</span></div>`;
     return html`<div class="w">${items.length ? html`<div class="list">${items.slice(0, 6).map(p => html`<div class="li" style="cursor:default">
         <span class="thumb">${img(this.host, p.photos?.[0], p.name)}</span><span class="grow truncate">${p.name}</span>
-        <hxk-button size="sm" @click=${() => this.clean(p)}>${tr("Pulito")}</hxk-button></div>`)}</div>
-        ${items.length > 6 ? html`<button class="link small" @click=${() => this.host.navigate('capi', { status: 'laundry' })}>${tr("Altri")} ${items.length - 6}</button>` : nothing}`
-      : html`<span class="muted"><hxk-icon name="check" size=${14} tone="success"></hxk-icon> ${tr("Niente in lavanderia")}</span>`}</div>`;
+        <hxk-button size="sm" @click=${() => this.clean(p)}>${tr("Clean")}</hxk-button></div>`)}</div>
+        ${items.length > 6 ? html`<button class="link small" @click=${() => this.host.navigate('capi', { status: 'laundry' })}>${tr("pl::Others")} ${items.length - 6}</button>` : nothing}`
+      : html`<span class="muted"><hxk-icon name="check" size=${14} tone="success"></hxk-icon> ${tr("Nothing in the laundry")}</span>`}</div>`;
   }
 }
 
@@ -99,9 +99,9 @@ export class WardrobeForgottenWidget extends Widget {
   render() {
     const items = this.items;
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (!items.length) return html`<div class="w"><span class="muted">${tr("Nessun capo dimenticato.")}</span></div>`;
+    if (!items.length) return html`<div class="w"><span class="muted">${tr("No forgotten item.")}</span></div>`;
     return html`<div class="w">
-      <span class="small muted">${plural(items.length, 'capo', 'capi')} ${tr("non messi da tanto: rimettili in giro o valuta di darli via.")}</span>
+      <span class="small muted">${plural(items.length, 'capo', 'capi')} ${tr("not worn for a long time: wear them again or consider giving them away.")}</span>
       <div class="list">${items.slice(0, this.size === 'l' ? 6 : 3).map(f => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
         <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span><span class="small muted">${f.last_worn ? relDays(f.last_worn) : 'mai'}</span></div>`)}</div>
     </div>`;
@@ -119,12 +119,12 @@ export class WardrobeKpiWidget extends Widget {
   render() {
     const s = this.s;
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (!s) return html`<hxk-state kind="error" text=${tr("Non disponibile")}></hxk-state>`;
+    if (!s) return html`<hxk-state kind="error" text=${tr("Unavailable")}></hxk-state>`;
     const t = s.totals;
     if (this.size === 's') return html`<div class="w click" @click=${() => this.host.navigate('statistiche')}>
-      <span class="small muted">${tr("Guardaroba")}</span><div class="big">${t.pieces}</div><span class="small muted">${t.outfits} ${"outfit"}${s.laundry?.length ? tr(" · {0} in lavanderia", s.laundry.length) : ''}</span></div>`;
+      <span class="small muted">${tr("Wardrobe")}</span><div class="big">${t.pieces}</div><span class="small muted">${t.outfits} ${"outfit"}${s.laundry?.length ? tr(" · {0} in the laundry", s.laundry.length) : ''}</span></div>`;
     return html`<div class="w click" @click=${() => this.host.navigate('statistiche')}>
-      <hxk-stat .items=${[{ label: tr('Capi'), value: t.garments }, { label: tr('Scarpe'), value: t.shoes }, { label: tr('Accessori'), value: t.accessories }, { label: tr('Outfit'), value: t.outfits }]}></hxk-stat>
+      <hxk-stat .items=${[{ label: tr('Items'), value: t.garments }, { label: tr('Shoes'), value: t.shoes }, { label: tr('Accessories'), value: t.accessories }, { label: tr('Outfit'), value: t.outfits }]}></hxk-stat>
       ${s.gaps?.length ? html`<span class="small muted truncate">Manca: ${s.gaps[0].toLowerCase()}</span>` : nothing}</div>`;
   }
 }
@@ -141,7 +141,7 @@ export class WardrobeRecentWidget extends Widget {
   render() {
     const items = this.items;
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (!items.length) return html`<div class="w"><span class="muted small">${tr("Nessun outfit segnato: si fa dalla Home con un tocco, quando vuoi.")}</span></div>`;
+    if (!items.length) return html`<div class="w"><span class="muted small">${tr("No outfit noted: it's done from Home with one tap, whenever you want.")}</span></div>`;
     return html`<div class="w"><div class="list">${items.slice(0, this.size === 'l' ? 8 : 4).map(w => {
       const o = w.outfit_id ? this.outfits?.get(w.outfit_id) : null;
       return html`<div class="li" @click=${() => this.host.navigate(o ? 'outfit/' + o.id : 'capi/' + w.pieces?.[0]?.id)}>

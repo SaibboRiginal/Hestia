@@ -132,10 +132,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
                      name="hub-keepalive").start()
     forge_settings.settings.start()
     _update_agenda.register_async([_job_rule(
-        "hephaestus.update_check", tr("Cerca aggiornamenti di Hestia"), service="hephaestus",
+        "hephaestus.update_check", tr("Look for Hestia updates"), service="hephaestus",
         path="/api/setup/update/daily", recurrence="FREQ=DAILY", start_at="2026-01-01T11:00:00",
         tz=os.getenv("TZ") or None, timeout_seconds=240,
-        description="Se c'è una versione nuova ti chiedo se installarla (Sistema → Aggiornamenti).")])
+        description="If there is a new version I ask you whether to install it (System → Updates).")])
     if forge.cfg.enabled:
         forge.start()
     yield
@@ -170,78 +170,78 @@ try:
             name="macchine_elenco", description=("The assistant's machines: this one and the satellites, on or off, with the modules running on "
                                                  "them."),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok"}, title="Macchine", method="GET", path="/api/setup/machines",
+            handler=lambda **kw: {"status": "ok"}, title="Machines", method="GET", path="/api/setup/machines",
             clients=["telegram", "ui"], response_mode="oracle_natural", telegram_visible=True,
-            telegram_group="sistema", telegram={"section": "Macchine", "label": "Elenco"}),
+            telegram_group="sistema", telegram={"section": "Machines", "label": "List"}),
         MCPTool(
             name="macchine_codice", description="A link code (10 minutes) to add a satellite: it is typed into the other machine's installation.",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok"}, title="Collega una macchina", method="POST",
+            handler=lambda **kw: {"status": "ok"}, title="Link a machine", method="POST",
             path="/api/setup/machines/pair", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Collega"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "alt::Link"}),
         MCPTool(
             name="macchine_scollega", description="Unlink a satellite (by id from the list): its modules leave.",
             parameters={"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
-            handler=lambda **kw: {"status": "ok"}, title="Scollega una macchina", method="POST",
+            handler=lambda **kw: {"status": "ok"}, title="Unlink a machine", method="POST",
             path="/api/setup/machines/revoke", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Scollega"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "Unlink"}),
         MCPTool(
             name="macchine_cervello", description=(("Run the local models on a satellite's graphics card (address from the list); empty address = "
                                                     "back on this machine.")),
             parameters={"type": "object", "properties": {"address": {"type": "string"}, "name": {"type": "string"}}},
-            handler=lambda **kw: {"status": "ok"}, title="Modelli su un'altra macchina", method="POST",
+            handler=lambda **kw: {"status": "ok"}, title="Models on another machine", method="POST",
             path="/api/setup/machines/brain", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Cervello"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "Cervello"}),
         MCPTool(
             name="fuori_casa_stato", description="Can the assistant be reached from outside home? At which address.",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok"}, title="Da fuori casa", method="GET", path="/api/setup/tunnel",
+            handler=lambda **kw: {"status": "ok"}, title="From outside home", method="GET", path="/api/setup/tunnel",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Da fuori casa"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "From outside home"}),
         MCPTool(
             name="fuori_casa_attiva", description=(("Turns on (on=true) or off (on=false) the address to use the assistant away from home; only when "
                                                     "the user asks explicitly.")),
             parameters={"type": "object", "properties": {"on": {"type": "boolean"}}, "required": ["on"]},
-            handler=lambda **kw: {"status": "ok"}, title="Accendi o spegni da fuori casa", method="POST",
+            handler=lambda **kw: {"status": "ok"}, title="Turn on or off from outside home", method="POST",
             path="/api/setup/tunnel", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Macchine", "label": "Fuori casa on/off"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "Fuori casa on/off"}),
         MCPTool(
             name="aggiornamenti_stato", description="Installed version, whether a new one exists and what it brings.",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok"}, title="Aggiornamenti", method="POST", path="/api/setup/update/check",
+            handler=lambda **kw: {"status": "ok"}, title="Updates", method="POST", path="/api/setup/update/check",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Aggiornamenti", "primary": True}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Updates", "primary": True}),
         MCPTool(
             name="aggiornamenti_installa", description=(("Install the new version (rolls back by itself if something does not answer); only when the user "
                                                          "asks explicitly.")),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok"}, title="Installa l'aggiornamento", method="POST",
+            handler=lambda **kw: {"status": "ok"}, title="Install the update", method="POST",
             path="/api/setup/update/apply", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Aggiornamenti", "label": "Installa"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Updates", "label": "Install"}),
         MCPTool(
             name="aggiornamenti_indietro", description="Go back to the version before the last update.",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok"}, title="Torna alla versione di prima", method="POST",
+            handler=lambda **kw: {"status": "ok"}, title="Back to the previous version", method="POST",
             path="/api/setup/update/back", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema", telegram={"section": "Aggiornamenti", "label": "Indietro"}),
+            telegram_visible=True, telegram_group="sistema", telegram={"section": "Updates", "label": "Back"}),
         MCPTool(
             name="hephaestus_status",
             description="Show the state of the remediation engine",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_status", "params": kw},
-            title="Stato riparazioni", method="GET", path="/api/hephaestus/status",
+            title="Repair status", method="GET", path="/api/hephaestus/status",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni"}),
+                telegram={"section": "Repairs"}),
         MCPTool(
             name="hephaestus_tasks",
             description="List recent remediation tasks",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_tasks", "params": kw},
-            title="Riparazioni", method="GET", path="/api/hephaestus/tasks",
+            title="Repairs", method="GET", path="/api/hephaestus/tasks",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni"}),
+                telegram={"section": "Repairs"}),
         MCPTool(
             name="hephaestus_remediate",
             description="Create a policy-gated remediation task",
@@ -260,10 +260,10 @@ try:
                 "required": ["service", "issue"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_remediate", "params": kw},
-            title="Avvia riparazione", method="POST", path="/api/hephaestus/remediate",
+            title="Start repair", method="POST", path="/api/hephaestus/remediate",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni"}),
+                telegram={"section": "Repairs"}),
         MCPTool(
             name="hephaestus_approve",
             description="Approve and run a pending remediation task",
@@ -277,10 +277,10 @@ try:
                 "required": ["task_id"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_approve", "params": kw},
-            title="Approva riparazione", method="POST", path="/api/hephaestus/remediate/$task_id/approve",
+            title="Approve repair", method="POST", path="/api/hephaestus/remediate/$task_id/approve",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni"}),
+                telegram={"section": "Repairs"}),
         MCPTool(
             name="hephaestus_rollback",
             description=(("Undo a repair: if it had not started (or failed) it stops it; if it changed data the module "
@@ -295,10 +295,10 @@ try:
                 "required": ["task_id"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "hephaestus_rollback", "params": kw},
-            title="Annulla riparazione", method="POST", path="/api/hephaestus/remediate/$task_id/rollback",
+            title="Undo repair", method="POST", path="/api/hephaestus/remediate/$task_id/rollback",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni"}),
+                telegram={"section": "Repairs"}),
         MCPTool(
             name="forge_develop",
             description=(
@@ -318,7 +318,7 @@ try:
                 "required": ["request"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "forge_develop", "params": kw},
-            title="Sviluppa Hestia", method="POST", path="/api/hephaestus/forge/tasks",
+            title="Develop Hestia", method="POST", path="/api/hephaestus/forge/tasks",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt="Confirm in 1-2 lines: task created (short id), engine, you will tell when ready.",
             telegram_visible=True, telegram_group="sviluppo",
@@ -330,7 +330,7 @@ try:
                 "state": {"type": "string", "description": "State filter: proposed, running, awaiting_review, deployed..."},
                 "limit": {"type": "integer", "description": "Max tasks (default 50)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_tasks", "params": kw},
-            title="Lavori di sviluppo", method="GET", path="/api/hephaestus/forge/tasks/brief",
+            title="Development jobs", method="GET", path="/api/hephaestus/forge/tasks/brief",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt="Show ALL the rows of tasks, one per task: id, state, request. No JSON.",
             telegram_visible=True, telegram_group="sviluppo",
@@ -340,7 +340,7 @@ try:
             description="State of the Forge engine: repo, engines available (Claude Code, Ollama), queue",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_status", "params": kw},
-            title="Stato sviluppo", method="GET", path="/api/hephaestus/forge/status",
+            title="Development status", method="GET", path="/api/hephaestus/forge/status",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sviluppo",
                 telegram={"section": "Lavori", "summary": True}),
@@ -354,7 +354,7 @@ try:
                 "task_id": {"type": "string", "description": "Task id (the first 6 characters are enough)"}},
                 "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_task", "params": kw},
-            title="Dettaglio lavoro", method="GET", path="/api/hephaestus/forge/tasks/$task_id/overview",
+            title="Job detail", method="GET", path="/api/hephaestus/forge/tasks/$task_id/overview",
             clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="sviluppo",
                 telegram={"section": "Lavori"}),
         MCPTool(
@@ -363,7 +363,7 @@ try:
             parameters={"type": "object", "properties": {
                 "task_id": {"type": "string", "description": "Task id"}}, "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_task_diff", "params": kw},
-            title="Differenze di un lavoro", method="GET", path="/api/hephaestus/forge/tasks/$task_id/diff",
+            title="Differences of a job", method="GET", path="/api/hephaestus/forge/tasks/$task_id/diff",
             clients=["ui", "external"], response_mode="raw_json", telegram_visible=False, telegram_group="sviluppo",
                 telegram={"section": "Lavori", "label": "Differenze"}),
         MCPTool(
@@ -373,7 +373,7 @@ try:
                 "name": {"type": "string", "description": "Folder name in docs/work (the task's workdoc field)"}},
                 "required": ["name"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_dossier", "params": kw},
-            title="Dossier di lavoro", method="GET", path="/api/hephaestus/repo/dossiers/$name",
+            title="Work dossier", method="GET", path="/api/hephaestus/repo/dossiers/$name",
             clients=["ui", "external"], response_mode="raw_json", telegram_visible=False, telegram_group="sviluppo",
                 telegram={"section": "Lavori", "label": "Dossier"}),
         MCPTool(
@@ -385,9 +385,9 @@ try:
                 "text": {"type": "string", "description": "Analysis, cause found, files to change, how to verify"}},
                 "required": ["task_id", "text"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_task_note", "params": kw},
-            title="Nota su un lavoro", method="POST", path="/api/hephaestus/forge/tasks/$task_id/notes",
+            title="Note on a job", method="POST", path="/api/hephaestus/forge/tasks/$task_id/notes",
             clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="sviluppo",
-                telegram={"section": "Lavori", "label": "Aggiungi nota"}),
+                telegram={"section": "Lavori", "label": "Add note"}),
         MCPTool(
             name="forge_submit_branch",
             description=(
@@ -402,10 +402,10 @@ try:
                 "summary": {"type": "string", "description": "What the branch changes and why"}},
                 "required": ["task_id", "branch"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_submit_branch", "params": kw},
-            title="Consegna un branch", method="POST",
+            title="Deliver a branch", method="POST",
             path="/api/hephaestus/forge/tasks/$task_id/submit-branch",
             clients=["ui", "external"], response_mode="oracle_natural", telegram_visible=False, telegram_group="sviluppo",
-                telegram={"section": "Avanzate"}),
+                telegram={"section": "Advanced"}),
         # Manual brake: a direct user command (Telegram button / "metti in pausa lo sviluppo").
         MCPTool(
             name="forge_pause",
@@ -418,11 +418,11 @@ try:
                 "paused": {"type": "boolean", "description": "true = pause, false = resume"}},
                 "required": ["paused"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_pause", "params": kw},
-            title="Pausa sviluppo", method="POST", path="/api/hephaestus/forge/pause",
+            title="Pause development", method="POST", path="/api/hephaestus/forge/pause",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="1 line: development paused or resumed; if resumed, held tasks still have to be started by hand.",
             telegram_visible=True, telegram_group="sviluppo",
-                telegram={"section": "Impostazioni sviluppo"}),
+                telegram={"section": "Development settings"}),
         # Default engine and permission modes are central settings (Themis): the assistant
         # proposes a change with settings_propose, the user confirms; no direct tool here.
         MCPTool(
@@ -439,20 +439,20 @@ try:
                 "night_max_tasks": {"type": "integer", "description": "max tasks per night (default 3)"},
                 "final_hours": {"type": "integer", "description": "last hours when everything may be used (default 6)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_set_claude_schedule", "params": kw},
-            title="Finestra di Claude", method="POST", path="/api/hephaestus/forge/settings/claude-schedule",
+            title="Claude window", method="POST", path="/api/hephaestus/forge/settings/claude-schedule",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="2 lines: next reset, current window (phase/reason).",
             telegram_visible=True, telegram_group="sviluppo",
-                telegram={"section": "Impostazioni sviluppo"}),
+                telegram={"section": "Development settings"}),
         MCPTool(
             name="forge_settings",
             description="Show the development settings: default engine, fallback, permission mode local/cloud",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "forge_settings", "params": kw},
-            title="Impostazioni sviluppo", method="GET", path="/api/hephaestus/forge/settings",
+            title="Development settings", method="GET", path="/api/hephaestus/forge/settings",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sviluppo",
-                telegram={"section": "Impostazioni sviluppo"}),
+                telegram={"section": "Development settings"}),
         MCPTool(
             name="forge_approve",
             description=(
@@ -465,10 +465,10 @@ try:
                 "engine": {"type": "string", "description": "Only if the user chooses who develops it: local | cloud | claude"}},
                 "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_approve", "params": kw},
-            title="Approva sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/approve",
+            title="Approve development", method="POST", path="/api/hephaestus/forge/tasks/$task_id/approve",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="sviluppo",
-                telegram={"section": "Lavori", "primary": 3, "label": "Approva"}),
+                telegram={"section": "Lavori", "primary": 3, "label": "Approve"}),
         MCPTool(
             name="forge_reject",
             description="Drop a proposed or in-review Forge task ('rifiuta <id>')",
@@ -476,10 +476,10 @@ try:
                 "task_id": {"type": "string", "description": "Task id"},
                 "reason": {"type": "string", "description": "Reason"}}, "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_reject", "params": kw},
-            title="Rifiuta sviluppo", method="POST", path="/api/hephaestus/forge/tasks/$task_id/reject",
+            title="Reject development", method="POST", path="/api/hephaestus/forge/tasks/$task_id/reject",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="sviluppo",
-                telegram={"section": "Lavori", "label": "Rifiuta"}),
+                telegram={"section": "Lavori", "label": "Reject"}),
         MCPTool(
             name="forge_rollback",
             description="Undo (git revert) a Forge change already applied ('rollback sviluppo <id>')",
@@ -487,7 +487,7 @@ try:
                 "task_id": {"type": "string", "description": "Task id"},
                 "reason": {"type": "string", "description": "Reason"}}, "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_rollback", "params": kw},
-            title="Annulla un rilascio", method="POST", path="/api/hephaestus/forge/tasks/$task_id/rollback",
+            title="Undo a release", method="POST", path="/api/hephaestus/forge/tasks/$task_id/rollback",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=False, telegram_group="sviluppo",
                 telegram={"section": "Lavori"}),

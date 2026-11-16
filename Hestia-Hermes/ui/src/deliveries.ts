@@ -7,9 +7,9 @@ import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, CLIENT_STATE, LEVEL_TONE, hermesStyles, todayStart, when } from './util';
 
 const FILTERS = [
-  { id: '', label: tr('Tutte') }, { id: 'held', label: tr('Trattenute') }, { id: 'quiet', label: tr('Silenziose') },
-  { id: 'retracted', label: tr('Ritirate') }, { id: 'failed', label: tr('Fallite') }, { id: 'answered', label: tr('Con risposta') },
-  { id: 'pending', label: tr('In attesa') }, { id: 'superseded', label: tr('Sostituite') },
+  { id: '', label: tr('All') }, { id: 'held', label: tr('Held back') }, { id: 'quiet', label: tr('Silent') },
+  { id: 'retracted', label: tr('Withdrawn') }, { id: 'failed', label: tr('f.pl::Failed') }, { id: 'answered', label: tr('With answer') },
+  { id: 'pending', label: tr('Waiting') }, { id: 'superseded', label: tr('f.pl::Replaced') },
 ];
 
 export class HermesDeliveries extends HestiaElement {
@@ -62,9 +62,9 @@ export class HermesDeliveries extends HestiaElement {
     const r = await this.host.api('GET', `${API}/deliveries`, { query });
     this.more = false;
     if (!r.ok) {
-      if (append) { this.host.toast(r.error || tr('Non caricato'), 'danger'); return; }
-      this.error = r.status === 0 || r.error === 'offline' || r.error === 'unreachable' ? tr('Hermes non raggiungibile')
-        : r.error || tr('Hermes non raggiungibile');
+      if (append) { this.host.toast(r.error || tr('Not uploaded'), 'danger'); return; }
+      this.error = r.status === 0 || r.error === 'offline' || r.error === 'unreachable' ? tr('Hermes not reachable')
+        : r.error || tr('Hermes not reachable');
       return;
     }
     this.error = '';
@@ -90,20 +90,20 @@ export class HermesDeliveries extends HestiaElement {
   private renderStats() {
     const s = this.summary; if (!s) return nothing;
     return html`<hxk-stat .items=${[
-      { label: tr('Oggi'), value: s.total },
-      { label: tr('Trattenute'), value: s.held, hint: tr('presenza: solo elenco') },
-      { label: tr('Fallite'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed ? tr('da riprovare') : '' },
-      { label: tr('In attesa'), value: s.pending, hint: tr('aspettano una risposta') },
+      { label: tr('Today'), value: s.total },
+      { label: tr('Held back'), value: s.held, hint: tr('presence: list only') },
+      { label: tr('f.pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed ? tr('to retry') : '' },
+      { label: tr('Waiting'), value: s.pending, hint: tr('waiting for an answer') },
     ]}></hxk-stat>`;
   }
 
   private flags(n: any) {
     const f = n.flags || {};
-    return html`${f.held ? html`<hxk-badge tone="warning" title=${tr("Trattenuta: livello notifiche «{0}»{1}", f.held, f.held_released ? ' · rilasciata nel riepilogo' : '')}>${tr("trattenuta")}${f.held_released ? ' · rilasciata' : ''}</hxk-badge>` : nothing}
-      ${f.quiet ? html`<hxk-badge tone="neutral" title=${tr("Copia in elenco senza avviso (la domanda era in chat)")}>${tr("silenziosa")}</hxk-badge>` : nothing}
-      ${f.retracted ? html`<hxk-badge tone="neutral" title=${tr("Tolta dalla chat dopo che era stata vista o gestita")}>${tr("ritirata")}</hxk-badge>` : nothing}
-      ${f.superseded ? html`<hxk-badge tone="neutral" title=${tr("Sostituita da una nuova occorrenza dello stesso promemoria")}>${tr("sostituita")}</hxk-badge>` : nothing}
-      ${f.pending ? html`<hxk-badge tone="accent">${tr("in attesa")}</hxk-badge>` : nothing}
+    return html`${f.held ? html`<hxk-badge tone="warning" title=${tr("Held back: notification level «{0}»{1}", f.held, f.held_released ? ' · rilasciata nel riepilogo' : '')}>${tr("held back")}${f.held_released ? ' · rilasciata' : ''}</hxk-badge>` : nothing}
+      ${f.quiet ? html`<hxk-badge tone="neutral" title=${tr("Copy in the list without a notice (the question was in chat)")}>${tr("silent")}</hxk-badge>` : nothing}
+      ${f.retracted ? html`<hxk-badge tone="neutral" title=${tr("Removed from the chat after it was seen or handled")}>${tr("withdrawn")}</hxk-badge>` : nothing}
+      ${f.superseded ? html`<hxk-badge tone="neutral" title=${tr("Replaced by a new occurrence of the same reminder")}>${tr("f::replaced")}</hxk-badge>` : nothing}
+      ${f.pending ? html`<hxk-badge tone="accent">${tr("waiting")}</hxk-badge>` : nothing}
       ${n.repeat?.count > 1 ? html`<hxk-badge tone="info">${n.repeat.count}ª volta</hxk-badge>` : nothing}`;
   }
 
@@ -119,48 +119,48 @@ export class HermesDeliveries extends HestiaElement {
         ${clients.length ? clients.map(([name, c]) => {
           const st = CLIENT_STATE[c.state] || { text: c.state || '–', tone: 'neutral' };
           return html`<hxk-badge tone=${st.tone} title=${[when(c.at), c.attempts > 1 ? `${c.attempts} tentativi` : '', c.detail || ''].filter(Boolean).join(' · ')}>${name}: ${st.text}${c.retracted ? ' · ritirata' : ''}</hxk-badge>`;
-        }) : html`<span class="small muted">${tr("nessun client raggiunto")}</span>`}
-        ${n.audience === 'origin' && n.origin_client ? html`<span class="pill">${tr("solo")} ${n.origin_client}</span>` : nothing}
+        }) : html`<span class="small muted">${tr("no client reached")}</span>`}
+        ${n.audience === 'origin' && n.origin_client ? html`<span class="pill">${tr("only")} ${n.origin_client}</span>` : nothing}
         ${this.flags(n)}
       </div>
       ${n.answer ? html`<div class="small">Risposta: <b>${n.answer.label || n.answer.action_id || '–'}</b>
           ${n.answer.by ? html` da ${n.answer.by}` : nothing} · ${when(n.answer.at)}
           ${n.answer.outcome_text ? html` · <span class="muted">${n.answer.outcome_text}</span>` : nothing}</div>`
         : n.actions?.length ? html`<div class="small muted">Azioni: ${n.actions.join(' · ')}</div>` : nothing}
-      ${isOpen ? html`<div class="small muted">${tr("Tipo")} <code>${n.event_type}</code> · stato <code>${n.state}</code>
+      ${isOpen ? html`<div class="small muted">${tr("Type")} <code>${n.event_type}</code> · stato <code>${n.state}</code>
           ${n.seen?.at ? html` · vista ${when(n.seen.at)}${n.seen.by ? ` su ${n.seen.by}` : ''}` : nothing} · id <code>${n.id}</code></div>` : nothing}
-      <div><hxk-button size="sm" variant="ghost" @click=${() => (this.open = isOpen ? '' : n.id)}>${isOpen ? tr('Meno') : tr('Dettagli')}</hxk-button></div>
+      <div><hxk-button size="sm" variant="ghost" @click=${() => (this.open = isOpen ? '' : n.id)}>${isOpen ? tr('Less') : tr('Details')}</hxk-button></div>
     </div>`;
   }
 
   private renderSubs() {
     if (this.subs === null) return nothing;
-    return html`<hxk-card heading=${tr("Iscrizioni attive")} subtitle=${tr("Quali eventi diventano notifiche e per chi")}>
+    return html`<hxk-card heading=${tr("Active subscriptions")} subtitle=${tr("Which events become notifications and for whom")}>
       ${this.subs.length ? this.subs.map(s => html`<div class="subrow">
           <b>${s.domain || '*'}</b> · <code>${s.event_type || '*'}</code>
-          → ${(s.channels || []).map((c: any) => c.type === 'client' ? `solo ${c.client}` : tr('tutti i client')).join(', ') || tr('tutti i client')}
+          → ${(s.channels || []).map((c: any) => c.type === 'client' ? `solo ${c.client}` : tr('all clients')).join(', ') || tr('all clients')}
           ${Object.keys(s.filters || {}).length ? html`<div class="small muted">Filtri: ${Object.entries(s.filters).map(([k, v]) => `${k} = ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ')}</div>` : nothing}
-        </div>`) : html`<hxk-state kind="empty" text=${tr("Nessuna iscrizione attiva")}></hxk-state>`}
+        </div>`) : html`<hxk-state kind="empty" text=${tr("No active subscription")}></hxk-state>`}
     </hxk-card>`;
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Consegne")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("Deliveries")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Consegne")}</h1><span class="sub">${tr("Cosa è stato mandato, a chi e com'è andata")}</span></div>
+      <div class="head"><h1>${tr("Deliveries")}</h1><span class="sub">${tr("What was sent, to whom and how it went")}</span></div>
       ${this.renderStats()}
       <div class="row wrap">
         <div class="chips grow">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.flag === f.id} @click=${() => this.setFlag(f.id)}>${f.label}</button>`)}</div>
         ${this.clients.length ? html`<select aria-label=${tr("Client")} @change=${(e: Event) => this.setClient(e)}>
-          <option value="">${tr("Tutti i client")}</option>${this.clients.map(c => html`<option value=${c} ?selected=${this.client === c}>${c}</option>`)}</select>` : nothing}
+          <option value="">${tr("All clients")}</option>${this.clients.map(c => html`<option value=${c} ?selected=${this.client === c}>${c}</option>`)}</select>` : nothing}
       </div>
       ${this.items === null ? html`<hxk-state kind="loading"></hxk-state>`
         : this.items.length ? html`<div class="card">${this.items.map(n => this.renderItem(n))}
-            ${this.next ? html`<div style="padding-top:8px"><hxk-button size="sm" ?loading=${this.more} @click=${() => this.load(true)}>${tr("Carica altre")}</hxk-button></div>` : nothing}</div>`
-        : html`<hxk-state kind="empty" text=${tr("Nessuna notifica con questo filtro")}></hxk-state>`}
+            ${this.next ? html`<div style="padding-top:8px"><hxk-button size="sm" ?loading=${this.more} @click=${() => this.load(true)}>${tr("Load more")}</hxk-button></div>` : nothing}</div>`
+        : html`<hxk-state kind="empty" text=${tr("No notification with this filter")}></hxk-state>`}
       <div class="sec">
         ${this.renderSubs()}
-        <p class="small muted">${tr("Client raggiunti ora:")} ${this.clients.length ? this.clients.join(', ') : 'nessuno'}${tr(". Le notifiche da leggere e a cui rispondere sono in Notifiche.")}</p>
+        <p class="small muted">${tr("Clients reached now:")} ${this.clients.length ? this.clients.join(', ') : 'nessuno'}${tr(". The notifications to read and answer are in Notifications.")}</p>
       </div>
     </div>`;
   }

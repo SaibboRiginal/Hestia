@@ -11,7 +11,7 @@ from .parse import plain, text_of
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 THEMES = {
-    "classico": {"label": "Classico", "font": "Times", "accent": "1F3A5F", "muted": "5B6573", "fill": "E8EDF3"},
+    "classico": {"label": "Classic", "font": "Times", "accent": "1F3A5F", "muted": "5B6573", "fill": "E8EDF3"},
     "moderno": {"label": "Moderno", "font": "Helvetica", "accent": "0F766E", "muted": "52606D", "fill": "E6F4F1"},
     "sobrio": {"label": "Sobrio", "font": "Helvetica", "accent": "2B2B2B", "muted": "6B6B6B", "fill": "EFEFEF"},
 }
@@ -160,8 +160,8 @@ def to_xlsx(blocks: list[dict], title: str, theme: dict) -> bytes:
     for n, t in enumerate(tables, 1):
         # a heading right before the table names the sheet
         idx = blocks.index(t)
-        name = next((plain(b["runs"]) for b in reversed(blocks[:idx]) if b["type"] == "h"), "") or tr("Tabella {0}", n)
-        name = re.sub(r"[\[\]:*?/\\]", " ", name)[:28].strip() or tr("Tabella {0}", n)
+        name = next((plain(b["runs"]) for b in reversed(blocks[:idx]) if b["type"] == "h"), "") or tr("Table {0}", n)
+        name = re.sub(r"[\[\]:*?/\\]", " ", name)[:28].strip() or tr("Table {0}", n)
         while name in used:
             name = f"{name[:25]} {n}"
         used.add(name)
@@ -179,7 +179,7 @@ def to_xlsx(blocks: list[dict], title: str, theme: dict) -> bytes:
         ws.freeze_panes = "A2" if any(c["header"] for c in t["rows"][0]) else None
     rest = [b for b in blocks if b["type"] != "table"]
     if rest or not tables:
-        ws = wb.create_sheet(tr("Note"), 0 if not tables else None)
+        ws = wb.create_sheet(tr("Notes"), 0 if not tables else None)
         ws.cell(row=1, column=1, value=title).font = Font(bold=True, size=14, color=theme["accent"])
         r = 3
         for line in text_of(rest).splitlines():
@@ -221,7 +221,7 @@ def check(fmt: str, data: bytes, title: str, must: list[str]) -> dict:
     try:
         pages, text = extract(fmt, data)
     except Exception as exc:
-        return {"ok": False, "pages": 0, "missing": [tr("il file non si riapre: {0}", exc)]}
+        return {"ok": False, "pages": 0, "missing": [tr("the file does not reopen: {0}", exc)]}
     hay = _norm(text)
     wanted = ([title] if fmt != "xlsx" else []) + [m for m in must if str(m).strip()]   # a sheet may hold only tables
     missing = [m for m in wanted if _norm(m) not in hay]

@@ -572,7 +572,7 @@ def run_agent_loop(
                 turn, _cumulative_tokens, max_agent_tokens,
             )
             final_answer = (
-                tr("⚠️ Ho raggiunto il limite di contesto per questa richiesta. Prova a riformulare la domanda in modo più specifico.")
+                tr("⚠️ I reached the context limit for this request. Try rephrasing the question more specifically.")
             )
             break
         _ctx_pct = _counter.context_pct(_prompt_tokens_est)
@@ -723,7 +723,7 @@ def run_agent_loop(
             logger.error(
                 "event=agent_loop_llm_call_failed Agent loop LLM call failed at turn %d: %s",
                 turn, exc, exc_info=True)
-            final_answer = tr("⚠️ Il modello non è disponibile. Riprova tra poco.")
+            final_answer = tr("⚠️ The model is not available. Try again shortly.")
             break
 
         _all_repeated = False

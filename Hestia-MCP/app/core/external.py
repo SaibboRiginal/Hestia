@@ -54,7 +54,7 @@ def _rpc_error(msg_id: Any, code: int, message: str, status: int, headers: dict 
 
 def setup_lines(token: str, base_url: str = "") -> dict[str, str]:
     """Ready-to-paste lines for the clients that use a token (B3)."""
-    url = f"{(base_url or '<indirizzo-di-hestia>').rstrip('/')}/mcp"
+    url = f"{(base_url or tr('<hestia-address>')).rstrip('/')}/mcp"
     return {
         "url": url,
         "header": f"Authorization: Bearer {token}",
@@ -78,7 +78,7 @@ class ExternalDoor:
         if isinstance(payload, dict):
             task = payload.get("task") if isinstance(payload.get("task"), dict) else payload
             detail = str(task.get("id") or task.get("proposal_id") or "")[:12]
-        text = tr("🤖 <b>{0}</b> (AI esterna) ha usato <i>{1}</i>", access.get('name'), title) + (f" · {detail}" if detail else "")
+        text = tr("🤖 <b>{0}</b> (external AI) used <i>{1}</i>", access.get('name'), title) + (f" · {detail}" if detail else "")
 
         def _run():
             try:
@@ -197,9 +197,9 @@ class ExternalDoor:
                 routed = resp.json() if resp.status_code == 200 else {}
             except Exception as exc:  # noqa: BLE001
                 logger.warning("[🔄] event=mcp_outbound_list_failed error=%s", exc)
-                return JSONResponse({"detail": tr("Hecate non raggiungibile")}, status_code=503)
+                return JSONResponse({"detail": tr("Hecate not reachable")}, status_code=503)
             if int(routed.get("status_code", 502)) >= 400:
-                return JSONResponse({"detail": tr("Hecate non raggiungibile")}, status_code=503)
+                return JSONResponse({"detail": tr("Hecate not reachable")}, status_code=503)
             payload = routed.get("payload") or {}
             return {"servers": payload.get("servers") or [], "how_to": payload.get("how_to")}
 

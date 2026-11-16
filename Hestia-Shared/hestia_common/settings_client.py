@@ -53,7 +53,7 @@ def _hub_default() -> str:
     return os.getenv("HUB_API_URL", "http://hestia_hub:19001/api")
 
 
-def setting(key: str, label: str, type: str, default: Any, *, group: str = "Generale", help: str = "",
+def setting(key: str, label: str, type: str, default: Any, *, group: str = "General", help: str = "",
             options: list | None = None, min: float | None = None, max: float | None = None,
             unit: str = "", apply: str = "live", scope: str = "system", depends_on: dict | None = None,
             oracle: str = "propose", advanced: bool = False, order: int = 0,
@@ -95,8 +95,6 @@ def translated(definition: dict, lang: str) -> dict:
     """A copy of a declared setting (or preset) with the texts people read in ``lang`` (``hestia_common.i18n``):
     label, help, group, unit and the labels of static options. Keys and values never change."""
     from hestia_common import i18n
-    if not lang or lang == i18n.FALLBACK:
-        return definition
     out = dict(definition)
     for name in ("label", "help", "group", "unit"):
         if isinstance(out.get(name), str) and out[name]:
@@ -115,43 +113,40 @@ def preset(id: str, label: str, *, group: str, values: dict, help: str = "") -> 
 # Personal settings shared by every module: Themis owns them, modules read them with ``follow_personal()``.
 # A module never declares its own copy (no ``<module>.week_start`` / ``<module>.currency``).
 PERSONAL: dict[str, dict] = {d["key"]: d for d in (
-    setting("themis.personal.week_start", "Inizio settimana", "enum", "monday", group="Personali",
-            options=[("monday", "Lunedì"), ("sunday", "Domenica")],
-            help="Per tutti gli obiettivi «N volte a settimana» e le statistiche settimanali."),
-    setting("themis.personal.currency", "Valuta", "enum", "EUR", group="Personali",
-            options=[("EUR", "Euro (€)"), ("CHF", "Franco svizzero"), ("USD", "Dollaro"), ("GBP", "Sterlina")],
-            help="Prezzi e spese in tutti i moduli."),
-    setting("themis.personal.places", "Luoghi", "list", [], group="Personali", editor="places",
+    setting("themis.personal.week_start", "Week start", "enum", "monday", group="Personal",
+            options=[("monday", "Monday"), ("sunday", "Sunday")],
+            help="For all «N times a week» goals and weekly statistics."),
+    setting("themis.personal.currency", "Currency", "enum", "EUR", group="Personal",
+            options=[("EUR", "Euro (€)"), ("CHF", "Swiss franc"), ("USD", "Dollar"), ("GBP", "Pound sterling")],
+            help="Prices and expenses in every module."),
+    setting("themis.personal.places", "alt::Places", "list", [], group="Personal", editor="places",
             options_source="hecate:/api/gateway/weather/places",
-            help="I tuoi posti (Casa, Lavoro, Palestra…): uno è Casa, il luogo predefinito per il meteo; "
-                 "l'agenda e gli allenamenti riconoscono gli eventi in questi posti. Basta la città, "
-                 "o l'indirizzo con la città."),
-    setting("themis.personal.birth_date", "Data di nascita", "string", "", group="Personali",
-            help="AAAA-MM-GG. Il tuo compleanno entra negli eventi speciali (lo puoi cambiare anche lì)."),
+            help="Your places (Home, Work, Gym…): one is Home, the default place for the weather; the agenda and the workouts recognise events at these places. The city is enough, or the address with the city."),
+    setting("themis.personal.birth_date", "Date of birth", "string", "", group="Personal",
+            help="YYYY-MM-DD. Your birthday goes into the special events (you can change it there too)."),
     # Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita): read by every prompt
     # that speaks to the owner through ``hestia_common.identity``.
-    setting("themis.personal.owner_name", "Il tuo nome", "string", "", group="Tu e l'assistente", order=1,
-            help="Come ti chiami. L'assistente sa di essere il tuo e ti chiama per nome."),
-    setting("themis.personal.owner_call", "Come vuoi essere chiamato", "string", "", group="Tu e l'assistente",
-            order=2, help="Un soprannome o un diminutivo. Vuoto = il tuo nome."),
-    setting("themis.personal.assistant_name", "Nome dell'assistente", "string", "Hestia",
-            group="Tu e l'assistente", order=3,
-            help="Il nome con cui si presenta e a cui risponde in chat, a voce e nelle notifiche."),
-    setting("themis.personal.assistant_gender", "L'assistente è", "enum", "lei", group="Tu e l'assistente",
-            order=4, options=[("lei", "Una lei"), ("lui", "Un lui")],
-            help="Cambia come parla di sé (amica o amico, pronta o pronto)."),
-    setting("themis.personal.language", "Lingua", "enum", "it", group="Tu e l'assistente", order=5,
+    setting("themis.personal.owner_name", "Your name", "string", "", group="You and the assistant", order=1,
+            help="Your name. The assistant knows it is yours and calls you by name."),
+    setting("themis.personal.owner_call", "What you want to be called", "string", "", group="You and the assistant",
+            order=2, help="A nickname or short name. Empty = your name."),
+    setting("themis.personal.assistant_name", "Assistant's name", "string", "Hestia",
+            group="You and the assistant", order=3,
+            help="The name it introduces itself with and answers to in chat, by voice and in notifications."),
+    setting("themis.personal.assistant_gender", "The assistant is", "enum", "lei", group="You and the assistant",
+            order=4, options=[("lei", "A woman"), ("lui", "A man")],
+            help="Changes how it talks about itself (as a woman or a man)."),
+    setting("themis.personal.language", "Language", "enum", "it", group="You and the assistant", order=5,
             options=[("it", "Italiano"), ("en", "English")],
-            help="La lingua delle notifiche, dei recap e dei messaggi che l'assistente ti scrive di sua iniziativa. "
-                 "In chat ti risponde nella lingua in cui scrivi tu."),
+            help="The language of notifications, recaps and the messages the assistant writes to you on its own. In chat it answers in the language you write in."),
 )}
 PERSONAL["themis.personal.places"]["item"] = {
-    "type": "object", "label": "Luogo",
-    "fields": {"id": {"type": "string", "label": "Id"}, "name": {"type": "string", "label": "Nome"},
-               "address": {"type": "string", "label": "Indirizzo o città"},
-               "kind": {"type": "enum", "label": "Tipo", "options": [{"value": "home", "label": "Casa"},
-                                                                    {"value": "work", "label": "Lavoro"},
-                                                                    {"value": "other", "label": "Altro"}]},
+    "type": "object", "label": "Place",
+    "fields": {"id": {"type": "string", "label": "Id"}, "name": {"type": "string", "label": "Name"},
+               "address": {"type": "string", "label": "Address or city"},
+               "kind": {"type": "enum", "label": "Type", "options": [{"value": "home", "label": "Home"},
+                                                                    {"value": "work", "label": "Work"},
+                                                                    {"value": "other", "label": "Other"}]},
                "lat": {"type": "float", "label": "Latitudine", "min": -90, "max": 90},
                "lon": {"type": "float", "label": "Longitudine", "min": -180, "max": 180}},
 }
@@ -229,13 +224,13 @@ class SettingsClient:
         """Standard ``<owner>.log.level`` setting (live): replaces the LOG_LEVEL env var."""
         key = f"{self.owner}.log.level"
         boot = str(os.getenv("LOG_LEVEL", "INFO")).upper()   # level the service starts with (default)
-        self.declare([setting(key, "Livello dei log", "enum", boot if boot in {"TRACE", "DEBUG", "INFO", "WARNING",
+        self.declare([setting(key, "Log level", "enum", boot if boot in {"TRACE", "DEBUG", "INFO", "WARNING",
                                                                                 "ERROR"} else "INFO",
-                              group="Diagnostica", advanced=True,
-                              options=[("TRACE", "Traccia (massimo dettaglio)"), ("DEBUG", "Debug (tutto)"),
-                                       ("INFO", "Normale"),
-                                       ("WARNING", "Solo avvisi"), ("ERROR", "Solo errori")],
-                              help="Quanto dettaglio scrive il modulo nei log.", order=900)])
+                              group="Diagnostics", advanced=True,
+                              options=[("TRACE", "Trace (most detail)"), ("DEBUG", "Debug (everything)"),
+                                       ("INFO", "Normal"),
+                                       ("WARNING", "Warnings only"), ("ERROR", "Errors only")],
+                              help="How much detail the module writes in the logs.", order=900)])
 
         def _apply(changed: dict) -> None:
             if key in changed:

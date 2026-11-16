@@ -37,11 +37,11 @@ export function when(ts: number | null | undefined): string {
 }
 
 export function ago(seconds: number | null | undefined): string {
-  if (seconds == null) return tr('nessuna chat da quando Oracle è partito');
+  if (seconds == null) return tr('no chat since Oracle started');
   if (seconds < 60) return 'adesso';
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min fa`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} h fa`;
-  return tr("{0} giorni fa", Math.floor(seconds / 86400));
+  return tr("{0} days ago", Math.floor(seconds / 86400));
 }
 
 export function dayLabel(iso: string): string {

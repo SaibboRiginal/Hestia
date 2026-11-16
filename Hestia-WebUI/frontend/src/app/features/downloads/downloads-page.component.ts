@@ -11,13 +11,13 @@ export interface DownloadRow {
 }
 
 const STATE: Record<DownloadRow['state'], { label: string; icon: string; tone: string }> = {
-  in_coda: { label: tr('In coda'), icon: 'clock', tone: 'muted' },
-  in_corso: { label: tr('In corso'), icon: 'download', tone: 'info' },
-  in_pausa: { label: tr('In pausa'), icon: 'pause', tone: 'warning' },
-  fatto: { label: tr('Fatto'), icon: 'check-circle', tone: 'success' },
-  errore: { label: tr('Non riuscito'), icon: 'alert', tone: 'danger' },
+  in_coda: { label: tr('Queued'), icon: 'clock', tone: 'muted' },
+  in_corso: { label: tr('In progress'), icon: 'download', tone: 'info' },
+  in_pausa: { label: tr('Paused'), icon: 'pause', tone: 'warning' },
+  fatto: { label: tr('Done'), icon: 'check-circle', tone: 'success' },
+  errore: { label: tr('alt::Failed'), icon: 'alert', tone: 'danger' },
 };
-const SOURCE: Record<string, string> = { ollama: tr('Modello'), whisper: tr('Ascolto'), http: tr('File'), docker: tr('Programma') };
+const SOURCE: Record<string, string> = { ollama: tr('Model'), whisper: tr('Listening'), http: tr('File'), docker: tr('Program') };
 const ORDER: DownloadRow['state'][] = ['in_corso', 'in_coda', 'in_pausa', 'errore', 'fatto'];
 
 /** Bytes in Italian: «3,1 GB», «420 MB». */
@@ -37,18 +37,18 @@ export function bytes(n: number): string {
   imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'Download' | tr"  [subtitle]="'Modelli e voci che Hestia scarica: avanzamento, pausa, riprova, spazio' | tr">
-      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voce"  [title]="'Prepara la voce: si fa dalla pagina Voce' | tr"><span class="lbl">{{ "Voce" | tr }}</span></a>
-      <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup"  [title]="'Scegli il cervello' | tr"><span class="lbl">{{ "Scegli il cervello" | tr }}</span></a>
+    <hx-page-header  [title]="'alt::Download' | tr"  [subtitle]="'Models and voices Hestia downloads: progress, pause, retry, space' | tr">
+      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voce"  [title]="'Prepare the voice: it\\'s done from the Voice page' | tr"><span class="lbl">{{ "Voice" | tr }}</span></a>
+      <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup"  [title]="'Choose the brain' | tr"><span class="lbl">{{ "Choose the brain" | tr }}</span></a>
     </hx-page-header>
     <div class="body">
       @if (error()) {
-        <hx-empty icon="offline"  [title]="'Non riesco a leggere i download' | tr">{{ error() }}</hx-empty>
+        <hx-empty icon="offline"  [title]="'I can\\'t read the downloads' | tr">{{ error() }}</hx-empty>
       } @else if (rows() === null) {
         <div class="center"><hx-spinner /></div>
       } @else if (!rows()!.length) {
-        <hx-empty icon="download"  [title]="'Nessun download' | tr">
-          {{ "Qui compaiono i modelli del cervello e le voci mentre si scaricano, e restano per poterli eliminare." | tr }}
+        <hx-empty icon="download"  [title]="'No downloads' | tr">
+          {{ "Here appear the brain models and the voices while they download, and they stay so you can delete them." | tr }}
         </hx-empty>
       } @else {
         <ul class="list">
@@ -64,14 +64,14 @@ export function bytes(n: number): string {
               </div>
               <div class="acts">
                 @switch (d.state) {
-                  @case ('in_corso') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pausa" | tr }}</button> }
-                  @case ('in_coda') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pausa" | tr }}</button> }
-                  @case ('in_pausa') { <button hx-btn size="sm" icon="play" (click)="op(d, 'resume')">{{ "Riprendi" | tr }}</button> }
-                  @case ('errore') { <button hx-btn size="sm" icon="refresh" (click)="op(d, 'retry')">{{ "Riprova" | tr }}</button> }
-                  @case ('fatto') { <button hx-btn size="sm" variant="ghost" icon="trash" (click)="remove(d)">{{ "Elimina" | tr }}</button> }
+                  @case ('in_corso') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
+                  @case ('in_coda') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
+                  @case ('in_pausa') { <button hx-btn size="sm" icon="play" (click)="op(d, 'resume')">{{ "Resume" | tr }}</button> }
+                  @case ('errore') { <button hx-btn size="sm" icon="refresh" (click)="op(d, 'retry')">{{ "Try again" | tr }}</button> }
+                  @case ('fatto') { <button hx-btn size="sm" variant="ghost" icon="trash" (click)="remove(d)">{{ "Delete" | tr }}</button> }
                 }
                 @if (d.state !== 'fatto') {
-                  <button hx-btn size="sm" variant="ghost" icon="x" iconOnly  [attr.aria-label]="'Annulla' | tr"  [title]="'Annulla' | tr" (click)="op(d, 'cancel')"></button>
+                  <button hx-btn size="sm" variant="ghost" icon="x" iconOnly  [attr.aria-label]="'Cancel' | tr"  [title]="'Cancel' | tr" (click)="op(d, 'cancel')"></button>
                 }
               </div>
             </li>
@@ -79,7 +79,7 @@ export function bytes(n: number): string {
         </ul>
       }
       @if (offline().length) {
-        <p class="note"><hx-icon name="offline" [size]="14" tone="warning" /> {{ "Una parte di Hestia non risponde ora: i suoi download ricompaiono quando torna." | tr }}</p>
+        <p class="note"><hx-icon name="offline" [size]="14" tone="warning" /> {{ "A part of Hestia is not answering right now: its downloads come back when it returns." | tr }}</p>
       }
     </div>`,
   styles: [`
@@ -132,7 +132,7 @@ export class DownloadsPageComponent {
       this.offline.set(r.offline || []);
       this.error.set('');
     } catch (e: any) {
-      if (this.rows() === null) this.error.set(e?.error?.detail || tr('Hestia non risponde: riprovo tra poco.'));
+      if (this.rows() === null) this.error.set(e?.error?.detail || tr('Hestia doesn\'t answer: I\'ll retry shortly.'));
     }
   }
 
@@ -141,12 +141,12 @@ export class DownloadsPageComponent {
   pct(d: DownloadRow) { return d.size ? Math.min(100, (100 * d.done) / d.size) : 0; }
 
   detail(d: DownloadRow): string {
-    if (d.state === 'errore') return d.error || tr('Non riuscito.');
+    if (d.state === 'errore') return d.error || tr('Failed.');
     if (d.state === 'fatto') return d.size ? bytes(d.size) : 'Pronto.';
     const parts = [d.size ? `${bytes(d.done)} di ${bytes(d.size)}` : this.state(d).label];
     if (d.state === 'in_corso' && d.speed) parts.push(`${bytes(d.speed)}/s`);
-    if (d.state === 'in_corso' && d.eta_s) parts.push(d.eta_s < 60 ? tr('meno di un minuto') : tr("ancora {0} min", Math.round(d.eta_s / 60)));
-    if (d.state === 'in_pausa') parts.push(tr('in pausa'));
+    if (d.state === 'in_corso' && d.eta_s) parts.push(d.eta_s < 60 ? tr('less than a minute') : tr("{0} min left", Math.round(d.eta_s / 60)));
+    if (d.state === 'in_pausa') parts.push(tr('paused'));
     return parts.join(' · ');
   }
 
@@ -160,7 +160,7 @@ export class DownloadsPageComponent {
   }
 
   async remove(d: DownloadRow) {
-    if (!await this.dialogs.confirm(tr("Eliminare {0}?", d.what), tr('Libera spazio sul disco. Se ti serve di nuovo, si riscarica.'), tr('Elimina'), true)) return;
+    if (!await this.dialogs.confirm(tr("Delete {0}?", d.what), tr('Frees space on the disk. If you need it again, it downloads again.'), tr('Delete'), true)) return;
     await this.op(d, 'remove');
   }
 

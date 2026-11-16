@@ -28,10 +28,10 @@ class AnthropicProvider(LLMProvider):
     CONFIG_FIELDS = (
         {"key": "base_url", "type": "string", "label": "Indirizzo (vuoto = Anthropic)", "default": ""},
         {"key": "api_key", "type": "secret_ref", "label": "Chiave API (ORACLE_KEY_<NOME>)"},
-        {"key": "thinking_by_mode", "type": "object", "label": "Ragionamento per modalità",
+        {"key": "thinking_by_mode", "type": "object", "label": "Reasoning per mode",
          "default": {"fast": "off", "normal": "low", "deep": "high"}},
-        {"key": "prompt_cache", "type": "bool", "label": "Cache del prompt", "default": True},
-        {"key": "max_tokens", "type": "int", "label": "Token massimi per risposta", "default": 16000},
+        {"key": "prompt_cache", "type": "bool", "label": "Prompt cache", "default": True},
+        {"key": "max_tokens", "type": "int", "label": "Most tokens per answer", "default": 16000},
         {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 180},
     )
     CAPABILITIES = frozenset({"chat", "tools", "stream", "vision", "thinking"})
@@ -159,7 +159,7 @@ class AnthropicProvider(LLMProvider):
             logger.warning("event=anthropic_refusal category=%s",
                            getattr(getattr(response, "stop_details", None), "category", None))
             if not texts:
-                texts.append(tr("Non posso aiutarti con questa richiesta."))
+                texts.append(tr("I can't help you with this request."))
         return "".join(texts).strip(), "\n".join(reasoning).strip(), calls
 
     # ── Calls ─────────────────────────────────────────────────────────────

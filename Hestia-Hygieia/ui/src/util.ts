@@ -9,7 +9,7 @@ export async function call<T = any>(host: HestiaHost, method: HttpMethod, path: 
                                     opts?: { query?: Record<string, any>; body?: unknown; quiet?: boolean }): Promise<ApiResult<T>> {
   const r = await host.api<T>(method, path.startsWith('/') ? path : `${API}/${path}`, opts);
   if (!r.ok && !opts?.quiet && method !== 'GET') {
-    const msg = r.error === 'offline' || r.status === 0 ? tr('Non raggiungibile, riprova') : r.error || tr('Errore');
+    const msg = r.error === 'offline' || r.status === 0 ? tr('Not reachable, try again') : r.error || tr('Error');
     host.toast(msg, 'warning');
   }
   return r;
@@ -28,13 +28,13 @@ export const dropMeta = () => { metaCache = null; };
 export const label = (list: any[] | undefined, value: string) => (list || []).find(o => o.value === value)?.label || value;
 
 export const STATE: Record<string, { text: string; tone: Tone }> = {
-  done: { text: tr('Fatta'), tone: 'success' }, due: { text: tr('Da fare'), tone: 'warning' }, suggested: { text: tr('Consigliata'), tone: 'accent' },
-  wait: { text: tr('Aspetta'), tone: 'neutral' }, ok: { text: tr('In regola'), tone: 'success' }, off: { text: tr('Non oggi'), tone: 'neutral' },
-  rest: { text: tr('Quando vuoi'), tone: 'neutral' }, blocked: { text: tr('Non oggi'), tone: 'danger' }, paused: { text: tr('In pausa'), tone: 'neutral' },
+  done: { text: tr('f::Done'), tone: 'success' }, due: { text: tr('To do'), tone: 'warning' }, suggested: { text: tr('f::Recommended'), tone: 'accent' },
+  wait: { text: tr('Wait'), tone: 'neutral' }, ok: { text: tr('On track'), tone: 'success' }, off: { text: tr('Not today'), tone: 'neutral' },
+  rest: { text: tr('Whenever you want'), tone: 'neutral' }, blocked: { text: tr('Not today'), tone: 'danger' }, paused: { text: tr('Paused'), tone: 'neutral' },
 };
 export const STEP_STATE: Record<string, string> = {
-  due: tr('tocca oggi'), suggested: tr('consigliato oggi'), wait: tr('non serve oggi'), ok: 'obiettivo raggiunto', blocked: tr('non oggi'),
-  paused: tr('in pausa'), off: tr('non oggi'), rest: tr('se vuoi'), always: '',
+  due: tr('due today'), suggested: tr('recommended today'), wait: tr('not needed today'), ok: 'obiettivo raggiunto', blocked: tr('not today'),
+  paused: tr('paused'), off: tr('not today'), rest: tr('if you want'), always: '',
 };
 /** Kit stroke icon coloured by intent (tone: success|warning|danger|info|accent|muted; '' = text colour). */
 export const icon = (name: string, size = 14, tone = '') => html`<hxk-icon name=${name} size=${size} tone=${tone}></hxk-icon>`;
@@ -54,7 +54,7 @@ export const alertIcon = (a: any, size = 14) => a.type === 'expiry' ? icon('hour
 export const STATUS_TONE: Record<string, Tone> = {
   in_use: 'success', stock: 'info', paused: 'neutral', wishlist: 'accent', finished: 'neutral', discarded: 'danger',
 };
-export const WEEKDAYS = [tr('Lun'), tr('Mar'), tr('Mer'), tr('Gio'), tr('Ven'), tr('Sab'), tr('Dom')];
+export const WEEKDAYS = [tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat'), tr('Sun')];
 
 export function localDay(d: Date = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -69,21 +69,21 @@ export function dayLabel(iso: string | null | undefined, withWeekday = true): st
   if (!iso) return '';
   const d = iso.length === 10 ? new Date(iso + 'T12:00:00') : new Date(iso);
   const ld = localDay(d);
-  if (ld === today()) return tr('Oggi');
-  if (ld === addDays(today(), -1)) return tr('Ieri');
-  if (ld === addDays(today(), 1)) return tr('Domani');
+  if (ld === today()) return tr('Today');
+  if (ld === addDays(today(), -1)) return tr('Yesterday');
+  if (ld === addDays(today(), 1)) return tr('Tomorrow');
   return d.toLocaleDateString('it-IT', withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
 }
 export function relDays(iso: string | null | undefined): string {
   if (!iso) return 'mai';
   const days = Math.round((Date.parse(today() + 'T12:00:00') - Date.parse(iso.slice(0, 10) + 'T12:00:00')) / 86400000);
-  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} giorni fa", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
+  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} days ago", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
 }
 export function inDays(n: number | null | undefined): string {
   if (n === null || n === undefined) return '';
-  if (n < 0) return tr("scaduto da {0} g", -n);
+  if (n < 0) return tr("alt::expired {0} d ago", -n);
   if (n === 0) return 'oggi';
-  return n < 60 ? tr("tra {0} g", n) : tr("tra {0} mesi", Math.round(n / 30));
+  return n < 60 ? tr("in {0} d", n) : tr("in {0} months", Math.round(n / 30));
 }
 export function money(x: number | null | undefined, currency = 'EUR'): string {
   if (x === null || x === undefined) return '–';
@@ -97,11 +97,11 @@ export const productName = (p: any) => p ? `${p.brand ? p.brand + ' ' : ''}${p.n
 
 export function cadenceText(c: any): string {
   if (!c) return '';
-  if (c.mode === 'daily') return tr('Ogni giorno');
-  if (c.mode === 'as_needed') return tr('Quando capita');
-  if (c.mode === 'fixed_days') return (c.days || []).length ? tr('Ogni ') + c.days.map((d: number) => WEEKDAYS[d].toLowerCase()).join(', ') : tr('Giorni fissi');
+  if (c.mode === 'daily') return tr('Every day');
+  if (c.mode === 'as_needed') return tr('When it happens');
+  if (c.mode === 'fixed_days') return (c.days || []).length ? tr('Every ') + c.days.map((d: number) => WEEKDAYS[d].toLowerCase()).join(', ') : tr('Fixed days');
   const t = c.times || 1;
-  return tr("Almeno {0} {1} a{2}", t, t === 1 ? 'volta' : 'volte', c.per === 'month' ? 'l mese' : ' settimana');
+  return tr("At least {0} {1} a{2}", t, t === 1 ? 'volta' : 'volte', c.per === 'month' ? 'l mese' : ' settimana');
 }
 
 export function search(items: any[], q: string, fields: (it: any) => string): any[] {

@@ -71,7 +71,7 @@ export class QuickActionsService {
   /** Runs a chip (optionally with {date, note, …params}); toast with «Annulla» when the action has an undo. */
   async run(chip: QuickChipView, body?: Record<string, unknown>): Promise<boolean> {
     const a = chip.action;
-    if (a.confirm && !(await this.dialogs.confirm(chip.label, a.confirm, tr('Conferma')))) return false;
+    if (a.confirm && !(await this.dialogs.confirm(chip.label, a.confirm, tr('Confirm')))) return false;
     this.metis.tap('action', a.id, chip.label);
     this.busy.set(chip.key);
     const r = await this.plugins.call(a.module, a.method, fill(a.path, chip.chipId), { body: body ?? (a.method === 'GET' ? undefined : {}) });
@@ -85,7 +85,7 @@ export class QuickActionsService {
     const msg = (r.data as { message?: string } | null)?.message || chip.label;
     const prev = chip.state;
     this.chips.update(list => list.map(c => c.key === chip.key && c.chipId ? { ...c, state: 'done' } : c));
-    this.toasts.show(msg, 'success', a.undo ? { label: tr('Annulla'), run: () => void this.undo(chip, prev) } : undefined, a.undo ? 7000 : 4500);
+    this.toasts.show(msg, 'success', a.undo ? { label: tr('Cancel'), run: () => void this.undo(chip, prev) } : undefined, a.undo ? 7000 : 4500);
     this.plugins.emit(a.module, 'refresh');
     void this.reload(true);
     return true;
@@ -97,7 +97,7 @@ export class QuickActionsService {
     const r = await this.plugins.call(chip.action.module, u.method, fill(u.path, chip.chipId));
     if (!r.ok) { this.toasts.error('Annullamento non riuscito'); return; }
     this.chips.update(list => list.map(c => c.key === chip.key ? { ...c, state: prev } : c));
-    this.toasts.show(tr('Annullato'), 'info');
+    this.toasts.show(tr('Cancelled'), 'info');
     this.plugins.emit(chip.action.module, 'refresh');
     void this.reload(true);
   }

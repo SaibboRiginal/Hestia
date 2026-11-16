@@ -23,7 +23,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_wardrobe.service")
 
-PER_LABEL = {"day": "oggi", "week": "questa settimana", "month": "questo mese"}
+PER_LABEL = {"day": "oggi", "week": "this week", "month": "this month"}
 # Personal settings shared by every module (owner Themis): never a wardrobe.* copy.
 WEEK_START_KEY = "themis.personal.week_start"
 CURRENCY_KEY = "themis.personal.currency"
@@ -35,7 +35,7 @@ class NotFound(LookupError):
 
 def _norm(text: Any) -> str:
     s = str(text or "").lower()
-    for a, b in (("à", "a"), ("è", "e"), ("é", "e"), ("ì", "i"), ("ò", "o"), ("ù", "u")):
+    for a, b in (("à", "a"), ("is", "e"), ("é", "e"), ("ì", "i"), ("ò", "o"), ("ù", "u")):
         s = s.replace(a, b)
     return re.sub(r"\s+", " ", s)
 
@@ -127,7 +127,7 @@ class Wardrobe:
             keys = {v["key"] for v in clean}
             lost = sorted(k for k in used - keys if k)
             if lost:
-                raise Invalid(tr("categorie ancora usate da alcuni capi: {0} (nascondile invece di toglierle)", ', '.join(lost)))
+                raise Invalid(tr("categories still used by some items: {0} (hide them instead of removing them)", ', '.join(lost)))
         self.store.upsert("taxonomy", name, {"values": clean})
         return clean
 
@@ -153,7 +153,7 @@ class Wardrobe:
         row = self.store.data(kind, id)
         if not row:
             raise NotFound({"piece": "capo", "outfit": "outfit", "wear": "segno", "collection": "lista",
-                            "photo": "foto"}.get(kind, kind) + tr(" non trovato"))
+                            "photo": "foto"}.get(kind, kind) + tr(" not found"))
         return row
 
     def _decorate(self, p: dict, use: dict[str, dict], cats: dict[str, dict]) -> dict:
@@ -240,7 +240,7 @@ class Wardrobe:
         cats = self.vocab_map("category")
         raw = {p["id"]: p for p in self._pieces_raw()}
         if id not in raw:
-            raise NotFound(tr("capo non trovato"))
+            raise NotFound(tr("item not found"))
         wears = self._wears()
         use = stats_mod.usage(list(raw.values()), wears)
         out = self._decorate(raw[id], use, cats)
@@ -255,7 +255,7 @@ class Wardrobe:
         cats = self.vocab_map("category")
         current = self.store.data("piece", id) if id else None
         if id and partial and not current:
-            raise NotFound(tr("capo non trovato"))
+            raise NotFound(tr("item not found"))
         data = self._tag_keys(data)
         merged = {**(current or {}), **{k: v for k, v in data.items() if v is not None}} if partial else data
         if partial and "purchase" in data and isinstance(data["purchase"], dict):
@@ -282,7 +282,7 @@ class Wardrobe:
     def bulk(self, ids: list[str], changes: dict) -> dict:
         allowed = {k: v for k, v in changes.items() if k in ("status", "location", "favorite", "condition")}
         if not allowed:
-            raise Invalid(tr("niente da cambiare (status, location, favorite, condition)"))
+            raise Invalid(tr("nothing to change (status, location, favorite, condition)"))
         done = []
         for pid in ids:
             if self.store.get("piece", pid):
@@ -384,7 +384,7 @@ class Wardrobe:
     def save_outfit(self, data: dict, id: str | None = None, *, partial: bool = False) -> dict:
         current = self.store.data("outfit", id) if id else None
         if id and partial and not current:
-            raise NotFound(tr("outfit non trovato"))
+            raise NotFound(tr("outfit not found"))
         data = self._tag_keys(data)
         merged = {**(current or {}), **{k: v for k, v in data.items() if v is not None}} if partial else data
         pieces = {p["id"]: p for p in self._pieces_raw()}
@@ -440,7 +440,7 @@ class Wardrobe:
     def _wear_label(self, w: dict, outfits: dict, pieces: dict) -> str:
         name = (outfits.get(w.get("outfit_id") or "") or {}).get("name") or \
             " + ".join((pieces.get(p) or {}).get("name", "?") for p in (w.get("piece_ids") or [])[:3])
-        return f"{name} indossato" + ("" if w["date"] == self.today().isoformat() else tr(" il {0}", w['date']))
+        return f"{name} indossato" + ("" if w["date"] == self.today().isoformat() else tr(" on {0}", w['date']))
 
     def delete_wear(self, id: str) -> dict:
         self.get("wear", id)
@@ -451,7 +451,7 @@ class Wardrobe:
         day = domain.iso_date(day) or self.today().isoformat()
         rows = [w for w in self._wears() if w.get("outfit_id") == outfit_id and w["date"] == day]
         if not rows:
-            raise NotFound(tr("niente da annullare"))
+            raise NotFound(tr("nothing to undo"))
         self.store.delete("wear", rows[-1]["id"])
         return {"id": rows[-1]["id"], "deleted": True}
 
@@ -536,8 +536,8 @@ class Wardrobe:
         if weather:
             out["weather"] = weather
         if not out["items"]:
-            out["hint"] = (tr("Aggiungi qualche capo (almeno uno sopra, uno sotto e delle scarpe) per avere suggerimenti")
-                           if out["available_pieces"] < 3 else tr("Nessuna combinazione adatta: prova senza occasione o con un'altra temperatura"))
+            out["hint"] = (tr("Add a few items (at least one top, one bottom and some shoes) to get suggestions")
+                           if out["available_pieces"] < 3 else tr("No suitable combination: try without occasion or with another temperature"))
         return out
 
     def save_suggestion(self, slots: list[dict], name: str = "", source: str = "user") -> dict:
@@ -583,16 +583,16 @@ class Wardrobe:
         for w in worn:
             name = (outfits.get(w.get("outfit_id") or "") or {}).get("name") or \
                 " + ".join((pieces.get(p) or {}).get("name", "?") for p in (w.get("piece_ids") or [])[:3])
-            done.append({"text": tr("Indossato: {0}", name)})
+            done.append({"text": tr("Worn: {0}", name)})
         laundry = sum(1 for p in pieces.values() if p.get("status") == "laundry")
-        note = tr("In lavanderia: {0} cap{1}", laundry, 'o' if laundry == 1 else 'i') if done and laundry else ""
+        note = tr("In the laundry: {0} item{1}", laundry, 'o' if laundry == 1 else 'i') if done and laundry else ""
         return {"done": done, "note": note}
 
     def context(self, budget: int = 400, topic: str = "") -> dict:
         detail = self.topic_text(topic, budget) if topic else None
         if detail:
             return {"module": "wardrobe", "domain": "wardrobe", "updated_at": now_iso(), "text": detail}
-        text = tr("Guardaroba: ") + self.summary()["text"]
+        text = tr("Wardrobe: ") + self.summary()["text"]
         if len(text) > budget:
             text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
         return {"module": "wardrobe", "domain": "wardrobe", "updated_at": now_iso(), "text": text}
@@ -623,16 +623,16 @@ class Wardrobe:
         sigs: list[dict] = []
         if f["forgotten"]:
             n = len(f["forgotten"])
-            sigs.append(signal("forgotten", tr("Guardaroba: {0} capi non indossati da {1}+ giorni.", n, self.FORGOTTEN_DAYS),
+            sigs.append(signal("forgotten", tr("Wardrobe: {0} items not worn for {1}+ days.", n, self.FORGOTTEN_DAYS),
                                kind="trend", severity="info", metrics={"count": n, "days": self.FORGOTTEN_DAYS},
                                page="statistiche"))
         if len(f["laundry"]) >= self.LAUNDRY_MIN:
             n = len(f["laundry"])
-            sigs.append(signal("laundry_backlog", tr("Guardaroba: {0} capi in lavanderia da più di {1} giorni.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="attenzione",
+            sigs.append(signal("laundry_backlog", tr("Wardrobe: {0} items in the laundry for more than {1} days.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="attenzione",
                                metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="capi"))
         if f["repair"]:
             n = len(f["repair"])
-            sigs.append(signal("to_repair", tr("Guardaroba: {0} capi da riparare.", n), kind="trend", severity="info",
+            sigs.append(signal("to_repair", tr("Wardrobe: {0} items to repair.", n), kind="trend", severity="info",
                                metrics={"count": n}, page="capi"))
         weeks = last_weeks(12, f["today"])
         per_week = {w: 0 for w in weeks}
@@ -643,7 +643,7 @@ class Wardrobe:
                 continue
             if wk in per_week:
                 per_week[wk] += 1
-        return sigs, [metric("wardrobe.worn", w, per_week[w], tr("Capi indossati")) for w in weeks]
+        return sigs, [metric("wardrobe.worn", w, per_week[w], tr("Items worn")) for w in weeks]
 
     def topic_text(self, topic: str, budget: int = 400) -> str | None:
         """Detail behind one signal key (``/api/module/context?topic=``); unknown topic → None."""
@@ -652,16 +652,16 @@ class Wardrobe:
         f = self._signal_facts()
         if topic == "forgotten":
             items = f["forgotten"]
-            text = (tr("Non indossati da {0}+ giorni: {1}. Es. ", self.FORGOTTEN_DAYS, len(items))
+            text = (tr("Not worn for {0}+ days: {1}. E.g. ", self.FORGOTTEN_DAYS, len(items))
                     + ", ".join(f"{x['name']} ({x['days']}g)" if x.get("days") else f"{x['name']} (mai)"
                                 for x in items[:8]))
         elif topic == "laundry_backlog":
             items = f["laundry"]
-            text = (tr("In lavanderia da più di {0} giorni: {1}. ", self.LAUNDRY_DAYS, len(items))
+            text = (tr("In the laundry for more than {0} days: {1}. ", self.LAUNDRY_DAYS, len(items))
                     + ", ".join(f"{p['name']} dal {str(p.get('updated_at') or '')[:10]}" for p in items[:8]))
         else:
             items = f["repair"]
-            text = tr("Da riparare: {0}. ", len(items)) + ", ".join(p["name"] for p in items[:8])
+            text = tr("To repair: {0}. ", len(items)) + ", ".join(p["name"] for p in items[:8])
         return text if len(text) <= budget else text[: max(0, budget - 1)] + "…"
 
     # ── quick actions (WebUI Home) ─────────────────────────────────────────
@@ -684,7 +684,7 @@ class Wardrobe:
                     continue
                 cid = s["outfit_id"] or "s:" + ",".join(x["piece_id"] for x in s["slots"])
                 chips.append({"id": cid, "label": s["name"], "icon": "sparkle", "state": "done" if cid in marked else "todo",
-                              "hint": tr("suggerito oggi") + (f" · {g['hint']}" if g else "")})
+                              "hint": tr("suggested today") + (f" · {g['hint']}" if g else "")})
         return chips[:limit]
 
     def quick_mark(self, chip_id: str, day: str | None = None, note: str = "", source: str = "webui") -> dict:
@@ -698,7 +698,7 @@ class Wardrobe:
             ids = set(chip_id[2:].split(","))
             rows = [w for w in self._wears() if w["date"] == day and set(w.get("piece_ids") or []) == ids]
             if not rows:
-                raise NotFound(tr("niente da annullare"))
+                raise NotFound(tr("nothing to undo"))
             self.store.delete("wear", rows[-1]["id"])
             return {"deleted": True}
         return self.unmark_outfit(chip_id, day)
@@ -735,7 +735,7 @@ class Wardrobe:
         try:
             self.hub.call("hermes", "POST", "api/events/ingest", body={
                 "event_type": "service.action_required", "domain": "wardrobe", "entity_id": "wardrobe.reminder",
-                "payload": {"closes": "wardrobe.reminder", "decision": "done", "outcome_text": tr("Outfit segnato"),
+                "payload": {"closes": "wardrobe.reminder", "decision": "done", "outcome_text": tr("Outfit noted"),
                             "_source": "wardrobe"}}, timeout=5)
         except Exception as exc:
             logger.warning("[🔄] event=wardrobe_reminder_close_failed error=%s fallback=expires_on_its_own", exc)
@@ -743,7 +743,7 @@ class Wardrobe:
     # ── photos ─────────────────────────────────────────────────────────────
     def add_photo(self, owner_kind: str, owner_id: str, upload: dict, *, cover: bool = False) -> dict:
         if owner_kind not in ("piece", "outfit"):
-            raise Invalid(tr("le foto vanno su un capo o un outfit"))
+            raise Invalid(tr("photos go on an item or an outfit"))
         owner = self.get(owner_kind, owner_id)
         raw, _mime = photos.decode(upload, float(self.cfg("photo.max_mb", 10)))
         try:
@@ -776,7 +776,7 @@ class Wardrobe:
     def set_cover(self, owner_kind: str, owner_id: str, photo_id: str) -> dict:
         owner = self.get(owner_kind, owner_id)
         if photo_id not in (owner.get("photos") or []):
-            raise NotFound(tr("foto non trovata"))
+            raise NotFound(tr("photo not found"))
         saver = self.save_piece if owner_kind == "piece" else self.save_outfit
         return saver({"photos": [photo_id] + [p for p in owner["photos"] if p != photo_id]}, owner_id, partial=True)
 
@@ -838,7 +838,7 @@ class Wardrobe:
             guess = json.loads(m.group(0)) if m else {}
         except Exception as exc:
             logger.warning("[🔄] event=wardrobe_describe_failed error=%s fallback=manual_form", exc)
-            return {"ok": False, "fields": {}, "message": tr("L'AI non è disponibile ora: compila a mano")}
+            return {"ok": False, "fields": {}, "message": tr("The AI is not available now: fill in by hand")}
         fields: dict[str, Any] = {}
         catmap = self.vocab_map("category")
         for k in ("name", "brand"):
@@ -863,7 +863,7 @@ class Wardrobe:
             except (TypeError, ValueError):
                 pass
         return {"ok": True, "fields": {k: v for k, v in fields.items() if v not in (None, [], "")},
-                "message": tr("Controlla i campi proposti e salva")}
+                "message": tr("Check the proposed fields and save")}
 
     def from_chat_photo(self, blob_id: str) -> dict:
         """A photo sent in chat with «aggiungi al guardaroba» (Telegram or WebUI): recognise it and save the piece
@@ -875,7 +875,7 @@ class Wardrobe:
         guess = self.describe_photo(upload)
         fields = guess.get("fields") or {}
         if not fields.get("category"):
-            return {"handled": True, "text": tr("Non sono riuscita a capire che capo è dalla foto. Dimmi cos'è (per esempio «camicia azzurra») e lo aggiungo al guardaroba.")}
+            return {"handled": True, "text": tr("I couldn't tell what item it is from the photo. Tell me what it is (for example «light blue shirt») and I'll add it to the wardrobe.")}
         fields.setdefault("name", self.vocab_map("category").get(fields.get("subcategory") or fields["category"],
                                                                    {}).get("label") or "Nuovo capo")
         created = self.save_piece(fields)
@@ -887,8 +887,8 @@ class Wardrobe:
                             ", ".join(n.lower() for n in color_names if n)) if b]
         logger.info("event=wardrobe_piece_from_chat_photo id=%s category=%s", created["id"], created.get("category"))
         return {"handled": True, "piece_id": created["id"],
-                "text": tr("Aggiunto al guardaroba: {0}", created['name']) + (f" ({'; '.join(bits)})" if bits else "")
-                        + tr(". Se qualcosa non torna dimmelo e lo correggo. [capo {0}]", created['id'])}
+                "text": tr("Added to the wardrobe: {0}", created['name']) + (f" ({'; '.join(bits)})" if bits else "")
+                        + tr(". If something is off tell me and I'll fix it. [item {0}]", created['id'])}
 
     # ── collections (capsule, packing lists, shopping) ─────────────────────
     def collections(self, *, type: str = "", include_archived: bool = False) -> dict:
@@ -921,7 +921,7 @@ class Wardrobe:
     def save_collection(self, data: dict, id: str | None = None, *, partial: bool = False) -> dict:
         current = self.store.data("collection", id) if id else None
         if id and partial and not current:
-            raise NotFound(tr("lista non trovata"))
+            raise NotFound(tr("list not found"))
         merged = {**(current or {}), **{k: v for k, v in data.items() if v is not None}} if partial else data
         clean = domain.collection(merged, {p["id"]: p for p in self.store.items("piece")},
                                   {o["id"]: o for o in self.store.items("outfit")})
@@ -950,7 +950,7 @@ class Wardrobe:
         d0 = date.fromisoformat(domain.iso_date(date_from) or self.today().isoformat())
         d1 = date.fromisoformat(domain.iso_date(date_to) or d0.isoformat())
         if d1 < d0:
-            raise Invalid(tr("la fine viaggio è prima dell'inizio"))
+            raise Invalid(tr("the trip end is before the start"))
         days = min(7, (d1 - d0).days + 1)
         occasion = (self.vocab_keys("occasion", [occasion]) or [""])[0] if occasion else ""
         weather = self.weather(d0, d1, place) if temp_c is None or rain is None else None
@@ -984,10 +984,10 @@ class Wardrobe:
         try:
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
-            raise Invalid(tr("JSON non valido: {0}", exc))
+            raise Invalid(tr("invalid JSON: {0}", exc))
         data = payload.get("data") if isinstance(payload, dict) else None
         if not isinstance(data, dict):
-            raise Invalid(tr("file di esportazione non riconosciuto"))
+            raise Invalid(tr("export file not recognised"))
         counts = {}
         for name, values in (data.get("taxonomy") or {}).items():
             if name in domain.DEFAULT_VOCABULARIES:

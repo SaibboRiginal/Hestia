@@ -26,7 +26,7 @@ from hestia_common.transfer import StoreSection, Transfer
 from .core.service import CLIENTS, EFFECTS, POSES, Appearance
 
 API = "/api/appearance"
-kit = ModuleKit("aphrodite", port=19023, api=API, domain="appearance", title="Aspetto", store="appearance-store",
+kit = ModuleKit("aphrodite", port=19023, api=API, domain="appearance", title="Look", store="appearance-store",
                 when_to_use="site look: holiday and season themes, effects, companion pet",
                 manual="The look changes by itself (birthday, holidays, seasons): aspetto_adesso says what is shown and why. aspetto_scelta turns themes off (back to standard) or picks the pet. aspetto_animale creates a pet; aspetto_genera asks for its images or the background.")
 app = kit.app
@@ -80,7 +80,7 @@ def image(bid: str):
     used = {p.get("background") for p in look.profiles()} | {
         b for p in look.pets() for b in (p.get("images") or {}).values()}
     if not bid or bid not in used:
-        raise NotFound(tr("immagine non trovata"))
+        raise NotFound(tr("image not found"))
     blob = kit.hub.ok("archive", "GET", f"api/blobs/{bid}/base64", timeout=30) or {}
     return {"mime": blob.get("mime") or "image/png", "data_b64": blob.get("data_b64") or ""}
 
@@ -128,14 +128,14 @@ def image_done(body: dict = Body(...)):
 def _now(client: str = "webui") -> dict:
     n = look.now(client)
     p = n["profile"]
-    lines = [tr("Tema: {0}", p['name']) + ("" if n["auto"] else " (temi spenti)"), tr("Perché: {0}", n['why'])]
+    lines = [tr("Theme: {0}", p['name']) + ("" if n["auto"] else " (temi spenti)"), tr("Why: {0}", n['why'])]
     if n["pet"]:
-        lines.append(tr("Animaletto: {0}", n['pet']['name']))
+        lines.append(tr("Pet: {0}", n['pet']['name']))
     files = [file(p["background"], "sfondo.png", "image/png")] if p.get("background") else []
-    return {**n, "display": display(tr("Aspetto adesso"), lines=lines, files=files, actions=[
-        action(tr("Spegni i temi") if n["auto"] else tr("Riaccendi i temi"), "aspetto_scelta",
+    return {**n, "display": display(tr("Look now"), lines=lines, files=files, actions=[
+        action(tr("Turn themes off") if n["auto"] else tr("Turn themes back on"), "aspetto_scelta",
                {"client": client, "auto": not n["auto"]}),
-        action(tr("Prossimi temi"), "aspetto_prossimi")])}
+        action(tr("Upcoming themes"), "aspetto_prossimi")])}
 
 
 def _choice(client: str = "webui", auto: bool | None = None, pet: str | None = None) -> dict:
@@ -148,55 +148,54 @@ def _pet(name: str, species: str = "gatto", look_: str = "") -> dict:
     p = look.save_pet({"name": name, "species": species, "look": look_})
     gen = look.generate("pet", p["id"])
     return {"saved": True, "id": p["id"], "name": p["name"], "images_asked": gen["asked"],
-            "display": display(p["name"], subtitle=p["species"], lines=[tr("Sto preparando le sue immagini: arrivano da sole quando sono pronte.")],
-                               actions=[action(tr("Usalo sul sito"), "aspetto_scelta", {"client": "webui", "pet": p["id"]},
+            "display": display(p["name"], subtitle=p["species"], lines=[tr("I'm preparing its images: they arrive by themselves when ready.")],
+                               actions=[action(tr("Use it on the site"), "aspetto_scelta", {"client": "webui", "pet": p["id"]},
                                                style="primary")])}
 
 
 S, B = {"type": "string"}, {"type": "boolean"}
-CL = {"type": "string", "enum": list(CLIENTS), "description": "dove (default webui)"}
+CL = {"type": "string", "enum": list(CLIENTS), "description": "where (default webui)"}
 G = "aspetto"
 kit.tools([
     MCPTool(name="aspetto_adesso", description="How the site looks now and why (holiday, season, birthday).",
-            parameters={"type": "object", "properties": {"client": CL}}, handler=_now, title="Aspetto adesso",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto", "primary": 3}),
+            parameters={"type": "object", "properties": {"client": CL}}, handler=_now, title="Look now",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look", "primary": 3}),
     MCPTool(name="aspetto_scelta", description=("For a client: auto=false turns the themes off (standard look), true turns them back on; pet = "
                                                 "id or name of the pet, empty for none."),
             parameters={"type": "object", "properties": {"client": CL, "auto": B, "pet": S}},
-            handler=_choice, title="Scegli aspetto", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Aspetto", "primary": 4}),
+            handler=_choice, title="Choose look", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Look", "primary": 4}),
     MCPTool(name="aspetto_prossimi", description="The themes of the next days (days, default 60).",
             parameters={"type": "object", "properties": {"days": {"type": "integer"}}},
-            handler=lambda days=60: (lambda rows: {"items": rows, "display": display(tr("Prossimi temi"), items=[
+            handler=lambda days=60: (lambda rows: {"items": rows, "display": display(tr("Upcoming themes"), items=[
                 item(r["why"], [r["date"][8:10] + "/" + r["date"][5:7]]) for r in rows[:15]])})(look.upcoming(days)),
-            title="Prossimi temi", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
+            title="Upcoming themes", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_animale", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
             parameters={"type": "object", "properties": {"name": S, "species": S, "look": S}, "required": ["name"]},
-            handler=lambda name, species="gatto", look="": _pet(name, species, look), title="Nuovo animaletto",
-            method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
+            handler=lambda name, species="gatto", look="": _pet(name, species, look), title="New pet",
+            method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_animali", description="The pets created.", parameters={"type": "object", "properties": {}},
-            handler=lambda: (lambda rows: {"items": rows, "display": display(tr("Animaletti"), items=[
+            handler=lambda: (lambda rows: {"items": rows, "display": display(tr("Pets"), items=[
                 item(p["name"], [p["species"], f"{len(p.get('images') or {})}/3 immagini"]) for p in rows],
-                lines=[] if rows else [tr("Nessun animaletto.")])})(look.pets()),
-            title="Animaletti", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Aspetto"}),
+                lines=[] if rows else [tr("No pet.")])})(look.pets()),
+            title="Pets", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_genera", description=("Ask for the images again: target profile (background) or pet; ref = profile key or the pet's "
                                                 "id/name."),
             parameters={"type": "object", "properties": {"target": {"type": "string", "enum": ["profile", "pet"]},
                                                          "ref": S}, "required": ["target", "ref"]},
             handler=lambda target, ref: look.generate(target, look.pet(ref)["id"] if target == "pet" else ref),
-            title="Rigenera immagini", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Aspetto"}),
+            title="Regenerate images", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Look"}),
 ], prefix="aspetto_")
 
 transfer = Transfer("aphrodite", kit.hub, sections=[
-    StoreSection("aspetto", "Aspetto", kit.store, ["profile", "pet", "choice"], icon="palette",
+    StoreSection("aspetto", "Look", kit.store, ["profile", "pet", "choice"], icon="palette",
                  title=lambda r: r["data"].get("name", r["id"]), file_fields=["background"]),
 ])
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment"})
 kit.capabilities(transfer.capabilities)
-kit.webui(icon="palette", color="pink", description="Temi delle feste, delle stagioni e dei tuoi giorni speciali, un animaletto.",
-          pages=[page("aspetto", "Aspetto", element="aphrodite-look", icon="palette", order=220,
-                      help="Il sito cambia da solo con le feste, le stagioni e i tuoi giorni speciali: qui vedi cosa "
-                           "c'è adesso e perché, spegni i temi, scegli e crei l'animaletto, modifichi i profili.")])
+kit.webui(icon="palette", color="pink", description="Holiday, season and special-day themes, a little pet.",
+          pages=[page("aspetto", "Look", element="aphrodite-look", icon="palette", order=220,
+                      help="The site changes by itself with holidays, seasons and your special days: here you see what is on now and why, turn themes off, choose and create the little pet, edit the profiles.")])
 kit.finish()

@@ -22,7 +22,7 @@ export function todayStart(): string {
 
 export const CLIENT_STATE: Record<string, { text: string; tone: string }> = {
   delivered: { text: 'consegnata', tone: 'success' },
-  skipped: { text: tr('solo elenco'), tone: 'neutral' },
+  skipped: { text: tr('list only'), tone: 'neutral' },
   failed: { text: 'fallita', tone: 'danger' },
   dead: { text: 'abbandonata', tone: 'danger' },
 };

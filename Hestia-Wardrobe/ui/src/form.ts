@@ -49,7 +49,7 @@ export class WardrobePieceForm extends HestiaElement {
     this.busy = 'ai'; this.aiMsg = '';
     const r = await (this.host as HestiaHost).api('POST', `${API}/describe-photo`, { body: { photo: this.upload[0] } });
     this.busy = '';
-    if (!r.ok) { this.aiMsg = tr('Riconoscimento non riuscito: compila a mano'); return; }
+    if (!r.ok) { this.aiMsg = tr('Recognition failed: fill in by hand'); return; }
     const f = r.data?.fields || {};
     const next = { ...this.d };
     if (f.name && !next.name) next.name = f.name;
@@ -63,8 +63,8 @@ export class WardrobePieceForm extends HestiaElement {
 
   private emitSave(again = false) {
     const d = this.d;
-    if (!d.name.trim()) { this.host.toast(tr('Dai un nome al capo'), 'warning'); return; }
-    if (!d.category) { this.host.toast(tr('Scegli la categoria'), 'warning'); return; }
+    if (!d.name.trim()) { this.host.toast(tr('Name the item'), 'warning'); return; }
+    if (!d.category) { this.host.toast(tr('Choose the category'), 'warning'); return; }
     const data: any = {
       name: d.name.trim(), category: d.category, colors: d.colors, brand: d.brand, size: d.size, seasons: d.seasons, styles: d.styles,
       occasions: d.occasions, pattern: d.pattern, fit: d.fit, status: d.status, condition: d.condition, location: d.location,
@@ -105,62 +105,62 @@ export class WardrobePieceForm extends HestiaElement {
     return html`<div class="col" style="gap:12px">
       <div class="top">
         ${this.editing ? nothing : html`<div class="col" style="gap:6px;align-items:flex-start">
-          <hxk-image-picker .host=${this.host} .value=${this.upload} label=${tr("Foto")} @change=${(e: CustomEvent) => { e.stopPropagation(); this.upload = e.detail; }}></hxk-image-picker>
-          ${this.upload.length ? html`<hxk-button size="sm" icon="sparkle" ?loading=${this.busy === 'ai'} @click=${() => this.recognise()}>${tr("Riconosci con AI")}</hxk-button>` : nothing}
+          <hxk-image-picker .host=${this.host} .value=${this.upload} label=${tr("Photo")} @change=${(e: CustomEvent) => { e.stopPropagation(); this.upload = e.detail; }}></hxk-image-picker>
+          ${this.upload.length ? html`<hxk-button size="sm" icon="sparkle" ?loading=${this.busy === 'ai'} @click=${() => this.recognise()}>${tr("Recognise with AI")}</hxk-button>` : nothing}
           ${this.aiMsg ? html`<span class="small muted" style="max-width:180px">${this.aiMsg}</span>` : nothing}
         </div>`}
         <div class="fields">
-          <label class="f">${tr("Nome")}<input class="in" placeholder=${tr("es. Camicia Oxford azzurra")} .value=${d.name} @input=${(e: any) => this.set('name', e.target.value)}></label>
-          <label class="f">${tr("Categoria")}<select class="in" @change=${(e: any) => this.set('category', e.target.value)}>
-            <option value="" ?selected=${!d.category}>${tr("Scegli…")}</option>
+          <label class="f">${tr("Name")}<input class="in" placeholder=${tr("e.g. Light blue Oxford shirt")} .value=${d.name} @input=${(e: any) => this.set('name', e.target.value)}></label>
+          <label class="f">${tr("Category")}<select class="in" @change=${(e: any) => this.set('category', e.target.value)}>
+            <option value="" ?selected=${!d.category}>${tr("Choose…")}</option>
             ${this.categories().map(({ p, subs }) => html`<optgroup label=${p.label}>
               <option value=${p.key} ?selected=${d.category === p.key}>${p.label} (generico)</option>
               ${subs.map(s => html`<option value=${s.key} ?selected=${d.category === s.key}>${s.label}</option>`)}</optgroup>`)}
           </select></label>
-          <div class="col" style="gap:4px"><span class="small muted">${tr("Colori (il primo è il principale)")}</span>
+          <div class="col" style="gap:4px"><span class="small muted">${tr("Colours (the first is the main one)")}</span>
             <div class="row wrap" style="gap:6px">${colors.map(c => html`<button class="sw" title=${c.label} aria-pressed=${d.colors.includes(c.key)}
               style="background:${c.hex || 'var(--surface-3)'}" @click=${() => this.toggle('colors', c.key)}></button>`)}</div>
             ${d.colors.length ? html`<span class="small">${d.colors.map((k: string) => colors.find(c => c.key === k)?.label || k).join(', ')}</span>` : nothing}</div>
-          <div class="col" style="gap:4px"><span class="small muted">${tr("Stagioni (nessuna = tutte)")}</span>
+          <div class="col" style="gap:4px"><span class="small muted">${tr("Seasons (none = all)")}</span>
             <div class="chips">${Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" aria-pressed=${d.seasons.includes(k)} @click=${() => this.toggle('seasons', k)}>${seasonIcon(k)} ${v}</button>`)}</div></div>
         </div>
       </div>
       <div class="form">
-        <label class="f">${tr("Marca")}<input class="in" .value=${d.brand} @input=${(e: any) => this.set('brand', e.target.value)}></label>
-        <label class="f">${tr("Taglia")}<input class="in" .value=${d.size} @input=${(e: any) => this.set('size', e.target.value)}></label>
-        <label class="f">${tr("Prezzo (")}${m.currency})<input class="in" inputmode="decimal" .value=${d.price ?? ''} @input=${(e: any) => this.set('price', e.target.value === '' ? null : Number(String(e.target.value).replace(',', '.')))}></label>
-        <label class="f">${tr("Stato")}<select class="in" @change=${(e: any) => this.set('status', e.target.value)}>${Object.entries(m.statuses).map(([k, v]) => html`<option value=${k} ?selected=${d.status === k}>${v}</option>`)}</select></label>
+        <label class="f">${tr("Brand")}<input class="in" .value=${d.brand} @input=${(e: any) => this.set('brand', e.target.value)}></label>
+        <label class="f">${tr("Size")}<input class="in" .value=${d.size} @input=${(e: any) => this.set('size', e.target.value)}></label>
+        <label class="f">${tr("Price (")}${m.currency})<input class="in" inputmode="decimal" .value=${d.price ?? ''} @input=${(e: any) => this.set('price', e.target.value === '' ? null : Number(String(e.target.value).replace(',', '.')))}></label>
+        <label class="f">${tr("Status")}<select class="in" @change=${(e: any) => this.set('status', e.target.value)}>${Object.entries(m.statuses).map(([k, v]) => html`<option value=${k} ?selected=${d.status === k}>${v}</option>`)}</select></label>
       </div>
-      <div class="col" style="gap:4px"><span class="small muted">${tr("Stile")}</span>
+      <div class="col" style="gap:4px"><span class="small muted">${tr("Style")}</span>
         <div class="chips">${vocabOptions(m, 'style').map(s => html`<button class="chip soft" aria-pressed=${d.styles.includes(s.key)} @click=${() => this.toggle('styles', s.key)}>${s.label}</button>`)}</div></div>
       ${this.more ? html`
-        <div class="col" style="gap:4px"><span class="small muted">${tr("Occasioni")}</span>
+        <div class="col" style="gap:4px"><span class="small muted">${tr("Occasions")}</span>
           <div class="chips">${vocabOptions(m, 'occasion').map(s => html`<button class="chip soft" aria-pressed=${d.occasions.includes(s.key)} @click=${() => this.toggle('occasions', s.key)}>${s.label}</button>`)}</div></div>
         <div class="row wrap" style="gap:18px">
-          <div class="col" style="gap:4px"><span class="small muted">${tr("Calore")}</span>${this.scale('warmth', 'leggero', 'caldo')}</div>
-          <div class="col" style="gap:4px"><span class="small muted">${tr("Formalità")}</span>${this.scale('formality', 'sportivo', 'elegante')}</div>
-          <label class="row small"><input type="checkbox" .checked=${d.rain_ok === true} @change=${(e: any) => this.set('rain_ok', e.target.checked ? true : null)}> ${tr("va bene con la pioggia")}</label>
+          <div class="col" style="gap:4px"><span class="small muted">${tr("Warmth")}</span>${this.scale('warmth', 'leggero', 'caldo')}</div>
+          <div class="col" style="gap:4px"><span class="small muted">${tr("Formality")}</span>${this.scale('formality', 'sportivo', 'elegante')}</div>
+          <label class="row small"><input type="checkbox" .checked=${d.rain_ok === true} @change=${(e: any) => this.set('rain_ok', e.target.checked ? true : null)}> ${tr("good with the rain")}</label>
         </div>
         <div class="form">
-          <label class="f">${tr("Fantasia")}<select class="in" @change=${(e: any) => this.set('pattern', e.target.value)}><option value="">–</option>${vocabOptions(m, 'pattern').map(o => html`<option value=${o.key} ?selected=${d.pattern === o.key}>${o.label}</option>`)}</select></label>
-          <label class="f">${tr("Vestibilità")}<select class="in" @change=${(e: any) => this.set('fit', e.target.value)}><option value="">–</option>${vocabOptions(m, 'fit').map(o => html`<option value=${o.key} ?selected=${d.fit === o.key}>${o.label}</option>`)}</select></label>
-          <label class="f">${tr("Materiali")}<input class="in" placeholder=${tr("cotone, lino")} .value=${d.materials} @input=${(e: any) => this.set('materials', e.target.value)}></label>
-          <label class="f">${tr("Dove sta")}<select class="in" @change=${(e: any) => this.set('location', e.target.value)}><option value="">–</option>${vocabOptions(m, 'location').map(o => html`<option value=${o.key} ?selected=${d.location === o.key}>${o.label}</option>`)}</select></label>
-          <label class="f">${tr("Condizione")}<select class="in" @change=${(e: any) => this.set('condition', e.target.value)}>${Object.entries(m.conditions).map(([k, v]) => html`<option value=${k} ?selected=${d.condition === k}>${v}</option>`)}</select></label>
-          <label class="f">${tr("Acquistato il")}<input class="in" type="date" .value=${d.date} @change=${(e: any) => this.set('date', e.target.value)}></label>
-          <label class="f">${tr("Negozio")}<input class="in" .value=${d.store} @input=${(e: any) => this.set('store', e.target.value)}></label>
-          <label class="f">${tr("Lavaggio °C")}<input class="in" inputmode="numeric" .value=${d.wash_c ?? ''} @input=${(e: any) => this.set('wash_c', e.target.value ? Number(e.target.value) : null)}></label>
+          <label class="f">${tr("Pattern")}<select class="in" @change=${(e: any) => this.set('pattern', e.target.value)}><option value="">–</option>${vocabOptions(m, 'pattern').map(o => html`<option value=${o.key} ?selected=${d.pattern === o.key}>${o.label}</option>`)}</select></label>
+          <label class="f">${tr("Fit")}<select class="in" @change=${(e: any) => this.set('fit', e.target.value)}><option value="">–</option>${vocabOptions(m, 'fit').map(o => html`<option value=${o.key} ?selected=${d.fit === o.key}>${o.label}</option>`)}</select></label>
+          <label class="f">${tr("Materials")}<input class="in" placeholder=${tr("cotton, linen")} .value=${d.materials} @input=${(e: any) => this.set('materials', e.target.value)}></label>
+          <label class="f">${tr("Where it is")}<select class="in" @change=${(e: any) => this.set('location', e.target.value)}><option value="">–</option>${vocabOptions(m, 'location').map(o => html`<option value=${o.key} ?selected=${d.location === o.key}>${o.label}</option>`)}</select></label>
+          <label class="f">${tr("Condition")}<select class="in" @change=${(e: any) => this.set('condition', e.target.value)}>${Object.entries(m.conditions).map(([k, v]) => html`<option value=${k} ?selected=${d.condition === k}>${v}</option>`)}</select></label>
+          <label class="f">${tr("alt::Bought on")}<input class="in" type="date" .value=${d.date} @change=${(e: any) => this.set('date', e.target.value)}></label>
+          <label class="f">${tr("Shop")}<input class="in" .value=${d.store} @input=${(e: any) => this.set('store', e.target.value)}></label>
+          <label class="f">${tr("Wash °C")}<input class="in" inputmode="numeric" .value=${d.wash_c ?? ''} @input=${(e: any) => this.set('wash_c', e.target.value ? Number(e.target.value) : null)}></label>
         </div>
-        <label class="row small"><input type="checkbox" .checked=${d.gift} @change=${(e: any) => this.set('gift', e.target.checked)}> ${tr("regalo")}</label>
-        <label class="f">${tr("Cura")}<input class="in" placeholder=${tr("es. solo a mano, non in asciugatrice")} .value=${d.care_notes} @input=${(e: any) => this.set('care_notes', e.target.value)}></label>
-        <label class="f">${tr("Note")}<textarea class="in" rows="2" .value=${d.notes} @input=${(e: any) => this.set('notes', e.target.value)}></textarea></label>
-      ` : html`<button class="link small" style="align-self:flex-start" @click=${() => (this.more = true)}>${tr("Altri dettagli (occasioni, calore, materiali, acquisto, cura…)")}</button>`}
+        <label class="row small"><input type="checkbox" .checked=${d.gift} @change=${(e: any) => this.set('gift', e.target.checked)}> ${tr("gift")}</label>
+        <label class="f">${tr("Care")}<input class="in" placeholder=${tr("e.g. hand wash only, no dryer")} .value=${d.care_notes} @input=${(e: any) => this.set('care_notes', e.target.value)}></label>
+        <label class="f">${tr("Notes")}<textarea class="in" rows="2" .value=${d.notes} @input=${(e: any) => this.set('notes', e.target.value)}></textarea></label>
+      ` : html`<button class="link small" style="align-self:flex-start" @click=${() => (this.more = true)}>${tr("More details (occasions, warmth, materials, purchase, care…)")}</button>`}
       <div class="row wrap">
-        <hxk-button variant="primary" icon="check" @click=${() => this.emitSave(false)}>${tr("Salva")}</hxk-button>
-        ${this.editing ? nothing : html`<hxk-button icon="plus" @click=${() => this.emitSave(true)}>${tr("Salva e aggiungi un altro")}</hxk-button>`}
-        <hxk-button variant="ghost" @click=${() => this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }))}>${tr("Annulla")}</hxk-button>
+        <hxk-button variant="primary" icon="check" @click=${() => this.emitSave(false)}>${tr("Save")}</hxk-button>
+        ${this.editing ? nothing : html`<hxk-button icon="plus" @click=${() => this.emitSave(true)}>${tr("Save and add another")}</hxk-button>`}
+        <hxk-button variant="ghost" @click=${() => this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }))}>${tr("Cancel")}</hxk-button>
         <span class="grow"></span>
-        <label class="row small"><input type="checkbox" .checked=${d.favorite} @change=${(e: any) => this.set('favorite', e.target.checked)}> <hxk-icon name="star" size=${14} tone="warning"></hxk-icon> ${tr("preferito")}</label>
+        <label class="row small"><input type="checkbox" .checked=${d.favorite} @change=${(e: any) => this.set('favorite', e.target.checked)}> <hxk-icon name="star" size=${14} tone="warning"></hxk-icon> ${tr("favorite")}</label>
       </div>
     </div>`;
   }

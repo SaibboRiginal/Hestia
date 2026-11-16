@@ -35,7 +35,7 @@ def validate(defn: dict, value: Any) -> Any:
     """Return the value coerced to the declared type, or raise SettingValueError (Italian message)."""
     kind = defn.get("type", "string")
     if value is None:
-        raise SettingValueError(tr("valore mancante (per tornare al predefinito usa Ripristina)"))
+        raise SettingValueError(tr("missing value (to go back to the default use Restore)"))
     if kind == "bool":
         if isinstance(value, bool):
             return value
@@ -44,7 +44,7 @@ def validate(defn: dict, value: Any) -> Any:
             return True
         if text in _FALSE:
             return False
-        raise SettingValueError(tr("sì/no atteso"))
+        raise SettingValueError(tr("yes/no expected"))
     if kind == "int":
         return _number(defn, value, int)
     if kind == "float":
@@ -57,7 +57,7 @@ def validate(defn: dict, value: Any) -> Any:
         for option in allowed:
             if str(option) == text:
                 return option
-        raise SettingValueError(tr("valore non ammesso: ") + ", ".join(str(a) for a in allowed))
+        raise SettingValueError(tr("value not allowed: ") + ", ".join(str(a) for a in allowed))
     if kind in {"string", "text", "model"}:
         if not isinstance(value, (str, int, float)) or isinstance(value, bool):
             raise SettingValueError("testo atteso")

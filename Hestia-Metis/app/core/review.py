@@ -303,12 +303,12 @@ class Review:
             raise Invalid("decision: accept | reject | edit")
         rows = self._rows(kind="review", ids=tid, limit=1)
         if not rows:
-            raise Invalid(tr("revisione non trovata"))
+            raise Invalid(tr("review not found"))
         row = rows[0]
         data = dict(row.get("data") or {})
         if decision == "edit":
             if not str(answer or "").strip():
-                raise Invalid(tr("answer: la risposta giusta"))
+                raise Invalid(tr("answer: the right answer"))
             data.update(answer=str(answer).strip()[:8000], verdict="fix", status="edited")
         else:
             data["status"] = "accepted" if decision == "accept" else "rejected"

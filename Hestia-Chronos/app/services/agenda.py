@@ -352,7 +352,7 @@ def _standard_state(item: dict) -> str:
     if item["status"] == "cancelled":
         return "eliminata"
     if item["status"] == "paused":
-        return "in pausa"
+        return "paused"
     if item["status"] == "failed":
         return "fallita"
     if item["user_modified"]:
@@ -387,7 +387,7 @@ def restore(key: str, by: str = "user") -> dict:
     with _lock:
         item = get(key)
         if item["created_by"] != item["owner"] or item["created_by"] in {"user", ""}:
-            raise AgendaError(tr("solo le attività standard di un modulo si ripristinano"), 400)
+            raise AgendaError(tr("only the standard activities of a module can be restored"), 400)
         declared = (_DECLARED.get(item["owner"]) or {}).get(item["key"]) or {}
         for f in ("title", "description", "start_at", "end_at", "recurrence", "action", "params"):
             if f in declared:

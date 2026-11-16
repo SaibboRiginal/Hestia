@@ -24,17 +24,17 @@ interface Entry { id: string; label: string; hint: string; icon: string; group: 
   template: `
     @if (open()) {
       <div class="backdrop" (mousedown)="close()">
-        <div class="pal hx-glass hx-fade-in" role="dialog"  [attr.aria-label]="'Azioni rapide' | tr" (mousedown)="$event.stopPropagation()">
+        <div class="pal hx-glass hx-fade-in" role="dialog"  [attr.aria-label]="'Quick actions' | tr" (mousedown)="$event.stopPropagation()">
           <div class="in"><hx-icon name="search" [size]="17" />
-            <input #q  [placeholder]="'Cosa vuoi fare? (azioni, pagine, impostazioni)' | tr" [value]="query()" (input)="query.set($any($event.target).value); sel.set(0)"
-                   (keydown)="onKeys($event)"  [attr.aria-label]="'Cerca' | tr"></div>
+            <input #q  [placeholder]="'What do you want to do? (actions, pages, settings)' | tr" [value]="query()" (input)="query.set($any($event.target).value); sel.set(0)"
+                   (keydown)="onKeys($event)"  [attr.aria-label]="'Search' | tr"></div>
           <div class="list">
             @for (e of results(); track e.id; let i = $index) {
               @if (i === 0 || results()[i - 1].group !== e.group) { <div class="g">{{ e.group }}</div> }
               <button class="it" [class.on]="i === sel()" (mouseenter)="sel.set(i)" (click)="exec(e)">
                 <hx-icon [name]="e.icon" [size]="16" /><span class="l">{{ e.label }}</span><span class="h">{{ e.hint }}</span>
               </button>
-            } @empty { <div class="none">{{ "Niente trovato" | tr }}</div> }
+            } @empty { <div class="none">{{ "Nothing found" | tr }}</div> }
           </div>
         </div>
       </div>
@@ -69,14 +69,14 @@ export class CommandPaletteComponent {
     const mod = (m: string) => this.plugins.modules().get(m)?.title ?? m;
     return [
       ...this.metis.adesso().map(a => ({ id: 'now:' + a.tool + a.title, label: a.title, hint: a.reason || mod(a.module), icon: 'zap',
-        group: tr('Adesso'), run: () => this.metis.open(a.tool, a.args ?? {}, a.title) })),
+        group: tr('Now'), run: () => this.metis.open(a.tool, a.args ?? {}, a.title) })),
       ...this.qa.sorted().map(c => ({ id: 'qa:' + c.key, label: c.label, hint: [c.hint, mod(c.action.module)].filter(Boolean).join(' · '),
-        icon: c.state === 'done' ? 'check' : c.icon || 'zap', group: tr('Azioni rapide'), run: () => void this.qa.run(c) })),
-      ...this.plugins.navPages().map(p => ({ id: 'pg:' + p.id, label: p.label, hint: mod(p.module), icon: p.icon || 'puzzle', group: tr('Moduli'),
+        icon: c.state === 'done' ? 'check' : c.icon || 'zap', group: tr('Quick actions'), run: () => void this.qa.run(c) })),
+      ...this.plugins.navPages().map(p => ({ id: 'pg:' + p.id, label: p.label, hint: mod(p.module), icon: p.icon || 'puzzle', group: tr('Modules'),
         run: () => void this.router.navigateByUrl(this.plugins.link(p.module, p.local_id)) })),
       ...this.plugins.dashboards().map(d => ({ id: 'db:' + d.id, label: d.title, hint: tr('Dashboard'), icon: d.icon || 'grid', group: tr('Dashboard'),
         run: () => void this.router.navigateByUrl(d.id === 'home' ? '/home' : '/d/' + d.id) })),
-      ...APP_MODULES.filter(m => m.path !== 'home').map(m => ({ id: 'app:' + m.path, label: m.label, hint: 'Hestia', icon: m.icon, group: tr('Pagine'),
+      ...APP_MODULES.filter(m => m.path !== 'home').map(m => ({ id: 'app:' + m.path, label: m.label, hint: 'Hestia', icon: m.icon, group: tr('Pages'),
         run: () => void this.router.navigateByUrl('/' + m.path) })),
     ];
   });
@@ -86,11 +86,11 @@ export class CommandPaletteComponent {
     const section = (id: string) => PERSONAL_SECTIONS.find(s => s.id === id)?.label ?? id;
     const go = (queryParams: Record<string, string>) => () => void this.router.navigate(['/settings'], { queryParams });
     return [
-      ...PERSONAL_ROWS.map(r => ({ id: 'set:row:' + r.id, label: r.label, hint: tr('Impostazioni · ') + section(r.section), icon: 'settings',
-        group: tr('Impostazioni'), more: `${r.help} ${r.keywords}`, run: go({ section: r.section, row: r.id }) })),
+      ...PERSONAL_ROWS.map(r => ({ id: 'set:row:' + r.id, label: r.label, hint: tr('Settings · ') + section(r.section), icon: 'settings',
+        group: tr('Settings'), more: `${r.help} ${r.keywords}`, run: go({ section: r.section, row: r.id }) })),
       ...this.settings.items().map(i => ({ id: 'set:' + i.key, label: i.label,
-        hint: tr('Impostazioni · ') + (i.scope === 'user' ? tr('Assistente') : moduleLabel(i.module)) + (i.group ? ' · ' + i.group : ''),
-        icon: 'settings', group: tr('Impostazioni'), more: `${i.help ?? ''} ${i.key}`, run: go({ key: i.key }) })),
+        hint: tr('Settings · ') + (i.scope === 'user' ? tr('Assistant') : moduleLabel(i.module)) + (i.group ? ' · ' + i.group : ''),
+        icon: 'settings', group: tr('Settings'), more: `${i.help ?? ''} ${i.key}`, run: go({ key: i.key }) })),
     ];
   });
   readonly results = computed(() => {

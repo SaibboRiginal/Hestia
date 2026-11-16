@@ -49,7 +49,7 @@ def pdf_text(data: bytes) -> str:
         reader = PdfReader(io.BytesIO(data))
         return "\n".join((page.extract_text() or "") for page in reader.pages)
     except Exception as exc:
-        raise Invalid(tr("PDF non leggibile: {0}", exc)) from exc
+        raise Invalid(tr("PDF not readable: {0}", exc)) from exc
 
 
 def parse_rows(text: str) -> list[dict]:
@@ -132,20 +132,20 @@ class Statements:
             try:
                 raw = base64.b64decode(data_b64)
             except Exception as exc:
-                raise Invalid(tr("file non valido: {0}", exc)) from exc
+                raise Invalid(tr("invalid file: {0}", exc)) from exc
         elif blob_id:
             raw = self._blob(blob_id)
         if raw:
             if not raw[:5].startswith(b"%PDF"):
-                raise Invalid(tr("serve il PDF dei movimenti (lista movimenti esportata dall'app)"))
+                raise Invalid(tr("the PDF of the transactions is needed (transaction list exported from the app)"))
             text = pdf_text(raw)
         if not text.strip():
-            raise Invalid(tr("nessun testo nel file (PDF scansionato?)"))
+            raise Invalid(tr("no text in the file (scanned PDF?)"))
         rows, how = parse_rows(text), "parser"
         if not rows:
             rows, how = self._llm_rows(text), "oracle"
         if not rows:
-            raise Invalid(tr("non ho trovato movimenti in questo file"))
+            raise Invalid(tr("I found no transactions in this file"))
         account = self.p.resolve_account(account or "hype")
         refs = _row_refs(account, rows)
         existing = {t.get("external_ref") for t in self.p._tx_rows()}
@@ -238,10 +238,10 @@ class Statements:
 
     def _blob(self, blob_id: str) -> bytes:
         if self.hub is None:
-            raise NotFound(tr("archivio non configurato"))
+            raise NotFound(tr("archive not configured"))
         try:
             data = self.hub.ok("archive", "GET", f"api/blobs/{blob_id}/base64", timeout=20) or {}
             return base64.b64decode(data.get("data_b64") or "")
         except Exception as exc:
-            raise NotFound(tr("file '{0}' non trovato: {1}", blob_id, exc)) from exc
+            raise NotFound(tr("file '{0}' not found: {1}", blob_id, exc)) from exc
 

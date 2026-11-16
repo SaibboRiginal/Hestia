@@ -36,13 +36,13 @@ def try_claim(message) -> bool:
         payload = (resp.json() or {}).get("payload") or {}
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=setup_claim_unreachable error=%s", exc)
-        core.bot.reply_to(message, tr("Non riesco a parlare con Hestia adesso. Riprova tra un minuto."))
+        core.bot.reply_to(message, tr("I can't talk to Hestia right now. Try again in a minute."))
         return True
     if payload.get("ok"):
         logger.info("event=setup_owner_claimed")
-        core.bot.reply_to(message, tr("Fatto, ti riconosco! Tra pochi secondi riparto e sono tutta tua: scrivimi pure."))
+        core.bot.reply_to(message, tr("Done, I recognise you! I restart in a few seconds and I'm all yours: write to me."))
     elif payload.get("reason") == "wrong_code":
-        core.bot.reply_to(message, tr("Il codice non è giusto. Controlla quello sullo schermo del setup."))
+        core.bot.reply_to(message, tr("The code is not right. Check the one on the setup screen."))
     else:
-        core.bot.reply_to(message, tr("Nessun codice attivo: apri il setup di Hestia e chiedine uno nuovo."))
+        core.bot.reply_to(message, tr("No active code: open the Hestia setup and ask for a new one."))
     return True

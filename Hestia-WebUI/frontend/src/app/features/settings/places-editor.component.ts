@@ -6,8 +6,8 @@ import { tr, TrPipe } from '../../core/i18n';
 export interface Place { id: string; name: string; address: string; kind: 'home' | 'work' | 'other'; lat?: number; lon?: number }
 
 const KINDS: { value: Place['kind']; label: string; icon: string }[] = [
-  { value: 'home', label: tr('Casa'), icon: 'home' }, { value: 'work', label: tr('Lavoro'), icon: 'briefcase' },
-  { value: 'other', label: tr('Altro'), icon: 'map-pin' },
+  { value: 'home', label: tr('Home'), icon: 'home' }, { value: 'work', label: tr('Work'), icon: 'briefcase' },
+  { value: 'other', label: tr('Other'), icon: 'map-pin' },
 ];
 
 /**
@@ -22,26 +22,26 @@ const KINDS: { value: Place['kind']; label: string; icon: string }[] = [
   template: `
     @for (p of rows(); track $index; let i = $index) {
       <div class="row">
-        <select class="hx-select kind" [disabled]="disabled()" [attr.aria-label]="('Tipo di ' | tr) + (p.name || 'luogo')"
+        <select class="hx-select kind" [disabled]="disabled()" [attr.aria-label]="('Type of ' | tr) + (p.name || 'luogo')"
                 (change)="set(i, 'kind', $any($event.target).value)">
           @for (k of kinds; track k.value) { <option [value]="k.value" [selected]="k.value === p.kind">{{ k.label }}</option> }
         </select>
-        <input class="hx-input name"  [placeholder]="'Nome (es. Palestra)' | tr" [value]="p.name" [disabled]="disabled()"
-                [attr.aria-label]="'Nome del luogo' | tr" (input)="set(i, 'name', $any($event.target).value)" />
-        <input class="hx-input addr"  [placeholder]="'Città, o indirizzo con la città' | tr" [value]="p.address" [disabled]="disabled()"
-                [attr.aria-label]="'Città o indirizzo' | tr" (input)="set(i, 'address', $any($event.target).value)" />
-        <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly  [attr.aria-label]="'Togli luogo' | tr" [disabled]="disabled()"
+        <input class="hx-input name"  [placeholder]="'Name (e.g. Gym)' | tr" [value]="p.name" [disabled]="disabled()"
+                [attr.aria-label]="'Place name' | tr" (input)="set(i, 'name', $any($event.target).value)" />
+        <input class="hx-input addr"  [placeholder]="'City, or address with the city' | tr" [value]="p.address" [disabled]="disabled()"
+                [attr.aria-label]="'City or address' | tr" (input)="set(i, 'address', $any($event.target).value)" />
+        <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly  [attr.aria-label]="'Remove place' | tr" [disabled]="disabled()"
                 (click)="remove(i)"></button>
         @if (found()[p.id]; as f) {
           <div class="found" [class.bad]="!f.ok"><hx-icon [name]="f.ok ? 'map-pin' : 'alert'" [size]="13" [tone]="f.ok ? 'success' : 'warning'" /> {{ f.label }}</div>
         }
       </div>
     } @empty {
-      <div class="hint">{{ "Nessun luogo. Aggiungi almeno Casa: è il luogo predefinito per il meteo." | tr }}</div>
+      <div class="hint">{{ "No places. Add at least Home: it's the default place for the weather." | tr }}</div>
     }
     <div class="bar">
-      <button hx-btn variant="secondary" size="sm" icon="plus" [disabled]="disabled()" (click)="add()">{{ "Aggiungi luogo" | tr }}</button>
-      @if (dirty()) { <button hx-btn variant="primary" size="sm" icon="check" [disabled]="disabled()" (click)="save()">{{ "Salva luoghi" | tr }}</button> }
+      <button hx-btn variant="secondary" size="sm" icon="plus" [disabled]="disabled()" (click)="add()">{{ "Add place" | tr }}</button>
+      @if (dirty()) { <button hx-btn variant="primary" size="sm" icon="check" [disabled]="disabled()" (click)="save()">{{ "Save places" | tr }}</button> }
       @if (error()) { <span class="err">{{ error() }}</span> }
     </div>`,
   styles: [`
@@ -98,7 +98,7 @@ export class PlacesEditorComponent implements OnInit {
 
   add() {
     const hasHome = this.rows().some(r => r.kind === 'home');
-    this.rows.update(rs => [...rs, { id: '', name: hasHome ? '' : tr('Casa'), address: '', kind: hasHome ? 'other' : 'home' }]);
+    this.rows.update(rs => [...rs, { id: '', name: hasHome ? '' : tr('Home'), address: '', kind: hasHome ? 'other' : 'home' }]);
     this.dirty.set(true);
   }
 
@@ -108,7 +108,7 @@ export class PlacesEditorComponent implements OnInit {
     const rows = this.rows().map(r => ({ ...r, name: r.name.trim(), address: r.address.trim() }))
       .filter(r => r.name || r.address);
     const names = rows.map(r => r.name.toLowerCase());
-    if (names.some((n, i) => n && names.indexOf(n) !== i)) { this.error.set(tr('Due luoghi con lo stesso nome')); return; }
+    if (names.some((n, i) => n && names.indexOf(n) !== i)) { this.error.set(tr('Two places with the same name')); return; }
     const used = new Set<string>();
     for (const r of rows) {
       let id = r.id || slug(r.name || r.address) || 'luogo';
@@ -128,7 +128,7 @@ export class PlacesEditorComponent implements OnInit {
       const out: Record<string, { ok: boolean; label: string }> = {};
       for (const o of opts) {
         const label = String(o.label || '');
-        out[String(o.value)] = { ok: (o as { ok?: boolean }).ok ?? true, label: label || tr('non trovato') };
+        out[String(o.value)] = { ok: (o as { ok?: boolean }).ok ?? true, label: label || tr('not found') };
       }
       this.found.set(out);
     } catch { /* weather service away: rows stay without the check */ }

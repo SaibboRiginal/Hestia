@@ -15,7 +15,7 @@ AREAS: list[dict] = [
     {"value": "capelli", "label": "Capelli", "icon": "hair"},
     {"value": "cuoio_capelluto", "label": "Cuoio capelluto", "icon": "hair"},
     {"value": "barba", "label": "Barba", "icon": "beard"},
-    {"value": "corpo", "label": "Corpo", "icon": "body"},
+    {"value": "corpo", "label": "Body", "icon": "body"},
     {"value": "mani", "label": "Mani", "icon": "hand"},
     {"value": "piedi", "label": "Piedi", "icon": "foot"},
     {"value": "unghie", "label": "Unghie", "icon": "hand"},
@@ -33,7 +33,7 @@ CATEGORIES: list[dict] = [{"value": slug, "label": label, "area": area} for slug
     ("deodorante", "Deodorante", "corpo"), ("scrub", "Scrub", "corpo"), ("rasatura", "Rasatura", "barba"),
     ("dopobarba", "Dopobarba", "barba"), ("olio_barba", "Olio barba", "barba"), ("dentifricio", "Dentifricio", "denti"),
     ("collutorio", "Collutorio", "denti"), ("filo", "Filo / scovolino", "denti"), ("profumo", "Profumo", "profumo"),
-    ("integratore", "Integratore", ""), ("strumento", "Strumento", ""), ("altro", "Altro", ""),
+    ("integratore", "Supplement", ""), ("strumento", "Strumento", ""), ("altro", "Other", ""),
 ]]
 
 ACTIVES: list[dict] = [{"value": slug, "label": label, "family": family} for slug, label, family in [
@@ -42,7 +42,7 @@ ACTIVES: list[dict] = [{"value": slug, "label": label, "family": family} for slu
     ("aha_glicolico", "Acido glicolico (AHA)", "aha"), ("aha_lattico", "Acido lattico (AHA)", "aha"),
     ("aha_mandelico", "Acido mandelico (AHA)", "aha"), ("bha_salicilico", "Acido salicilico (BHA)", "bha"),
     ("pha", "PHA (gluconolattone)", "pha"), ("acido_azelaico", "Acido azelaico", ""),
-    ("vitamina_c", "Vitamina C (acido ascorbico)", "vitc"), ("benzoile", "Perossido di benzoile", "bpo"),
+    ("vitamina_c", "Vitamina C (acido ascorbico)", "vitc"), ("benzoile", "Benzoyl peroxide", "bpo"),
     ("niacinamide", "Niacinamide", ""), ("acido_ialuronico", "Acido ialuronico", ""), ("ceramidi", "Ceramidi", ""),
     ("peptidi", "Peptidi", ""), ("pantenolo", "Pantenolo", ""), ("centella", "Centella asiatica", ""),
     ("urea", "Urea", ""), ("zinco", "Zinco", ""), ("spf_filtri", "Filtri solari", "spf"), ("caffeina", "Caffeina", ""),
@@ -53,13 +53,13 @@ ACTIVES: list[dict] = [{"value": slug, "label": label, "family": family} for slu
 METRICS: dict[str, list[dict]] = {
     "viso": [{"value": "idratazione", "label": "Idratazione"}, {"value": "brufoli", "label": "Brufoli", "lower_better": True},
              {"value": "rossori", "label": "Rossori", "lower_better": True},
-             {"value": "oleosita", "label": "Oleosità", "lower_better": True},
-             {"value": "sensibilita", "label": "Sensibilità", "lower_better": True}],
+             {"value": "oleosita", "label": "Oiliness", "lower_better": True},
+             {"value": "sensibilita", "label": "Sensitivity", "lower_better": True}],
     "capelli": [{"value": "caduta", "label": "Caduta", "lower_better": True},
                 {"value": "lucentezza", "label": "Lucentezza"}, {"value": "crespo", "label": "Crespo", "lower_better": True}],
     "cuoio_capelluto": [{"value": "forfora", "label": "Forfora", "lower_better": True},
                         {"value": "prurito", "label": "Prurito", "lower_better": True},
-                        {"value": "untuosita", "label": "Untuosità", "lower_better": True}],
+                        {"value": "untuosita", "label": "Greasiness", "lower_better": True}],
     "barba": [{"value": "irritazione", "label": "Irritazione", "lower_better": True},
               {"value": "peli_incarniti", "label": "Peli incarniti", "lower_better": True}],
     "corpo": [{"value": "secchezza", "label": "Secchezza", "lower_better": True},
@@ -67,28 +67,28 @@ METRICS: dict[str, list[dict]] = {
     "*": [{"value": "stato", "label": "Stato generale"}],
 }
 
-JOURNAL_TAGS = ["ciclo", "stress", "sole", "viaggio", "sport", "dormito poco", "nuovo prodotto", "alimentazione", "malattia"]
+JOURNAL_TAGS = ["ciclo", "stress", "sole", "viaggio", "sport", "dormito poco", "new product", "alimentazione", "malattia"]
 
 # Advisory conflicts between active families (SPEC §4): same day, never blocking. Custom ones are options too.
 CONFLICTS: list[dict] = [
-    {"a": "retinoid", "b": "aha", "note": "Retinoidi e AHA nello stesso giorno irritano: alternali."},
-    {"a": "retinoid", "b": "bha", "note": "Retinoidi e BHA nello stesso giorno irritano: alternali."},
-    {"a": "retinoid", "b": "bpo", "note": "Il perossido di benzoile disattiva il retinolo: usali in giorni diversi."},
-    {"a": "retinoid", "b": "vitc", "note": "Vitamina C la mattina, retinoide la sera, non insieme."},
+    {"a": "retinoid", "b": "aha", "note": "Retinoids and AHA on the same day irritate: alternate them."},
+    {"a": "retinoid", "b": "bha", "note": "Retinoids and BHA on the same day irritate: alternate them."},
+    {"a": "retinoid", "b": "bpo", "note": "Benzoyl peroxide deactivates retinol: use them on different days."},
+    {"a": "retinoid", "b": "vitc", "note": "Vitamin C in the morning, retinoid in the evening, not together."},
     {"a": "vitc", "b": "aha", "note": "Vitamina C e AHA insieme possono irritare."},
-    {"a": "vitc", "b": "bpo", "note": "Il perossido di benzoile ossida la vitamina C."},
-    {"a": "aha", "b": "bha", "note": "AHA e BHA insieme: esfoliazione forte, meglio in giorni diversi."},
+    {"a": "vitc", "b": "bpo", "note": "Benzoyl peroxide oxidises vitamin C."},
+    {"a": "aha", "b": "bha", "note": "AHA and BHA together: strong exfoliation, better on different days."},
 ]
 
-SLOTS = {"morning": "Mattina", "evening": "Sera", "anytime": "Quando capita"}
-STATUSES = {"wishlist": "Desiderio", "stock": "In scorta", "in_use": "In uso", "paused": "In pausa",
-            "finished": "Finito", "discarded": "Buttato"}
-LEVELS = {"full": "Pieno", "3/4": "Tre quarti", "half": "Metà", "1/4": "Un quarto", "almost_empty": "Quasi finito"}
+SLOTS = {"morning": "Morning", "evening": "Evening", "anytime": "When it happens"}
+STATUSES = {"wishlist": "Wish", "stock": "In scorta", "in_use": "In use", "paused": "Paused",
+            "finished": "Finished", "discarded": "Thrown away"}
+LEVELS = {"full": "Pieno", "3/4": "Tre quarti", "half": "Half", "1/4": "A quarter", "almost_empty": "Quasi finito"}
 LEVEL_VALUE = {"full": 1.0, "3/4": 0.75, "half": 0.5, "1/4": 0.25, "almost_empty": 0.08}
-VERDICTS = {"repurchase": "Lo ricompro", "maybe": "Forse", "never": "Mai più"}
+VERDICTS = {"repurchase": "I'd buy it again", "maybe": "Forse", "never": "Never again"}
 UNITS = ["ml", "g", "pz", "applicazioni"]
-CADENCE_MODES = {"daily": "Ogni giorno", "fixed_days": "Giorni fissi", "target": "Almeno N volte",
-                 "as_needed": "Quando capita"}
+CADENCE_MODES = {"daily": "Every day", "fixed_days": "Fixed days", "target": "At least N times",
+                 "as_needed": "When it happens"}
 PERIODS = {"week": "settimana", "month": "mese"}
 EVENT_TYPES = ("bought", "opened", "level_changed", "finished", "discarded", "rated", "replaced", "note", "status")
 LISTS = ("areas", "categories", "actives", "metrics", "conflicts", "tags")

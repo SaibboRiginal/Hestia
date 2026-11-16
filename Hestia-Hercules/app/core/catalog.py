@@ -11,12 +11,12 @@ import uuid
 NAMESPACE = uuid.UUID("6f1c2a43-0b7e-4d0a-9f55-4f3c8e9a1b20")
 
 MUSCLES = {
-    "chest": "Petto", "front_delts": "Deltoide anteriore", "side_delts": "Deltoide laterale",
-    "rear_delts": "Deltoide posteriore", "triceps": "Tricipiti", "biceps": "Bicipiti", "forearms": "Avambracci",
-    "lats": "Dorsali", "upper_back": "Parte alta schiena", "traps": "Trapezi", "lower_back": "Lombari",
-    "abs": "Addominali", "obliques": "Obliqui", "glutes": "Glutei", "quads": "Quadricipiti",
-    "hamstrings": "Femorali", "adductors": "Adduttori", "abductors": "Abduttori", "calves": "Polpacci",
-    "neck": "Collo",
+    "chest": "Chest", "front_delts": "Front delt", "side_delts": "Side delt",
+    "rear_delts": "Rear delt", "triceps": "Triceps", "biceps": "Biceps", "forearms": "Forearms",
+    "lats": "Lats", "upper_back": "Upper back", "traps": "Traps", "lower_back": "Lower back",
+    "abs": "Abs", "obliques": "Obliques", "glutes": "Glutes", "quads": "Quads",
+    "hamstrings": "Hamstrings", "adductors": "Adductors", "abductors": "Abductors", "calves": "Calves",
+    "neck": "Neck",
 }
 # Coarse groups for weekly volume and goals ("schiena 2/settimana").
 MUSCLE_GROUPS = {
@@ -25,17 +25,17 @@ MUSCLE_GROUPS = {
     "core": ["abs", "obliques"], "gambe": ["quads", "hamstrings", "glutes", "adductors", "abductors", "calves"],
 }
 JOINTS = {"shoulder": "Spalla", "elbow": "Gomito", "wrist": "Polso", "lower_back": "Schiena bassa",
-          "hip": "Anca", "knee": "Ginocchio", "ankle": "Caviglia", "neck": "Collo"}
-EQUIPMENT = {"barbell": "Bilanciere", "dumbbell": "Manubri", "machine": "Macchina", "cable": "Cavi",
-             "kettlebell": "Kettlebell", "band": "Elastico", "bodyweight": "Corpo libero", "smith": "Multipower",
-             "ez_bar": "Bilanciere EZ", "trap_bar": "Trap bar", "other": "Altro"}
-KINDS = {"weight_reps": "Peso × ripetizioni", "bodyweight_reps": "Corpo libero",
-         "weighted_bodyweight": "Corpo libero zavorrato", "assisted_bodyweight": "Corpo libero assistito",
-         "reps_only": "Solo ripetizioni", "duration": "Durata", "distance_duration": "Distanza e durata",
+          "hip": "Anca", "knee": "Ginocchio", "ankle": "Caviglia", "neck": "Neck"}
+EQUIPMENT = {"barbell": "Barbell", "dumbbell": "Dumbbells", "machine": "Machine", "cable": "Cables",
+             "kettlebell": "Kettlebell", "band": "Elastic band", "bodyweight": "Bodyweight", "smith": "Smith machine",
+             "ez_bar": "EZ bar", "trap_bar": "Trap bar", "other": "Other"}
+KINDS = {"weight_reps": "Weight × reps", "bodyweight_reps": "Bodyweight",
+         "weighted_bodyweight": "Weighted bodyweight", "assisted_bodyweight": "Assisted bodyweight",
+         "reps_only": "Reps only", "duration": "Duration", "distance_duration": "Distance and duration",
          "weight_duration": "Peso × durata"}
-PATTERNS = {"squat": "Squat", "hinge": "Hip hinge", "push_h": "Spinta orizzontale", "push_v": "Spinta verticale",
-            "pull_h": "Tirata orizzontale", "pull_v": "Tirata verticale", "lunge": "Affondo", "carry": "Trasporto",
-            "core": "Core", "isolation": "Isolamento"}
+PATTERNS = {"squat": "Squat", "hinge": "Hip hinge", "push_h": "Horizontal push", "push_v": "Vertical push",
+            "pull_h": "Horizontal pull", "pull_v": "Vertical pull", "lunge": "Lunge", "carry": "Transport",
+            "core": "Core", "isolation": "Isolation"}
 
 # slug, name, aliases, primary, secondary, equipment, kind, pattern, joints, unilateral
 _E = [

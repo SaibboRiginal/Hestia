@@ -37,7 +37,7 @@ _DEFAULT_URL = {
 # Defaults of ``oracle.providers``: Marko only adds the keys he has. A provider without its key (cloud) or
 # its CLI login is simply skipped by every chain.
 DEFAULT_PROVIDERS: dict[str, dict[str, str]] = {
-    "ollama": {"type": "ollama", "label": "Ollama (locale)", "url": ""},
+    "ollama": {"type": "ollama", "label": "Ollama (local)", "url": ""},
     "llamacpp": {"type": "llamacpp", "label": "llama-server (locale)", "url": "http://hestia_llamacpp:8080/v1"},
     "gemini": {"type": "gemini", "label": "Gemini", "url": ""},
     "deepseek": {"type": "openai", "label": "DeepSeek", "url": "https://api.deepseek.com/v1"},

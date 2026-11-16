@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 import requests
 
+from hestia_common import i18n
 from telegram_bot import core
 
 logger = logging.getLogger("hestia_telegram.catalog")
@@ -168,8 +169,9 @@ def run(tool: Tool, chat_id, args: dict[str, Any], timeout: float = 30) -> tuple
         values.setdefault("session_id", session_id)
     if "chat_id" in props:
         values.setdefault("chat_id", str(chat_id))
-    return _mcp().call(tool.name, values, session_id=session_id, notify_target=str(chat_id),
-                       service=tool.service, origin_client="telegram", timeout=timeout)
+    ok, payload = _mcp().call(tool.name, values, session_id=session_id, notify_target=str(chat_id),
+                              service=tool.service, origin_client="telegram", timeout=timeout)
+    return ok, i18n.localize(payload)   # people texts of the answer in the owner's language
 
 
 def route(service: str, path: str, method: str = "GET", *, query: dict | None = None, body: Any = None,
@@ -183,7 +185,7 @@ def route(service: str, path: str, method: str = "GET", *, query: dict | None = 
             return False, response.text[:300]
         routed = response.json() or {}
         ok = int(routed.get("status_code", 500)) < 400
-        return ok, routed.get("payload")
+        return ok, i18n.localize(routed.get("payload"))
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=hub_route_failed service=%s path=%s error=%s", service, path, exc)
         return False, str(exc)

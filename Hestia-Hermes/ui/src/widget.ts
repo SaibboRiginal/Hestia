@@ -20,7 +20,7 @@ export class HermesTodayWidget extends HestiaElement {
   }
   private async load() {
     const r = await this.host.api('GET', `${API}/deliveries`, { query: { since: todayStart(), limit: 200 } });
-    if (!r.ok) { this.error = tr('Hermes non raggiungibile'); return; }
+    if (!r.ok) { this.error = tr('Hermes not reachable'); return; }
     this.error = ''; this.s = r.data.summary;
   }
   render() {
@@ -30,13 +30,13 @@ export class HermesTodayWidget extends HestiaElement {
     const small = (this.ctx?.size || 'm') === 's';
     const clients = Object.entries(s.clients || {}) as Array<[string, any]>;
     return html`<div class="w" @click=${() => this.host.navigate('consegne')}>
-      <span class="small muted">${tr("Notifiche di oggi")}</span>
+      <span class="small muted">${tr("Today's notifications")}</span>
       <div class="big tnum">${s.total}</div>
       <div class="row wrap">
-        ${s.failed ? html`<hxk-badge tone="danger">${s.failed} ${tr("fallite")}</hxk-badge>` : nothing}
-        ${s.held ? html`<hxk-badge tone="warning">${s.held} ${tr("trattenute")}</hxk-badge>` : nothing}
-        ${s.pending ? html`<hxk-badge tone="accent">${s.pending} ${tr("in attesa")}</hxk-badge>` : nothing}
-        ${!s.failed && !s.held && !s.pending ? html`<span class="small muted">${tr("tutto consegnato")}</span>` : nothing}
+        ${s.failed ? html`<hxk-badge tone="danger">${s.failed} ${tr("alt::failed")}</hxk-badge>` : nothing}
+        ${s.held ? html`<hxk-badge tone="warning">${s.held} ${tr("f.pl::held back")}</hxk-badge>` : nothing}
+        ${s.pending ? html`<hxk-badge tone="accent">${s.pending} ${tr("waiting")}</hxk-badge>` : nothing}
+        ${!s.failed && !s.held && !s.pending ? html`<span class="small muted">${tr("all delivered")}</span>` : nothing}
       </div>
       ${small || !clients.length ? nothing : html`<div class="small muted truncate">${clients.map(([n, c]) => `${n} ${c.delivered}`).join(' · ')}</div>`}
     </div>`;

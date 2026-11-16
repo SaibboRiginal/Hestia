@@ -39,7 +39,7 @@ def _rows(token: str, entry: dict) -> list[list[types.InlineKeyboardButton]]:
         for i, o in enumerate(opts):
             mark = "• " if o["value"] in entry["picked"] else ""
             rows.append([types.InlineKeyboardButton(f"{mark}{o['label']}"[:60], callback_data=f"askt:{token}:{i}")])
-        rows.append([types.InlineKeyboardButton(tr("Invia"), callback_data=f"asks:{token}")])
+        rows.append([types.InlineKeyboardButton(tr("Send"), callback_data=f"asks:{token}")])
     elif opts:
         row = [types.InlineKeyboardButton(str(o["label"])[:60], callback_data=f"ask:{token}:{i}")
                for i, o in enumerate(opts)]
@@ -49,10 +49,10 @@ def _rows(token: str, entry: dict) -> list[list[types.InlineKeyboardButton]]:
             rows.extend([b] for b in row)
     if entry.get("notification_id"):
         if entry.get("free"):
-            rows.append([types.InlineKeyboardButton(tr("Altro…") if opts else tr("Rispondi…"), callback_data=f"askw:{token}")])
+            rows.append([types.InlineKeyboardButton(tr("Other…") if opts else tr("Reply…"), callback_data=f"askw:{token}")])
         if entry.get("link_path"):
             from telegram_bot import webapp
-            button = webapp.open_button(tr("Apri"), entry["link_path"])
+            button = webapp.open_button(tr("Open"), entry["link_path"])
             if button:
                 rows.append([button])
     return rows
@@ -79,10 +79,10 @@ def notification_rows(chat_id, notification_id: str, question: dict, link_path: 
              "created_at": int(time.time())}
     store.put_pending(token, entry)
     store.put_pending(f"nq:{notification_id}", {"token": token})
-    hint = {"multi_choice": tr("Scegli una o più risposte, poi «Invia»."),
-            "free_text": tr("Tocca «Rispondi…» o rispondi a questo messaggio.")}.get(kind, "")
+    hint = {"multi_choice": tr("Choose one or more answers, then «Send»."),
+            "free_text": tr("Tap «Reply…» or reply to this message.")}.get(kind, "")
     if free and options:
-        hint = (hint + " " if hint else "") + tr("Oppure «Altro…».")
+        hint = (hint + " " if hint else "") + tr("Or «Other…».")
     return _rows(token, entry), hint
 
 
@@ -99,11 +99,11 @@ def send(chat_id, session_id: str, question: dict) -> None:
              "created_at": int(time.time())}
     store.put_pending(token, entry)
     free = kind == "free_text" or not options or bool(question.get("allow_other"))
-    hint = {"multi_choice": tr("Scegli una o più risposte, poi «Invia»."),
-            "free_text": tr("Scrivi la risposta qui sotto.")}.get(kind, "")
+    hint = {"multi_choice": tr("Choose one or more answers, then «Send»."),
+            "free_text": tr("Write the answer below.")}.get(kind, "")
     if free and options:
-        hint = (hint + " " if hint else "") + tr("Oppure scrivi un'altra risposta.")
-    text = f"<b>{escape(ui.strip_emoji(question.get('header') or tr('Domanda')))}</b>"
+        hint = (hint + " " if hint else "") + tr("Or write another answer.")
+    text = f"<b>{escape(ui.strip_emoji(question.get('header') or tr('Question')))}</b>"
     if question.get("prompt"):
         text += f"\n{escape(str(question['prompt']))}"
     if hint:
@@ -120,13 +120,13 @@ def handle_callback(call) -> None:
     token, _, idx = rest.partition(":")
     entry = store.get_pending(token)
     if not entry:
-        core.bot.answer_callback_query(call.id, tr("Questa domanda è già chiusa"))
+        core.bot.answer_callback_query(call.id, tr("This question is already closed"))
         return
     if action == "askw":
         # «Rispondi…» / «Altro…» of a notification: the next message written is the answer.
         store.set_flow(entry["chat_id"], {"kind": TEXT_FLOW, "token": token})
         core.bot.answer_callback_query(call.id)
-        core.bot.send_message(call.message.chat.id, tr("<i>Scrivi la risposta qui sotto.</i>"), parse_mode="HTML")
+        core.bot.send_message(call.message.chat.id, tr("<i>Write the answer below.</i>"), parse_mode="HTML")
         return
     if action == "askt":
         value = entry["options"][int(idx)]["value"]
@@ -138,7 +138,7 @@ def handle_callback(call) -> None:
         return
     if action == "asks":
         if not entry["picked"]:
-            core.bot.answer_callback_query(call.id, tr("Scegli almeno una risposta"))
+            core.bot.answer_callback_query(call.id, tr("Choose at least one answer"))
             return
         answer = "\n".join(entry["picked"])
         shown = ", ".join(o["label"] for o in entry["options"] if o["value"] in entry["picked"])
@@ -153,7 +153,7 @@ def handle_callback(call) -> None:
     if not _submit(call.message, token, entry, answer):
         core.bot.edit_message_text(original, chat_id=call.message.chat.id, message_id=call.message.message_id,
                                    parse_mode="HTML", reply_markup=_keyboard(token, entry))
-        core.bot.send_message(call.message.chat.id, tr("🔴 <b>Risposta non inviata</b>\nRiprova tra poco."),
+        core.bot.send_message(call.message.chat.id, tr("🔴 <b>Answer not sent</b>\nTry again shortly."),
                               parse_mode="HTML")
 
 
@@ -183,7 +183,7 @@ def _submit(reply_to, token: str, entry: dict, answer: str) -> bool:
     if flow and flow.get("kind") == TEXT_FLOW and flow.get("token") == token:
         store.clear_flow(entry["chat_id"])
     if status == 404:
-        core.bot.send_message(int(entry["chat_id"]), tr("<i>Questa domanda non è più aperta: scrivimi di nuovo.</i>"),
+        core.bot.send_message(int(entry["chat_id"]), tr("<i>This question is no longer open: write to me again.</i>"),
                               parse_mode="HTML")
         return True
     if status >= 400:
@@ -210,8 +210,8 @@ def _submit_notification(token: str, entry: dict, answer: str) -> bool:
     if flow and flow.get("kind") == TEXT_FLOW and flow.get("token") == token:
         store.clear_flow(entry["chat_id"])
     if status == 409:
-        core.bot.send_message(int(entry["chat_id"]), tr("<i>Questa domanda è già stata gestita.</i>"), parse_mode="HTML")
+        core.bot.send_message(int(entry["chat_id"]), tr("<i>This question was already handled.</i>"), parse_mode="HTML")
     elif status >= 400:
-        core.bot.send_message(int(entry["chat_id"]), tr("<i>Questa domanda non è più aperta.</i>"), parse_mode="HTML")
+        core.bot.send_message(int(entry["chat_id"]), tr("<i>This question is no longer open.</i>"), parse_mode="HTML")
     logger.info("event=notification_question_answered notification_id=%s status=%s", nid, status)
     return True

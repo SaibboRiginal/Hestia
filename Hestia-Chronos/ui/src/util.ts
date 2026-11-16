@@ -26,9 +26,9 @@ export const STATUS: Record<string, { text: string; tone: string }> = {
 /** «Riprova»: the agenda's existing run-now action. Returns true when the run went fine. */
 export async function retry(host: HestiaHost, key: string, title: string): Promise<boolean> {
   const r = await host.api('POST', `${API}/items/${encodeURIComponent(key)}/run`);
-  if (!r.ok) { host.toast(r.error || tr("{0}: non avviato", title), 'danger'); return false; }
+  if (!r.ok) { host.toast(r.error || tr("{0}: not started", title), 'danger'); return false; }
   const ok = !!r.data?.ok;
   const back = ok && r.data?.reactivated ? ' · regola riattivata' : '';
-  host.toast(ok ? `${title}: eseguito${back}` : tr("{0}: fallito di nuovo", title), ok ? 'success' : 'danger');
+  host.toast(ok ? `${title}: eseguito${back}` : tr("{0}: failed again", title), ok ? 'success' : 'danger');
   return ok;
 }

@@ -15,7 +15,7 @@ const LABELS: Record<string, string> = { cervello: 'cervello', voce: 'voce', tel
     @if (open().length) {
       <a class="card hx-card" routerLink="/setup">
         <hx-icon name="sparkle" [size]="18" tone="accent" />
-        <span class="t"><b>{{ "Da finire" | tr }}</b><small>{{ open().join(' · ') }}</small></span>
+        <span class="t"><b>{{ "To finish" | tr }}</b><small>{{ open().join(' · ') }}</small></span>
         <hx-icon name="chevron-right" [size]="16" tone="muted" />
       </a>
     }`,

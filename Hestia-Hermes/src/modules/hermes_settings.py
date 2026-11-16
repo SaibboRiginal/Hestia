@@ -27,48 +27,41 @@ REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
 PENDING_REMIND_HOURS = "hermes.attesa.richiamo_ore"
 ACTIVE_CLIENT_MINUTES = "hermes.consegna.client_attivo_minuti"
 NOTIFICATION_STYLE = "hermes.notifiche.stile"
-STYLES = [("scheda", "Scheda"), ("frase", "Frase di Hestia")]
+STYLES = [("scheda", "Workout plan"), ("frase", "Frase di Hestia")]
 
 settings = SettingsClient("hermes")
 settings.declare([
-    setting(DELIVERY_MAX_ATTEMPTS, "Tentativi di consegna per client", "int", 6, group="Consegna",
+    setting(DELIVERY_MAX_ATTEMPTS, "Delivery attempts per client", "int", 6, group="Consegna",
             min=1, max=50,
-            help="Quante volte provo a consegnare una notifica a un client (Telegram, WebUI) prima di "
-                 "rinunciare per quel client."),
+            help="How many times I try to deliver a notification to a client (Telegram, WebUI) before giving up for that client."),
     setting(DELIVERY_RETRY_INTERVAL, "Intervallo tra i tentativi", "int", 120, group="Consegna",
             min=15, max=3600, unit="s", advanced=True,
-            help="Ogni quanto riprovo le consegne fallite."),
-    setting(DEDUPE_RECURRING_MAX_AGE, "Ripeti avvisi ricorrenti dopo", "int", 3600, group="Anti-duplicati",
+            help="How often I retry failed deliveries."),
+    setting(DEDUPE_RECURRING_MAX_AGE, "Repeat recurring notices after", "int", 3600, group="Anti-duplicati",
             min=60, max=86400, unit="s",
-            help="Un avviso ricorrente (es. modulo in errore) già inviato non viene ripetuto prima di "
-                 "questo tempo; dopo, se il problema persiste, ti riavviso."),
-    setting(DEDUPE_RECURRING_TYPES, "Tipi di avviso ricorrenti", "list",
+            help="A recurring notice (e.g. module in error) already sent is not repeated before this time; after it, if the problem persists, I notify you again."),
+    setting(DEDUPE_RECURRING_TYPES, "Recurring notice types", "list",
             ["service.action_required", "service.health"], group="Anti-duplicati", advanced=True,
-            help="Tipi di evento a cui si applica la ripetizione a tempo; gli altri non vengono mai ripetuti."),
-    setting(BATCH_WINDOW, "Attesa per raggruppare annunci", "int", 30, group="Raggruppamento",
+            help="Event types the timed repetition applies to; the others are never repeated."),
+    setting(BATCH_WINDOW, "Wait to group listings", "int", 30, group="Raggruppamento",
             min=5, max=1800, unit="s",
-            help="Dopo un nuovo annuncio aspetto questo tempo senza novità e poi ti mando un unico "
-                 "messaggio con tutti quelli arrivati."),
-    setting(BATCH_MAX_ATTEMPTS, "Tentativi per un gruppo di annunci", "int", 6, group="Raggruppamento",
+            help="After a new listing I wait this long with nothing new and then send you a single message with all those arrived."),
+    setting(BATCH_MAX_ATTEMPTS, "Attempts for a group of listings", "int", 6, group="Raggruppamento",
             min=1, max=20, advanced=True,
-            help="Quante volte riprovo a inviare un gruppo di annunci (con attesa crescente) prima di rinunciare."),
-    setting(RETRACT_AFTER, "Togli dalla chat le notifiche gestite dopo", "int", 6, group="Pulizia",
+            help="How many times I retry sending a group of listings (with growing waits) before giving up."),
+    setting(RETRACT_AFTER, "Remove handled notifications from the chat after", "int", 6, group="Pulizia",
             min=1, max=46, unit="h",
-            help="Le notifiche già viste o gestite spariscono dalla chat Telegram dopo questo tempo "
-                 "(restano nell'elenco della WebUI). Telegram permette di cancellarle solo entro 48 h."),
-    setting(REPEAT_RESET_AFTER_DAYS, "Azzera il contatore dei promemoria dopo", "int", 30, group="Promemoria",
-            min=1, max=365, unit="giorni",
-            help="Un promemoria ripetuto (es. una routine) tiene il conto di quante volte l'hai saltato. "
-                 "Se per questo tempo non arriva più, il conto riparte da zero."),
-    setting(PENDING_REMIND_HOURS, "Ricordami le cose da decidere dopo", "int", 4, group="Da decidere",
+            help="Notifications already seen or handled disappear from the Telegram chat after this time (they stay in the WebUI list). Telegram allows deleting them only within 48 h."),
+    setting(REPEAT_RESET_AFTER_DAYS, "Reset the reminder counter after", "int", 30, group="Reminders",
+            min=1, max=365, unit="days",
+            help="A repeated reminder (e.g. a routine) counts how many times you skipped it. If it does not come for this long, the count starts again from zero."),
+    setting(PENDING_REMIND_HOURS, "Remind me of things to decide after", "int", 4, group="To decide",
             min=1, max=72, unit="h",
-            help="Se una notifica che aspetta una tua risposta resta lì per questo tempo, ti mando un solo "
-                 "promemoria con tutte quelle in attesa (una volta per ognuna)."),
-    setting(ACTIVE_CLIENT_MINUTES, "Suona solo dove mi stai usando, per", "int", 10, group="Consegna",
+            help="If a notification waiting for your answer stays there for this long, I send you a single reminder with all those waiting (once for each)."),
+    setting(ACTIVE_CLIENT_MINUTES, "Ring only where you are using me, for", "int", 10, group="Consegna",
             min=0, max=240, unit="min",
-            help="Se mi hai usato da un'app (Telegram, WebUI) in questi minuti, la notifica suona solo lì; "
-                 "nelle altre arriva in silenzio. 0 = suona dappertutto."),
-    setting(NOTIFICATION_STYLE, "Stile delle notifiche", "enum", "scheda", group="Consegna", options=STYLES,
+            help="If you used me from an app (Telegram, WebUI) in these minutes, the notification rings only there; in the others it arrives silently. 0 = rings everywhere."),
+    setting(NOTIFICATION_STYLE, "Notification style", "enum", "scheda", group="Consegna", options=STYLES,
             help="Scheda: come sempre. Frase di Hestia: le notifiche informative arrivano come una sua frase "
                  "breve, come in chat; avvisi, errori e quelle con pulsanti o domande restano schede."),
 ]).declare_log_level().follow_personal()   # assistant name, she/he, owner: the «frase» style speaks as her

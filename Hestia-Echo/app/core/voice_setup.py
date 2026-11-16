@@ -37,15 +37,15 @@ LOCAL_TYPES = {"whisper_local", "piper", "kokoro"}
 PREFERRED = {"ascolto": ("whisper_local", "small"), "voce": ("kokoro", "")}
 # One line per engine, so the user knows what to pick (Marko: «che ne so se scegliere Kokoro o Piper?»).
 ENGINE_NOTES = {
-    "whisper_local": "Capisce quello che dici sul tuo computer, gratis e privato. Più grande = più preciso e più lento.",
-    "kokoro": "La voce più naturale, quasi umana. Circa 350 MB, va bene anche senza scheda video. Consigliata.",
-    "piper": "Leggerissima e istantanea (circa 60 MB a voce), anche su computer vecchi; suona più da sintetizzatore.",
-    "wyoming": "Il server voce di Home Assistant che hai in casa.",
-    "openai": "Un programma vocale che hai in casa (Chatterbox, Speaches, LocalAI…).",
+    "whisper_local": "Understands what you say on your computer, free and private. Bigger = more accurate and slower.",
+    "kokoro": "The most natural voice, almost human. About 350 MB, fine even without a graphics card. Recommended.",
+    "piper": "Very light and instant (about 60 MB per voice), even on old computers; sounds more like a synthesiser.",
+    "wyoming": "The Home Assistant voice server you have at home.",
+    "openai": "A voice program you have at home (Chatterbox, Speaches, LocalAI…).",
 }
-WHISPER_NOTES = {"tiny": "Il più leggero, sbaglia di più.", "base": "Leggero.",
-                 "small": "Buon equilibrio: consigliato.", "medium": "Più preciso, più lento.",
-                 "large-v3": "Il più preciso, serve una buona scheda video."}
+WHISPER_NOTES = {"tiny": "The lightest, makes more mistakes.", "base": "Leggero.",
+                 "small": "Buon equilibrio: consigliato.", "medium": "More accurate, slower.",
+                 "large-v3": "The most accurate, needs a good graphics card."}
 
 
 # Speech programs that may run at home, on their usual port. Seen from the container, this computer is
@@ -56,16 +56,16 @@ THIS_COMPUTER = "host.docker.internal"
 SPEECH_PROGRAMS = [
     {"name": "chatterbox", "label": "Chatterbox", "port": 8004, "type": "openai", "model": "chatterbox",
      "site": "https://github.com/devnen/Chatterbox-TTS-Server", "dirs": ("voce",),
-     "note": "La voce più naturale, in 23 lingue (italiano compreso). Usa la scheda video, va anche senza ma lenta."},
+     "note": "The most natural voice, in 23 languages (Italian included). Uses the graphics card, works without it too but slowly."},
     {"name": "kokoro-fastapi", "label": "Kokoro (programma)", "port": 8880, "type": "openai", "model": "kokoro",
      "site": "https://github.com/remsky/Kokoro-FastAPI", "dirs": ("voce",),
-     "note": "Kokoro come programma a parte, più veloce con la scheda video."},
+     "note": "Kokoro as a separate program, faster with the graphics card."},
     {"name": "speaches", "label": "Speaches", "port": 8000, "type": "openai",
      "site": "https://github.com/speaches-ai/speaches", "dirs": ("ascolto", "voce"),
-     "note": "Ascolto e voce in un programma solo (Whisper, Kokoro, Piper)."},
+     "note": "Listening and voice in one program (Whisper, Kokoro, Piper)."},
     {"name": "localai", "label": "LocalAI", "port": 8080, "type": "openai"},
-    {"name": "wyoming-whisper", "label": "Whisper di Home Assistant", "port": 10300, "type": "wyoming"},
-    {"name": "wyoming-piper", "label": "Piper di Home Assistant", "port": 10200, "type": "wyoming"},
+    {"name": "wyoming-whisper", "label": "Home Assistant Whisper", "port": 10300, "type": "wyoming"},
+    {"name": "wyoming-piper", "label": "Home Assistant Piper", "port": 10200, "type": "wyoming"},
 ]
 _LISTEN_WORDS = ("whisper", "transcrib", "stt", "parakeet", "asr")
 _SPEAK_WORDS = ("tts", "kokoro", "piper", "speech", "voice", "xtts", "melo")
@@ -154,8 +154,8 @@ def _probe_wyoming(host: str, port: int) -> dict[str, list[dict]] | None:
               for p in data.get("tts") or [] for v in p.get("voices") or [] if v.get("name")]
     if not listen and not voices and not (data.get("asr") or data.get("tts")):
         return None
-    return {"ascolto": listen or ([{"id": "", "label": tr("Predefinito")}] if data.get("asr") else []),
-            "voce": [], "voices": voices or ([{"id": "", "label": tr("Predefinita")}] if data.get("tts") else [])}
+    return {"ascolto": listen or ([{"id": "", "label": tr("Default")}] if data.get("asr") else []),
+            "voce": [], "voices": voices or ([{"id": "", "label": tr("f::Default")}] if data.get("tts") else [])}
 
 
 def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
@@ -180,7 +180,7 @@ def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
         here = host == THIS_COMPUTER
         out.append({"name": spec["name"] if here else f"{spec['name']}-{re.sub(r'[^a-z0-9]+', '-', host.lower()).strip('-')}",
                     "label": spec["label"] if here else f"{spec['label']} · {host}", "type": spec["type"], "url": url,
-                    "where": tr("questo computer") if here else host, **got})
+                    "where": tr("this computer") if here else host, **got})
     return out
 
 
@@ -241,13 +241,13 @@ def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
     """«Prova» for a cloud speech service: its list read with the key (no audio made, nothing spent)."""
     p = blocks.providers().get(name)
     if p is None:
-        return {"ok": False, "detail": tr("Questo servizio non è configurato.")}
+        return {"ok": False, "detail": tr("This service is not configured.")}
     std = STANDARDS[p["type"]]
     if p["type"] in LOCAL_TYPES:
-        return {"ok": True, "detail": tr("Funziona sul tuo computer."), "models": _items(std.models(p)),
+        return {"ok": True, "detail": tr("It works on your computer."), "models": _items(std.models(p)),
                 "voices": _items(std.voices(p, language))}
     if blocks.provider_state(p) == "no_key" or (std.needs_key and not p["key"]):
-        return {"ok": False, "detail": tr("Manca la chiave.")}
+        return {"ok": False, "detail": tr("The key is missing.")}
     url = std.url(p).rstrip("/")
     try:
         if p["type"] == "openai":
@@ -261,16 +261,16 @@ def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
             resp = None
     except Exception as exc:
         logger.info("[🔄] event=voice_setup_check_failed provider=%s error=%s", name, str(exc)[:160])
-        return {"ok": False, "detail": tr("Non risponde: controlla la connessione.")}
+        return {"ok": False, "detail": tr("It does not answer: check the connection.")}
     if resp is not None:
         if resp.status_code in (400, 401, 403):
-            return {"ok": False, "detail": tr("La chiave non è valida.")}
+            return {"ok": False, "detail": tr("The key is not valid.")}
         if not resp.ok and resp.status_code != 429:
-            return {"ok": False, "detail": tr("Non risponde (errore {0}).", resp.status_code)}
+            return {"ok": False, "detail": tr("It does not answer (error {0}).", resp.status_code)}
     logger.info("event=voice_setup_check_ok provider=%s", name)
     models, voices = _items(std.models(p)), _items(std.voices(p, language))
     # Preselected once the key works, so nothing is asked: the first model and the first voice it lists.
-    return {"ok": True, "detail": tr("La chiave funziona."), "models": models, "voices": voices,
+    return {"ok": True, "detail": tr("The key works."), "models": models, "voices": voices,
             "recommended": {"ascolto": [m["id"] for m in models[:1]], "voce": [v["id"] for v in voices[:1]]}}
 
 
@@ -326,10 +326,10 @@ def _add_found(blocks, put: Callable[..., Any], steps: list[dict]) -> bool:
 
 def apply(blocks, put: Callable[..., Any], listen: dict | list | None, speak: dict | list | None) -> dict[str, Any]:
     if not _add_found(blocks, put, _steps(listen) + _steps(speak)):
-        return {"ok": False, "detail": tr("Le impostazioni non hanno accettato il programma vocale.")}
+        return {"ok": False, "detail": tr("The settings did not accept the voice program.")}
     chains = plan(blocks.chains(), listen, speak)
     if not put(CHAINS_KEY, chains, actor="user", reason="Setup guidato: voce"):
-        return {"ok": False, "detail": tr("Le impostazioni non hanno accettato la scelta.")}
+        return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     logger.info("event=voice_setup_applied listen=%s speak=%s", ",".join(s["provider"] for s in _steps(listen)) or "-",
                 ",".join(s["provider"] for s in _steps(speak)) or "-")
     return {"ok": True, "chains": chains}

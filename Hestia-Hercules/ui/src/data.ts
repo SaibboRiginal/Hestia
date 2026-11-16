@@ -179,7 +179,7 @@ export class Local {
       const done = new Set<string>([...(r.data.applied || []), ...(r.data.rejected || []).map((x: any) => x.op_id)]);
       this.outbox = this.outbox.filter(o => !done.has(o.op_id));
       for (const x of r.data.rejected || []) {
-        this.host.toast(tr("Non salvato: {0}", x.error), 'warning');
+        this.host.toast(tr("Not saved: {0}", x.error), 'warning');
         const keyed = `${x.kind}:${x.id}`;
         if (this.rows.get(keyed) && !this.rows.get(keyed)!.seq) this.rows.delete(keyed);
       }

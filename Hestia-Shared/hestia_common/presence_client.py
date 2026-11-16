@@ -145,7 +145,7 @@ class PresenceClient:
             client = state.get("last_interaction_client") or ""
             parts.append(f"ultima interazione {ago(state.get('idle_minutes'))}" + (f" ({client})" if client else ""))
         else:
-            parts.append(tr("nessuna interazione registrata"))
+            parts.append(tr("no interaction recorded"))
         notice = (state.get("effects") or {}).get("chat.notice")
         if notice:
             parts.append(f"notify if useful: {notice}")

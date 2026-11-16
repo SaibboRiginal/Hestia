@@ -171,7 +171,7 @@ class DocumentAnalyser:
         yield stream_emitter.emit_status("🔊 Trascrizione...")
         transcript = transcription.transcribe_audio(file_bytes, mime_type)
         if not transcript:
-            return tr("⚠️ Non riesco a trascrivere l'audio. Prova a inviare un file in un formato supportato (mp3, wav, ogg, m4a).")
+            return tr("⚠️ I can't transcribe the audio. Try sending a file in a supported format (mp3, wav, ogg, m4a).")
 
         text_prompt = (
             f"{self._style_contract()}\n\n"
@@ -210,7 +210,7 @@ class DocumentAnalyser:
             except Exception:
                 pass
 
-        return tr("⚠️ Non riesco ad analizzare il documento in questo momento.")
+        return tr("⚠️ I can't analyse the document right now.")
 
     def _save_history(self, session_id: str, file_label: str, user_message: str, answer: str) -> None:
         try:

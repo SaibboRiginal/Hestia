@@ -27,7 +27,7 @@ import { tr, TrPipe } from '../core/i18n';
           @if (title()) {
             <header>
               <h2>{{ title() }}</h2>
-              <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi' | tr" (click)="closed.emit()"></button>
+              <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Close' | tr" (click)="closed.emit()"></button>
             </header>
           }
           <div class="body"><ng-content /></div>
@@ -222,7 +222,7 @@ export class ToastService {
         <hx-icon [name]="t.tone === 'success' ? 'check' : t.tone === 'danger' ? 'alert' : 'info'" [size]="16" />
         <span class="txt">{{ t.text }}</span>
         @if (t.action) { <button class="act" (click)="t.action.run(); svc.dismiss(t.id)">{{ t.action.label }}</button> }
-        <button class="x" (click)="svc.dismiss(t.id)"  [attr.aria-label]="'Chiudi' | tr"><hx-icon name="x" [size]="14" /></button>
+        <button class="x" (click)="svc.dismiss(t.id)"  [attr.aria-label]="'Close' | tr"><hx-icon name="x" [size]="14" /></button>
       </div>
     }`,
   styles: [`
@@ -257,9 +257,9 @@ export class DialogService {
     return new Promise(resolve => this.current.set({ title, message, options, resolve: resolve as (v: unknown) => void }));
   }
 
-  async confirm(title: string, message = '', confirmLabel = tr('Conferma'), danger = false): Promise<boolean> {
+  async confirm(title: string, message = '', confirmLabel = tr('Confirm'), danger = false): Promise<boolean> {
     const r = await this.choose(title, message, [
-      { value: 'no', label: tr('Annulla'), variant: 'ghost' },
+      { value: 'no', label: tr('Cancel'), variant: 'ghost' },
       { value: 'yes', label: confirmLabel, variant: danger ? 'danger' : 'primary' },
     ]);
     return r === 'yes';

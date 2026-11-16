@@ -7,13 +7,13 @@ import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/web
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/appearance';
-const EFFECT: Record<string, string> = { none: tr('Nessuno'), snow: tr('Neve'), leaves: tr('Foglie'), petals: tr('Petali'), sun: tr('Sole'),
-  hearts: tr('Cuori'), confetti: tr('Coriandoli'), pumpkins: tr('Zucche'), stars: tr('Stelle') };
-const POSE: Record<string, string> = { idle: tr('Tranquillo'), happy: tr('Contento'), sleep: tr('Dorme') };
+const EFFECT: Record<string, string> = { none: tr('None'), snow: tr('Snow'), leaves: tr('Leaves'), petals: tr('Petals'), sun: tr('alt::Sun'),
+  hearts: tr('Hearts'), confetti: tr('Confetti'), pumpkins: tr('Pumpkins'), stars: tr('Stars') };
+const POSE: Record<string, string> = { idle: tr('Calm'), happy: tr('Happy'), sleep: tr('Sleeping') };
 
 async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string, body?: unknown, query?: Record<string, any>): Promise<ApiResult<T>> {
   const r = await host.api<T>(method, `${API}${path}`, { body, query });
-  if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Non raggiungibile, riprova') : r.error || tr('Errore'), 'warning');
+  if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Not reachable, try again') : r.error || tr('Error'), 'warning');
   return r;
 }
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
@@ -54,13 +54,13 @@ export class AphroditeLook extends HestiaElement {
   }
   private async choose(body: any) {
     const r = await call(this.host, 'PUT', '/choice/webui', body);
-    if (r.ok) { this.host.toast(tr('Fatto: il sito si aggiorna tra poco'), 'success'); this.load(); }
+    if (r.ok) { this.host.toast(tr('Done: the site updates shortly'), 'success'); this.load(); }
   }
   private async savePet() {
     const d = this.petDraft;
-    if (!d.name?.trim()) { this.host.toast(tr('Come si chiama?'), 'warning'); return; }
+    if (!d.name?.trim()) { this.host.toast(tr('What is its name?'), 'warning'); return; }
     const r = await call(this.host, 'POST', '/tools/animale', { name: d.name, species: d.species || 'gatto', look: d.look || '' });
-    if (r.ok) { this.petDraft = null; this.host.toast(tr('Animaletto creato: le immagini arrivano quando sono pronte'), 'success'); this.load(); }
+    if (r.ok) { this.petDraft = null; this.host.toast(tr('Pet created: the images arrive when they\'re ready'), 'success'); this.load(); }
   }
   private async uploadPose(pet: any, pose: string) {
     const files = await this.host.upload({ accept: 'image/*', maxSide: 512 });
@@ -70,7 +70,7 @@ export class AphroditeLook extends HestiaElement {
   }
   private async regenerate(target: 'pet' | 'profile', ref: string) {
     const r = await call(this.host, 'POST', '/tools/genera', { target, ref });
-    if (r.ok) this.host.toast(r.data.jobs?.some((j: any) => j.status === 'failed') ? tr('Il generatore di immagini non è pronto') : tr('Richieste: arrivano quando sono pronte'), 'info');
+    if (r.ok) this.host.toast(r.data.jobs?.some((j: any) => j.status === 'failed') ? tr('The image generator is not ready') : tr('Requests: they arrive when ready'), 'info');
   }
   private async saveProfile() {
     const e = this.edit;
@@ -83,14 +83,14 @@ export class AphroditeLook extends HestiaElement {
     const e = this.edit;
     const set = (k: string) => (ev: any) => { this.edit = { ...this.edit, [k]: ev.detail ?? ev.target.value }; };
     return html`<div class="card col"><div class="form">
-        <hxk-field label=${tr("Nome")} .value=${e.name || ''} @change=${set('name')}></hxk-field>
-        <hxk-field label=${tr("Effetto")} type="enum" .options=${Object.entries(EFFECT).map(([value, label]) => ({ value, label }))} .value=${e.effect || 'none'} @change=${set('effect')}></hxk-field>
-        <label class="col small">${tr("Colore")}<input type="color" .value=${e.accent || '#7C3AED'} @input=${set('accent')}></label>
-        <label class="col small">${tr("Secondo colore")}<input type="color" .value=${e.accent2 || '#DB2777'} @input=${set('accent2')}></label>
-        <hxk-field label=${tr("Dal (MM-GG)")} placeholder="12-08" .value=${e.from || ''} @change=${set('from')}></hxk-field>
-        <hxk-field label=${tr("Al (MM-GG)")} placeholder="01-06" .value=${e.to || ''} @change=${set('to')}></hxk-field></div>
-      <hxk-field label=${tr("Sfondo (descrizione per il generatore, in inglese)")} type="textarea" .value=${e.prompt || ''} @change=${set('prompt')}></hxk-field>
-      <div class="row"><hxk-button variant="primary" @click=${() => this.saveProfile()}>${tr("Salva")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.edit = null; }}>${tr("Annulla")}</hxk-button></div></div>`;
+        <hxk-field label=${tr("Name")} .value=${e.name || ''} @change=${set('name')}></hxk-field>
+        <hxk-field label=${tr("Effect")} type="enum" .options=${Object.entries(EFFECT).map(([value, label]) => ({ value, label }))} .value=${e.effect || 'none'} @change=${set('effect')}></hxk-field>
+        <label class="col small">${tr("Colour")}<input type="color" .value=${e.accent || '#7C3AED'} @input=${set('accent')}></label>
+        <label class="col small">${tr("Second colour")}<input type="color" .value=${e.accent2 || '#DB2777'} @input=${set('accent2')}></label>
+        <hxk-field label=${tr("From (MM-DD)")} placeholder="12-08" .value=${e.from || ''} @change=${set('from')}></hxk-field>
+        <hxk-field label=${tr("To (MM-DD)")} placeholder="01-06" .value=${e.to || ''} @change=${set('to')}></hxk-field></div>
+      <hxk-field label=${tr("Background (description for the generator, in English)")} type="textarea" .value=${e.prompt || ''} @change=${set('prompt')}></hxk-field>
+      <div class="row"><hxk-button variant="primary" @click=${() => this.saveProfile()}>${tr("Save")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.edit = null; }}>${tr("Cancel")}</hxk-button></div></div>`;
   }
   render() {
     const n = this.now;
@@ -98,10 +98,10 @@ export class AphroditeLook extends HestiaElement {
     if (n === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const p = n.profile;
     return html`<div class="page">
-      <h1>${tr("Aspetto")}</h1>
+      <h1>${tr("Look")}</h1>
       <div class="card col">
         <div class="between"><div><h3>${p.name}</h3><div class="small muted">${n.why}</div></div>
-          <hxk-field type="bool" label=${tr("Temi automatici")} .value=${n.auto} @change=${(e: any) => this.choose({ auto: e.detail })}></hxk-field></div>
+          <hxk-field type="bool" label=${tr("Automatic themes")} .value=${n.auto} @change=${(e: any) => this.choose({ auto: e.detail })}></hxk-field></div>
         <div class="row">${p.palette.accent ? html`<span class="sw" style="background:${p.palette.accent}"></span>` : nothing}
           ${p.palette.accent2 ? html`<span class="sw" style="background:${p.palette.accent2}"></span>` : nothing}
           <span class="small muted">Effetto: ${EFFECT[p.effect] || p.effect}</span></div>
@@ -109,29 +109,29 @@ export class AphroditeLook extends HestiaElement {
         ${this.soon.length ? html`<div class="small muted">Prossimi: ${this.soon.map(s => `${ddmm(s.date)} ${s.why}`).join(' · ')}</div>` : nothing}
       </div>
       <div class="card col">
-        <div class="between"><h3>${tr("Animaletto")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.petDraft = { species: 'gatto' }; }}>${tr("Nuovo")}</hxk-button></div>
-        <hxk-field label=${tr("Sul sito")} type="enum" .options=${[{ value: '', label: tr('Nessuno') }, ...this.pets.map(x => ({ value: x.id, label: x.name }))]}
+        <div class="between"><h3>${tr("Pet")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.petDraft = { species: 'gatto' }; }}>${tr("New")}</hxk-button></div>
+        <hxk-field label=${tr("On the site")} type="enum" .options=${[{ value: '', label: tr('None') }, ...this.pets.map(x => ({ value: x.id, label: x.name }))]}
           .value=${n.pet?.id || ''} @change=${(e: any) => this.choose({ pet: e.detail })}></hxk-field>
         ${this.petDraft ? html`<div class="form">
-            <hxk-field label=${tr("Nome")} .value=${this.petDraft.name || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, name: e.detail }; }}></hxk-field>
-            <hxk-field label=${tr("Che animale")} .value=${this.petDraft.species} @change=${(e: any) => { this.petDraft = { ...this.petDraft, species: e.detail }; }}></hxk-field>
-            <hxk-field label=${tr("Com'è fatto")} placeholder=${tr("Es. arancione, occhi verdi")} .value=${this.petDraft.look || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, look: e.detail }; }}></hxk-field></div>
-          <div class="row"><hxk-button variant="primary" @click=${() => this.savePet()}>${tr("Crea")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.petDraft = null; }}>${tr("Annulla")}</hxk-button></div>` : nothing}
+            <hxk-field label=${tr("Name")} .value=${this.petDraft.name || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, name: e.detail }; }}></hxk-field>
+            <hxk-field label=${tr("Which animal")} .value=${this.petDraft.species} @change=${(e: any) => { this.petDraft = { ...this.petDraft, species: e.detail }; }}></hxk-field>
+            <hxk-field label=${tr("What it's like")} placeholder=${tr("E.g. orange, green eyes")} .value=${this.petDraft.look || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, look: e.detail }; }}></hxk-field></div>
+          <div class="row"><hxk-button variant="primary" @click=${() => this.savePet()}>${tr("Create")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.petDraft = null; }}>${tr("Cancel")}</hxk-button></div>` : nothing}
         ${this.pets.map(x => html`<div class="pet"><div class="grow"><div>${x.name}</div><div class="small muted">${x.species}${x.look ? ` · ${x.look}` : ''}</div></div>
           ${Object.keys(POSE).map(pose => html`<div class="pose" title="${POSE[pose]}: tocca per caricare una tua immagine" @click=${() => this.uploadPose(x, pose)}>
             ${x.images?.[pose] ? html`<img src=${this.host.image(`${API}/image/${x.images[pose]}`)} alt=${POSE[pose]}>` : POSE[pose]}</div>`)}
           <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.regenerate('pet', x.id)}></hxk-button>
-          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Eliminare l\'animaletto?'), x.name, { label: tr('Elimina'), danger: true })) { await call(this.host, 'DELETE', `/pets/${x.id}`); this.load(); } }}></hxk-button></div>`)}
+          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete the pet?'), x.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/pets/${x.id}`); this.load(); } }}></hxk-button></div>`)}
       </div>
       <div class="card col">
-        <div class="between"><h3>${tr("Profili")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.edit = { effect: 'none' }; }}>${tr("Nuovo")}</hxk-button></div>
-        <div class="small muted">${tr("Si accendono da soli: un tuo giorno speciale, poi le feste, poi la stagione. Un profilo con le date vale in quei giorni.")}</div>
+        <div class="between"><h3>${tr("Profiles")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.edit = { effect: 'none' }; }}>${tr("New")}</hxk-button></div>
+        <div class="small muted">${tr("They turn on by themselves: one of your special days, then the holidays, then the season. A profile with dates applies on those days.")}</div>
         ${this.edit ? this.profileEditor() : nothing}
         ${this.profiles.filter(x => x.id !== 'standard').map(x => html`<div class="prof">
           ${x.palette?.accent ? html`<span class="sw" style="background:${x.palette.accent}"></span>` : html`<span class="sw"></span>`}
-          <div class="grow"><div>${x.name}${x.id === p.key ? html` <hxk-badge tone="accent">${tr("adesso")}</hxk-badge>` : nothing}</div>
-            <div class="small muted">${EFFECT[x.effect] || x.effect}${x.when ? tr(" · dal {0} al {1}", x.when.from, x.when.to) : ''}${x.background ? tr(' · con sfondo') : ''}</div></div>
-          ${x.prompt ? html`<hxk-button size="sm" variant="ghost" icon="refresh" title=${tr("Rigenera lo sfondo")} @click=${() => this.regenerate('profile', x.id)}></hxk-button>` : nothing}
+          <div class="grow"><div>${x.name}${x.id === p.key ? html` <hxk-badge tone="accent">${tr("now")}</hxk-badge>` : nothing}</div>
+            <div class="small muted">${EFFECT[x.effect] || x.effect}${x.when ? tr(" · from {0} to {1}", x.when.from, x.when.to) : ''}${x.background ? tr(' · with background') : ''}</div></div>
+          ${x.prompt ? html`<hxk-button size="sm" variant="ghost" icon="refresh" title=${tr("Regenerate the background")} @click=${() => this.regenerate('profile', x.id)}></hxk-button>` : nothing}
           <hxk-button size="sm" variant="ghost" icon="edit" @click=${() => { this.edit = { ...x, accent: x.palette?.accent, accent2: x.palette?.accent2, from: x.when?.from, to: x.when?.to }; }}></hxk-button></div>`)}
       </div>
     </div>`;

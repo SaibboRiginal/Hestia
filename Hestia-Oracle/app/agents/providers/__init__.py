@@ -42,7 +42,7 @@ def get_provider(name: str) -> LLMProvider:
 
 # Inline types (UniversalAgent): label, context window (0 = local num_ctx setting), billing.
 _INLINE = {
-    "ollama": ("Ollama (locale)", 0, "Locale · gratis"),
+    "ollama": ("Ollama (local)", 0, "Locale · gratis"),
     "gemini": ("Gemini (cloud)", 1_048_576, "API Gemini · a consumo"),
 }
 
@@ -64,9 +64,9 @@ def runtime_info(name: str, local_window: int, model: str = "") -> dict:
     if prov:
         label = prov["label"]
     if ptype in ("openai", "llamacpp") and not llm_providers.api_key(name):
-        billing = tr("Server locale · gratis")
+        billing = tr("Local server · free")
     elif ptype == "openai":
-        billing = tr("API · a consumo")
+        billing = tr("API · pay per use")
     source = "provider"
     if not window:
         window, source = _lw.window_of(name, model)

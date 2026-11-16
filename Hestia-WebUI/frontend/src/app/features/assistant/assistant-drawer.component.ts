@@ -15,9 +15,9 @@ import { QuestionCardComponent } from '../chat/question-card.component';
 import { tr, TrPipe } from '../../core/i18n';
 
 const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
-  calendar: [tr('Ogni lunedì alle 9 controlla le nuove case'), tr('Sposta il job di stanotte a domani alle 3'), tr('Salta la prossima finestra Claude')],
-  forge: [tr('Spiegami cosa ha cambiato questo task'), tr('Crea uno sviluppo: aggiungi un comando che…')],
-  commands: [tr('Crea un comando che…'), tr('Cosa fa questo comando?')],
+  calendar: [tr('Every Monday at 9 check the new houses'), tr('Move tonight\'s job to tomorrow at 3'), tr('Skip the next Claude window')],
+  forge: [tr('Explain to me what this task changed'), tr('Create a development: add a command that…')],
+  commands: [tr('Create a command that…'), tr('What does this command do?')],
 };
 
 /**
@@ -34,22 +34,22 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   template: `
     @if (assistant.isOpen()) {
       <div class="scrim hx-fade-in" (click)="assistant.close()"></div>
-      <aside class="drawer hx-glass" role="dialog"  [attr.aria-label]="'Crea con Hestia' | tr" [style.width.px]="width()">
+      <aside class="drawer hx-glass" role="dialog"  [attr.aria-label]="'Create with Hestia' | tr" [style.width.px]="width()">
         <hx-resize [(width)]="width" edge="left" [min]="340" [def]="440" key="assistant" />
         <header>
           <hx-icon name="sparkle" [size]="17" class="spark" />
-          <h2>{{ "Crea con Hestia" | tr }}</h2>
+          <h2>{{ "Create with Hestia" | tr }}</h2>
           <div class="hx-grow"></div>
-          <button hx-btn variant="ghost" size="sm" icon="plus" iconOnly  [attr.aria-label]="'Nuova conversazione' | tr"  [title]="'Nuova conversazione' | tr"
+          <button hx-btn variant="ghost" size="sm" icon="plus" iconOnly  [attr.aria-label]="'New conversation' | tr"  [title]="'New conversation' | tr"
                   (click)="reset()" [disabled]="chat.isStreaming()"></button>
-          <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi' | tr"  [title]="'Chiudi (Esc)' | tr" (click)="assistant.close()"></button>
+          <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Close' | tr"  [title]="'Close (Esc)' | tr" (click)="assistant.close()"></button>
         </header>
         @if (ctx(); as c) {
           @if (c.label) {
             <div class="ctx" [title]="packet()">
               <hx-icon [name]="pageIcon()" [size]="13" />
               <span>{{ c.label }}</span>
-              <button class="ctx-x" (click)="assistant.context.set(null)"  [attr.aria-label]="'Togli contesto' | tr"  [title]="'Togli contesto' | tr"><hx-icon name="x" [size]="12" /></button>
+              <button class="ctx-x" (click)="assistant.context.set(null)"  [attr.aria-label]="'Remove context' | tr"  [title]="'Remove context' | tr"><hx-icon name="x" [size]="12" /></button>
             </div>
           }
         }
@@ -57,7 +57,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
         <div class="scroll" #scroller>
           @if (!chat.messages().length) {
             <div class="empty">
-              <p>{{ "Dimmi cosa creare o cambiare: lo faccio io con gli strumenti di Hestia. Se manca uno strumento, ti propongo uno sviluppo." | tr }}</p>
+              <p>{{ "Tell me what to create or change: I do it with Hestia's tools. If a tool is missing, I propose a development." | tr }}</p>
               <div class="chips">
                 @for (s of suggestions(); track s) { <button (click)="use(s)">{{ s }}</button> }
               </div>
@@ -97,12 +97,12 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
             <textarea #ta [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="2"
                       [placeholder]="placeholder()"></textarea>
             <div class="tools">
-              <span class="hint">{{ "Invio per mandare" | tr }}</span>
+              <span class="hint">{{ "Enter to send" | tr }}</span>
               <div class="hx-grow"></div>
               @if (chat.isStreaming()) {
                 <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly  [attr.aria-label]="'Stop' | tr" (click)="chat.cancelStream()"></button>
               } @else {
-                <button hx-btn variant="primary" size="sm" icon="send" iconOnly  [attr.aria-label]="'Invia' | tr" (click)="send()" [disabled]="!text.trim()"></button>
+                <button hx-btn variant="primary" size="sm" icon="send" iconOnly  [attr.aria-label]="'Send' | tr" (click)="send()" [disabled]="!text.trim()"></button>
               }
             </div>
           </div>
@@ -178,10 +178,10 @@ export class AssistantDrawerComponent implements AfterViewChecked {
   readonly suggestions = computed(() => {
     const c = this.ctx();
     return c?.suggestions?.length ? c.suggestions : DEFAULT_SUGGESTIONS[c?.page ?? ''] ?? [
-      tr('Pianifica per Hestia un controllo ogni sera alle 22'), tr('Cosa ha in programma Hestia stanotte?')];
+      tr('Schedule for Hestia a check every evening at 10pm'), tr('What does Hestia have scheduled tonight?')];
   });
-  readonly placeholder = computed(() => this.signalR.connectionState() !== 'connected' ? tr('Connessione in corso…')
-    : this.ctx()?.page === 'calendar' ? tr('Es. "ogni venerdì alle 18 controlla le email di Scout"') : tr('Cosa vuoi creare o cambiare?'));
+  readonly placeholder = computed(() => this.signalR.connectionState() !== 'connected' ? tr('Connecting…')
+    : this.ctx()?.page === 'calendar' ? tr('E.g. "every Friday at 6pm check Scout\'s emails"') : tr('What do you want to create or change?'));
   readonly pageIcon = computed(() => ({ calendar: 'calendar', forge: 'code', commands: 'terminal', documents: 'file' } as Record<string, string>)[this.ctx()?.page ?? ''] ?? 'info');
 
   constructor() {

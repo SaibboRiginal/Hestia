@@ -37,8 +37,8 @@ logger = logging.getLogger("hestia_athena.reflection")
 
 USE_CASE = "athena.riflessione"
 SEVERITY_RANK = {"alta": 0, "attenzione": 1, "info": 2}
-DOMAIN_WORDS = {"fitness": "Allenamento", "selfcare": "Cura di sé", "finance": "Spese", "wardrobe": "Guardaroba",
-                "real_estate": "Case", "cognition": "Hestia"}
+DOMAIN_WORDS = {"fitness": "Training", "selfcare": "alt::Self care", "finance": "Expenses", "wardrobe": "Wardrobe",
+                "real_estate": "Houses", "cognition": "Hestia"}
 
 
 def local_day(ts: datetime | None = None) -> str:
@@ -100,7 +100,7 @@ def correlate(series: dict[str, dict], *, min_weeks: int, min_r: float, current_
 
 def link_text(link: dict) -> str:
     """Caveman line for the prompt and the page: «Allenamenti ↔ Routine rispettate %: r=0.72 su 9 settimane»."""
-    when = "stessa settimana" if not link["lag"] else tr("la settimana dopo")
+    when = "same week" if not link["lag"] else tr("the week after")
     return (f"{link['a_label']} → {link['b_label']} ({when}): r={link['r']:+.2f} su {link['weeks']} settimane, "
             f"{'salgono insieme' if link['r'] > 0 else 'uno sale, l altro scende'}")
 
@@ -237,7 +237,7 @@ class LifeReflection:
     def recap_piece(self, day: str) -> dict:
         """Athena's piece of the daily recap (contract of docs/work/2026-10-20-recap-giornaliero §3.2)."""
         items = [o for o in self.observations(since_days=3) if o.get("day") == day]
-        base = {"module": "athena", "title": tr("Da tenere d'occhio"), "icon": "eye", "emoji": "👀", "order": 900}
+        base = {"module": "athena", "title": tr("To keep an eye on"), "icon": "eye", "emoji": "👀", "order": 900}
         if not items:
             return {**base, "empty": True}
         items.sort(key=lambda o: -float(o.get("score") or 0))
@@ -252,7 +252,7 @@ class LifeReflection:
             series = self.reader.series(weeks=26)
         except Exception as exc:
             logger.warning("event=reflection_read_failed error=%s", exc)
-            return {"candidates": [], "life": life, "error": tr("segnali non leggibili: {0}", exc)}
+            return {"candidates": [], "life": life, "error": tr("signals not readable: {0}", exc)}
         links = correlate(series, min_weeks=get_int(S.REFLECTION_MIN_WEEKS),
                           min_r=get_float(S.REFLECTION_MIN_CORRELATION))
         life["signals"] = [{k: s.get(k) for k in ("module", "domain", "key", "kind", "severity", "text", "page")}
@@ -289,7 +289,7 @@ class LifeReflection:
         info = [s for s in signals if s.get("severity") == "info"]
         raw = self._ask_oracle(_prompt(topics, info, details, settings_lines, left))
         if raw is None:
-            return {"candidates": [], "life": life, "error": tr("modello non disponibile")}
+            return {"candidates": [], "life": life, "error": tr("model not available")}
         parsed = _parse_candidates(raw)
         candidates = _map_to_action_candidates(parsed)
         stored: list[dict] = []
@@ -310,7 +310,7 @@ class LifeReflection:
                 continue
             if len(stored) >= left or (cand.topic_key and cand.topic_key in told):
                 cand.outcome = "discarded"
-                cand.gate_reason += tr(" · già detto o limite del giorno")
+                cand.gate_reason += tr(" · already said or daily limit")
                 continue
             sig = topic.get("signal") if topic and topic["type"] == "signal" else {}
             link = topic.get("link") if topic and topic["type"] == "link" else {}

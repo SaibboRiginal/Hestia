@@ -39,8 +39,8 @@ logger = logging.getLogger("hestia_scout.ui")
 
 USER_FLAGS = ("favorite", "discarded")
 STATUS_LABELS = {
-    "available": "Disponibile", "in_negotiation": "In trattativa", "investment_occupied": "Occupato (investimento)",
-    "sold": "Venduto", "unknown": "Da verificare",
+    "available": "Available", "in_negotiation": "Under negotiation", "investment_occupied": "Taken (investment)",
+    "sold": "Sold", "unknown": "To check",
 }
 CACHE_SECONDS = 30
 NEW_DAYS = 7
@@ -56,34 +56,34 @@ def _dist_dir() -> Path:
     return here / "ui" / "dist"
 
 
-plugin = PluginClient("scout", title="Immobili", icon="home", color="amber",
+plugin = PluginClient("scout", title="alt::Houses", icon="home", color="amber",
                       description="Case trovate dalle email degli annunci: elenco, preferite, statistiche.",
                       dist=_dist_dir(), version=os.getenv("SCOUT_SERVICE_VERSION", "1.0.0"))
 plugin.webui(
     entry="scout.js", api_prefix="/api/ui/",
     pages=[
-        page("case", "Case", element="scout-listings", icon="home", order=20,
-             help="Tutte le case trovate: filtri, preferite, scartate."),
-        page("case/:id", "Annuncio", element="scout-listing", parent="case", detail=True),
-        page("statistiche", "Statistiche case", element="scout-stats", icon="chart", order=21, parent="case",
-             help="Prezzi per città, nuove case per settimana, stato degli annunci."),
+        page("case", "Houses", element="scout-listings", icon="home", order=20,
+             help="All the houses found: filters, favourites, discarded."),
+        page("case/:id", "Listing", element="scout-listing", parent="case", detail=True),
+        page("statistiche", "House statistics", element="scout-stats", icon="chart", order=21, parent="case",
+             help="Prices per city, new houses per week, state of the listings."),
     ],
     widgets=[
         widget("numeri", "Case in numeri", element="scout-kpi-widget", sizes=["m", "xl"], size="m", auto=True,
                open_page="case", icon="home"),
         widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
                open_page="case", icon="home",
-               params={"city": {"type": "string", "label": "Città (vuoto = tutte)"},
-                       "days": {"type": "int", "label": "Ultimi giorni", "default": NEW_DAYS}}),
+               params={"city": {"type": "string", "label": "City (empty = all)"},
+                       "days": {"type": "int", "label": "Last days", "default": NEW_DAYS}}),
         widget("preferite", "Case preferite", element="scout-favorites-widget", sizes=["m", "l"], size="l",
                open_page="case", icon="star"),
-        widget("prezzi", "Prezzi per città", element="scout-prices-widget", sizes=["l", "xl"], size="l",
+        widget("prezzi", "Prices per city", element="scout-prices-widget", sizes=["l", "xl"], size="l",
                open_page="statistiche", icon="chart"),
     ],
     quick_actions=[
         quick_action("controlla", "Controlla email annunci", "POST", "/api/ui/cycle", icon="refresh",
-                     group="Case", order=21),
-        quick_action("preferita", "Preferita", "POST", "/api/ui/listings/{id}/favorite", icon="star",
+                     group="Houses", order=21),
+        quick_action("preferita", "f::Favourite", "POST", "/api/ui/listings/{id}/favorite", icon="star",
                      group="Nuove case", source="/api/ui/quick/new", order=20,
                      undo={"method": "DELETE", "path": "/api/ui/listings/{id}/favorite"}),
     ],
@@ -155,7 +155,7 @@ def to_view(record: dict) -> dict:
     return {
         "id": listing_key(entity_id),
         "url": str(p.get("url") or entity_id),
-        "title": p.get("title") or p.get("address") or tr("Annuncio"),
+        "title": p.get("title") or p.get("address") or tr("Listing"),
         "address": p.get("address") or "",
         "city": city_of(p),
         "price": int(price) if price else None,
@@ -236,11 +236,11 @@ class ListingStore:
     def patch(self, key: str, fields: dict) -> dict:
         record = self.find(key)
         if not record:
-            raise HTTPException(status_code=404, detail=tr("annuncio non trovato"))
+            raise HTTPException(status_code=404, detail=tr("listing not found"))
         ok = self.archive.upsert_entity({"entity_id": record["entity_id"], "domain": record.get("domain") or self.domain,
                                          "status": record.get("status") or "active", "payload": fields})
         if not ok:
-            raise HTTPException(status_code=502, detail=tr("archivio non raggiungibile"))
+            raise HTTPException(status_code=502, detail=tr("archive not reachable"))
         with self._lock:   # local copy updated at once, so the next read shows the change
             record["payload"] = {**(record.get("payload") or {}), **fields}
         logger.info("event=scout_listing_patched key=%s fields=%s", key, ",".join(fields))
@@ -354,7 +354,7 @@ def recap_facts(views: list[dict], day) -> dict:
     new.sort(key=lambda v: (v.get("price") is None, v.get("price") or 0))
     names = []
     for v in new[:2]:
-        bits = [str(v.get("title") or tr("Annuncio"))[:48], v.get("city") or "",
+        bits = [str(v.get("title") or tr("Listing"))[:48], v.get("city") or "",
                 f"€ {v['price']:,}".replace(",", ".") if v.get("price") else ""]
         names.append(", ".join(b for b in bits if b))
     text = f"{len(new)} nuov{'o annuncio' if len(new) == 1 else 'i annunci'}: " + "; ".join(names)
@@ -384,7 +384,7 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
     def listing(key: str):
         record = store.find(key)
         if not record:
-            raise HTTPException(status_code=404, detail=tr("annuncio non trovato"))
+            raise HTTPException(status_code=404, detail=tr("listing not found"))
         return _public(detail_view(record))
 
     @router.patch("/listings/{key}")
@@ -398,9 +398,9 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
             try:
                 fields["listing_status"] = ListingStatus(body.status).value
             except ValueError:
-                raise HTTPException(status_code=422, detail=tr("status non valido"))
+                raise HTTPException(status_code=422, detail=tr("invalid status"))
         if not fields:
-            raise HTTPException(status_code=422, detail=tr("niente da cambiare"))
+            raise HTTPException(status_code=422, detail=tr("nothing to change"))
         return _public(store.patch(key, fields))
 
     @router.post("/listings/{key}/favorite")

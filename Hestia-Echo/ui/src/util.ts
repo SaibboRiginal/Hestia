@@ -4,16 +4,16 @@ export const API = '/api/voice';
 
 export const STATES: Record<string, { label: string; tone: string }> = {
   ready: { label: 'pronto', tone: 'success' },
-  no_key: { label: tr('manca la chiave'), tone: 'warning' },
-  no_url: { label: tr('manca l\'indirizzo'), tone: 'warning' },
-  not_installed: { label: tr('non installato'), tone: 'warning' },
-  downloading: { label: tr('scarico il modello'), tone: 'info' },
+  no_key: { label: tr('the key is missing'), tone: 'warning' },
+  no_url: { label: tr('the address is missing'), tone: 'warning' },
+  not_installed: { label: tr('not installed'), tone: 'warning' },
+  downloading: { label: tr('downloading the model'), tone: 'info' },
   quota: { label: 'senza quota', tone: 'warning' },
   missing: { label: 'fornitore tolto', tone: 'danger' },
   wrong_direction: { label: 'direzione sbagliata', tone: 'danger' },
 };
 
-export const DIRECTIONS = [{ value: 'ascolto', label: tr('Ascolto (voce → testo)') }, { value: 'voce', label: tr('Voce (testo → voce)') }];
+export const DIRECTIONS = [{ value: 'ascolto', label: tr('Listening (voice → text)') }, { value: 'voce', label: tr('Voice (text → speech)') }];
 
 export function slug(s: string): string {
   return s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');

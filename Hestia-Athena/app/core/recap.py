@@ -38,7 +38,7 @@ MOMENTS = ("sera", "mattina")
 EVENING_AT = "21:30"
 EVENING_FLEX = {"earliest": "20:00", "latest": "23:30"}
 
-_WEEKDAYS = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
+_WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "sabato", "domenica")
 _MONTHS = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
 _TAG = re.compile(r"</?(?!b>|/b>|i>|/i>)[a-zA-Z][^>]*>")
 
@@ -77,7 +77,7 @@ def _lines(rows: list[dict] | None) -> list[str]:
 
 def template_text(pieces: list[dict], momento: str, day: date, nxt: date) -> str:
     """Deterministic recap (Oracle unavailable): the pieces as a short HTML list, Telegram-safe."""
-    head = tr("Com'è andata oggi") if momento == "sera" else tr("Ieri, {0}", day_label(day))
+    head = tr("How today went") if momento == "sera" else tr("Yesterday, {0}", day_label(day))
     out = [f"<b>{head}</b>"]
     upcoming: list[str] = []
     for p in pieces:
@@ -92,7 +92,7 @@ def template_text(pieces: list[dict], momento: str, day: date, nxt: date) -> str
         if nxt_rows:
             upcoming.append(f"{title}: " + "; ".join(html.escape(t) for t in nxt_rows))
     if upcoming:
-        label = tr("Domani") if momento == "sera" else tr("Oggi")
+        label = tr("Tomorrow") if momento == "sera" else tr("Today")
         out.append(f"<b>{label}, {day_label(nxt)}</b>\n" + "\n".join(f"• {u}" for u in upcoming))
     return "\n\n".join(out)
 
@@ -107,8 +107,8 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
                 facts.append(f"[{title}|{tag}] {t}")
         if p.get("note"):
             facts.append(f"[{title}|nota] {p['note']}")
-    when = (tr("oggi={0} domani={1}", day_label(day), day_label(nxt)) if momento == "sera"
-            else tr("ieri={0} oggi={1}", day_label(day), day_label(nxt)))
+    when = (tr("today={0} tomorrow={1}", day_label(day), day_label(nxt)) if momento == "sera"
+            else tr("yesterday={0} today={1}", day_label(day), day_label(nxt)))
     tone = ("friendly, warm, one short opening sentence" if style == "amichevole"
             else "dry, facts only, no courtesy phrases")
     return (
@@ -216,7 +216,7 @@ class RecapComposer:
 
     # ── 3. deliver + store ────────────────────────────────────────────────────
     def deliver(self, text: str, momento: str, day: date, actions: list[dict] | None = None) -> bool:
-        title = tr("Recap della sera") if momento == "sera" else tr("Recap del mattino")
+        title = tr("Evening recap") if momento == "sera" else tr("Morning recap")
         event = {"event_type": "service.action_required", "domain": "system",
                  "entity_id": f"athena-recap-{day.isoformat()}-{momento}",
                  "payload": {"kind": "athena.recap", "service": "athena", "source": "athena", "domain": "recap",

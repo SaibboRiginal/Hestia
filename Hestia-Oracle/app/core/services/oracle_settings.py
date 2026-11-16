@@ -31,9 +31,9 @@ BRAIN_MODE = "oracle.brain.mode"
 BRAIN_AGENT = "oracle.brain.agent"
 BRAIN_MODEL = "oracle.brain.model"
 BRAIN_FALLBACK = "oracle.brain.fallback"
-BRAIN_MODES = [("interna", "Interna"), ("esterna", "Esterna")]
-BRAIN_AGENTS = [("claude", "Claude Code (abbonamento)"), ("codex", "Codex (ChatGPT)")]
-BRAIN_FALLBACKS = [("interna", "Rifai il turno in modalità interna"), ("nessuno", "Nessuno: dimmi che non ha risposto")]
+BRAIN_MODES = [("interna", "Internal"), ("esterna", "External")]
+BRAIN_AGENTS = [("claude", "Claude Code (subscription)"), ("codex", "Codex (ChatGPT)")]
+BRAIN_FALLBACKS = [("interna", "Redo the turn in internal mode"), ("nessuno", "None: tell me it did not answer")]
 
 settings = SettingsClient("oracle")
 
@@ -42,43 +42,33 @@ def _definitions() -> list[dict]:
     from core.services.llm_chains import DEFAULT_CHAINS
     from core.services.llm_providers import DEFAULT_PROVIDERS
     return [
-        setting(PROVIDERS_KEY, "Fornitori", "object", DEFAULT_PROVIDERS, group="Modelli", order=0,
+        setting(PROVIDERS_KEY, "Providers", "object", DEFAULT_PROVIDERS, group="Models", order=0,
                 editor="llm_providers",
-                help="Dove stanno i modelli: nome, standard (Ollama, compatibile OpenAI, compatibile Anthropic, "
-                     "Gemini, Claude abbonamento) e indirizzo. La chiave sta solo nel file .env come "
-                     "ORACLE_KEY_<NOME>."),
-        setting(CHAINS_KEY, "Catene di modelli", "object", DEFAULT_CHAINS, group="Modelli", order=1,
+                help="Where the models are: name, standard (Ollama, OpenAI compatible, Anthropic compatible, Gemini, Claude subscription) and address. The key lives only in the .env file as ORACLE_KEY_<NAME>."),
+        setting(CHAINS_KEY, "Model chains", "object", DEFAULT_CHAINS, group="Models", order=1,
                 editor="llm_chains",
-                help="Liste ordinate fornitore/modello, come font-family: se un modello finisce la quota passo "
-                     "al successivo e lo salto finché la quota non si ricarica."),
-        setting(USECASES_KEY, "Usi dei moduli", "object", {}, group="Modelli", order=2, editor="llm_usecases",
-                help="Per ogni uso dichiarato da un modulo: catena, modalità e ragionamento. Vuoto = la scelta "
-                     "suggerita dal modulo."),
-        setting(CHAIN_COOLDOWN, "Pausa di un modello senza quota", "int", 60, group="Modelli", order=3,
+                help="Ordered provider/model lists, like font-family: if a model runs out of quota I move to the next and skip it until the quota refills."),
+        setting(USECASES_KEY, "Module uses", "object", {}, group="Models", order=2, editor="llm_usecases",
+                help="For each use declared by a module: chain, mode and reasoning. Empty = the choice suggested by the module."),
+        setting(CHAIN_COOLDOWN, "Pause of a model without quota", "int", 60, group="Models", order=3,
                 min=1, max=1440, unit="min", advanced=True,
-                help="Quando il fornitore non dice quando si ricarica la quota (Gemini giornaliero: mezzanotte "
-                     "del Pacifico)."),
-        setting(BRAIN_MODE, "Modalità del cervello", "enum", "interna", group="Modelli", order=4, options=BRAIN_MODES,
-                help="Interna: Oracle ragiona con le catene di modelli (classificatore, Rapida/Pensata/CoT, ciclo "
-                     "agente). Esterna: un agente (Claude Code, Codex) fa il ciclo con gli strumenti di Hestia; "
-                     "Oracle prepara il contesto, salva i messaggi e la memoria. Ogni uso può scegliere la sua."),
-        setting(BRAIN_AGENT, "Agente esterno", "enum", "claude", group="Modelli", order=5, options=BRAIN_AGENTS,
-                help="Serve il suo login: Claude Code con CLAUDE_CODE_OAUTH_TOKEN, Codex con `codex login` "
-                     "(immagine con ORACLE_INSTALL_CODEX=1)."),
-        setting(BRAIN_MODEL, "Modello dell'agente esterno", "string", "sonnet", group="Modelli", order=6,
-                help="Es. sonnet, opus (Claude Code) o gpt-5-codex (Codex). Vuoto = quello predefinito dell'agente."),
-        setting(BRAIN_FALLBACK, "Se l'agente esterno non risponde", "enum", "interna", group="Modelli", order=7,
+                help="When the provider does not say when the quota refills (Gemini daily: Pacific midnight)."),
+        setting(BRAIN_MODE, "Brain mode", "enum", "interna", group="Models", order=4, options=BRAIN_MODES,
+                help="Internal: Oracle reasons with the model chains (classifier, Quick/Thoughtful/CoT, agent loop). External: an agent (Claude Code, Codex) runs the loop with Hestia's tools; Oracle prepares the context, saves messages and memory. Each use can choose its own."),
+        setting(BRAIN_AGENT, "External agent", "enum", "claude", group="Models", order=5, options=BRAIN_AGENTS,
+                help="It needs its login: Claude Code with CLAUDE_CODE_OAUTH_TOKEN, Codex with `codex login` (image with ORACLE_INSTALL_CODEX=1)."),
+        setting(BRAIN_MODEL, "External agent model", "string", "sonnet", group="Models", order=6,
+                help="E.g. sonnet, opus (Claude Code) or gpt-5-codex (Codex). Empty = the agent's default."),
+        setting(BRAIN_FALLBACK, "If the external agent does not answer", "enum", "interna", group="Models", order=7,
                 options=BRAIN_FALLBACKS),
-        setting(USAGE_RETENTION, "Conserva l'uso dei modelli per", "int", 90, group="Uso", order=0, min=1,
-                max=3650, unit="giorni", help="Ogni chiamata a un modello resta nel pannello Uso per questi giorni."),
-        setting(PRICING_KEY, "Prezzi dei modelli", "object", {}, group="Uso", order=1,
-                help="Dollari per milione di token, per «fornitore/modello» (o solo il modello): "
-                     "{\"gemini/gemini-2.5-flash\": {\"in\": 0.3, \"out\": 2.5, \"cached\": 0.075}}. "
-                     "Serve solo dove il fornitore non dice il costo; i modelli locali costano 0."),
+        setting(USAGE_RETENTION, "Keep model usage for", "int", 90, group="Usage", order=0, min=1,
+                max=3650, unit="days", help="Each model call stays in the Usage panel for these days."),
+        setting(PRICING_KEY, "Model prices", "object", {}, group="Usage", order=1,
+                help="Dollars per million tokens, per «provider/model» (or just the model): {\"gemini/gemini-2.5-flash\": {\"in\": 0.3, \"out\": 2.5, \"cached\": 0.075}}. Only needed where the provider does not say the cost; local models cost 0."),
     ]
 
 
-TONES = [("warm", "Caldo"), ("neutral", "Neutro"), ("direct", "Diretto"), ("formal", "Formale")]
+TONES = [("warm", "Warm"), ("neutral", "Neutral"), ("direct", "Direct"), ("formal", "Formal")]
 _TONE_SENTENCE = {"warm": "Tone: warm and friendly.", "neutral": "",
                   "direct": "Tone: direct, essential, no preambles.", "formal": "Tone: formal."}
 TONE, INSTRUCTIONS = "oracle.chat.tone", "oracle.chat.instructions"
@@ -86,19 +76,18 @@ MODE = "oracle.chat.mode"
 PROFILE_MAX_TOKENS = "oracle.chat.profile_max_tokens"
 # Conversation modes (process, not brain): quick = one call no tools · auto = classifier decides ·
 # thinking = always agent loop + model reasoning · cot = deep reasoning, more turns, step-by-step plan.
-MODES = [("auto", "Auto"), ("quick", "Rapida"), ("thinking", "Pensata"), ("cot", "CoT · passo passo")]
+MODES = [("auto", "Auto"), ("quick", "Quick"), ("thinking", "Thoughtful"), ("cot", "CoT · step by step")]
 _MODE_ALIASES = {"fast": "quick", "rapida": "quick", "pensata": "thinking", "deep": "cot"}
 
 # Personal chat settings (scope user): same values on every client; profile = default for new sessions,
 # a client or a single conversation can override (session → client → profile → default).
 _CHAT = [
-    setting(TONE, "Tono delle risposte", "enum", "warm", group="Chat", scope="user", options=TONES, order=0,
-            help="Come ti risponde Hestia, su ogni client."),
-    setting(INSTRUCTIONS, "Istruzioni personali", "text", "", group="Chat", scope="user", order=1,
-            help="Aggiunte a ogni conversazione (es. «rispondi sempre in breve»)."),
-    setting(MODE, "Modalità di conversazione", "enum", "auto", group="Chat", scope="user", options=MODES, order=2,
-            help="Rapida: una risposta senza strumenti. Auto: decide Hestia. Pensata: ragiona e usa gli "
-                 "strumenti. CoT: ragionamento profondo passo passo (più lento)."),
+    setting(TONE, "Answer tone", "enum", "warm", group="Chat", scope="user", options=TONES, order=0,
+            help="How Hestia answers you, on every client."),
+    setting(INSTRUCTIONS, "Personal instructions", "text", "", group="Chat", scope="user", order=1,
+            help="Added to every conversation (e.g. «always answer briefly»)."),
+    setting(MODE, "Conversation mode", "enum", "auto", group="Chat", scope="user", options=MODES, order=2,
+            help="Quick: one answer without tools. Auto: Hestia decides. Thoughtful: reasons and uses tools. CoT: deep step by step reasoning (slower)."),
 ]
 
 # Context & local runtimes (dossier docs/work/2026-10-10-oracle-local-context). Endpoints stay in env.
@@ -107,41 +96,33 @@ KEEP_ALIVE = "oracle.provider.ollama.keep_alive"
 COMPACT_THRESHOLD = "oracle.context.compact_threshold"
 STUB_AFTER_TURNS = "oracle.context.tool_result_stub_after_turns"
 OPENAI_CACHE_PROMPT = "oracle.provider.openai.cache_prompt"
-_KEEP_ALIVE = [("5m", "5 minuti"), ("30m", "30 minuti"), ("2h", "2 ore"), ("always", "Sempre")]
+_KEEP_ALIVE = [("5m", "5 minutes"), ("30m", "30 minutes"), ("2h", "2 hours"), ("always", "Always")]
 
 AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
 
 _CONTEXT = [
-    setting(AWARENESS_ITEMS, "Consapevolezza · cose recenti per riga", "int", 3, group="Contesto", order=21,
+    setting(AWARENESS_ITEMS, "Awareness · recent things per line", "int", 3, group="Count the actions in the WebUI", order=21,
             min=0, max=6, unit="elementi",
-            help="Nelle tue conversazioni Hestia sa il tuo umore di oggi, le ultime notifiche che ti ha mandato e "
-                 "le ultime cose che hai aperto: quante di ciascuna (0 = nessuna)."),
-    setting(PROFILE_MAX_TOKENS, "Hestia in altre AI · spazio massimo", "int", 1500, group="Contesto", order=20,
+            help="In your conversations Hestia knows your mood today, the last notifications it sent you and the last things you opened: how many of each (0 = none)."),
+    setting(PROFILE_MAX_TOKENS, "Hestia in other AIs · most space", "int", 1500, group="Count the actions in the WebUI", order=20,
             min=300, max=8000, unit="token",
-            help="Quanto pesa al massimo la personalità di Hestia (con istruzioni e ricordi) quando la attivi "
-                 "dentro un'altra AI, per esempio Claude."),
-    setting(NUM_CTX, "Modello locale · finestra di contesto", "int", 0, group="Contesto", min=0, max=262144,
+            help="How much Hestia's personality weighs at most (with instructions and memories) when you turn it on inside another AI, for example Claude."),
+    setting(NUM_CTX, "Local model · context window", "int", 0, group="Count the actions in the WebUI", min=0, max=262144,
             unit="token", order=0,
-            help="0 = automatica: Hestia usa la finestra impostata nel programma che fa girare il modello "
-                 "(Ollama, LM Studio, llama-server) e la legge da lì. Un numero la forza da qui: più alto = "
-                 "ricorda di più ma usa più VRAM; cambiarlo ricarica il modello."),
-    setting(KEEP_ALIVE, "Ollama · modello in memoria", "enum", "30m", group="Contesto", options=_KEEP_ALIVE,
-            order=1, help="Quanto resta caricato il modello dopo l'ultima richiesta: evita la partenza a freddo."),
-    setting(COMPACT_THRESHOLD, "Compatta il contesto oltre", "float", 0.8, group="Contesto", min=0.3, max=0.95,
-            order=2, advanced=True, help="Frazione della finestra oltre la quale la conversazione viene riassunta."),
-    setting(STUB_AFTER_TURNS, "Accorcia i risultati degli strumenti dopo", "int", 2, group="Contesto", min=0,
+            help="0 = automatic: Hestia uses the window set in the program that runs the model (Ollama, LM Studio, llama-server) and reads it from there. A number forces it from here: higher = remembers more but uses more VRAM; changing it reloads the model."),
+    setting(KEEP_ALIVE, "Ollama · model in memory", "enum", "30m", group="Count the actions in the WebUI", options=_KEEP_ALIVE,
+            order=1, help="How long the model stays loaded after the last request: avoids a cold start."),
+    setting(COMPACT_THRESHOLD, "Compact the context beyond", "float", 0.8, group="Count the actions in the WebUI", min=0.3, max=0.95,
+            order=2, advanced=True, help="Fraction of the window beyond which the conversation is summarised."),
+    setting(STUB_AFTER_TURNS, "Shorten tool results after", "int", 2, group="Count the actions in the WebUI", min=0,
             max=20, unit="passi", order=3, advanced=True,
-            help="Nei ragionamenti lunghi i risultati più vecchi di N passi diventano una riga di riepilogo "
-                 "quando il contesto si riempie. 0 = mai."),
-    setting(OPENAI_CACHE_PROMPT, "Server compatibile OpenAI · riusa la cache del prompt", "bool", True,
-            group="Contesto", order=4, advanced=True,
-            help="Chiede a llama-server di riusare il prefisso già calcolato (cache_prompt). "
-                 "Disattivalo se il server rifiuta il campo."),
-    setting("oracle.provider.llamacpp.slots", "llama-server · conversazioni calde insieme", "int", 3,
-            group="Contesto", min=2, max=16, unit="slot", order=5, advanced=True,
-            help="Deve essere uguale a --parallel del server. Lo slot 0 serve le chiamate senza chat (classificatore, "
-                 "moduli); gli altri tengono il contesto di una chat ciascuno e lo salvano su disco quando passano "
-                 "a un'altra."),
+            help="In long reasoning, results older than N steps become a summary line when the context fills up. 0 = never."),
+    setting(OPENAI_CACHE_PROMPT, "OpenAI compatible server · reuse the prompt cache", "bool", True,
+            group="Count the actions in the WebUI", order=4, advanced=True,
+            help="Asks llama-server to reuse the prefix already computed (cache_prompt). Turn it off if the server refuses the field."),
+    setting("oracle.provider.llamacpp.slots", "llama-server · warm conversations together", "int", 3,
+            group="Count the actions in the WebUI", min=2, max=16, unit="slot", order=5, advanced=True,
+            help="Must equal the server's --parallel. Slot 0 serves the calls without a chat (classifier, modules); the others each hold the context of one chat and save it to disk when they switch to another."),
 ]
 
 # ── Runtime tunables (were ORACLE_* / OLLAMA_* / DOC_* env vars) ─────────────────────────────
@@ -164,10 +145,10 @@ TODAY_AGENDA = "oracle.context.today_agenda"
 TIMEOUTS = {
     "foreground_chat": ("Risposta in chat", 8),
     "action_selection": ("Scelta dell'azione", 12),
-    "action_service_route": ("Azione su un modulo", 25),
-    "memory_extraction": ("Estrazione della memoria", 10),
+    "action_service_route": ("Action on a module", 25),
+    "memory_extraction": ("Memory extraction", 10),
     "background_compaction": ("Compattazione in background", 8),
-    "notification_formatting": ("Testo delle notifiche", 12),
+    "notification_formatting": ("Notification text", 12),
 }
 GATEWAY_CHAT_TIMEOUT = "oracle.timeouts.gateway_chat"
 # Providers (endpoints stay env)
@@ -201,7 +182,7 @@ DOC_SEARCH_THRESHOLD = "oracle.documents.search_threshold"
 VISION_MODELS = "oracle.documents.vision_models"
 AUDIO_MODELS = "oracle.documents.audio_models"
 # Prompt A/B experiments: surface → key prefix
-AB_SURFACES = {"alert_formatter": ("oracle.prompt_ab.alert", "Notifiche"),
+AB_SURFACES = {"alert_formatter": ("oracle.prompt_ab.alert", "Notifications"),
                "planner_behavior": ("oracle.prompt_ab.planner", "Pianificatore")}
 
 DEFAULT_PREFERENCE_DOMAINS = {
@@ -220,166 +201,160 @@ _DEFAULT_THINKING_FAMILIES = ["gemma4", "gemma3", "gemma", "qwen3", "deepseek-r1
                               "llama2", "llama3"]
 _DEFAULT_VISION = ["gemma-3", "gemma4", "gemma3", "gemini", "gpt-4o", "gpt-4-vision", "claude-3", "llava", "bakllava",
                    "moondream", "minicpm-v", "phi-3-vision", "phi3v", "qwen2-vl", "qwen-vl", "internvl"]
-_TOOL_MODES = [("auto", "Automatico"), ("native", "Nativo"), ("text", "Testo")]
+_TOOL_MODES = [("auto", "Automatic"), ("native", "Native"), ("text", "Text")]
 
 _AGENT = [
-    setting(MAX_TURNS, "Passi massimi per risposta", "int", 25, group="Agente", min=1, max=100, unit="passi",
-            order=0, help="Quante volte al massimo l'assistente usa gli strumenti prima di risponderti "
-                          "(la modalità CoT ne usa almeno 50)."),
-    setting(ASK_TIMEOUT, "Una domanda per te resta aperta per", "int", 24, group="Agente", min=1, max=720,
-            unit="ore", order=3, help="Quando l'assistente ti chiede qualcosa (scelta, conferma, testo libero), "
-                                      "dopo questo tempo senza risposta la domanda si chiude."),
-    setting(MAX_TOKENS, "Token massimi per risposta", "int", 0, group="Agente", min=0, max=2_000_000,
-            unit="token", order=1, advanced=True, help="Limite di token consumati in un ragionamento. 0 = nessun limite."),
-    setting(TOOL_RESULT_MAX_CHARS, "Lunghezza massima del risultato di uno strumento", "int", 2000,
-            group="Agente", min=200, max=50000, unit="caratteri", order=2, advanced=True,
-            help="Oltre questa lunghezza il risultato viene accorciato prima di darlo al modello."),
-    setting(EARLY_EXIT_NO_TOOL_TURNS, "Chiudi dopo passi senza strumenti", "int", 2, group="Agente", min=1,
+    setting(MAX_TURNS, "Most steps per answer", "int", 25, group="Agent", min=1, max=100, unit="passi",
+            order=0, help="How many times at most the assistant uses tools before answering you (CoT mode uses at least 50)."),
+    setting(ASK_TIMEOUT, "A question for you stays open for", "int", 24, group="Agent", min=1, max=720,
+            unit="hours", order=3, help="When the assistant asks you something (choice, confirmation, free text), after this time without an answer the question closes."),
+    setting(MAX_TOKENS, "Most tokens per answer", "int", 0, group="Agent", min=0, max=2_000_000,
+            unit="token", order=1, advanced=True, help="Limit of tokens used in one reasoning. 0 = no limit."),
+    setting(TOOL_RESULT_MAX_CHARS, "Longest tool result", "int", 2000,
+            group="Agent", min=200, max=50000, unit="caratteri", order=2, advanced=True,
+            help="Beyond this length the result is shortened before giving it to the model."),
+    setting(EARLY_EXIT_NO_TOOL_TURNS, "Close after steps without tools", "int", 2, group="Agent", min=1,
             max=10, unit="passi", order=3, advanced=True,
-            help="Se il modello non usa strumenti per questi passi di fila (e ha già fatto qualcosa), risponde."),
-    setting(MAX_PARALLEL_TOOLS, "Strumenti in parallelo", "int", 8, group="Agente", min=1, max=32, order=4,
-            advanced=True, help="Quanti strumenti possono girare insieme nello stesso passo."),
+            help="If the model uses no tools for these steps in a row (and has already done something), it answers."),
+    setting(MAX_PARALLEL_TOOLS, "Parallel tools", "int", 8, group="Agent", min=1, max=32, order=4,
+            advanced=True, help="How many tools can run together in the same step."),
     # Loop guard (core/services/loop_guard.py, Cindy 1): always on, these only shape it.
-    setting("oracle.agent.giri.ripetizioni", "Giri a vuoto · stessa chiamata di fila", "int", 4, group="Agente",
+    setting("oracle.agent.giri.ripetizioni", "Loops · same call in a row", "int", 4, group="Agent",
             min=2, max=20, order=5, advanced=True,
-            help="Se l'assistente rifà la stessa chiamata uguale tante volte di fila, smette e ti risponde con "
-                 "quello che ha."),
-    setting("oracle.agent.giri.finestra", "Giri a vuoto · chiamate guardate", "int", 12, group="Agente", min=6,
+            help="If the assistant makes the same identical call many times in a row, it stops and answers you with what it has."),
+    setting("oracle.agent.giri.finestra", "Loops · calls watched", "int", 12, group="Agent", min=6,
             max=50, order=6, advanced=True,
-            help="Ultime chiamate in cui cerco un ping-pong (A-B-A-B) o un giro che si ripete."),
-    setting("oracle.agent.giri.attesa_secondi", "Giri a vuoto · un'attesa vera dura almeno", "int", 30,
-            group="Agente", min=0, max=3600, unit="s", order=7, advanced=True,
-            help="Una chiamata ripetuta dopo questo tempo è un controllo («ricontrollo tra poco»), non un giro."),
-    setting("oracle.agent.giri.verifiche", "Giri a vuoto · verifiche col modello leggero", "int", 3,
-            group="Agente", min=0, max=10, order=8, advanced=True,
-            help="Al sospetto un modello leggero guarda le chiamate e dice se sta aspettando o girando. "
-                 "0 = mi fermo subito."),
+            help="Last calls in which I look for a ping-pong (A-B-A-B) or a repeating loop."),
+    setting("oracle.agent.giri.attesa_secondi", "Loops · a real wait lasts at least", "int", 30,
+            group="Agent", min=0, max=3600, unit="s", order=7, advanced=True,
+            help="A call repeated after this time is a check («checking again shortly»), not a loop."),
+    setting("oracle.agent.giri.verifiche", "Loops · checks with the light model", "int", 3,
+            group="Agent", min=0, max=10, order=8, advanced=True,
+            help="When in doubt a light model looks at the calls and says whether it is waiting or looping. 0 = I stop at once."),
     # Conversation goal (core/services/conversation_goal.py, Cindy 23).
-    setting("oracle.obiettivo.giri", "Obiettivo · giri in tutto", "int", 8, group="Agente", min=1, max=50,
-            order=9, help="Quanti giri di lavoro in tutto l'assistente fa su un obiettivo della conversazione."),
-    setting("oracle.obiettivo.giri_per_risposta", "Obiettivo · giri dopo ogni risposta", "int", 3, group="Agente",
+    setting("oracle.obiettivo.giri", "Goal · rounds in total", "int", 8, group="Agent", min=1, max=50,
+            order=9, help="How many work rounds in total the assistant does on a conversation goal."),
+    setting("oracle.obiettivo.giri_per_risposta", "Goal · rounds after each answer", "int", 3, group="Agent",
             min=1, max=10, order=9, advanced=True,
-            help="Dopo aver risposto a un tuo messaggio, quanti giri fa sull'obiettivo prima di aggiornarti."),
-    setting(HISTORY_LIMIT, "Messaggi precedenti nel contesto", "int", 6, group="Contesto", min=1, max=100,
-            unit="messaggi", order=10, help="Quanti messaggi della conversazione l'assistente rilegge a ogni risposta."),
-    setting(HISTORY_CHAR_LIMIT, "Lunghezza massima di un messaggio precedente", "int", 500, group="Contesto",
+            help="After answering one of your messages, how many rounds it does on the goal before updating you."),
+    setting(HISTORY_LIMIT, "Previous messages in the context", "int", 6, group="Count the actions in the WebUI", min=1, max=100,
+            unit="messaggi", order=10, help="How many conversation messages the assistant rereads at each answer."),
+    setting(HISTORY_CHAR_LIMIT, "Longest previous message", "int", 500, group="Count the actions in the WebUI",
             min=50, max=20000, unit="caratteri", order=11, advanced=True,
-            help="I messaggi vecchi più lunghi vengono accorciati nel contesto."),
-    setting(ENTITIES_LIMIT, "Elementi dei moduli nel contesto", "int", 12, group="Contesto", min=1, max=100,
-            order=12, advanced=True, help="Quanti elementi trovati nei moduli (annunci, eventi…) entrano nell'analisi."),
-    setting(FIELD_CHAR_LIMIT, "Lunghezza massima di un campo", "int", 280, group="Contesto", min=50, max=5000,
-            unit="caratteri", order=13, advanced=True, help="Ogni campo di un elemento viene accorciato a questa lunghezza."),
-    setting(COMPACT_TRIGGER, "Riassumi la conversazione oltre", "int", 20, group="Contesto", min=6, max=500,
+            help="Longer old messages are shortened in the context."),
+    setting(ENTITIES_LIMIT, "Module items in the context", "int", 12, group="Count the actions in the WebUI", min=1, max=100,
+            order=12, advanced=True, help="How many items found in the modules (listings, events…) go into the analysis."),
+    setting(FIELD_CHAR_LIMIT, "Longest field", "int", 280, group="Count the actions in the WebUI", min=50, max=5000,
+            unit="caratteri", order=13, advanced=True, help="Each field of an item is shortened to this length."),
+    setting(COMPACT_TRIGGER, "Summarise the conversation beyond", "int", 20, group="Count the actions in the WebUI", min=6, max=500,
             unit="messaggi", order=14, advanced=True,
-            help="Oltre questo numero di messaggi la parte vecchia della conversazione viene riassunta."),
-    setting(COMPACT_KEEP, "Messaggi recenti da non riassumere", "int", 6, group="Contesto", min=2, max=50,
-            unit="messaggi", order=15, advanced=True, help="Gli ultimi messaggi restano interi quando si riassume."),
-    setting(TODAY_AGENDA, "Agenda di oggi nel contesto", "bool", True, group="Contesto", order=16,
-            help="A ogni risposta l'assistente legge gli impegni di oggi dal calendario (qualche token in più)."),
+            help="Beyond this number of messages the old part of the conversation is summarised."),
+    setting(COMPACT_KEEP, "Recent messages not to summarise", "int", 6, group="Count the actions in the WebUI", min=2, max=50,
+            unit="messaggi", order=15, advanced=True, help="The latest messages stay whole when summarising."),
+    setting(TODAY_AGENDA, "Today's agenda in the context", "bool", True, group="Count the actions in the WebUI", order=16,
+            help="At each answer the assistant reads today's commitments from the calendar (a few more tokens)."),
 ]
 _TIMEOUTS = [
-    setting(f"oracle.timeouts.{name}", f"Tempo massimo · {label.lower()}", "int", default, group="Tempi",
+    setting(f"oracle.timeouts.{name}", f"Tempo massimo · {label.lower()}", "int", default, group="Timings",
             min=1, max=600, unit="s", order=i, advanced=True,
-            help="Oltre questo tempo il passaggio viene saltato o si passa al piano di riserva.")
+            help="Beyond this time the step is skipped or the backup plan is used.")
     for i, (name, (label, default)) in enumerate(TIMEOUTS.items())
 ] + [
-    setting(GATEWAY_CHAT_TIMEOUT, "Tempo massimo · richieste di Forge al modello", "int", 600, group="Tempi",
+    setting(GATEWAY_CHAT_TIMEOUT, "Longest time · Forge requests to the model", "int", 600, group="Timings",
             min=30, max=3600, unit="s", order=20, advanced=True,
-            help="Una richiesta di Forge al modello (uso forge.codice) che supera questo tempo fallisce."),
-    setting(OLLAMA_TIMEOUT, "Tempo massimo · risposta di Ollama", "int", 120, group="Tempi", min=10, max=1800,
-            unit="s", order=21, help="Quanto aspetto una risposta del modello locale."),
-    setting(OLLAMA_EMBED_TIMEOUT, "Tempo massimo · embedding di Ollama", "int", 60, group="Tempi", min=5,
+            help="A Forge request to the model (use forge.codice) that exceeds this time fails."),
+    setting(OLLAMA_TIMEOUT, "Longest time · Ollama answer", "int", 120, group="Timings", min=10, max=1800,
+            unit="s", order=21, help="How long I wait for an answer from the local model."),
+    setting(OLLAMA_EMBED_TIMEOUT, "Longest time · Ollama embedding", "int", 60, group="Timings", min=5,
             max=600, unit="s", order=22, advanced=True),
-    setting(LLM_RETRIES, "Tentativi verso il modello", "int", 3, group="Tempi", min=1, max=10, order=23,
-            advanced=True, help="Quante volte riprovo una chiamata al modello che fallisce."),
-    setting(LLM_RETRY_DELAY, "Attesa tra i tentativi", "float", 1.0, group="Tempi", min=0.1, max=60, unit="s",
-            order=24, advanced=True, help="Prima attesa; raddoppia a ogni nuovo tentativo."),
+    setting(LLM_RETRIES, "Attempts towards the model", "int", 3, group="Timings", min=1, max=10, order=23,
+            advanced=True, help="How many times I retry a failing model call."),
+    setting(LLM_RETRY_DELAY, "Wait between attempts", "float", 1.0, group="Timings", min=0.1, max=60, unit="s",
+            order=24, advanced=True, help="First wait; it doubles at each new attempt."),
 ]
 _PROVIDER = [
-    setting(OLLAMA_TOOL_MODE, "Ollama · modo di chiamare gli strumenti", "enum", "auto", group="Contesto",
+    setting(OLLAMA_TOOL_MODE, "Ollama · way to call tools", "enum", "auto", group="Count the actions in the WebUI",
             options=_TOOL_MODES, order=5, advanced=True,
-            help="Nativo: usa le chiamate strumenti di Ollama. Testo: il modello le scrive nel testo. "
-                 "Automatico: nativo, testo se il modello non lo supporta."),
-    setting(THINKING_FAMILIES, "Ollama · famiglie di modelli che ragionano", "list", _DEFAULT_THINKING_FAMILIES,
-            group="Contesto", order=6, advanced=True,
-            help="Con ragionamento «Automatico», un modello di queste famiglie ragiona prima di rispondere."),
+            help="Native: uses Ollama tool calls. Text: the model writes them in the text. Automatic: native, text if the model does not support it."),
+    setting(THINKING_FAMILIES, "Ollama · model families that reason", "list", _DEFAULT_THINKING_FAMILIES,
+            group="Count the actions in the WebUI", order=6, advanced=True,
+            help="With «Automatic» reasoning, a model of these families reasons before answering."),
 ]
 _MEMORY = [
-    setting(NOTICE_WAIT, "Attesa per gli avvisi di memoria", "float", 8.0, group="Memoria", min=0, max=60,
+    setting(NOTICE_WAIT, "Wait for memory notices", "float", 8.0, group="Memory", min=0, max=60,
             unit="s", order=0, advanced=True,
-            help="Dopo la risposta aspetto al massimo questo tempo per dirti cosa ho memorizzato."),
-    setting(DOMAIN_THRESHOLD, "Somiglianza per assegnare un'area", "float", 0.55, group="Memoria", min=0.1,
+            help="After the answer I wait at most this long to tell you what I memorised."),
+    setting(DOMAIN_THRESHOLD, "Similarity to assign an area", "float", 0.55, group="Memory", min=0.1,
             max=0.99, order=1, advanced=True,
-            help="Una preferenza va in un'area (cibo, lavoro…) se le somiglia almeno così. Più alto = più severo."),
-    setting(PREFERENCE_DOMAINS, "Aree delle preferenze", "object", DEFAULT_PREFERENCE_DOMAINS, group="Memoria",
+            help="A preference goes into an area (food, work…) if it resembles it at least this much. Higher = stricter."),
+    setting(PREFERENCE_DOMAINS, "Preference areas", "object", DEFAULT_PREFERENCE_DOMAINS, group="Memory",
             order=2, advanced=True,
-            help="Nome dell'area → descrizione (in inglese) usata per riconoscerla. «general» c'è sempre."),
-    setting(FORCE_OWNER_TARGET, "Avvisi delle sottoscrizioni sempre a te", "bool", True, group="Memoria",
+            help="Area name → description (in English) used to recognise it. «general» is always there."),
+    setting(FORCE_OWNER_TARGET, "Subscription alerts always to you", "bool", True, group="Memory",
             order=3, advanced=True,
-            help="Gli avvisi che chiedi in chat («avvisami quando…») arrivano sempre a te, "
-                 "ignorando altre destinazioni proposte dal modello."),
+            help="The alerts you ask for in chat («tell me when…») always come to you, ignoring other destinations the model proposes."),
 ]
 _APPROVAL = [
-    setting(APPROVAL_ENABLED, "Chiedi conferma per le azioni importanti", "bool", True, group="Conferme",
+    setting(APPROVAL_ENABLED, "Ask confirmation for important actions", "bool", True, group="Confirmations",
             oracle="read", order=0,
-            help="Prima di cancellare, modificare o fare azioni su più elementi l'assistente ti chiede conferma."),
-    setting(APPROVAL_TTL, "Validità di una richiesta di conferma", "int", 600, group="Conferme", min=30,
+            help="Before deleting, changing or acting on several items the assistant asks you to confirm."),
+    setting(APPROVAL_TTL, "Validity of a confirmation request", "int", 600, group="Confirmations", min=30,
             max=86400, unit="s", oracle="read", order=1, advanced=True,
             depends_on={"key": APPROVAL_ENABLED, "equals": True},
-            help="Dopo questo tempo una richiesta di conferma senza risposta scade."),
-    setting(APPROVAL_BULK_MIN, "Conferma se l'azione tocca almeno", "int", 2, group="Conferme", min=1, max=100,
+            help="After this time a confirmation request with no answer expires."),
+    setting(APPROVAL_BULK_MIN, "Confirm if the action touches at least", "int", 2, group="Confirmations", min=1, max=100,
             unit="elementi", oracle="read", order=2, advanced=True,
             depends_on={"key": APPROVAL_ENABLED, "equals": True},
-            help="Un'azione ripetuta su almeno questi elementi chiede conferma."),
-    setting(APPROVAL_METHODS, "Tipi di richiesta da confermare", "list", ["DELETE", "PUT", "PATCH"],
-            group="Conferme", oracle="read", order=3, advanced=True,
+            help="An action repeated on at least these items asks for confirmation."),
+    setting(APPROVAL_METHODS, "Request types to confirm", "list", ["DELETE", "PUT", "PATCH"],
+            group="Confirmations", oracle="read", order=3, advanced=True,
             depends_on={"key": APPROVAL_ENABLED, "equals": True},
-            help="Metodi HTTP che chiedono sempre conferma (DELETE = cancella, PUT/PATCH = modifica)."),
-    setting(APPROVAL_COMMANDS, "Comandi da confermare sempre", "list", [], group="Conferme", oracle="read",
+            help="HTTP methods that always ask confirmation (DELETE = delete, PUT/PATCH = change)."),
+    setting(APPROVAL_COMMANDS, "Commands to always confirm", "list", [], group="Confirmations", oracle="read",
             order=4, advanced=True, depends_on={"key": APPROVAL_ENABLED, "equals": True},
-            help="Nomi di comandi che chiedono sempre conferma, qualunque sia il tipo."),
+            help="Names of commands that always ask confirmation, whatever their type."),
 ]
 _RUNTIME = [
-    setting(HINTS_ENABLED, "Usa i suggerimenti di Athena", "bool", True, group="Memoria", order=9,
-            help="Le osservazioni di Athena (cosa ti interessa ora) guidano le risposte. Spento = ignorate."),
-    setting(HINTS_TTL, "Durata dei suggerimenti di Athena", "int", 7200, group="Memoria", min=60, max=604800,
-            unit="s", order=10, advanced=True, help="Per quanto tempo un suggerimento di Athena resta valido."),
-    setting(HINTS_MAX, "Suggerimenti di Athena tenuti", "int", 300, group="Memoria", min=10, max=5000,
+    setting(HINTS_ENABLED, "Use Athena's suggestions", "bool", True, group="Memory", order=9,
+            help="Athena's observations (what interests you now) guide the answers. Off = ignored."),
+    setting(HINTS_TTL, "Duration of Athena's suggestions", "int", 7200, group="Memory", min=60, max=604800,
+            unit="s", order=10, advanced=True, help="How long an Athena suggestion stays valid."),
+    setting(HINTS_MAX, "Athena suggestions kept", "int", 300, group="Memory", min=10, max=5000,
             order=11, advanced=True),
-    setting(SCHEMAS_CACHE_TTL, "Cache degli schemi dei moduli", "int", 30, group="Diagnostica", min=0,
+    setting(SCHEMAS_CACHE_TTL, "Module schema cache", "int", 30, group="Diagnostics", min=0,
             max=3600, unit="s", order=10, advanced=True),
-    setting(TOOL_REGISTRY_TTL, "Cache degli strumenti dei moduli", "int", 120, group="Diagnostica", min=0,
+    setting(TOOL_REGISTRY_TTL, "Module tool cache", "int", 120, group="Diagnostics", min=0,
             max=3600, unit="s", order=11, advanced=True,
-            help="Ogni quanto rileggo dai moduli l'elenco degli strumenti disponibili."),
-    setting(TASKS_MAX, "Attività in background ricordate", "int", 500, group="Diagnostica", min=50, max=10000,
+            help="How often I reread the list of available tools from the modules."),
+    setting(TASKS_MAX, "Background tasks remembered", "int", 500, group="Diagnostics", min=50, max=10000,
             order=12, advanced=True),
 ]
 _DOCUMENTS = [
-    setting(DOC_MAX_ARCHIVE_MB, "Dimensione massima per archiviare un file", "int", 10, group="Documenti",
+    setting(DOC_MAX_ARCHIVE_MB, "Largest size to archive a file", "int", 10, group="Documents",
             min=1, max=500, unit="MB", order=0,
-            help="I file più grandi vengono analizzati ma non salvati nell'archivio dei documenti."),
-    setting(DOC_SEARCH_THRESHOLD, "Distanza massima nella ricerca documenti", "float", 1.2, group="Documenti",
+            help="Larger files are analysed but not saved in the document archive."),
+    setting(DOC_SEARCH_THRESHOLD, "Longest distance in document search", "float", 1.2, group="Documents",
             min=0.1, max=2.0, order=1, advanced=True,
-            help="Più basso = solo documenti molto pertinenti; più alto = più risultati."),
-    setting(VISION_MODELS, "Modelli che leggono immagini", "list", _DEFAULT_VISION, group="Documenti",
-            order=3, advanced=True, help="Inizio del nome dei modelli che possono guardare immagini e PDF."),
-    setting(AUDIO_MODELS, "Modelli che ascoltano l'audio", "list", ["gemini-1.5", "gemini-2"], group="Documenti",
-            order=4, advanced=True, help="Inizio del nome dei modelli che capiscono l'audio senza trascrizione."),
+            help="Lower = only very relevant documents; higher = more results."),
+    setting(VISION_MODELS, "Models that read images", "list", _DEFAULT_VISION, group="Documents",
+            order=3, advanced=True, help="Start of the name of the models that can look at images and PDFs."),
+    setting(AUDIO_MODELS, "Models that listen to audio", "list", ["gemini-1.5", "gemini-2"], group="Documents",
+            order=4, advanced=True, help="Start of the name of the models that understand audio without transcription."),
 ]
 _AB = []
 for _i, (_surface, (_prefix, _label)) in enumerate(AB_SURFACES.items()):
     _AB += [
-        setting(f"{_prefix}.enabled", f"Esperimento prompt · {_label}", "bool", False, group="Esperimenti",
+        setting(f"{_prefix}.enabled", f"Esperimento prompt · {_label}", "bool", False, group="Experiments",
                 order=_i * 10, advanced=True,
-                help="Divide le richieste tra le varianti del prompt per confrontarle."),
+                help="Splits requests between prompt variants to compare them."),
         setting(f"{_prefix}.variants", f"Esperimento prompt · {_label} · varianti", "list",
-                ["control", "experimental"], group="Esperimenti", order=_i * 10 + 1, advanced=True),
+                ["control", "experimental"], group="Experiments", order=_i * 10 + 1, advanced=True),
         setting(f"{_prefix}.default", f"Esperimento prompt · {_label} · variante normale", "string", "control",
-                group="Esperimenti", order=_i * 10 + 2, advanced=True,
-                help="Usata quando l'esperimento è spento."),
+                group="Experiments", order=_i * 10 + 2, advanced=True,
+                help="Used when the experiment is off."),
         setting(f"{_prefix}.force", f"Esperimento prompt · {_label} · forza variante", "string", "",
-                group="Esperimenti", order=_i * 10 + 3, advanced=True,
-                help="Se indicata, usata sempre (anche a esperimento spento)."),
+                group="Experiments", order=_i * 10 + 3, advanced=True,
+                help="If set, always used (even with the experiment off)."),
     ]
 
 def _advanced_except_models(defs: list[dict]) -> list[dict]:

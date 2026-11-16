@@ -35,7 +35,7 @@ _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 OWNER = "chronos"
 PREFIX = "special."
 KINDS = ("birthday", "anniversary", "custom")
-KIND_LABEL = {"birthday": "Compleanno", "anniversary": "Anniversario", "custom": "Evento importante"}
+KIND_LABEL = {"birthday": "Birthday", "anniversary": "Anniversary", "custom": "Important event"}
 BIRTH_KEY = "special.birthday.owner"
 BIRTH_SETTING = "themis.personal.birth_date"
 DEFAULT_LEAD = 7
@@ -152,7 +152,7 @@ def sync_birthday(birth_date: Any) -> dict | None:
         logger.warning("event=special_birth_date_invalid value_len=%d", len(text))
         return None
     start = datetime(day.year, day.month, day.day, 9, 0, tzinfo=_tz())
-    rule = {"key": BIRTH_KEY, "type": "event", "title": tr("Il tuo compleanno"), "start_at": start.isoformat(),
+    rule = {"key": BIRTH_KEY, "type": "event", "title": tr("Your birthday"), "start_at": start.isoformat(),
             "end_at": (start + timedelta(hours=1)).isoformat(), "recurrence": "FREQ=YEARLY",
             "params": {"special": {"kind": "birthday", "lead_days": 0, "source": "impostazioni personali"}}}
     return agenda.register_rules(OWNER, [rule])[0]
@@ -166,14 +166,14 @@ def propose(*, title: str, day: str, kind: str = "custom", person: str = "", evi
             "lead_days": lead_days, "source": "proposta dell'assistente"}
     pid = uuid.uuid4().hex[:8]
     when = _parse_day(day).strftime("%d/%m")
-    text = tr("Ho trovato una data importante: <b>{0}</b> il {1}.", title, when)
+    text = tr("I found an important date: <b>{0}</b> on {1}.", title, when)
     if evidence:
         text += f"\n<i>{evidence[:300]}</i>"
-    text += tr("\nLa aggiungo ai tuoi eventi speciali?")
+    text += tr("\nShall I add it to your special events?")
     hermes_client.publish_event("assistant", "service.action_required", f"special.proposal.{pid}", {
-        "_title": tr("Evento speciale da aggiungere?"), "_message": text, "_source": tr("Calendario"), "_level": "info",
+        "_title": tr("Special event to add?"), "_message": text, "_source": tr("Calendar"), "_level": "info",
         "dedupe_key": f"special.proposal:{_slug(title)}:{body['day']}",
-        "_actions": [{"id": "add", "label": tr("Aggiungi"), "style": "success", "service": "chronos", "method": "POST",
+        "_actions": [{"id": "add", "label": tr("Add"), "style": "success", "service": "chronos", "method": "POST",
                       "path": "/api/special", "body": body},
                      {"id": "no", "label": "No", "service": "chronos", "method": "POST",
                       "path": "/api/special/proposal/declined", "body": {"title": title, "day": body["day"]}}]})
@@ -210,11 +210,11 @@ def run_daily(today: date | None = None) -> dict:
     for s in list_special(today):
         if s["in_days"] is None or s["status"] != "confirmed":
             continue
-        who = tr(" di {0}", s['person']) if s.get("person") else ""
+        who = tr(" of {0}", s['person']) if s.get("person") else ""
         if s["in_days"] == 0:
             now.append(s)
             hermes_client.publish_event("assistant", "special.today", s["key"], {
-                "_title": s["title"], "_message": tr("Oggi: <b>{0}</b>{1}.", s['title'], who), "_source": tr("Calendario"),
+                "_title": s["title"], "_message": tr("Today: <b>{0}</b>{1}.", s['title'], who), "_source": tr("Calendar"),
                 "_level": "success", "dedupe_key": f"special.today:{s['key']}:{today.isoformat()}",
                 "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
             moment = {"key": s["key"], "title": s["title"], "kind": s["kind"], "person": s.get("person"),
@@ -228,7 +228,7 @@ def run_daily(today: date | None = None) -> dict:
         elif s["lead_days"] and s["in_days"] == s["lead_days"]:
             lead.append(s)
             hermes_client.publish_event("assistant", "special.soon", s["key"], {
-                "_title": tr("Tra {0} giorni", s['in_days']), "_source": tr("Calendario"), "_level": "info",
+                "_title": tr("In {0} days", s['in_days']), "_source": tr("Calendar"), "_level": "info",
                 "_message": f"Tra {s['in_days']} giorni: <b>{s['title']}</b>{who} ({s['next'][8:10]}/{s['next'][5:7]}).",
                 "dedupe_key": f"special.soon:{s['key']}:{s['next']}", "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
     logger.info("event=special_daily today=%d soon=%d", len(now), len(lead))

@@ -38,24 +38,20 @@ DEFAULT_CLIENT_INSTRUCTIONS = (
 
 settings = SettingsClient("telegram")
 settings.declare([
-    setting(FEEDBACK_PROMPT_RATE, "Frequenza della richiesta di voto", "float", 0.15, group="Voto risposte",
+    setting(FEEDBACK_PROMPT_RATE, "How often I ask for a rating", "float", 0.15, group="Answer rating",
             min=0, max=1,
-            help="Dopo la prima risposta, in che parte delle risposte ti chiedo un voto "
-                 "(0 = mai, 1 = sempre, 0.15 = circa una su sette)."),
-    setting(FEEDBACK_SNOOZE_DAYS, "Pausa voto predefinita", "int", 7, group="Voto risposte",
-            min=1, max=365, unit="giorni",
-            help="Per quanti giorni smetto di chiederti il voto quando metti in pausa senza dire quanto."),
-    setting(CHAT_CLIENT_INSTRUCTIONS, "Istruzioni di formato per Telegram", "text", DEFAULT_CLIENT_INSTRUCTIONS,
+            help="After the first answer, how often I ask you to rate an answer (0 = never, 1 = always, 0.15 = about one in seven)."),
+    setting(FEEDBACK_SNOOZE_DAYS, "Default rating pause", "int", 7, group="Answer rating",
+            min=1, max=365, unit="days",
+            help="For how many days I stop asking for a rating when you pause without saying how long."),
+    setting(CHAT_CLIENT_INSTRUCTIONS, "Format instructions for Telegram", "text", DEFAULT_CLIENT_INSTRUCTIONS,
             group="Chat", advanced=True,
-            help="Regole di formato mandate all'assistente con ogni messaggio da Telegram. "
-                 "Il tono e le tue istruzioni personali si cambiano in Personali."),
-    setting(ORACLE_STREAM_TIMEOUT, "Attesa massima di una risposta", "int", 600, group="Chat",
+            help="Format rules sent to the assistant with every message from Telegram. Tone and your personal instructions are changed in Personal."),
+    setting(ORACLE_STREAM_TIMEOUT, "Longest wait for an answer", "int", 600, group="Chat",
             min=30, max=3600, unit="s", advanced=True,
-            help="Se l'assistente resta in silenzio per questo tempo durante una risposta, la interrompo."),
-    setting(MENU_LAYOUT, "Disposizione dei menu", "object", {}, group="Menu",
-            help="Come sono disposti i menu di Telegram: tastiera in basso, comandi «/», aree, azioni principali, "
-                 "nomi ed emoji. Vuoto = disposizione predefinita. Si cambia anche da Telegram: Impostazioni › Menu. "
-                 "Un'azione che qui non compare resta comunque nella sua area."),
+            help="If the assistant stays silent this long during an answer, I stop it."),
+    setting(MENU_LAYOUT, "Menu layout", "object", {}, group="Menu",
+            help="How the Telegram menus are laid out: bottom keyboard, «/» commands, areas, main actions, names and emoji. Empty = default layout. It can also be changed from Telegram: Settings › Menu. An action that does not appear here still stays in its area."),
 ]).declare_log_level()
 settings.follow_personal()      # the owner's language (people texts of the tools, hestia_common.i18n)
 

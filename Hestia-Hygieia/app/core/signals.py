@@ -85,13 +85,13 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
     if now is not None and before:
         mean = round(sum(before) / len(before))
         if mean - now >= DROP_POINTS:
-            out.append(signal("adherence_drop", tr("Routine rispettate {0}% questa settimana, prima {1}%", now, mean),
+            out.append(signal("adherence_drop", tr("Routines kept {0}% this week, before {1}%", now, mean),
                               kind="trend", severity="attenzione", metrics={"percent": now, "previous": mean},
                               period=weeks[-1], page="statistiche"))
     for p in h.plan(today.isoformat())["routines"]:
         g = p["goal"]
         if g.get("mode") == "target" and g.get("behind") and p["state"] == "due":
-            out.append(signal(f"goal:{p['routine_id']}", tr("{0} indietro: {1}, {2} {3} alla fine", p['name'], g['hint'], g['days_left'], 'giorno' if g['days_left'] == 1 else 'giorni'),
+            out.append(signal(f"goal:{p['routine_id']}", tr("{0} behind: {1}, {2} {3} to the end", p['name'], g['hint'], g['days_left'], 'giorno' if g['days_left'] == 1 else 'giorni'),
                               kind="goal", severity="attenzione",
                               metrics={"done": g["done"], "times": g["times"], "days_left": g["days_left"]},
                               page=f"routine/{p['routine_id']}"))
@@ -101,14 +101,14 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
         st = h.routine_stats(r)
         if st["streak"] in STREAK_MILESTONES:
             unit = {"week": "settimane", "month": "mesi", "day": "giorni"}.get(st["per"], "periodi")
-            out.append(signal(f"streak:{r['id']}", tr("{0}: obiettivo rispettato {1} {2} di fila", r.get('name'), st['streak'], unit),
+            out.append(signal(f"streak:{r['id']}", tr("{0}: goal kept {1} {2} in a row", r.get('name'), st['streak'], unit),
                               kind="milestone", severity="info", metrics={"streak": st["streak"]},
                               page=f"routine/{r['id']}"))
     told = _told(h, today)
     if told:
         # B9 spoken evening diary: the day told by the owner, read by the evening reflection (full text via topic)
         note = " ".join(str(told.get("note") or "").split())
-        out.append(signal("diario", tr("Giornata raccontata: {0}", note[:200]) + ("…" if len(note) > 200 else ""),
+        out.append(signal("diario", tr("Day told: {0}", note[:200]) + ("…" if len(note) > 200 else ""),
                           kind="trend", severity="info", metrics={"chars": len(note)}, period=today.isoformat(),
                           ttl_days=2, page="diario"))
     return out, weekly_metrics(h, weeks, adherence)
@@ -122,7 +122,7 @@ def _told(h: "Hygieia", day: date) -> dict | None:
 
 def weekly_metrics(h: "Hygieia", weeks: list[str], adherence: dict[str, dict]) -> list[dict]:
     """Adherence % (weeks with a goal to meet) and journal score averages per area/metric (weeks with entries)."""
-    out = [metric("selfcare.adherence", w, adherence[w]["percent"], tr("Routine rispettate %"))
+    out = [metric("selfcare.adherence", w, adherence[w]["percent"], tr("Routines kept %"))
            for w in weeks if adherence[w]["percent"] is not None]
     areas = {a["value"]: a["label"] for a in h.options("areas")}
     labels = {(area, m["value"]): m["label"] for area, ms in h.options("metrics").items() for m in ms}
@@ -140,7 +140,7 @@ def weekly_metrics(h: "Hygieia", weeks: list[str], adherence: dict[str, dict]) -
         label = labels.get((area, k)) or labels.get(("*", k)) or k.replace("_", " ").capitalize()
         for w, vals in sorted(by_week.items()):
             out.append(metric(f"selfcare.journal.{area}.{k}", w, round(sum(vals) / len(vals), 2),
-                              tr("Diario {0} · {1}", areas.get(area, area), label)))
+                              tr("Diary {0} · {1}", areas.get(area, area), label)))
     return out
 
 
@@ -151,7 +151,7 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
     kind, _, ref = (topic or "").partition(":")
     if topic == "diario":
         told = _told(h, today)
-        return tr("Diario della giornata ({0}): {1}", today.isoformat(), told.get('note')) if told else None
+        return tr("Diary of the day ({0}): {1}", today.isoformat(), told.get('note')) if told else None
     if topic == "adherence_drop":
         weeks = last_weeks(5, today)
         cur = week_adherence(h, weeks[-1], today)
@@ -159,10 +159,10 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
         bits = []
         for x in cur["routines"]:
             before = [r for p in prev for r in p["routines"] if r["routine_id"] == x["routine_id"]]
-            b = tr(", prima {0}/{1} in 4 sett.", sum(r['done'] for r in before), round(sum(r['need'] for r in before))) if before else ""
+            b = tr(", before {0}/{1} in 4 weeks", sum(r['done'] for r in before), round(sum(r['need'] for r in before))) if before else ""
             bits.append(f"{x['name']} {x['done']}/{round(x['need'], 1):g}" + (f" saltata {x['skipped']}" if x["skipped"] else "") + b)
         missed = [x for x in cur["routines"] if x["done"] < x["need"]]
-        head = tr("Cura di sé · settimana {0}%", cur['percent'])
+        head = tr("Self care · week {0}%", cur['percent'])
         if missed:
             head += ", indietro: " + ", ".join(x["name"] for x in missed)
         return head + (" · " + "; ".join(bits) if bits else "")
@@ -174,5 +174,5 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
         st = h.routine_stats({**r, "id": ref})
         g = p["goal"]
         hist = "; ".join(f"{x['start']} {x['done']}/{x['need']}" for x in st["history"][-4:])
-        return (tr("Cura di sé · {0}: {1}, ultima {2}, serie {3}, rispettata {4}% · {5}", r.get('name'), g.get('hint', ''), g.get('last_done') or 'mai', st['streak'], st['adherence'] if st['adherence'] is not None else '?', hist))
+        return (tr("Self care · {0}: {1}, last {2}, streak {3}, kept {4}% · {5}", r.get('name'), g.get('hint', ''), g.get('last_done') or 'mai', st['streak'], st['adherence'] if st['adherence'] is not None else '?', hist))
     return None

@@ -23,20 +23,17 @@ OAUTH_TOKEN_MINUTES = "mcp.oauth.access_token_minutes"
 
 settings = SettingsClient("mcp").follow_personal()
 settings.declare([
-    setting(TOOLS_CACHE_TTL, "Durata cache degli strumenti", "int", 60, group="Strumenti", min=5, max=3600,
-            unit="s", help="Per quanto tengo in memoria l'elenco degli strumenti dei moduli prima di "
-                           "richiederlo di nuovo. Più basso = novità viste prima, più chiamate."),
-    setting(HUB_DISCOVERY_TIMEOUT, "Attesa registro di Hub", "int", 8, group="Strumenti", min=1, max=60,
+    setting(TOOLS_CACHE_TTL, "Tool cache duration", "int", 60, group="Tools", min=5, max=3600,
+            unit="s", help="How long I keep the modules' tool list in memory before asking again. Lower = news seen sooner, more calls."),
+    setting(HUB_DISCOVERY_TIMEOUT, "Hub registry wait", "int", 8, group="Tools", min=1, max=60,
             unit="s", advanced=True,
-            help="Quanto aspetto Hub quando chiedo l'elenco dei moduli e dei loro strumenti."),
-    setting(SERVER_TIMEOUT, "Attesa risposta di un modulo", "int", 10, group="Strumenti", min=1, max=300,
+            help="How long I wait for Hub when I ask for the list of modules and their tools."),
+    setting(SERVER_TIMEOUT, "Wait for a module answer", "int", 10, group="Tools", min=1, max=300,
             unit="s", advanced=True,
-            help="Quanto aspetto un modulo quando elenco i suoi strumenti o ne eseguo uno."),
-    setting(EXTERNAL_RATE, "Chiamate al minuto per un'AI esterna", "int", 60, group="AI esterne", min=1, max=1000,
-            unit="/min", help="Quante chiamate al minuto accetto da ogni accesso esterno (Claude, ChatGPT, Cursor…). "
-                              "Oltre rispondo 429 e l'AI riprova poco dopo."),
-    setting(OAUTH_TOKEN_MINUTES, "Durata di un token OAuth", "int", 60, group="AI esterne", min=5, max=1440,
+            help="How long I wait for a module when I list its tools or run one."),
+    setting(EXTERNAL_RATE, "Calls per minute for an external AI", "int", 60, group="External AIs", min=1, max=1000,
+            unit="/min", help="How many calls per minute I accept from each external access (Claude, ChatGPT, Cursor…). Beyond it I answer 429 and the AI retries shortly after."),
+    setting(OAUTH_TOKEN_MINUTES, "Duration of an OAuth token", "int", 60, group="External AIs", min=5, max=1440,
             unit="min", advanced=True,
-            help="Per quanto vale il token che do a claude.ai o ChatGPT dopo il consenso. Poi l'AI lo rinnova da "
-                 "sola (token di rinnovo, cambiato a ogni uso); revocando l'accesso si ferma tutto subito."),
+            help="How long the token I give claude.ai or ChatGPT after consent lasts. Then the AI renews it by itself (refresh token, changed at each use); revoking access stops everything at once."),
 ]).declare_log_level()

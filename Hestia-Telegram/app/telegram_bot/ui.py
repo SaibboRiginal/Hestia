@@ -23,12 +23,12 @@ PAIR_MAX = 18           # longer than this: the button gets its own row
 LIST_PAGE = 8           # items per page in lists of actions / results
 
 BACK = "‹ Indietro"
-HOME = "Home"
-CANCEL = "Annulla"
-CONFIRM = "Conferma"
-SKIP = "Salta"
-MORE = "Altre ›"
-CLOSE = "Chiudi"
+HOME = "alt::Home"
+CANCEL = "Cancel"
+CONFIRM = "Confirm"
+SKIP = "Skip"
+MORE = "More ›"
+CLOSE = "Close"
 
 
 def tone_dot(tone: str | None) -> str:
@@ -108,7 +108,7 @@ def note(text: str) -> str:
     return f"<i>{esc(tr(text))}</i>"
 
 
-def error(what: str, hint: str = "Riprova tra poco.") -> str:
+def error(what: str, hint: str = "Try again shortly.") -> str:
     """Never the exception: what failed in words + what to do."""
     return f"{TONE_DOT['danger']} <b>{esc(tr(what))}</b>" + (f"\n{esc(tr(hint))}" if hint else "")
 

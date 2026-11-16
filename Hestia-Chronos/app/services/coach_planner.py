@@ -283,13 +283,13 @@ def _block(n: dict, d: date, gaps: list[tuple[datetime, datetime]], minutes: int
 
 def _why(n: dict, candidates: list[date], grid: dict[date, _Day], cfg: PlannerConfig) -> str:
     if not candidates:
-        return tr("nessun giorno possibile questa settimana")
+        return tr("no possible day this week")
     if n.get("with") and not any(_relation_ok(n, grid[d], grid) for d in candidates if d in grid):
-        return tr("nessun giorno con {0}", n['with']['tag'])
+        return tr("no day with {0}", n['with']['tag'])
     if n["kind"] == "block":
         if all(grid[d].block_count >= cfg.max_blocks_per_day for d in candidates if d in grid):
-            return tr("giorni già pieni")
+            return tr("days already full")
         if "outdoor" in (n.get("tags") or []) and any(grid[d].wet for d in candidates if d in grid):
             return "pioggia o buio nei momenti liberi"
         return f"mancano {n['min_minutes']}' liberi nei giorni possibili"
-    return tr("vincoli con altre cose dello stesso giorno")
+    return tr("constraints with other things of the same day")

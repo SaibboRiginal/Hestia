@@ -32,16 +32,16 @@ class HomeAssistant:
 
     def _req(self, method: str, path: str, body: Any = None, timeout: float = 10) -> Any:
         if not self.configured:
-            raise HAError(tr("casa non collegata"))
+            raise HAError(tr("home not linked"))
         try:
             resp = self.http.request(method, f"{self.url}{path}", json=body, timeout=timeout,
                                      headers={"Authorization": f"Bearer {self.token}"})
         except requests.RequestException as exc:
-            raise HAError(tr("casa non raggiungibile: {0}", exc)) from exc
+            raise HAError(tr("home not reachable: {0}", exc)) from exc
         if resp.status_code == 401:
-            raise HAError(tr("token della casa non valido"))
+            raise HAError(tr("invalid home token"))
         if resp.status_code >= 400:
-            raise HAError(tr("la casa ha risposto {0}", resp.status_code))
+            raise HAError(tr("the home answered {0}", resp.status_code))
         return resp.json() if resp.content else None
 
     def states(self) -> list[dict]:
@@ -70,7 +70,7 @@ class HomeAssistant:
                     json.loads(ws.recv())                                    # auth_required
                     ws.send(json.dumps({"type": "auth", "access_token": self.token}))
                     if json.loads(ws.recv()).get("type") != "auth_ok":
-                        raise HAError(tr("token della casa non valido"))
+                        raise HAError(tr("invalid home token"))
                     ws.send(json.dumps({"id": 1, "type": "subscribe_events", "event_type": "state_changed"}))
                     logger.info("event=lares_ws_connected")
                     delay = 5

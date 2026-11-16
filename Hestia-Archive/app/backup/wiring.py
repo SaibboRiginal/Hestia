@@ -30,10 +30,10 @@ SERVICE_VERSION = os.getenv("ARCHIVE_SERVICE_VERSION", "1.0.0")
 
 settings = SettingsClient("archive").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
-    setting("archive.backup.keep_daily", "Backup recenti da tenere", "int", 3, group="Backup", min=1, max=60,
-            unit="giorni", help="Un backup al giorno: quanti degli ultimi restano su Google Drive."),
-    setting("archive.backup.keep_monthly", "Backup mensili da tenere", "int", 3, group="Backup", min=0, max=36,
-            unit="mesi", help="Oltre ai recenti, il primo backup di ogni mese per questi mesi. 0 = nessuno."),
+    setting("archive.backup.keep_daily", "Recent backups to keep", "int", 3, group="Backup", min=1, max=60,
+            unit="days", help="One backup a day: how many of the latest stay on Google Drive."),
+    setting("archive.backup.keep_monthly", "Monthly backups to keep", "int", 3, group="Backup", min=0, max=36,
+            unit="mesi", help="Besides the recent ones, the first backup of each month for these months. 0 = none."),
 ])
 
 agenda = AgendaClient("archive", HUB_API_URL)
@@ -43,18 +43,18 @@ def agenda_rules() -> list[dict]:
     return [
         job_rule("archive.backup", tr("Backup"), service="archive", path="/api/backup/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T03:30:00", tz=TZ,
-                 description="Copia cifrata di tutti i dati su Google Drive (cartella .hestia)."),
-        job_rule("archive.backup_verify", tr("Verifica backup"), service="archive", path="/api/backup/verify",
+                 description="Encrypted copy of all data on Google Drive (.hestia folder)."),
+        job_rule("archive.backup_verify", tr("Backup check"), service="archive", path="/api/backup/verify",
                  recurrence="FREQ=MONTHLY;BYMONTHDAY=1", start_at="2026-01-01T04:00:00", tz=TZ,
-                 description="Ripristina l'ultimo backup in un database di prova e controlla che sia completo."),
+                 description="Restores the latest backup into a test database and checks it is complete."),
     ]
 
 
-ui = PluginClient("archive", title="Archivio", icon="memory", color="gray", kind="core", dist=UI_DIST,
+ui = PluginClient("archive", title="Archive", icon="memory", color="gray", kind="core", dist=UI_DIST,
                   description="Backup su Google Drive: storico, verifica, ripristino.", version=SERVICE_VERSION)
 ui.webui(entry="archive.js", api_prefix="/api/backup/",
          settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history",
-                                         help="Storico dei backup su Google Drive, verifica e ripristino.")])
+                                         help="Backup history on Google Drive, check and restore.")])
 
 
 def _notify(ev: dict) -> None:
@@ -89,7 +89,7 @@ def _drive_connect() -> dict:
                 "user_code": payload.get("user_code"), "instructions": payload.get("instructions")}
     except Exception as exc:
         logger.warning("[🔄] event=backup_drive_connect_failed error=%s", exc)
-        return {"ok": False, "message": tr("collegamento a Google non disponibile ora, riprova")}
+        return {"ok": False, "message": tr("link to Google not available now, try again")}
 
 
 def setup(app, engine, database_url: str) -> BackupService | None:

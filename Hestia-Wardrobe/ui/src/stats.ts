@@ -29,39 +29,39 @@ export class WardrobeStats extends WardrobeElement {
   render() {
     const s = this.s, g = this.m?.goal;
     if (s === undefined) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
-    if (s === null) return html`<div class="page"><hxk-state kind="error" text=${tr("Statistiche non disponibili ora.")}></hxk-state></div>`;
+    if (s === null) return html`<div class="page"><hxk-state kind="error" text=${tr("Statistics not available now.")}></hxk-state></div>`;
     const t = s.totals, u = s.usage;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Statistiche")}</h1><span class="grow"></span>
-        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: tr('Guardaroba'), prompt: tr('Guarda il mio guardaroba: cosa mi manca e cosa potrei dare via?') })}>${tr("Chiedi un parere")}</hxk-button></div>
+      <div class="head"><h1>${tr("Statistics")}</h1><span class="grow"></span>
+        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: tr('Wardrobe'), prompt: tr('Look at my wardrobe: what am I missing and what could I give away?') })}>${tr("Ask for an opinion")}</hxk-button></div>
       <hxk-stat .items=${s.kpi.items}></hxk-stat>
-      ${g ? html`<div class="card between"><div><h3>${tr("Obiettivo «Indossato»")}</h3><div class="big">${g.done}<span class="muted" style="font-size:15px"> / ${g.times}</span></div>
-          <div class="small muted">${g.hint}${g.met ? html` · <hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("fatto")}` : g.behind ? tr(' · un po\' indietro') : ''}</div></div>
-          <hxk-button icon="check" @click=${() => this.host.navigate('outfit')}>${tr("Segna un outfit")}</hxk-button></div>` : nothing}
+      ${g ? html`<div class="card between"><div><h3>${tr("«Worn» goal")}</h3><div class="big">${g.done}<span class="muted" style="font-size:15px"> / ${g.times}</span></div>
+          <div class="small muted">${g.hint}${g.met ? html` · <hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("done")}` : g.behind ? tr(' · a bit behind') : ''}</div></div>
+          <hxk-button icon="check" @click=${() => this.host.navigate('outfit')}>${tr("Note an outfit")}</hxk-button></div>` : nothing}
       <div class="grid" style="--min:300px">
-        <div class="card col"><h3>${tr("Per categoria")}</h3>${this.bars(s.by_category)}</div>
-        <div class="card col"><h3>${tr("Colori principali")}</h3>${this.bars(s.by_color, true)}</div>
-        <div class="card col"><h3>${tr("Stagioni")}</h3>${this.bars(s.by_season)}<span class="small muted">${tr("Un capo può valere per più stagioni.")}</span></div>
-        ${s.by_style.length ? html`<div class="card col"><h3>${tr("Stile")}</h3>${this.bars(s.by_style.map((x: any) => ({ ...x, label: this.m?.vocabularies?.style?.find(v => v.key === x.key)?.label || x.label })))}</div>` : nothing}
+        <div class="card col"><h3>${tr("By category")}</h3>${this.bars(s.by_category)}</div>
+        <div class="card col"><h3>${tr("Main colours")}</h3>${this.bars(s.by_color, true)}</div>
+        <div class="card col"><h3>${tr("Seasons")}</h3>${this.bars(s.by_season)}<span class="small muted">${tr("An item can fit more seasons.")}</span></div>
+        ${s.by_style.length ? html`<div class="card col"><h3>${tr("Style")}</h3>${this.bars(s.by_style.map((x: any) => ({ ...x, label: this.m?.vocabularies?.style?.find(v => v.key === x.key)?.label || x.label })))}</div>` : nothing}
       </div>
-      ${s.gaps.length ? html`<div class="card col"><h3>${tr("Cosa manca")}</h3>${s.gaps.map((x: string) => html`<div class="row"><hxk-icon name="pin" size="14"></hxk-icon>${x}</div>`)}</div>` : nothing}
-      <div class="card col"><div class="between"><h3>${tr("Dimenticati")}</h3><span class="small muted">${plural(s.forgotten.length, 'capo', 'capi')}</span></div>
+      ${s.gaps.length ? html`<div class="card col"><h3>${tr("What's missing")}</h3>${s.gaps.map((x: string) => html`<div class="row"><hxk-icon name="pin" size="14"></hxk-icon>${x}</div>`)}</div>` : nothing}
+      <div class="card col"><div class="between"><h3>${tr("Forgotten")}</h3><span class="small muted">${plural(s.forgotten.length, 'capo', 'capi')}</span></div>
         ${s.forgotten.length ? html`<div class="list">${s.forgotten.slice(0, 30).map((f: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
             <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span>
-            <span class="small muted">${f.last_worn ? relDays(f.last_worn) : tr('mai segnato')}</span></div>`)}</div>`
-          : html`<div class="empty">${tr("Niente di dimenticato.")}</div>`}</div>
-      <div class="card col"><h3>${tr("Uso (indicativo)")}</h3>
-        ${!u.has_marks ? html`<div class="empty">${tr("Segni «Indossato» solo quando vuoi: con qualche segno qui compaiono i capi più usati e il costo per utilizzo.")}</div>` : html`
-          ${u.per_month.values.some((v: number) => v) ? html`<hxk-chart type="bar" .labels=${u.per_month.labels.map((l: string) => l.slice(5) + '/' + l.slice(2, 4))} .series=${[{ name: tr('Segni'), values: u.per_month.values }]} height="140"></hxk-chart>` : nothing}
+            <span class="small muted">${f.last_worn ? relDays(f.last_worn) : tr('never recorded')}</span></div>`)}</div>`
+          : html`<div class="empty">${tr("Nothing forgotten.")}</div>`}</div>
+      <div class="card col"><h3>${tr("Usage (approximate)")}</h3>
+        ${!u.has_marks ? html`<div class="empty">${tr("Mark «Worn» only when you want: with a few marks here appear the most used items and the cost per use.")}</div>` : html`
+          ${u.per_month.values.some((v: number) => v) ? html`<hxk-chart type="bar" .labels=${u.per_month.labels.map((l: string) => l.slice(5) + '/' + l.slice(2, 4))} .series=${[{ name: tr('Marks'), values: u.per_month.values }]} height="140"></hxk-chart>` : nothing}
           <div class="grid" style="--min:260px">
-            <div class="col"><span class="small muted">${tr("Più messi")}</span>${u.most_worn.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}><span class="grow truncate">${p.name}</span><span class="small muted">${p.wears}×</span></div>`)}</div>
-            ${u.cost_per_wear.length ? html`<div class="col"><span class="small muted">${tr("Costo per utilizzo")}</span>${u.cost_per_wear.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}>
+            <div class="col"><span class="small muted">${tr("Most worn")}</span>${u.most_worn.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}><span class="grow truncate">${p.name}</span><span class="small muted">${p.wears}×</span></div>`)}</div>
+            ${u.cost_per_wear.length ? html`<div class="col"><span class="small muted">${tr("Cost per use")}</span>${u.cost_per_wear.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}>
               <span class="grow truncate">${p.name}</span><span class="small muted">${money(p.cost_per_wear, t.currency)} · ${p.wears}×</span></div>`)}</div>` : nothing}
           </div>
-          <span class="small muted">${plural(u.never_marked, 'capo', 'capi')} ${tr("mai segnati: normale se non segni ogni giorno.")}</span>`}
+          <span class="small muted">${plural(u.never_marked, 'capo', 'capi')} ${tr("never recorded: normal if you don't record every day.")}</span>`}
       </div>
-      <div class="row small muted"><span>${t.wishlist ? `${t.wishlist} desiderati · ` : ''}${t.marks} ${tr("segni in tutto")}</span><span class="grow"></span>
-        <button class="link" @click=${async () => { const r = await this.host.api('GET', `${API}/export`); if (r.ok) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.data.text], { type: 'application/json' })); a.download = r.data.filename; a.click(); } }}>${tr("Esporta JSON")}</button></div>
+      <div class="row small muted"><span>${t.wishlist ? `${t.wishlist} desiderati · ` : ''}${t.marks} ${tr("records in total")}</span><span class="grow"></span>
+        <button class="link" @click=${async () => { const r = await this.host.api('GET', `${API}/export`); if (r.ok) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.data.text], { type: 'application/json' })); a.download = r.data.filename; a.click(); } }}>${tr("Export JSON")}</button></div>
     </div>`;
   }
 }

@@ -180,7 +180,7 @@ try:
                 "required": ["session_id", "quality_label"],
             },
             handler=_feedback_submit_handler,
-            title="Valuta risposta",
+            title="Rate answer",
             method="POST",
             path="/api/feedback",
             clients=["telegram", "ui"],
@@ -193,27 +193,27 @@ try:
             name="backup_status",
             description="Backup state: last backup, last check, problems, Google Drive linked.",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **_kw: {"status": "ok"}, title="Stato dei backup", method="GET",
+            handler=lambda **_kw: {"status": "ok"}, title="Backup status", method="GET",
             path="/api/backup/status", clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Two or three lines: last backup (when, result), last check, any problem.",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Dati e backup", "label": "Backup"}),
+                telegram={"section": "Data and backups", "label": "Backup"}),
         MCPTool(
             name="backup_list",
             description="List of the backups on Google Drive (date, size).",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **_kw: {"status": "ok"}, title="Backup salvati", method="GET",
+            handler=lambda **_kw: {"status": "ok"}, title="Saved backups", method="GET",
             path="/api/backup/list", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Dati e backup"}),
+                telegram={"section": "Data and backups"}),
         MCPTool(
             name="backup_run",
             description="Make an encrypted backup of all data on Google Drive now (takes a few minutes).",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **_kw: {"status": "ok"}, title="Backup adesso", method="POST",
+            handler=lambda **_kw: {"status": "ok"}, title="Back up now", method="POST",
             path="/api/backup/run", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Dati e backup", "label": "Backup adesso"}),
+                telegram={"section": "Data and backups", "label": "Back up now"}),
     ]
     app.include_router(
         create_mcp_router(_archive_mcp_tools, service_name="archive")
@@ -252,7 +252,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "commands": [
             {
                 "command": "preferenze_attive",
-                "title": "Preferenze attive",
+                "title": "Active preferences",
                 "telegram_group": "memoria",
                 "telegram": {"section": "Note e preferenze"},
                 "description": "Show the user's active preferences",
@@ -264,9 +264,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "notifiche_attive",
-                "title": "Avvisi automatici",
+                "title": "Automatic alerts",
                 "telegram_group": "notifiche",
-                "telegram": {"section": "Avvisi automatici", "label": "Avvisi automatici"},
+                "telegram": {"section": "Automatic alerts", "label": "Automatic alerts"},
                 "description": "Show the active automatic notifications",
                 "method": "GET",
                 "path": "/api/subscriptions/active",
@@ -275,9 +275,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "avvisi_recenti",
-                "title": "Avvisi recenti",
+                "title": "Recent notices",
                 "telegram_group": "notifiche",
-                "telegram": {"section": "Avvisi automatici"},
+                "telegram": {"section": "Automatic alerts"},
                 "description": "Show the latest notices sent",
                 "method": "GET",
                 "path": "/api/dispatch/logs/enriched",
@@ -288,9 +288,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "notifica_disattiva",
-                "title": "Disattiva un avviso",
+                "title": "Turn off a notice",
                 "telegram_group": "notifiche",
-                "telegram": {"section": "Avvisi automatici"},
+                "telegram": {"section": "Automatic alerts"},
                 "description": "Turn off a notification by subscription_id",
                 "method": "PATCH",
                 "path": "/api/subscriptions/$arg.subscription_id/active",
@@ -312,9 +312,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "notifica_attiva",
-                "title": "Riattiva un avviso",
+                "title": "Turn a notice back on",
                 "telegram_group": "notifiche",
-                "telegram": {"section": "Avvisi automatici"},
+                "telegram": {"section": "Automatic alerts"},
                 "description": "Turn a notification back on by subscription_id",
                 "method": "PATCH",
                 "path": "/api/subscriptions/$arg.subscription_id/active",
@@ -337,7 +337,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             # ── Calendar reminder subscriptions ───────────────────────────────
             {
                 "command": "iscriviti_calendario",
-                "title": "Attiva promemoria del calendario",
+                "title": "Turn on calendar reminders",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Promemoria e allerte"},
                 "description": "Get automatic reminders for calendar events",
@@ -358,7 +358,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "disiscriviti_calendario",
-                "title": "Disattiva promemoria del calendario",
+                "title": "Turn off calendar reminders",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Promemoria e allerte"},
                 "description": "Stop automatic calendar reminders",
@@ -372,7 +372,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             # ── System health alert subscriptions ─────────────────────────────
             {
                 "command": "iscriviti_sistema",
-                "title": "Attiva allerte di sistema",
+                "title": "Turn on system alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Promemoria e allerte"},
                 "description": "Get notifications about the services' status",
@@ -393,7 +393,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "disiscriviti_sistema",
-                "title": "Disattiva allerte di sistema",
+                "title": "Turn off system alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Promemoria e allerte"},
                 "description": "Stop notifications about the services' status",
@@ -406,9 +406,9 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             {
                 "command": "archive_reconcile",
-                "title": "Riconcilia archivio",
+                "title": "Reconcile archive",
                 "telegram_group": "sistema",
-                "telegram": {"section": "Avanzate"},
+                "telegram": {"section": "Advanced"},
                 "description": "Run a reconciliation maintenance on Archive entity records",
                 "method": "POST",
                 "path": "/api/module/maintenance/reconcile",

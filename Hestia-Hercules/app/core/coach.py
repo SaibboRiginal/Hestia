@@ -55,7 +55,7 @@ class HerculesCoach:
         plans = self._plans()
         tod, min_minutes = self._tod(), self._min_minutes()
         out: list[dict] = []
-        reason_extra = tr(" · settimana di scarico consigliata") if "deload_suggested" in flags else ""
+        reason_extra = tr(" · deload week recommended") if "deload_suggested" in flags else ""
         prog = h.active_program()
         if prog and prog.get("mode") == "weekly" and prog.get("days"):
             d = start
@@ -88,7 +88,7 @@ class HerculesCoach:
                 nxt = (summary.get("next") or {}).get("template")
                 if remaining > 0:
                     minutes = self._minutes(nxt) if nxt else 60
-                    out.append({"id": "workout", "title": tr("Allenamento"), "kind": "block", "count": remaining,
+                    out.append({"id": "workout", "title": tr("Training"), "kind": "block", "count": remaining,
                                 "per": "day" if prog_.get("per") == "day" else "week",
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "time_of_day": tod,
                                 "min_gap_days": 2 if remaining <= 3 else 1,
@@ -124,7 +124,7 @@ class HerculesCoach:
         if not after or after > minutes:
             return {"ok": False}
         return {"ok": True, "minutes": after, "title": f"{t['name']} (corto)",
-                "note": tr("versione corta {0}' invece di {1}'", after, res.get('minutes_before'))}
+                "note": tr("short version {0}' instead of {1}'", after, res.get('minutes_before'))}
 
     def on_placed(self, week: str, items: list[dict]) -> None:
         self.placed = {"week": week, "items": [i for i in items if i.get("status") == "planned"]}

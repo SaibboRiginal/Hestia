@@ -5,22 +5,22 @@ export const FORGE = `${API}/forge`;
 
 /** Remediation task states → Italian label + tone. */
 export const STATE: Record<string, { label: string; tone: string }> = {
-  pending_approval: { label: tr('da approvare'), tone: 'warning' },
-  running: { label: tr('in corso'), tone: 'info' },
+  pending_approval: { label: tr('to approve'), tone: 'warning' },
+  running: { label: tr('running'), tone: 'info' },
   succeeded: { label: 'riuscita', tone: 'success' },
   failed: { label: 'fallita', tone: 'danger' },
   rolled_back: { label: 'annullata', tone: 'neutral' },
-  escalated: { label: tr('passata a Forge'), tone: 'accent' },
+  escalated: { label: tr('handed to Forge'), tone: 'accent' },
 };
 
 export const CONSENT: Record<string, string> = {
-  none: 'nessuno', low: 'basso (sola lettura)', medium: 'medio', high: tr('alto (serve il tuo ok)'),
+  none: 'nessuno', low: 'basso (sola lettura)', medium: 'medio', high: tr('high (needs your ok)'),
 };
 
 /** Claude budget phases (Forge claude_budget). */
 export const PHASE: Record<string, { label: string; tone: string }> = {
   night: { label: 'finestra notturna', tone: 'success' },
-  final: { label: tr('ultime ore'), tone: 'accent' },
+  final: { label: tr('last hours'), tone: 'accent' },
   closed: { label: 'chiusa', tone: 'neutral' },
   exhausted: { label: 'quota esaurita', tone: 'danger' },
 };

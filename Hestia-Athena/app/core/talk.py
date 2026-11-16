@@ -256,11 +256,11 @@ class Talk:
         except Exception as exc:
             logger.warning("[🔄] event=talk_oracle_failed trace_id=%s error=%s fallback=retry_later", trace_id, exc)
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": tr("modello non disponibile")}
+            return {"status": "failed", "detail": tr("model not available")}
         if status >= 400 or not isinstance(payload, dict):
             logger.warning("[🔄] event=talk_oracle_failed trace_id=%s status=%s fallback=retry_later", trace_id, status)
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": tr("modello non disponibile")}
+            return {"status": "failed", "detail": tr("model not available")}
         text = str(payload.get("text") or "").strip()
         if not text:
             logger.info("event=talk_nothing_to_say trace_id=%s reasons=%d", trace_id, len(reasons))
@@ -271,7 +271,7 @@ class Talk:
                "answered": None}
         if not self._deliver(row):
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": tr("messaggio non consegnato")}
+            return {"status": "failed", "detail": tr("message not delivered")}
         self._store(row, now)
         with self._lock:
             self._sent.insert(0, {**row, "at": now.isoformat()})

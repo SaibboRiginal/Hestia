@@ -250,12 +250,12 @@ export class HxkState extends LitElement {
     .spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
   `];
   render() {
-    const def = { loading: 'Carico…', empty: tr('Niente da mostrare'), error: tr('Qualcosa è andato storto'), offline: tr('Modulo non raggiungibile') }[this.kind];
+    const def = { loading: 'Carico…', empty: tr('Nothing to show'), error: tr('Something went wrong'), offline: tr('Module not reachable') }[this.kind];
     const icon = { loading: 'refresh', empty: 'search', error: 'x', offline: 'offline' }[this.kind];
     return html`<hxk-icon name=${icon} size="20" class=${this.kind === 'loading' ? 'spin' : ''}></hxk-icon>
       <div>${this.text || def}</div>
       ${this.kind === 'error' || this.kind === 'offline'
-        ? html`<hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.dispatchEvent(new CustomEvent('retry', { bubbles: true, composed: true }))}>${tr("Riprova")}</hxk-button>`
+        ? html`<hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.dispatchEvent(new CustomEvent('retry', { bubbles: true, composed: true }))}>${tr("Try again")}</hxk-button>`
         : nothing}`;
   }
 }

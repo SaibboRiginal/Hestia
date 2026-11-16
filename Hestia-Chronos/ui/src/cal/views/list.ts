@@ -52,12 +52,12 @@ export function outcome(ev: CalEvent, now: number): Outcome | null {
     const s = STATUS_META[o.status] ?? STATUS_META.confirmed;
     return { label: s.label, tone: s.tone };
   }
-  if (started && !ended) return { label: tr('in corso'), tone: 'accent' };
+  if (started && !ended) return { label: tr('running'), tone: 'accent' };
   if (ended) {
     if (!ev.item?.action) return { label: 'concluso', tone: 'neutral' };
     const lr = !o.recurring ? ev.item.last_result : null;   // one-off item: its result is the rule's last result
     if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: 'fallito', tone: 'danger', detail: lr.detail || undefined };
-    return { label: tr('nessun esito'), tone: 'warning' };
+    return { label: tr('no outcome'), tone: 'warning' };
   }
   if (o.moved) return { label: 'spostata', tone: 'info' };
   return null;
@@ -111,7 +111,7 @@ export class ChronosCalList extends LitElement {
   }
 
   private nowLine(): TemplateResult {
-    return html`<div class="now"><span class="dot"></span><span class="lbl">${tr("Adesso ·")} ${fmt.time(new Date(this.now))}</span><span class="line"></span></div>`;
+    return html`<div class="now"><span class="dot"></span><span class="lbl">${tr("Now ·")} ${fmt.time(new Date(this.now))}</span><span class="line"></span></div>`;
   }
 
   private row(ev: CalEvent) {
@@ -141,7 +141,7 @@ export class ChronosCalList extends LitElement {
 
   render() {
     const groups = groupByDay(this.events, this.from, this.now);
-    if (!groups.length) return html`<hxk-state kind="empty" text=${tr("Niente in programma: nessuna voce nel periodo con i filtri attuali.")}></hxk-state>`;
+    if (!groups.length) return html`<hxk-state kind="empty" text=${tr("Nothing scheduled: no item in the period with the current filters.")}></hxk-state>`;
     return groups.map(g => html`${g.nowBefore ? this.nowLine() : nothing}
       <section><h3 class=${g.today ? 'today' : ''}>${g.label}${wxChip(this.weather.days[g.key], extLines(this.weather, g.key))}</h3>
         ${g.events.map(ev => html`${g.nowAt === ev.id ? this.nowLine() : nothing}${this.row(ev)}`)}

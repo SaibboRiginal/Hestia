@@ -64,17 +64,16 @@ API = "/api/selfcare"
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("hygieia")
 settings.declare([
-    setting("hygieia.default_pao_months", "Durata dopo l'apertura", "int", 12, group="Prodotti", min=1, max=60, unit="mesi",
-            help="Quando il prodotto non indica il PAO (il barattolino «12M»)."),
-    *reminder_settings("hygieia", help="Poi scegli su ogni routine se vuoi il promemoria. Al massimo N a settimana "
-                                       "per routine; uno solo resta visibile e dice quante volte l'hai saltata."),
+    setting("hygieia.default_pao_months", "Duration after opening", "int", 12, group="Products", min=1, max=60, unit="mesi",
+            help="When the product does not show the PAO (the «12M» jar)."),
+    *reminder_settings("hygieia", help="Then choose on each routine whether you want the reminder. At most N a week per routine; only one stays visible and says how many times you skipped it."),
     voice_setting("hygieia", True),
-    setting("hygieia.alerts.enabled", "Avvisi prodotti", "bool", True, group="Avvisi",
-            help="Scadenze e prodotti che stanno finendo, uno per prodotto."),
-    setting("hygieia.alerts.expiry_days", "Avviso scadenza", "int", 30, group="Avvisi", min=1, max=180, unit="giorni",
+    setting("hygieia.alerts.enabled", "Product alerts", "bool", True, group="Notices",
+            help="Deadlines and products running out, one per product."),
+    setting("hygieia.alerts.expiry_days", "Deadline alert", "int", 30, group="Notices", min=1, max=180, unit="days",
             depends_on={"key": "hygieia.alerts.enabled", "equals": True}),
-    setting("hygieia.alerts.restock_days", "Avviso da ricomprare", "int", 14, group="Avvisi", min=1, max=90, unit="giorni",
-            help="Quando la stima dice che finisce entro questi giorni.",
+    setting("hygieia.alerts.restock_days", "Buy again alert", "int", 14, group="Notices", min=1, max=90, unit="days",
+            help="When the estimate says it runs out within these days.",
             depends_on={"key": "hygieia.alerts.enabled", "equals": True}),
 ]).follow_personal()                                       # week start, currency: personal settings shared by every module
 
@@ -82,7 +81,7 @@ hub = Hub(HUB_API_URL)
 store = Store(hub)
 voice = VoiceClient(HUB_API_URL)
 VOICE_USECASES = [voice_usecase(DIARY_VOICE_USE, "Diario a voce", direction="ascolto",
-                                help="Il racconto della giornata dopo il recap della sera.")]
+                                help="The story of the day after the evening recap.")]
 hygieia = Hygieia(store, settings.get, tz_name=TZ)
 coach = HygieiaCoach(hygieia)
 coach_client = CoachClient("hygieia", HUB_API_URL)
@@ -127,7 +126,7 @@ async def _conflict(_: Request, exc: Conflict):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
+    return JSONResponse(status_code=503, content={"detail": tr("archive not reachable, try again shortly")})
 
 
 @app.get("/health")
@@ -287,7 +286,7 @@ def today(date: str = "", paused: bool = False):
 
 
 # ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
-_STATE = {"due": ("da fare", "warning"), "suggested": ("consigliata", ""), "done": ("fatta", "success"),
+_STATE = {"due": ("to do", "warning"), "suggested": ("consigliata", ""), "done": ("fatta", "success"),
           "partial": ("in parte", ""), "blocked": ("non ora", ""), "wait": ("più avanti", ""), "ok": ("in pari", "")}
 
 
@@ -302,20 +301,20 @@ def today_display(plan: dict) -> dict:
                                                       ", ".join(steps[:4]) + ("…" if len(steps) > 4 else "")], tone=tone))
     due = next((p for p in plan.get("routines") or [] if p.get("state") == "due"), None)
     acts = [action(f"Fatta: {due['name']}"[:24], "selfcare_log", {"routine": due["name"], "status": "done"}, style="primary")] if due else []
-    return display(tr("Cura di sé oggi"), items=rows, lines=[] if rows else [tr("Niente in programma oggi.")],
-                   actions=acts + [action(tr("Registra"), "selfcare_log"), action(tr("Lista spesa"), "selfcare_shopping")])
+    return display(tr("Self care today"), items=rows, lines=[] if rows else [tr("Nothing scheduled today.")],
+                   actions=acts + [action(tr("f::Log"), "selfcare_log"), action(tr("Shopping list"), "selfcare_shopping")])
 
 
 def overview_display(o: dict) -> dict:
     lines = list(o.get("alerts") or [])
     if o.get("in_use"):
-        lines.append(tr("In uso: ") + ", ".join(o["in_use"][:6]) + ("…" if len(o["in_use"]) > 6 else ""))
-    rows = [item(r["name"], [r.get("slot"), r.get("cadence"), "in pausa" if r.get("status") == "paused" else ""])
+        lines.append(tr("In use: ") + ", ".join(o["in_use"][:6]) + ("…" if len(o["in_use"]) > 6 else ""))
+    rows = [item(r["name"], [r.get("slot"), r.get("cadence"), "paused" if r.get("status") == "paused" else ""])
             for r in o.get("routines") or []]
-    return display(tr("Cura di sé"), subtitle=o.get("text") or "", lines=lines, items=rows,
+    return display(tr("alt::Self care"), subtitle=o.get("text") or "", lines=lines, items=rows,
                    tone="warning" if o.get("alerts") else "",
-                   actions=[action(tr("Oggi"), "selfcare_today", style="primary"), action(tr("Prodotti"), "selfcare_products"),
-                            action(tr("Statistiche"), "selfcare_stats")])
+                   actions=[action(tr("Today"), "selfcare_today", style="primary"), action(tr("Products"), "selfcare_products"),
+                            action(tr("Statistics"), "selfcare_stats")])
 
 
 # ── logs, journal ────────────────────────────────────────────────────────────
@@ -352,12 +351,12 @@ def _diary_voice(audio: Any, date: str = "") -> dict:
     except (ValueError, TypeError):
         raw = b""
     if not raw:
-        raise Invalid(tr("manca il vocale"))
+        raise Invalid(tr("the voice message is missing"))
     heard = voice.transcribe(raw, a.get("mime") or a.get("mime_type") or "audio/ogg", use_case=DIARY_VOICE_USE,
                              keep={"kind": "recording", "client": "hygieia"})
     if not heard:
         logger.warning("[🔄] event=diary_voice_not_heard fallback=ask_again")
-        raise Invalid(tr("non sono riuscita a capire il vocale, riprova o scrivilo"))
+        raise Invalid(tr("I couldn't understand the voice message, try again or write it"))
     row = hygieia.journal_voice(heard, date or None)
     signals.changed()
     logger.info("event=diary_voice_saved chars=%d audio=%s", len(row.get("note") or ""), bool(row.get("audio_id")))
@@ -437,7 +436,7 @@ def export():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("hygieia", tr("Cura di sé"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
+    return recap.piece("hygieia", tr("alt::Self care"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("hygieia", _recap_piece, today=lambda: hygieia.today()))
@@ -507,11 +506,11 @@ def reminders_run():
             continue
         p, rid = d["plan"], d["routine_id"]
         actions = [
-            {"id": "done", "label": tr("Fatto"), "text": tr("✅ Fatto"), "style": "primary", "service": "hygieia", "method": "POST",
+            {"id": "done", "label": tr("Done"), "text": tr("✅ Done"), "style": "primary", "service": "hygieia", "method": "POST",
              "path": f"{API}/quick/routine/{rid}", "body": {"source": "reminder_button"}, "resolves": True},
-            {"id": "skip", "label": tr("Salta"), "text": "⏭ Salta", "service": "hygieia", "method": "POST",
+            {"id": "skip", "label": tr("Skip"), "text": "⏭ Salta", "service": "hygieia", "method": "POST",
              "path": f"{API}/routines/{rid}/skip", "body": {"source": "reminder_button"}},
-            {"id": "week", "label": tr("Non questa settimana"), "text": tr("🌙 Non questa settimana"), "service": "hygieia",
+            {"id": "week", "label": tr("Not this week"), "text": tr("🌙 Not this week"), "service": "hygieia",
              "method": "POST", "path": f"{API}/routines/{rid}/snooze", "body": {}, "resolves": True},
         ]
         try:
@@ -540,10 +539,10 @@ def alerts_run():
             continue
         pid = a["product_id"]
         if a["type"] == "expiry":
-            actions = [{"id": "discard", "label": tr("Buttato"), "text": "🗑 Buttato", "service": "hygieia", "method": "POST",
+            actions = [{"id": "discard", "label": tr("Thrown away"), "text": "🗑 Buttato", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/status", "body": {"status": "discarded"}, "resolves": True}]
         else:
-            actions = [{"id": "bought", "label": tr("Ricomprato"), "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
+            actions = [{"id": "bought", "label": tr("Bought again"), "text": "🛒 Ricomprato", "service": "hygieia", "method": "POST",
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
             _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
@@ -565,39 +564,38 @@ def signals_run():
 
 def _agenda_rules() -> list[dict]:
     return [
-        signals_rule("hygieia", tr("Cura di sé"), path=f"{API}/signals/run", tz=TZ),
+        signals_rule("hygieia", tr("alt::Self care"), path=f"{API}/signals/run", tz=TZ),
         job_rule("hygieia.planner", "Promemoria self care (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=TZ,
-                 description="Controlla le routine con il promemoria attivo che sono indietro con l'obiettivo. Al massimo "
-                             "2 a settimana per routine, uno solo visibile alla volta."),
+                 description="Checks the routines with the reminder on that are behind their goal. At most 2 a week per routine, only one visible at a time."),
         job_rule("hygieia.alerts", "Avvisi prodotti self care (Hygieia)", service="hygieia", path=f"{API}/alerts/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T10:00:00", tz=TZ,
-                 description="Prodotti in scadenza o che stanno finendo. Un avviso per prodotto, non più di uno a settimana."),
+                 description="Products expiring or running out. One notice per product, no more than one a week."),
     ]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
 ui = PluginClient("hygieia", title="Self care", icon="sparkle", color="pink",
-                  description="Routine, prodotti, cosa fare oggi in un tocco, statistiche e storia.", dist=UI_DIST,
+                  description="Routines, products, what to do today in one tap, statistics and history.", dist=UI_DIST,
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hygieia.js", api_prefix=f"{API}/",
     pages=[page("oggi", "Self care", element="hygieia-today", icon="sparkle", order=40,
-                help="Le routine di oggi: un tocco per segnarle fatte."),
+                help="Today's routines: one tap to mark them done."),
            page("routine", "Routine", element="hygieia-routines", icon="list", order=41, parent="oggi"),
            page("routine/:id", "Routine", element="hygieia-routine", detail=True, parent="oggi"),
-           page("prodotti", "Prodotti", element="hygieia-products", icon="drop", order=42, parent="oggi"),
-           page("prodotti/:id", "Prodotto", element="hygieia-product", detail=True, parent="oggi"),
-           page("diario", "Diario", element="hygieia-journal", icon="edit", order=43, parent="oggi"),
+           page("prodotti", "Products", element="hygieia-products", icon="drop", order=42, parent="oggi"),
+           page("prodotti/:id", "Product", element="hygieia-product", detail=True, parent="oggi"),
+           page("diario", "Diary", element="hygieia-journal", icon="edit", order=43, parent="oggi"),
            page("statistiche", "Statistiche e storia", element="hygieia-stats", icon="chart", order=44, parent="oggi"),
-           page("spesa", "Lista spesa", element="hygieia-shopping", icon="cart", order=45, parent="oggi")],
-    widgets=[widget("oggi", "Self care di oggi", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
+           page("spesa", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="oggi")],
+    widgets=[widget("oggi", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
                     open_page="oggi", icon="sparkle"),
              widget("prossima", "Prossima routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="oggi",
                     icon="clock"),
-             widget("prodotti", "Scadenze e da ricomprare", element="hygieia-alerts-widget", sizes=["m", "l"],
+             widget("prodotti", "Expiring and to buy again", element="hygieia-alerts-widget", sizes=["m", "l"],
                     open_page="spesa", icon="drop"),
-             widget("settimana", "Settimana self care", element="hygieia-week-widget", sizes=["s", "m", "l"],
+             widget("settimana", "Self care week", element="hygieia-week-widget", sizes=["s", "m", "l"],
                     open_page="statistiche", icon="calendar")],
     quick_actions=[
         quick_action("fatta", "Routine fatta", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
@@ -613,14 +611,14 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("hygieia", hub, sections=[
-    StoreSection("prodotti", "Prodotti", store, ["product", "event"], item_kinds=["product"], icon="drop",
+    StoreSection("prodotti", "Products", store, ["product", "event"], item_kinds=["product"], icon="drop",
                  subtitle=lambda r: r["data"].get("brand") or ""),
     StoreSection("routine", "Routine", store, ["routine", "version"], item_kinds=["routine"], icon="repeat",
                  subtitle=lambda r: r["data"].get("slot") or "", depends_on=["prodotti", "liste"]),
-    StoreSection("registro", "Registro", store, ["log"], icon="history",
+    StoreSection("registro", "Log", store, ["log"], icon="history",
                  title=lambda r: f"{r['data'].get('date')} · {r['data'].get('status') or 'fatto'}",
                  subtitle=lambda r: r["data"].get("note") or "", depends_on=["routine", "prodotti"]),
-    StoreSection("diario", "Diario", store, ["journal"], icon="note",
+    StoreSection("diario", "Diary", store, ["journal"], icon="note",
                  title=lambda r: f"{r['data'].get('date')} · {r['data'].get('area') or ''}",
                  subtitle=lambda r: r["data"].get("note") or ""),
     StoreSection("liste", "Liste personali", store, ["option"], icon="list"),
@@ -652,13 +650,13 @@ try:
     def _need_routine(name: str) -> dict:
         r = hygieia.find_routine(name)
         if not r:
-            raise NotFound(tr("routine '{0}' non trovata", name))
+            raise NotFound(tr("routine '{0}' not found", name))
         return r
 
     def _need_product(name: str) -> dict:
         p = hygieia.find_product(name)
         if not p:
-            raise NotFound(tr("prodotto '{0}' non trovato", name))
+            raise NotFound(tr("product '{0}' not found", name))
         return p
 
     def _overview() -> dict:
@@ -785,7 +783,7 @@ try:
         if remove_step:
             s = match(remove_step)
             if not s:
-                return {"error": tr("passo '{0}' non trovato in {1}", remove_step, r['name'])}
+                return {"error": tr("step '{0}' not found in {1}", remove_step, r['name'])}
             steps.remove(s)
         if add_step:
             new = _step_from_text(add_step)
@@ -797,7 +795,7 @@ try:
         if step:
             s = match(step)
             if not s:
-                return {"error": tr("passo '{0}' non trovato in {1}", step, r['name'])}
+                return {"error": tr("step '{0}' not found in {1}", step, r['name'])}
             if step_times is not None:
                 s["cadence"] = None if step_times == 0 else {"mode": "target", "times": step_times, "per": step_per or "week"}
             if pause_days is not None:
@@ -822,12 +820,12 @@ try:
         if plan_with:
             body["plan_with"] = "" if catalog.slug(plan_with) in ("nessuno", "no", "none") else plan_with
         if not body:
-            return {"error": tr("nessuna modifica indicata")}
+            return {"error": tr("no change given")}
         d = hygieia.save_routine(body, id=r["id"], reason=reason or "modificata dall'assistente", source="assistant")
         return {"saved": True, "name": d["name"], "version": d.get("version"), "cadence": d["cadence_label"],
                 "steps": [(s.get("label") or (s.get("product") or {}).get("name"))
                           + (f" [{s['cadence_label']}]" if s.get("cadence_label") else "")
-                          + (tr(" [pausa fino al {0}]", s['paused_until']) if s.get("paused_until") else "") for s in d["steps"]],
+                          + (tr(" [paused until {0}]", s['paused_until']) if s.get("paused_until") else "") for s in d["steps"]],
                 "notes": [n["text"] for n in d["check"]], "undo": "selfcare_undo_routine"}
 
     def _undo_routine(routine: str = "") -> dict:
@@ -873,48 +871,48 @@ try:
         MCPTool(name="selfcare_summary", description=("The user's self care: routines (with steps and frequency), products in use, warnings (expiry, "
                                                       "to buy again) and what is left today. Use it first for any question on skincare, hair, body, "
                                                       "cosmetics."), parameters={"type": "object", "properties": {}},
-                handler=_t(_overview), title="Riepilogo cura di sé", path=f"{API}/overview", clients=["telegram", "ui"], telegram_group="selfcare",
-                telegram={"section": "Oggi", "summary": True}),
+                handler=_t(_overview), title="Self care summary", path=f"{API}/overview", clients=["telegram", "ui"], telegram_group="selfcare",
+                telegram={"section": "Today", "summary": True}),
         MCPTool(name="selfcare_today", description=("What to do today (or on 'date'): routines with state (due = to do, suggested, blocked = not "
                                                     "today and why, done), steps for tonight, steps excluded today (e.g. retinol vs acid)."), parameters={"type": "object", "properties": {"date": S}},
-                handler=_t(_today), title="Cura di sé oggi", path=f"{API}/today", clients=["telegram", "ui"], telegram_group="selfcare",
-                telegram={"section": "Oggi", "primary": 1, "label": "Oggi"}),
+                handler=_t(_today), title="Self care today", path=f"{API}/today", clients=["telegram", "ui"], telegram_group="selfcare",
+                telegram={"section": "Today", "primary": 1, "label": "Today"}),
         MCPTool(name="selfcare_log", description=("Log: routine done (status done|partial|skipped, skipped_steps = skipped steps by name) or an "
                                                   "extra use of a product (product, e.g. 'maschera'). date YYYY-MM-DD, default today."), parameters={"type": "object", "properties": {
                     "routine": S, "status": S, "skipped_steps": L, "product": S, "date": S, "note": S}},
-                handler=_t(_log), title="Segna fatto", method="POST", path=f"{API}/log", clients=["telegram", "ui"],
+                handler=_t(_log), title="Mark done", method="POST", path=f"{API}/log", clients=["telegram", "ui"],
                 telegram_group="selfcare",
-                telegram={"section": "Oggi", "primary": 2}),
+                telegram={"section": "Today", "primary": 2}),
         MCPTool(name="selfcare_products", description=("Search products (query name/brand, area viso|capelli|corpo…, status current (default) | all | "
                                                        "in_use | stock | wishlist | finished, active e.g. retinolo)."),
                 parameters={"type": "object", "properties": {"query": S, "area": S, "status": S, "active": S, "category": S}},
-                handler=_t(_products), title="Prodotti", path=f"{API}/products", clients=["telegram", "ui"],
+                handler=_t(_products), title="Products", path=f"{API}/products", clients=["telegram", "ui"],
                 telegram_group="selfcare",
-                telegram={"section": "Prodotti", "primary": 4}),
+                telegram={"section": "Products", "primary": 4}),
         MCPTool(name="selfcare_product_get", description=("Detail of a product: uses, expiry, estimate of when it runs out, routines using it, history, "
                                                           "previous packs."),
                 parameters={"type": "object", "properties": {"product": S}, "required": ["product"]},
-                handler=_t(_product_get), title="Dettaglio prodotto", path=f"{API}/products/{{id}}", clients=["ui"],
+                handler=_t(_product_get), title="Product detail", path=f"{API}/products/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
-                telegram={"section": "Prodotti"}),
+                telegram={"section": "Products"}),
         MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'ho comprato il siero X 30ml'). status in_use (open, default) | stock "
                                                           "(closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glicolico, bha_salicilico, "
                                                           "vitamina_c…). category e.g. detergente, siero, crema, spf, shampoo."),
                 parameters={"type": "object", "properties": {"name": S, "brand": S, "category": S, "areas": L, "actives": L,
                                                              "size": N, "unit": S, "price": N, "status": S, "pao_months": I,
                                                              "notes": S, "favorite": B}, "required": ["name"]},
-                handler=_t(_product_add), title="Aggiungi prodotto", method="POST", path=f"{API}/products",
+                handler=_t(_product_add), title="Add product", method="POST", path=f"{API}/products",
                 clients=["telegram", "ui"], telegram_group="selfcare",
-                telegram={"section": "Prodotti"}),
+                telegram={"section": "Products"}),
         MCPTool(name="selfcare_product_update", description=("Update a product: status in_use (open) | finished | discarded | paused | stock, level "
                                                              "full|3/4|half|1/4|almost_empty, rating 1-5, verdict repurchase|maybe|never, repurchased=true if "
                                                              "bought again (new pack)."),
                 parameters={"type": "object", "properties": {"product": S, "status": S, "level": S, "rating": I, "verdict": S,
                                                              "favorite": B, "notes": S, "price": N, "opened_at": S,
                                                              "expires_at": S, "repurchased": B}, "required": ["product"]},
-                handler=_t(_product_update), title="Aggiorna prodotto", method="PUT", path=f"{API}/products/{{id}}",
+                handler=_t(_product_update), title="Update product", method="PUT", path=f"{API}/products/{{id}}",
                 clients=["telegram", "ui"], telegram_group="selfcare",
-                telegram={"section": "Prodotti"}),
+                telegram={"section": "Products"}),
         MCPTool(name="selfcare_routines", description="The routines with frequency, today's state and goal (e.g. 1/2 a week).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_routines), title="Routine",
                 path=f"{API}/routines", clients=["telegram", "ui"], telegram_group="selfcare",
@@ -922,7 +920,7 @@ try:
         MCPTool(name="selfcare_routine_get", description=("One routine: steps in order with amounts, waits and own frequency, statistics, version history, "
                                                           "compatibility warnings."),
                 parameters={"type": "object", "properties": {"routine": S}, "required": ["routine"]},
-                handler=_t(_routine_get), title="Dettaglio routine", path=f"{API}/routines/{{id}}", clients=["ui"],
+                handler=_t(_routine_get), title="Routine detail", path=f"{API}/routines/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
         MCPTool(name="selfcare_routine_create", description=("Create a routine. steps = product names (looked up in the inventory) or descriptions. "
@@ -931,7 +929,7 @@ try:
                 parameters={"type": "object", "properties": {"name": S, "slot": S, "areas": L, "steps": L, "cadence_mode": S,
                                                              "times": I, "per": S, "days": L, "reminder": B, "favorite": B},
                             "required": ["name"]},
-                handler=_t(_routine_create), title="Crea routine", method="POST", path=f"{API}/routines",
+                handler=_t(_routine_create), title="Create routine", method="POST", path=f"{API}/routines",
                 clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
         MCPTool(name="selfcare_routine_edit", description=("Edit a routine (creates a new version, undoable): add_step (+position, amount, wait_minutes), "
@@ -945,55 +943,55 @@ try:
                     "step_per": S, "pause_days": I, "amount": S, "wait_minutes": I, "name": S, "cadence_mode": S,
                     "times": I, "per": S, "days": L, "status": S, "reminder": B, "favorite": B, "plan_with": S},
                     "required": ["routine"]},
-                handler=_t(_routine_edit), title="Modifica routine", method="PUT", path=f"{API}/routines/{{id}}",
+                handler=_t(_routine_edit), title="Edit routine", method="PUT", path=f"{API}/routines/{{id}}",
                 clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
         MCPTool(name="selfcare_undo_routine", description="Undo the last change to the steps of a routine.",
                 parameters={"type": "object", "properties": {"routine": S}, "required": ["routine"]},
-                handler=_t(_undo_routine), title="Annulla modifica routine", method="POST",
+                handler=_t(_undo_routine), title="Undo routine change", method="POST",
                 path=f"{API}/routines/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
         MCPTool(name="selfcare_journal_add", description=("Diary (if active): scores 1-5 per area, e.g. area viso scores {brufoli: 2, idratazione: 4}, "
                                                           "capelli {caduta: 3}; notes and tags (stress, sole, ciclo…)."),
                 parameters={"type": "object", "properties": {"area": S, "scores": O, "note": S, "tags": L, "date": S},
                             "required": ["area"]},
-                handler=_t(_journal_add), title="Scrivi nel diario", method="POST", path=f"{API}/journal", clients=["ui"],
+                handler=_t(_journal_add), title="Write in the diary", method="POST", path=f"{API}/journal", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
-                telegram={"section": "Diario"}),
+                telegram={"section": "Diary"}),
         MCPTool(name="selfcare_diario_voce", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
                                                           "diary (area giornata). Offered after the evening recap."),
                 parameters={"type": "object", "properties": {
-                    "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Il tuo vocale"},
+                    "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Your voice message"},
                     "date": S}, "required": ["audio"]},
-                handler=_t(lambda audio, date="": {"item": _diary_voice(audio, date)}), title="Racconta la giornata",
+                handler=_t(lambda audio, date="": {"item": _diary_voice(audio, date)}), title="Tell me about your day",
                 method="POST", path=f"{API}/journal/voice", clients=["telegram", "ui"], telegram_group="selfcare",
-                telegram={"section": "Diario"}),
+                telegram={"section": "Diary"}),
         MCPTool(name="selfcare_stats", description=("Statistics: consistency per routine (streak, % of periods kept), most used products, spending "
                                                     "per month."), parameters={"type": "object", "properties": {"days": I}},
-                handler=_t(_stats), title="Statistiche cura di sé", path=f"{API}/stats", clients=["ui"],
+                handler=_t(_stats), title="Self care statistics", path=f"{API}/stats", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
-                telegram={"section": "Statistiche", "label": "Statistiche"}),
+                telegram={"section": "Statistics", "label": "Statistics"}),
         MCPTool(name="selfcare_timeline", description=("What changed over time: routine versions, products opened/finished/replaced, diary. since/until "
                                                        "YYYY-MM-DD."),
                 parameters={"type": "object", "properties": {"days": I, "since": S, "until": S}}, handler=_t(_timeline),
-                title="Storia cura di sé", path=f"{API}/timeline", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
-                telegram={"section": "Diario", "label": "Storia"}),
+                title="Self care history", path=f"{API}/timeline", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
+                telegram={"section": "Diary", "label": "alt::History"}),
         MCPTool(name="selfcare_period", description="Routines and products in use on a given date (e.g. 'cosa usavo a marzo').",
                 parameters={"type": "object", "properties": {"date": S}, "required": ["date"]}, handler=_t(_period),
-                title="Cura di sé in una data", path=f"{API}/period", clients=["ui"], telegram_visible=False,
+                title="Self care on a date", path=f"{API}/period", clients=["ui"], telegram_visible=False,
                 telegram_group="selfcare",
-                telegram={"section": "Diario", "label": "In una data"}),
+                telegram={"section": "Diary", "label": "On a date"}),
         MCPTool(name="selfcare_check", description=("Compatibility of actives (advice, never a block): of a routine, or of a product / list of "
                                                     "actives against those in use."),
                 parameters={"type": "object", "properties": {"routine": S, "product": S, "actives": L}},
-                handler=_t(_check), title="Compatibilità", path=f"{API}/check", clients=["ui"],
+                handler=_t(_check), title="Compatibility", path=f"{API}/check", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
-                telegram={"section": "Prodotti"}),
+                telegram={"section": "Products"}),
         MCPTool(name="selfcare_shopping", description=("Self care shopping list: wishes, to buy again (running out, finished in a routine), finished "
                                                        "with the verdict 'lo ricompro'."), parameters={"type": "object", "properties": {}},
-                handler=_t(_shopping), title="Lista spesa", path=f"{API}/shopping", clients=["telegram", "ui"],
+                handler=_t(_shopping), title="Shopping list", path=f"{API}/shopping", clients=["telegram", "ui"],
                 telegram_group="selfcare",
-                telegram={"section": "Prodotti", "primary": 5}),
+                telegram={"section": "Products", "primary": 5}),
     ]
 
     def _coerced(t: MCPTool):

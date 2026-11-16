@@ -25,14 +25,14 @@ logger = logging.getLogger("hestia_telegram.voice")
 USE_LISTEN = "telegram.vocale"
 USE_SPEAK = "telegram.risposta"
 VOICE_USECASES = [
-    voice_usecase(USE_LISTEN, "Telegram · vocali", direction="ascolto", help="I vocali che mandi al bot."),
+    voice_usecase(USE_LISTEN, "Telegram · voice messages", direction="ascolto", help="The voice messages you send to the bot."),
     voice_usecase(USE_SPEAK, "Telegram · risposte a voce", direction="voce",
-                  help="«Ascolta» sotto le risposte e le risposte in modalità live."),
+                  help="«Listen» under the answers and the answers in live mode."),
 ]
 LIVE_KEY = "voice_live"
 LISTEN_CALLBACK = "voice:play"
-CANT_LISTEN = "Non riesco ad ascoltare il vocale adesso, puoi scrivermelo?"
-CANT_SPEAK = "Non riesco a leggerla ad alta voce adesso, riprova tra poco."
+CANT_LISTEN = "I can't listen to the voice message right now, could you write it?"
+CANT_SPEAK = "I can't read it aloud right now, try again shortly."
 
 _client: VoiceClient | None = None
 _answers: "OrderedDict[tuple[int, int], str]" = OrderedDict()     # (chat, message) → reply text, for «Ascolta»
@@ -63,8 +63,8 @@ def is_live(chat_id) -> bool:
 
 def set_live(chat_id, on: bool) -> str:
     core.set_session_setting(str(chat_id), LIVE_KEY, "on" if on else "")
-    return (tr("<b>Risposte a voce: sì</b>\nAi tuoi vocali rispondo anche a voce.")
-            if on else tr("<b>Risposte a voce: no</b>\nRispondo in testo; sotto ogni risposta c'è «Ascolta»."))
+    return (tr("<b>Voice replies: on</b>\nI also answer your voice messages aloud.")
+            if on else tr("<b>Voice replies: off</b>\nI answer in text; under each answer there is «Listen»."))
 
 
 # ── listening ────────────────────────────────────────────────────────────────
@@ -99,7 +99,7 @@ def answer_text(chat_id, message_id) -> str:
 def listen_keyboard(feedback: bool = False, trace_id: str = "") -> types.InlineKeyboardMarkup:
     """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons). ``trace_id``
     (Oracle's id of the turn) rides in the callback so the vote lands on this answer (training dataset)."""
-    row = [types.InlineKeyboardButton(tr("Ascolta"), callback_data=LISTEN_CALLBACK)]
+    row = [types.InlineKeyboardButton(tr("Listen"), callback_data=LISTEN_CALLBACK)]
     if feedback:
         tail = f":{trace_id}" if trace_id else ""
         row += [types.InlineKeyboardButton("👍", callback_data=f"fb:good{tail}"),
@@ -147,7 +147,7 @@ def handle_listen_callback(call) -> None:
         text = _answers.get((int(chat_id), int(message_id)))
     text = text or str(call.message.text or "")
     try:
-        core.bot.answer_callback_query(call.id, tr("Preparo l'audio…"))
+        core.bot.answer_callback_query(call.id, tr("Preparing the audio…"))
     except Exception:
         pass
     if not text.strip() or not send_spoken(chat_id, text, message_id):

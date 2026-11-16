@@ -177,7 +177,7 @@ def _recap_piece(day, nxt) -> dict:
         last, count = _state.get("last_reconcile_at"), _state.get("mutation_count", 0)
     if not last or datetime.fromisoformat(str(last)).astimezone().date() != day:
         return recap.empty("dummy")
-    return recap.piece("dummy", "Prova", icon="flask", emoji="🧪", order=990,
+    return recap.piece("dummy", "alt::Test", icon="flask", emoji="🧪", order=990,
                        done=[recap.item(f"Riconciliazione alle {recap.hhmm(last)} ({count} modifiche in totale)",
                                         tone="success")])
 

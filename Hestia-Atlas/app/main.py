@@ -36,9 +36,9 @@ class FetchService(HestiaServiceBase):
             "commands": [
                 {
                     "command": "fetch_page",
-                    "title": tr("Leggi una pagina web"),
+                    "title": tr("Read a web page"),
                     "telegram_group": "memoria",
-                    "telegram": {"section": "Web", "label": tr("Leggi una pagina")},
+                    "telegram": {"section": "Web", "label": tr("Read a page")},
                     "description": "Fetches HTML by attaching to host Edge via CDP only",
                     "method": "POST",
                     "path": "/api/fetch/html",
@@ -48,7 +48,7 @@ class FetchService(HestiaServiceBase):
                 },
                 {
                     "command": "web_search",
-                    "title": tr("Cerca sul web"),
+                    "title": tr("Search the web"),
                     "telegram_group": "memoria",
                     "telegram": {"section": "Web"},
                     "description": "Search via DuckDuckGo Instant Answer API",
@@ -274,10 +274,10 @@ _atlas_mcp_tools = [
             url=str(kw.get("url", "")),
             timeout=int(kw.get("timeout_seconds", 15)),
         ),
-        title="Leggi una pagina web", method="POST", path="/api/fetch/html",
+        title="Read a web page", method="POST", path="/api/fetch/html",
         clients=["*"], response_mode="raw_json",
         telegram_visible=False, telegram_group="memoria",
-                telegram={"section": "Web", "label": "Leggi una pagina"}),
+                telegram={"section": "Web", "label": "Read a page"}),
     MCPTool(
         name="web_search",
         description="Search the web via DuckDuckGo Instant Answer API (free, no key).",
@@ -289,7 +289,7 @@ _atlas_mcp_tools = [
             "required": ["q"],
         },
         handler=lambda **kw: _web_search_mcp_handler(q=str(kw.get("q", ""))),
-        title="Cerca sul web", method="GET", path="/api/web/search",
+        title="Search the web", method="GET", path="/api/web/search",
         clients=["*"], response_mode="raw_json",
         telegram_visible=False, telegram_group="memoria",
                 telegram={"section": "Web", "primary": 4}),
@@ -305,10 +305,10 @@ _atlas_mcp_tools = [
             },
         },
         handler=lambda **kw: _recipe_mcp_handler(str(kw.get("name") or ""), kw.get("params") or {}),
-        title="Ricette dei siti", method="POST", path="/api/recipes/{name}/run",
+        title="Website recipes", method="POST", path="/api/recipes/{name}/run",
         clients=["*"], response_mode="raw_json",
         telegram_visible=False, telegram_group="memoria",
-                telegram={"section": "Web", "label": "Ricette dei siti"}),
+                telegram={"section": "Web", "label": "Website recipes"}),
 ]
 
 

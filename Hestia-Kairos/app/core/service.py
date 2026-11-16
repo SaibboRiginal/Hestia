@@ -22,18 +22,15 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_kairos.service")
 
 CATEGORIES = {
-    "bolletta": ("Bolletta", 5, "Controlla la lettura e che l'addebito sia passato; confronta con lo stesso mese "
-                                "dell'anno scorso."),
-    "assicurazione": ("Assicurazione", 30, "Un mese prima chiedi due preventivi: spesso il rinnovo automatico costa "
-                                           "di più."),
-    "bollo": ("Bollo auto", 15, "Si paga online (PagoPA) o in tabaccheria; controlla la regione e l'importo."),
-    "revisione": ("Revisione", 30, "Prenota il centro per tempo; porta libretto e certificato precedente."),
-    "tagliando": ("Tagliando", 21, "Chiedi il preventivo prima e controlla cosa prevede il libretto di manutenzione."),
-    "documento": ("Documento", 60, "Carta d'identità e passaporto: l'appuntamento in comune o in questura può "
-                                   "richiedere settimane."),
-    "abbonamento": ("Abbonamento", 7, "Decidi se tenerlo prima del rinnovo: disdire dopo costa un mese."),
-    "tassa": ("Tasse", 15, "Controlla l'F24 o l'avviso; segna la ricevuta dopo il pagamento."),
-    "altro": ("Scadenza", 7, ""),
+    "bolletta": ("Bolletta", 5, "Check the reading and that the charge went through; compare with the same month last year."),
+    "assicurazione": ("Assicurazione", 30, "A month before, ask for two quotes: the automatic renewal often costs more."),
+    "bollo": ("Bollo auto", 15, "You pay online (PagoPA) or at the tobacconist; check the region and the amount."),
+    "revisione": ("Review", 30, "Book the centre in time; bring the logbook and the previous certificate."),
+    "tagliando": ("Tagliando", 21, "Ask for the quote first and check what the service booklet foresees."),
+    "documento": ("Document", 60, "ID card and passport: the appointment at the town hall or police station can take weeks."),
+    "abbonamento": ("Abbonamento", 7, "Decide whether to keep it before the renewal: cancelling afterwards costs a month."),
+    "tassa": ("Tasse", 15, "Check the F24 or the notice; record the receipt after paying."),
+    "altro": ("Deadline", 7, ""),
 }
 RECURRENCES = ("none", "monthly", "bimonthly", "quarterly", "semiannual", "yearly", "biennial")
 _MONTHS = {"none": 0, "monthly": 1, "bimonthly": 2, "quarterly": 3, "semiannual": 6, "yearly": 12, "biennial": 24}
@@ -129,19 +126,19 @@ class Deadlines:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(tr("nessuna scadenza «{0}»", ref))
-        raise Invalid(tr("più scadenze corrispondono: ") + ", ".join(h["title"] for h in hits[:5]))
+            raise NotFound(tr("no deadline «{0}»", ref))
+        raise Invalid(tr("several deadlines match: ") + ", ".join(h["title"] for h in hits[:5]))
 
     # ── writing ─────────────────────────────────────────────────────────────
     def save(self, body: dict, did: str | None = None, *, source: str = "manual", status: str = "open") -> dict:
         old = self.find(did) if did else {}
         title = str(body.get("title") or old.get("title") or "").strip()[:120]
         if not title:
-            raise Invalid(tr("serve un titolo (es. «Bollo auto»)"))
+            raise Invalid(tr("a title is needed (e.g. «Car tax»)"))
         try:
             due = date.fromisoformat(str(body.get("due") or old.get("due") or "")[:10])
         except ValueError:
-            raise Invalid(tr("data di scadenza AAAA-MM-GG")) from None
+            raise Invalid(tr("due date YYYY-MM-DD")) from None
         category = body.get("category") or old.get("category") or guess_category(title)
         category = category if category in CATEGORIES else "altro"
         recurrence = body.get("recurrence") or old.get("recurrence") or "none"
@@ -167,7 +164,7 @@ class Deadlines:
         if not self.agenda:
             return
         start = datetime.combine(date.fromisoformat(d["due"]), datetime.min.time().replace(hour=9), self.tz)
-        self.agenda.show(f"kairos.{d['id']}", tr("Scadenza: {0}", d['title']), start,
+        self.agenda.show(f"kairos.{d['id']}", tr("Deadline: {0}", d['title']), start,
                          description=(f"{d['amount']:.2f} €. " if d.get("amount") else "") + (d.get("advice") or ""),
                          end_at=start + timedelta(minutes=30), params={"deadline_id": d["id"]})
 
@@ -238,18 +235,18 @@ class Deadlines:
         due = find_due(text, self.today())
         if not due:
             return {"status": "ignored"}
-        d = self.save({"title": subject[:120] or tr("Scadenza da email"), "due": due.isoformat(),
+        d = self.save({"title": subject[:120] or tr("Deadline from email"), "due": due.isoformat(),
                        "amount": find_amount(text), "category": guess_category(text), "mail_ref": ref},
                       source="mail", status="proposed")
         if self.hub:
             amount = f" · {d['amount']:.2f} €" if d.get("amount") else ""
             self.hub.notify({"event_type": "service.action_required", "domain": "deadlines",
                              "entity_id": f"kairos-proposal-{d['id']}",
-                             "payload": {"kind": "kairos.proposal", "service": "kairos", "_source": tr("Scadenze"),
-                                         "_title": tr("Nuova scadenza?"), "level": "info", "target": "owner", "icon": "clock",
-                                         "_message": tr("<b>{0}</b> entro il {1}{2}.", d['title'], due.strftime('%d/%m/%Y'), amount),
+                             "payload": {"kind": "kairos.proposal", "service": "kairos", "_source": tr("Deadlines"),
+                                         "_title": tr("New deadline?"), "level": "info", "target": "owner", "icon": "clock",
+                                         "_message": tr("<b>{0}</b> by {1}{2}.", d['title'], due.strftime('%d/%m/%Y'), amount),
                                          "_actions": [
-                                             {"id": "si", "label": tr("Aggiungi"), "style": "primary", "service": "kairos",
+                                             {"id": "si", "label": tr("Add"), "style": "primary", "service": "kairos",
                                               "path": f"/api/deadlines/{d['id']}/confirm", "body": {}, "resolves": True},
                                              {"id": "no", "label": "No", "service": "kairos",
                                               "path": f"/api/deadlines/{d['id']}/dismiss", "body": {}, "resolves": True}]}})
@@ -269,14 +266,14 @@ class Deadlines:
             if self.hub:
                 self.hub.notify({"event_type": "service.action_required", "domain": "deadlines",
                                  "entity_id": f"kairos-{d['id']}",
-                                 "payload": {"kind": "kairos.due", "service": "kairos", "_source": tr("Scadenze"),
+                                 "payload": {"kind": "kairos.due", "service": "kairos", "_source": tr("Deadlines"),
                                              "_title": f"{d['title']} {when}", "target": "owner", "icon": "clock",
                                              "level": "warning" if stage == "today" else "info",
                                              "_message": d.get("advice") or "", "replaces": f"kairos.{d['id']}",
-                                             "_actions": [{"id": "fatto", "label": tr("Fatto"), "style": "primary",
+                                             "_actions": [{"id": "fatto", "label": tr("Done"), "style": "primary",
                                                            "service": "kairos", "path": f"/api/deadlines/{d['id']}/done",
                                                            "body": {}, "resolves": True},
-                                                          {"id": "dopo", "label": tr("Fra 3 giorni"), "service": "kairos",
+                                                          {"id": "dopo", "label": tr("In 3 days"), "service": "kairos",
                                                            "path": f"/api/deadlines/{d['id']}/snooze",
                                                            "body": {"days": 3}}]}})
             raw = self.store.data("deadline", d["id"]) or {}

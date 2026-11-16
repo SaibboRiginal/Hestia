@@ -85,7 +85,7 @@ def _entity_message(payload: dict[str, Any], domain: str) -> str:
     if text:
         return text
     url = str(payload.get("url") or "").strip()
-    label = escape(title or domain or "Aggiornamento")
+    label = escape(title or domain or "Update")
     if url:
         return f'🔔 <a href="{escape(url, quote=True)}"><b>{label}</b></a>'
     return f"🔔 <b>{label}</b>"

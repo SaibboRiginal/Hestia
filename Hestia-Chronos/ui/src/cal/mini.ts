@@ -32,8 +32,8 @@ export class ChronosCalMini extends LitElement {
   render() {
     const m = this.month;
     return html`<div class="hd"><span>${fmt.monthYear(m)}</span>
-        <button @click=${() => (this.month = addMonths(m, -1))} aria-label=${tr("Mese precedente")}>${ic('chevron-left', 15)}</button>
-        <button @click=${() => (this.month = addMonths(m, 1))} aria-label=${tr("Mese successivo")}>${ic('chevron-right', 15)}</button></div>
+        <button @click=${() => (this.month = addMonths(m, -1))} aria-label=${tr("Previous month")}>${ic('chevron-left', 15)}</button>
+        <button @click=${() => (this.month = addMonths(m, 1))} aria-label=${tr("Next month")}>${ic('chevron-right', 15)}</button></div>
       <div class="grid">${['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(w => html`<span class="wd">${w}</span>`)}
         ${monthGrid(m).map(d => html`<button class="d ${d.getMonth() !== m.getMonth() ? 'out' : ''} ${isToday(d) ? 'today' : ''} ${isSameDay(d, this.selected) ? 'sel' : ''}"
           @click=${() => fire(this, 'cal-pick', d)}>${d.getDate()}${this.marked.has(dayKey(d)) ? html`<i></i>` : nothing}</button>`)}</div>`;

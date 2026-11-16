@@ -111,7 +111,7 @@ export function splitAnswer(content: string): AnswerPart[] {
           }
           @case ('chart') {
             <div class="chart">
-              <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img" [attr.aria-label]="b.title || ('Grafico' | tr)">
+              <svg [attr.viewBox]="'0 0 ' + W + ' ' + H" preserveAspectRatio="none" role="img" [attr.aria-label]="b.title || ('Chart' | tr)">
                 @if (b.kind === 'line') {
                   <polyline [attr.points]="linePoints(b.values ?? [])" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" />
                 } @else {

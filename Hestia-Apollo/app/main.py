@@ -29,7 +29,7 @@ from .core.comfy import ComfyUI
 from .core.service import PURPOSES, Images
 
 API = "/api/images"
-kit = ModuleKit("apollo", port=19022, api=API, domain="images", title="Immagini", store="images-store",
+kit = ModuleKit("apollo", port=19022, api=API, domain="images", title="Images", store="images-store",
                 when_to_use="create images (portraits, backgrounds, mascots, icons, illustrations)",
                 manual="immagine_crea: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (immagine_stato to see it). Workflows (immagine_flussi) are uploaded by the user from ComfyUI.")
 app = kit.app
@@ -89,7 +89,7 @@ def job_image(jid: str, n: int):
     j = images.job(jid)
     blobs = j.get("blob_ids") or []
     if not 0 <= n < len(blobs):
-        raise NotFound(tr("immagine non trovata"))
+        raise NotFound(tr("image not found"))
     blob = kit.hub.ok("archive", "GET", f"api/blobs/{blobs[n]}/base64", timeout=30) or {}
     return {"mime": blob.get("mime") or "image/png", "data_b64": blob.get("data_b64") or ""}
 
@@ -97,13 +97,13 @@ def job_image(jid: str, n: int):
 def _job_display(j: dict) -> dict:
     files = [file(b, f"immagine-{n + 1}.png", "image/png") for n, b in enumerate(j.get("blob_ids") or [])]
     if j["status"] == "done":
-        return display(tr("Immagine pronta"), subtitle=PURPOSES.get(j["purpose"], ""), lines=[j["prompt"][:200]],
+        return display(tr("Image ready"), subtitle=PURPOSES.get(j["purpose"], ""), lines=[j["prompt"][:200]],
                        files=files)
     if j["status"] == "failed":
-        why = {"missing_flow": "manca un flusso per questo tipo di immagine: caricalo in Immagini → Flussi.",
-               "not_configured": "il generatore di immagini non è ancora collegato."}.get(j["error"], j["error"])
-        return display(tr("Immagine non riuscita"), lines=[why], tone="warning")
-    return display(tr("Immagine in preparazione"), lines=[tr("Ti avviso quando è pronta.")])
+        why = {"missing_flow": tr("a flow for this image type is missing: upload it in Images → Flows."),
+               "not_configured": tr("the image generator is not connected yet.")}.get(j["error"], j["error"])
+        return display(tr("Image failed"), lines=[why], tone="warning")
+    return display(tr("Image in progress"), lines=[tr("I'll let you know when it's ready.")])
 
 
 def _create(prompt: str, purpose: str = "generico", negative: str = "", width: int | None = None,
@@ -121,34 +121,34 @@ kit.tools([
             "|".join(PURPOSES) + ", negative, width, height.",
             parameters={"type": "object", "properties": {"prompt": S, "purpose": {"type": "string", "enum": list(
                 PURPOSES)}, "negative": S, "width": I, "height": I}, "required": ["prompt"]},
-            handler=_create, title="Crea immagine", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Immagini", "primary": 1}),
+            handler=_create, title="Create image", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Images", "primary": 1}),
     MCPTool(name="immagine_stato", description="State of a requested image (and the image if ready).",
             parameters={"type": "object", "properties": {"job": S}, "required": ["job"]},
             handler=lambda job: (lambda j: {"id": j["id"], "status": j["status"], "display": _job_display(j)})(
                 images.job(job)),
-            title="Stato immagine", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Immagini"}),
+            title="Image status", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Images"}),
     MCPTool(name="immagine_lista", description="The last images requested.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": [{"id": j["id"], "status": j["status"], "purpose": j["purpose"],
                                                       "prompt": j["prompt"][:80]} for j in rows],
-                                           "display": display(tr("Immagini"), items=[
+                                           "display": display(tr("Images"), items=[
                                                item(j["prompt"][:60], [PURPOSES.get(j["purpose"], ""), j["status"]])
-                                               for j in rows[:20]], lines=[] if rows else [tr("Nessuna immagine.")])})(
+                                               for j in rows[:20]], lines=[] if rows else [tr("No images.")])})(
                 images.jobs(20)),
-            title="Immagini recenti", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Immagini", "primary": 2}),
+            title="Recent images", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Images", "primary": 2}),
     MCPTool(name="immagine_flussi", description="The loaded flows (one per purpose) and whether the generator is connected.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda fl: {"configured": comfy.configured, "items": fl, "display": display(
-                tr("Flussi immagini"), items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],
-                lines=([] if comfy.configured else [tr("Generatore non collegato.")]) +
-                      ([] if fl else [tr("Nessun flusso: caricalo dalla pagina Immagini.")]))})(images.flows()),
-            title="Flussi immagini", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Immagini"}),
+                tr("Image workflows"), items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],
+                lines=([] if comfy.configured else [tr("Generator not linked.")]) +
+                      ([] if fl else [tr("No workflow: upload one from the Images page.")]))})(images.flows()),
+            title="Image workflows", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Images"}),
 ], prefix="immagine_")
 
 transfer = Transfer("apollo", kit.hub, sections=[
-    StoreSection("flussi", "Flussi immagini", kit.store, ["workflow"], icon="camera",
+    StoreSection("flussi", "Image workflows", kit.store, ["workflow"], icon="camera",
                  title=lambda r: r["data"].get("name", "")),
     StoreSection("immagini", "Immagini create", kit.store, ["job"], icon="camera",
                  title=lambda r: r["data"].get("prompt", "")[:60], file_fields=["blob_ids"]),
@@ -163,11 +163,10 @@ def _start_worker() -> None:
 
 
 kit.on_warm(_start_worker)
-kit.webui(icon="camera", color="purple", description="Immagini create con il tuo ComfyUI: ritratti, sfondi, mascotte.",
-          pages=[page("immagini", "Immagini", element="apollo-images", icon="camera", order=210,
-                      help="Crea un'immagine e guarda quelle fatte. Servono il tuo ComfyUI e un flusso per tipo."),
-                 page("lavoro/:id", "Immagine", element="apollo-job", detail=True, parent="immagini"),
-                 page("flussi", "Flussi", element="apollo-flows", icon="upload", order=211, parent="immagini",
-                      help="Carica da ComfyUI il flusso salvato in formato API (Salva → API Format), uno per tipo "
-                           "di immagine.")])
+kit.webui(icon="camera", color="purple", description="Images made with your ComfyUI: portraits, backgrounds, mascots.",
+          pages=[page("immagini", "Images", element="apollo-images", icon="camera", order=210,
+                      help="Create an image and see the ones made. You need your ComfyUI and one flow per type."),
+                 page("lavoro/:id", "Image", element="apollo-job", detail=True, parent="immagini"),
+                 page("flussi", "Workflows", element="apollo-flows", icon="upload", order=211, parent="immagini",
+                      help="Upload from ComfyUI the flow saved in API format (Save → API Format), one per image type.")])
 kit.finish()

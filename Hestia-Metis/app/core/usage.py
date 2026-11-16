@@ -36,7 +36,7 @@ KINDS = ("tool", "page", "action")
 CLIENT_KEY = {"webui": "ui", "telegram": "telegram", "mcp": "mcp"}      # MCPTool.clients names
 IDEAS_USE = "metis.adesso"
 KEEP_DAYS = 180
-WEEKDAYS = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "sabato", "domenica")
 _SKIP = re.compile(r"(_delete|_elimina|_remove|_rimuovi|_annulla|_conferma|_off|_on)$")
 
 
@@ -145,8 +145,8 @@ class Usage:
             if score < 0.3:
                 break
             top = why[ref].most_common(1)[0][0]
-            reason = {"day": tr("Di solito il {0} a quest'ora", WEEKDAYS[now.weekday()]), "hour": tr("Di solito a quest'ora"),
-                      "often": tr("La usi spesso")}[top]
+            reason = {"day": tr("Usually on {0} at this time", WEEKDAYS[now.weekday()]), "hour": tr("Usually at this time"),
+                      "often": tr("You use it often")}[top]
             out.append((ref, score, reason))
         return out
 
@@ -180,18 +180,18 @@ class Usage:
 
         for a in self._agenda_items(now):
             if a["tool"]:
-                add(a["tool"], tr("In agenda alle {0}: {1}", a['at'], a['title']), "agenda")
+                add(a["tool"], tr("In the agenda at {0}: {1}", a['at'], a['title']), "agenda")
         for ref, _, reason in self.habits(client, now)[:3]:
             add(ref, reason, "habit")
         recent = [t["ref"] for t in reversed(self.taps(7, client)) if t["kind"] == "tool"]
         for ref in dict.fromkeys(recent):
             if sum(1 for i in items if i["source"] in ("habit", "recent")) >= 3:
                 break
-            add(ref, tr("Usata di recente"), "recent")
+            add(ref, tr("Used recently"), "recent")
         ideas = self.store.data("idea", client) or {}
         if ideas and (parse_dt(ideas.get("expires")) or now) > now:
             for idea in ideas.get("items") or []:
-                add(str(idea.get("tool") or ""), str(idea.get("reason") or tr("Un'idea per adesso"))[:120], "idea",
+                add(str(idea.get("tool") or ""), str(idea.get("reason") or tr("An idea for now"))[:120], "idea",
                     idea.get("args") if isinstance(idea.get("args"), dict) else None)
         return {"client": client, "at": now.isoformat(timespec="minutes"), "items": items,
                 "ideas_at": ideas.get("at")}
@@ -224,7 +224,7 @@ class Usage:
             for raw in json.loads(m.group(0)) if m else []:
                 name = str((raw or {}).get("tool") or "")
                 if name in tools and name not in habits and name not in {i["tool"] for i in ideas}:
-                    ideas.append({"tool": name, "reason": str(raw.get("reason") or "")[:80] or tr("Un'idea per adesso")})
+                    ideas.append({"tool": name, "reason": str(raw.get("reason") or "")[:80] or tr("An idea for now")})
         except (ValueError, TypeError, AttributeError):
             ideas = []
         if not ideas:
@@ -247,8 +247,8 @@ class Usage:
             rows.append({"tool": n, "title": t.get("title") or n, "description": for_people(t),
                          "module": t.get("module"), "area": area["key"], "area_label": area["label"],
                          "area_icon": area["icon"], "area_order": area["order"], "uses": used[n],
-                         "reason": tr("Non l'hai mai usata") if not used[n]
-                         else tr("Usata {0} volt{1}", used[n], 'a' if used[n] == 1 else 'e')})
+                         "reason": tr("You have never used it") if not used[n]
+                         else tr("Used {0} time{1}", used[n], 'a' if used[n] == 1 else 'e')})
         rows.sort(key=lambda r: (r["uses"], r["area_order"], r["title"]))
         # one per area first, so the page shows many different things
         first, rest, seen = [], [], set()

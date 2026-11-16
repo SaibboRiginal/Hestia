@@ -61,11 +61,11 @@ def plan(nominal: datetime, flex: dict | None, busy: Iterable[Busy], gap: timede
     while (b := _clash(t, events, gap)) is not None:
         last, t = b, b[1] + gap
     if t <= hi:
-        return t, tr("dopo {0}", last[2])
+        return t, tr("after {0}", last[2])
     # before: walk back past chained events
     t, last = nominal, first
     while (b := _clash(t, events, gap)) is not None:
         last, t = b, b[0] - gap
     if t >= lo:
-        return t, tr("prima di {0}", last[2])
-    return hi, tr("fine della fascia, sei impegnato")
+        return t, tr("before {0}", last[2])
+    return hi, tr("end of the slot, you are busy")

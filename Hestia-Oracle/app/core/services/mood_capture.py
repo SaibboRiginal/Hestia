@@ -22,7 +22,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "giù",
+LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "down",
           "arrabbiato", "malato")
 CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
 
@@ -41,8 +41,8 @@ _LEXICON: list[tuple[str, tuple[str | None, int, int | None, int | None]]] = [
     (r"nervos[oa]|irritat[oa]|agitat[oa]|teso|tesa|sotto pressione", ("nervoso", 2, None, 4)),
     (r"ansios[oa]|in ansia|preoccupat[oa]|stressat[oa]|stressatissim[oa]|in panico", ("ansioso", 2, None, 5)),
     (r"triste|depress[oa]|abbattut[oa]|malinconic[oa]|giù di morale", ("triste", 2, None, None)),
-    (r"malissimo|uno schifo|di merda|a terra|uno straccio", ("giù", 1, None, None)),
-    (r"giù|giu|demoralizzat[oa]|di cattivo umore|scoraggiat[oa]|male", ("giù", 2, None, None)),
+    (r"malissimo|uno schifo|di merda|a terra|uno straccio", ("down", 1, None, None)),
+    (r"giù|giu|demoralizzat[oa]|di cattivo umore|scoraggiat[oa]|male", ("down", 2, None, None)),
     (r"arrabbiat[oa]|incazzat[oa]|furios[oa]|furibond[oa]", ("arrabbiato", 2, None, 4)),
     (r"malat[oa]|influenzat[oa]|raffreddat[oa]|con la febbre|ho la febbre|ho mal di testa|ho l'influenza",
      ("malato", 2, 2, None)),
@@ -251,7 +251,7 @@ class MoodCapture:
                                                          if (out.get("labels") or body["labels"]) else "")
         logger.info("event=mood_capture_saved mood=%s labels=%s merged=%s", body["mood"], body["labels"],
                     out.get("merged"))
-        return [{"event": "mood.logged", "message": tr("Umore segnato: {0}", detail),
+        return [{"event": "mood.logged", "message": tr("Mood noted: {0}", detail),
                  "data": {"detail": detail, "id": out.get("id"), "merged": bool(out.get("merged"))}}]
 
     def _undo(self) -> list[dict]:
@@ -263,4 +263,4 @@ class MoodCapture:
         if not ok or not (isinstance(out, dict) and out.get("deleted")):
             return []
         logger.info("event=mood_capture_undone id=%s", out.get("id"))
-        return [{"event": "mood.removed", "message": tr("Umore tolto"), "data": {"detail": tr("l'ultima voce di oggi")}}]
+        return [{"event": "mood.removed", "message": tr("Mood removed"), "data": {"detail": tr("today's last entry")}}]

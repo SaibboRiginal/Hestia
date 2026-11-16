@@ -20,7 +20,7 @@ logger = logging.getLogger("hestia_telegram.chat_queue")
 
 CLIENT = "telegram"
 DRAIN_PATH = "/api/chat-queue/drain"
-FILE_OFFLINE_TEXT = "🟠 <b>Non disponibile</b>\nNon riesco a leggere il file adesso: rimandamelo più tardi."
+FILE_OFFLINE_TEXT = "🟠 <b>Not available</b>\nI can't read the file right now: send it to me again later."
 _drain_lock = threading.Lock()
 
 
@@ -58,7 +58,7 @@ def enqueue(chat_id, session_id: str, text: str, message_id: int | None, error: 
 def queued_text(item: dict) -> str:
     position = int(item.get("position") or 1)
     where = f" (n° {position})" if position > 1 else ""
-    return tr("🟠 <b>Non disponibile</b>\n<i>Messaggio in coda{0}: ti rispondo appena possibile.</i>", where)
+    return tr("🟠 <b>Not available</b>\n<i>Message queued{0}: I'll answer as soon as I can.</i>", where)
 
 
 def drain_async(reason: str = "") -> bool:
@@ -114,7 +114,7 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
     last = items[-1]
     chat_id = int(last["target"])
     ref = last.get("client_ref")
-    what = tr("al messaggio in coda") if len(items) == 1 else f"ai {len(items)} messaggi in coda"
+    what = tr("to the queued message") if len(items) == 1 else f"ai {len(items)} messaggi in coda"
     try:
         status_msg = core.bot.send_message(
             chat_id, f"<i>Rispondo {what}…</i>", parse_mode="HTML",
@@ -128,11 +128,11 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
         send_oracle_questions(chat_id, str(last["session_id"]), result.signals, result.questions)
         return True, ""
     except OracleUnavailable as exc:
-        core.bot.edit_message_text(tr("<i>Non posso ancora rispondere: resta in coda.</i>"),
+        core.bot.edit_message_text(tr("<i>I can't answer yet: it stays in the queue.</i>"),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]
     except Exception as exc:
         logger.warning("event=chat_queue_answer_failed chat=%s error=%s", chat_id, exc)
-        core.bot.edit_message_text(tr("🔴 <b>Non sono riuscita a rispondere</b>\nRiscrivimi tra poco."),
+        core.bot.edit_message_text(tr("🔴 <b>I couldn't answer</b>\nWrite to me again shortly."),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
         return False, str(exc)[:300]

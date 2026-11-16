@@ -9,14 +9,14 @@ import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, when } from './util';
 
 const ACTION: Record<string, { label: string; icon: string; tone: string }> = {
-  add: { label: tr('Imparato'), icon: 'plus', tone: 'success' },
-  merge: { label: tr('Unito'), icon: 'check', tone: 'info' },
-  retire: { label: tr('Lasciato andare'), icon: 'minus', tone: 'neutral' },
-  decay: { label: tr('Meno importante'), icon: 'trend-down', tone: 'neutral' },
+  add: { label: tr('Learned'), icon: 'plus', tone: 'success' },
+  merge: { label: tr('Merged'), icon: 'check', tone: 'info' },
+  retire: { label: tr('Let go'), icon: 'minus', tone: 'neutral' },
+  decay: { label: tr('Less important'), icon: 'trend-down', tone: 'neutral' },
 };
-const PROPOSAL: Record<string, string> = { doppione: tr('Doppione'), contraddizione: tr('Contraddizione') };
+const PROPOSAL: Record<string, string> = { doppione: tr('alt::Duplicate'), contraddizione: tr('Contradiction') };
 const UNDO_ERROR: Record<string, string> = {
-  changed_since: tr('Cambiata dopo: resta com\'è'), memory_gone: tr('Non c\'è più'), already_undone: tr('Già annullato'),
+  changed_since: tr('Changed afterwards: it stays as it is'), memory_gone: tr('It\'s no longer there'), already_undone: tr('Already undone'),
 };
 
 export class AthenaLearning extends HestiaElement {
@@ -48,7 +48,7 @@ export class AthenaLearning extends HestiaElement {
   private async load() {
     const [l, p] = await Promise.all([this.host.api('GET', `${API}/learning`, { query: { limit: 100 } }),
                                       this.host.api('GET', `${API}/memory/proposals`)]);
-    if (!l.ok) { this.error = l.status === 0 ? tr('Non raggiungibile') : l.error || tr('Non raggiungibile'); return; }
+    if (!l.ok) { this.error = l.status === 0 ? tr('Not reachable') : l.error || tr('Not reachable'); return; }
     this.error = '';
     this.items = l.data?.items || [];
     this.proposals = p.ok ? p.data?.items || [] : [];
@@ -58,8 +58,8 @@ export class AthenaLearning extends HestiaElement {
     this.busy = e.id;
     const r = await this.host.api('POST', `${API}/learning/${encodeURIComponent(e.id)}/undo`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(UNDO_ERROR[r.data?.status] || r.data?.detail || tr('Non annullato'), 'warning'); return; }
-    this.host.toast(tr('Annullato'), 'success');
+    if (!r.ok) { this.host.toast(UNDO_ERROR[r.data?.status] || r.data?.detail || tr('Not cancelled'), 'warning'); return; }
+    this.host.toast(tr('Cancelled'), 'success');
     this.load();
   }
 
@@ -67,8 +67,8 @@ export class AthenaLearning extends HestiaElement {
     this.busy = `${how}:${p.id}`;
     const r = await this.host.api('POST', `${API}/memory/proposals/${encodeURIComponent(p.id)}/${how}`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'warning'); return; }
-    this.host.toast(how === 'apply' ? tr('Memoria sistemata') : tr('Lasciata com\'è'), 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('alt::Failed'), 'warning'); return; }
+    this.host.toast(how === 'apply' ? tr('Memory tidied') : tr('Left as it is'), 'success');
     this.load();
   }
 
@@ -76,9 +76,9 @@ export class AthenaLearning extends HestiaElement {
     this.busy = 'review';
     const r = await this.host.api('POST', `${API}/memory/review`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito, riprova'), 'warning'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Failed, try again'), 'warning'); return; }
     const n = r.data?.proposals || 0;
-    this.host.toast(n ? tr("{0} {1} da vedere", n, n === 1 ? 'proposta' : 'proposte') : tr('Niente da sistemare'), 'success');
+    this.host.toast(n ? tr("{0} {1} to see", n, n === 1 ? 'proposta' : 'proposte') : tr('Nothing to fix'), 'success');
     this.load();
   }
 
@@ -89,11 +89,11 @@ export class AthenaLearning extends HestiaElement {
       <hxk-icon name=${a.icon} tone=${a.tone} size="16"></hxk-icon>
       <div class="grow col" style="gap:4px">
         <div class="row wrap"><hxk-badge tone=${a.tone}>${a.label}</hxk-badge><span class="small muted">${when(e.at)}</span>
-          ${undone ? html`<hxk-badge tone="neutral">${tr("Annullato")}</hxk-badge>` : nothing}</div>
+          ${undone ? html`<hxk-badge tone="neutral">${tr("Cancelled")}</hxk-badge>` : nothing}</div>
         <div class="fact">${e.fact || e.after?.fact || '–'}</div>
         ${e.quote ? html`<div class="quote">«${e.quote}»</div>` : nothing}
       </div>
-      ${undone ? nothing : html`<hxk-button size="sm" variant="ghost" icon="undo" ?loading=${this.busy === e.id} @click=${() => this.undo(e)}>${tr("Annulla")}</hxk-button>`}
+      ${undone ? nothing : html`<hxk-button size="sm" variant="ghost" icon="undo" ?loading=${this.busy === e.id} @click=${() => this.undo(e)}>${tr("Cancel")}</hxk-button>`}
     </div>`;
   }
 
@@ -101,26 +101,26 @@ export class AthenaLearning extends HestiaElement {
     return html`<div class="r">
       <hxk-icon name="sparkle" tone="accent" size="16"></hxk-icon>
       <div class="grow col" style="gap:4px">
-        <div class="row wrap"><hxk-badge tone="info">${PROPOSAL[p.kind] || tr('Forse vecchia')}</hxk-badge><span class="small muted">${p.why || ''}</span></div>
+        <div class="row wrap"><hxk-badge tone="info">${PROPOSAL[p.kind] || tr('Maybe old')}</hxk-badge><span class="small muted">${p.why || ''}</span></div>
         ${(p.facts || []).slice(0, 4).map((f: string) => html`<div class="fact small">${f}</div>`)}
         ${p.merged ? html`<div class="small">Diventa: <i>${p.merged}</i></div>` : nothing}
       </div>
       <div class="col" style="gap:6px">
-        <hxk-button size="sm" variant="primary" icon="check" ?loading=${this.busy === `apply:${p.id}`} @click=${() => this.decide(p, 'apply')}>${tr("Applica")}</hxk-button>
-        <hxk-button size="sm" variant="ghost" ?loading=${this.busy === `dismiss:${p.id}`} @click=${() => this.decide(p, 'dismiss')}>${tr("Lascia")}</hxk-button>
+        <hxk-button size="sm" variant="primary" icon="check" ?loading=${this.busy === `apply:${p.id}`} @click=${() => this.decide(p, 'apply')}>${tr("Apply")}</hxk-button>
+        <hxk-button size="sm" variant="ghost" ?loading=${this.busy === `dismiss:${p.id}`} @click=${() => this.decide(p, 'dismiss')}>${tr("Leave")}</hxk-button>
       </div>
     </div>`;
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Cosa ho imparato")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("What I learned")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     if (!this.items) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Cosa ho imparato")}</h1><span class="sub">${tr("Solo da quello che hai detto tu, con la frase da cui viene")}</span>
-        <span class="grow"></span><hxk-button icon="sparkle" ?loading=${this.busy === 'review'} @click=${() => this.review()}>${tr("Rivedi cosa sai di me")}</hxk-button></div>
-      ${this.proposals.length ? html`<h2>${tr("Da decidere")}</h2><div class="card">${this.proposals.map(p => this.proposal(p))}</div>` : nothing}
+      <div class="head"><h1>${tr("What I learned")}</h1><span class="sub">${tr("Only from what you said, with the sentence it comes from")}</span>
+        <span class="grow"></span><hxk-button icon="sparkle" ?loading=${this.busy === 'review'} @click=${() => this.review()}>${tr("Review what you know about me")}</hxk-button></div>
+      ${this.proposals.length ? html`<h2>${tr("To decide")}</h2><div class="card">${this.proposals.map(p => this.proposal(p))}</div>` : nothing}
       ${this.items.length ? html`<div class="card">${this.items.map(e => this.row(e))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("Ancora niente: la riflessione della notte impara dalle conversazioni e lo scrive qui.")}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("Nothing yet: the night reflection learns from the conversations and writes it here.")}></hxk-state>`}
     </div>`;
   }
 }

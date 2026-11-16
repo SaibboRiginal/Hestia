@@ -57,8 +57,8 @@ logger = logging.getLogger("hestia_hermes.notifications")
 
 CHANNEL = "notification"
 VOICE_USECASE = "hermes.notifica"
-VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Notifiche a voce", direction="voce",
-                                help="Le notifiche che un modulo vuole anche a voce (impostazione del modulo).")]
+VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Voice notifications", direction="voce",
+                                help="Notifications a module also wants spoken (module setting).")]
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
 ANSWERABLE_STATES = ["created", "queued", "delivered", "seen", "failed"]
 CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
@@ -203,7 +203,7 @@ def normalize_question(raw: Any) -> dict[str, Any] | None:
             options.append({"value": value[:80], "label": label[:60]})
     options = options[:8]
     if kind == "confirm" and not options:
-        options = [{"value": "si", "label": "Sì"}, {"value": "no", "label": "No"}]
+        options = [{"value": "si", "label": "Yes"}, {"value": "no", "label": "No"}]
     if kind in ("single_choice", "multi_choice") and len(options) < 2:
         return None
     if kind == "free_text":
@@ -640,7 +640,7 @@ class NotificationCenter:
                                     trace_id=notification_id)
         if code == 409:
             return self._finish(notification_id, answer, "already_handled",
-                                _outcome_text(payload, "Già gestita"), http=409)
+                                _outcome_text(payload, "Already handled"), http=409)
         if 200 <= code < 300:
             return self._finish(notification_id, answer, "done",
                                 _outcome_text(payload, f"{action.get('label')} ✓"),
@@ -667,7 +667,7 @@ class NotificationCenter:
         clean = {n: str(values.get(n)) for n in names if values.get(n) not in (None, "")}
         if len(clean) != len(names):
             return 400, {"status": "missing_fields", "fields": [n for n in names if n not in clean]}
-        answer = {"action_id": "secret", "label": "Inviato", "by": client, "at": _now(), "status": "pending"}
+        answer = {"action_id": "secret", "label": "Sent", "by": client, "at": _now(), "status": "pending"}
         status, current = self.archive.patch_outbound_event(
             notification_id, "answered", only_if_states=ANSWERABLE_STATES,
             payload_merge={"answer": answer}, detail=f"secret form sent by {client}")
@@ -722,7 +722,7 @@ class NotificationCenter:
         logger.info("event=notification_question_answered notification_id=%s client=%s kind=%s service=%s status=%s",
                     notification_id, client, question["kind"], question["service"], code)
         if code == 409:
-            return self._finish(notification_id, claim, "already_handled", _outcome_text(payload, "Già gestita"),
+            return self._finish(notification_id, claim, "already_handled", _outcome_text(payload, "Already handled"),
                                 http=409)
         if 200 <= code < 300:
             return self._finish(notification_id, claim, "done", _outcome_text(payload, shown[:120]))

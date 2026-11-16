@@ -167,10 +167,10 @@ def run(name: str, params: dict[str, Any], runner: Callable[..., Any], *, recipe
     result = runner(lambda page: execute(page, recipe, values, timeout_seconds * 1000), timeout_seconds)
     if result is None:
         logger.warning("[🔄] event=atlas_recipe_browser_unavailable recipe=%s fallback=none", name)
-        return 503, {"status": "error", "error": tr("browser non disponibile")}
+        return 503, {"status": "error", "error": tr("browser not available")}
     if result["status"] == "broken":
         logger.warning("event=atlas_recipe_broken recipe=%s step=%s field=%s error=%s", name, result.get("step"),
                        result.get("field", "-"), result.get("error"))
-        return 200, {**result, "recipe": name, "message": tr("La ricetta non funziona più: il sito è cambiato.")}
+        return 200, {**result, "recipe": name, "message": tr("The recipe no longer works: the site changed.")}
     logger.info("event=atlas_recipe_ok recipe=%s fields=%d", name, len(result["fields"]))
     return 200, {**result, "recipe": name}

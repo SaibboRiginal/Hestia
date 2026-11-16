@@ -138,7 +138,7 @@ def prettify_link_label(label: str, url: str) -> str:
             return f"{domain} / {' / '.join(path_parts[:2])}"
         return domain
     except Exception:
-        return tr("Apri link")
+        return tr("Open link")
 
 
 def sanitize_telegram_html(text: str) -> str:

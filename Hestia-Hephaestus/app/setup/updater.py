@@ -108,17 +108,17 @@ class Updater:
     def blocked(self) -> str:
         """Why an update cannot start now (empty = it can)."""
         if not git_ops.is_repo(self.repo):
-            return tr("Questa installazione non ha la cartella git di Hestia: aggiorna rilanciando l'installer.")
+            return tr("This installation has no Hestia git folder: update by running the installer again.")
         if self._git("status", "--porcelain", "--untracked-files=no", check=False):
-            return tr("Ci sono modifiche locali al codice: le tengo, quindi non aggiorno da solo. Salvale o annullale, poi riprova.")
+            return tr("There are local changes to the code: I keep them, so I don't update by myself. Save or undo them, then try again.")
         if self.channel() == "novita":
             ahead = self._git("rev-list", "--count", "origin/main..HEAD", check=False) or "0"
             if ahead.isdigit() and int(ahead):
-                return (tr("Il codice ha {0} modifiche fatte qui (sviluppo) che non sono su GitHub: pubblicale o annullale, poi riprova.", ahead))
+                return (tr("The code has {0} changes made here (development) that are not on GitHub: publish or undo them, then try again.", ahead))
         elif not self.installed()["tag"]:
             head = self._git("rev-parse", "HEAD", check=False)
             if self._git("branch", "-r", "--contains", head, check=False) == "":
-                return tr("Il codice ha modifiche fatte qui (sviluppo) che non sono su GitHub: non le sovrascrivo.")
+                return tr("The code has changes made here (development) that are not on GitHub: I won't overwrite them.")
         return ""
 
     # ── what is available ────────────────────────────────────────────────────
@@ -129,7 +129,7 @@ class Updater:
         except git_ops.GitError as exc:
             logger.warning("[🔄] event=update_fetch_failed error=%s", str(exc)[:200])
             return self._patch(checked_at=time.time(), available=None,
-                               check_error=tr("Non riesco a raggiungere GitHub: riprovo più tardi."))
+                               check_error=tr("I can't reach GitHub: I'll retry later."))
         current = self.installed()
         available = None
         if channel == "novita":
@@ -175,18 +175,18 @@ class Updater:
 
     def _ask(self, current: dict, available: dict) -> None:
         notes = available.get("notes") or []
-        text = (tr("È uscita Hestia {0}", available['label']) if available["ref"] != "origin/main"
-                else tr("Ci sono {0} novità di sviluppo", available.get('commits', 0)))
-        text += tr(" (ora hai {0}).", current['label'])
+        text = (tr("Hestia {0} is out", available['label']) if available["ref"] != "origin/main"
+                else tr("There are {0} development news", available.get('commits', 0)))
+        text += tr(" (now you have {0}).", current['label'])
         if notes:
-            text += tr(" Novità:\n") + "\n".join(f"• {n}" for n in notes[:5])
+            text += tr(" News:\n") + "\n".join(f"• {n}" for n in notes[:5])
             if len(notes) > 5:
                 text += f"\n…e altre {len(notes) - 5}."
         if available.get("major"):
-            text += tr("\nVersione grande: se dopo serve qualcosa sul computer, te lo dico io.")
-        text += tr("\nInstallo adesso? Se qualcosa non va, torno da solo alla versione di prima.")
+            text += tr("\nBig version: if something is needed on the computer afterwards, I'll tell you.")
+        text += tr("\nInstall now? If something goes wrong, I go back to the previous version by myself.")
         try:
-            self.notify({"key": "hephaestus.update", "title": tr("Aggiornamento"), "text": text,
+            self.notify({"key": "hephaestus.update", "title": tr("Update"), "text": text,
                          "question": {"kind": "confirm", "service": "hephaestus", "path": ANSWER_PATH}})
         except Exception as exc:
             logger.warning("[🔄] event=update_notice_failed error=%s", exc)
@@ -204,7 +204,7 @@ class Updater:
 
     def apply(self, ref: str = "", *, back: bool = False) -> dict[str, Any]:
         if self.running():
-            raise UpdateRefused(tr("Un aggiornamento è già in corso."))
+            raise UpdateRefused(tr("An update is already running."))
         why = self.blocked()
         if why:
             raise UpdateRefused(why)
@@ -213,8 +213,8 @@ class Updater:
         if back:
             ref = data.get("previous") or ""
         if not ref:
-            raise UpdateRefused(tr("Non c'è una versione da installare: sei già all'ultima."))
-        self._patch(job={"state": "in_corso", "step": tr("Preparo"), "target": ref, "started_at": time.time()})
+            raise UpdateRefused(tr("There is no version to install: you already have the latest."))
+        self._patch(job={"state": "in_corso", "step": tr("Preparing"), "target": ref, "started_at": time.time()})
         self._thread = threading.Thread(target=self._run, args=(ref, back), daemon=True, name="hestia-update")
         self._thread.start()
         return self.status()
@@ -234,7 +234,7 @@ class Updater:
         touched: list[str] = []
         restart_self = False
         try:
-            self._step(tr("Scarico il codice nuovo"))
+            self._step(tr("Downloading the new code"))
             self._checkout(ref)
             after_label = self.installed()["label"]
             files = [f for f in self._git("diff", "--name-only", before, "HEAD").splitlines() if f]
@@ -243,26 +243,26 @@ class Updater:
             running = self._running(client)
             rebuild = [s for s in plan.rebuild if s in running and s != "hephaestus"]
             restart = [s for s in plan.restart if s in running]
-            note = (tr("Hestia stessa ha un cambio che serve il computer: rilancia l'installer con --update.")
+            note = (tr("Hestia itself has a change that needs the computer: run the installer again with --update.")
                     if "hephaestus" in plan.rebuild else "")
             touched = rebuild + restart
             for svc in rebuild:
-                self._step(tr("Preparo la nuova versione di {0}", svc))
+                self._step(tr("Preparing the new version of {0}", svc))
                 images[svc] = self._new_image(client, svc, ref)
             if restart:
-                self._step(tr("Riavvio le parti cambiate"))
+                self._step(tr("Restarting the changed parts"))
                 self._restart(client, restart)
-            self._step(tr("Controllo che tutto risponda"))
+            self._step(tr("Checking that everything answers"))
             bad = self.unhealthy(touched) if touched else []
             if bad:
-                raise UpdateFailed(tr("non rispondono: {0}", ', '.join(bad)))
+                raise UpdateFailed(tr("not answering: {0}", ', '.join(bad)))
             restart_self = plan.restart_self and "hephaestus" in running
             self._finish(before, before_label, after_label, ok=True, back=back, detail=note)
         except Exception as exc:
             logger.warning("[🔄] event=update_failed target=%s error=%s — back to %s", ref, str(exc)[:300], before[:8])
             self._undo(before, branch, images, touched)
             self._finish(before, before_label, before_label, ok=False, back=back,
-                         detail=tr("Non è andato ({0}): sono tornato a {1}.", str(exc)[:160], before_label))
+                         detail=tr("It didn't work ({0}): I went back to {1}.", str(exc)[:160], before_label))
         if restart_self:
             time.sleep(2)
             try:
@@ -308,12 +308,12 @@ class Updater:
             self._save(data)
         logger.info("event=update_done ok=%s from=%s to=%s", ok, frm, to)
         if self.notify:
-            text = (tr("Hestia è aggiornata a {0}.", to) if ok and not back else
-                    tr("Sono tornato a {0}.", to) if ok else detail)
+            text = (tr("Hestia is updated to {0}.", to) if ok and not back else
+                    tr("I went back to {0}.", to) if ok else detail)
             if ok and detail:
                 text += " " + detail
             try:
-                self.notify({"key": "hephaestus.update", "title": tr("Aggiornamento"), "text": text,
+                self.notify({"key": "hephaestus.update", "title": tr("Update"), "text": text,
                              "level": "info" if ok else "warning"})
             except Exception as exc:
                 logger.warning("[🔄] event=update_notice_failed error=%s", exc)
@@ -348,7 +348,7 @@ class Updater:
             image = current or f"hestia-{svc}"
             build = _compose_build(self.repo, svc)
             if not build:
-                raise UpdateFailed(tr("non so come costruire {0}", svc))
+                raise UpdateFailed(tr("I don't know how to build {0}", svc))
             client.images.build(path=str(self.repo / build[0]), dockerfile=build[1], tag=image, rm=True)
         ok, detail = secrets.recreate_with_env(svc, {}, client=client, image=image)
         if not ok:

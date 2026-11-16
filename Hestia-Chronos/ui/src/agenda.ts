@@ -17,13 +17,13 @@ import type { TemplateCreate } from './cal/wizard';
 
 const TYPES: AgendaType[] = ['event', 'task', 'job', 'window'];
 const VIEWS: { value: CalView; label: string; title: string }[] = [
-  { value: 'day', label: tr('Giorno'), title: tr('Giorno (D)') }, { value: 'week', label: tr('Settimana'), title: tr('Settimana (W)') },
-  { value: 'month', label: tr('Mese'), title: tr('Mese (M)') }, { value: 'list', label: tr('Elenco'), title: tr('Elenco (L)') },
+  { value: 'day', label: tr('Day'), title: tr('Day (D)') }, { value: 'week', label: tr('Week'), title: tr('Week (W)') },
+  { value: 'month', label: tr('Month'), title: tr('Month (M)') }, { value: 'list', label: tr('List'), title: tr('List (L)') },
 ];
 const NEW_MENU: MenuItem[] = [
-  { id: 'free', label: tr('Evento libero'), icon: 'edit' }, { id: 'module', label: tr('Da un modulo…'), icon: 'zap' },
-  { id: 'ai', label: tr('Crea con Hestia…'), icon: 'sparkle' }, { id: 'd', label: '', divider: true },
-  { id: 'ics', label: tr('Agenda sul telefono (ICS)…'), icon: 'external' },
+  { id: 'free', label: tr('Free event'), icon: 'edit' }, { id: 'module', label: tr('From a module…'), icon: 'zap' },
+  { id: 'ai', label: tr('Create with Hestia…'), icon: 'sparkle' }, { id: 'd', label: '', divider: true },
+  { id: 'ics', label: tr('Agenda on the phone (ICS)…'), icon: 'external' },
 ];
 type NumKey = 'frequentPerDay' | 'frequentDays' | 'rareCount' | 'rareDays' | 'pastDays' | 'scrollHour' | 'workStart' | 'workEnd';
 interface LogsState { title: string; when: string; at: string; service: string; services: string[]; minutes: number;
@@ -155,8 +155,8 @@ export class ChronosAgenda extends HestiaElement {
     return Array.from({ length: 7 }, (_, i) => addDays(s, i));
   }
   private stepLabel(dir: 1 | -1) {
-    const unit = { day: [tr('Giorno precedente'), tr('Giorno successivo')], week: [tr('Settimana precedente'), tr('Settimana successiva')],
-                   month: [tr('Mese precedente'), tr('Mese successivo')], list: [tr('30 giorni prima'), tr('30 giorni dopo')] }[this.store.view];
+    const unit = { day: [tr('Previous day'), tr('Next day')], week: [tr('Previous week'), tr('Next week')],
+                   month: [tr('Previous month'), tr('Next month')], list: [tr('30 days before'), tr('30 days later')] }[this.store.view];
     return unit[dir < 0 ? 0 : 1];
   }
   private num(key: NumKey, v: unknown) {
@@ -173,7 +173,7 @@ export class ChronosAgenda extends HestiaElement {
     this.sel = null;
     this.host.assistant({ label: tr("Agenda · {0}{1}", fmt.dayLong(d), at ? ', ' + fmt.time(at) : ''), prompt,
       hints: this.hints({ giorno: dayKey(d), ora: at ? fmt.time(at) : undefined, vista: this.store.view,
-                          agenda: tr('agenda di Hestia (strumenti agenda_assistente_*)') }) });
+                          agenda: tr('Hestia\'s agenda (agenda_assistente_* tools)') }) });
   }
   private askAbout(ev: CalEvent) {
     const it = ev.item;
@@ -182,8 +182,8 @@ export class ChronosAgenda extends HestiaElement {
         regola: it?.recurrence, stato: ev.occ.status,
         ultimo_esito: it?.last_result ? (it.last_result.ok ? 'ok' : 'fallito: ' + (it.last_result.detail || '')) : undefined }),
       suggestions: ev.occ.recurring
-        ? [tr('Spiegami cosa fa questa regola'), tr('Sposta solo questa occorrenza di un\'ora'), tr('Cambia la frequenza…'), tr('Perché è fallita?')]
-        : [tr('Spiegami cosa fa'), tr('Spostala a domani alla stessa ora'), tr('Perché è fallita?')] });
+        ? [tr('Explain to me what this rule does'), tr('Move only this occurrence by one hour'), tr('Change the frequency…'), tr('Why did it fail?')]
+        : [tr('Explain to me what it does'), tr('Move it to tomorrow at the same time'), tr('Why did it fail?')] });
   }
 
   // ── quick add in words ─────────────────────────────────────────────────
@@ -197,7 +197,7 @@ export class ChronosAgenda extends HestiaElement {
       this.editor = { start: new Date(d.start_at), end: d.end_at ? new Date(d.end_at) : null, type: d.type,
                       prefill: { title: d.title, description: d.description ?? undefined, recurrence: d.recurrence } };
     } catch (e: any) {
-      this.host.toast(tr("Non ho capito la data ({0}): completa tu", e?.message || 'errore'), 'warning');
+      this.host.toast(tr("I didn't understand the date ({0}): complete it yourself", e?.message || 'errore'), 'warning');
       const s = this.defaultStart();
       this.editor = { start: s, end: addMinutes(s, 60), type: 'event', prefill: { title: text } };
     } finally { this.quick = ''; this.quickBusy = false; }
@@ -220,7 +220,7 @@ export class ChronosAgenda extends HestiaElement {
       const r = await this.store.api.logs(next.service, next.at, next.minutes);
       if (seq === this.logsSeq && this.logs) this.logs = { ...next, loading: false, result: r };
     } catch (e: any) {
-      if (seq === this.logsSeq && this.logs) this.logs = { ...next, loading: false, result: null, error: e?.message || tr('Log non disponibili') };
+      if (seq === this.logsSeq && this.logs) this.logs = { ...next, loading: false, result: null, error: e?.message || tr('Logs not available') };
     }
   }
 
@@ -233,7 +233,7 @@ export class ChronosAgenda extends HestiaElement {
       a.download = 'hestia-agenda.ics';
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    } catch (e: any) { this.host.toast(e?.message || tr('Download non riuscito'), 'danger'); }
+    } catch (e: any) { this.host.toast(e?.message || tr('Download failed'), 'danger'); }
   }
 
   // ── events from views / popover / dialogs ──────────────────────────────
@@ -266,14 +266,14 @@ export class ChronosAgenda extends HestiaElement {
       case 'run': await s.run(ev); break;
       case 'pause': await s.pause(ev, true); break;
       case 'resume': await s.pause(ev, false); break;
-      case 'restore': await s.update(ev.occ.key, { status: 'confirmed' }, tr('Regola ripristinata')); break;
+      case 'restore': await s.update(ev.occ.key, { status: 'confirmed' }, tr('Rule restored')); break;
       case 'reset-move': await s.resetMove(ev); break;
       case 'ask': this.askAbout(ev); break;
       case 'logs': this.openLogs(ev); break;
       case 'cancel': {
-        const ok = await this.host.confirm(ev.occ.recurring ? tr('Annullare tutta la regola?') : tr('Annullare la voce?'),
-          ev.occ.recurring ? tr('Nessuna occorrenza futura verrà eseguita. Per saltarne solo una usa «Salta questa».') : '',
-          { label: tr('Annulla regola'), danger: true });
+        const ok = await this.host.confirm(ev.occ.recurring ? tr('Cancel the whole rule?') : tr('Cancel the item?'),
+          ev.occ.recurring ? tr('No future occurrence will run. To skip just one use «Skip this».') : '',
+          { label: tr('Cancel rule'), danger: true });
         if (ok) await s.cancel(ev);
         break;
       }
@@ -281,7 +281,7 @@ export class ChronosAgenda extends HestiaElement {
   }
   private async onSave(r: EditorResult) {
     this.editor = null;
-    if (r.key) await this.store.update(r.key, r.body, tr('Modifiche salvate'));
+    if (r.key) await this.store.update(r.key, r.body, tr('Changes saved'));
     else await this.store.create(r.body);
   }
   private onAskFromEditor(a: EditorAsk) { this.editor = null; this.askCreate(a.start ?? undefined, a.title ? `${a.title} ` : ''); }
@@ -292,33 +292,33 @@ export class ChronosAgenda extends HestiaElement {
     const s = this.store;
     return html`<aside class="side ${this.sideOpen ? 'open' : ''}" style="--side-w:${s.sideW}px">
         <div class="new-wrap">
-          <button class="new" title=${tr("Nuovo evento libero (N)")} @click=${() => this.newAt(this.defaultStart())}>${ic('plus', 16)} ${tr("Nuovo")}</button>
+          <button class="new" title=${tr("New free event (N)")} @click=${() => this.newAt(this.defaultStart())}>${ic('plus', 16)} ${tr("New")}</button>
           <chronos-menu .items=${NEW_MENU} @select=${(e: CustomEvent) => { e.stopPropagation(); this.onNew(e.detail); }}>
-            <button class="new-more" aria-label=${tr("Altri modi di creare")}>${ic('chevron-down', 16)}</button></chronos-menu>
+            <button class="new-more" aria-label=${tr("Other ways to create")}>${ic('chevron-down', 16)}</button></chronos-menu>
         </div>
-        <div class="quick" title=${tr("Scrivi a parole, es. \"domani alle 15 dentista\" o \"ogni lunedì alle 9 controlla le case\": si apre l'editor già compilato")}>
+        <div class="quick" title=${tr("Write in words, e.g. \"tomorrow at 3pm dentist\" or \"every Monday at 9 check the houses\": the editor opens already filled in")}>
           ${this.quickBusy ? html`<hxk-icon name="refresh" size="14"></hxk-icon>` : ic('sparkle', 15)}
-          <input placeholder=${tr("Aggiungi rapido: domani alle 15…")} .value=${this.quick} ?disabled=${this.quickBusy}
+          <input placeholder=${tr("Quick add: tomorrow at 3pm…")} .value=${this.quick} ?disabled=${this.quickBusy}
             @input=${(e: any) => (this.quick = e.target.value)} @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') void this.quickAdd(); }}>
         </div>
         <chronos-cal-mini .selected=${s.anchor} .marked=${new Set(s.events().map(e => dayKey(e.start)))}
           @cal-pick=${(e: CustomEvent) => { e.stopPropagation(); s.focusDay(e.detail); }}></chronos-cal-mini>
-        <section><h4>${tr("Calendari")}</h4>
+        <section><h4>${tr("Calendars")}</h4>
           ${s.sources.map(src => html`<label class="flt"><input type="checkbox" class="chk" .checked=${src.enabled} @change=${() => s.toggleSource(src.id)}>
             <span class="sw ai"></span><span class="nm">${src.label}</span></label>`)}
-          <p class="hint">${tr("I tuoi calendari Google/Outlook arriveranno qui come livelli separati.")}</p></section>
-        <section><h4>${tr("Moduli")}</h4>
-          ${s.owners().length ? s.owners().map(o => html`<label class="flt" title=${tr('Doppio clic: mostra solo ') + ownerLabel(o.owner)}
+          <p class="hint">${tr("Your Google/Outlook calendars will arrive here as separate layers.")}</p></section>
+        <section><h4>${tr("Modules")}</h4>
+          ${s.owners().length ? s.owners().map(o => html`<label class="flt" title=${tr('Double click: show only ') + ownerLabel(o.owner)}
               @dblclick=${() => s.onlyOwner(o.owner)}>
             <input type="checkbox" class="chk" style="accent-color:${o.color}" .checked=${!s.hiddenOwners.has(o.owner)} @change=${() => s.toggleOwner(o.owner)}>
             <span class="sw" style="background:${o.color}"></span><span class="nm">${ownerLabel(o.owner)}</span><span class="cnt">${o.count}</span></label>`)
-            : html`<p class="hint">${tr("Nessun modulo ha ancora pianificato nulla.")}</p>`}</section>
-        <section><h4>${tr("Tipi")}</h4>
+            : html`<p class="hint">${tr("No module has planned anything yet.")}</p>`}</section>
+        <section><h4>${tr("Types")}</h4>
           ${TYPES.map(t => html`<label class="flt"><input type="checkbox" class="chk" .checked=${!s.hiddenTypes.has(t)} @change=${() => s.toggleType(t)}>
             ${ic(TYPE_META[t].icon, 14)}<span class="nm">${TYPE_META[t].label}</span></label>`)}</section>
         <section class="opts">
-          ${toggle(tr('Mostra occorrenze saltate'), s.showSkipped, v => s.setShowSkipped(v))}
-          ${toggle(tr('Mostra completate/annullate'), s.showDone, v => s.setShowDone(v))}
+          ${toggle(tr('Show skipped occurrences'), s.showSkipped, v => s.setShowSkipped(v))}
+          ${toggle(tr('Show completed/cancelled'), s.showDone, v => s.setShowDone(v))}
         </section>
       </aside><div class="scrim" @click=${() => (this.sideOpen = false)}></div>`;
   }
@@ -345,23 +345,23 @@ export class ChronosAgenda extends HestiaElement {
       @change=${(e: any) => this.num(key, e.target.value)}>`;
     return html`<chronos-pop .open=${!!this.vistaRect} .anchor=${this.vistaRect} .width=${340} placement="below" @close=${() => (this.vistaRect = null)}>
       <div class="vista">
-        <h4>${tr("Vista del calendario")}</h4>
-        <div class="lab">${tr("Finestre (es. Athena quando sei inattivo)")}
-          ${segmented([{ value: 'lane', label: tr('Corsia') }, { value: 'band', label: tr('Banda') }, { value: 'hidden', label: tr('Nascoste') }],
+        <h4>${tr("Calendar view")}</h4>
+        <div class="lab">${tr("Windows (e.g. Athena when you are idle)")}
+          ${segmented([{ value: 'lane', label: tr('Lane') }, { value: 'band', label: tr('Band') }, { value: 'hidden', label: tr('f.pl::Hidden') }],
             vp.windowsMode, v => s.setVp({ windowsMode: v }))}</div>
-        <div class="lab">${tr("Ricorrenze frequenti")} <small>${tr("Regole con almeno")} ${vp.frequentPerDay} ${tr("esecuzioni al giorno")}</small>
-          ${segmented([{ value: 'compact', label: tr('Compatte') }, { value: 'full', label: tr('Complete') }, { value: 'hidden', label: tr('Nascoste') }],
+        <div class="lab">${tr("Frequent recurrences")} <small>${tr("Rules with at least")} ${vp.frequentPerDay} ${tr("runs per day")}</small>
+          ${segmented([{ value: 'compact', label: tr('f.pl::Compact') }, { value: 'full', label: tr('Complete') }, { value: 'hidden', label: tr('f.pl::Hidden') }],
             vp.frequentMode, v => s.setVp({ frequentMode: v }))}</div>
-        <label class="num">${tr("Frequente da")} ${n('frequentPerDay', 2, 96)} ${tr("volte al giorno")}</label>
+        <label class="num">${tr("Frequent since")} ${n('frequentPerDay', 2, 96)} ${tr("times a day")}</label>
         ${toggle('Vista focalizzata (meno affollata)', vp.focused, v => s.setVp({ focused: v }))}
         ${vp.focused ? html`<div class="rules">
-          <p>${tr("Le voci create da te e il giorno selezionato si vedono sempre.")}</p>
-          <label class="num">${tr("Ricorrenze frequenti: prossimi")} ${n('frequentDays', 1, 60)} ${tr("giorni")}</label>
-          <label class="num">${tr("Ricorrenze rare: prossime")} ${n('rareCount', 1, 50)} ${tr("volte o")} ${n('rareDays', 1, 60)} ${tr("giorni (il primo che arriva)")}</label>
-          <label class="num">${tr("Passato: solo errori degli ultimi")} ${n('pastDays', 0, 90)} ${tr("giorni, uno per regola")}</label></div>` : nothing}
-        <label class="num">${tr("Scorri all'apertura alle")} ${n('scrollHour', 0, 23)}:00</label>
-        <label class="num">${tr("Orario di lavoro (lun–ven)")} ${n('workStart', 0, 24)}–${n('workEnd', 0, 24)}${tr(": fuori è ombreggiato")}</label>
-        <div style="display:flex"><span class="grow"></span><hxk-button size="sm" variant="ghost" @click=${() => s.resetVp()}>${tr("Ripristina predefinite")}</hxk-button></div>
+          <p>${tr("The items you created and the selected day are always shown.")}</p>
+          <label class="num">${tr("Frequent recurrences: next")} ${n('frequentDays', 1, 60)} ${tr("days")}</label>
+          <label class="num">${tr("Rare recurrences: next")} ${n('rareCount', 1, 50)} ${tr("times or")} ${n('rareDays', 1, 60)} ${tr("days (whichever comes first)")}</label>
+          <label class="num">${tr("Past: only errors of the last")} ${n('pastDays', 0, 90)} ${tr("days, one per rule")}</label></div>` : nothing}
+        <label class="num">${tr("Scroll on opening to")} ${n('scrollHour', 0, 23)}:00</label>
+        <label class="num">${tr("Working hours (Mon–Fri)")} ${n('workStart', 0, 24)}–${n('workEnd', 0, 24)}${tr(": outside it is shaded")}</label>
+        <div style="display:flex"><span class="grow"></span><hxk-button size="sm" variant="ghost" @click=${() => s.resetVp()}>${tr("Restore defaults")}</hxk-button></div>
       </div></chronos-pop>`;
   }
 
@@ -375,20 +375,20 @@ export class ChronosAgenda extends HestiaElement {
           <span>±</span>
           <select @change=${(e: any) => void this.loadLogs({ minutes: +e.target.value })}>
             ${[2, 5, 15, 60].map(m => html`<option value=${m} ?selected=${m === l.minutes}>${m} ${tr("min")}</option>`)}</select>
-          <span class="muted">${tr("attorno a")} ${l.when}</span>${l.loading ? html`<span class="muted">…</span>` : nothing}</div>
+          <span class="muted">${tr("around")} ${l.when}</span>${l.loading ? html`<span class="muted">…</span>` : nothing}</div>
         ${l.error ? html`<p class="bad">${l.error}</p>` : l.result ? (l.result.logs.length
           ? html`<div class="logs">${l.result.logs.map(r => html`<div class="lr" data-l=${r.level}><span class="lts">${time(r.ts)}</span>
               <span class="llv">${r.level}</span><span class="lm">${r.message}</span></div>`)}</div>`
-          : html`<p class="muted">${tr("Nessuna riga in questo intervallo.")}${l.result.oldest ? tr(" Il modulo tiene in memoria solo le ultime righe (dalle {0}).", fmt.relative(new Date(l.result.oldest))) : ''}</p>`)
+          : html`<p class="muted">${tr("No line in this interval.")}${l.result.oldest ? tr(" The module keeps in memory only the last lines (from {0}).", fmt.relative(new Date(l.result.oldest))) : ''}</p>`)
           : nothing}` : nothing}
     </chronos-dialog>`;
   }
 
   private renderIcs() {
-    return html`<chronos-dialog .open=${this.icsOpen} heading=${tr("Agenda sul telefono")} @close=${() => (this.icsOpen = false)}>
-      <p class="ics-p">${tr("Feed iCalendar di sola lettura dell'agenda di Hestia (eventi, task e finestre; i job periodici restano qui).")}</p>
-      <p class="ics-p small">${tr("Per l'abbonamento dal telefono imposta")} <code>WEBUI_ICS_KEY</code> ${tr("(almeno 16 caratteri) nel servizio WebUI e aggiungi come calendario \"da URL\" (Google Calendar, Apple Calendario)")} <code>${location.origin}/api/webui/agenda/feed.ics?key=&lt;la tua chiave&gt;</code>${tr(". Chi ha il link vede l'agenda: non condividerlo. Intanto puoi scaricare il file.")}</p>
-      <div slot="footer"><hxk-button variant="primary" icon="external" @click=${() => void this.downloadIcs()}>${tr("Scarica .ics")}</hxk-button></div>
+    return html`<chronos-dialog .open=${this.icsOpen} heading=${tr("Agenda on the phone")} @close=${() => (this.icsOpen = false)}>
+      <p class="ics-p">${tr("Read-only iCalendar feed of Hestia's agenda (events, tasks and windows; the periodic jobs stay here).")}</p>
+      <p class="ics-p small">${tr("For the subscription from the phone set")} <code>WEBUI_ICS_KEY</code> ${tr("(at least 16 characters) in the WebUI service and add it as a calendar \"from URL\" (Google Calendar, Apple Calendar)")} <code>${location.origin}/api/webui/agenda/feed.ics?key=&lt;la tua chiave&gt;</code>${tr(". Whoever has the link sees the agenda: don't share it. Meanwhile you can download the file.")}</p>
+      <div slot="footer"><hxk-button variant="primary" icon="external" @click=${() => void this.downloadIcs()}>${tr("Download .ics")}</hxk-button></div>
     </chronos-dialog>`;
   }
 
@@ -399,24 +399,24 @@ export class ChronosAgenda extends HestiaElement {
       ${this.renderSide()}
       <section class="main">
         <header class="bar">
-          <button class="ib side-btn" aria-label=${tr("Filtri")} @click=${() => (this.sideOpen = !this.sideOpen)}>${ic('sidebar', 18)}</button>
-          <hxk-button size="sm" @click=${() => s.today()}>${tr("Oggi")}</hxk-button>
+          <button class="ib side-btn" aria-label=${tr("Filters")} @click=${() => (this.sideOpen = !this.sideOpen)}>${ic('sidebar', 18)}</button>
+          <hxk-button size="sm" @click=${() => s.today()}>${tr("Today")}</hxk-button>
           <button class="ib" aria-label=${this.stepLabel(-1)} title=${this.stepLabel(-1) + ' (←)'} @click=${() => s.step(-1)}>${ic('chevron-left', 16)}</button>
           <button class="ib" aria-label=${this.stepLabel(1)} title=${this.stepLabel(1) + ' (→)'} @click=${() => s.step(1)}>${ic('chevron-right', 16)}</button>
           <h2>${s.title()}</h2>
           ${s.loading ? html`<span class="muted">…</span>` : nothing}
           <span class="grow"></span>
-          <div class="search">${ic('search', 15)}<input placeholder=${tr("Cerca…")} .value=${s.search} @input=${(e: any) => s.setSearch(e.target.value)}></div>
-          <button class="ib" aria-label=${tr("Aggiorna")} title=${tr("Aggiorna")} @click=${() => void s.load()}>${ic('refresh', 16)}</button>
-          <button class="ib" aria-label=${tr("Vista")} title=${tr("Vista: finestre, ricorrenze, cosa mostrare")}
+          <div class="search">${ic('search', 15)}<input placeholder=${tr("Search…")} .value=${s.search} @input=${(e: any) => s.setSearch(e.target.value)}></div>
+          <button class="ib" aria-label=${tr("Refresh")} title=${tr("Refresh")} @click=${() => void s.load()}>${ic('refresh', 16)}</button>
+          <button class="ib" aria-label=${tr("Seen")} title=${tr("View: windows, recurrences, what to show")}
             @click=${(e: Event) => (this.vistaRect = this.vistaRect ? null : (e.currentTarget as HTMLElement).getBoundingClientRect())}>${ic('settings', 16)}</button>
           ${segmented(VIEWS, s.view, v => s.setView(v))}
         </header>
-        ${s.error ? html`<div class="err">${ic('alert', 16)} ${s.error}<hxk-button size="sm" variant="ghost" @click=${() => void s.load()}>${tr("Riprova")}</hxk-button></div>` : nothing}
+        ${s.error ? html`<div class="err">${ic('alert', 16)} ${s.error}<hxk-button size="sm" variant="ghost" @click=${() => void s.load()}>${tr("Try again")}</hxk-button></div>` : nothing}
         ${s.vp.focused && s.hiddenByPolicy() > 0 ? html`<div class="hint-bar">${ic('filter', 14)}
-          <span>${s.hiddenByPolicy()} ${tr("prossime voci dei moduli nascoste dalla")} <b>${tr("vista focalizzata")}</b> (oltre l'orizzonte impostato).</span>
-          <button class="lnk" @click=${() => s.setVp({ focused: false })}>${tr("Mostra tutto")}</button>
-          <button class="lnk" @click=${(e: Event) => (this.vistaRect = (e.currentTarget as HTMLElement).getBoundingClientRect())}>${tr("Regole…")}</button></div>` : nothing}
+          <span>${s.hiddenByPolicy()} ${tr("next module entries hidden from the")} <b>${tr("focused view")}</b> (oltre l'orizzonte impostato).</span>
+          <button class="lnk" @click=${() => s.setVp({ focused: false })}>${tr("Show everything")}</button>
+          <button class="lnk" @click=${(e: Event) => (this.vistaRect = (e.currentTarget as HTMLElement).getBoundingClientRect())}>${tr("Rules…")}</button></div>` : nothing}
         <div class="view">${this.renderView()}</div>
       </section>
     </div>
@@ -431,11 +431,11 @@ export class ChronosAgenda extends HestiaElement {
       @cal-ask=${(e: CustomEvent) => { e.stopPropagation(); this.onAskFromEditor(e.detail); }}></chronos-cal-editor>
     <chronos-cal-wizard .seed=${this.wizard} .api=${s.api} @close=${(e: Event) => { e.stopPropagation(); this.wizard = null; }}
       @cal-template=${(e: CustomEvent) => { e.stopPropagation(); void this.onTemplate(e.detail); }}></chronos-cal-wizard>
-    <chronos-dialog .open=${!!this.moveAsk} heading=${tr("Spostare la voce ricorrente")} @close=${() => (this.moveAsk = null)}>
-      <p class="ics-p">“${this.moveAsk?.ev.occ.title ?? ''}${tr("”: solo questa occorrenza o tutta la serie?")}</p>
+    <chronos-dialog .open=${!!this.moveAsk} heading=${tr("Move the recurring item")} @close=${() => (this.moveAsk = null)}>
+      <p class="ics-p">“${this.moveAsk?.ev.occ.title ?? ''}${tr("”: only this occurrence or the whole series?")}</p>
       <div slot="footer" style="display:flex;gap:8px">
-        <hxk-button @click=${() => void this.doMove('one')}>${tr("Solo questa")}</hxk-button>
-        <hxk-button variant="primary" @click=${() => void this.doMove('all')}>${tr("Tutta la serie")}</hxk-button></div>
+        <hxk-button @click=${() => void this.doMove('one')}>${tr("Only this one")}</hxk-button>
+        <hxk-button variant="primary" @click=${() => void this.doMove('all')}>${tr("The whole series")}</hxk-button></div>
     </chronos-dialog>
     ${this.renderLogs()}${this.renderIcs()}`;
   }

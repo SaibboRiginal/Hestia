@@ -71,7 +71,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
         elif kind == "error":
             logger.warning("event=oracle_stream_error detail=%s", str(data.get("message") or data.get("content"))[:300])
             renderer.on_notice({"type": "notice", "kind": "error", "level": "error",
-                                "title": tr("Non sono riuscita a finire la risposta"), "detail": "riprova tra poco"})
+                                "title": tr("I couldn't finish the answer"), "detail": tr("try again shortly")})
 
 
 class OracleUnavailable(Exception):
@@ -172,7 +172,7 @@ def is_authorized(message) -> bool:
             return False
         logger.warning("event=unauthorized_access_attempt user_id=%s allowed_configured=%s",
                        user_id, bool(core.ALLOWED_USER_ID))
-        core.bot.reply_to(message, tr("Questo è un assistente privato."))
+        core.bot.reply_to(message, tr("This is a private assistant."))
         return False
     return True
 
@@ -225,7 +225,7 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
                                            message_id=status_msg.message_id, parse_mode="HTML")
                 return
         logger.warning("event=chat_turn_failed chat_id=%s error=%s", chat_id, error)
-        core.bot.edit_message_text(ui.error("Non sono riuscita a rispondere", "Riscrivimi tra poco."),
+        core.bot.edit_message_text(ui.error(tr("I couldn't answer"), "Riscrivimi tra poco."),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
     finally:
         stop_typing.set()
@@ -249,11 +249,11 @@ def handle_chat_message(message) -> None:
 
 # ── confirm cards Oracle asks for ────────────────────────────────────────────
 
-def _confirm_keyboard(token: str, confirm_label: str = "Conferma", cancel_label: str = "Annulla",
+def _confirm_keyboard(token: str, confirm_label: str = "Confirm", cancel_label: str = "Cancel",
                       danger: bool = False):
-    return ui.keyboard([[ui.button(ui.strip_emoji(confirm_label) or tr("Conferma"), f"confirm:{token}",
+    return ui.keyboard([[ui.button(ui.strip_emoji(confirm_label) or tr("Confirm"), f"confirm:{token}",
                                    style="danger" if danger else "success"),
-                         ui.button(ui.strip_emoji(cancel_label) or tr("Annulla"), f"cancel:{token}")]])
+                         ui.button(ui.strip_emoji(cancel_label) or tr("Cancel"), f"cancel:{token}")]])
 
 
 def send_oracle_questions(chat_id, session_id: str, streamed_signals: list, streamed_questions: list) -> None:
@@ -269,15 +269,15 @@ def send_oracle_questions(chat_id, session_id: str, streamed_signals: list, stre
         if not token:
             continue
         options = question.get("options") if isinstance(question.get("options"), list) else []
-        confirm_label = str(options[0]).strip() if len(options) >= 1 and str(options[0]).strip() else tr("Conferma")
-        cancel_label = str(options[1]).strip() if len(options) >= 2 and str(options[1]).strip() else tr("Annulla")
+        confirm_label = str(options[0]).strip() if len(options) >= 1 and str(options[0]).strip() else tr("Confirm")
+        cancel_label = str(options[1]).strip() if len(options) >= 2 and str(options[1]).strip() else tr("Cancel")
         signal_match = next((sig for sig in streamed_signals
                              if str(sig.get("event") or "") == "action.approval.required"
                              and str((sig.get("data") or {}).get("approval_token") or "") == token), {})
         trace_id = str(signal_match.get("trace_id") or question.get("trace_id") or "").strip()
         store.put_pending(token, {"action": "oracle_high_impact_approval", "chat_id": str(chat_id),
                                   "trace_id": trace_id or None})
-        header = ui.strip_emoji(question.get("header") or tr("Confermi?"))
+        header = ui.strip_emoji(question.get("header") or tr("Confirm?"))
         prompt = str(question.get("prompt") or "").strip()
         core.bot.send_message(chat_id, ui.card(header, [escape(prompt)] if prompt else [], tone="warning"),
                               parse_mode="HTML", reply_markup=_confirm_keyboard(token, confirm_label, cancel_label))
@@ -288,13 +288,13 @@ def _send_module_question(chat_id, session_id: str, question: dict) -> None:
     to Oracle, which routes the module's action."""
     options = [o for o in (question.get("options") or []) if isinstance(o, dict) and o.get("value")]
     if len(options) < 2:
-        options = [{"label": tr("Sì"), "value": "yes"}, {"label": "No", "value": "no"}]
+        options = [{"label": tr("Yes"), "value": "yes"}, {"label": "No", "value": "no"}]
     token = uuid.uuid4().hex[:16]
-    labels = [ui.strip_emoji(options[0].get("label") or tr("Sì")), ui.strip_emoji(options[1].get("label") or "No")]
+    labels = [ui.strip_emoji(options[0].get("label") or tr("Yes")), ui.strip_emoji(options[1].get("label") or "No")]
     store.put_pending(token, {"action": "oracle_question", "chat_id": str(chat_id), "session_id": session_id,
                               "question_id": str(question.get("question_id")), "confirm": str(options[0]["value"]),
                               "cancel": str(options[1]["value"]), "labels": labels})
-    header = ui.strip_emoji(question.get("header") or tr("Confermi?"))
+    header = ui.strip_emoji(question.get("header") or tr("Confirm?"))
     lines = [escape(str(question["prompt"]))] if question.get("prompt") else []
     core.bot.send_message(chat_id, ui.card(header, lines), parse_mode="HTML",
                           reply_markup=_confirm_keyboard(token, labels[0], labels[1]))
@@ -323,7 +323,7 @@ def handle_confirmation(call) -> None:
             core.bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
         except Exception:  # noqa: BLE001
             pass
-        core.bot.answer_callback_query(call.id, tr("Questa richiesta è già chiusa"))
+        core.bot.answer_callback_query(call.id, tr("This request is already closed"))
         return
     if payload.get("action") == "oracle_question":
         answer = payload["cancel"] if cancel else payload["confirm"]
@@ -336,7 +336,7 @@ def handle_confirmation(call) -> None:
             logger.warning("[🔄] event=oracle_question_answer_failed question_id=%s status=%s",
                            payload["question_id"], status)
             store.put_pending(token, payload)
-            core.bot.answer_callback_query(call.id, tr("Non riuscito, riprova"))
+            core.bot.answer_callback_query(call.id, tr("Failed, try again"))
             return
         _done(call, f"<i>{escape(label)}</i>", label)
         return
@@ -346,23 +346,23 @@ def handle_confirmation(call) -> None:
             "client_instructions": core.build_client_instructions_for_chat(str(call.message.chat.id))},
             timeout=35, trace_id=payload.get("trace_id"))
         if status == 404:
-            _done(call, "<i>Scaduta</i>", tr("Scaduta"))
+            _done(call, "<i>Scaduta</i>", tr("Expired"))
             return
         if not 0 < status < 400:
             logger.warning("event=oracle_action_approval_failed status=%s", status)
             store.put_pending(token, payload)
-            core.bot.answer_callback_query(call.id, tr("Non riuscito, riprova"))
+            core.bot.answer_callback_query(call.id, tr("Failed, try again"))
             return
         if cancel or str(result.get("status") or "") == "canceled":
-            _done(call, "<i>Annullato</i>", tr("Annullato"))
+            _done(call, "<i>Annullato</i>", tr("Cancelled"))
             return
         text = str((result.get("result") or {}).get("text") or "").strip() if isinstance(result.get("result"),
                                                                                        dict) else ""
-        _done(call, tr("🟢 <i>Fatto</i>"), tr("Fatto"))
+        _done(call, tr("🟢 <i>Done</i>"), tr("Done"))
         if text:
             core.send_user_message(call.message.chat.id, core.format_for_telegram(text))
         return
-    core.bot.answer_callback_query(call.id, tr("Fatto"))
+    core.bot.answer_callback_query(call.id, tr("Done"))
 
 
 # ── files, voice notes ───────────────────────────────────────────────────────
@@ -459,18 +459,18 @@ def handle_file_as_document(message) -> None:
     session_id = core.get_session(chat_id)
     info = _file_info(message)
     if not info:
-        core.bot.reply_to(message, ui.error("Questo tipo di file non lo leggo", ""), parse_mode="HTML")
+        core.bot.reply_to(message, ui.error(tr("I don't read this file type"), ""), parse_mode="HTML")
         return
     file_id, mime_type, filename = info
     is_text_like = mime_type.startswith("text/") or mime_type in (
         "application/json", "application/xml", "application/yaml", "application/x-yaml")
     if mime_type not in ACCEPTED_MIMES and not is_text_like:
-        core.bot.reply_to(message, ui.error("Questo formato non lo leggo",
+        core.bot.reply_to(message, ui.error(tr("I don't read this format"),
                                             "Mandami foto, PDF, audio, video, documenti Word o LibreOffice, "
                                             "fogli Excel, testo, JSON o CSV."), parse_mode="HTML")
         return
     user_text = (message.caption or "").strip() or _default_request(message.content_type)
-    status_msg = core.bot.reply_to(message, tr("<i>Leggo il file…</i>"), parse_mode="HTML")
+    status_msg = core.bot.reply_to(message, tr("<i>Reading the file…</i>"), parse_mode="HTML")
     stop_typing = _typing(chat_id)
     accepted = False
     try:
@@ -499,7 +499,7 @@ def handle_file_as_document(message) -> None:
                                        message_id=status_msg.message_id, parse_mode="HTML")
             return
         logger.warning("event=document_turn_failed chat_id=%s error=%s", chat_id, error)
-        core.bot.edit_message_text(ui.error("Non sono riuscita a leggere il file", "Riprova tra poco."),
+        core.bot.edit_message_text(ui.error(tr("I couldn't read the file"), "Try again shortly."),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
     finally:
         stop_typing.set()
@@ -525,4 +525,4 @@ def handle_feedback_callback(call) -> None:
                                            reply_markup=voice_service.listen_keyboard(False))
     except Exception:  # noqa: BLE001
         pass
-    core.bot.answer_callback_query(call.id, tr("Grazie") if ok else tr("Non salvato, riprova"))
+    core.bot.answer_callback_query(call.id, tr("Thanks") if ok else tr("Not saved, try again"))

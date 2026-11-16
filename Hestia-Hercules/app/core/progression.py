@@ -56,7 +56,7 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
     last = history[-1] if history else None
     targets = [{**p, "weight_kg": p.get("weight_kg"), "reps": p.get("reps_max") or p.get("reps_min")} for p in planned]
     out = {"exercise_id": exercise["id"], "rule": rule, "increment": inc, "last": None, "sets": targets,
-           "reason": tr("Nessuno storico: usa i valori della scheda."), "action": "plan"}
+           "reason": tr("No history: use the values of the plan."), "action": "plan"}
     if not last:
         return out
     last_work = [s for s in last["detail"] if s.get("type") in ("normal", "drop", "failure", None)]
@@ -87,7 +87,7 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
         return out
 
     if rule == "none":
-        return apply(last_w, lambda p, i: _last_reps(last_work, i) or p.get("reps_max"), tr("Come l'ultima volta."), "same")
+        return apply(last_w, lambda p, i: _last_reps(last_work, i) or p.get("reps_max"), tr("Like last time."), "same")
 
     if rule == "rpe" and last["best_e1rm"] and kind in LOAD_KINDS:
         def w_for(p):
@@ -116,25 +116,25 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
         if fails >= 2 and last_w and inc:
             new_w = round_to(last_w * 0.9, inc)
             return apply(new_w, lambda p, i: p.get("reps_max") or p.get("reps_min"),
-                         tr("Due sedute sotto le ripetizioni: si riparte da {0} kg (-10%).", fmt_kg(new_w)), "reset")
+                         tr("Two sessions below the reps: starting again from {0} kg (-10%).", fmt_kg(new_w)), "reset")
         if hit_min and rpe_ok and not blocked and last_w is not None and inc:
             new_w = round_to(last_w + inc, inc)
             return apply(new_w, lambda p, i: p.get("reps_max") or p.get("reps_min"),
-                         tr("Riuscito: +{0} kg.", fmt_kg(inc)), "increase")
-        why = tr("Hai detto che era pesante: stesso peso.") if blocked else tr("Non tutte le ripetizioni: riprova lo stesso peso.")
+                         tr("Done: +{0} kg.", fmt_kg(inc)), "increase")
+        why = tr("You said it was heavy: same weight.") if blocked else tr("Not all the reps: try the same weight again.")
         return apply(last_w, lambda p, i: p.get("reps_max") or p.get("reps_min"), why, "same")
 
     # double progression (default)
     if hit_top and rpe_ok and not blocked and last_w is not None and inc:
         new_w = round_to(last_w + inc, inc)
         return apply(new_w, lambda p, i: p.get("reps_min") or p.get("reps_max"),
-                     tr("Tutte le serie a {0}: +{1} kg, riparti da {2}.", reps_max, fmt_kg(inc), reps_min), "increase")
+                     tr("All sets at {0}: +{1} kg, start again from {2}.", reps_max, fmt_kg(inc), reps_min), "increase")
     if blocked:
         return apply(last_w, lambda p, i: _last_reps(last_work, i) or p.get("reps_min"),
-                     tr("Hai detto che era pesante: stesso peso e stesse ripetizioni."), "same")
+                     tr("You said it was heavy: same weight and same reps."), "same")
     return apply(last_w, lambda p, i: min((_last_reps(last_work, i) or (p.get("reps_min") or 0) - 1) + 1,
                                           p.get("reps_max") or 99),
-                 tr("Stesso peso, una ripetizione in più per serie."), "reps")
+                 tr("Same weight, one more rep per set."), "reps")
 
 
 def _last_reps(last_work: list[dict], i: int) -> int | None:

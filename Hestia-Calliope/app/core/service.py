@@ -35,7 +35,7 @@ class Documents:
     def create(self, title: str, html: str, fmt: str = "pdf", theme: str = "", must_contain: Any = None) -> dict:
         title = str(title or "").strip()[:120]
         if not title:
-            raise Invalid(tr("serve un titolo"))
+            raise Invalid(tr("a title is needed"))
         fmt = str(fmt or "pdf").lower().lstrip(".")
         if fmt not in FORMATS:
             raise Invalid("formato: pdf, docx o xlsx")
@@ -45,7 +45,7 @@ class Documents:
         must = [must_contain] if isinstance(must_contain, str) else list(must_contain or [])
         blocks = parse(html)
         if not blocks:
-            raise Invalid(tr("il testo del documento è vuoto"))
+            raise Invalid(tr("the text of the document is empty"))
         try:
             data = render(fmt, blocks, title, theme)
         except RenderError as exc:
@@ -54,14 +54,14 @@ class Documents:
         if not verdict["ok"]:
             logger.warning("event=calliope_check_failed format=%s missing=%d", fmt, len(verdict["missing"]))
             return {"created": False, "check": verdict,
-                    "error": tr("il documento non ha passato il controllo: manca ") + "; ".join(verdict["missing"][:5])}
+                    "error": tr("the document did not pass the check: missing ") + "; ".join(verdict["missing"][:5])}
         mime, ext = FORMATS[fmt]
         name = filename(title, ext)
         meta = self.hub.ok("archive", "POST", "api/blobs", body={
             "owner_module": "calliope", "content_type": mime, "data_base64": base64.b64encode(data).decode(),
             "meta": {"name": name, "kind": "document"}}, timeout=30) or {}
         if not meta.get("blob_id"):
-            raise Invalid(tr("non riesco a salvare il file, riprova tra poco"))
+            raise Invalid(tr("I can't save the file, try again shortly"))
         did = new_id("doc")
         rec = {"title": title, "format": fmt, "theme": theme, "name": name, "mime": mime, "blob_id": meta["blob_id"],
                "size": len(data), "pages": verdict["pages"], "check": verdict, "created_at": now_iso()}
@@ -78,7 +78,7 @@ class Documents:
         self.store.refresh()
         d = self.store.data("document", did)
         if not d:
-            raise NotFound(tr("documento non trovato"))
+            raise NotFound(tr("document not found"))
         return d
 
     def file(self, did: str) -> tuple[dict, bytes]:

@@ -159,14 +159,14 @@ def parse_client(client_id: str = "", client_secret: str = "", raw_json: str = "
         try:
             data = json.loads(raw_json)
         except ValueError:
-            raise GoogleOAuthError(tr("Il file non è un JSON valido."))
+            raise GoogleOAuthError(tr("The file is not valid JSON."))
         inner = data.get("installed") or data.get("web") or data if isinstance(data, dict) else {}
         client_id, client_secret = str(inner.get("client_id") or ""), str(inner.get("client_secret") or "")
     client_id, client_secret = client_id.strip(), client_secret.strip()
     if not client_id.endswith(".apps.googleusercontent.com") or len(client_id) > 200:
-        raise GoogleOAuthError(tr("L'ID client finisce con .apps.googleusercontent.com: copialo da Google Cloud."))
+        raise GoogleOAuthError(tr("The client ID ends with .apps.googleusercontent.com: copy it from Google Cloud."))
     if not (8 <= len(client_secret) <= 200) or any(c.isspace() for c in client_secret):
-        raise GoogleOAuthError(tr("Il segreto del client non sembra giusto: copialo da Google Cloud."))
+        raise GoogleOAuthError(tr("The client secret does not look right: copy it from Google Cloud."))
     return client_id, client_secret
 
 

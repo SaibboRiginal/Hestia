@@ -30,15 +30,15 @@ def decode(upload: dict, max_mb: float) -> tuple[bytes, str]:
         header, raw64 = raw64.split(",", 1)
         mime = mime or header[5:].split(";")[0].lower()
     if mime and mime not in ACCEPTED:
-        raise PhotoError(tr("formato {0} non supportato", mime))
+        raise PhotoError(tr("format {0} not supported", mime))
     try:
         raw = base64.b64decode(raw64, validate=False)
     except (binascii.Error, ValueError):
-        raise PhotoError(tr("foto non leggibile"))
+        raise PhotoError(tr("photo not readable"))
     if not raw:
         raise PhotoError("foto vuota")
     if len(raw) > max_mb * 1024 * 1024:
-        raise PhotoError(tr("foto più grande di {0:g} MB", max_mb))
+        raise PhotoError(tr("photo larger than {0:g} MB", max_mb))
     return raw, mime or "image/jpeg"
 
 
@@ -54,7 +54,7 @@ def process(raw: bytes) -> dict:
         img = Image.open(io.BytesIO(raw))
         img = ImageOps.exif_transpose(img)
     except Exception as exc:
-        raise PhotoError(tr("immagine non valida: {0}", exc))
+        raise PhotoError(tr("invalid image: {0}", exc))
     has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
     img = img.convert("RGBA" if has_alpha else "RGB")
     out = {"width": img.width, "height": img.height}

@@ -58,8 +58,8 @@ _BUCKET_30M_MAX_MINUTES = 35.0
 _BUCKET_2H_MAX_MINUTES = 130.0     # 2h 10m
 
 _BUCKET_LABELS = {
-    "30m": "30 minuti",
-    "2h": "2 ore",
+    "30m": "30 minutes",
+    "2h": "2 hours",
     "1d": "domani",
 }
 
@@ -93,7 +93,7 @@ def _format_datetime(iso_str: str) -> str:
 
         dt = datetime.fromisoformat(str(iso_str).replace("Z", "+00:00"))
         if len(str(iso_str)) == 10:            # all-day: date only
-            return tr("{0} {1} {2} (tutto il giorno)", dt.day, _IT_MONTHS[dt.month - 1], dt.year)
+            return tr("{0} {1} {2} (all day)", dt.day, _IT_MONTHS[dt.month - 1], dt.year)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         tz_name = os.getenv("TZ") or "Europe/Rome"
@@ -108,7 +108,7 @@ def _build_notification(item: dict, bucket: str) -> str:
     from html import escape   # user content in Telegram HTML must be escaped
 
     label = _BUCKET_LABELS.get(bucket, bucket)
-    title = escape(str(item.get("title") or tr("Evento")))
+    title = escape(str(item.get("title") or tr("Event")))
     start = item.get("start_at", "")
     location = escape(str(item.get("location") or ""))
     description = escape(str(item.get("description") or ""))

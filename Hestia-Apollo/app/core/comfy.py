@@ -38,9 +38,9 @@ class ComfyUI:
         try:
             resp = self.http.get(f"{self.url}{path}", params=params, headers=self._headers(), timeout=30)
         except requests.RequestException as exc:
-            raise ComfyError(tr("il generatore di immagini non risponde: {0}", exc)) from exc
+            raise ComfyError(tr("the image generator does not answer: {0}", exc)) from exc
         if resp.status_code >= 400:
-            raise ComfyError(tr("il generatore ha risposto {0}", resp.status_code))
+            raise ComfyError(tr("the generator answered {0}", resp.status_code))
         return resp
 
     def ping(self) -> bool:
@@ -55,12 +55,12 @@ class ComfyUI:
             resp = self.http.post(f"{self.url}/prompt", json={"prompt": graph, "client_id": client_id},
                                   headers=self._headers(), timeout=30)
         except requests.RequestException as exc:
-            raise ComfyError(tr("il generatore di immagini non risponde: {0}", exc)) from exc
+            raise ComfyError(tr("the image generator does not answer: {0}", exc)) from exc
         if resp.status_code >= 400:
-            raise ComfyError(tr("il flusso è stato rifiutato ({0}): {1}", resp.status_code, resp.text[:200]))
+            raise ComfyError(tr("the workflow was rejected ({0}): {1}", resp.status_code, resp.text[:200]))
         pid = (resp.json() or {}).get("prompt_id")
         if not pid:
-            raise ComfyError(tr("il generatore non ha accettato il lavoro"))
+            raise ComfyError(tr("the generator did not accept the job"))
         return pid
 
     def ws_url(self, client_id: str) -> str:
@@ -78,11 +78,11 @@ class ComfyUI:
             while True:
                 left = deadline - time.monotonic()
                 if left <= 0:
-                    raise ComfyError(tr("il generatore ci sta mettendo troppo"))
+                    raise ComfyError(tr("the generator is taking too long"))
                 try:
                     raw = ws.recv(timeout=left)
                 except TimeoutError:
-                    raise ComfyError(tr("il generatore ci sta mettendo troppo")) from None
+                    raise ComfyError(tr("the generator is taking too long")) from None
                 if not isinstance(raw, str):
                     continue                                          # binary previews
                 msg = json.loads(raw)
@@ -90,7 +90,7 @@ class ComfyUI:
                 if data.get("prompt_id") not in (None, pid):
                     continue
                 if msg.get("type") == "execution_error":
-                    raise ComfyError(tr("errore nel flusso: {0}", str(data.get('exception_message') or '')[:200]))
+                    raise ComfyError(tr("workflow error: {0}", str(data.get('exception_message') or '')[:200]))
                 if msg.get("type") == "executing" and data.get("node") is None and data.get("prompt_id") == pid:
                     break
         return self.images(pid)
@@ -106,5 +106,5 @@ class ComfyUI:
                                  type=img.get("type", "output"))
                 out.append((resp.content, resp.headers.get("content-type", "image/png").split(";")[0]))
         if not out:
-            raise ComfyError(tr("il flusso non ha prodotto immagini"))
+            raise ComfyError(tr("the workflow produced no images"))
         return out

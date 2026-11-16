@@ -52,34 +52,31 @@ _results: list[dict] = []          # today's results kept for the recap (in memo
 # instruction / pre-check arguments take their values.
 TEMPLATES: list[dict] = [
     {"id": "radar", "label": "Radar notizie", "icon": "search",
-     "help": "Ogni mattina le notizie importanti su un tema, con la fonte e perché ti interessano.",
-     "fields": {"topic": {"label": "Tema", "required": True}},
+     "help": "Every morning the important news on a topic, with the source and why it matters to you.",
+     "fields": {"topic": {"label": "alt::Topic", "required": True}},
      "recurrence": "FREQ=DAILY;BYHOUR=7;BYMINUTE=30", "deliver": "recap",
-     "precheck": {"tool": "web_search", "args": {"q": "{topic} notizie oggi"}},
-     "instruction": ("Dai risultati qui sotto scegli al massimo 5 notizie importanti di oggi su «{topic}». Per ognuna: "
-                     "titolo, fonte (link) e una riga «perché ti interessa». Se non c'è niente di nuovo rispondi "
-                     "solo NIENTE.")},
+     "precheck": {"tool": "web_search", "args": {"q": "{topic} news today"}},
+     "instruction": ("From the results below pick at most 5 important news items of today about «{topic}». For each: title, source (link) and one line «why it matters to you». If there is nothing new answer only NOTHING.")},
     {"id": "case", "label": "Case nuove", "icon": "home",
-     "help": "Quando ci sono annunci nuovi, i migliori con il motivo.",
+     "help": "When there are new listings, the best ones with the reason.",
      "fields": {"query": {"label": "Zona", "required": False}},
      "recurrence": "FREQ=DAILY;BYHOUR=19;BYMINUTE=0", "deliver": "hermes",
      "precheck": {"tool": "scout.search", "args": {"query": "{query}", "limit": 10}},
-     "instruction": "Tra gli annunci qui sotto indicami i 3 più adatti a me e perché, in breve."},
-    {"id": "spese", "label": "Spese da rivedere", "icon": "wallet",
-     "help": "Ogni domenica le spese della settimana da sistemare.",
+     "instruction": "Among the listings below tell me the 3 best suited to me and why, briefly."},
+    {"id": "spese", "label": "Expenses to review", "icon": "wallet",
+     "help": "Every Sunday the expenses of the week to fix.",
      "fields": {}, "recurrence": "FREQ=WEEKLY;BYDAY=SU;BYHOUR=18;BYMINUTE=0", "deliver": "hermes",
      "precheck": {"tool": "finance_search", "args": {"to_review": True, "limit": 30}},
-     "instruction": "Queste spese sono da rivedere: proponi la categoria giusta per ognuna, in una lista breve."},
-    {"id": "settimana", "label": "La settimana che arriva", "icon": "calendar",
-     "help": "Il lunedì mattina cosa hai in settimana e cosa preparare.",
+     "instruction": "These expenses need review: propose the right category for each one, in a short list."},
+    {"id": "settimana", "label": "The coming week", "icon": "calendar",
+     "help": "On Monday morning what you have in the week and what to prepare.",
      "fields": {}, "recurrence": "FREQ=WEEKLY;BYDAY=MO;BYHOUR=7;BYMINUTE=45", "deliver": "hermes",
-     "instruction": ("Guarda i miei impegni di questa settimana e dimmi in 5 righe cosa c'è e cosa devo preparare. "
-                     "Se la settimana è vuota rispondi solo NIENTE.")},
-    {"id": "mail", "label": "Mail da un mittente", "icon": "mail",
-     "help": "Quando arriva una mail da qualcuno, il riassunto e se devi fare qualcosa.",
-     "fields": {"senders": {"label": "Mittente (indirizzo o dominio)", "required": True}},
+     "instruction": ("Look at my commitments this week and tell me in 5 lines what is on and what I must prepare. If the week is empty answer only NOTHING.")},
+    {"id": "mail", "label": "Email from a sender", "icon": "mail",
+     "help": "When an email arrives from someone, the summary and whether you must do something.",
+     "fields": {"senders": {"label": "Sender (address or domain)", "required": True}},
      "on": {"mail": {"senders": "{senders}"}}, "deliver": "hermes",
-     "instruction": "Riassumi in 3 righe la mail appena arrivata e dimmi se devo fare qualcosa e entro quando."},
+     "instruction": "Summarise in 3 lines the email just arrived and tell me whether I must do something and by when."},
 ]
 
 
@@ -190,7 +187,7 @@ def _ask_oracle(key: str, label: str, message: str) -> dict:
     """One assistant turn with origin ``routine:<key>``; ``{reply, changes}`` from the NDJSON answer."""
     from hestia_common import origin as origin_mod
     body = {"message": message, "session_id": f"routine:{key}", "client": "routine",
-            "notify_target": "owner", "client_instructions": "Lavori per una routine dell'utente: sii breve."}
+            "notify_target": "owner", "client_instructions": "Working for a routine of the user: be brief."}
     resp = requests.post(f"{_HUB}/route/oracle/api/chat",
                          json={"method": "POST", "headers": origin_mod.headers("routine", key, label),
                                "query": {}, "body": body, "timeout_seconds": _RUN_TIMEOUT},
@@ -248,14 +245,14 @@ def run(key: str, *, by: str = "agenda", context: str = "") -> dict:
                            key, r["precheck"]["tool"], str(payload)[:160])
         elif _empty(payload):
             logger.info("event=routine_nothing_new key=%s tool=%s", key, r["precheck"]["tool"])
-            return {"ok": True, "ran": False, "reason": tr("niente di nuovo")}
+            return {"ok": True, "ran": False, "reason": tr("nothing new")}
         else:
             pre_text = json.dumps(payload, ensure_ascii=False, default=str)[:6000]
     message = (f"[ROUTINE «{item['title']}»] {r['instruction']}\n"
                + (f"What started it:\n{context[:3000]}\n" if context else "")
                + (f"Check data:\n{pre_text}\n" if pre_text else "")
                + f"Answer in the language of the instruction. If there is nothing useful to say reply only {NOTHING}.")
-    out = _ask_oracle(key, tr("Da una tua routine"), message)
+    out = _ask_oracle(key, tr("From one of your routines"), message)
     return _deliver(key, item, r, out, by)
 
 
@@ -270,7 +267,7 @@ def _deliver(key: str, item: dict, r: dict, out: dict, by: str) -> dict:
         return {"ok": True, "ran": True, "delivered": True, "deliver": "question", "text": reply}
     if not reply or reply.strip().strip(".").upper() == NOTHING:
         logger.info("event=routine_quiet key=%s", key)
-        return {"ok": True, "ran": True, "delivered": False, "reason": tr("niente da dire")}
+        return {"ok": True, "ran": True, "delivered": False, "reason": tr("nothing to say")}
     result = {"key": key, "title": item["title"], "text": reply, "at": _now().isoformat(),
               "changes": out["changes"]}
     if (r.get("deliver") or "hermes") == "recap":
@@ -390,19 +387,19 @@ def answer(key: str, question_id: str, answer_text: str, client: str = "") -> di
     status = int(routed.get("status_code", resp.status_code))
     payload = routed.get("payload") if isinstance(routed.get("payload"), dict) else {}
     if status == 404:
-        raise agenda.AgendaError(tr("questa domanda non è più aperta"), 409)
+        raise agenda.AgendaError(tr("this question is no longer open"), 409)
     if status >= 400:
         raise agenda.AgendaError(f"assistant {status}", 502)
     resume = str((payload.get("resume") or {}).get("message") or "")
     if resume:
         def _go_on():
             try:
-                _deliver(key, item, r, _ask_oracle(key, tr("Da una tua routine"), resume), by="answer")
+                _deliver(key, item, r, _ask_oracle(key, tr("From one of your routines"), resume), by="answer")
             except Exception as exc:
                 logger.warning("[🔄] event=routine_resume_failed key=%s error=%s", key, exc)
         threading.Thread(target=_go_on, daemon=True, name=f"routine-answer-{key}").start()
     logger.info("event=routine_question_answered key=%s question_id=%s resumed=%s", key, question_id, bool(resume))
     action = payload.get("action") if isinstance(payload.get("action"), dict) else None
     if action and not action.get("ok"):
-        raise agenda.AgendaError(tr("l'azione non è riuscita"), 502)
-    return {"ok": True, "resumed": bool(resume), "message": tr("Ricevuto, continuo") if resume else tr("Fatto")}
+        raise agenda.AgendaError(tr("the action failed"), 502)
+    return {"ok": True, "resumed": bool(resume), "message": tr("Got it, I'll go on") if resume else tr("Done")}

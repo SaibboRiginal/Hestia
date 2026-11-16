@@ -90,16 +90,15 @@ def docs_check_run(propose: bool = True) -> dict[str, Any]:
 
 def agenda_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
-    return [job_rule(DOCS_JOB, tr("Documenti allineati al codice"), service="athena", path="/api/athena/docs/check",
+    return [job_rule(DOCS_JOB, tr("Documents aligned with the code"), service="athena", path="/api/athena/docs/check",
                      recurrence="FREQ=MONTHLY;BYMONTHDAY=1;BYHOUR=4;BYMINUTE=30", timeout_seconds=180,
-                     description="Una volta al mese confronto la documentazione con quello che i moduli fanno "
-                                 "davvero e propongo le correzioni allo sviluppo (le approvi tu).")]
+                     description="Once a month I compare the documentation with what the modules really do and propose fixes to development (you approve them).")]
 
 
 def mcp_tools() -> list:
     from hestia_common.mcp_helpers import MCPTool
 
-    def tool(name, description, method, path, title, *, params=None, required=None, label="", section="Memoria",
+    def tool(name, description, method, path, title, *, params=None, required=None, label="", section="Memory",
              group="memoria", prompt=""):
         schema = {"type": "object", "properties": params or {}}
         if required:
@@ -112,17 +111,17 @@ def mcp_tools() -> list:
     return [
         tool("memory_rivedi", ("«Rivedi cosa sai di me»: look for duplicates, contradictions and old things in the memory and "
                                "propose them (the user confirms each). It deletes nothing by itself."), "POST",
-             "/api/athena/memory/review", "Rivedi cosa sai di me", label="Rivedi memoria"),
+             "/api/athena/memory/review", "Review what you know about me", label="Rivedi memoria"),
         tool("memory_learning", ("What the assistant learned recently (memories added, removed, reinforced), with the user's "
                                  "exact words each one comes from."), "GET", "/api/athena/learning",
-             "Cosa ho imparato", params={"limit": {"type": "integer"}}, label="Cosa ho imparato",
+             "What I learned", params={"limit": {"type": "integer"}}, label="What I learned",
              prompt="Short list: what, when, the sentence it comes from. No ids."),
         tool("memory_learning_undo", "Undo something learned (id from memory_learning).", "POST",
-             "/api/athena/learning/{entry_id}/undo", "Annulla cosa imparata", params={"entry_id": {"type": "string"}},
+             "/api/athena/learning/{entry_id}/undo", "Undo what was learned", params={"entry_id": {"type": "string"}},
              required=["entry_id"]),
         tool("memory_proposals", ("The memory cleanups proposed by «Rivedi cosa sai di me» still waiting for an answer "
                                   "(duplicates, contradictions, old things)."), "GET", "/api/athena/memory/proposals",
-             "Pulizie da decidere", label="Pulizie da decidere",
+             "Clean-ups to decide", label="Clean-ups to decide",
              prompt="Short list: what it proposes and why. No ids."),
         tool("memory_proposal_apply", "Apply a proposed cleanup (id from memory_proposals): only if the user says yes.",
              "POST", "/api/athena/memory/proposals/{pid}/apply", "Applica pulizia", params={"pid": {"type": "string"}},
@@ -130,6 +129,6 @@ def mcp_tools() -> list:
         tool("memory_proposal_dismiss", "Drop a proposed cleanup (id from memory_proposals).", "POST",
              "/api/athena/memory/proposals/{pid}/dismiss", "Scarta pulizia", params={"pid": {"type": "string"}},
              required=["pid"]),
-        tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Controlla i documenti", section="Sviluppo",
+        tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Controlla i documenti", section="Development",
              group="sviluppo", label="Controlla documenti"),
     ]

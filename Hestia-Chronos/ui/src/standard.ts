@@ -10,13 +10,13 @@ import { describeRRule } from './cal/rrule';
 import { ownerLabel } from './cal/models';
 
 const STATES: Record<string, { tone: string; icon: string; text: string }> = {
-  eliminata: { tone: 'danger', icon: 'trash', text: tr('Eliminata') },
-  fallita: { tone: 'danger', icon: 'alert', text: tr('Ferma per errori') },
-  'in pausa': { tone: 'warning', icon: 'pause', text: tr('In pausa') },
-  modificata: { tone: 'info', icon: 'edit', text: tr('Cambiata da te') },
-  attiva: { tone: 'success', icon: 'check-circle', text: tr('Attiva') },
+  eliminata: { tone: 'danger', icon: 'trash', text: tr('f::Deleted') },
+  fallita: { tone: 'danger', icon: 'alert', text: tr('Stopped on errors') },
+  'in pausa': { tone: 'warning', icon: 'pause', text: tr('Paused') },
+  modificata: { tone: 'info', icon: 'edit', text: tr('Changed by you') },
+  attiva: { tone: 'success', icon: 'check-circle', text: tr('f::Active') },
 };
-const FILTERS = [{ id: 'todo', label: tr('Da rimettere') }, { id: '', label: tr('Tutte') }];
+const FILTERS = [{ id: 'todo', label: tr('To put back') }, { id: '', label: tr('All') }];
 
 function hhmm(iso?: string | null): string {
   if (!iso) return '';
@@ -57,7 +57,7 @@ export class ChronosStandard extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/standard`);
-    if (!r.ok) { this.error = r.status === 0 ? tr('Agenda non raggiungibile') : r.error || tr('Agenda non raggiungibile'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Agenda not reachable') : r.error || tr('Agenda not reachable'); return; }
     this.error = '';
     this.data = r.data;
     if (this.filter === 'todo' && !(r.data.activities || []).some((a: any) => a.can_restore)) this.filter = '';
@@ -67,8 +67,8 @@ export class ChronosStandard extends HestiaElement {
     this.busy = a.key;
     const r = await this.host.api('POST', `${API}/standard/${encodeURIComponent(a.key)}/restore`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || tr("{0}: non ripristinata", a.title), 'danger'); return; }
-    this.host.toast(tr("{0}: di nuovo come previsto", a.title), 'success');
+    if (!r.ok) { this.host.toast(r.error || tr("{0}: not restored", a.title), 'danger'); return; }
+    this.host.toast(tr("{0}: back as expected", a.title), 'success');
     this.load();
   }
 
@@ -88,27 +88,27 @@ export class ChronosStandard extends HestiaElement {
         <div class="small muted">${ownerLabel(a.owner)}${this.when(a) ? ` · ${this.when(a)}` : ''}</div>
         ${a.description ? html`<div class="small muted">${a.description}</div>` : nothing}
       </div>
-      ${a.can_restore ? html`<hxk-button size="sm" icon="undo" ?loading=${this.busy === a.key} @click=${() => this.restore(a)}>${tr("Ripristina")}</hxk-button>` : nothing}
+      ${a.can_restore ? html`<hxk-button size="sm" icon="undo" ?loading=${this.busy === a.key} @click=${() => this.restore(a)}>${tr("f::Restore")}</hxk-button>` : nothing}
     </div>`;
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Attività standard")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("Standard tasks")}</h1><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
     const d = this.data;
     if (!d) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const all: any[] = d.activities || [];
     const rows = this.filter === 'todo' ? all.filter(a => a.can_restore) : all;
     const tpls: any[] = d.templates || [];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Attività standard")}</h1><span class="sub">${tr("Quello che i moduli mettono in agenda da soli: se ne togli una, la rimetti con un clic")}</span></div>
+      <div class="head"><h1>${tr("Standard tasks")}</h1><span class="sub">${tr("What the modules put in the agenda by themselves: if you remove one, put it back with a click")}</span></div>
       <div class="chips">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.filter === f.id} @click=${() => (this.filter = f.id)}>
         ${f.label}${f.id === 'todo' ? ` (${all.filter(a => a.can_restore).length})` : ''}</button>`)}</div>
       ${rows.length ? html`<div class="card">${rows.map(a => this.row(a))}</div>`
-        : html`<hxk-state kind="empty" text=${this.filter === 'todo' ? tr('Tutte le attività standard sono attive e come previste.') : tr('Nessuna attività standard: i moduli le registrano quando partono.')}></hxk-state>`}
-      ${tpls.length ? html`<h2>${tr("Da aggiungere")}</h2><div class="tpl">${tpls.map(t => html`<div class="tp">
+        : html`<hxk-state kind="empty" text=${this.filter === 'todo' ? tr('All standard activities are active and as expected.') : tr('No standard activity: the modules register them when they start.')}></hxk-state>`}
+      ${tpls.length ? html`<h2>${tr("To add")}</h2><div class="tpl">${tpls.map(t => html`<div class="tp">
           <hxk-icon name=${t.icon || 'zap'} tone="accent" size="16"></hxk-icon>
           <div class="grow col" style="gap:2px"><b>${t.label}</b><span class="small muted">${ownerLabel(t.owner)}${t.description ? ` · ${t.description}` : ''}</span></div></div>`)}</div>
-        <p class="small muted">${tr("Si aggiungono dal calendario: Agenda → Nuovo → «Da un modulo…».")}</p>` : nothing}
+        <p class="small muted">${tr("They are added from the calendar: Agenda → New → «From a module…».")}</p>` : nothing}
     </div>`;
   }
 }

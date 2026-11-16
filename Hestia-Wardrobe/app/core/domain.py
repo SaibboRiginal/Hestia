@@ -19,18 +19,18 @@ def new_id() -> str:
     return uuid.uuid4().hex
 
 
-KINDS = {"garment": "Capo", "shoes": "Scarpe", "accessory": "Accessorio"}
+KINDS = {"garment": "Item", "shoes": "Shoes", "accessory": "Accessorio"}
 SEASONS = {"spring": "Primavera", "summer": "Estate", "autumn": "Autunno", "winter": "Inverno"}
-STATUSES = {"active": "Nell'armadio", "laundry": "In lavanderia", "lent": "Prestato", "stored": "Messo via",
-            "to_repair": "Da riparare", "to_donate": "Da donare", "donated": "Donato", "sold": "Venduto",
-            "wishlist": "Desiderato", "archived": "Archiviato"}
+STATUSES = {"active": "In the wardrobe", "laundry": "In the laundry", "lent": "Prestato", "stored": "Messo via",
+            "to_repair": "To repair", "to_donate": "To donate", "donated": "Donato", "sold": "Sold",
+            "wishlist": "Desiderato", "archived": "Archived"}
 WEARABLE = {"active"}                         # what suggestions may use
 OWNED = set(STATUSES) - {"wishlist", "donated", "sold", "archived"}
-CONDITIONS = {"new": "Nuovo", "good": "Buono", "worn": "Usurato", "to_repair": "Da riparare"}
+CONDITIONS = {"new": "New", "good": "Buono", "worn": "Usurato", "to_repair": "To repair"}
 SLOTS = {"base": "Strato base", "top": "Sopra", "mid": "Strato intermedio", "outer": "Capospalla",
-         "bottom": "Sotto", "onepiece": "Pezzo unico", "shoes": "Scarpe", "accessory": "Accessori"}
+         "bottom": "Sotto", "onepiece": "Pezzo unico", "shoes": "Shoes", "accessory": "Accessories"}
 SLOT_ORDER = list(SLOTS)
-COLLECTION_TYPES = {"capsule": "Capsule", "packing": "Valigia", "shopping": "Da comprare", "custom": "Lista"}
+COLLECTION_TYPES = {"capsule": "Capsule", "packing": "Suitcase", "shopping": "To buy", "custom": "Lista"}
 
 # ── default vocabularies (seeded once, then the user's) ─────────────────────
 # category: key, label, kind, parent (subcategory), slot (default outfit slot), warmth/formality hints
@@ -57,16 +57,16 @@ DEFAULT_CATEGORIES = [
     _C("jumpsuit", "Tuta intera", "garment", "onepiece", "onepiece", 2, 2),
     _C("underwear", "Intimo e calze", "garment", "base"), _C("socks", "Calze", "garment", "base", "underwear", 1, 1),
     _C("sport", "Sport", "garment", "top"), _C("sleepwear", "Pigiama", "garment", "top"), _C("swimwear", "Costume", "garment", "bottom"),
-    _C("shoes", "Scarpe", "shoes", "shoes"),
+    _C("shoes", "Shoes", "shoes", "shoes"),
     _C("sneakers", "Sneakers", "shoes", "shoes", "shoes", 2, 1), _C("dress_shoes", "Scarpe eleganti", "shoes", "shoes", "shoes", 2, 5),
     _C("loafers", "Mocassini", "shoes", "shoes", "shoes", 2, 4), _C("boots", "Stivali", "shoes", "shoes", "shoes", 4, 3),
     _C("sandals", "Sandali", "shoes", "shoes", "shoes", 1, 1), _C("running", "Scarpe sportive", "shoes", "shoes", "shoes", 2, 1),
     _C("slippers", "Ciabatte", "shoes", "shoes", "shoes", 1, 1),
-    _C("accessory", "Accessori", "accessory", "accessory"),
+    _C("accessory", "Accessories", "accessory", "accessory"),
     *[_C(k, label, "accessory", "accessory", "accessory") for k, label in [
         ("bag", "Borsa"), ("backpack", "Zaino"), ("belt", "Cintura"), ("watch", "Orologio"), ("jewelry", "Gioielli"),
         ("glasses", "Occhiali"), ("sunglasses", "Occhiali da sole"), ("hat", "Cappello"), ("beanie", "Berretto"),
-        ("scarf", "Sciarpa"), ("gloves", "Guanti"), ("tie", "Cravatta"), ("wallet", "Portafoglio"), ("other_acc", "Altro")]],
+        ("scarf", "Sciarpa"), ("gloves", "Guanti"), ("tie", "Cravatta"), ("wallet", "Portafoglio"), ("other_acc", "Other")]],
 ]
 
 DEFAULT_VOCABULARIES: dict[str, list[dict]] = {
@@ -76,8 +76,8 @@ DEFAULT_VOCABULARIES: dict[str, list[dict]] = {
         ("sport", "Sportivo"), ("streetwear", "Streetwear"), ("minimal", "Minimal"), ("vintage", "Vintage"),
         ("outdoor", "Outdoor"), ("home", "Da casa")]],
     "occasion": [{"key": k, "label": v} for k, v in [
-        ("work", "Lavoro"), ("office", "Ufficio"), ("evening", "Sera"), ("date", "Appuntamento"), ("travel", "Viaggio"),
-        ("home", "Casa"), ("sport", "Sport"), ("ceremony", "Cerimonia"), ("weekend", "Weekend"), ("party", "Festa")]],
+        ("work", "Work"), ("office", "Ufficio"), ("evening", "Evening"), ("date", "Appuntamento"), ("travel", "Viaggio"),
+        ("home", "Home"), ("sport", "Sport"), ("ceremony", "Cerimonia"), ("weekend", "Weekend"), ("party", "Festa")]],
     "pattern": [{"key": k, "label": v} for k, v in [
         ("plain", "Tinta unita"), ("striped", "A righe"), ("checked", "A quadri"), ("printed", "Stampato"),
         ("floral", "Floreale"), ("dotted", "A pois"), ("camo", "Mimetico"), ("logo", "Con logo"), ("textured", "Lavorato")]],
@@ -118,7 +118,7 @@ def _keys(value: Any, allowed: dict | set | None = None, limit: int = 30) -> lis
         if not k or k in out:
             continue
         if allowed is not None and k not in allowed:
-            raise Invalid(tr("valore '{0}' non valido (ammessi: {1})", v, ', '.join(sorted(allowed))))
+            raise Invalid(tr("invalid value '{0}' (allowed: {1})", v, ', '.join(sorted(allowed))))
         out.append(k)
     return out[:limit]
 
@@ -135,7 +135,7 @@ def _int(value: Any, lo: int, hi: int, default: int | None = None) -> int | None
     try:
         n = int(round(float(str(value).replace(",", "."))))
     except ValueError:
-        raise Invalid(tr("numero non valido: {0!r}", value))
+        raise Invalid(tr("invalid number: {0!r}", value))
     return max(lo, min(hi, n))
 
 
@@ -145,7 +145,7 @@ def _float(value: Any) -> float | None:
     try:
         return round(float(str(value).replace(",", ".").replace("€", "").strip()), 2)
     except ValueError:
-        raise Invalid(tr("numero non valido: {0!r}", value))
+        raise Invalid(tr("invalid number: {0!r}", value))
 
 
 def iso_date(value: Any, *, required: bool = False) -> str | None:
@@ -159,11 +159,11 @@ def iso_date(value: Any, *, required: bool = False) -> str | None:
         return value.isoformat()
     s = str(value).strip()[:10]
     if not _DATE.match(s):
-        raise Invalid(tr("data non valida: {0!r} (formato AAAA-MM-GG)", value))
+        raise Invalid(tr("invalid date: {0!r} (format YYYY-MM-DD)", value))
     try:
         date.fromisoformat(s)
     except ValueError:
-        raise Invalid(tr("data non valida: {0!r}", value))
+        raise Invalid(tr("invalid date: {0!r}", value))
     return s
 
 
@@ -207,7 +207,7 @@ def piece(data: dict, categories: dict[str, dict], color_vocab: dict[str, dict] 
     """Normalise a piece (garment, shoes or accessory). Only ``name`` and ``category`` are required."""
     name = _text(data.get("name"), 120)
     if not name:
-        raise Invalid(tr("il nome del capo è obbligatorio"))
+        raise Invalid(tr("the name of the item is required"))
     cat_key = slug(data.get("category") or data.get("subcategory"))
     cat = categories.get(cat_key)
     if not cat:
@@ -221,11 +221,11 @@ def piece(data: dict, categories: dict[str, dict], color_vocab: dict[str, dict] 
     sub = categories.get(sub_key) if sub_key else None
     kind = slug(data.get("kind")) or (sub or cat).get("kind") or "garment"
     if kind not in KINDS:
-        raise Invalid(tr("tipo '{0}' non valido", kind))
+        raise Invalid(tr("invalid type '{0}'", kind))
     hint = sub or cat
     status = slug(data.get("status")) or "active"
     if status not in STATUSES:
-        raise Invalid(tr("stato '{0}' non valido", status))
+        raise Invalid(tr("invalid state '{0}'", status))
     condition = slug(data.get("condition")) or "good"
     if condition not in CONDITIONS:
         condition = "good"
@@ -269,16 +269,16 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
         if not pid:
             continue
         if pid not in pieces:
-            raise Invalid(tr("capo {0} non trovato", pid))
+            raise Invalid(tr("item {0} not found", pid))
         slot = slug(s.get("slot")) or "top"
         if slot not in SLOTS:
-            raise Invalid(tr("posizione '{0}' non valida", slot))
+            raise Invalid(tr("invalid position '{0}'", slot))
         slots.append({"slot": slot, "piece_id": pid})
     for pid in data.get("piece_ids") or []:          # shortcut: pieces without slot → their category's slot
         if pid in pieces and pid not in {s["piece_id"] for s in slots}:
             slots.append({"slot": pieces[pid].get("_slot") or "top", "piece_id": pid})
     if not slots:
-        raise Invalid(tr("un outfit ha bisogno di almeno un capo"))
+        raise Invalid(tr("an outfit needs at least one item"))
     slots.sort(key=lambda s: SLOT_ORDER.index(s["slot"]))
     if not name:
         name = " + ".join(pieces[s["piece_id"]]["name"] for s in slots[:3])[:120]
@@ -302,18 +302,18 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
 def wear(data: dict, pieces: dict[str, dict], outfits: dict[str, dict], today: date) -> dict:
     oid = str(data.get("outfit_id") or "") or None
     if oid and oid not in outfits:
-        raise Invalid(tr("outfit non trovato"))
+        raise Invalid(tr("outfit not found"))
     pids = [str(p) for p in (data.get("piece_ids") or []) if p]
     for p in pids:
         if p not in pieces:
-            raise Invalid(tr("capo {0} non trovato", p))
+            raise Invalid(tr("item {0} not found", p))
     if oid and not pids:
         pids = [s["piece_id"] for s in outfits[oid].get("slots") or []]
     if not pids:
-        raise Invalid(tr("indica un outfit o almeno un capo"))
+        raise Invalid(tr("give an outfit or at least one item"))
     day = iso_date(data.get("date")) or today.isoformat()
     if day > today.isoformat():
-        raise Invalid(tr("non si può segnare un giorno futuro"))
+        raise Invalid(tr("a future day can't be marked"))
     w = data.get("weather") if isinstance(data.get("weather"), dict) else {}
     return {"date": day, "outfit_id": oid, "piece_ids": list(dict.fromkeys(pids)),
             "occasion": slug(data.get("occasion")) or "", "rating": _int(data.get("rating"), 1, 5),
@@ -336,10 +336,10 @@ def _trip_weather(w: dict) -> dict:
 def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) -> dict:
     name = _text(data.get("name"), 120)
     if not name:
-        raise Invalid(tr("il nome della lista è obbligatorio"))
+        raise Invalid(tr("the name of the list is required"))
     ctype = slug(data.get("type")) or "custom"
     if ctype not in COLLECTION_TYPES:
-        raise Invalid(tr("tipo di lista '{0}' non valido", ctype))
+        raise Invalid(tr("invalid list type '{0}'", ctype))
     pids = [p for p in dict.fromkeys(str(x) for x in data.get("piece_ids") or []) if p in pieces]
     oids = [o for o in dict.fromkeys(str(x) for x in data.get("outfit_ids") or []) if o in outfits]
     trip = data.get("trip") if isinstance(data.get("trip"), dict) else {}

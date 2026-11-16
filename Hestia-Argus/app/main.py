@@ -113,7 +113,7 @@ try:
             description="Show the health of all the assistant's services",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_status", "params": kw},
-            title="Stato del sistema", method="GET", path="/api/argus/status",
+            title="alt::System status", method="GET", path="/api/argus/status",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 ("Be VERY brief. One opening line with the count (e.g. '9/9 servizi online'). Then a bullet list "
@@ -134,7 +134,7 @@ try:
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "system_log", "params": kw},
-            title="Log di sistema", method="GET", path="/api/argus/logs",
+            title="System logs", method="GET", path="/api/argus/logs",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 ("Be VERY brief. No events: one sentence 'Nessun warning recente.' Otherwise: one line with the "
@@ -142,13 +142,13 @@ try:
                  "when several come from the same one. No intro, no conclusion.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Salute e log", "label": "Log"}),
+                telegram={"section": "Salute e log", "label": "Logs"}),
         MCPTool(
             name="system_analysis",
             description="Run a full AI analysis of the services",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_analysis", "params": kw},
-            title="Analisi del sistema", method="POST", path="/api/argus/analyze",
+            title="System analysis", method="POST", path="/api/argus/analyze",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 ("Be brief and direct. ALWAYS this structure: 1) One line of overall state (e.g. 'Sistema sano' "
@@ -164,7 +164,7 @@ try:
             description="Module performance: memory, CPU, response times, data size",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "system_performance", "params": kw},
-            title="Prestazioni", method="GET", path="/api/argus/performance",
+            title="Performance", method="GET", path="/api/argus/performance",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 ("Be brief. One summary line (e.g. 'Tutto nella norma'). Then only the modules above or near the "
@@ -172,21 +172,21 @@ try:
                  "data (GB and growth of the day) if 'storage' is there. No conclusion.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Salute e log", "label": "Prestazioni"}),
+                telegram={"section": "Salute e log", "label": "Performance"}),
         MCPTool(
             name="system_incidents",
             description="History of the problems and of what was done to fix them (alerts, restarts, re-checks)",
             parameters={"type": "object", "properties": {
                 "limit": {"type": "integer", "description": "Closed problems to show (default 10)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "system_incidents", "params": kw},
-            title="Storico riparazioni", method="GET", path="/api/argus/incidents",
+            title="Repair history", method="GET", path="/api/argus/incidents",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt=(
                 ("Be brief. First the open problems, then the most recent closed ones: '• service — when — what "
                  "was done — how it ended'. If none: one sentence.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Riparazioni", "label": "Storico"}),
+                telegram={"section": "Repairs", "label": "History"}),
     ]
     app.include_router(create_mcp_router(_argus_mcp_tools, service_name="argus"))
     logger.info("event=mcp_router_mounted service=argus")

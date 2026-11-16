@@ -97,10 +97,9 @@ def signals_rule(module: str, area: str, *, path: str, tz: str | None = None, ho
     """The daily agenda job that re-evaluates a module's signals (time-based facts). Default 17:30, before
     Athena's reflection window; the user moves it in the agenda like any job."""
     from .agenda_client import job_rule
-    return job_rule(f"{module}.signals", tr("{0}: segnali per la riflessione", area), service=module, path=path,
+    return job_rule(f"{module}.signals", tr("{0}: signals for the reflection", area), service=module, path=path,
                     recurrence="FREQ=DAILY", start_at=f"2026-01-01T{int(hour):02d}:{int(minute):02d}:00", tz=tz,
-                    description="Rilegge i dati della giornata e aggiorna i segnali brevi e i numeri della "
-                                "settimana che usa la riflessione serale.")
+                    description="Rereads the day's data and updates the short signals and the week numbers the evening reflection uses.")
 
 
 def _same(old: dict, new: dict, fields: Iterable[str]) -> bool:

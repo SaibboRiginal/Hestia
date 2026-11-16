@@ -55,7 +55,7 @@ try:
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_search", "params": kw},
-            title="Cerca messaggi", method="GET", path="/api/email/messages",
+            title="Search messages", method="GET", path="/api/email/messages",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
                 telegram={"section": "Messaggi", "primary": 1}),
@@ -73,7 +73,7 @@ try:
                 "required": ["to", "subject", "body"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_send", "params": kw},
-            title="Scrivi un messaggio", method="POST", path="/api/email/send",
+            title="Write a message", method="POST", path="/api/email/send",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
                 telegram={"section": "Messaggi", "primary": 2, "label": "Scrivi"}),
@@ -88,7 +88,7 @@ try:
                 "required": ["id"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "email_thread", "params": kw},
-            title="Apri conversazione", method="GET", path="/api/email/threads/$arg.id",
+            title="Open conversation", method="GET", path="/api/email/threads/$arg.id",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
                 telegram={"section": "Messaggi"}),
@@ -97,7 +97,7 @@ try:
             description="Show which modules receive which emails (subscriptions to Iris) and the last deliveries",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "email_subscriptions", "params": kw},
-            title="Iscrizioni email", method="GET", path="/api/email/dispatch",
+            title="Email subscriptions", method="GET", path="/api/email/dispatch",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="posta",
                 telegram={"section": "Iscrizioni", "primary": 3, "label": "Iscrizioni"}),
@@ -111,11 +111,11 @@ try:
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "iris_reconcile", "params": kw},
-            title="Riconcilia posta", method="POST", path="/api/module/maintenance/reconcile",
+            title="Reconcile mail", method="POST", path="/api/module/maintenance/reconcile",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Summarise the Iris reconciliation result: the state of the email module.",
             telegram_visible=True, telegram_group="posta",
-                telegram={"section": "Avanzate"}),
+                telegram={"section": "Advanced"}),
     ]
     app.include_router(create_mcp_router(_iris_mcp_tools, service_name="iris"))
     logger.info("event=mcp_router_mounted service=iris")
@@ -127,15 +127,13 @@ app.include_router(create_log_control_router("hestia_iris"))
 # ── WebUI plugin «Email» (core): subscriptions, last deliveries, watcher state — no need to read logs ──
 UI_DIST = os.getenv("IRIS_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
 ui = PluginClient("iris", title="Email", icon="mail", color="blue", kind="core", dist=UI_DIST,
-                  description="Le tue email arrivate a Hestia: chi riceve cosa, le ultime consegne, il controllo della casella.",
+                  description="Your emails that reached Hestia: who gets what, the latest deliveries, the mailbox check.",
                   version=os.getenv("IRIS_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="iris.js", api_prefix="/api/email/",
          pages=[page("email", "Email", element="iris-email", icon="mail", order=145,
-                     help="Un solo controllo della casella per tutta Hestia: Iris passa a ogni modulo le email che "
-                          "ha chiesto (Scout gli annunci, Spese le ricevute PayPal). Qui vedi iscrizioni, ultime "
-                          "consegne e lo stato del controllo, e puoi controllare subito.")],
-         quick_actions=[quick_action("controlla", "Controlla email", "POST", "/api/email/check", icon="refresh",
-                                     group="Sistema", order=145)])
+                     help="One mailbox check for all of Hestia: Iris passes to every module the emails it asked for (Scout the listings, Expenses the PayPal receipts). Here you see subscriptions, latest deliveries and the state of the check, and you can check right away.")],
+         quick_actions=[quick_action("controlla", "Check emails", "POST", "/api/email/check", icon="refresh",
+                                     group="System", order=145)])
 app.include_router(ui.router())
 
 def _hecate(method: str, path: str, *, query: dict | None = None, body: dict | None = None,
@@ -414,7 +412,7 @@ def email_check_now() -> dict[str, Any]:
     status, payload = _hub_call("hecate", "POST", "api/gateway/mail/watch/run", body={"trigger": "webui"},
                                 timeout=100)
     if not status or status >= 400:
-        raise HTTPException(status_code=503, detail=tr("Hecate non raggiungibile"))
+        raise HTTPException(status_code=503, detail=tr("Hecate not reachable"))
     return payload if isinstance(payload, dict) else {"status": "ok"}
 
 

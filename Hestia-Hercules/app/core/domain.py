@@ -36,11 +36,11 @@ def _num(v: Any, *, lo: float | None = None, hi: float | None = None, integer: b
     try:
         x = float(str(v).replace(",", "."))
     except (TypeError, ValueError):
-        raise Invalid(tr("numero non valido: {0!r}", v))
+        raise Invalid(tr("invalid number: {0!r}", v))
     if lo is not None and x < lo:
-        raise Invalid(tr("{0} sotto il minimo {1}", v, lo))
+        raise Invalid(tr("{0} below the minimum {1}", v, lo))
     if hi is not None and x > hi:
-        raise Invalid(tr("{0} sopra il massimo {1}", v, hi))
+        raise Invalid(tr("{0} above the maximum {1}", v, hi))
     return int(round(x)) if integer else round(x, 3)
 
 
@@ -54,19 +54,19 @@ def _list(v: Any, allowed: dict | tuple | None = None) -> list:
     if allowed is not None:
         bad = [i for i in out if i not in allowed]
         if bad:
-            raise Invalid(tr("valori non validi: {0}", bad))
+            raise Invalid(tr("invalid values: {0}", bad))
     return list(dict.fromkeys(out))
 
 
 def exercise(d: dict) -> dict:
     name = _str(d.get("name"), 120)
     if not name:
-        raise Invalid(tr("l'esercizio ha bisogno di un nome"))
+        raise Invalid(tr("the exercise needs a name"))
     equip = d.get("equipment") or "other"
     kind = d.get("kind") or "weight_reps"
     pattern = d.get("movement_pattern") or "isolation"
     if equip not in EQUIPMENT or kind not in KINDS or pattern not in PATTERNS:
-        raise Invalid(tr("attrezzo, tipo o schema motorio non validi"))
+        raise Invalid(tr("invalid equipment, type or movement pattern"))
     return {**d, "name": name, "aliases": _list(d.get("aliases")),
             "primary_muscles": _list(d.get("primary_muscles"), MUSCLES),
             "secondary_muscles": _list(d.get("secondary_muscles"), MUSCLES),
@@ -81,7 +81,7 @@ def exercise(d: dict) -> dict:
 def planned_set(d: dict) -> dict:
     t = d.get("type") or "normal"
     if t not in SET_TYPES:
-        raise Invalid(tr("tipo di serie non valido: {0}", t))
+        raise Invalid(tr("invalid set type: {0}", t))
     rmin = _num(d.get("reps_min", d.get("reps")), lo=0, hi=200, integer=True)
     rmax = _num(d.get("reps_max", d.get("reps")), lo=0, hi=200, integer=True)
     if rmin is not None and rmax is not None and rmin > rmax:
@@ -93,10 +93,10 @@ def planned_set(d: dict) -> dict:
 
 def template_item(d: dict) -> dict:
     if not d.get("exercise_id"):
-        raise Invalid(tr("ogni voce della scheda ha bisogno di un esercizio"))
+        raise Invalid(tr("each item of the plan needs an exercise"))
     prog = d.get("progression") or "double"
     if prog not in PROGRESSIONS:
-        raise Invalid(tr("progressione non valida: {0}", prog))
+        raise Invalid(tr("invalid progression: {0}", prog))
     sets = [planned_set(s) for s in (d.get("sets") or [])] or [planned_set({"reps_min": 8, "reps_max": 12}) for _ in range(3)]
     return {"id": d.get("id") or new_id(), "exercise_id": str(d["exercise_id"]),
             "superset": _str(d.get("superset"), 10) or None,
@@ -108,7 +108,7 @@ def template_item(d: dict) -> dict:
 def template(d: dict) -> dict:
     name = _str(d.get("name"), 120)
     if not name:
-        raise Invalid(tr("la scheda ha bisogno di un nome"))
+        raise Invalid(tr("the plan needs a name"))
     return {**d, "name": name, "folder": _str(d.get("folder"), 80), "notes": _str(d.get("notes")),
             "color": _str(d.get("color"), 20), "position": _num(d.get("position"), integer=True) or 0,
             "archived": bool(d.get("archived")), "favorite": bool(d.get("favorite")),
@@ -119,7 +119,7 @@ def template(d: dict) -> dict:
 def program(d: dict) -> dict:
     name = _str(d.get("name"), 120)
     if not name:
-        raise Invalid(tr("il programma ha bisogno di un nome"))
+        raise Invalid(tr("the programme needs a name"))
     mode = d.get("mode") or "weekly"
     if mode not in ("weekly", "rotation"):
         raise Invalid("modo programma: weekly o rotation")
@@ -147,11 +147,11 @@ def session_exercise(d: dict) -> dict:
 def session(d: dict) -> dict:
     status = d.get("status") or "active"
     if status not in SESSION_STATUS:
-        raise Invalid(tr("stato non valido: {0}", status))
+        raise Invalid(tr("invalid state: {0}", status))
     if not d.get("started_at"):
         raise Invalid("started_at mancante")
     readiness = d.get("readiness") or {}
-    return {**d, "name": _str(d.get("name"), 120) or tr("Allenamento"), "status": status,
+    return {**d, "name": _str(d.get("name"), 120) or tr("Training"), "status": status,
             "started_at": d["started_at"], "ended_at": d.get("ended_at") or None,
             "template_id": d.get("template_id") or None, "program_id": d.get("program_id") or None,
             "notes": _str(d.get("notes")), "source": d.get("source") or "live",
@@ -165,7 +165,7 @@ def session(d: dict) -> dict:
 def logged_set(d: dict) -> dict:
     t = d.get("type") or "normal"
     if t not in SET_TYPES:
-        raise Invalid(tr("tipo di serie non valido: {0}", t))
+        raise Invalid(tr("invalid set type: {0}", t))
     for k in ("session_id", "session_exercise_id", "exercise_id"):
         if not d.get(k):
             raise Invalid(f"{k} mancante")
@@ -225,7 +225,7 @@ def plan(d: dict) -> dict:
         raise Invalid("data mancante (YYYY-MM-DD)")
     status = d.get("status") or "planned"
     if status not in PLAN_STATUS:
-        raise Invalid(tr("stato non valido: {0}", status))
+        raise Invalid(tr("invalid state: {0}", status))
     return {**d, "date": day, "status": status, "template_id": d.get("template_id") or None,
             "from_date": _str(d.get("from_date"), 10) or None, "note": _str(d.get("note"), 300)}
 

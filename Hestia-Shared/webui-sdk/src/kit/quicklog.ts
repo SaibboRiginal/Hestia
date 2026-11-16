@@ -63,7 +63,7 @@ export class HxkQuicklog extends LitElement {
   async reload() {
     if (!this.host || !this.source) return;
     const r = await this.host.api<QuickChip[] | { items: QuickChip[] }>('GET', this.source);
-    if (!r.ok) { this._err = r.error === 'offline' ? tr('Offline') : tr('Non disponibile'); this.chips = this.chips ?? []; return; }
+    if (!r.ok) { this._err = r.error === 'offline' ? tr('Offline') : tr('Unavailable'); this.chips = this.chips ?? []; return; }
     this._err = '';
     this.chips = Array.isArray(r.data) ? r.data : r.data?.items ?? [];
   }
@@ -77,12 +77,12 @@ export class HxkQuicklog extends LitElement {
     if (!r.ok) {
       // 409/422: the module says why (e.g. «già segnata oggi»), better than a generic failure.
       const said = (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : '';
-      this.host.toast(r.error === 'offline' ? tr('Sei offline: riprova quando torni in linea') : said || tr('Non sono riuscito a segnarlo'), 'danger');
+      this.host.toast(r.error === 'offline' ? tr('You are offline: try again when you are back online') : said || tr('I couldn\'t mark it'), 'danger');
       return;
     }
     this.setState(chip, 'done');
     const undo = this.action.undo;
-    this.host.toast(chip.label, 'success', undo ? { label: tr('Annulla'), run: () => this.undo(chip, prev) } : undefined);
+    this.host.toast(chip.label, 'success', undo ? { label: tr('Cancel'), run: () => this.undo(chip, prev) } : undefined);
     this.dispatchEvent(new CustomEvent('logged', { detail: { chip, undone: false }, bubbles: true, composed: true }));
     this.reload();
   }
@@ -91,7 +91,7 @@ export class HxkQuicklog extends LitElement {
     const u = this.action.undo;
     if (!u) return;
     const r = await this.host.api(u.method, fillPath(u.path, { id: chip.id }));
-    if (!r.ok) { this.host.toast(tr('Annullamento non riuscito'), 'danger'); return; }
+    if (!r.ok) { this.host.toast(tr('Undo failed'), 'danger'); return; }
     this.setState(chip, prev ?? 'todo');
     this.dispatchEvent(new CustomEvent('logged', { detail: { chip, undone: true }, bubbles: true, composed: true }));
     this.reload();
@@ -110,19 +110,19 @@ export class HxkQuicklog extends LitElement {
 
   render() {
     if (this.chips === null) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (!this.chips.length) return html`<span class="err">${this._err || tr('Niente da segnare oggi')}</span>`;
+    if (!this.chips.length) return html`<span class="err">${this._err || tr('Nothing to mark today')}</span>`;
     return this.chips.map(c => html`
       <div class="chip" role="button" tabindex="0" data-state=${c.state ?? 'todo'} aria-busy=${this._busy === c.id}
            @click=${() => this.log(c)} @keydown=${(e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && this.log(c)}>
         ${c.favorite ? html`<hxk-icon class="star" name="star" size="14"></hxk-icon>` : nothing}
         ${c.state === 'done' ? html`<hxk-icon name="check" size="16"></hxk-icon>` : c.icon ? html`<hxk-icon name=${c.icon} size="16"></hxk-icon>` : nothing}
         <span class="col"><span class="lab">${c.label}</span>${c.hint ? html`<span class="hint">${c.hint}</span>` : nothing}</span>
-        <button class="more" title=${tr("Altro giorno o dettagli")} @click=${(e: Event) => this.openMenu(e, c)}><hxk-icon name="more"></hxk-icon></button>
+        <button class="more" title=${tr("Another day or details")} @click=${(e: Event) => this.openMenu(e, c)}><hxk-icon name="more"></hxk-icon></button>
         ${this._menu === c.id ? html`<div class="menu" @click=${(e: Event) => e.stopPropagation()}>
-            <label class="hint">${tr("Giorno")}</label><input type="date" .value=${this._date} @change=${(e: any) => (this._date = e.target.value)}>
-            <label class="hint">${tr("Nota")}</label><input .value=${this._note} placeholder=${tr("facoltativa")} @input=${(e: any) => (this._note = e.target.value)}>
+            <label class="hint">${tr("Day")}</label><input type="date" .value=${this._date} @change=${(e: any) => (this._date = e.target.value)}>
+            <label class="hint">${tr("Note")}</label><input .value=${this._note} placeholder=${tr("f::optional")} @input=${(e: any) => (this._note = e.target.value)}>
             <hxk-button variant="primary" size="sm" icon="check"
-              @click=${() => { this._menu = ''; this.log(c, { date: this._date, ...(this._note ? { note: this._note } : {}) }); }}>${tr("Segna")}</hxk-button>
+              @click=${() => { this._menu = ''; this.log(c, { date: this._date, ...(this._note ? { note: this._note } : {}) }); }}>${tr("Mark")}</hxk-button>
           </div>` : nothing}
       </div>`);
   }

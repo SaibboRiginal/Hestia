@@ -25,7 +25,7 @@ from fastapi.responses import JSONResponse
 logger = logging.getLogger("hestia_common.mcp")
 
 
-def undo(tool: str, label: str = "Annulla", **args) -> dict:
+def undo(tool: str, label: str = "Cancel", **args) -> dict:
     """How to undo a write, put in the write tool's result as ``"undo"`` (Cindy 13, «Ho fatto» with Annulla).
 
     ``return {"saved": True, "id": tx_id, "undo": undo("finance_delete", id=tx_id)}`` — the clients show one

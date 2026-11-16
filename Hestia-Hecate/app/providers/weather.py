@@ -32,15 +32,15 @@ _TIMEOUT = 8
 # WMO weather interpretation codes → Italian text + a generic icon name (clients map it to their own icons).
 WMO: dict[int, tuple[str, str]] = {
     0: ("sereno", "sun"), 1: ("poco nuvoloso", "sun"), 2: ("parzialmente nuvoloso", "cloud-sun"),
-    3: ("coperto", "cloud"), 45: ("nebbia", "fog"), 48: ("nebbia con brina", "fog"),
+    3: ("coperto", "cloud"), 45: ("nebbia", "fog"), 48: ("fog with frost", "fog"),
     51: ("pioviggine leggera", "drizzle"), 53: ("pioviggine", "drizzle"), 55: ("pioviggine intensa", "drizzle"),
     56: ("pioviggine gelata", "drizzle"), 57: ("pioviggine gelata intensa", "drizzle"),
     61: ("pioggia debole", "rain"), 63: ("pioggia", "rain"), 65: ("pioggia forte", "rain"),
     66: ("pioggia gelata", "rain"), 67: ("pioggia gelata forte", "rain"),
     71: ("neve debole", "snow"), 73: ("neve", "snow"), 75: ("neve forte", "snow"), 77: ("nevischio", "snow"),
     80: ("rovesci deboli", "rain"), 81: ("rovesci", "rain"), 82: ("rovesci violenti", "rain"),
-    85: ("rovesci di neve", "snow"), 86: ("forti rovesci di neve", "snow"),
-    95: ("temporale", "storm"), 96: ("temporale con grandine", "storm"), 99: ("temporale con grandine forte", "storm"),
+    85: ("snow showers", "snow"), 86: ("heavy snow showers", "snow"),
+    95: ("temporale", "storm"), 96: ("thunderstorm with hail", "storm"), 99: ("thunderstorm with heavy hail", "storm"),
 }
 RAINY_ICONS = {"drizzle", "rain", "snow", "storm"}
 
@@ -168,7 +168,7 @@ class WeatherService:
                 return hit[1], True, True
             if isinstance(exc, WeatherError):
                 raise
-            raise WeatherError("error", tr("servizio meteo non raggiungibile"), "riprova tra poco")
+            raise WeatherError("error", tr("weather service not reachable"), tr("try again shortly"))
         with self._lock:
             self._forecasts[key] = (self._clock(), blob)
         logger.info("event=weather_fetched lat=%s lon=%s cached=false", key[0], key[1])
@@ -207,8 +207,8 @@ class WeatherService:
         text = str(place or "").strip()
         saved = self.match_saved(text) if text else self.home()
         if not text and not saved:
-            raise WeatherError("needs_place", tr("nessun luogo indicato e nessuna Casa tra i tuoi luoghi"),
-                               tr("aggiungi Casa nei tuoi luoghi (Impostazioni → Personali → Luoghi) o indica un luogo"))
+            raise WeatherError("needs_place", tr("no place given and no Home among your places"),
+                               tr("add Home to your places (Settings → Personal → Places) or give a place"))
         if saved:
             label = str(saved.get("name") or saved.get("address"))
             if saved.get("lat") not in (None, "") and saved.get("lon") not in (None, ""):
@@ -217,15 +217,15 @@ class WeatherService:
             query = str(saved.get("address") or saved.get("name") or "")
             found = self.geocode(query, count=1)
             if not found:
-                raise WeatherError("place_not_found", tr("non trovo «{0}» sulla mappa", label),
-                                   tr("nei tuoi luoghi scrivi la città (es. «Milano») o aggiungi le coordinate"))
+                raise WeatherError("place_not_found", tr("I can't find «{0}» on the map", label),
+                                   tr("in your places write the city (e.g. «Milan») or add the coordinates"))
             g = found[0]
             return {"name": label, "label": f"{label} · {g['name']}", "lat": g["lat"], "lon": g["lon"],
                     "saved": saved.get("id") or label, "kind": saved.get("kind") or "other",
                     "region": g["region"], "country": g["country"]}
         found = self.geocode(text, count=1)
         if not found:
-            raise WeatherError("place_not_found", tr("non trovo «{0}»", text), tr("prova con «Città, Paese»"))
+            raise WeatherError("place_not_found", tr("I can't find «{0}»", text), tr("try with «City, Country»"))
         g = found[0]
         return {"name": g["name"], "label": ", ".join(x for x in (g["name"], g["region"], g["country_code"]) if x),
                 "lat": g["lat"], "lon": g["lon"], "region": g["region"], "country": g["country"]}
@@ -316,12 +316,12 @@ class WeatherService:
             d_from = date.fromisoformat(date_from) if date_from else first
             d_to = date.fromisoformat(date_to) if date_to else max(d_from, min(first + timedelta(days=2), last))
         except ValueError:
-            raise WeatherError("error", tr("date non valide (formato AAAA-MM-GG)"))
+            raise WeatherError("error", tr("invalid dates (format YYYY-MM-DD)"))
         if d_to < d_from:
             d_from, d_to = d_to, d_from
         if d_to < first or d_from > last:
-            raise WeatherError("out_of_range", tr("ho la previsione dal {0} al {1}", first.isoformat(), last.isoformat()),
-                               tr("il meteo arriva fino a 16 giorni avanti e non copre il passato"))
+            raise WeatherError("out_of_range", tr("I have the forecast from {0} to {1}", first.isoformat(), last.isoformat()),
+                               tr("the weather goes up to 16 days ahead and does not cover the past"))
         d_from, d_to = max(d_from, first), min(d_to, last)
         hours = self._hours(blob)
         picked = []
@@ -401,7 +401,7 @@ def recap_facts(service: "WeatherService", nxt: str) -> dict:
     line = f"{day.get('min_c')}–{day.get('max_c')}°, {day.get('condition') or ''}".rstrip(", ")
     hours = day.get("rain_hours") or []
     if hours:
-        line += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else tr(", pioggia alle {0}", hours[0])
-    label = (f.get("place") or {}).get("name") or tr("Casa")
-    return {"next": [{"text": tr("Domani a {0}: {1}", label, line), **({"tone": "warning"} if is_rainy(day) else {})}],
+        line += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else tr(", rain at {0}", hours[0])
+    label = (f.get("place") or {}).get("name") or tr("Home")
+    return {"next": [{"text": tr("Tomorrow in {0}: {1}", label, line), **({"tone": "warning"} if is_rainy(day) else {})}],
             "icon": day.get("icon") or "cloud-sun"}

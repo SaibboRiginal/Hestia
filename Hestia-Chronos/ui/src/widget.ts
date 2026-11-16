@@ -22,7 +22,7 @@ export class ChronosFailedWidget extends HestiaElement {
   }
   private async load() {
     const r = await this.host.api('GET', `${API}/runs/failed`);
-    if (!r.ok) { this.error = tr('Chronos non raggiungibile'); return; }
+    if (!r.ok) { this.error = tr('Chronos not reachable'); return; }
     this.error = ''; this.rows = Array.isArray(r.data) ? r.data : [];
   }
   private async run(c: any) {
@@ -34,12 +34,12 @@ export class ChronosFailedWidget extends HestiaElement {
     if (!rows) return html`<hxk-state kind="loading"></hxk-state>`;
     const small = (this.ctx?.size || 'm') === 's';
     return html`<div class="w">
-      <span class="small muted">${tr("Job falliti (24 ore)")}</span>
+      <span class="small muted">${tr("Failed jobs (24 hours)")}</span>
       <div class="big" style=${rows.length ? 'color:var(--danger)' : ''} @click=${() => this.host.navigate('esecuzioni', { status: 'failed' })}>${rows.length}</div>
-      ${!rows.length ? html`<span class="small muted">${tr("Tutto a posto")}</span>` : small ? nothing
+      ${!rows.length ? html`<span class="small muted">${tr("All good")}</span>` : small ? nothing
         : rows.slice(0, 3).map(c => html`<div class="j"><div class="grow"><div class="truncate">${c.label}</div>
             <div class="small muted truncate">${c.owner} · ${when(c.at)}</div></div>
-            <hxk-button size="sm" icon="refresh" ?loading=${this.busy === c.id} @click=${() => this.run(c)}>${tr("Riprova")}</hxk-button></div>`)}
+            <hxk-button size="sm" icon="refresh" ?loading=${this.busy === c.id} @click=${() => this.run(c)}>${tr("Try again")}</hxk-button></div>`)}
     </div>`;
   }
 }
@@ -66,7 +66,7 @@ export class ChronosTodayWidget extends HestiaElement {
   }
   private async load() {
     const r = await this.host.api('GET', `${API}/coach/today`);
-    if (!r.ok) { this.error = tr('Non disponibile'); return; }
+    if (!r.ok) { this.error = tr('Unavailable'); return; }
     this.error = ''; this.rows = Array.isArray(r.data?.items) ? r.data.items : [];
   }
   render() {
@@ -76,9 +76,9 @@ export class ChronosTodayWidget extends HestiaElement {
     const todo = rows.filter(i => i.status === 'planned');
     const small = (this.ctx?.size || 'm') === 's';
     return html`<div class="w" @click=${() => this.host.navigate('settimana')}>
-      <span class="small muted">${tr("Oggi nel piano")}</span>
-      ${!rows.length ? html`<span class="small muted">${tr("Niente in programma oggi")}</span>`
-        : small ? html`<div class="big">${todo.length}</div><span class="small muted">${todo[0] ? `${hhmm(todo[0].start_at)} ${todo[0].title}` : tr('Tutto fatto')}</span>`
+      <span class="small muted">${tr("Today in the plan")}</span>
+      ${!rows.length ? html`<span class="small muted">${tr("Nothing scheduled today")}</span>`
+        : small ? html`<div class="big">${todo.length}</div><span class="small muted">${todo[0] ? `${hhmm(todo[0].start_at)} ${todo[0].title}` : tr('All done')}</span>`
         : rows.slice(0, 4).map(i => html`<div class="j ${i.status}"><hxk-icon name=${areaIcon(i.domain)} size="14"></hxk-icon>
             <span class="h">${i.kind === 'slot' ? '' : hhmm(i.start_at)}</span><span class="truncate grow">${i.title}</span>
             ${i.status === 'done' ? html`<hxk-icon name="check" size="14" tone="success"></hxk-icon>` : nothing}</div>`)}

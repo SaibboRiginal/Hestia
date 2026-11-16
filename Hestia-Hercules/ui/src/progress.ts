@@ -38,7 +38,7 @@ export class HerculesProgress extends LocalPage {
     const nr = this.notReady(); if (nr) return nr;
     const st = this.stats;
     if (st === undefined) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
-    if (st === null) return html`<div class="page"><hxk-state kind="offline" text=${tr("I progressi si calcolano quando sei online.")} @retry=${() => this.loaded()}></hxk-state></div>`;
+    if (st === null) return html`<div class="page"><hxk-state kind="offline" text=${tr("Progress is computed when you are online.")} @retry=${() => this.loaded()}></hxk-state></div>`;
     const periods = st.periods || [];
     const cur = periods[periods.length - 1] || {}, prev = periods[periods.length - 2] || {};
     const label = (p: any) => periodLabel(p.start, this.per);
@@ -54,44 +54,44 @@ export class HerculesProgress extends LocalPage {
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
     const prs = (st.recent_prs || []) as any[];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Progressi")}</h1>${this.fresh ? nothing : html`<span class="offline">${tr("dati dell'ultima connessione")}</span>`}<span class="grow"></span>
-        <div class="tabs"><button class="tab" aria-pressed=${this.per === 'week'} @click=${() => this.setPer('week')}>${tr("Settimane")}</button>
-          <button class="tab" aria-pressed=${this.per === 'month'} @click=${() => this.setPer('month')}>${tr("Mesi")}</button></div></div>
+      <div class="head"><h1>${tr("Progress")}</h1>${this.fresh ? nothing : html`<span class="offline">${tr("data from the last connection")}</span>`}<span class="grow"></span>
+        <div class="tabs"><button class="tab" aria-pressed=${this.per === 'week'} @click=${() => this.setPer('week')}>${tr("Weeks")}</button>
+          <button class="tab" aria-pressed=${this.per === 'month'} @click=${() => this.setPer('month')}>${tr("Months")}</button></div></div>
       <hxk-stat .items=${[
-        { label: this.per === 'week' ? tr('Allenamenti settimana') : tr('Allenamenti mese'), value: cur.sessions ?? 0, delta: delta(cur.sessions || 0, prev.sessions || 0) },
+        { label: this.per === 'week' ? tr('Workouts this week') : tr('Workouts this month'), value: cur.sessions ?? 0, delta: delta(cur.sessions || 0, prev.sessions || 0) },
         { label: tr('Volume'), value: num(cur.volume), unit: 'kg', delta: delta(cur.volume || 0, prev.volume || 0) },
-        { label: tr('Serie'), value: cur.sets ?? 0, delta: delta(cur.sets || 0, prev.sets || 0) },
-        { label: tr('Tempo'), value: minutes(cur.duration_min) },
-        { label: tr('Totale'), value: st.totals?.sessions ?? 0, hint: st.totals?.since ? 'dal ' + dayLabel(st.totals.since, false) : '' },
+        { label: tr('Streak'), value: cur.sets ?? 0, delta: delta(cur.sets || 0, prev.sets || 0) },
+        { label: tr('Time'), value: minutes(cur.duration_min) },
+        { label: tr('Total'), value: st.totals?.sessions ?? 0, hint: st.totals?.since ? 'dal ' + dayLabel(st.totals.since, false) : '' },
       ]}></hxk-stat>
 
-      ${this.goals?.length ? html`<div class="card col"><h3>${tr("Obiettivi")}</h3>${this.goals.map(g => html`<div class="between">
-          <div><div>${g.progress.label}</div><div class="small muted">${g.progress.hint}${g.progress.streak ? html` · <hxk-icon name="flame" size=${12} tone="warning"></hxk-icon> ${g.progress.streak} ${tr("di fila")}` : ''}</div></div>
-          ${g.progress.met ? html`<hxk-badge tone="success">${tr("Fatto")}</hxk-badge>` : g.progress.behind ? html`<hxk-badge tone="warning">${tr("Indietro")}</hxk-badge>` : html`<hxk-badge>${tr("In corso")}</hxk-badge>`}</div>
-          <hxk-chart type="bar" height="90" .labels=${(g.progress.history || []).map((h: any) => periodLabel(h.start, g.per))} .series=${[{ name: tr('Fatti'), values: (g.progress.history || []).map((h: any) => h.done) }]}></hxk-chart>`)}</div>` : nothing}
+      ${this.goals?.length ? html`<div class="card col"><h3>${tr("Goals")}</h3>${this.goals.map(g => html`<div class="between">
+          <div><div>${g.progress.label}</div><div class="small muted">${g.progress.hint}${g.progress.streak ? html` · <hxk-icon name="flame" size=${12} tone="warning"></hxk-icon> ${g.progress.streak} ${tr("in a row")}` : ''}</div></div>
+          ${g.progress.met ? html`<hxk-badge tone="success">${tr("Done")}</hxk-badge>` : g.progress.behind ? html`<hxk-badge tone="warning">${tr("Back")}</hxk-badge>` : html`<hxk-badge>${tr("In progress")}</hxk-badge>`}</div>
+          <hxk-chart type="bar" height="90" .labels=${(g.progress.history || []).map((h: any) => periodLabel(h.start, g.per))} .series=${[{ name: tr('Facts'), values: (g.progress.history || []).map((h: any) => h.done) }]}></hxk-chart>`)}</div>` : nothing}
 
       <div class="grid" style="--min:320px">
-        <div class="card col"><h3>${tr("Allenamenti")}</h3>
-          <hxk-chart type="bar" height="180" .labels=${periods.map(label)} .series=${[{ name: tr('Allenamenti'), values: periods.map((p: any) => p.sessions) }]}></hxk-chart></div>
+        <div class="card col"><h3>${tr("Workouts")}</h3>
+          <hxk-chart type="bar" height="180" .labels=${periods.map(label)} .series=${[{ name: tr('Workouts'), values: periods.map((p: any) => p.sessions) }]}></hxk-chart></div>
         <div class="card col"><h3>${tr("Volume")}</h3>
           <hxk-chart type="line" height="180" unit="kg" .labels=${periods.map(label)} .series=${[{ name: tr('Volume'), values: periods.map((p: any) => p.volume) }]}></hxk-chart></div>
       </div>
 
-      <div class="card col"><div class="between"><h3>${tr("Serie per gruppo ·")} ${this.per === 'week' ? tr('questa settimana') : tr('questo mese')}</h3>
+      <div class="card col"><div class="between"><h3>${tr("Sets per group ·")} ${this.per === 'week' ? tr('this week') : tr('this month')}</h3>
         <span class="small muted">serie allenanti (secondari ½)</span></div>
         <div class="bars">${Object.entries(GROUP_LABEL).map(([g, l]) => {
           const v = Number(groups[g] || 0);
           return html`<div class="bar"><span>${l}</span><span class="t"><i class=${v < target / 2 ? 'low' : ''} style="width:${Math.min(100, (v / maxG) * 100)}%"></i></span><span class="tnum muted">${num(v, 1)}</span></div>`;
         })}</div></div>
 
-      <div class="card col"><h3>${tr("Ultimo anno")}</h3>
+      <div class="card col"><h3>${tr("Last year")}</h3>
         <div class="heat">${days.map(d => { const c = hm.get(d) || 0; return html`<i class=${c >= 2 ? 'l2' : c ? 'l1' : ''} title=${`${dayLabel(d, false)}${c ? ` · ${c}` : ''}`}></i>`; })}</div></div>
 
-      <div class="card col"><h3>${tr("Record recenti")}</h3>
+      <div class="card col"><h3>${tr("Recent records")}</h3>
         ${prs.length ? html`<div class="list">${prs.map(p => html`<div class="li" @click=${() => p.exercise_id && this.host.navigate('esercizi/' + p.exercise_id)}>
           <hxk-badge tone="success">PR</hxk-badge><div class="grow"><div class="truncate">${p.exercise}</div><div class="small muted">${p.label} · ${dayLabel(p.date || '', false)}</div></div>
-          <div class="tnum">${kg(p.value)}${p.previous ? html`<div class="small muted">${tr("prima")} ${kg(p.previous)}</div>` : nothing}</div></div>`)}</div>`
-          : html`<div class="empty">${tr("Nessun record negli ultimi 30 giorni. Continua così e arriveranno.")}</div>`}</div>
+          <div class="tnum">${kg(p.value)}${p.previous ? html`<div class="small muted">${tr("before")} ${kg(p.previous)}</div>` : nothing}</div></div>`)}</div>`
+          : html`<div class="empty">${tr("No record in the last 30 days. Keep going and they'll come.")}</div>`}</div>
     </div>`;
   }
 }
@@ -104,7 +104,7 @@ export class HerculesBody extends LocalPage {
 
   private log() {
     const v = parseNum(this.value);
-    if (v === null || v <= 0) { this.host.toast(tr('Valore non valido'), 'warning'); return; }
+    if (v === null || v <= 0) { this.host.toast(tr('Invalid value'), 'warning'); return; }
     this.L.put('measurement', uuid(), { kind: this.kind, value: v, taken_at: nowIso(), unit: MEASURE_UNIT[this.kind] || 'cm', notes: '' });
     this.value = '';
     this.host.toast(`${MEASURES[this.kind]}: ${kg(v)} ${MEASURE_UNIT[this.kind] || 'cm'}`, 'success');
@@ -123,23 +123,23 @@ export class HerculesBody extends LocalPage {
     })();
     const kinds = Object.keys(MEASURES).filter(k => k === 'bodyweight' || all.some(m => m.kind === k));
     return html`<div class="page">
-      <div class="head"><h1>${tr("Corpo")}</h1><span class="sub">${tr("peso e misure")}</span></div>
-      <div class="card col"><h2>${tr("Registra")}</h2><div class="row wrap">
+      <div class="head"><h1>${tr("Body")}</h1><span class="sub">${tr("weight and measurements")}</span></div>
+      <div class="card col"><h2>${tr("f::Log")}</h2><div class="row wrap">
         <select class="in" .value=${this.kind} @change=${(e: any) => (this.kind = e.target.value)}>${Object.entries(MEASURES).map(([k, v]) => html`<option value=${k} ?selected=${this.kind === k}>${v}</option>`)}</select>
         <input class="in num" style="width:100px" inputmode="decimal" placeholder=${last ? kg(last.value) : unit} .value=${this.value}
           @input=${(e: any) => (this.value = e.target.value)} @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.log()}>
         <span class="muted">${unit}</span>
-        <hxk-button variant="primary" icon="plus" @click=${() => this.log()}>${tr("Salva")}</hxk-button></div></div>
+        <hxk-button variant="primary" icon="plus" @click=${() => this.log()}>${tr("Save")}</hxk-button></div></div>
       <div class="tabs">${kinds.map(k => html`<button class="tab" aria-pressed=${this.kind === k} @click=${() => (this.kind = k)}>${MEASURES[k]}</button>`)}</div>
       ${last ? html`<hxk-stat .items=${[
-          { label: tr('Ultimo'), value: kg(last.value), unit, hint: dayLabel(last.taken_at) },
-          ...(avg7 !== null ? [{ label: tr('Media 7 giorni'), value: kg(Math.round(avg7 * 10) / 10), unit }] : []),
-          ...(first && first !== last ? [{ label: tr('Variazione'), value: `${last.value - first.value >= 0 ? '+' : ''}${kg(Math.round((last.value - first.value) * 10) / 10)}`, unit, hint: 'dal ' + dayLabel(first.taken_at, false) }] : []),
+          { label: tr('Last'), value: kg(last.value), unit, hint: dayLabel(last.taken_at) },
+          ...(avg7 !== null ? [{ label: tr('7-day average'), value: kg(Math.round(avg7 * 10) / 10), unit }] : []),
+          ...(first && first !== last ? [{ label: tr('alt::Change'), value: `${last.value - first.value >= 0 ? '+' : ''}${kg(Math.round((last.value - first.value) * 10) / 10)}`, unit, hint: 'dal ' + dayLabel(first.taken_at, false) }] : []),
         ]}></hxk-stat>` : nothing}
       <div class="card col"><div class="between"><h3>${MEASURES[this.kind]}</h3>
-        <div class="tabs">${[[30, tr('1 mese')], [90, '3 mesi'], [365, tr('1 anno')], [0, tr('Tutto')]].map(([d, l]) => html`<button class="tab" aria-pressed=${this.range === d} @click=${() => (this.range = d as number)}>${l}</button>`)}</div></div>
+        <div class="tabs">${[[30, tr('1 month')], [90, '3 mesi'], [365, tr('1 year')], [0, tr('Everything')]].map(([d, l]) => html`<button class="tab" aria-pressed=${this.range === d} @click=${() => (this.range = d as number)}>${l}</button>`)}</div></div>
         ${pts.length > 1 ? html`<hxk-chart type="line" height="220" unit=${unit} .labels=${pts.map(m => dayLabel(m.taken_at, false))} .series=${[{ name: MEASURES[this.kind], values: pts.map(m => m.value) }]}></hxk-chart>`
-          : html`<div class="empty">${tr("Registra almeno due valori per vedere l'andamento.")}</div>`}</div>
+          : html`<div class="empty">${tr("Log at least two values to see the trend.")}</div>`}</div>
       ${pts.length ? html`<div class="card list">${[...pts].reverse().slice(0, 30).map(m => html`<div class="li" style="cursor:default">
           <span class="grow">${dayLabel(m.taken_at)}</span><span class="tnum">${kg(m.value)} ${m.unit || unit}</span>
           <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.L.remove('measurement', m.id)}></hxk-button></div>`)}</div>` : nothing}

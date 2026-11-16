@@ -47,19 +47,19 @@ def gaps(pieces: list[dict], categories: dict[str, dict]) -> list[str]:
     def has(pred) -> bool:
         return any(pred(p) for p in owned)
     if owned and not has(lambda p: p.get("category") == "outerwear" and int(p.get("warmth") or 3) >= 4):
-        msgs.append(tr("Nessun capospalla pesante per l'inverno"))
+        msgs.append(tr("No heavy outerwear for winter"))
     if owned and not has(lambda p: p.get("kind") == "shoes" and "winter" in (p.get("seasons") or [])):
-        msgs.append(tr("Nessuna scarpa per l'inverno"))
+        msgs.append(tr("No shoes for winter"))
     if owned and not has(lambda p: p.get("kind") == "shoes" and int(p.get("formality") or 3) >= 4):
         if has(lambda p: int(p.get("formality") or 3) >= 4 and p.get("kind") == "garment"):
-            msgs.append(tr("Hai capi eleganti ma nessuna scarpa elegante"))
+            msgs.append(tr("You have elegant items but no elegant shoes"))
     if owned and not has(lambda p: (p.get("weather") or {}).get("rain_ok") or p.get("subcategory") == "raincoat"):
-        msgs.append(tr("Niente di adatto alla pioggia"))
+        msgs.append(tr("Nothing suited to the rain"))
     for season, label in SEASONS.items():
         tops = [p for p in owned if p.get("category") == "top" and season in (p.get("seasons") or [])]
         bottoms = [p for p in owned if p.get("category") == "bottom" and season in (p.get("seasons") or [])]
         if owned and (len(tops) < 2 or len(bottoms) < 1):
-            msgs.append(tr("Pochi capi per {0} ({1} sopra, {2} sotto)", label.lower(), len(tops), len(bottoms)))
+            msgs.append(tr("Few items for {0} ({1} tops, {2} bottoms)", label.lower(), len(tops), len(bottoms)))
     return msgs
 
 
@@ -96,10 +96,10 @@ def compute(pieces: list[dict], outfits: list[dict], wears: list[dict], categori
                    "value": round(value, 2), "currency": currency, "wishlist": by_status.get("wishlist", 0),
                    "marks": marks},
         "kpi": {"items": [
-            {"label": tr("Capi"), "value": by_kind.get("garment", 0)}, {"label": tr("Scarpe"), "value": by_kind.get("shoes", 0)},
-            {"label": tr("Accessori"), "value": by_kind.get("accessory", 0)},
+            {"label": tr("Items"), "value": by_kind.get("garment", 0)}, {"label": tr("Shoes"), "value": by_kind.get("shoes", 0)},
+            {"label": tr("Accessories"), "value": by_kind.get("accessory", 0)},
             {"label": tr("Outfit"), "value": len([o for o in outfits if o.get("status") != "archived"])},
-            *([{"label": tr("Valore"), "value": round(value), "unit": "€" if currency == "EUR" else currency}] if value else [])]},
+            *([{"label": tr("Value"), "value": round(value), "unit": "€" if currency == "EUR" else currency}] if value else [])]},
         "by_kind": [{"key": k, "label": KINDS[k], "count": by_kind.get(k, 0)} for k in KINDS],
         "by_category": [{"key": k, "label": label(categories, k), "count": n} for k, n in by_cat.most_common()],
         "by_color": [{"key": k, "label": label(colors, k), "hex": (colors.get(k) or {}).get("hex"), "count": n}

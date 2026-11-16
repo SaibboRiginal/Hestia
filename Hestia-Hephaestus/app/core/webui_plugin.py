@@ -28,21 +28,17 @@ widget = import_shared_symbol("hestia_common.plugin_client", "widget")
 API_PREFIX = "/api/hephaestus/"
 UI_DIST = os.getenv("HEPHAESTUS_UI_DIST", "/ui/dist")   # infra: where the image put the built bundle
 
-ui = PluginClient("hephaestus", title="Sviluppo", icon="code", color="amber", kind="core", dist=UI_DIST,
-                  description="Hestia che si sviluppa da sola, con il tuo ok, e le riparazioni automatiche dei servizi.",
+ui = PluginClient("hephaestus", title="Development", icon="code", color="amber", kind="core", dist=UI_DIST,
+                  description="Hestia developing herself, with your ok, and the automatic repairs of the services.",
                   version=os.getenv("SERVICE_VERSION", "1.0.0"))
 ui.webui(
     entry="hephaestus.js", api_prefix=API_PREFIX,
-    pages=[page("sviluppo", "Sviluppo", element="hephaestus-sviluppo", icon="code", order=170,
+    pages=[page("sviluppo", "Development", element="hephaestus-sviluppo", icon="code", order=170,
                 badge={"source": f"{API_PREFIX}forge/counts", "field": "review"},
-                help="Forge sviluppa Hestia su rami separati: qui vedi i task, la conversazione del motore, il diff, "
-                     "il dossier e i test, e decidi tu se applicare. «Copia per AI» prepara i task scelti per "
-                     "un'altra AI (consegna la correzione via MCP)."),
-           page("riparazioni", "Riparazioni", element="hephaestus-repairs", icon="settings", order=171,
-                help="Le riparazioni dei servizi: quale runbook, che consenso serve, se era una prova (dry-run), "
-                     "com'è andata e da dove si torna indietro. Approvare o annullare resta a te, in chat o su "
-                     "Telegram.")],
+                help="Forge develops Hestia on separate branches: here you see the tasks, the engine's conversation, the diff, the dossier and the tests, and you decide whether to apply. «Copy for AI» prepares the chosen tasks for another AI (it delivers the fix via MCP)."),
+           page("riparazioni", "Repairs", element="hephaestus-repairs", icon="settings", order=171,
+                help="Service repairs: which runbook, what consent it needs, whether it was a trial (dry-run), how it went and where to roll back from. Approving or cancelling stays with you, in chat or on Telegram.")],
     widgets=[widget("forge", "Forge", element="hephaestus-forge-widget", sizes=["s", "m", "l"], size="m",
                     auto=True, icon="code", open_page="sviluppo",
-                    help="Stato dell'auto-sviluppo: in pausa o attivo, coda, task da rivedere e finestra Claude.")],
+                    help="State of self-development: paused or active, queue, tasks to review and Claude window.")],
 )

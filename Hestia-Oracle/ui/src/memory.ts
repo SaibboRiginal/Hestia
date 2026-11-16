@@ -12,7 +12,7 @@ function day(iso?: string | null): string {
 }
 
 function origin(m: any): string {
-  return m.source === 'external' ? (m.access || tr('AI esterna')) : tr('In chat');
+  return m.source === 'external' ? (m.access || tr('External AI')) : tr('In chat');
 }
 
 export class OracleMemory extends HestiaElement {
@@ -41,17 +41,17 @@ export class OracleMemory extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/memory`);
-    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? tr('Memoria non raggiungibile') : r.error || tr('Memoria non raggiungibile'); return; }
+    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? tr('Memory not reachable') : r.error || tr('Memory not reachable'); return; }
     this.error = '';
     this.rows = r.data.memories || [];
   }
 
   private async forget(m: any) {
-    if (!(await this.host.confirm(tr('Dimenticare questo ricordo?'), m.fact, { label: tr('Dimentica'), danger: true }))) return;
+    if (!(await this.host.confirm(tr('Forget this memory?'), m.fact, { label: tr('Forget'), danger: true }))) return;
     const r = await this.host.api('DELETE', `${API}/memory/${encodeURIComponent(m.id)}`);
-    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('alt::Failed'), 'danger'); return; }
     this.rows = (this.rows || []).filter(x => x.id !== m.id);
-    this.host.toast(tr('Ricordo dimenticato'), 'success');
+    this.host.toast(tr('Memory forgotten'), 'success');
   }
 
   private renderRow(m: any) {
@@ -64,7 +64,7 @@ export class OracleMemory extends HestiaElement {
           <span>· ${day(m.created_at)}</span>
           ${(m.domains || []).filter(Boolean).map((d: string) => html`<hxk-badge>${d}</hxk-badge>`)}</div>
       </div>
-      <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Dimentica")} @click=${() => this.forget(m)}></hxk-button>
+      <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Forget")} @click=${() => this.forget(m)}></hxk-button>
     </div>`;
   }
 
@@ -76,17 +76,17 @@ export class OracleMemory extends HestiaElement {
     const shown = this.rows.filter(m => (!this.from || origin(m) === this.from)
       && (!q || `${m.fact} ${m.topic} ${(m.domains || []).join(' ')}`.toLowerCase().includes(q)));
     return html`<div class="page">
-      <div class="head"><div class="grow"><h1>${tr("Memoria")}</h1>
-        <div class="sub">${tr("Quello che Hestia ricorda di te e da dove l'ha saputo")}</div></div>
-        <hxk-button variant="ghost" icon="refresh" title=${tr("Aggiorna")} @click=${() => this.load()}></hxk-button></div>
-      <div class="bar"><input type="search" placeholder=${tr("Cerca nei ricordi (es. «palestra»)")} .value=${this.q}
+      <div class="head"><div class="grow"><h1>${tr("Memory")}</h1>
+        <div class="sub">${tr("What Hestia remembers about you and where she learned it")}</div></div>
+        <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button></div>
+      <div class="bar"><input type="search" placeholder=${tr("Search in the memories (e.g. «gym»)")} .value=${this.q}
         @input=${(e: any) => (this.q = e.target.value)}></div>
       ${origins.length > 1 ? html`<div class="chips">
-        <button class="chip ${this.from ? '' : 'on'}" @click=${() => (this.from = '')}>${tr("Tutti (")}${this.rows.length})</button>
+        <button class="chip ${this.from ? '' : 'on'}" @click=${() => (this.from = '')}>${tr("All (")}${this.rows.length})</button>
         ${origins.map(o => html`<button class="chip ${this.from === o ? 'on' : ''}" @click=${() => (this.from = o)}>${o}</button>`)}
       </div>` : nothing}
       <hxk-card>${shown.length ? shown.map(m => this.renderRow(m))
-        : html`<hxk-state kind="empty" text=${this.rows.length ? tr('Nessun ricordo corrisponde') : tr('Hestia non ricorda ancora nulla di te')}></hxk-state>`}</hxk-card>
+        : html`<hxk-state kind="empty" text=${this.rows.length ? tr('No memory matches') : tr('Hestia doesn\'t remember anything about you yet')}></hxk-state>`}</hxk-card>
     </div>`;
   }
 }

@@ -50,7 +50,7 @@ export function toLocalInput(d: Date): string {
 export function fromLocalInput(v: string): Date | null { if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
 
 export const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] as const;
-export const WEEKDAY_LABELS: Record<string, string> = { MO: tr('Lun'), TU: tr('Mar'), WE: tr('Mer'), TH: tr('Gio'), FR: tr('Ven'), SA: tr('Sab'), SU: tr('Dom') };
+export const WEEKDAY_LABELS: Record<string, string> = { MO: tr('Mon'), TU: tr('Tue'), WE: tr('Wed'), TH: tr('Thu'), FR: tr('Fri'), SA: tr('Sat'), SU: tr('Sun') };
 
 function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 

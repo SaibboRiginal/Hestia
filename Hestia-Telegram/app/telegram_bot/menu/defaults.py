@@ -10,24 +10,24 @@ KEYBOARD = [["oggi", "aree"], ["notifiche", "impostazioni"]]
 
 # The four doors and the words their keyboard buttons send.
 DOORS = {
-    "oggi": "Oggi",
-    "aree": "Aree",
-    "notifiche": "Notifiche",
-    "impostazioni": "Impostazioni",
+    "oggi": "Today",
+    "aree": "Areas",
+    "notifiche": "Notifications",
+    "impostazioni": "Settings",
 }
 
 # The `/` menu (setMyCommands), in this order. Description = what Telegram shows next to the command.
 COMMANDS = [
-    ("oggi", "La tua giornata"),
-    ("aree", "Tutte le aree e le loro azioni"),
-    ("adesso", "Cosa ti serve adesso"),
-    ("scopri", "Funzioni che non hai ancora provato"),
-    ("notifiche", "Notifiche da vedere o rispondere"),
+    ("oggi", "Your day"),
+    ("aree", "All areas and their actions"),
+    ("adesso", "What you need now"),
+    ("scopri", "Features you haven't tried yet"),
+    ("notifiche", "Notifications to see or answer"),
     ("impostazioni", "Chat, menu e impostazioni"),
-    ("nuova", "Nuova conversazione"),
-    ("voce", "Risposte a voce sì o no"),
-    ("stato", "Stato dell'assistente"),
-    ("aiuto", "Come si usa"),
+    ("nuova", "New conversation"),
+    ("voce", "Voice replies on or off"),
+    ("stato", "Assistant status"),
+    ("aiuto", "How to use it"),
 ]
 
 # Old command names still typed by habit → new ones.
@@ -45,7 +45,7 @@ ALIASES = {
 from hestia_common.areas import AREAS, SERVICE_AREAS  # noqa: E402,F401
 
 # Section shown last inside «Tutte le azioni», and sections never shown (used by the client itself).
-LAST_SECTION = "Avanzate"
+LAST_SECTION = "Advanced"
 HIDDEN_SECTIONS = ["interno"]
 
 # What the «Oggi» card shows (tools rendered one under the other) and its buttons.

@@ -103,14 +103,14 @@ export class HygieiaToday extends HestiaElement {
     const res = await call(this.host, 'POST', `${API}/routines/${r.routine_id}/done`, { body, quiet: true });
     this.busy = '';
     if (res.ok) {
-      this.host.toast(`${r.name}: ${res.data.status === 'partial' ? tr('fatta in parte') : 'fatta'}${res.data.hint ? ' · ' + res.data.hint : ''}`, 'success',
-        { label: tr('Annulla'), run: () => this.undo(r) });
+      this.host.toast(`${r.name}: ${res.data.status === 'partial' ? tr('partly done') : 'fatta'}${res.data.hint ? ' · ' + res.data.hint : ''}`, 'success',
+        { label: tr('Cancel'), run: () => this.undo(r) });
       this.open = '';
       const { [r.routine_id]: _, ...rest } = this.picked; this.picked = rest;
     } else if (res.status === 409) {
-      this.host.toast(tr('Già segnata per questo giorno'), 'info');
+      this.host.toast(tr('Already marked for this day'), 'info');
     } else {
-      this.host.toast(res.error || tr('Non salvata'), 'warning');
+      this.host.toast(res.error || tr('f::Not saved'), 'warning');
     }
     this.load();
   }
@@ -120,7 +120,7 @@ export class HygieiaToday extends HestiaElement {
   }
   private async skip(r: any) {
     const res = await call(this.host, 'POST', `${API}/routines/${r.routine_id}/skip`, { body: { date: this.date } });
-    if (res.ok) this.host.toast(`${r.name} saltata`, 'neutral', { label: tr('Annulla'), run: () => this.undoSkip(res.data.id) });
+    if (res.ok) this.host.toast(`${r.name} saltata`, 'neutral', { label: tr('Cancel'), run: () => this.undoSkip(res.data.id) });
     this.open = '';
     this.load();
   }
@@ -132,7 +132,7 @@ export class HygieiaToday extends HestiaElement {
     setTimeout(() => {
       if (!timers[stepKey]) return;
       delete timers[stepKey];
-      this.host.notify(tr('Self care'), tr('Puoi passare al passo successivo'), { tag: 'hygieia-timer' });
+      this.host.notify(tr('Self care'), tr('You can move to the next step'), { tag: 'hygieia-timer' });
       this.host.toast('Attesa finita: passo successivo', 'info');
       this.tick = Date.now();
     }, seconds * 1000);
@@ -148,7 +148,7 @@ export class HygieiaToday extends HestiaElement {
   private async useProduct(p: any) {
     const r = await call(this.host, 'POST', `${API}/products/${p.id}/use`, { body: { date: this.date } });
     if (r.ok) this.host.toast(`${p.name} usato`, 'success', {
-      label: tr('Annulla'), run: async () => { await call(this.host, 'DELETE', `${API}/products/${p.id}/use`, { query: { date: this.date } }); this.load(); } });
+      label: tr('Cancel'), run: async () => { await call(this.host, 'DELETE', `${API}/products/${p.id}/use`, { query: { date: this.date } }); this.load(); } });
     this.adhoc = false; this.q = '';
     this.load();
   }
@@ -185,19 +185,19 @@ export class HygieiaToday extends HestiaElement {
           <div class="row"><span class="name truncate">${r.name}</span>${r.favorite ? icon('star', 14, 'warning') : nothing}</div>
           <div class="small muted">${r.state === 'blocked' || r.state === 'paused' ? r.reason : r.hint}${included ? ` · ${included} ${included === 1 ? 'passo' : 'passi'}` : ''}${r.minutes && !done ? ` · ~${r.minutes} min` : ''}</div>
         </div>
-        ${done ? html`<hxk-button size="sm" variant="ghost" icon="undo" @click=${() => this.undo(r)}>${tr("Annulla")}</hxk-button>`
+        ${done ? html`<hxk-button size="sm" variant="ghost" icon="undo" @click=${() => this.undo(r)}>${tr("Cancel")}</hxk-button>`
           : html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>
             <hxk-button variant=${r.state === 'due' || r.state === 'suggested' ? 'primary' : 'default'} icon="check" ?loading=${this.busy === r.routine_id}
-              @click=${() => this.done(r, false)}>${tr("Fatta")}</hxk-button>`}
+              @click=${() => this.done(r, false)}>${tr("f::Done")}</hxk-button>`}
       </div>
       ${r.warnings?.length && !done ? html`<div class="warnline">${icon('alert', 13, 'warning')} ${r.warnings[0]}</div>` : nothing}
       ${isOpen ? html`<div class="steps">
-        ${r.steps.length ? r.steps.map((s: any, i: number) => this.stepRow(r, s, i, !done)) : html`<div class="empty">${tr("Nessun passo: aggiungili nella routine.")}</div>`}
+        ${r.steps.length ? r.steps.map((s: any, i: number) => this.stepRow(r, s, i, !done)) : html`<div class="empty">${tr("No steps: add them in the routine.")}</div>`}
         <div class="row wrap" style="margin-top:6px">
-          ${!done ? html`<hxk-button variant="primary" icon="check" @click=${() => this.done(r, true)}>${tr("Segna i passi scelti")}</hxk-button>
-            <hxk-button variant="ghost" @click=${() => this.skip(r)}>${tr("Salta")}</hxk-button>` : nothing}
+          ${!done ? html`<hxk-button variant="primary" icon="check" @click=${() => this.done(r, true)}>${tr("Mark the chosen steps")}</hxk-button>
+            <hxk-button variant="ghost" @click=${() => this.skip(r)}>${tr("Skip")}</hxk-button>` : nothing}
           <span class="grow"></span>
-          <hxk-button variant="ghost" icon="edit" @click=${() => this.host.navigate('routine/' + r.routine_id)}>${tr("Modifica")}</hxk-button>
+          <hxk-button variant="ghost" icon="edit" @click=${() => this.host.navigate('routine/' + r.routine_id)}>${tr("Edit")}</hxk-button>
         </div>
       </div>` : nothing}
     </div>`;
@@ -207,13 +207,13 @@ export class HygieiaToday extends HestiaElement {
     const items = search(this.products || [], this.q, p => `${p.brand} ${p.name} ${p.category}`);
     return html`<div class="sheet" @click=${(e: Event) => { if (e.target === e.currentTarget) this.adhoc = false; }}>
       <div class="card col">
-        <div class="between"><h2>${tr("Ho usato un prodotto")}</h2><hxk-button variant="ghost" icon="x" @click=${() => (this.adhoc = false)}></hxk-button></div>
-        <input class="in" placeholder=${tr("Cerca…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)} autofocus>
+        <div class="between"><h2>${tr("I used a product")}</h2><hxk-button variant="ghost" icon="x" @click=${() => (this.adhoc = false)}></hxk-button></div>
+        <input class="in" placeholder=${tr("Search…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)} autofocus>
         ${this.products === null ? html`<hxk-state kind="loading"></hxk-state>` : html`<div class="list">
           ${items.slice(0, 40).map(p => html`<div class="li" @click=${() => this.useProduct(p)}>
-            <div class="grow"><div class="truncate">${p.favorite ? html`${icon('star', 13, 'warning')} ` : nothing}${productName(p)}</div><div class="small muted">${p.status_label} · ${p.uses} ${tr("usi")}</div></div>
+            <div class="grow"><div class="truncate">${p.favorite ? html`${icon('star', 13, 'warning')} ` : nothing}${productName(p)}</div><div class="small muted">${p.status_label} · ${p.uses} ${tr("uses")}</div></div>
             <hxk-icon name="plus"></hxk-icon></div>`)}
-          ${!items.length ? html`<div class="empty">${tr("Nessun prodotto in uso.")} <button class="link" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Aggiungine uno")}</button></div>` : nothing}
+          ${!items.length ? html`<div class="empty">${tr("No product in use.")} <button class="link" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Add one")}</button></div>` : nothing}
         </div>`}
       </div></div>`;
   }
@@ -222,10 +222,10 @@ export class HygieiaToday extends HestiaElement {
     const p = this.plan;
     const nav = html`<div class="nav">
       <button class="tab" @click=${() => this.host.navigate('routine')}>${tr("Routine")}</button>
-      <button class="tab" @click=${() => this.host.navigate('prodotti')}>${tr("Prodotti")}</button>
-      <button class="tab" @click=${() => this.host.navigate('diario')}>${tr("Diario")}</button>
-      <button class="tab" @click=${() => this.host.navigate('statistiche')}>${tr("Statistiche")}</button>
-      <button class="tab" @click=${() => this.host.navigate('spesa')}>${tr("Spesa")}</button></div>`;
+      <button class="tab" @click=${() => this.host.navigate('prodotti')}>${tr("Products")}</button>
+      <button class="tab" @click=${() => this.host.navigate('diario')}>${tr("Diary")}</button>
+      <button class="tab" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</button>
+      <button class="tab" @click=${() => this.host.navigate('spesa')}>${tr("Expense")}</button></div>`;
     const head = html`<div class="between wrap">
       <div class="head"><h1>${tr("Self care")}</h1>
         <div class="datebar"><hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>
@@ -243,22 +243,22 @@ export class HygieiaToday extends HestiaElement {
         <div class="alert ${a.level}" @click=${() => this.host.navigate('prodotti/' + a.product_id)}>
           ${alertIcon(a)}<span class="truncate">${a.text}</span></div>`)}</div>` : nothing}
       ${p.routines.length ? html`<div class="counts">
-        ${c.done ? html`<span class="pill good">${icon('check', 13)} ${c.done} ${tr("fatte")}</span>` : nothing}
-        ${c.due ? html`<span class="pill warn">${c.due} ${tr("da fare")}</span>` : nothing}
-        ${c.suggested ? html`<span class="pill">${c.suggested} ${tr("consigliate")}</span>` : nothing}
-        ${c.blocked ? html`<span class="pill">${c.blocked} ${tr("non oggi")}</span>` : nothing}
+        ${c.done ? html`<span class="pill good">${icon('check', 13)} ${c.done} ${tr("f.pl::done")}</span>` : nothing}
+        ${c.due ? html`<span class="pill warn">${c.due} ${tr("to do")}</span>` : nothing}
+        ${c.suggested ? html`<span class="pill">${c.suggested} ${tr("recommended")}</span>` : nothing}
+        ${c.blocked ? html`<span class="pill">${c.blocked} ${tr("not today")}</span>` : nothing}
         <span class="grow"></span>
-        <button class="link small" @click=${() => { this.showAll = !this.showAll; this.load(); }}>${this.showAll ? tr('Nascondi in pausa') : tr('Mostra anche in pausa')}</button>
+        <button class="link small" @click=${() => { this.showAll = !this.showAll; this.load(); }}>${this.showAll ? tr('Hide paused') : tr('Show paused too')}</button>
       </div>` : nothing}
       ${!p.routines.length ? html`<div class="card col" style="align-items:flex-start">
-          <h2>${tr("Nessuna routine")}</h2>
-          <div class="muted">${tr("Crea la prima, per esempio «Viso sera: detergente → retinolo → crema». Puoi dire quante volte a settimana farla, niente orari fissi.")}</div>
-          <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Crea una routine")}</hxk-button>
-            <hxk-button icon="plus" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Aggiungi prodotti")}</hxk-button></div></div>` : nothing}
+          <h2>${tr("No routine")}</h2>
+          <div class="muted">${tr("Create the first one, for example «Evening face: cleanser → retinol → cream». You can say how many times a week to do it, no fixed times.")}</div>
+          <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Create a routine")}</hxk-button>
+            <hxk-button icon="plus" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Add products")}</hxk-button></div></div>` : nothing}
       ${(['morning', 'anytime', 'evening'] as const).map(slot => groups[slot].length ? html`<div class="slot">
         <h3>${slotIcon(slot)} ${this.m?.slots?.[slot] || slot}</h3>${groups[slot].map(r => this.card(r))}</div>` : nothing)}
       <div class="row wrap">
-        <hxk-button icon="plus" @click=${() => this.openAdhoc()}>${tr("Ho usato un prodotto")}</hxk-button>
+        <hxk-button icon="plus" @click=${() => this.openAdhoc()}>${tr("I used a product")}</hxk-button>
         ${(p.adhoc || []).map((a: any) => html`<span class="pill">${icon('check', 13, 'success')} ${a.product}</span>`)}
       </div>
       ${this.adhoc ? this.adhocSheet() : nothing}

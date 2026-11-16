@@ -25,12 +25,12 @@ export interface UpdateStatus {
   imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'Aggiornamenti' | tr"  [subtitle]="'La versione di Hestia, le novità e il ritorno indietro' | tr">
-      <button hx-btn size="sm" variant="ghost" icon="refresh" [loading]="busy() === 'check'" (click)="check()"  [title]="'Controlla adesso' | tr"><span class="lbl">{{ "Controlla adesso" | tr }}</span></button>
+    <hx-page-header  [title]="'Updates' | tr"  [subtitle]="'Hestia\\'s version, the news and going back' | tr">
+      <button hx-btn size="sm" variant="ghost" icon="refresh" [loading]="busy() === 'check'" (click)="check()"  [title]="'Check now' | tr"><span class="lbl">{{ "Check now" | tr }}</span></button>
     </hx-page-header>
     <div class="body">
       @if (error()) {
-        <hx-empty icon="offline"  [title]="'Non riesco a leggere gli aggiornamenti' | tr">{{ error() }}</hx-empty>
+        <hx-empty icon="offline"  [title]="'I can\\'t read the updates' | tr">{{ error() }}</hx-empty>
       } @else if (!st()) {
         <div class="center"><hx-spinner /></div>
       } @else {
@@ -38,22 +38,22 @@ export interface UpdateStatus {
           <div class="now">
             <hx-icon name="check-circle" [size]="22" tone="success" />
             <div><b>Hestia {{ st()!.installed.label }}</b>
-              <small>{{ st()!.channel === 'novita' ? ('Ricevi ogni novità appena è pronta' | tr) : ('Ricevi le versioni pubblicate' | tr) }} ·
-                <a routerLink="/settings" [queryParams]="{ module: 'hephaestus' }">{{ "cambia" | tr }}</a>
+              <small>{{ st()!.channel === 'novita' ? ('Get every news as soon as it\\'s ready' | tr) : ('Get the published versions' | tr) }} ·
+                <a routerLink="/settings" [queryParams]="{ module: 'hephaestus' }">{{ "change" | tr }}</a>
                 @if (st()!.checked_at) { · controllato {{ ago(st()!.checked_at!) }} }</small></div>
           </div>
         </section>
 
         @if (job().state === 'in_corso') {
           <section class="card hx-card">
-            <div class="now"><hx-spinner /><div><b>{{ "Sto aggiornando…" | tr }}</b><small>{{ job().step || ('Preparo' | tr) }}{{ ". Non serve fare niente: se qualcosa non risponde torno da solo alla versione di prima." | tr }}</small></div></div>
+            <div class="now"><hx-spinner /><div><b>{{ "Updating…" | tr }}</b><small>{{ job().step || ('Preparing' | tr) }}{{ ". Nothing to do: if something doesn't answer I go back to the previous version by myself." | tr }}</small></div></div>
           </section>
         } @else if (avail()) {
           <section class="card hx-card new">
             <div class="now">
               <hx-icon name="sparkle" [size]="22" tone="accent" />
-              <div><b>{{ avail()!.ref === 'origin/main' ? (avail()!.commits + (' novità di sviluppo' | tr)) : (('È uscita Hestia ' | tr) + avail()!.label) }}</b>
-                @if (avail()!.major) { <small>{{ "Versione grande: se dopo serve qualcosa sul computer, te lo dico io." | tr }}</small> }</div>
+              <div><b>{{ avail()!.ref === 'origin/main' ? (avail()!.commits + (' development news' | tr)) : (('New release: Hestia ' | tr) + avail()!.label) }}</b>
+                @if (avail()!.major) { <small>{{ "Large version: if something is needed on the computer later, I'll tell you." | tr }}</small> }</div>
             </div>
             @if (avail()!.notes?.length) {
               <ul class="notes">@for (n of avail()!.notes; track $index) { <li>{{ n }}</li> }</ul>
@@ -62,11 +62,11 @@ export interface UpdateStatus {
               <p class="warn"><hx-icon name="alert" [size]="14" tone="warning" /> {{ st()!.blocked }}</p>
             }
             <div class="row">
-              <button hx-btn variant="primary" icon="download" [disabled]="!!st()!.blocked" [loading]="busy() === 'apply'" (click)="apply()">{{ "Installa" | tr }}</button>
+              <button hx-btn variant="primary" icon="download" [disabled]="!!st()!.blocked" [loading]="busy() === 'apply'" (click)="apply()">{{ "Install" | tr }}</button>
             </div>
           </section>
         } @else {
-          <p class="note">{{ st()!.check_error || ('Hai già l\\'ultima versione.' | tr) }}</p>
+          <p class="note">{{ st()!.check_error || ('You already have the latest version.' | tr) }}</p>
         }
 
         @if (job().state === 'errore' || job().state === 'fatto') {
@@ -76,21 +76,21 @@ export interface UpdateStatus {
         }
 
         @if (st()!.history.length) {
-          <h2>{{ "Storico" | tr }}</h2>
+          <h2>{{ "History" | tr }}</h2>
           <ul class="list">
             @for (h of history(); track h.at) {
               <li class="row hx-card">
                 <hx-icon [name]="h.ok ? (h.back ? 'undo' : 'check-circle') : 'x-circle'" [size]="18" [tone]="h.ok ? 'success' : 'warning'" />
-                <div class="main"><b>{{ h.ok ? (h.back ? ('Tornato a ' | tr) + h.to : ('Aggiornato a ' | tr) + h.to) : ('Non riuscito, rimasto a ' | tr) + h.from }}</b>
+                <div class="main"><b>{{ h.ok ? (h.back ? ('Back to ' | tr) + h.to : ('Updated to ' | tr) + h.to) : ('Failed, stuck at ' | tr) + h.from }}</b>
                   <small>{{ date(h.at) }}{{ h.detail ? ' · ' + h.detail : '' }}</small></div>
               </li>
             }
           </ul>
           @if (st()!.previous && job().state !== 'in_corso') {
-            <div class="row"><button hx-btn size="sm" variant="ghost" icon="undo" [loading]="busy() === 'back'" (click)="back()">{{ "Torna alla versione di prima" | tr }}</button></div>
+            <div class="row"><button hx-btn size="sm" variant="ghost" icon="undo" [loading]="busy() === 'back'" (click)="back()">{{ "Back to the previous version" | tr }}</button></div>
           }
         }
-        <p class="hint">{{ "Le parti sul computer (Docker, Ollama) si aggiornano rilanciando l'installer. I satelliti si aggiornano rilanciando l'installer anche su di loro." | tr }}</p>
+        <p class="hint">{{ "The parts on the computer (Docker, Ollama) update by running the installer again. The satellites update by running the installer on them too." | tr }}</p>
       }
     </div>`,
   styles: [`
@@ -160,18 +160,18 @@ export class UpdatesPageComponent {
 
   async check() {
     await this.post('check', 'check');
-    if (this.st() && !this.st()!.available && !this.st()!.check_error) this.toasts.success(tr('Hai già l\'ultima versione.'));
+    if (this.st() && !this.st()!.available && !this.st()!.check_error) this.toasts.success(tr('You already have the latest version.'));
   }
 
   async apply() {
     const a = this.st()?.available;
-    if (!a || !await this.dialogs.confirm(tr("Installare {0}?", a.ref === 'origin/main' ? 'le novità' : 'Hestia ' + a.label),
-      tr('Qualche parte si riavvia per pochi secondi. Se qualcosa non risponde, torno da solo alla versione di prima.'), tr('Installa'))) return;
+    if (!a || !await this.dialogs.confirm(tr("Install {0}?", a.ref === 'origin/main' ? 'le novità' : 'Hestia ' + a.label),
+      tr('Some parts restart for a few seconds. If something doesn\'t answer, I go back to the previous version by myself.'), tr('Install'))) return;
     await this.post('apply', 'apply');
   }
 
   async back() {
-    if (!await this.dialogs.confirm(tr('Tornare alla versione di prima?'), tr('Rimetto il codice e le parti come prima dell\'ultimo aggiornamento.'), tr('Torna indietro'))) return;
+    if (!await this.dialogs.confirm(tr('Go back to the previous version?'), tr('I put the code and the parts back as before the last update.'), tr('Go back'))) return;
     await this.post('back', 'back');
   }
 
@@ -180,7 +180,7 @@ export class UpdatesPageComponent {
     if (min < 1) return 'adesso';
     if (min < 60) return `${min} min fa`;
     const h = Math.round(min / 60);
-    return h < 24 ? `${h} h fa` : tr("{0} giorni fa", Math.round(h / 24));
+    return h < 24 ? `${h} h fa` : tr("{0} days ago", Math.round(h / 24));
   }
 
   date(t: number): string {

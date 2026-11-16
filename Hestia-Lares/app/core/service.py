@@ -22,11 +22,11 @@ DOMAINS = ("light", "switch", "cover", "climate", "fan", "media_player", "lock",
            "binary_sensor", "person")
 COMMANDS = {"on": "turn_on", "off": "turn_off", "toggle": "toggle", "open": "open_cover", "close": "close_cover",
             "lock": "lock", "unlock": "unlock"}
-LABELS = {"light": "Luci", "switch": "Prese", "cover": "Tapparelle", "climate": "Clima", "fan": "Ventilatori",
-          "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Azioni", "sensor": "Sensori",
-          "binary_sensor": "Sensori", "person": "Persone"}
+LABELS = {"light": "Lights", "switch": "Prese", "cover": "Tapparelle", "climate": "Clima", "fan": "Ventilatori",
+          "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Actions", "sensor": "Sensori",
+          "binary_sensor": "Sensori", "person": "People"}
 STATE_IT = {"on": "acceso", "off": "spento", "open": "aperta", "closed": "chiusa", "locked": "chiusa",
-            "unlocked": "aperta", "home": "a casa", "not_home": "fuori", "unavailable": "non raggiungibile"}
+            "unlocked": "aperta", "home": "at home", "not_home": "fuori", "unavailable": "unreachable"}
 
 
 def slim(s: dict) -> dict:
@@ -74,7 +74,7 @@ class Home:
 
     def _ensure(self) -> None:
         if not self.ha.configured:
-            raise Invalid(tr("la casa non è collegata: servono indirizzo e token di Home Assistant nel file .env"))
+            raise Invalid(tr("the home is not linked: the Home Assistant address and token are needed in the .env file"))
         if not self.entities:
             try:
                 self.load()
@@ -99,8 +99,8 @@ class Home:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(tr("in casa non trovo «{0}»", ref))
-        raise Invalid(tr("più dispositivi corrispondono: ") + ", ".join(h["name"] for h in hits[:6]))
+            raise NotFound(tr("at home I can't find «{0}»", ref))
+        raise Invalid(tr("several devices match: ") + ", ".join(h["name"] for h in hits[:6]))
 
     def status(self) -> dict:
         if not self.ha.configured:
@@ -164,12 +164,12 @@ class Home:
     def run_favorite(self, fid: str) -> dict:
         f = self.store.data("favorite", fid)
         if not f:
-            raise NotFound(tr("azione rapida non trovata"))
+            raise NotFound(tr("quick action not found"))
         return self.command(f["entity_id"], f.get("command") or "toggle")
 
     def delete_favorite(self, fid: str) -> dict:
         if not self.store.delete("favorite", fid):
-            raise NotFound(tr("azione rapida non trovata"))
+            raise NotFound(tr("quick action not found"))
         return {"deleted": True}
 
     @staticmethod

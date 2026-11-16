@@ -51,7 +51,7 @@ def fetch(job_id: str, what: str, url: str, dest: Path, size_mb: int = 0) -> Pat
     DOWNLOADS.file(job_id, what, url, dest, size_hint=size_mb * 1_000_000)
     job = DOWNLOADS.wait(job_id, 1800)
     if job.get("state") != "fatto" or not dest.exists():
-        raise EngineError(job.get("error") or tr("{0}: download non finito", what))
+        raise EngineError(job.get("error") or tr("{0}: download not finished", what))
     return dest
 
 
@@ -68,7 +68,7 @@ def prefetch(provider_type: str, model: str = "", voice: str = "") -> list[str]:
         return []
     if provider_type == "whisper_local":
         size = model or "small"
-        DOWNLOADS.add(f"whisper:{size}", tr("Ascolto ({0})", size), "whisper", {"size": size},
+        DOWNLOADS.add(f"whisper:{size}", tr("Listening ({0})", size), "whisper", {"size": size},
                       size_hint=WHISPER_MB.get(size, 0) * 1_000_000)
         return [f"whisper:{size}"]
     if provider_type == "piper":
@@ -145,10 +145,10 @@ class Standard:
         return []
 
     def transcribe(self, provider: dict, model: str, data: bytes, mime: str, language: str, opts: dict) -> dict:
-        raise EngineError(tr("{0} non ascolta", self.label))
+        raise EngineError(tr("{0} does not listen", self.label))
 
     def speak(self, provider: dict, model: str, voice: str, text: str, language: str, opts: dict) -> tuple[bytes, str]:
-        raise EngineError(tr("{0} non parla", self.label))
+        raise EngineError(tr("{0} does not speak", self.label))
 
     def voice_language(self, voice: str) -> str:
         """The language a voice speaks ('' = any: a multilingual cloud voice reads every language itself)."""
@@ -161,11 +161,11 @@ class WhisperLocal(Standard):
     id, label, directions, wants_pcm = "whisper_local", "Whisper locale (faster-whisper)", ("ascolto",), True
     SIZES = ["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo"]
     options = [
-        opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Più alto = più preciso e più lento."),
+        opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Higher = more accurate and slower."),
         opt("vad", "Salta i silenzi", "bool", True),
-        opt("initial_prompt", "Parole da riconoscere", "string", "",
-            help="Nomi e parole tue (es. Hestia, Hercules), separati da virgola: le scrive giuste."),
-        opt("device", "Dove gira", "enum", "auto", options=[{"value": "auto", "label": "Automatico"},
+        opt("initial_prompt", "Words to recognise", "string", "",
+            help="Your names and words (e.g. Hestia, Hercules), separated by commas: it writes them right."),
+        opt("device", "Where it runs", "enum", "auto", options=[{"value": "auto", "label": "Automatic"},
                                                             {"value": "cpu", "label": "CPU"},
                                                             {"value": "cuda", "label": "Scheda video"}]),
     ]
@@ -210,7 +210,7 @@ class WhisperLocal(Standard):
 
     def transcribe(self, provider, model, data, mime, language, opts):
         if not self._installed():
-            raise EngineError(tr("faster-whisper non installato"))
+            raise EngineError(tr("faster-whisper not installed"))
         m = self._model(model or "small", str(opts.get("device") or "auto"))
         segments, info = m.transcribe(_whisper_samples(data), language=None if language in ("", "auto") else language,
                                       beam_size=int(opts.get("beam_size") or 5),
@@ -239,9 +239,9 @@ PIPER_MALE = {"riccardo", "ryan", "davefx", "tom", "thorsten", "faber"}
 class Piper(Standard):
     id, label, directions = "piper", "Piper (locale, veloce)", ("voce",)
     options = [
-        opt("length_scale", "Lentezza", "float", 1.0, min=0.5, max=2.0, help="1 = normale; più alto = più lenta."),
-        opt("noise_scale", "Variazione", "float", 0.667, min=0.0, max=1.0),
-        opt("sentence_silence", "Pausa tra le frasi", "float", 0.2, min=0.0, max=2.0),
+        opt("length_scale", "Lentezza", "float", 1.0, min=0.5, max=2.0, help="1 = normal; higher = slower."),
+        opt("noise_scale", "alt::Change", "float", 0.667, min=0.0, max=1.0),
+        opt("sentence_silence", "Pause between sentences", "float", 0.2, min=0.0, max=2.0),
     ]
 
     def __init__(self):
@@ -271,7 +271,7 @@ class Piper(Standard):
     def title(name: str, suffix: str = ".onnx") -> str:
         """«Voce Paola» for it_IT-paola-medium (the small .json is its settings)."""
         speaker = name.split("-")[1].capitalize() if name.count("-") >= 2 else name
-        return tr("Voce {0}", speaker) + (" · impostazioni" if suffix.endswith(".json") else "")
+        return tr("Voice {0}", speaker) + (" · impostazioni" if suffix.endswith(".json") else "")
 
     @staticmethod
     def files(name: str) -> list[tuple[str, str, int]]:
@@ -279,7 +279,7 @@ class Piper(Standard):
         try:
             locale, speaker, quality = name.split("-")
         except ValueError:
-            raise EngineError(tr("voce Piper {0!r} non valida (es. it_IT-paola-medium)", name))
+            raise EngineError(tr("invalid Piper voice {0!r} (e.g. it_IT-paola-medium)", name))
         base = (f"https://huggingface.co/rhasspy/piper-voices/resolve/main/{locale.split('_')[0]}/{locale}/"
                 f"{speaker}/{quality}/{name}")
         size = {"x_low": 21, "low": 63, "medium": 63, "high": 114}.get(quality, 63) * 1_000_000
@@ -310,13 +310,13 @@ class Piper(Standard):
             return voice
         pair = PIPER_BY_LANG.get(lang)
         if not pair:
-            raise EngineError(tr("Piper non ha una voce in {0}", lang))
+            raise EngineError(tr("Piper has no voice in {0}", lang))
         male = voice.split("-")[1] in PIPER_MALE if voice.count("-") >= 2 else False
         return pair[1] if male else pair[0]
 
     def speak(self, provider, model, voice, text, language, opts):
         if not self._installed():
-            raise EngineError(tr("piper-tts non installato"))
+            raise EngineError(tr("piper-tts not installed"))
         v = self._voice(self.for_language(voice or model or PIPER_ITALIAN[0], language))
         import wave
         buf = tempfile.SpooledTemporaryFile()
@@ -359,7 +359,7 @@ KOKORO_FILES = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx
 
 class Kokoro(Standard):
     id, label, directions = "kokoro", "Kokoro (locale, naturale)", ("voce",)
-    options = [opt("speed", "Velocità", "float", 1.0, min=0.5, max=2.0)]
+    options = [opt("speed", "Speed", "float", 1.0, min=0.5, max=2.0)]
 
     def __init__(self):
         self._engine = None
@@ -393,7 +393,7 @@ class Kokoro(Standard):
             return voice
         pair = KOKORO_BY_LANG.get(lang)
         if not pair:
-            raise EngineError(tr("Kokoro non ha una voce in {0}", lang))
+            raise EngineError(tr("Kokoro has no voice in {0}", lang))
         return pair[1] if voice[1:2] == "m" else pair[0]
 
     def _load(self):
@@ -409,7 +409,7 @@ class Kokoro(Standard):
 
     def speak(self, provider, model, voice, text, language, opts):
         if not self._installed():
-            raise EngineError(tr("kokoro-onnx non installato"))
+            raise EngineError(tr("kokoro-onnx not installed"))
         name = self.for_language(voice or model or "if_sara", language)
         engine = self._load()
         samples, rate = engine.create(text, voice=name, speed=float(opts.get("speed") or 1.0),
@@ -423,11 +423,11 @@ class OpenAICompatible(Standard):
     id, label, directions = "openai", "Compatibile OpenAI (OpenAI, Groq, Speaches, LocalAI…)", ("ascolto", "voce")
     needs_key, needs_url, default_url = True, True, "https://api.openai.com/v1"
     options = [
-        opt("prompt", "Parole da riconoscere", "string", "", direction="ascolto"),
-        opt("temperature", "Temperatura", "float", 0.0, min=0.0, max=1.0, direction="ascolto"),
-        opt("speed", "Velocità", "float", 1.0, min=0.25, max=4.0, direction="voce"),
-        opt("instructions", "Stile della voce", "string", "", direction="voce",
-            help="Per i modelli che lo accettano (es. «calda, tranquilla»)."),
+        opt("prompt", "Words to recognise", "string", "", direction="ascolto"),
+        opt("temperature", "Temperature", "float", 0.0, min=0.0, max=1.0, direction="ascolto"),
+        opt("speed", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voce"),
+        opt("instructions", "Voice style", "string", "", direction="voce",
+            help="For the models that accept it (e.g. «warm, calm»)."),
     ]
 
     def state(self, provider):
@@ -493,15 +493,15 @@ class Google(Standard):
     id, label, directions = "google", "Google Cloud (Speech-to-Text, Text-to-Speech)", ("ascolto", "voce")
     needs_key = True
     options = [
-        opt("recognition_model", "Modello di ascolto", "enum", "latest_short", direction="ascolto",
+        opt("recognition_model", "Listening model", "enum", "latest_short", direction="ascolto",
             options=[{"value": "latest_short", "label": "Frasi brevi"}, {"value": "latest_long", "label": "Audio lunghi"},
-                     {"value": "default", "label": "Predefinito"}]),
+                     {"value": "default", "label": "Default"}]),
         opt("punctuation", "Punteggiatura", "bool", True, direction="ascolto"),
-        opt("speaking_rate", "Velocità", "float", 1.0, min=0.25, max=4.0, direction="voce"),
-        opt("pitch", "Tono", "float", 0.0, min=-20.0, max=20.0, direction="voce"),
+        opt("speaking_rate", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voce"),
+        opt("pitch", "Tone", "float", 0.0, min=-20.0, max=20.0, direction="voce"),
         opt("profile", "Profilo audio", "enum", "headphone-class-device", direction="voce",
             options=[{"value": "headphone-class-device", "label": "Cuffie"},
-                     {"value": "handset-class-device", "label": "Telefono"},
+                     {"value": "handset-class-device", "label": "Phone"},
                      {"value": "small-bluetooth-speaker-class-device", "label": "Cassa piccola"},
                      {"value": "large-home-entertainment-class-device", "label": "Impianto"}]),
     ]
@@ -552,9 +552,9 @@ class ElevenLabs(Standard):
     id, label, directions = "elevenlabs", "ElevenLabs", ("ascolto", "voce")
     needs_key, default_url = True, "https://api.elevenlabs.io/v1"
     options = [
-        opt("stability", "Stabilità", "float", 0.5, min=0.0, max=1.0, direction="voce"),
+        opt("stability", "Stability", "float", 0.5, min=0.0, max=1.0, direction="voce"),
         opt("similarity", "Somiglianza", "float", 0.75, min=0.0, max=1.0, direction="voce"),
-        opt("style", "Espressività", "float", 0.0, min=0.0, max=1.0, direction="voce"),
+        opt("style", "Expressiveness", "float", 0.0, min=0.0, max=1.0, direction="voce"),
     ]
 
     def models(self, provider):
@@ -583,7 +583,7 @@ class ElevenLabs(Standard):
 
     def speak(self, provider, model, voice, text, language, opts):
         if not voice:
-            raise EngineError(tr("ElevenLabs: scegli una voce"))
+            raise EngineError(tr("ElevenLabs: choose a voice"))
         body = {"text": text, "model_id": model or "eleven_multilingual_v2",
                 "voice_settings": {"stability": float(opts.get("stability", 0.5)),
                                    "similarity_boost": float(opts.get("similarity", 0.75)),
@@ -597,7 +597,7 @@ class ElevenLabs(Standard):
 
 class Wyoming(Standard):
     """Home Assistant's voice protocol (whisper/piper servers on the LAN): JSON event lines + binary payloads."""
-    id, label, directions, wants_pcm = "wyoming", "Wyoming (server voce di Home Assistant)", ("ascolto", "voce"), True
+    id, label, directions, wants_pcm = "wyoming", "Wyoming (Home Assistant voice server)", ("ascolto", "voce"), True
     needs_url = True
     options = []
 
@@ -616,7 +616,7 @@ class Wyoming(Standard):
     def _read(f) -> tuple[str, dict, bytes]:
         line = f.readline()
         if not line:
-            raise EngineError(tr("Wyoming: connessione chiusa"))
+            raise EngineError(tr("Wyoming: connection closed"))
         header = json.loads(line)
         data = header.get("data") or {}
         if header.get("data_length"):

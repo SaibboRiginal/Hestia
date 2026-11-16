@@ -209,7 +209,7 @@ def send_recovery(service: str) -> None:
     if narrated and narrated.strip():
         text = f"✅ <b>Hestia Monitor</b>\n\n{narrated.strip()}"
     else:
-        text = tr("✅ <b>Hestia Monitor</b>\n<code>{0}</code> è di nuovo online.", service)
+        text = tr("✅ <b>Hestia Monitor</b>\n<code>{0}</code> is back online.", service)
 
     hermes_client.publish_event(
         domain="system",

@@ -65,7 +65,7 @@ export class HecateConnections extends HestiaElement {
   private async load() {
     const place = this.place || this.ctx?.params?.place || '';     // the setup passes it through the plugin outlet
     const r = await this.host.api('GET', API, place ? { query: { place } } : undefined);
-    if (!r.ok) { this.err = r.status === 0 ? tr('Non raggiungibile') : r.error || tr('Non raggiungibile'); return; }
+    if (!r.ok) { this.err = r.status === 0 ? tr('Not reachable') : r.error || tr('Not reachable'); return; }
     this.err = '';
     this.items = r.data?.items || [];
     this.poll();
@@ -89,7 +89,7 @@ export class HecateConnections extends HestiaElement {
     this.errors = { ...this.errors, [item.id]: '' };
     const r = await this.host.api(method, `${API}/${item.id}${path}`, body === undefined ? undefined : { body });
     this.busy = '';
-    if (!r.ok) { this.errors = { ...this.errors, [item.id]: r.data?.detail || r.error || tr('Non riuscito: riprova.') }; return; }
+    if (!r.ok) { this.errors = { ...this.errors, [item.id]: r.data?.detail || r.error || tr('Failed: try again.') }; return; }
     if (r.data?.open_url) window.open(r.data.open_url, '_blank', 'noopener');
     if (r.data?.message) this.host.toast(r.data.message, 'success');
     if (r.data?.item) this.replace(r.data.item);
@@ -103,7 +103,7 @@ export class HecateConnections extends HestiaElement {
 
   private async act(item: Item, a: Action) {
     if (a.id === 'forget') {
-      if (!(await this.host.confirm(tr("Scollegare {0}?", item.label), tr('Per ricollegarlo servirà di nuovo l\'accesso.'), { label: tr('Scollega'), danger: true }))) return;
+      if (!(await this.host.confirm(tr("Unlink {0}?", item.label), tr('To link it again access will be needed again.'), { label: tr('Unlink'), danger: true }))) return;
       this.send(item, 'DELETE', '');
       return;
     }
@@ -111,7 +111,7 @@ export class HecateConnections extends HestiaElement {
   }
 
   private stateText(i: Item): string {
-    return i.state === 'connected' ? 'collegato' : i.state === 'waiting' ? tr('in attesa') : tr('non collegato');
+    return i.state === 'connected' ? 'collegato' : i.state === 'waiting' ? tr('waiting') : tr('not linked');
   }
 
   private stepView(i: Item) {
@@ -122,7 +122,7 @@ export class HecateConnections extends HestiaElement {
       ${s.text ? html`<p class="text">${s.text}</p>` : nothing}
       ${s.guide?.length ? html`<ol>${s.guide.map(g => html`<li>${g}</li>`)}</ol>` : nothing}
       ${s.link ? html`<a href=${s.link.url} target="_blank" rel="noopener">${s.link.label}</a>` : nothing}
-      ${s.kind === 'wait' && s.url ? html`<a href=${s.url} target="_blank" rel="noopener">${tr("Riapri la pagina")}</a>` : nothing}
+      ${s.kind === 'wait' && s.url ? html`<a href=${s.url} target="_blank" rel="noopener">${tr("Reopen the page")}</a>` : nothing}
       ${s.fields.map(f => html`<hxk-field label=${f.label} type=${f.type} placeholder=${f.placeholder || ''} .value=${v[f.name] || ''}
           @change=${(e: CustomEvent) => { v[f.name] = String(e.detail); }}></hxk-field>`)}
       ${s.submit ? html`<div class="row wrap"><hxk-button variant="primary" icon="link" ?loading=${this.busy === i.id}
@@ -156,7 +156,7 @@ export class HecateConnections extends HestiaElement {
     const q = this.query.trim().toLowerCase();
     const shown = q ? this.items.filter(i => `${i.label} ${i.what}`.toLowerCase().includes(q)) : this.items;
     return html`
-      ${this.items.length > 6 ? html`<input class="search" type="search" placeholder=${tr("Cerca un servizio")} .value=${this.query}
+      ${this.items.length > 6 ? html`<input class="search" type="search" placeholder=${tr("Search a service")} .value=${this.query}
           @input=${(e: Event) => { this.query = (e.target as HTMLInputElement).value; }} />` : nothing}
       <div class="list">${shown.map(i => this.row(i))}</div>`;
   }
