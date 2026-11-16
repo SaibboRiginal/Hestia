@@ -376,7 +376,7 @@ class Forge:
         if not reachable or not item:
             return True, ""
         if item.get("status") == "cancelled":
-            self.reject(task["id"], reason=tr("cancelled by Hestia's agenda"), rejected_by="user")
+            self.reject(task["id"], reason=tr("cancelled by {assistant}'s agenda"), rejected_by="user")
             return False, "cancelled in agenda"
         try:
             start = datetime.fromisoformat(str(item.get("start_at")).replace("Z", "+00:00"))
@@ -716,7 +716,7 @@ class Forge:
             reachable, item = self.agenda.lookup(self.agenda.task_key(task["id"]))
             if reachable and item and item.get("status") == "cancelled":
                 try:
-                    self.reject(task["id"], reason=tr("cancelled by Hestia's agenda (linked item)"),
+                    self.reject(task["id"], reason=tr("cancelled by {assistant}'s agenda (linked item)"),
                                 rejected_by="user")
                 except ForgeError as exc:
                     logger.debug("event=forge_reap_unlinked_skip task_id=%s error=%s", task["id"], exc)

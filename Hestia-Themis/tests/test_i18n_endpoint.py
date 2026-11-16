@@ -13,6 +13,20 @@ def test_i18n_catalog_follows_the_language(monkeypatch):
     it = c.get("/api/settings/i18n").json()
     assert it["language"] == "it" and it["messages"]["Cancel"] == "Annulla"
     en = c.get("/api/settings/i18n", params={"lang": "en"}).json()
-    assert en == {"language": "en", "messages": {}}
+    assert en == {"language": "en", "messages": {}, "assistant": "Hestia", "gender": "lei"}
     de = c.get("/api/settings/i18n", params={"lang": "de"}).json()
-    assert de == {"language": "de", "messages": {}}   # a language without a catalog → the English source
+    assert de["language"] == "de" and de["messages"] == {}   # a language without a catalog → the English source
+
+
+@pytest.mark.api
+def test_i18n_catalog_carries_the_assistant_name_never_the_owner(monkeypatch):
+    """«Ask {assistant}» in the WebUI says the chosen name (docs/work/2026-11-16-nome-ovunque)."""
+    from fastapi.testclient import TestClient
+    from app import main
+    from hestia_common import i18n
+    values = {"themis.personal.assistant_name": "Leo", "themis.personal.assistant_gender": "lui",
+              "themis.personal.owner_name": "Marco", "themis.personal.language": "it"}
+    monkeypatch.setattr(i18n, "_reader", values.get)
+    out = TestClient(main.app).get("/api/settings/i18n", params={"lang": "it"}).json()
+    assert out["assistant"] == "Leo" and out["gender"] == "lui"
+    assert "Marco" not in str(out)

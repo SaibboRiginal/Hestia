@@ -7,11 +7,24 @@ import { Pipe, PipeTransform } from '@angular/core';
  * index.html loads `/api/webui/i18n.js` (Themis catalog for «Lingua» = `themis.personal.language`) before any
  * bundle, so even module-level constants are translated; plugins read the same `globalThis.__hestiaI18n` through
  * `tr` of `@hestia/webui-sdk`. A missing text shows the English source; `localize` translates the labels of API payloads (HTTP interceptor). A new «Lingua» reloads the page (`followLanguage`). */
-interface Catalog { language: string; messages: Record<string, string>; }
+interface Catalog { language: string; messages: Record<string, string>; assistant?: string; gender?: string; }
 
 function catalog(): Catalog {
   const c = (globalThis as any).__hestiaI18n;
-  return c && typeof c.messages === 'object' ? c : { language: 'it', messages: {} };
+  return c && typeof c.messages === 'object' ? c : { language: 'en', messages: {} };
+}
+
+/** The assistant's chosen name (`themis.personal.assistant_name`, served with the catalog; default «Hestia»). */
+export function assistantName(): string { return String(catalog().assistant || '').trim() || 'Hestia'; }
+
+/** `{assistant}` → the chosen name, `{g:lei-form|lui-form}` → the form for her or him
+ * (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the app (version, files, installation) the text says
+ * «Hestia» and nothing changes. Also for texts that do not go through `tr` (plugin page titles and help). */
+export function named(text: string): string {
+  const s = text == null ? '' : String(text);
+  if (!s.includes('{assistant}') && !s.includes('{g:')) return s;
+  const he = catalog().gender === 'lui';
+  return s.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, a, b) => (he ? b : a)).split('{assistant}').join(assistantName());
 }
 
 /** Fallback when the script did not run (e.g. the page was served from the cache): fetch the JSON once. */
@@ -21,7 +34,8 @@ export async function loadI18n(): Promise<void> {
     const r = await fetch('/api/webui/i18n', { credentials: 'same-origin' });
     if (r.ok) {
       const d = await r.json();
-      (globalThis as any).__hestiaI18n = { language: String(d?.language || 'it'), messages: d?.messages || {} };
+      (globalThis as any).__hestiaI18n = { language: String(d?.language || 'it'), messages: d?.messages || {},
+        assistant: d?.assistant, gender: d?.gender };
     }
   } catch { /* settings unreachable: the English source texts */ }
 }
@@ -43,6 +57,21 @@ export function followLanguage(value: unknown): void {
   setTimeout(() => location.reload(), 400);
 }
 
+/** After the assistant's name or she/he was saved: update the texts at once (the page reloads, like «Lingua»;
+ * not during the guided setup, which reads the name live and must not lose its steps). */
+export const IDENTITY_KEYS = ['themis.personal.assistant_name', 'themis.personal.assistant_gender'];
+export function followIdentity(key: string, value: unknown): void {
+  const c = (globalThis as any).__hestiaI18n;
+  if (!IDENTITY_KEYS.includes(key) || !c || reloading) return;
+  const v = String(value ?? '').trim();
+  const now = key === IDENTITY_KEYS[0] ? assistantName() : (c.gender || 'lei');
+  if ((v || (key === IDENTITY_KEYS[0] ? 'Hestia' : 'lei')) === now) return;
+  if (key === IDENTITY_KEYS[0]) c.assistant = v || 'Hestia'; else c.gender = v === 'lui' ? 'lui' : 'lei';
+  if (location.pathname.startsWith('/setup')) return;
+  reloading = true;
+  setTimeout(() => location.reload(), 400);
+}
+
 /** Keys whose string value is never a people text (same list as `hestia_common.i18n.KEEP_KEYS`). */
 const KEEP_KEYS = new Set(['id', 'key', 'value', 'status', 'state', 'type', 'kind', 'slug', 'path', 'url', 'href',
   'code', 'icon', 'color', 'tone', 'module', 'service', 'method', 'tool', 'command', 'domain', 'source', 'role', 'lang',
@@ -57,7 +86,7 @@ export function localize<T>(payload: T): T {
   const c = catalog();
   if (!payload || typeof payload !== 'object') return payload;
   const messages = c.language === 'en' ? {} as Record<string, string> : c.messages;
-  const text = (s: string): string => messages[s] || (TAG.test(s) ? s.replace(TAG, '') : s);
+  const text = (s: string): string => named(messages[s] || (TAG.test(s) ? s.replace(TAG, '') : s));
   const walk = (node: any): any => {
     if (Array.isArray(node)) return node.map(walk);
     if (node && typeof node === 'object') {
@@ -81,9 +110,9 @@ export function tr(text: string, ...args: unknown[]): string {
   const source = text == null ? '' : String(text);
   const c = catalog();
   const plain = source.replace(/^[a-z][a-z0-9.]*::/, '');
-  const out = (c.language !== 'en' && c.messages[source]) || plain;
+  const out = named((c.language !== 'en' && c.messages[source]) || plain);
   if (!args.length) return out;
-  return format(out, args) ?? format(plain, args) ?? plain;
+  return format(out, args) ?? format(named(plain), args) ?? named(plain);
 }
 
 @Pipe({ name: 'tr', standalone: true })

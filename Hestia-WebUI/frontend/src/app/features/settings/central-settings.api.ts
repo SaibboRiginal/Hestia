@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { tr, followLanguage, LANGUAGE_KEY } from '../../core/i18n';
+import { tr, followLanguage, followIdentity, LANGUAGE_KEY } from '../../core/i18n';
 
 /** Central settings (Themis) as seen by the WebUI: `/api/webui/central-settings/*` → Hub → Themis. */
 
@@ -124,17 +124,20 @@ export class CentralSettingsApi {
     const out = await firstValueFrom(this.http.put<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
       scope ? { value, scope } : { value }));
     if (key === LANGUAGE_KEY) followLanguage(out?.value ?? value);
+    followIdentity(key, out?.value ?? value);
     return out;
   }
   async reset(key: string, scope?: 'profile' | 'client' | 'session') {
     const out = await firstValueFrom(this.http.delete<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}`,
       scope ? { params: { scope } } : {}));
     if (key === LANGUAGE_KEY) followLanguage(out?.value);
+    followIdentity(key, out?.value);
     return out;
   }
   async undo(key: string) {
     const out = await firstValueFrom(this.http.post<{ value: unknown; revision: string }>(`${this.base}/${this.k(key)}/undo`, {}));
     if (key === LANGUAGE_KEY) followLanguage(out?.value);
+    followIdentity(key, out?.value);
     return out;
   }
   applyPreset(module: string, presetId: string) {

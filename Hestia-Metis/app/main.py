@@ -76,11 +76,11 @@ hub = HubClient(_HUB_API_URL)
 # insights, datasets and LoRA jobs through the existing /api/metis/ reads; training stays a chat/agenda action.
 UI_DIST = os.getenv("METIS_UI_DIST", "/ui/dist")
 ui = PluginClient("metis", title="Improvement", icon="flask", color="purple", kind="core", dist=UI_DIST,
-                  description="Continuous improvement: where Hestia gets it wrong, datasets and model training.",
+                  description="Continuous improvement: where {assistant} gets it wrong, datasets and model training.",
                   version=SERVICE_VERSION)
 ui.webui(entry="metis.js", api_prefix="/api/metis/",
          pages=[page("miglioramento", "Improvement", element="metis-improvement", icon="chart", order=180,
-                     help="Where Hestia answers worst according to your ratings, the collected datasets and the LoRA trainings (planned in the agenda's night window, running, finished).")])
+                     help="Where {assistant} answers worst according to your ratings, the collected datasets and the LoRA trainings (planned in the agenda's night window, running, finished).")])
 
 # ── Assistant agenda (Chronos) ────────────────────────────────────────────────
 # Training is heavy (GPU/CPU for hours): non-user requests are planned as agenda
@@ -374,7 +374,7 @@ def _adesso_card(client: str = "telegram") -> dict:
     out = usage.adesso(client if client in CLIENTS else "telegram")
     items = out["items"]
     return {**out, "display": display(
-        tr("Now"), lines=[] if items else [tr("Nothing to suggest yet: the more you use Hestia, the more it learns what you need.")],
+        tr("Now"), lines=[] if items else [tr("Nothing to suggest yet: the more you use me, the more I learn what you need.")],
         items=[item(i["title"], [i["reason"]]) for i in items],
         actions=[action(i["title"], i["tool"], i["args"] or None) for i in items])}
 
@@ -563,7 +563,7 @@ try:
                                      "adapter_name": adapter_name, "schedule": "window",
                                      "requested_by": requested_by, "job_id": job_id},
                             "timeout_seconds": 60},
-                    description=tr("Requested by {0}. Cancel or move it from Hestia's agenda.", requested_by),
+                    description=tr("Requested by {0}. Cancel or move it from {assistant}'s agenda.", requested_by),
                     params={"dataset_name": ds_name, "job_id": job_id})
                 _save_job({"job_id": job_id, "status": "scheduled", "dataset_name": ds_name,
                            "requested_by": requested_by, "start_at": start_at,
@@ -571,7 +571,7 @@ try:
                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
                 return {"status": "scheduled" if planned else "schedule_failed", "job_id": job_id,
                         "start_at": start_at, "agenda_key": agenda_key,
-                        "message": tr("Training scheduled in the night window of Hestia's agenda.")
+                        "message": tr("Training scheduled in the night window of {assistant}'s agenda.")
                         if planned else tr("Agenda not reachable: try again or use schedule=now.")}
         examples = dataset_builder.get_dataset_examples(ds_name)
 

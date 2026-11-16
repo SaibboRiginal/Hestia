@@ -1016,7 +1016,7 @@ class AthenaRuntime:
         """«Vita»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
         Separate from the system cycle: no services, errors or Forge here."""
         t0 = time.perf_counter()
-        with self.presence.activity("athena.reflection", label=tr("Hestia reflects"), load="light", resource="gpu",
+        with self.presence.activity("athena.reflection", label=tr("{assistant} reflects"), load="light", resource="gpu",
                                     ttl_seconds=900):
             out = self.reflection.run(run_trace_id)
         scored = out.get("candidates") or []

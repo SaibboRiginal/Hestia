@@ -83,6 +83,26 @@ def current() -> str:
     return language(_reader)
 
 
+def identity_now() -> dict:
+    """Who the assistant is for this process (its name and she/he), from the same reader; defaults without one."""
+    from hestia_common import identity
+    if _reader is None:
+        return identity.default()
+    try:
+        return identity.read(_reader)
+    except Exception:  # noqa: BLE001 - a text is never lost because settings are unreachable
+        return identity.default()
+
+
+def _named(*texts: str) -> tuple[str, ...]:
+    """``{assistant}`` and ``{g:lei|lui}`` filled with the assistant's chosen name and gender (``identity.named``)."""
+    if not any("{assistant}" in x or "{g:" in x for x in texts):
+        return texts
+    from hestia_common import identity
+    ident = identity_now()
+    return tuple(identity.named(x, ident) for x in texts)
+
+
 def bare(text: str) -> str:
     """The source text without its context tag (``"f::Active"`` → ``"Active"``)."""
     return _CTX.sub("", text, count=1)
@@ -91,8 +111,9 @@ def bare(text: str) -> str:
 def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
     """``text`` (English source) in the owner's language; with arguments it is then ``str.format``-ed.
 
-    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. Never raises: a broken translation falls back to the
-    source text."""
+    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. ``{assistant}`` and ``{g:lei|lui}`` take the
+    assistant's chosen name and gender (``identity.named``) before formatting. Never raises: a broken translation
+    falls back to the source text."""
     source = "" if text is None else str(text)
     code = str(lang or current())[:2]
     plain = bare(source)
@@ -101,6 +122,7 @@ def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
         hit = catalog("messages", code).get(source)
         if isinstance(hit, str) and hit:
             out = hit
+    out, plain = _named(out, plain)
     if not (args or kwargs):
         return out
     try:
@@ -144,9 +166,8 @@ def localize(payload: Any, lang: str | None = None) -> Any:
 
     def text(node: str) -> str:
         hit = table.get(node)
-        if isinstance(hit, str) and hit:
-            return hit
-        return bare(node) if _CTX.match(node) else node
+        out = hit if isinstance(hit, str) and hit else (bare(node) if _CTX.match(node) else node)
+        return _named(out)[0]
 
     def walk(node: Any, key: str = "") -> Any:
         if isinstance(node, dict):

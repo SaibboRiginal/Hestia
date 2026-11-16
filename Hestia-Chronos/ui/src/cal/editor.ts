@@ -208,8 +208,8 @@ export class ChronosCalEditor extends LitElement {
         <button type="submit" hidden></button>
       </form>` : nothing}
       <div slot="footer" style="display:flex;gap:8px;width:100%;flex-wrap:wrap">
-        ${this.editing ? nothing : html`<hxk-button class="ask" variant="ghost" icon="sparkle" title=${tr("Describe in words what you want: Hestia creates the item")}
-          @click=${() => this.ask()}>${tr("Ask Hestia")}</hxk-button>`}
+        ${this.editing ? nothing : html`<hxk-button class="ask" variant="ghost" icon="sparkle" title=${tr("Describe in words what you want: {assistant} creates the item")}
+          @click=${() => this.ask()}>${tr("Ask {assistant}")}</hxk-button>`}
         <span style="flex:1"></span>
         <hxk-button variant="ghost" @click=${() => fire(this, 'close')}>${tr("Cancel")}</hxk-button>
         <hxk-button variant="primary" @click=${() => this.save()}>${this.editing ? tr('Save') : tr('Create')}</hxk-button>

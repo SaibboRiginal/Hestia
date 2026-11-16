@@ -5,6 +5,7 @@ One line per finished task (details in `docs/work/<task>/`).
 ## 2026-11-16
 - No Italian left in the code: everything is written in English and the Italian lives only in its translation file; every module, email and web search included, follows «Lingua», and dates and amounts are written the way your language writes them → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 - «Lingua» offers Italian and English only; one written rule for texts in every module (`docs/LANGUAGES.md`) and a check that finds any text still without its English translation, run before every push → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
+- The name you gave her is everywhere: buttons, pages, help, settings, Telegram texts, the voice try («Ciao, sono …») and the voice recognition use it, with she or he; «Hestia» stays only where it means the app. The message she writes you first now stays in the conversation where you answer, even days later, so the reply has its context and you see it when you reopen the chat → `docs/work/2026-11-16-nome-ovunque/` [ext-chat]
 
 ## 2026-11-15
 - The site speaks your language too: every page, menu, button, card, notice and the pages of every module (calendar, workouts, wardrobe, expenses, houses, settings…) follow «Lingua» (Italian and English ready); changing «Lingua» reloads the page in the new language → `docs/work/2026-11-14-backend-inglese/` [ext-chat]

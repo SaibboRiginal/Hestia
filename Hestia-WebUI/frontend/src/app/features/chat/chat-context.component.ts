@@ -62,7 +62,7 @@ export function tokens(n: number | undefined | null): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button class="gauge" [class.warn]="pct() >= 70" [class.full]="pct() >= 90" (click)="toggle($event)"
-            [title]="stats() ? ('Context: ' | tr) + pct() + ('% of ' | tr) + fmt(stats()!.context_window) + (' tokens' | tr) : ('Count the actions in the WebUI' | tr)"
+            [title]="stats() ? ('Context: ' | tr) + pct() + ('% of ' | tr) + fmt(stats()!.context_window) + (' tokens' | tr) : ('Context' | tr)"
              [attr.aria-label]="'Context and usage' | tr">
       <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
         <circle cx="10" cy="10" r="8" class="bg" />
@@ -82,7 +82,7 @@ export function tokens(n: number | undefined | null): string {
             </div>
           }
           <div class="sec">
-            <div class="row"><span>{{ "Count the actions in the WebUI" | tr }}</span><b>{{ fmt(s.context_used_tokens) }} / {{ fmt(s.context_window) }} · {{ pct() }}%</b></div>
+            <div class="row"><span>{{ "Context" | tr }}</span><b>{{ fmt(s.context_used_tokens) }} / {{ fmt(s.context_window) }} · {{ pct() }}%</b></div>
             <div class="bar" role="img" [attr.aria-label]="('Context used: ' | tr) + pct() + '%'">
               @for (p of parts(); track p.id) { <i [attr.data-part]="p.id" [style.width.%]="p.share" [title]="p.label + ': ' + fmt(p.tokens)"></i> }
             </div>

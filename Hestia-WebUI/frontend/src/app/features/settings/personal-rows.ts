@@ -39,7 +39,7 @@ export const PERSONAL_ROWS: PersonalRow[] = [
     keywords: tr('notices memory actions notifications documents agenda development'),
     help: tr('Errors are shown anyway, except with «Hidden».') },
   { id: 'new_session', section: 'sessione', label: tr('New session'), keywords: tr('conversation context reset'),
-    help: tr('Hestia forgets the context of the conversation (the memories stay).') },
+    help: tr('{assistant} forgets the context of the conversation (the memories stay).') },
   { id: 'reset', section: 'sessione', label: tr('Restore personal settings'), keywords: tr('defaults reset'),
     help: tr('Tone, reasoning, instructions and system messages go back to defaults.') },
 ];

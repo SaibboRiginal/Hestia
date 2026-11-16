@@ -142,7 +142,7 @@ export class OracleDocuments extends HestiaElement {
           <hxk-badge>${d.domain}</hxk-badge>${(d.tags || []).slice(0, 4).map((t: string) => html`<hxk-badge tone="info">${t}</hxk-badge>`)}</div>
       </div>
       <div class="acts">
-        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Ask Hestia")} @click=${() => this.ask(d)}></hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Ask {assistant}")} @click=${() => this.ask(d)}></hxk-button>
         <hxk-button size="sm" variant="ghost" icon="pin" title=${d.is_permanent ? tr('Make temporary') : tr('Keep forever')}
           @click=${() => this.keep(d)}></hxk-button>
         <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Delete")} @click=${() => this.drop(d)}></hxk-button>
@@ -157,7 +157,7 @@ export class OracleDocuments extends HestiaElement {
     const shown = this.domain ? this.docs.filter(d => d.domain === this.domain) : this.docs;
     return html`<div class="page">
       <div class="head"><div class="grow"><h1>${tr("Documents")}</h1>
-        <div class="sub">${tr("Files you shared with Hestia: the chat uses them when you talk about them")}</div></div>
+        <div class="sub">${tr("Files you shared with {assistant}: the chat uses them when you talk about them")}</div></div>
         <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.load()}></hxk-button>
         <hxk-button variant="primary" icon="plus" ?loading=${this.adding} @click=${() => this.add()}>${tr("Add file")}</hxk-button></div>
       <div class="bar">

@@ -273,6 +273,13 @@ can be formatted after. The rendered text is English like every text the model r
 (`docs/work/2026-11-12-prompt-ogni-situazione`). A module rarely needs this: a text for the owner is asked to Oracle
 with `/api/llm/generate {voice: true}` and Oracle adds who speaks. The product and modules stay Hestia.
 
+**Texts people read** (dossier `docs/work/2026-11-16-nome-ovunque`): where a fixed text speaks of the assistant as a
+person it writes `{assistant}` and `{g:lei|lui}` («Chiedi a {assistant}», «Pianificato da {assistant}»).
+`identity.named(text, ident)` fills only those two (every other brace stays for `str.format`);
+`hestia_common.i18n.t` applies it to every text with the identity of `i18n.identity_now()` (the reader registered by
+`follow_personal()`; no reader → Hestia, she), and `settings_client.translated` renders labels and help that carry
+a token in Italian too. Where «Hestia» is the app (version, files, installation, the whole system) it stays.
+
 ## Reminders (`hestia_common.reminders`)
 
 One reminder model for every module; the schedule is a Chronos agenda job, delivery is Hermes.

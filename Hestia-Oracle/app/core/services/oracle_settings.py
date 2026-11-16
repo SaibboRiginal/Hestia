@@ -84,11 +84,11 @@ _MODE_ALIASES = {"fast": "quick", "rapida": "quick", "pensata": "thinking", "dee
 # a client or a single conversation can override (session → client → profile → default).
 _CHAT = [
     setting(TONE, "Answer tone", "enum", "warm", group="Chat", scope="user", options=TONES, order=0,
-            help="How Hestia answers you, on every client."),
+            help="How {assistant} answers you, on every client."),
     setting(INSTRUCTIONS, "Personal instructions", "text", "", group="Chat", scope="user", order=1,
             help="Added to every conversation (e.g. «always answer briefly»)."),
     setting(MODE, "Conversation mode", "enum", "auto", group="Chat", scope="user", options=MODES, order=2,
-            help="Quick: one answer without tools. Auto: Hestia decides. Thoughtful: reasons and uses tools. CoT: deep step by step reasoning (slower)."),
+            help="Quick: one answer without tools. Auto: {assistant} decides. Thoughtful: reasons and uses tools. CoT: deep step by step reasoning (slower)."),
 ]
 
 # Context & local runtimes (dossier docs/work/2026-10-10-oracle-local-context). Endpoints stay in env.
@@ -102,27 +102,27 @@ _KEEP_ALIVE = [("5m", "5 minutes"), ("30m", "30 minutes"), ("2h", "2 hours"), ("
 AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
 
 _CONTEXT = [
-    setting(AWARENESS_ITEMS, "Awareness · recent things per line", "int", 3, group="Count the actions in the WebUI", order=21,
+    setting(AWARENESS_ITEMS, "Awareness · recent things per line", "int", 3, group="Context", order=21,
             min=0, max=6, unit="items",
-            help="In your conversations Hestia knows your mood today, the last notifications it sent you and the last things you opened: how many of each (0 = none)."),
-    setting(PROFILE_MAX_TOKENS, "Hestia in other AIs · most space", "int", 1500, group="Count the actions in the WebUI", order=20,
+            help="In your conversations {assistant} knows your mood today, the last notifications it sent you and the last things you opened: how many of each (0 = none)."),
+    setting(PROFILE_MAX_TOKENS, "{assistant} in other AIs · most space", "int", 1500, group="Context", order=20,
             min=300, max=8000, unit="token",
-            help="How much Hestia's personality weighs at most (with instructions and memories) when you turn it on inside another AI, for example Claude."),
-    setting(NUM_CTX, "Local model · context window", "int", 0, group="Count the actions in the WebUI", min=0, max=262144,
+            help="How much {assistant}'s personality weighs at most (with instructions and memories) when you turn it on inside another AI, for example Claude."),
+    setting(NUM_CTX, "Local model · context window", "int", 0, group="Context", min=0, max=262144,
             unit="token", order=0,
             help="0 = automatic: Hestia uses the window set in the program that runs the model (Ollama, LM Studio, llama-server) and reads it from there. A number forces it from here: higher = remembers more but uses more VRAM; changing it reloads the model."),
-    setting(KEEP_ALIVE, "Ollama · model in memory", "enum", "30m", group="Count the actions in the WebUI", options=_KEEP_ALIVE,
+    setting(KEEP_ALIVE, "Ollama · model in memory", "enum", "30m", group="Context", options=_KEEP_ALIVE,
             order=1, help="How long the model stays loaded after the last request: avoids a cold start."),
-    setting(COMPACT_THRESHOLD, "Compact the context beyond", "float", 0.8, group="Count the actions in the WebUI", min=0.3, max=0.95,
+    setting(COMPACT_THRESHOLD, "Compact the context beyond", "float", 0.8, group="Context", min=0.3, max=0.95,
             order=2, advanced=True, help="Fraction of the window beyond which the conversation is summarised."),
-    setting(STUB_AFTER_TURNS, "Shorten tool results after", "int", 2, group="Count the actions in the WebUI", min=0,
+    setting(STUB_AFTER_TURNS, "Shorten tool results after", "int", 2, group="Context", min=0,
             max=20, unit="steps", order=3, advanced=True,
             help="In long reasoning, results older than N steps become a summary line when the context fills up. 0 = never."),
     setting(OPENAI_CACHE_PROMPT, "OpenAI compatible server · reuse the prompt cache", "bool", True,
-            group="Count the actions in the WebUI", order=4, advanced=True,
+            group="Context", order=4, advanced=True,
             help="Asks llama-server to reuse the prefix already computed (cache_prompt). Turn it off if the server refuses the field."),
     setting("oracle.provider.llamacpp.slots", "llama-server · warm conversations together", "int", 3,
-            group="Count the actions in the WebUI", min=2, max=16, unit="slot", order=5, advanced=True,
+            group="Context", min=2, max=16, unit="slot", order=5, advanced=True,
             help="Must equal the server's --parallel. Slot 0 serves the calls without a chat (classifier, modules); the others each hold the context of one chat and save it to disk when they switch to another."),
 ]
 
@@ -238,21 +238,21 @@ _AGENT = [
     setting("oracle.obiettivo.giri_per_risposta", "Goal · rounds after each answer", "int", 3, group="Agent",
             min=1, max=10, order=9, advanced=True,
             help="After answering one of your messages, how many rounds it does on the goal before updating you."),
-    setting(HISTORY_LIMIT, "Previous messages in the context", "int", 6, group="Count the actions in the WebUI", min=1, max=100,
+    setting(HISTORY_LIMIT, "Previous messages in the context", "int", 6, group="Context", min=1, max=100,
             unit="messages", order=10, help="How many conversation messages the assistant rereads at each answer."),
-    setting(HISTORY_CHAR_LIMIT, "Longest previous message", "int", 500, group="Count the actions in the WebUI",
+    setting(HISTORY_CHAR_LIMIT, "Longest previous message", "int", 500, group="Context",
             min=50, max=20000, unit="characters", order=11, advanced=True,
             help="Longer old messages are shortened in the context."),
-    setting(ENTITIES_LIMIT, "Module items in the context", "int", 12, group="Count the actions in the WebUI", min=1, max=100,
+    setting(ENTITIES_LIMIT, "Module items in the context", "int", 12, group="Context", min=1, max=100,
             order=12, advanced=True, help="How many items found in the modules (listings, events…) go into the analysis."),
-    setting(FIELD_CHAR_LIMIT, "Longest field", "int", 280, group="Count the actions in the WebUI", min=50, max=5000,
+    setting(FIELD_CHAR_LIMIT, "Longest field", "int", 280, group="Context", min=50, max=5000,
             unit="characters", order=13, advanced=True, help="Each field of an item is shortened to this length."),
-    setting(COMPACT_TRIGGER, "Summarise the conversation beyond", "int", 20, group="Count the actions in the WebUI", min=6, max=500,
+    setting(COMPACT_TRIGGER, "Summarise the conversation beyond", "int", 20, group="Context", min=6, max=500,
             unit="messages", order=14, advanced=True,
             help="Beyond this number of messages the old part of the conversation is summarised."),
-    setting(COMPACT_KEEP, "Recent messages not to summarise", "int", 6, group="Count the actions in the WebUI", min=2, max=50,
+    setting(COMPACT_KEEP, "Recent messages not to summarise", "int", 6, group="Context", min=2, max=50,
             unit="messages", order=15, advanced=True, help="The latest messages stay whole when summarising."),
-    setting(TODAY_AGENDA, "Today's agenda in the context", "bool", True, group="Count the actions in the WebUI", order=16,
+    setting(TODAY_AGENDA, "Today's agenda in the context", "bool", True, group="Context", order=16,
             help="At each answer the assistant reads today's commitments from the calendar (a few more tokens)."),
 ]
 _TIMEOUTS = [
@@ -274,11 +274,11 @@ _TIMEOUTS = [
             order=24, advanced=True, help="First wait; it doubles at each new attempt."),
 ]
 _PROVIDER = [
-    setting(OLLAMA_TOOL_MODE, "Ollama · way to call tools", "enum", "auto", group="Count the actions in the WebUI",
+    setting(OLLAMA_TOOL_MODE, "Ollama · way to call tools", "enum", "auto", group="Context",
             options=_TOOL_MODES, order=5, advanced=True,
             help="Native: uses Ollama tool calls. Text: the model writes them in the text. Automatic: native, text if the model does not support it."),
     setting(THINKING_FAMILIES, "Ollama · model families that reason", "list", _DEFAULT_THINKING_FAMILIES,
-            group="Count the actions in the WebUI", order=6, advanced=True,
+            group="Context", order=6, advanced=True,
             help="With «Automatic» reasoning, a model of these families reasons before answering."),
 ]
 _MEMORY = [

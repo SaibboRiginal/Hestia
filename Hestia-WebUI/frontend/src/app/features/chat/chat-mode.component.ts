@@ -8,7 +8,7 @@ export const MODE_KEY = 'oracle.chat.mode';
 
 /** Conversation modes (Oracle owns them: setting oracle.chat.mode). */
 export const CHAT_MODES = [
-  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('Hestia decides: quick answer or reasoned with the tools.') },
+  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('{assistant} decides: quick answer or reasoned with the tools.') },
   { value: 'quick', label: tr('Quick'), icon: 'zap', help: tr('A single answer, no tools. The fastest.') },
   { value: 'thinking', label: tr('Thoughtful'), icon: 'brain', help: tr('Always reasons and uses the tools before answering.') },
   { value: 'cot', label: 'CoT', icon: 'list', help: tr('Deep step by step reasoning, with the steps at the bottom. Slower.') },

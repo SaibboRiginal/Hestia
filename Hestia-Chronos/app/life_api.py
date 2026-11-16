@@ -213,10 +213,10 @@ for _path, _fn, _method in [("/api/agenda/routines", routines_list, "GET"), ("/a
 def boot_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
     return [
-        job_rule("chronos.special.daily", "Hestia: special events", service="chronos", path="/api/special/run",
+        job_rule("chronos.special.daily", "{assistant}: special events", service="chronos", path="/api/special/run",
                  recurrence="FREQ=DAILY;BYHOUR=8;BYMINUTE=0",
                  description="Every morning I remind you of birthdays and important dates (before and on the day)."),
-        job_rule("chronos.smart_calendar", "Hestia: overlap check", service="chronos",
+        job_rule("chronos.smart_calendar", "{assistant}: overlap check", service="chronos",
                  path="/api/calendar/smart/check", recurrence="FREQ=DAILY;BYHOUR=7;BYMINUTE=0",
                  description="Every morning I look at the next days: if two commitments overlap I propose where to move one. I don't move anything on my own."),
     ]

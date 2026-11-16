@@ -50,7 +50,7 @@ registry = Registry(DATA_DIR / "schema_cache.json")
 themis = Themis(hub, registry)
 # Themis owns the personal settings: its own fixed texts follow the language it stores (hestia_common.i18n).
 from hestia_common import i18n as _i18n  # noqa: E402
-_i18n.use(lambda key: themis.owner_language())
+_i18n.use(themis.personal)   # language, assistant's name and she/he of Themis's own texts
 # export / import: every module's settings, one section per module (hestia_common.transfer)
 transfer = Transfer("themis", hub, sections=lambda: settings_sections(themis))
 # Personal settings shared by every module (week start, currency): Themis owns them, modules follow them.
@@ -154,13 +154,18 @@ def settings_modules():
 
 @app.get("/api/settings/i18n")
 def settings_i18n(lang: str = ""):
-    """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages}`` where ``messages`` maps
-    the English source text to the owner's language (English = empty map: the source is already English)."""
+    """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
+    ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
+    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:lei|lui}`` in those texts
+    (docs/work/2026-11-16-nome-ovunque). Public through the WebUI: only the assistant's name, never the owner's."""
+    from hestia_common import identity
+    ident = _i18n.identity_now()
     code = (lang or themis.owner_language() or _i18n.FALLBACK)[:2]
     messages: dict = {}
     if code != _i18n.SOURCE:
         messages = {k: v for k, v in _i18n.catalog("messages", code).items() if isinstance(v, str) and v}
-    return {"language": code, "messages": messages}
+    return {"language": code, "messages": messages, "assistant": ident.get("assistant") or identity.DEFAULT_NAME,
+            "gender": ident.get("gender") or "lei"}
 
 
 # ── settings ─────────────────────────────────────────────────────────────────

@@ -115,7 +115,7 @@ export class ScoutListing extends HestiaElement {
           </div>
           <div class="acts">
             <a href=${l.url} target="_blank" rel="noopener"><hxk-button icon="external">${tr("Open listing")}</hxk-button></a>
-            <hxk-button variant="ghost" icon="sparkle" @click=${() => this.ask()}>${tr("Ask Hestia")}</hxk-button>
+            <hxk-button variant="ghost" icon="sparkle" @click=${() => this.ask()}>${tr("Ask {assistant}")}</hxk-button>
           </div>
           <label class="col small muted">${tr("Listing state (fix it if it's not right)")}
             <select @change=${(e: Event) => this.setStatus((e.target as HTMLSelectElement).value)}>

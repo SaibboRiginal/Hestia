@@ -3,9 +3,22 @@
  * Write the text in English and wrap it: `tr('Save')`, `tr('{0} items', n)` (standard: docs/LANGUAGES.md). The WebUI
  * loads the catalog (`/api/webui/i18n`, «Lingua» = `themis.personal.language`) before any plugin and shares it on
  * `globalThis.__hestiaI18n`; a missing text shows the English source. `f::Active` = a context tag, never shown. */
-function catalog(): { language: string; messages: Record<string, string> } {
+function catalog(): { language: string; messages: Record<string, string>; assistant?: string; gender?: string } {
   const c = (globalThis as any).__hestiaI18n;
-  return c && typeof c.messages === 'object' ? c : { language: 'it', messages: {} };
+  return c && typeof c.messages === 'object' ? c : { language: 'en', messages: {} };
+}
+
+/** The assistant's chosen name (`themis.personal.assistant_name`, served with the catalog; default «Hestia»). */
+export function assistantName(): string { return String(catalog().assistant || '').trim() || 'Hestia'; }
+
+/** `{assistant}` → the chosen name, `{g:lei-form|lui-form}` → the form for her or him
+ * (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the app (version, files, installation) the text says
+ * «Hestia» and nothing changes. Also for texts that do not go through `tr` (plugin page titles and help). */
+export function named(text: string): string {
+  const s = text == null ? '' : String(text);
+  if (!s.includes('{assistant}') && !s.includes('{g:')) return s;
+  const he = catalog().gender === 'lui';
+  return s.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, a, b) => (he ? b : a)).split('{assistant}').join(assistantName());
 }
 
 export function language(): string { return catalog().language || 'it'; }
@@ -27,7 +40,7 @@ export function localize<T>(payload: T): T {
   const c = catalog();
   if (!payload || typeof payload !== 'object') return payload;
   const messages = c.language === 'en' ? {} as Record<string, string> : c.messages;
-  const text = (s: string): string => messages[s] || (TAG.test(s) ? s.replace(TAG, '') : s);
+  const text = (s: string): string => named(messages[s] || (TAG.test(s) ? s.replace(TAG, '') : s));
   const walk = (node: any): any => {
     if (Array.isArray(node)) return node.map(walk);
     if (node && typeof node === 'object') {
@@ -50,7 +63,7 @@ export function tr(text: string, ...args: unknown[]): string {
   const source = text == null ? '' : String(text);
   const c = catalog();
   const plain = source.replace(/^[a-z][a-z0-9.]*::/, '');
-  const out = (c.language !== 'en' && c.messages[source]) || plain;
+  const out = named((c.language !== 'en' && c.messages[source]) || plain);
   if (!args.length) return out;
-  return format(out, args) ?? format(plain, args) ?? plain;
+  return format(out, args) ?? format(named(plain), args) ?? named(plain);
 }

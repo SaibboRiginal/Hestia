@@ -232,9 +232,9 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
          pages=[page("cervello", "Requests and models", element="oracle-brain", icon="brain", order=120,
                      help="What Oracle does: latest requests (domain, tools, model, times), Claude Code status; Usage tab (calls, tokens, cache and costs per module and conversation) and Models tab (providers, model chains, use chosen by each module)."),
                 page("documenti", "Documents", element="oracle-documents", icon="file", order=121,
-                     help="The files you shared with Hestia (in chat or from here): search them like the chat does, add new ones, keep them forever or delete them."),
+                     help="The files you shared with {assistant} (in chat or from here): search them like the chat does, add new ones, keep them forever or delete them."),
                 page("memoria", "Memory", element="oracle-memory", icon="bookmark", order=122,
-                     help="What Hestia remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to Hestia. Search, filter by origin, forget.")],
+                     help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to Hestia. Search, filter by origin, forget.")],
          widgets=[widget("uso-oggi", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="cervello", icon="chart",
                          help="Today's calls, tokens and cost, per model.")])
@@ -1041,6 +1041,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if turn_origin["level"] == "utente" and not req.queued:
             # A written or spoken message answers the assistant's open question (it is in the history).
             engine.close_open_questions(current_session)
+            if req.save_history is not False:
+                # The message she wrote first goes in this conversation, before his (docs/work/2026-11-16-nome-ovunque).
+                from core.services import opener_history
+                opener_history.absorb(engine._hub, _chat_route, current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         if req.spoken:

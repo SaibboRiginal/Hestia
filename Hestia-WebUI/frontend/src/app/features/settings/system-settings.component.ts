@@ -227,7 +227,7 @@ export class SystemSettingsComponent {
   show = showValue;
   health(m: ModuleInfo) { return HEALTH[m.health ?? 'unknown'] ?? HEALTH['unknown']; }
 
-  proposer(p: Proposal) { return p.proposer === 'athena' ? 'Athena' : p.proposer === 'oracle' ? 'Hestia' : p.proposer; }
+  proposer(p: Proposal) { return p.proposer === 'athena' ? 'Athena' : p.proposer === 'oracle' ? tr('{assistant}') : p.proposer; }
   private itemOf(p: Proposal) { return this.store.items().find(i => i.key === p.key); }
   labelOf(p: Proposal) { return this.itemOf(p)?.label ?? p.label ?? p.key; }
   proposedValue(p: Proposal) { const it = this.itemOf(p); return it ? showValue(it, p.value) : String(p.value); }

@@ -646,3 +646,7 @@ standard for texts is `docs/LANGUAGES.md`. `TokenAuthMiddleware` lets GET `/api/
 them; no personal data).
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-nome-ovunque`): `tr` fills
+`{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
+manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
+she/he reloads the page (`followIdentity`), except during the setup.

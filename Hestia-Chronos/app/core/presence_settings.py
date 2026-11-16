@@ -147,7 +147,7 @@ settings.declare([
             order=20, help="Below this Claude quota left before the reset it is «Tired» and spares Claude."),
     setting(TIRED_DEGRADED, "Tired with failing modules", "int", 2, group=_G, min=1, max=20, order=21,
             help="With at least this many modules failing (Argus) it is «Tired»."),
-    setting(COUNT_UI, "Context", "bool", True, group=_G, order=30,
+    setting(COUNT_UI, "WebUI actions count", "bool", True, group=_G, order=30,
             help="Sending, clicking a command, saving in the WebUI counts as interaction (simple page visits don't)."),
     setting(ORACLE_LINE, "The assistant sees its own state", "bool", True, group=_G, order=31,
             help="One line in the chat context: state and last interaction (e.g. to say «welcome back»)."),

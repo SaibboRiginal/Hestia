@@ -184,13 +184,13 @@ export class McpCommands extends HestiaElement {
     if (!r.ok) return html`<div class="result err"><pre>${r.json}</pre></div>`;
     if (r.text) return html`<div class="result"><p class="text">${r.text}</p>
       <details><summary>${tr("Raw answer")}</summary><pre>${r.json}</pre></details></div>`;
-    return html`<div class="result">${r.formatting ? html`<div class="small muted" style="margin-bottom:8px">${tr("Hestia is writing the answer…")}</div>` : nothing}
+    return html`<div class="result">${r.formatting ? html`<div class="small muted" style="margin-bottom:8px">${tr("{assistant} is writing the answer…")}</div>` : nothing}
       <pre>${r.json}</pre></div>`;
   }
 
   private renderDetail() {
     const c = this.sel;
-    if (!c) return html`<div class="card"><hxk-state kind="empty" text=${tr("Select a command: see description and parameters and run it as Hestia would.")}></hxk-state></div>`;
+    if (!c) return html`<div class="card"><hxk-state kind="empty" text=${tr("Select a command: see description and parameters and run it as {assistant} would.")}></hxk-state></div>`;
     const names = Object.keys(c.arguments_schema?.properties ?? {});
     return html`<div class="card detail">
       <h2>${c.title || c.command}</h2>
@@ -217,7 +217,7 @@ export class McpCommands extends HestiaElement {
         <input class="search" type="search" placeholder=${tr("Search command…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()} title=${tr("Refresh")}></hxk-button>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.askHestia()}
-          title=${tr("Use a spoken command, or have a new tool proposed")}>${tr("Ask Hestia")}</hxk-button></div>
+          title=${tr("Use a spoken command, or have a new tool proposed")}>${tr("Ask {assistant}")}</hxk-button></div>
       <div class="body">
         <div class="card list">
           ${groups.length ? groups.map(g => html`<h4>${g.service} <span>${g.items.length}</span></h4>

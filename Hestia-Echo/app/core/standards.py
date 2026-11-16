@@ -164,7 +164,7 @@ class WhisperLocal(Standard):
         opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Higher = more accurate and slower."),
         opt("vad", "Skip silences", "bool", True),
         opt("initial_prompt", "Words to recognise", "string", "",
-            help="Your names and words (e.g. Hestia, Hercules), separated by commas: it writes them right."),
+            help="Your names and words (e.g. Hercules, Rome), comma separated: it writes them right. «{assistant}» and your name are already there."),
         opt("device", "Where it runs", "enum", "auto", options=[{"value": "auto", "label": "Automatic"},
                                                             {"value": "cpu", "label": "CPU"},
                                                             {"value": "cuda", "label": "Graphics card"}]),

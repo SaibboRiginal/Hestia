@@ -4,6 +4,8 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 from uuid import uuid4
 
 import requests
@@ -91,7 +93,7 @@ class RemediationService:
                                     "path": f"/api/hephaestus/remediate/{snapshot['task_id']}/retry",
                                     "method": "POST", "body": {"requested_by": "agenda"},
                                     "timeout_seconds": 60},
-                            description="Repair failed: new attempt scheduled. Move/cancel from Hestia's agenda.",
+                            description=tr("Repair failed: a new attempt is scheduled. Move or cancel it from {assistant}'s agenda."),
                             params={"task_id": snapshot["task_id"], "attempt": attempts + 1})
                     else:
                         self.agenda.done(key)

@@ -171,10 +171,15 @@ class Themis:
     def owner_language(self) -> str:
         """``themis.personal.language`` as a code, read without translating (it decides the translation)."""
         from hestia_common import identity
+        return identity.language_code(self.personal(identity.LANGUAGE))
+
+    def personal(self, key: str) -> Any:
+        """The current value of one personal setting, read without translating (``None`` when not declared): the
+        reader of Themis's own fixed texts (language, assistant's name and gender)."""
         for item in self.list(module=SELF_OWNER, include_status=False, translate=False)["items"]:
-            if item["key"] == identity.LANGUAGE:
-                return identity.language_code(item.get("value"))
-        return identity.language_code(None)
+            if item["key"] == key:
+                return item.get("value")
+        return None
 
     def list(self, *, module: str | None = None, q: str = "", client: str = "", session: str = "",
              include_status: bool = True, translate: bool = True) -> dict:
@@ -454,7 +459,7 @@ class Themis:
         return result
 
     def _proposal_text(self, d: dict, row: dict, current: Any) -> str:
-        who = {"oracle": "Hestia (chat)", "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
+        who = {"oracle": tr("{assistant} (chat)"), "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
         if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
             who = tr("{0} (external AI)", who[len('external:'):])
         text = (tr("⚙️ {0} proposes to change «{1}» ({2}): {3} → {4}.", who, d.get('label') or d.get('key'), d.get('module'), _describe(current, d), _describe(row.get('value'), d)))

@@ -150,6 +150,9 @@ what the assistant proposed and confirms from the notification as usual.
 of `locales/<lang>/messages.json` (English source → that language; English or a language without a catalog = empty
 map; no `lang` = «Lingua»). (2026-11-16: the source flipped from Italian to English, dossier `2026-11-14-backend-inglese` v2.0.)
 The WebUI serves it to the browser before the app starts (`/api/webui/i18n.js`).
+**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the catalog also carries `assistant` and `gender`
+(the assistant's chosen name and she/he, never the owner's name) for `{assistant}` / `{g:lei|lui}` in the texts.
+Themis's own fixed texts read the personal settings with `Themis.personal(key)` (registered as the i18n reader).
 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 

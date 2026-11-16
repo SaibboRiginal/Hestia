@@ -221,9 +221,9 @@ function store(key: string, value: string): void {
 
             @case ('telegram') {
               <h1>Telegram</h1>
-              <p class="lead">{{ "To write and talk with Hestia from the phone." | tr }}</p>
+              <p class="lead">{{ "To write and talk with {assistant} from the phone." | tr }}</p>
               @if (state()!.telegram.linked) {
-                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Linked: Hestia recognises you." | tr }}</p>
+                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Linked: {assistant} recognises you." | tr }}</p>
               } @else if (code()) {
                 <p class="fact">{{ "Open your bot on Telegram and send it this code:" | tr }}</p>
                 <div class="code mono">{{ code() }}</div>
