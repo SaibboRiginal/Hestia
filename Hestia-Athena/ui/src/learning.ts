@@ -78,7 +78,7 @@ export class AthenaLearning extends HestiaElement {
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('Failed, try again'), 'warning'); return; }
     const n = r.data?.proposals || 0;
-    this.host.toast(n ? tr("{0} {1} to see", n, n === 1 ? 'proposta' : 'proposte') : tr('Nothing to fix'), 'success');
+    this.host.toast(n ? tr("{0} {1} to see", n, n === 1 ? tr('proposal') : tr('proposals')) : tr('Nothing to fix'), 'success');
     this.load();
   }
 

@@ -83,7 +83,7 @@ async function markWorn(host: any, o: any, day = '', after?: () => void) {
   const r = await call(host, 'POST', `/outfits/${o.id}/worn`, day ? { date: day } : {});
   if (!r.ok) return;
   const w = r.data;
-  if (w.already) { host.toast(tr("«{0}» is already recorded {1}", o.name, day ? 'quel giorno' : 'oggi'), 'info'); return; }
+  if (w.already) { host.toast(tr("«{0}» is already recorded {1}", o.name, day ? tr('that day') : tr('today')), 'info'); return; }
   host.toast(w.label || tr('Marked'), 'success', { label: tr('Cancel'), run: async () => { await call(host, 'DELETE', `/wears/${w.id}`); after?.(); } });
   after?.();
 }
@@ -216,7 +216,7 @@ export class WardrobeOutfit extends WardrobeElement {
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: o.name, hints: { outfit_id: o.id }, prompt: tr("What do you think of the outfit «{0}»?", o.name), suggestions: [tr('How do I improve it?'), tr('What accessories do I add?'), tr('Which occasion is it good for?')] })}>${tr("Ask")}</hxk-button>
       </div>
       ${this.editing ? html`<div class="card"><wardrobe-outfit-builder .host=${this.host} .ctx=${this.ctx} .meta=${m} .value=${o.slots} name=${o.name}
-          @save=${async (e: CustomEvent) => { if (await this.patch(e.detail, 'Salvato')) this.editing = false; }} @cancel=${() => (this.editing = false)}></wardrobe-outfit-builder></div>` : html`
+          @save=${async (e: CustomEvent) => { if (await this.patch(e.detail, tr('Saved'))) this.editing = false; }} @cancel=${() => (this.editing = false)}></wardrobe-outfit-builder></div>` : html`
         <div class="card col"><div class="between"><h3>${tr("Items")}</h3><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.editing = true)}>${tr("Change items")}</hxk-button></div>
           <div class="slots">${o.pieces.map((p: any) => html`<div class="tile slot" @click=${() => this.host.navigate('capi/' + p.id)}>
             <div class="ph">${img(this.host, p.photo, p.name)}</div>
@@ -237,7 +237,7 @@ export class WardrobeOutfit extends WardrobeElement {
       ${o.wears?.length ? html`<div class="card col"><h3>${tr("History")}</h3><div class="chips">${o.wears.map((w: any) => html`<span class="pill">${dayLabel(w.date)}
           <button class="link" title=${tr("Remove")} @click=${async () => { await call(this.host, 'DELETE', `/wears/${w.id}`); this.load(); }}>×</button></span>`)}</div></div>` : nothing}
       <div class="row"><span class="grow"></span>
-        ${o.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, 'Ripristinato')}>${tr("f::Restore")}</hxk-button>`
+        ${o.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, tr('Restored'))}>${tr("f::Restore")}</hxk-button>`
           : html`<hxk-button size="sm" variant="ghost" @click=${() => this.drop(false)}>${tr("f::Archive")}</hxk-button>`}
         <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.drop(true)}>${tr("Delete")}</hxk-button></div>
     </div>`;

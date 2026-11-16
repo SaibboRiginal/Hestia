@@ -106,11 +106,11 @@ export class OracleModels extends HestiaElement {
         <hxk-field label=${tr("Visible name")} .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
         <hxk-field type="enum" label=${tr("Standard")} .options=${this.data?.types || []} .value=${p.type}
           @change=${(e: CustomEvent) => set('type', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Address")} .value=${p.url} placeholder=${p.type === 'ollama' ? tr('from OLLAMA_URL') : 'predefinito'}
+        <hxk-field label=${tr("Address")} .value=${p.url} placeholder=${p.type === 'ollama' ? tr('from OLLAMA_URL') : tr('default')}
           @change=${(e: CustomEvent) => set('url', e.detail)}></hxk-field>
       </div>
       <div class="state" style="margin-top:8px">
-        <hxk-badge tone=${live.available ? 'success' : 'warning'}>${live.available ? 'pronto' : tr('not ready')}</hxk-badge>
+        <hxk-badge tone=${live.available ? 'success' : 'warning'}>${live.available ? tr('m::ready') : tr('not ready')}</hxk-badge>
         ${live.needs_key || live.key_set ? html`<span>${tr("Key in .env:")} <span class="key">${live.key_env}</span> ${live.key_set ? html`<hxk-icon name="check" size=${13} tone="success" title=${tr("set")}></hxk-icon>` : tr('— missing')}</span>` : nothing}
         ${!live.available && live.detail ? html`<span class="muted">${live.detail}</span>` : nothing}
       </div>
@@ -220,7 +220,7 @@ export class OracleModels extends HestiaElement {
 
   private usecases() {
     const groups: Record<string, any[]> = {};
-    for (const u of this.data?.usecases || []) (groups[u.module || 'altro'] ||= []).push(u);
+    for (const u of this.data?.usecases || []) (groups[u.module || tr('other')] ||= []).push(u);
     return Object.entries(groups).map(([mod, rows]) => html`<hxk-card heading=${mod}>${rows.map(u => this.ucRow(u))}</hxk-card>`);
   }
 

@@ -177,7 +177,7 @@ export class UpdatesPageComponent {
 
   ago(t: number): string {
     const min = Math.round((Date.now() / 1000 - t) / 60);
-    if (min < 1) return 'adesso';
+    if (min < 1) return tr('just now');
     if (min < 60) return `${min} min fa`;
     const h = Math.round(min / 60);
     return h < 24 ? `${h} h fa` : tr("{0} days ago", Math.round(h / 24));

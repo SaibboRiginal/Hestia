@@ -84,7 +84,7 @@ export class HephaestusTaskPanel extends LitElement {
         <dt>${tr("Status")}</dt><dd><hxk-badge tone=${m.tone}>${m.label}</hxk-badge></dd>
         <dt>${tr("Engine")}</dt><dd>${ENGINE_LABEL[t.engine ?? ''] ?? t.engine ?? '—'}${t.engine_requested && t.engine_requested !== 'auto' && t.engine_requested !== t.engine
           ? html`<span class="muted">${tr(" (requested {0})", t.engine_requested)}</span>` : nothing}</dd>
-        <dt>${tr("Origin")}</dt><dd>${t.requested_by || 'utente'} ${tr("street")} ${t.source || 'hestia'}</dd>
+        <dt>${tr("Origin")}</dt><dd>${t.requested_by || tr('user')} ${tr('via')} ${t.source || 'hestia'}</dd>
         ${t.services?.length ? html`<dt>${tr("Services")}</dt><dd>${t.services.join(', ')}</dd>` : nothing}
         ${t.workdoc ? html`<dt>${tr("Dossier")}</dt><dd><button class="lnk mono" @click=${() => s.setPanel('dossier')}>${t.workdoc}</button></dd>` : nothing}
         ${t.parent_task ? html`<dt>${tr("Follows")}</dt><dd><button class="lnk mono" @click=${() => this.dispatchEvent(new CustomEvent('open-task', { detail: t.parent_task, bubbles: true, composed: true }))}>${t.parent_task.slice(0, 6)}</button></dd>` : nothing}
@@ -164,7 +164,7 @@ export class HephaestusTaskPanel extends LitElement {
     if (!tt.ran) return html`<hxk-state kind="empty" text=${tr("Tests not run yet: Forge runs them after the engine's work.")}></hxk-state>`;
     const keys = Object.keys(tt.summary || {}).filter(k => k !== 'failed_tests');
     const failed: string[] = tt.summary?.['failed_tests'] ?? [];
-    return html`<div class="tsum"><hxk-badge tone=${tt.ok === true ? 'success' : tt.ok === false ? 'danger' : 'neutral'}>${tt.ok === true ? 'passati' : tt.ok === false ? 'falliti' : tr('no tests')}</hxk-badge>
+    return html`<div class="tsum"><hxk-badge tone=${tt.ok === true ? 'success' : tt.ok === false ? 'danger' : 'neutral'}>${tt.ok === true ? tr('passed') : tt.ok === false ? tr('pl::failed') : tr('no tests')}</hxk-badge>
         ${keys.map(k => html`<span class="small">${tt.summary[k]} ${k}</span>`)}</div>
       ${failed.length ? html`<ul class="failed">${failed.map(f => html`<li class="mono">${f}</li>`)}</ul>` : nothing}
       <pre class="log">${tt.output}</pre>`;

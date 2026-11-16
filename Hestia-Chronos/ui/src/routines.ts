@@ -8,14 +8,14 @@
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, when } from './util';
 
-const DAYS = [['MO', 'lun'], ['TU', 'mar'], ['WE', 'mer'], ['TH', 'gio'], ['FR', 'ven'], ['SA', 'sab'], ['SU', 'dom']];
+const DAYS = [['MO', tr('abbr::Mon')], ['TU', tr('abbr::Tue')], ['WE', tr('abbr::Wed')], ['TH', tr('abbr::Thu')], ['FR', tr('abbr::Fri')], ['SA', tr('abbr::Sat')], ['SU', tr('abbr::Sun')]];
 const DELIVER = [{ value: 'hermes', label: tr('Notification') }, { value: 'recap', label: tr('In the evening recap') }];
 const TRIGGER = [{ value: 'daily', label: tr('Every day') }, { value: 'weekly', label: tr('Every week') },
                  { value: 'mail', label: tr('When an email arrives') }];
 
 /** «Ogni giorno alle 07:30», «Ogni lun, ven alle 18:00», «Quando arriva una mail da …». */
 export function describeRoutine(r: any): string {
-  if (r.on?.mail) return tr("When an email arrives from {0}", r.on.mail.senders || 'un mittente');
+  if (r.on?.mail) return tr("When an email arrives from {0}", r.on.mail.senders || tr('a sender'));
   if (r.on) return tr('When something happens');
   const parts: Record<string, string> = {};
   for (const kv of String(r.recurrence || '').replace(/^RRULE:/i, '').split(';')) {
@@ -30,7 +30,7 @@ export function describeRoutine(r: any): string {
   const at = hh !== undefined ? tr(" at {0}:{1}", hh.padStart(2, '0'), (mm || '0').padStart(2, '0')) : '';
   if (parts['FREQ'] === 'WEEKLY') {
     const days = (parts['BYDAY'] || '').split(',').map(d => DAYS.find(x => x[0] === d)?.[1]).filter(Boolean);
-    return tr("Every {0}{1}", days.length ? days.join(', ') : 'settimana', at);
+    return tr("Every {0}{1}", days.length ? days.join(', ') : tr('week'), at);
   }
   if (parts['FREQ'] === 'DAILY') return tr("Every day{0}", at);
   if (parts['FREQ'] === 'MONTHLY') return tr("Every month{0}", at);
@@ -166,7 +166,7 @@ export class ChronosRoutines extends HestiaElement {
           ${r.deliver === 'recap' ? html`<hxk-badge tone="info">${tr("In the recap")}</hxk-badge>` : nothing}</div>
         <div class="small muted">${describeRoutine(r)}${r.precheck?.tool ? tr(' · check first whether there\'s something new') : ''}</div>
         <div class="ins">${r.instruction}</div>
-        ${last ? html`<div class="small muted">${tr("Last time")} ${when(last.at)}: ${last.ok ? 'riuscita' : tr('f::failed')}${last.detail && !last.ok ? ` · ${last.detail}` : ''}</div>` : nothing}
+        ${last ? html`<div class="small muted">${tr("Last time")} ${when(last.at)}: ${last.ok ? tr('f::succeeded') : tr('f::failed')}${last.detail && !last.ok ? ` · ${last.detail}` : ''}</div>` : nothing}
       </div>
       <div class="acts">
         <hxk-button size="sm" icon="play" ?loading=${this.busy === `run:${r.key}`} @click=${() => this.act(r, 'run')}>${tr("Run now")}</hxk-button>

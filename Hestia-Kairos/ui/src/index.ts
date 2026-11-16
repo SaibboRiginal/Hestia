@@ -16,7 +16,7 @@ async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string,
 }
 const money = (x: number | null | undefined) => x === null || x === undefined ? '' : Number(x).toLocaleString(locale(), { style: 'currency', currency: 'EUR' });
 const dayLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-const when = (n: number) => n < 0 ? tr("expired {0} d ago", -n) : n === 0 ? 'oggi' : n === 1 ? 'domani' : tr("in {0} days", n);
+const when = (n: number) => n < 0 ? tr("expired {0} d ago", -n) : n === 0 ? tr('today') : n === 1 ? tr('tomorrow') : tr("in {0} days", n);
 const tone = (n: number, lead: number) => n < 0 ? 'danger' : n <= Math.min(lead, 7) ? 'warning' : 'neutral';
 
 const styles = css`

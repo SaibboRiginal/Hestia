@@ -8,7 +8,7 @@ import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk
 
 const API = '/api/ui';
 const HEALTH: Record<string, [string, string]> = {
-  healthy: ['success', 'risponde'], degraded: ['warning', 'degradato'], unavailable: ['danger', tr('does not answer')],
+  healthy: ['success', tr('v::answers')], degraded: ['warning', tr('degraded')], unavailable: ['danger', tr('does not answer')],
 };
 
 function ago(epoch?: number | null): string {
@@ -60,7 +60,7 @@ export class HubMap extends HestiaElement {
     const out = new Map<string, any[]>();
     for (const s of list) {
       const k = this.group === 'node' ? s.node || 'nodo sconosciuto' : this.group === 'type' ? s.service_type || 'altro'
-        : s.topology?.layer || 'senza layer';
+        : s.topology?.layer || tr('no layer');
       if (!out.has(k)) out.set(k, []);
       out.get(k)!.push(s);
     }
@@ -78,7 +78,7 @@ export class HubMap extends HestiaElement {
           ${s.instances > 1 ? html`<hxk-badge tone="info">${s.instances} ${tr("instances")}</hxk-badge>` : nothing}
           ${s.has_ui ? html`<hxk-badge>${tr("interface")}</hxk-badge>` : nothing}${s.has_mcp ? html`<hxk-badge>MCP</hxk-badge>` : nothing}</div>
         <div class="meta"><span>${tr("node")} ${s.node || '–'}</span><span>v${s.version || '?'}</span><span>${s.service_type || ''}</span>
-          <span class="tnum">${tr("last signal")} ${s.self ? 'adesso' : ago(s.last_heartbeat)}</span></div>
+          <span class="tnum">${tr("last signal")} ${s.self ? tr('just now') : ago(s.last_heartbeat)}</span></div>
         ${(s.topology_tags || []).length ? html`<div class="tags">${s.topology_tags.map((t: string) => html`<span class="tag">${t}</span>`)}</div>` : nothing}
       </div></div>`;
   }

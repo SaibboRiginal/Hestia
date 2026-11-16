@@ -52,7 +52,7 @@ export function dayLabel(iso: string | null | undefined): string {
   if (iso === addDays(today(), -1)) return tr('Yesterday');
   return new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
-export const SOURCE: Record<string, string> = { manual: tr('by hand'), quick: 'veloce', chat: 'chat', email: 'email', statement: 'estratto' };
+export const SOURCE: Record<string, string> = { manual: tr('by hand'), quick: tr('quick'), chat: 'chat', email: 'email', statement: tr('statement') };
 export const PERIOD: Record<string, string> = { weekly: tr('every week'), monthly: tr('every month'), yearly: tr("every year") };
 
 export const catDot = (t: any) => html`<span class="dot" style="background:var(--cal-${colorIndex(t.category_color || t.color)})"></span>`;

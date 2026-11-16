@@ -172,7 +172,7 @@ export class WardrobePiece extends WardrobeElement {
     }
   }
   private async onSave(e: CustomEvent) {
-    if (await this.patch(e.detail.data, 'Salvato')) this.editing = false;
+    if (await this.patch(e.detail.data, tr('Saved'))) this.editing = false;
   }
   private async drop(hard: boolean) {
     const ok = await this.host.confirm(hard ? tr('Delete permanently') : tr('f::Archive'), hard
@@ -195,12 +195,12 @@ export class WardrobePiece extends WardrobeElement {
       [tr('Pattern'), p.pattern && p.pattern !== 'plain' ? label(m, 'pattern', p.pattern) : ''],
       [tr('Materials'), (p.materials || []).map((x: any) => x.percent ? `${x.name} ${x.percent}%` : x.name).join(', ')],
       [tr('Fit'), p.fit ? label(m, 'fit', p.fit) : ''],
-      [tr('Seasons'), (p.seasons || []).length === 4 ? 'tutte' : html`${(p.seasons || []).map((s: string) => html`${seasonIcon(s, 13)} ${m?.seasons[s] || s} `)}`],
+      [tr('Seasons'), (p.seasons || []).length === 4 ? tr('f::all') : html`${(p.seasons || []).map((s: string) => html`${seasonIcon(s, 13)} ${m?.seasons[s] || s} `)}`],
       [tr('Style'), (p.styles || []).map((s: string) => label(m, 'style', s)).join(', ')],
       [tr('Occasions'), (p.occasions || []).map((s: string) => label(m, 'occasion', s)).join(', ')],
       [tr('Warmth · formality'), `${p.warmth}/5 · ${p.formality}/5`],
       [tr('Where it is'), p.location ? label(m, 'location', p.location) : ''], [tr('Condition'), m?.conditions?.[p.condition] || ''],
-      [tr('Purchase'), [p.purchase?.price != null ? money(p.purchase.price, p.purchase.currency || cur) : '', p.purchase?.date ? dayLabel(p.purchase.date) : '', p.purchase?.store, p.purchase?.gift ? 'regalo' : ''].filter(Boolean).join(' · ')],
+      [tr('Purchase'), [p.purchase?.price != null ? money(p.purchase.price, p.purchase.currency || cur) : '', p.purchase?.date ? dayLabel(p.purchase.date) : '', p.purchase?.store, p.purchase?.gift ? tr('gift') : ''].filter(Boolean).join(' · ')],
       [tr('Care'), [p.care?.wash_c ? `${p.care.wash_c}°` : '', p.care?.notes].filter(Boolean).join(' · ')],
       [tr('Notes'), p.notes],
     ];
@@ -221,7 +221,7 @@ export class WardrobePiece extends WardrobeElement {
           <div class="chips">${QUICK_STATUS.map(s => html`<button class="chip soft" aria-pressed=${p.status === s} @click=${() => p.status !== s && this.patch({ status: s }, m?.statuses[s])}>${m?.statuses[s] || s}</button>`)}
             ${QUICK_STATUS.includes(p.status) ? nothing : html`<hxk-badge tone="neutral">${p.status_label}</hxk-badge>`}</div>
           <hxk-stat .items=${[
-            { label: tr('Marked worn'), value: p.wear_count || 0, unit: 'volte', hint: p.last_worn ? relDays(p.last_worn) : 'facoltativo' },
+            { label: tr('Marked worn'), value: p.wear_count || 0, unit: tr('times'), hint: p.last_worn ? relDays(p.last_worn) : tr('optional') },
             ...(p.cost_per_wear ? [{ label: tr('Cost per use'), value: money(p.cost_per_wear, cur) }] : []),
             { label: tr('Outfit'), value: p.outfits?.length || 0 },
           ]}></hxk-stat>
@@ -239,7 +239,7 @@ export class WardrobePiece extends WardrobeElement {
                 ${o.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}<div class="tx"><span class="nm">${o.name}</span></div></div>`)}</div></div>` : nothing}
           ${p.wears?.length ? html`<div class="card col"><h3>${tr("Marked worn")}</h3><div class="chips">${p.wears.map((w: any) => html`<span class="pill">${dayLabel(w.date)}</span>`)}</div></div>` : nothing}
           <div class="row wrap"><span class="grow"></span>
-            ${p.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, 'Ripristinato')}>${tr("f::Restore")}</hxk-button>`
+            ${p.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, tr('Restored'))}>${tr("f::Restore")}</hxk-button>`
               : html`<hxk-button size="sm" variant="ghost" @click=${() => this.drop(false)}>${tr("f::Archive")}</hxk-button>`}
             <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.drop(true)}>${tr("Delete")}</hxk-button></div>
         </div>

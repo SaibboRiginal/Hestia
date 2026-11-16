@@ -6,7 +6,7 @@ import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/web
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/images';
-const STATUS: Record<string, [string, string]> = { queued: [tr('queued'), 'neutral'], running: [tr('running'), 'info'], done: ['pronta', 'success'], failed: [tr('f::failed'), 'danger'] };
+const STATUS: Record<string, [string, string]> = { queued: [tr('queued'), 'neutral'], running: [tr('running'), 'info'], done: [tr('f::ready'), 'success'], failed: [tr('f::failed'), 'danger'] };
 const WHY: Record<string, string> = { missing_flow: tr('A workflow for this kind of image is missing: upload it in Workflows.'),
   not_configured: tr('The image generator is not linked yet.') };
 

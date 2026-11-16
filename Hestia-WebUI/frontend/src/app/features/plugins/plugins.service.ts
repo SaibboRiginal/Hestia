@@ -161,7 +161,7 @@ export class PluginsService {
       await this.settingsApi.set(key, value, 'client');
       return true;
     } catch (e) {
-      this.toasts.error(apiError(e, 'Impostazione non salvata'));
+      this.toasts.error(apiError(e, tr('Setting not saved')));
       return false;
     }
   }

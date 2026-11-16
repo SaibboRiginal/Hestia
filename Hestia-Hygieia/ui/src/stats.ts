@@ -58,15 +58,15 @@ export class HygieiaStats extends HestiaElement {
     const cur = this.m?.currency || 'EUR';
     const byStatus = s.products_by_status || {};
     return html`
-      <div class="tabs">${[30, 90, 365].map(d => html`<button class="tab" aria-pressed=${this.days === d} @click=${() => { this.days = d; this.st = undefined; this.load(); }}>${d === 365 ? tr('1 year') : d + ' giorni'}</button>`)}</div>
-      <hxk-stat .items=${[{ label: tr('This week'), value: s.week.logs, unit: 'volte' },
+      <div class="tabs">${[30, 90, 365].map(d => html`<button class="tab" aria-pressed=${this.days === d} @click=${() => { this.days = d; this.st = undefined; this.load(); }}>${d === 365 ? tr('1 year') : tr('{0} days', d)}</button>`)}</div>
+      <hxk-stat .items=${[{ label: tr('This week'), value: s.week.logs, unit: tr('times') },
         { label: tr('Week goals'), value: s.week.goals ? `${s.week.goals_met}/${s.week.goals}` : '–' },
         { label: tr('Products in use'), value: byStatus.in_use || 0, hint: byStatus.stock ? tr("{0} in stock", byStatus.stock) : '' },
         { label: tr('pl::Finished'), value: byStatus.finished || 0 }]}></hxk-stat>
       <div class="card col"><h2>${tr("Calendar")}</h2>${this.heat(s.heatmap || [])}</div>
       <div class="card col"><h2>${tr("Routine")}</h2>
         ${(s.routines || []).length ? html`<div class="list">${s.routines.map((r: any) => html`<div class="li" @click=${() => this.host.navigate('routine/' + r.routine_id)}>
-          <div class="grow"><div class="truncate"><b>${r.name}</b></div><div class="small muted">${r.cadence} · ${r.total} ${tr("times")}${r.streak ? html` · ${r.streak} ${r.per === 'month' ? 'mesi' : 'settimane'} ${tr("in a row")} ${icon('flame', 12, 'warning')}` : ''} ${tr("· last")} ${relDays(r.last_done)}</div></div>
+          <div class="grow"><div class="truncate"><b>${r.name}</b></div><div class="small muted">${r.cadence} · ${r.total} ${tr("times")}${r.streak ? html` · ${r.streak} ${r.per === 'month' ? tr('months') : tr('weeks')} ${tr("in a row")} ${icon('flame', 12, 'warning')}` : ''} ${tr("· last")} ${relDays(r.last_done)}</div></div>
           ${r.adherence !== null && r.adherence !== undefined ? html`<span class="adh"><span style="width:${r.adherence}%"></span></span><span class="small tnum">${r.adherence}%</span>` : nothing}
         </div>`)}</div>` : html`<div class="empty">${tr("No routines.")}</div>`}
       </div>

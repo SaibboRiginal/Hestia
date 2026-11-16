@@ -32,11 +32,11 @@ const MODES: { value: TransferMode; label: string; title: string }[] = [
   { value: 'replace', label: tr('Replace'), title: tr('The file wins; what exists only here is deleted (only in the ticked, whole sections)') },
 ];
 const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string }[] = [
-  { key: 'added', label: 'nuovi', tone: 'success' },
-  { key: 'updated', label: 'aggiornati', tone: 'info' },
-  { key: 'skipped', label: 'ignorati', tone: 'neutral' },
-  { key: 'deleted', label: 'eliminati', tone: 'danger' },
-  { key: 'problems', label: 'problemi', tone: 'warning' },
+  { key: 'added', label: tr('pl::new'), tone: 'success' },
+  { key: 'updated', label: tr('pl::updated'), tone: 'info' },
+  { key: 'skipped', label: tr('pl::ignored'), tone: 'neutral' },
+  { key: 'deleted', label: tr('pl::deleted'), tone: 'danger' },
+  { key: 'problems', label: tr('problems'), tone: 'warning' },
 ];
 
 /**
@@ -365,7 +365,7 @@ export class TransferSettingsComponent implements OnInit {
       }
       this.nodes.set(this.sortNodes([...byModule.values()].filter(n => n.sections.length)));
     } catch (e) {
-      this.toast.error(apiError(e, 'Moduli non raggiungibili'));
+      this.toast.error(apiError(e, tr('Modules not reachable')));
     } finally { this.busy.set(''); }
   }
 
@@ -445,7 +445,7 @@ export class TransferSettingsComponent implements OnInit {
       const pulled = Object.values(file.modules).reduce((n, m) => n + Object.values(m.pulled ?? {}).reduce((k, v) => k + v.length, 0), 0);
       this.toast.success(pulled ? tr("File ready ({0} linked elements added)", pulled) : tr('File ready'));
     } catch (e) {
-      this.toast.error(apiError(e, 'Esportazione non riuscita'));
+      this.toast.error(apiError(e, tr('Export failed')));
     } finally { this.busy.set(''); }
   }
 
@@ -491,7 +491,7 @@ export class TransferSettingsComponent implements OnInit {
       await this.loadHere();
       this.selectAllImport();
     } catch (e) {
-      this.toast.error(e instanceof Error ? e.message : 'File non leggibile');
+      this.toast.error(e instanceof Error ? e.message : tr('File not readable'));
     }
   }
   onDrop(ev: DragEvent) { ev.preventDefault(); void this.onFile(ev.dataTransfer?.files?.[0]); }
@@ -518,7 +518,7 @@ export class TransferSettingsComponent implements OnInit {
   }
 
   async preview() {
-    this.busy.set('Anteprima…');
+    this.busy.set(tr('Preview…'));
     this.reportDone.set(false);
     try {
       const out: Record<string, ImportReport> = {};
@@ -527,14 +527,14 @@ export class TransferSettingsComponent implements OnInit {
       }
       this.report.set(out);
     } catch (e) {
-      this.toast.error(apiError(e, 'Anteprima non riuscita'));
+      this.toast.error(apiError(e, tr('Preview failed')));
     } finally { this.busy.set(''); }
   }
 
   async doImport() {
     const groups = this.grouped(this.importNodes(), false);
     const deletes = Object.values(this.report() ?? {}).reduce((n, r) => n + (r.totals?.['deleted'] ?? 0), 0);
-    const ok = await this.dialogs.confirm('Importare?',
+    const ok = await this.dialogs.confirm(tr('Import?'),
       deletes ? tr("{0} items will be deleted. First I save a restore point.", deletes) : tr('First I save a restore point.'),
       tr('Import'), deletes > 0);
     if (!ok) return;
@@ -565,7 +565,7 @@ export class TransferSettingsComponent implements OnInit {
 
   // ── restore points ────────────────────────────────────────────────────────
   private async loadPoints() {
-    this.busy.set('Carico…');
+    this.busy.set(tr('Loading…'));
     try {
       const r = await this.api.restorePoints();
       this.points.set(r.items);

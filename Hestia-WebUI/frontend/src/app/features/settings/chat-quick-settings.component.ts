@@ -81,7 +81,7 @@ export class ChatQuickSettingsComponent {
       const page = await this.api.items('oracle');
       this.items.set(KEYS.map(k => page.items.find(i => i.key === k)).filter((i): i is SettingItem => !!i));
     } catch (e) {
-      this.toast.error(apiError(e, 'Impostazioni non raggiungibili'));
+      this.toast.error(apiError(e, tr('Settings not reachable')));
     } finally {
       this.loading.set(false);
     }

@@ -180,7 +180,7 @@ export class EchoBlocks extends HestiaElement {
   private chainCard(name: string) {
     const c = this.chains[name];
     const first = Object.entries<any>(this.providers).find(([, p]) => (this.std(p.type).directions || []).includes(c.direction));
-    return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voce' ? 'voce' : 'ascolto'}`}>
+    return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voce' ? tr('voice') : tr('listening')}`}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Delete")}</hxk-button>
       <hxk-field label=${tr("Visible name")} .value=${c.label}
         @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>
@@ -229,7 +229,7 @@ export class EchoBlocks extends HestiaElement {
 
   private usecases() {
     const groups: Record<string, any[]> = {};
-    for (const u of this.live?.usecases || []) (groups[u.module || 'altro'] ||= []).push(u);
+    for (const u of this.live?.usecases || []) (groups[u.module || tr('other')] ||= []).push(u);
     return Object.entries(groups).map(([mod, rows]) => html`<hxk-card heading=${mod}>${rows.map(u => this.ucRow(u))}</hxk-card>`);
   }
 

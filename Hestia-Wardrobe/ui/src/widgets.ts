@@ -79,7 +79,7 @@ export class WardrobeLaundryWidget extends Widget {
     const items = this.items;
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.size === 's') return html`<div class="w click" @click=${() => this.host.navigate('capi', { status: 'laundry' })}>
-      <span class="small muted">${tr("In the laundry")}</span><div class="big">${items.length}</div><span class="small muted">${items.length ? 'capi' : html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("all clean")}`}</span></div>`;
+      <span class="small muted">${tr("In the laundry")}</span><div class="big">${items.length}</div><span class="small muted">${items.length ? tr('garments') : html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("all clean")}`}</span></div>`;
     return html`<div class="w">${items.length ? html`<div class="list">${items.slice(0, 6).map(p => html`<div class="li" style="cursor:default">
         <span class="thumb">${img(this.host, p.photos?.[0], p.name)}</span><span class="grow truncate">${p.name}</span>
         <hxk-button size="sm" @click=${() => this.clean(p)}>${tr("Clean")}</hxk-button></div>`)}</div>
@@ -103,7 +103,7 @@ export class WardrobeForgottenWidget extends Widget {
     return html`<div class="w">
       <span class="small muted">${plural(items.length, 'garment', 'garments')} ${tr("not worn for a long time: wear them again or consider giving them away.")}</span>
       <div class="list">${items.slice(0, this.size === 'l' ? 6 : 3).map(f => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
-        <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span><span class="small muted">${f.last_worn ? relDays(f.last_worn) : 'mai'}</span></div>`)}</div>
+        <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span><span class="small muted">${f.last_worn ? relDays(f.last_worn) : tr('never')}</span></div>`)}</div>
     </div>`;
   }
 }

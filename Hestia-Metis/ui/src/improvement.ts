@@ -12,9 +12,9 @@ import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk
 const API = '/api/metis';
 
 const JOB: Record<string, { label: string; tone: string }> = {
-  scheduled: { label: 'pianificato', tone: 'info' },
+  scheduled: { label: tr('planned'), tone: 'info' },
   running: { label: tr('running'), tone: 'accent' },
-  finished: { label: 'finito', tone: 'success' },
+  finished: { label: tr('finished'), tone: 'success' },
   no_training_script: { label: tr('training script missing'), tone: 'warning' },
   schedule_failed: { label: tr('agenda unreachable'), tone: 'danger' },
 };
@@ -146,7 +146,7 @@ export class MetisImprovement extends HestiaElement {
       ${list.map((e: any) => html`<div class="item">
         <div class="top"><div class="grow"><b>${when(e.created_at)}</b>
           <span class="small muted"> · ${e.sft ?? 0} ${tr("examples ·")} ${e.eval ?? 0} ${tr("trial ·")} ${e.dpo ?? 0} ${tr("pairs")}</span></div>
-          <hxk-badge tone=${e.masked ? 'info' : 'warning'}>${e.masked ? 'oscurato' : tr('in plain text')}</hxk-badge>
+          <hxk-badge tone=${e.masked ? 'info' : 'warning'}>${e.masked ? tr('masked') : tr('in plain text')}</hxk-badge>
           <hxk-button size="sm" variant="ghost" icon="download" @click=${() => this.download(e.id)}>${tr("Download")}</hxk-button></div>
       </div>`)}
     </hxk-card>`;

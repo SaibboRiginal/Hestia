@@ -139,7 +139,7 @@ export class ScoutListings extends HestiaElement {
         { label: tr('alt::New (7 days)'), value: num(s.new), tone: s.new ? 'success' : undefined },
         { label: tr('Favourites'), value: num(s.favorites) },
         { label: tr('Average price'), value: compactEuro(s.avg_price) },
-        { label: '€/m² medio', value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
+        { label: tr('average €/m²'), value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
       ]}></hxk-stat>` : nothing}
       <div class="bar">
         <input class="q" type="search" placeholder=${tr("Search by street, area, title…")} .value=${this.f.q}

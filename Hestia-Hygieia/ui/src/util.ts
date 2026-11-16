@@ -33,7 +33,7 @@ export const STATE: Record<string, { text: string; tone: Tone }> = {
   rest: { text: tr('Whenever you want'), tone: 'neutral' }, blocked: { text: tr('Not today'), tone: 'danger' }, paused: { text: tr('Paused'), tone: 'neutral' },
 };
 export const STEP_STATE: Record<string, string> = {
-  due: tr('due today'), suggested: tr('recommended today'), wait: tr('not needed today'), ok: 'obiettivo raggiunto', blocked: tr('not today'),
+  due: tr('due today'), suggested: tr('recommended today'), wait: tr('not needed today'), ok: tr('goal reached'), blocked: tr('not today'),
   paused: tr('paused'), off: tr('not today'), rest: tr('if you want'), always: '',
 };
 /** Kit stroke icon coloured by intent (tone: success|warning|danger|info|accent|muted; '' = text colour). */
@@ -75,14 +75,14 @@ export function dayLabel(iso: string | null | undefined, withWeekday = true): st
   return d.toLocaleDateString(locale(), withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
 }
 export function relDays(iso: string | null | undefined): string {
-  if (!iso) return 'mai';
+  if (!iso) return tr('never');
   const days = Math.round((Date.parse(today() + 'T12:00:00') - Date.parse(iso.slice(0, 10) + 'T12:00:00')) / 86400000);
   return days <= 0 ? tr('today') : days === 1 ? tr('yesterday') : days < 14 ? tr("{0} days ago", days) : days < 60 ? tr('{0} weeks ago', Math.round(days / 7)) : tr('{0} months ago', Math.round(days / 30));
 }
 export function inDays(n: number | null | undefined): string {
   if (n === null || n === undefined) return '';
   if (n < 0) return tr("alt::expired {0} d ago", -n);
-  if (n === 0) return 'oggi';
+  if (n === 0) return tr('today');
   return n < 60 ? tr("in {0} d", n) : tr("in {0} months", Math.round(n / 30));
 }
 export function money(x: number | null | undefined, currency = 'EUR'): string {

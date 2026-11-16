@@ -34,12 +34,12 @@ export const statusTone = (s: string) =>
 export function ago(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso); const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (days <= 0) return 'oggi'; if (days === 1) return 'ieri'; if (days < 7) return tr("{0} days ago", days);
+  if (days <= 0) return tr('today'); if (days === 1) return tr('yesterday'); if (days < 7) return tr("{0} days ago", days);
   return d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
 export function facts(l: Listing): string {
-  return [l.surface_m2 ? `${num(l.surface_m2)} m²` : '', l.rooms ? `${l.rooms} ${Number(l.rooms) === 1 ? 'locale' : 'locali'}` : '', l.city].filter(Boolean).join(' · ');
+  return [l.surface_m2 ? `${num(l.surface_m2)} m²` : '', l.rooms ? (Number(l.rooms) === 1 ? tr('1 room') : tr('{0} rooms', l.rooms)) : '', l.city].filter(Boolean).join(' · ');
 }
 
 /** Photo with a calm fallback (listing CDNs block hotlinks now and then). */

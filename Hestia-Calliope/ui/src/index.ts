@@ -87,7 +87,7 @@ export class CalliopeDocs extends HestiaElement {
       ${this.draft ? this.editor() : nothing}
       <div class="card">${this.items.length ? this.items.map(d => html`<div class="doc">
           <div class="ext">${(FORMAT[d.format] || d.format).slice(0, 4).toUpperCase()}</div>
-          <div class="grow"><div class="truncate">${d.title}</div><div class="small muted">${when(d.created_at)} · ${d.pages} ${d.format === 'pdf' ? 'pagine' : d.format === 'xlsx' ? 'fogli' : 'parti'} · ${Math.max(1, Math.round((d.size || 0) / 1024))} KB</div></div>
+          <div class="grow"><div class="truncate">${d.title}</div><div class="small muted">${when(d.created_at)} · ${d.pages} ${d.format === 'pdf' ? tr('pages') : d.format === 'xlsx' ? tr('sheets') : tr('parts')} · ${Math.max(1, Math.round((d.size || 0) / 1024))} KB</div></div>
           <hxk-button size="sm" icon="download" @click=${() => this.download(d)}>${tr("Download")}</hxk-button>
           <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.deleteDoc(d)}></hxk-button></div>`)
         : html`<hxk-state kind="empty" text=${tr("No document yet. Ask in chat «make me a PDF with…» or create one here.")}></hxk-state>`}</div>

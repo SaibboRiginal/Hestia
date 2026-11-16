@@ -103,7 +103,7 @@ export class HygieiaToday extends HestiaElement {
     const res = await call(this.host, 'POST', `${API}/routines/${r.routine_id}/done`, { body, quiet: true });
     this.busy = '';
     if (res.ok) {
-      this.host.toast(`${r.name}: ${res.data.status === 'partial' ? tr('partly done') : 'fatta'}${res.data.hint ? ' · ' + res.data.hint : ''}`, 'success',
+      this.host.toast(`${r.name}: ${res.data.status === 'partial' ? tr('partly done') : tr('f::done')}${res.data.hint ? ' · ' + res.data.hint : ''}`, 'success',
         { label: tr('Cancel'), run: () => this.undo(r) });
       this.open = '';
       const { [r.routine_id]: _, ...rest } = this.picked; this.picked = rest;
@@ -225,7 +225,7 @@ export class HygieiaToday extends HestiaElement {
       <button class="tab" @click=${() => this.host.navigate('prodotti')}>${tr("Products")}</button>
       <button class="tab" @click=${() => this.host.navigate('diario')}>${tr("Diary")}</button>
       <button class="tab" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</button>
-      <button class="tab" @click=${() => this.host.navigate('spesa')}>${tr("Expense")}</button></div>`;
+      <button class="tab" @click=${() => this.host.navigate('spesa')}>${tr('Shopping list')}</button></div>`;
     const head = html`<div class="between wrap">
       <div class="head"><h1>${tr("Self care")}</h1>
         <div class="datebar"><hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>

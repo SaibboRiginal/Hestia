@@ -83,7 +83,7 @@ export class ThinkingStepsComponent {
   summary = computed(() => {
     const n = this.thought(), tools = this.tools();
     if (!n) return tools ? `· ${tools}` : '';
-    return `· ${n} ${n === 1 ? 'passo' : 'passi'}${tools ? ` · ${tools} ${tools === 1 ? 'strumento' : 'strumenti'}` : ''}`;
+    return `· ${n === 1 ? tr('1 step') : tr('{0} steps', n)}${tools ? ` · ${tools === 1 ? tr('1 tool') : tr('{0} tools', tools)}` : ''}`;
   });
 
   label(s: ThinkingStep): string {

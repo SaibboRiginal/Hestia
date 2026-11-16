@@ -112,7 +112,7 @@ export class HermesDeliveries extends HestiaElement {
     const isOpen = this.open === n.id;
     return html`<div class="n">
       <div class="top"><span class="small muted tnum">${when(n.created_at)}</span>
-        <hxk-badge tone=${LEVEL_TONE[n.level] || 'neutral'}>${n.source || 'sistema'}</hxk-badge>
+        <hxk-badge tone=${LEVEL_TONE[n.level] || 'neutral'}>${n.source || tr('system')}</hxk-badge>
         <span class="t grow">${n.title || n.preview || n.event_type}</span></div>
       ${n.title && n.preview ? html`<div class="pv">${n.preview}</div>` : nothing}
       <div class="cl">
@@ -160,7 +160,7 @@ export class HermesDeliveries extends HestiaElement {
         : html`<hxk-state kind="empty" text=${tr("No notification with this filter")}></hxk-state>`}
       <div class="sec">
         ${this.renderSubs()}
-        <p class="small muted">${tr("Clients reached now:")} ${this.clients.length ? this.clients.join(', ') : 'nessuno'}${tr(". The notifications to read and answer are in Notifications.")}</p>
+        <p class="small muted">${tr("Clients reached now:")} ${this.clients.length ? this.clients.join(', ') : tr('none')}${tr(". The notifications to read and answer are in Notifications.")}</p>
       </div>
     </div>`;
   }

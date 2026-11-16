@@ -8,7 +8,7 @@ import { API, STATUS, ms, retry, when } from './util';
 
 const FILTERS = [{ id: '', label: tr('All') }, { id: 'ok', label: tr('Succeeded') }, { id: 'failed', label: tr('f.pl::Failed') }, { id: 'skipped', label: tr('Skipped') }];
 const PERIODS = [{ h: 24, label: tr('Last 24 hours') }, { h: 24 * 7, label: tr('Last 7 days') }, { h: 24 * 30, label: tr('Last 30 days') }];
-const TYPES: Record<string, string> = { job: 'job', task: tr('activities'), window: 'finestre', event: 'eventi' };
+const TYPES: Record<string, string> = { job: 'job', task: tr('activities'), window: tr('windows'), event: tr('events') };
 
 export class ChronosRuns extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, error: { state: true }, status: { state: true },

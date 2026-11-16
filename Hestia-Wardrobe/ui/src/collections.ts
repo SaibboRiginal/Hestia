@@ -54,7 +54,7 @@ export class WardrobeCollections extends WardrobeElement {
         <div class="grid" style="--min:260px">${items.map(l => html`<div class="card col" style="cursor:pointer" @click=${() => this.host.navigate('liste/' + l.id)}>
           <div class="between"><h2 class="truncate">${l.name}</h2><hxk-badge tone=${l.type === 'packing' ? 'info' : l.type === 'shopping' ? 'accent' : 'neutral'}>${l.type_label}</hxk-badge></div>
           ${l.trip?.from ? html`<span class="small muted">${dayLabel(l.trip.from)}${l.trip.to && l.trip.to !== l.trip.from ? ' → ' + dayLabel(l.trip.to) : ''}${l.trip.place ? ' · ' + l.trip.place : ''}</span>` : nothing}
-          ${l.trip?.weather ? html`<span class="small muted row"><hxk-icon name=${l.trip.weather.icon || 'cloud'} size=${14} tone=${l.trip.weather.rain ? 'info' : 'warning'}></hxk-icon> ${l.trip.weather.min_c != null ? `${l.trip.weather.min_c}–` : ''}${l.trip.weather.temp_c}°${l.trip.weather.rain ? ', pioggia' : ''}</span>` : nothing}
+          ${l.trip?.weather ? html`<span class="small muted row"><hxk-icon name=${l.trip.weather.icon || 'cloud'} size=${14} tone=${l.trip.weather.rain ? 'info' : 'warning'}></hxk-icon> ${l.trip.weather.min_c != null ? `${l.trip.weather.min_c}–` : ''}${l.trip.weather.temp_c}°${l.trip.weather.rain ? tr(', rain') : ''}</span>` : nothing}
           <span class="small muted">${l.progress.checked}/${l.progress.total} ${tr("ready")}</span>
           <div class="prog"><span style="width:${l.progress.total ? (l.progress.checked / l.progress.total) * 100 : 0}%"></span></div></div>`)}</div>`}
     </div>`;

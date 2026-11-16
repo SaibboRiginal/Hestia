@@ -122,7 +122,7 @@ export class HerculesExerciseWidget extends Widget {
     return html`<div class="w click" @click=${() => this.host.navigate('esercizi/' + d.exercise.id)}>
       <div class="between"><span class="truncate"><b>${d.exercise.name}</b></span>${d.stall ? html`<hxk-badge tone="warning">${tr("stalled")}</hxk-badge>` : nothing}</div>
       <div class="row"><span class="big tnum">${best ? kg(best.value) : '–'}</span><span class="small muted">${tr("kg estimated 1RM")}${d.records?.heaviest ? ` · max ${kg(d.records.heaviest.value)}×${d.records.heaviest.reps}` : ''}</span></div>
-      ${hist.length > 1 ? html`<hxk-chart type="line" height=${this.size === 'xl' ? 220 : 120} unit="kg" .labels=${hist.map((h: any) => dayLabel(h.date, false))} .series=${[{ name: '1RM stimato', values: hist.map((h: any) => h.best_e1rm) }]}></hxk-chart>` : nothing}
+      ${hist.length > 1 ? html`<hxk-chart type="line" height=${this.size === 'xl' ? 220 : 120} unit="kg" .labels=${hist.map((h: any) => dayLabel(h.date, false))} .series=${[{ name: tr('estimated 1RM'), values: hist.map((h: any) => h.best_e1rm) }]}></hxk-chart>` : nothing}
     </div>`;
   }
 }
@@ -193,7 +193,7 @@ export class HerculesLiveWidget extends Widget {
       <div class="between"><b class="truncate">${act.name}</b><span class="small muted tnum">${dur((Date.now() - Date.parse(act.started_at)) / 1000)}</span></div>
       <div class="small muted">${sets.length}/${total} ${tr("sets ·")} ${doneBlocks.size}/${plural((act.exercises || []).length, 'exercise', 'exercises')}</div>
       ${current ? html`<div class="truncate">Ora: <b>${exs.get(current.exercise_id)?.name || '?'}</b></div>` : nothing}
-      ${rest.until ? html`<div class="pill tnum" style="font-size:15px"><hxk-icon name="timer" size=${14}></hxk-icon> ${left > 0 ? dur(left) : 'recupero finito'}</div>` : nothing}
+      ${rest.until ? html`<div class="pill tnum" style="font-size:15px"><hxk-icon name="timer" size=${14}></hxk-icon> ${left > 0 ? dur(left) : tr('rest over')}</div>` : nothing}
     </div>`;
   }
 }

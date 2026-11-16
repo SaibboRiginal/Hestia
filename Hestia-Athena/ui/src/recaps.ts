@@ -90,7 +90,7 @@ export class AthenaRecaps extends HestiaElement {
         ${r.delivered ? nothing : html`<hxk-badge tone="danger">${tr("not delivered")}</hxk-badge>`}</div>
       <div class="text">${richText(r.text)}</div>
       ${pieces.length ? html`<div class="line"><button class="link" @click=${() => (this.open = { ...this.open, [r.id]: !isOpen })}>
-          ${isOpen ? tr('Hide the facts') : tr("The facts of {0} {1}", pieces.length, pieces.length === 1 ? 'area' : 'aree')}</button></div>` : nothing}
+          ${isOpen ? tr('Hide the facts') : tr("The facts of {0} {1}", pieces.length, pieces.length === 1 ? tr('f::area') : tr('areas'))}</button></div>` : nothing}
       ${isOpen ? html`<div class="areas">${pieces.map(p => this.area(p))}</div>` : nothing}
     </hxk-card>`;
   }

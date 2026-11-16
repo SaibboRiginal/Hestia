@@ -197,7 +197,7 @@ export class ChronosAgenda extends HestiaElement {
       this.editor = { start: new Date(d.start_at), end: d.end_at ? new Date(d.end_at) : null, type: d.type,
                       prefill: { title: d.title, description: d.description ?? undefined, recurrence: d.recurrence } };
     } catch (e: any) {
-      this.host.toast(tr("I didn't understand the date ({0}): complete it yourself", e?.message || 'errore'), 'warning');
+      this.host.toast(tr("I didn't understand the date ({0}): complete it yourself", e?.message || tr('error')), 'warning');
       const s = this.defaultStart();
       this.editor = { start: s, end: addMinutes(s, 60), type: 'event', prefill: { title: text } };
     } finally { this.quick = ''; this.quickBusy = false; }

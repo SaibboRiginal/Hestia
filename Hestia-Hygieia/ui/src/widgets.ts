@@ -73,7 +73,7 @@ export class HygieiaNextWidget extends Widget {
     return html`<div class="w">
       <div class="between"><span class="small muted">${tr("f::Next")}</span><hxk-badge tone=${st.tone}>${st.text}</hxk-badge></div>
       <div class="big truncate click" @click=${() => this.host.navigate('oggi')}>${n.name}</div>
-      <div class="small muted truncate">${n.hint}${steps.length ? ` · ${steps.length} ${steps.length === 1 ? 'passo' : 'passi'}` : ''}</div>
+      <div class="small muted truncate">${n.hint}${steps.length ? (steps.length === 1 ? tr(' · 1 step') : tr(' · {0} steps', steps.length)) : ''}</div>
       ${this.size !== 's' ? html`<div class="small truncate">${steps.map((s: any) => s.label).join(' → ')}</div>` : nothing}
       <div><hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.done(n)}>${tr("f::Done")}</hxk-button></div>
     </div>`;

@@ -11,7 +11,7 @@ const FILTERS = [
   { value: 'succeeded', label: tr('Succeeded') }, { value: 'rolled_back', label: tr('f.pl::Cancelled') }, { value: 'escalated', label: tr('Passed to Forge') },
 ];
 const UNDO: Record<string, string> = {
-  restored: 'dati ripristinati', cancelled: tr('stopped before changing anything'),
+  restored: tr('data restored'), cancelled: tr('stopped before changing anything'),
   nothing_to_undo: tr('nothing to restore'), failed: tr('restore failed, you can retry'),
 };
 
@@ -84,7 +84,7 @@ export class HephaestusRepairs extends HestiaElement {
         <span>Id</span><span><code>${t.task_id}</code></span>
       </div>
       ${rb?.steps?.length ? html`<div><div class="small muted">${tr("Runbook steps")}</div><ol>${rb.steps.map((s: any) => html`<li>${s.title}
-        <span class="small muted">· ${s.read_only ? 'sola lettura' : 'modifica'}${s.rollback_checkpoint ? tr(" · restore point {0}", s.rollback_checkpoint) : ''}</span></li>`)}</ol></div>` : nothing}
+        <span class="small muted">· ${s.read_only ? tr('read only') : tr('alt::change')}${s.rollback_checkpoint ? tr(" · restore point {0}", s.rollback_checkpoint) : ''}</span></li>`)}</ol></div>` : nothing}
       ${(t.notifications || []).length ? html`<div><div class="small muted">${tr("alt2::History")}</div><div class="notes">
         ${t.notifications.map((n: any) => html`<div><span class="muted">${when(n.ts)}</span> · ${n.note}</div>`)}</div></div>` : nothing}
       ${res ? html`<div><div class="small muted">${tr("Outcome")}</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
@@ -110,7 +110,7 @@ export class HephaestusRepairs extends HestiaElement {
         const rb = this.runbooks[t.runbook_id];
         return html`<div class="t" @click=${() => (this.open = this.open === t.task_id ? '' : t.task_id)}>
           <div class="top"><div class="grow"><b>${t.service}</b> · ${t.issue}</div><hxk-badge tone=${st.tone}>${st.label}</hxk-badge></div>
-          <div class="meta small muted"><span>${rb?.title || t.runbook_id}</span><span>${t.dry_run ? 'prova' : 'reale'}</span>
+          <div class="meta small muted"><span>${rb?.title || t.runbook_id}</span><span>${t.dry_run ? tr('trial') : tr('real')}</span>
             <span>${when(t.updated_at || t.created_at)}</span>${(t.attempts || 1) > 1 ? html`<span>${t.attempts} ${tr("attempts")}</span>` : nothing}</div>
           ${this.open === t.task_id ? this.renderDetail(t) : nothing}
         </div>`;

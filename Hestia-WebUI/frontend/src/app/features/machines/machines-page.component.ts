@@ -20,7 +20,7 @@ const ROLE: Record<string, string> = {
   tutto: tr('Does everything by herself'), centrale: tr('Central home, always on'), satellite: tr('Satellite'),
 };
 /** What a satellite does for you, in plain words (user texts never name modules). */
-const JOB: Record<string, string> = { echo: 'voce', metis: tr('model training') };
+const JOB: Record<string, string> = { echo: tr('voice'), metis: tr('model training') };
 const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
 
 /**
@@ -213,9 +213,9 @@ export class MachinesPageComponent {
   }
 
   jobs(n: MachineNode): string {
-    const names = n.modules.filter(m => m.online).map(m => JOB[m.name] || 'altro');
-    if (!names.length) return n.online ? 'collegata' : tr('not working now: turn it back on and it comes back by itself');
-    return 'Qui: ' + [...new Set(names)].join(', ');
+    const names = n.modules.filter(m => m.online).map(m => JOB[m.name] || tr('other'));
+    if (!names.length) return n.online ? tr('f::linked') : tr('not working now: turn it back on and it comes back by itself');
+    return tr('Here: {0}', [...new Set(names)].join(', '));
   }
 
   async pair() {
@@ -240,7 +240,7 @@ export class MachinesPageComponent {
     this.busy.set('brain:' + address);
     try {
       const r = await firstValueFrom(this.http.post<{ detail?: string }>('/api/webui/setup/machines/brain', { address, name }));
-      this.toasts.success(r.detail || 'Fatto.');
+      this.toasts.success(r.detail || tr('Done.'));
     } catch (e: any) {
       this.toasts.error(setupError(e));
     } finally {

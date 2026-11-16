@@ -95,7 +95,7 @@ export class QuickActionsService {
     const u = chip.action.undo;
     if (!u) return;
     const r = await this.plugins.call(chip.action.module, u.method, fill(u.path, chip.chipId));
-    if (!r.ok) { this.toasts.error('Annullamento non riuscito'); return; }
+    if (!r.ok) { this.toasts.error(tr('Undo failed')); return; }
     this.chips.update(list => list.map(c => c.key === chip.key ? { ...c, state: prev } : c));
     this.toasts.show(tr('Cancelled'), 'info');
     this.plugins.emit(chip.action.module, 'refresh');

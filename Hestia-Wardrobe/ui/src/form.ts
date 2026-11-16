@@ -137,8 +137,8 @@ export class WardrobePieceForm extends HestiaElement {
         <div class="col" style="gap:4px"><span class="small muted">${tr("Occasions")}</span>
           <div class="chips">${vocabOptions(m, 'occasion').map(s => html`<button class="chip soft" aria-pressed=${d.occasions.includes(s.key)} @click=${() => this.toggle('occasions', s.key)}>${s.label}</button>`)}</div></div>
         <div class="row wrap" style="gap:18px">
-          <div class="col" style="gap:4px"><span class="small muted">${tr("Warmth")}</span>${this.scale('warmth', 'leggero', 'caldo')}</div>
-          <div class="col" style="gap:4px"><span class="small muted">${tr("Formality")}</span>${this.scale('formality', 'sportivo', 'elegante')}</div>
+          <div class="col" style="gap:4px"><span class="small muted">${tr("Warmth")}</span>${this.scale('warmth', tr('light'), tr('warm'))}</div>
+          <div class="col" style="gap:4px"><span class="small muted">${tr("Formality")}</span>${this.scale('formality', tr('sporty'), tr('elegant'))}</div>
           <label class="row small"><input type="checkbox" .checked=${d.rain_ok === true} @change=${(e: any) => this.set('rain_ok', e.target.checked ? true : null)}> ${tr("good with the rain")}</label>
         </div>
         <div class="form">

@@ -87,7 +87,7 @@ export class PlutusCategories extends HestiaElement {
         <div class="card col"><h2>${tr("Categories")}</h2>
           <div class="list">${cats.map(c => html`<div class="li" style="cursor:default;${c.archived ? 'opacity:.55' : ''}">${catDot(c)}
             <input class="in grow" .value=${c.label} @change=${(e: any) => this.saveCat(c, { label: e.target.value })}>
-            <span class="small muted">${c.kind === 'income' ? 'entrata' : c.kind === 'transfer' ? tr('doesn\'t count') : 'spesa'}</span>
+            <span class="small muted">${c.kind === 'income' ? tr('income') : c.kind === 'transfer' ? tr('doesn\'t count') : tr('expense')}</span>
             <hxk-button size="sm" variant="ghost" @click=${() => this.saveCat(c, { archived: !c.archived })}>${c.archived ? tr('Turn back on') : tr('f::Archive')}</hxk-button></div>`)}</div>
           <div class="row"><input class="in grow" placeholder=${tr("New category")} .value=${this.newCat} @input=${(e: any) => (this.newCat = e.target.value)}
             @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addCat()}><hxk-button icon="plus" @click=${() => this.addCat()}>${tr("Add")}</hxk-button></div></div>

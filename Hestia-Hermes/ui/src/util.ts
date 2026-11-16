@@ -23,7 +23,7 @@ export function todayStart(): string {
 export const CLIENT_STATE: Record<string, { text: string; tone: string }> = {
   delivered: { text: 'consegnata', tone: 'success' },
   skipped: { text: tr('list only'), tone: 'neutral' },
-  failed: { text: 'fallita', tone: 'danger' },
+  failed: { text: tr('f::failed'), tone: 'danger' },
   dead: { text: 'abbandonata', tone: 'danger' },
 };
 

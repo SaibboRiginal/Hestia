@@ -9,11 +9,11 @@ import { PluginsService } from '../plugins/plugins.service';
 import { tr, TrPipe } from '../../core/i18n';
 
 export const HEALTH: Record<string, { tone: Tone; label: string }> = {
-  healthy: { tone: 'success', label: 'attivo' },
+  healthy: { tone: 'success', label: tr('active') },
   degraded: { tone: 'warning', label: tr('with problems') },
   unavailable: { tone: 'danger', label: tr('does not answer') },
   unregistered: { tone: 'neutral', label: tr('not recorded') },
-  unknown: { tone: 'neutral', label: 'stato sconosciuto' },
+  unknown: { tone: 'neutral', label: tr('unknown state') },
 };
 
 interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingItem>; }

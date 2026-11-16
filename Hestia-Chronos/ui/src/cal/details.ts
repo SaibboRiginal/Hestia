@@ -109,11 +109,11 @@ export class ChronosCalDetails extends LitElement {
           ${fmt.time(new Date(e.occ.run.flex.at))}, ${e.occ.run.flex.reason}</span>` : nothing}</dd>` : nothing}
         ${e.item?.action ? html`<dt>${ic('zap', 14)}</dt><dd><code>${e.item.action.method || 'POST'} ${e.item.action.service}${e.item.action.path}</code></dd>` : nothing}
         ${e.occ.run ? html`<dt>${ic(e.occ.run.ok ? 'check' : 'alert', 14)}</dt>
-          <dd class=${e.occ.run.ok ? '' : 'err'}>${tr("This run:")} ${e.occ.run.ok ? 'ok' : 'fallita'}${e.occ.run.duration_ms ? ` · ${e.occ.run.duration_ms} ms` : ''}
+          <dd class=${e.occ.run.ok ? '' : 'err'}>${tr("This run:")} ${e.occ.run.ok ? 'ok' : tr('f::failed')}${e.occ.run.duration_ms ? ` · ${e.occ.run.duration_ms} ms` : ''}
             ${(e.failedCount ?? 0) > 1 ? tr(" · failed {0} times in the last days", e.failedCount) : ''}
             ${!e.occ.run.ok && e.occ.run.detail ? html`<span class="detail">${e.occ.run.detail}</span>` : nothing}</dd>`
           : lr ? html`<dt>${ic(lr.ok ? 'check' : 'alert', 14)}</dt>
-          <dd class=${lr.ok ? '' : 'err'}>${tr("Last run of the rule")} ${fmt.relative(new Date(lr.at))}: ${lr.ok ? 'ok' : 'fallita'}
+          <dd class=${lr.ok ? '' : 'err'}>${tr("Last run of the rule")} ${fmt.relative(new Date(lr.at))}: ${lr.ok ? 'ok' : tr('f::failed')}
             ${!lr.ok ? html`<span class="detail">${lr.detail}</span>` : nothing}</dd>` : nothing}
         ${e.item?.parent ? html`<dt>${ic('branch', 14)}</dt><dd>${tr("Linked to")} <code>${e.item.parent}</code>${tr(": if you cancel that one, this one is cancelled too")}</dd>` : nothing}
         <dt>${ic('info', 14)}</dt><dd><code>${e.occ.key}</code></dd>

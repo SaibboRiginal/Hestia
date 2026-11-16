@@ -478,11 +478,11 @@ export class ShellComponent {
     this.renaming.set('');
     const t = title.trim();
     if (!t || t === c.title) return;
-    if (!(await this.chats.setMeta(c.session_id, { title: t })).ok) this.toasts.error('Non salvato');
+    if (!(await this.chats.setMeta(c.session_id, { title: t })).ok) this.toasts.error(tr('Not saved'));
   }
   async pinChat(c: ChatSummary): Promise<void> {
     this.chatMenu.set(null);
-    if (!(await this.chats.setMeta(c.session_id, { pinned: !c.pinned })).ok) this.toasts.error('Non salvato');
+    if (!(await this.chats.setMeta(c.session_id, { pinned: !c.pinned })).ok) this.toasts.error(tr('Not saved'));
   }
   deleteChat(c: ChatSummary): void {
     this.chatMenu.set(null);

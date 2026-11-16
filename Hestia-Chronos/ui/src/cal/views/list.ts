@@ -42,10 +42,10 @@ export function groupByDay(events: CalEvent[], from: Date, now: number): Group[]
 /** Badge (+ detail line) for a row: the run result for past items, the state for upcoming ones. */
 export function outcome(ev: CalEvent, now: number): Outcome | null {
   const o = ev.occ;
-  if (o.skipped) return { label: 'saltata', tone: 'neutral' };
+  if (o.skipped) return { label: tr('f::skipped'), tone: 'neutral' };
   const started = ev.start.getTime() <= now, ended = (ev.end ?? ev.start).getTime() < now;
   if (o.run) {
-    if (!o.run.ok) return { label: 'fallito' + ((ev.failedCount ?? 0) > 1 ? ' ×' + ev.failedCount : ''), tone: 'danger', detail: o.run.detail || undefined };
+    if (!o.run.ok) return { label: tr('failed') + ((ev.failedCount ?? 0) > 1 ? ' ×' + ev.failedCount : ''), tone: 'danger', detail: o.run.detail || undefined };
     return { label: 'ok' + (o.run.duration_ms ? ' · ' + dur(o.run.duration_ms) : ''), tone: 'success', detail: o.run.detail || undefined };
   }
   if (o.status && o.status !== 'confirmed') {
@@ -56,10 +56,10 @@ export function outcome(ev: CalEvent, now: number): Outcome | null {
   if (ended) {
     if (!ev.item?.action) return { label: 'concluso', tone: 'neutral' };
     const lr = !o.recurring ? ev.item.last_result : null;   // one-off item: its result is the rule's last result
-    if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: 'fallito', tone: 'danger', detail: lr.detail || undefined };
+    if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: tr('failed'), tone: 'danger', detail: lr.detail || undefined };
     return { label: tr('no outcome'), tone: 'warning' };
   }
-  if (o.moved) return { label: 'spostata', tone: 'info' };
+  if (o.moved) return { label: tr('f::moved'), tone: 'info' };
   return null;
 }
 

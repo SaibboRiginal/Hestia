@@ -3,7 +3,7 @@ import { DatePipe } from '@angular/common';
 import { ButtonComponent, IconComponent, SpinnerComponent, ToastService } from '../../ui';
 import { ChatSummary, ChatTag, ChatsService, TAG_COLORS, TAG_CSS } from '../../services/chats.service';
 import { SessionService } from '../../services/session.service';
-import { TrPipe } from '../../core/i18n';
+import { TrPipe, tr } from '../../core/i18n';
 
 const PAGE = 30;
 
@@ -160,13 +160,13 @@ export class ChatHistoryComponent implements OnInit {
   pickTag(name: string): void { this.tag.set(this.tag() === name ? '' : name); void this.reload(); }
 
   async open(c: ChatSummary): Promise<void> {
-    if (!(await this.chats.open(c.session_id))) { this.toast.error('Conversazione non disponibile'); return; }
+    if (!(await this.chats.open(c.session_id))) { this.toast.error(tr('Conversation not available')); return; }
     if (window.innerWidth < 861) this.chats.historyOpen.set(false);
   }
 
   private async save(c: ChatSummary, body: Parameters<ChatsService['setMeta']>[1]): Promise<void> {
     const r = await this.chats.setMeta(c.session_id, body);
-    if (!r.ok) { this.toast.error('Non salvato'); return; }
+    if (!r.ok) { this.toast.error(tr('Not saved')); return; }
     this.items.update(x => x.map(i => i.session_id === c.session_id ? { ...i, title: r.data.title || i.title, tags: r.data.tags, pinned: r.data.pinned, training_off: r.data.training_off } : i));
   }
 

@@ -6,9 +6,9 @@ import { HestiaElement, html, nothing, plural, locale, tr } from '@hestia/webui-
 import { API, call, dayLabel, meta, money, plutusStyles } from './util';
 
 const STATE: Record<string, { text: string; cls: string }> = {
-  new: { text: 'nuovo', cls: 'good' }, duplicate: { text: tr('already present'), cls: '' }, link: { text: tr('linked to PayPal'), cls: 'warn' },
+  new: { text: tr('new'), cls: 'good' }, duplicate: { text: tr('already present'), cls: '' }, link: { text: tr('linked to PayPal'), cls: 'warn' },
 };
-const STATUS: Record<string, string> = { preview: tr('to confirm'), committed: 'importato', undone: 'annullato' };
+const STATUS: Record<string, string> = { preview: tr('to confirm'), committed: tr('imported'), undone: tr('undone') };
 
 export class PlutusImport extends HestiaElement {
   static properties = { ...HestiaElement.properties, list: { state: true }, mail: { state: true }, v: { state: true }, busy: { state: true },

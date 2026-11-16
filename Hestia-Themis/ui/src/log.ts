@@ -11,19 +11,19 @@ const WHO_FILTERS = [
   { id: '', label: tr('pl::All') }, { id: 'user,webui,telegram', label: 'Tu' }, { id: 'athena', label: 'Athena' },
   { id: 'oracle', label: 'Oracle' }, { id: 'external', label: tr('External AIs') },
 ];
-const KIND: Record<string, string> = { undo: 'annullata', reset: 'predefinito', approved: 'proposta approvata', preset: 'preset' };
+const KIND: Record<string, string> = { undo: tr('f::undone'), reset: tr('default'), approved: tr('proposal approved'), preset: 'preset' };
 const PROPOSAL: Record<string, { text: string; tone: string }> = {
-  pending: { text: tr('waiting'), tone: 'accent' }, approved: { text: 'approvata', tone: 'success' },
-  rejected: { text: 'rifiutata', tone: 'danger' }, expired: { text: 'scaduta', tone: 'neutral' },
+  pending: { text: tr('waiting'), tone: 'accent' }, approved: { text: tr('f::approved'), tone: 'success' },
+  rejected: { text: tr('f::rejected'), tone: 'danger' }, expired: { text: tr('f::expired'), tone: 'neutral' },
 };
-const SCOPE: Record<string, string> = { client: 'client', profile: 'profilo', session: 'sessione' };
+const SCOPE: Record<string, string> = { client: 'client', profile: tr('profile'), session: tr('session') };
 
 export function who(actor?: string | null): string {
   const a = String(actor || '');
   if (!a) return '–';
   if (a.startsWith('external:')) return tr('{0} (external AI)', a.slice(9));
   return ({ user: 'Tu', webui: tr('You (WebUI)'), telegram: tr('You (Telegram)'), oracle: tr('Oracle (chat)'), athena: 'Athena',
-            themis: 'Themis', cascade: 'automatico' } as Record<string, string>)[a] || a;
+            themis: tr('settings'), cascade: tr('automatic') } as Record<string, string>)[a] || a;
 }
 
 function when(iso?: string | null): string {
@@ -32,7 +32,7 @@ function when(iso?: string | null): string {
 }
 
 function val(v: unknown): string {
-  if (v === null || v === undefined) return 'predefinito';
+  if (v === null || v === undefined) return tr('default');
   if (typeof v === 'boolean') return v ? tr('yes') : 'no';
   const s = typeof v === 'string' ? v : JSON.stringify(v);
   return s.length > 60 ? s.slice(0, 59) + '…' : s || '""';

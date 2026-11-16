@@ -609,7 +609,7 @@ export class SetupPageComponent {
           this.trialState.set({ key: row.key, playing: true });
           this.player.play('setup:' + row.key, b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'),
             err => { if (ticket === this.trialTicket)      // never a silent «played»: say why it did not play
-              this.trialState.set({ key: row.key, text: tr("The browser didn't play it ({0}): try again.", (err as Error)?.name || 'errore') }); },
+              this.trialState.set({ key: row.key, text: tr("The browser didn't play it ({0}): try again.", (err as Error)?.name || tr('error')) }); },
             () => { if (ticket === this.trialTicket) this.trialState.set(null); });
         } else this.trialState.set({ key: row.key, text: r.detail || tr('It didn\'t answer.') });
       } catch (e) { if (ticket === this.trialTicket) this.trialState.set({ key: row.key, text: setupError(e) }); }
@@ -884,10 +884,10 @@ export class SetupPageComponent {
       case 'chi': return this.identity.ownerName() ? tr("{0} and {1}.", this.identity.ownerCall() || this.identity.ownerName(), this.identity.assistant()) : tr('You haven\'t told me your name yet.');
       case 'modelli': return st.brain.summary || tr('pl::Not chosen yet.');
       case 'memoria': { const c = this.embeddingWanted() || this.catalog()?.embedding; return c?.model || tr('Not chosen yet.'); }
-      case 'voce': return this.voiceQueued() ? 'Scelte.' : tr('Later.');
-      case 'telegram': return st.telegram.linked ? 'Collegato.' : tr('Later.');
-      case 'backup': return st.backup.passphrase ? 'Pronto.' : tr('Later.');
-      case 'fuori': return this.tunnel()?.on ? (this.tunnel()!.url || 'Attivo.') : tr('Only at home and from Telegram.');
+      case 'voce': return this.voiceQueued() ? tr('Chosen.') : tr('Later.');
+      case 'telegram': return st.telegram.linked ? tr('Linked.') : tr('Later.');
+      case 'backup': return st.backup.passphrase ? tr('Ready.') : tr('Later.');
+      case 'fuori': return this.tunnel()?.on ? (this.tunnel()!.url || tr('Active.')) : tr('Only at home and from Telegram.');
       default: return '';
     }
   }
@@ -1170,7 +1170,7 @@ export class SetupPageComponent {
     const embed = r.embed || [];
     this.embedLists[name] = embed;
     const ok = r.ok && embed.length > 0;
-    return { ok, detail: ok ? tr("The key works: {0} for the memory.", embed.length === 1 ? 'un modello' : embed.length + ' modelli')
+    return { ok, detail: ok ? tr("The key works: {0} for the memory.", embed.length === 1 ? tr('one model') : tr('{0} models', embed.length))
                             : r.ok ? tr('This service has no models for the memory.') : r.detail,
              recommended: embed.slice(0, 1), options: embed.map(m => ({ id: m, title: m, icon: 'zap', group: family(m) })) };
   };

@@ -27,10 +27,10 @@ export class HygieiaCadence extends LitElement {
         m === 'none' ? null : m === 'target' ? { mode: m, times: v?.times || 2, per: v?.per || 'week' } : m === 'fixed_days' ? { mode: m, days: v?.days || [] } : { mode: m })}>${l}</button>`)}</div>
       ${mode === 'target' ? html`<div class="row wrap">
         <input class="in num" type="number" min="1" max="31" .value=${String(v.times || 1)} @change=${(e: any) => this.set({ ...v, times: Math.max(1, Number(e.target.value) || 1) })}>
-        <span>${(v.times || 1) === 1 ? 'volta' : 'volte'} a</span>
+        <span>${(v.times || 1) === 1 ? tr('time a') : tr('times a')}</span>
         <div class="chips"><button class="chip" aria-pressed=${v.per !== 'month'} @click=${() => this.set({ ...v, per: 'week' })}>${tr("week")}</button>
           <button class="chip" aria-pressed=${v.per === 'month'} @click=${() => this.set({ ...v, per: 'month' })}>${tr("month")}</button></div></div>
-        <div class="small muted">${tr("No fixed day: I suggest it when you are behind, spread over the")} ${v.per === 'month' ? 'mese' : tr('the week')}.</div>` : nothing}
+        <div class="small muted">${tr("No fixed day: I suggest it when you are behind, spread over the")} ${v.per === 'month' ? tr('the month') : tr('the week')}.</div>` : nothing}
       ${mode === 'fixed_days' ? html`<div class="chips">${WEEKDAYS.map((d, i) => html`<button class="chip" aria-pressed=${(v.days || []).includes(i)}
         @click=${() => { const s = new Set<number>(v.days || []); s.has(i) ? s.delete(i) : s.add(i); this.set({ ...v, days: [...s].sort() }); }}>${d}</button>`)}</div>` : nothing}
       ${mode === 'none' ? html`<div class="small muted">${tr("It's done every time you do the routine.")}</div>` : nothing}`;
@@ -78,7 +78,7 @@ export class HygieiaRoutines extends HestiaElement {
       <input class="in" placeholder=${tr("Name, e.g. Evening face")} .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}
         @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.create()} autofocus>
       <h3>${tr("When")}</h3>
-      <div class="chips">${Object.entries(this.m?.slots || { morning: 'Mattina', evening: 'Sera', anytime: 'Quando capita' }).map(([k, l]) => html`
+      <div class="chips">${Object.entries(this.m?.slots || { morning: tr('Morning'), evening: tr('Evening'), anytime: tr('Whenever') }).map(([k, l]) => html`
         <button class="chip" aria-pressed=${c.slot === k} @click=${() => (this.creating = { ...c, slot: k })}>${slotIcon(k)} ${l}</button>`)}</div>
       <h3>${tr("Zones")}</h3>
       <div class="chips">${(this.m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${c.areas.includes(a.value)}
@@ -97,7 +97,7 @@ export class HygieiaRoutines extends HestiaElement {
     const row = (r: any) => { const st = STATE[r.state] || STATE.rest; return html`<div class="li" @click=${() => this.host.navigate('routine/' + r.id)}>
       <div class="ico">${(r.areas || []).length ? icon('droplet', 18, 'info') : slotIcon(r.slot, 18)}</div>
       <div class="grow"><div class="truncate"><b>${r.name}</b></div>
-        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count} ${r.step_count === 1 ? 'passo' : 'passi'}${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
+        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count === 1 ? tr('1 step') : tr('{0} steps', r.step_count)}${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
       ${r.status === 'active' ? html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>` : html`<hxk-badge>${r.status === 'paused' ? tr('Paused') : tr('f::Archived')}</hxk-badge>`}
       <button class="star ${r.favorite ? 'on' : ''}" title=${tr("Favourite (in Home)")} @click=${(e: Event) => this.fav(r, e)}>${icon('star', 18, r.favorite ? 'warning' : 'muted')}</button>
     </div>`; };
@@ -321,9 +321,9 @@ export class HygieiaRoutine extends HestiaElement {
       <div class="card sec">
         <h2>${tr("Trend")}</h2>
         <hxk-stat .items=${[{ label: tr('Goal kept'), value: st.adherence ?? '–', unit: st.adherence !== null && st.adherence !== undefined ? '%' : '' },
-          { label: tr('In a row'), value: st.streak || 0, unit: st.per === 'month' ? 'mesi' : 'settimane' }, { label: tr('Times in total'), value: st.total || 0 },
+          { label: tr('In a row'), value: st.streak || 0, unit: st.per === 'month' ? tr('months') : tr('weeks') }, { label: tr('Times in total'), value: st.total || 0 },
           { label: tr('f::Last'), value: relDays(st.last_done) }]}></hxk-stat>
-        ${(st.history || []).length ? html`<div class="hist" title="Per ${st.per === 'month' ? 'mese' : 'settimana'}">
+        ${(st.history || []).length ? html`<div class="hist" title=${st.per === 'month' ? tr('Per month') : tr('Per week')}>
           ${st.history.map((h: any) => html`<div class="bar ${h.met ? 'met' : ''}" title="${dayLabel(h.start, false)}: ${h.done}${h.need ? '/' + h.need : ''}"
             style="height:${Math.max(6, Math.min(100, (h.done / Math.max(1, h.need || h.done || 1)) * 100))}%"></div>`)}</div>
           <div class="small muted">${tr("Latest")} ${st.history.length} ${st.per === 'month' ? tr('months') : tr('weeks')}${tr('; green = goal reached')}${st.skipped ? tr(' · skipped {0} times', st.skipped) : ''}</div>` : nothing}

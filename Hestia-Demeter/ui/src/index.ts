@@ -171,7 +171,7 @@ export class DemeterSupplements extends HestiaElement {
           ${s.status === 'paused' ? html`<hxk-badge>${tr("paused")}</hxk-badge>` : nothing}
           <hxk-button size="sm" variant="ghost" @click=${async () => { await call(this.host, 'PUT', `/supplements/${s.id}`, { status: s.status === 'paused' ? 'active' : 'paused' }); this.load(); }}>${s.status === 'paused' ? tr('Resume') : tr('Pause')}</hxk-button>
           <hxk-button size="sm" variant="ghost" icon="edit" @click=${() => { this.draft = { ...s }; }}></hxk-button>
-          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm('Eliminare?', s.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/supplements/${s.id}`); this.load(); } }}></hxk-button>
+          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete?'), s.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/supplements/${s.id}`); this.load(); } }}></hxk-button>
         </div>`) : html`<hxk-state kind="empty" text=${tr("No supplements. Self-care products stay in their section: here you note what you take and when.")}></hxk-state>`}</div>
     </div>`;
   }

@@ -400,7 +400,7 @@ export class SetupChainComponent {
   status(p: ServiceRow): string {
     if (this.inUse(p.name)) {
       const n = (this.picks()[p.name] || []).length;
-      return n ? tr("In use: {0}", n === 1 ? '1 scelto' : n + ' scelti') : tr('In use');
+      return n ? tr("In use: {0}", n === 1 ? tr('1 chosen') : tr('{0} chosen', n)) : tr('In use');
     }
     if (p.kind === 'none') return p.note || '';
     if (this.ready()[p.name]) return tr('Ready: choose here');

@@ -111,7 +111,7 @@ export class HecateConnections extends HestiaElement {
   }
 
   private stateText(i: Item): string {
-    return i.state === 'connected' ? 'collegato' : i.state === 'waiting' ? tr('waiting') : tr('not linked');
+    return i.state === 'connected' ? tr('linked') : i.state === 'waiting' ? tr('waiting') : tr('not linked');
   }
 
   private stepView(i: Item) {

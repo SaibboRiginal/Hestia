@@ -18,9 +18,9 @@ export function ms(v?: number | null): string {
 }
 
 export const STATUS: Record<string, { text: string; tone: string }> = {
-  ok: { text: 'riuscito', tone: 'success' },
-  failed: { text: 'fallito', tone: 'danger' },
-  skipped: { text: 'saltato', tone: 'neutral' },
+  ok: { text: tr('succeeded'), tone: 'success' },
+  failed: { text: tr('failed'), tone: 'danger' },
+  skipped: { text: tr('skipped'), tone: 'neutral' },
 };
 
 /** «Riprova»: the agenda's existing run-now action. Returns true when the run went fine. */

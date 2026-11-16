@@ -422,7 +422,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     const r = await this.plugins.call<{ ok?: boolean; error?: string }>('mcp', 'POST', '/api/mcp/ui/tools/call',
       { body: { command: c.undo.tool, args: c.undo.args ?? {} } });
     this.undoing.set('');
-    if (!r.ok || r.data?.ok === false) { this.toast.error(r.data?.error || 'Non annullato'); return; }
+    if (!r.ok || r.data?.ok === false) { this.toast.error(r.data?.error || tr('Not undone')); return; }
     this.chat.patch(m.id, { changes: (m.changes ?? []).map((x, k) => k === i ? { ...x, done: true } : x) });
     this.toast.success(tr('Cancelled'));
   }

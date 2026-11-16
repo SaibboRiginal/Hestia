@@ -7,9 +7,9 @@ export const FORGE = `${API}/forge`;
 export const STATE: Record<string, { label: string; tone: string }> = {
   pending_approval: { label: tr('to approve'), tone: 'warning' },
   running: { label: tr('running'), tone: 'info' },
-  succeeded: { label: 'riuscita', tone: 'success' },
-  failed: { label: 'fallita', tone: 'danger' },
-  rolled_back: { label: 'annullata', tone: 'neutral' },
+  succeeded: { label: tr('f::succeeded'), tone: 'success' },
+  failed: { label: tr('f::failed'), tone: 'danger' },
+  rolled_back: { label: tr('f::undone'), tone: 'neutral' },
   escalated: { label: tr('handed to Forge'), tone: 'accent' },
 };
 
@@ -19,10 +19,10 @@ export const CONSENT: Record<string, string> = {
 
 /** Claude budget phases (Forge claude_budget). */
 export const PHASE: Record<string, { label: string; tone: string }> = {
-  night: { label: 'finestra notturna', tone: 'success' },
+  night: { label: tr('night window'), tone: 'success' },
   final: { label: tr('last hours'), tone: 'accent' },
-  closed: { label: 'chiusa', tone: 'neutral' },
-  exhausted: { label: 'quota esaurita', tone: 'danger' },
+  closed: { label: tr('f::closed'), tone: 'neutral' },
+  exhausted: { label: tr('quota used up'), tone: 'danger' },
 };
 
 export function when(iso?: string | null): string {

@@ -76,21 +76,21 @@ export const ACTIVE: string[] = ['queued', 'running', 'reviewing', 'waiting_limi
 export const CLOSED: string[] = ['merged', 'deployed', 'failed', 'rejected', 'rolled_back', 'no_changes'];
 
 export const STATE_META: Record<string, { label: string; tone: string }> = {
-  new: { label: 'nuovo', tone: 'neutral' },
+  new: { label: tr('new'), tone: 'neutral' },
   proposed: { label: tr('to approve'), tone: 'warning' },
-  scheduled: { label: 'programmato', tone: 'info' },
+  scheduled: { label: tr('scheduled'), tone: 'info' },
   queued: { label: tr('queued'), tone: 'info' },
   running: { label: tr('in progress'), tone: 'accent' },
-  reviewing: { label: 'revisione automatica', tone: 'accent' },
+  reviewing: { label: tr('automatic review'), tone: 'accent' },
   waiting_limit: { label: tr('waiting for Claude\'s limit'), tone: 'info' },
   awaiting_review: { label: tr('diff to review'), tone: 'warning' },
   approved: { label: tr('merge in progress'), tone: 'accent' },
   merging: { label: tr('merge in progress'), tone: 'accent' },
   merged: { label: 'applicato', tone: 'success' },
   deployed: { label: tr('in production'), tone: 'success' },
-  failed: { label: 'fallito', tone: 'danger' },
-  rejected: { label: 'rifiutato', tone: 'neutral' },
-  rolled_back: { label: 'annullato (rollback)', tone: 'neutral' },
+  failed: { label: tr('failed'), tone: 'danger' },
+  rejected: { label: tr('rejected'), tone: 'neutral' },
+  rolled_back: { label: tr('undone (rollback)'), tone: 'neutral' },
   no_changes: { label: tr('no changes'), tone: 'neutral' },
 };
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
@@ -114,7 +114,7 @@ export const sourceLabel = (source?: string) => SOURCE_LABEL[source || 'user'] ?
 export const byModule = (t: ForgeTask) => !USER_SOURCES.includes(t.source || 'user');
 
 export const FILE_STATUS: Record<string, string> = {
-  A: 'aggiunto', M: 'modificato', D: 'eliminato', R: 'rinominato', C: 'copiato', '?': 'nuovo',
+  A: tr('added'), M: tr('changed'), D: tr('deleted'), R: tr('renamed'), C: tr('copied'), '?': tr('new'),
 };
 
 // ── formatters (24h, Italian) ────────────────────────────────────────────
@@ -130,7 +130,7 @@ export function ago(iso?: string | null): string {
   const t = new Date(iso).getTime();
   if (isNaN(t)) return '';
   const s = Math.round((Date.now() - t) / 1000);
-  if (s < 60) return 'adesso';
+  if (s < 60) return tr('just now');
   if (s < 3600) return `${Math.floor(s / 60)} min fa`;
   if (s < 86400) return `${Math.floor(s / 3600)} h fa`;
   if (s < 86400 * 7) return `${Math.floor(s / 86400)} g fa`;

@@ -8,7 +8,7 @@ import { tr, TrPipe } from '../../core/i18n';
 
 /** Human text for a stored value (option label, sì/no…). */
 export function showValue(item: SettingItem, v: unknown): string {
-  if (v === null || v === undefined) return 'predefinito';
+  if (v === null || v === undefined) return tr('default');
   if (item.type === 'bool') return v ? tr('yes') : 'no';
   const opt = item.options?.find(o => JSON.stringify(o.value) === JSON.stringify(v));
   if (opt) return opt.label;

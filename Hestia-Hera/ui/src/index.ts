@@ -17,7 +17,7 @@ async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string,
   return r;
 }
 const ddmm = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
-const inDays = (n: number) => n === 0 ? 'oggi' : n === 1 ? 'domani' : tr("in {0} days", n);
+const inDays = (n: number) => n === 0 ? tr('today') : n === 1 ? tr('tomorrow') : tr("in {0} days", n);
 
 const styles = css`
   .between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

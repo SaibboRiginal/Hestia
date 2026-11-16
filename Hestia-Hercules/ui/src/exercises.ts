@@ -106,13 +106,13 @@ export class HerculesExercise extends LocalPage {
     const hist = (d?.history || []) as any[];
     const weight = usesWeight(e.kind);
     const stats = [
-      weight && rec.best_e1rm ? { label: '1RM stimato', value: kg(rec.best_e1rm.value), unit: 'kg', hint: tr("{0} × {1} · {2}", kg(rec.best_e1rm.weight), rec.best_e1rm.reps, dayLabel(rec.best_e1rm.date, false)) } : null,
+      weight && rec.best_e1rm ? { label: tr('estimated 1RM'), value: kg(rec.best_e1rm.value), unit: 'kg', hint: tr("{0} × {1} · {2}", kg(rec.best_e1rm.weight), rec.best_e1rm.reps, dayLabel(rec.best_e1rm.date, false)) } : null,
       weight && rec.heaviest ? { label: tr('Maximum weight'), value: kg(rec.heaviest.value), unit: 'kg', hint: tr("× {0} · {1}", rec.heaviest.reps, dayLabel(rec.heaviest.date, false)) } : null,
       rec.most_reps ? { label: tr('alt::Max reps'), value: rec.most_reps.value, hint: rec.most_reps.weight ? tr("with {0} kg", kg(rec.most_reps.weight)) : '' } : null,
       weight && rec.best_session_volume ? { label: tr('Session volume'), value: num(rec.best_session_volume.value), unit: 'kg' } : null,
       { label: tr('Sessions'), value: hist.length },
     ].filter(Boolean) as any[];
-    const metrics: Record<string, string> = weight ? { best_e1rm: '1RM stimato', top_weight: tr('Maximum weight'), volume: tr('Volume'), max_reps: tr('alt::Reps') } : { max_reps: tr('alt::Reps'), reps: tr('Total reps') };
+    const metrics: Record<string, string> = weight ? { best_e1rm: tr('estimated 1RM'), top_weight: tr('Maximum weight'), volume: tr('Volume'), max_reps: tr('alt::Reps') } : { max_reps: tr('alt::Reps'), reps: tr('Total reps') };
     const metric = metrics[this.metric] ? this.metric : Object.keys(metrics)[0];
     const pts = hist.filter(h => h[metric] !== null && h[metric] !== undefined);
     return html`<div class="page">

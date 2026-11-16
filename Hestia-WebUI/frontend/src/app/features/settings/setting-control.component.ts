@@ -128,7 +128,7 @@ export class SettingControlComponent {
   commitNumber(v: string) {
     if (v.trim() === '') return;
     const n = Number(v);
-    if (Number.isNaN(n)) { this.toast.error('Numero non valido'); return; }
+    if (Number.isNaN(n)) { this.toast.error(tr('Invalid number')); return; }
     this.commit.emit(n);
   }
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
@@ -138,7 +138,7 @@ export class SettingControlComponent {
   }
 
   commitJson(v: string) {
-    try { this.commit.emit(JSON.parse(v)); } catch { this.toast.error('JSON non valido'); }
+    try { this.commit.emit(JSON.parse(v)); } catch { this.toast.error(tr('Invalid JSON')); }
   }
 
   /** Model names come from the owning module (e.g. installed Ollama models), via Themis. */

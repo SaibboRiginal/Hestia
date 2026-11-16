@@ -249,7 +249,7 @@ export class ChatContextComponent {
       this.toast.success(tr('Conversation compacted'));
       await this.load();
     } catch {
-      this.toast.error('Compattazione non riuscita');
+      this.toast.error(tr('Compaction failed'));
     } finally {
       this.compacting.set(false);
     }

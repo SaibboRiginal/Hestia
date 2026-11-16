@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, HostListener, input, model, signal } from '@angular/core';
+import { tr } from '../core/i18n';
 
 const PREFIX = 'hestia_w_';
 

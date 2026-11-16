@@ -236,7 +236,7 @@ export class PersonalSettingsComponent implements OnInit {
   }
 
   async save(p: Record<string, string>) {
-    try { await this.settings.update(p); this.toast.success(tr('Saved')); } catch { this.toast.error('Salvataggio non riuscito'); }
+    try { await this.settings.update(p); this.toast.success(tr('Saved')); } catch { this.toast.error(tr('Saving failed')); }
   }
   async newSession() {
     if (await this.dialogs.confirm(tr('New session?'))) { await this.session.clear(); this.toast.success(tr('New session')); }

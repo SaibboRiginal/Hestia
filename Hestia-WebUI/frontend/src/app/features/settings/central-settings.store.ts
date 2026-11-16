@@ -213,7 +213,7 @@ export class CentralSettingsStore {
       this.toast.show(restart ? tr("{0}: saved, {1} needs a restart", item.label, moduleLabel(item.module)) : tr("{0}: saved", item.label),
         restart ? 'warning' : 'success', { label: tr('Cancel'), run: () => void this.set({ ...item, value }, before) });
     } catch (e) {
-      this.toast.error(apiError(e, 'Salvataggio non riuscito'));
+      this.toast.error(apiError(e, tr('Saving failed')));
       await this.loadItems();
     } finally {
       this.saving.set(null);
@@ -239,7 +239,7 @@ export class CentralSettingsStore {
       await this.loadItems();
       this.toast.success(tr("{0}: change undone", item.label));
     } catch (e) {
-      this.toast.error(apiError(e, 'Niente da annullare'));
+      this.toast.error(apiError(e, tr('Nothing to undo')));
     }
   }
 

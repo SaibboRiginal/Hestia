@@ -3,7 +3,7 @@ import { css, locale, tr } from '@hestia/webui-sdk';
 export const API = '/api/argus';
 
 export const STATUS: Record<string, [string, string]> = {
-  up: ['success', 'ok'], degraded: ['warning', 'degradato'], down: ['danger', tr('down')],
+  up: ['success', 'ok'], degraded: ['warning', tr('degraded')], down: ['danger', tr('down')],
 };
 
 export function statusOf(s?: string | null): [string, string] {

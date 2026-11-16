@@ -162,7 +162,7 @@ export class HygieiaProducts extends HestiaElement {
   render() {
     const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
       ${this.items ? html`<span class="sub">${this.items.length}</span>` : nothing}</div>
-      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('spesa')}>${tr("Expense")}</hxk-button>
+      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('spesa')}>${tr('Shopping list')}</hxk-button>
         <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div></div>`;
     return html`<div class="page">${head}
       <div class="filters">
@@ -242,9 +242,9 @@ export class HygieiaProduct extends HestiaElement {
         <hxk-button variant="ghost" icon="star" @click=${() => call(this.host, 'PUT', `${API}/products/${this.rid}`, { body: { favorite: !p.favorite } }).then(() => this.load())}>${p.favorite ? tr('Remove from favorites') : tr('Favourite')}</hxk-button>
       </div>
       <hxk-stat .items=${[{ label: tr('Uses'), value: p.uses || 0, hint: p.last_used ? tr('last {0}', relDays(p.last_used)) : '' },
-        { label: tr('Opened by'), value: p.days_open ?? '–', unit: p.days_open !== null && p.days_open !== undefined ? 'giorni' : '' },
+        { label: tr('Opened by'), value: p.days_open ?? '–', unit: p.days_open !== null && p.days_open !== undefined ? tr('days') : '' },
         { label: tr('Deadline'), value: p.expiry ? dayLabel(p.expiry, false) : '–', hint: inDays(p.expires_in), tone: p.expires_in !== null && p.expires_in < 0 ? 'danger' : p.expires_in !== null && p.expires_in <= 30 ? 'warning' : '' },
-        ...(fe ? [{ label: tr('Ends in'), value: `~${fe.days_left}`, unit: 'giorni', hint: fe.basis }] : []),
+        ...(fe ? [{ label: tr('Ends in'), value: `~${fe.days_left}`, unit: tr('days'), hint: fe.basis }] : []),
         ...(p.price ? [{ label: tr('Price'), value: money(p.price, p.currency), hint: p.price_per_use ? tr("{0} per use", money(p.price_per_use, p.currency)) : '' }] : [])]}></hxk-stat>
       ${p.status === 'in_use' ? html`<div class="card sec"><h2>${tr("How much is left")}</h2>
         <div class="lvls">${Object.entries(m?.levels || {}).map(([k, l]) => html`<button class="chip" aria-pressed=${p.level === k} @click=${() => this.act('level', { level: k }, tr('Level updated'))}>${l}</button>`)}</div></div>` : nothing}

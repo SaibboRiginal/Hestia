@@ -6,8 +6,8 @@ import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/web
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/home';
-const STATE: Record<string, string> = { on: 'acceso', off: 'spento', open: 'aperta', closed: 'chiusa', locked: 'chiusa',
-  unlocked: 'aperta', home: tr('at home'), not_home: 'fuori', unavailable: tr('unreachable') };
+const STATE: Record<string, string> = { on: tr('on'), off: tr('off'), open: tr('f::open'), closed: tr('f::closed'), locked: tr('f::closed'),
+  unlocked: tr('f::open'), home: tr('at home'), not_home: tr('away'), unavailable: tr('unreachable') };
 const TABS = ['light', 'switch', 'cover', 'climate', 'fan', 'media_player', 'lock', 'scene', 'script', 'sensor', 'binary_sensor'];
 
 async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string, body?: unknown, query?: Record<string, any>): Promise<ApiResult<T>> {

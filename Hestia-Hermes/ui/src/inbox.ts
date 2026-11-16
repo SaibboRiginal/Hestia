@@ -331,7 +331,7 @@ export class HermesInbox extends HestiaElement {
       this.applyAnswer(n.id, r.data?.answer ?? {});
       this.host.toast(tr('Already handled'), 'info');
     } else {
-      this.host.toast(tr("Failed: {0}", r.data?.detail || r.data?.message || 'riprova'), 'danger');
+      this.host.toast(tr("Failed: {0}", r.data?.detail || r.data?.message || tr('try again')), 'danger');
     }
     void this.loadCounts();
   }
@@ -386,7 +386,7 @@ export class HermesInbox extends HestiaElement {
             aria-pressed=${picked.includes(o.value)} ?disabled=${busy} @click=${() => this.togglePick(n, o.value)}>${o.label}</hxk-button>`
         : html`<hxk-button size="sm" ?loading=${busy} ?disabled=${busy} @click=${() => this.reply(n, o.value)}>${o.label}</hxk-button>`)}</div>` : nothing}
       ${free || multi ? html`<div class="free">
-        ${free ? html`<input .value=${text} placeholder=${q.options?.length ? tr('Other…') : 'Rispondi…'} aria-label=${tr("Answer")}
+        ${free ? html`<input .value=${text} placeholder=${q.options?.length ? tr('Other…') : tr('Answer…')} aria-label=${tr("Answer")}
           @input=${(e: Event) => (this.others_text = { ...this.others_text, [n.id]: (e.target as HTMLInputElement).value })}
           @keydown=${(e: KeyboardEvent) => { if (e.key === 'Enter') this.sendQuestion(n); }}>` : nothing}
         <hxk-button size="sm" variant="primary" icon="send" ?loading=${busy}

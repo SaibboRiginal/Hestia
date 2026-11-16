@@ -56,15 +56,15 @@ export function buildRRule(m: RepeatModel): string | null {
 }
 
 const UNIT: Record<string, [string, string]> = {
-  MINUTELY: ['minuto', 'minuti'], HOURLY: ['ora', 'ore'], DAILY: ['giorno', 'giorni'],
-  WEEKLY: ['settimana', 'settimane'], MONTHLY: ['mese', 'mesi'], YEARLY: ['anno', 'anni'],
+  MINUTELY: ['minute', 'minutes'], HOURLY: ['hour', 'hours'], DAILY: ['day', 'days'],
+  WEEKLY: ['week', 'weeks'], MONTHLY: ['f::month', 'months'], YEARLY: ['year', 'years'],
 };
 
 export function describeRRule(rule?: string | null): string {
   if (!rule) return tr('Doesn\'t repeat');
   const m = parseRRule(rule);
   if (m.freq === 'custom') return tr('Rule: {0}', m.raw);
-  const [one, many] = UNIT[m.freq] ?? ['', ''];
+  const [one, many] = (UNIT[m.freq] ?? ['', '']).map(u => u && tr(u));
   let s = m.interval === 1 ? tr("Every {0}", one) : tr("Every {0} {1}", m.interval, many);
   if (m.freq === 'DAILY' && m.interval === 1) s = tr('Every day');
   if (m.freq === 'WEEKLY' && m.byday.length) s += `: ${m.byday.map(d => WEEKDAY_LABELS[d]).join(', ')}`;

@@ -43,7 +43,7 @@ export class ScoutStats extends HestiaElement {
       <hxk-stat .items=${[
         { label: tr('Followed'), value: num(s.total) }, { label: tr('alt::New (7 days)'), value: num(s.new) },
         { label: tr('pl::Available'), value: num(s.available) }, { label: tr('Favourites'), value: num(s.favorites) },
-        { label: tr('Average price'), value: compactEuro(s.avg_price) }, { label: '€/m² medio', value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
+        { label: tr('Average price'), value: compactEuro(s.avg_price) }, { label: tr('average €/m²'), value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
       ]}></hxk-stat>
       <div class="two">
         <hxk-card heading=${tr("New houses per week")}>
@@ -79,7 +79,7 @@ export class ScoutKpiWidget extends HestiaElement {
       { label: tr('New (7 days)'), value: num(s.new), tone: s.new ? 'success' : undefined },
       { label: tr('Followed'), value: num(s.total) },
       { label: tr('Favourites'), value: num(s.favorites) },
-      ...(wide ? [{ label: tr('Average price'), value: compactEuro(s.avg_price) }, { label: '€/m² medio', value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' }] : []),
+      ...(wide ? [{ label: tr('Average price'), value: compactEuro(s.avg_price) }, { label: tr('average €/m²'), value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' }] : []),
     ]}></hxk-stat>`;
   }
 }
@@ -97,7 +97,7 @@ export class ScoutPricesWidget extends HestiaElement {
     const rows = this.s.price_by_city.filter(c => c.avg_ppm2).slice(0, this.ctx.size === 'xl' ? 10 : 6);
     if (!rows.length) return html`<hxk-state kind="empty" text=${tr("Still little data per city")}></hxk-state>`;
     return html`<hxk-chart type="bar" unit="€/m²" height=${this.ctx.size === 'xl' ? 230 : 210} .labels=${rows.map(c => c.city)}
-      .series=${[{ name: '€/m² medio', values: rows.map(c => c.avg_ppm2 ?? 0) }]}></hxk-chart>`;
+      .series=${[{ name: tr('average €/m²'), values: rows.map(c => c.avg_ppm2 ?? 0) }]}></hxk-chart>`;
   }
 }
 
@@ -126,7 +126,7 @@ abstract class ListWidget extends HestiaElement {
     if (!this.items) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!this.items.length) return html`<hxk-state kind="empty" text=${this.emptyText()}></hxk-state>`;
     return html`<hxk-list .items=${this.items.map(l => ({ id: l.id, title: euro(l.price) + ' · ' + l.title, subtitle: facts(l), image: l.image || undefined,
-        icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: 'preferita', tone: 'warning' } : undefined }))}
+        icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: tr('f::favourite'), tone: 'warning' } : undefined }))}
       @item-click=${(e: CustomEvent) => this.host.navigate('case/' + e.detail.id)}></hxk-list>
       ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('case', this.openQuery())}>${tr("Others")} ${this.total - this.items.length} →</button>` : nothing}`;
   }

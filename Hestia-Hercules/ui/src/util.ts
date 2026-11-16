@@ -28,7 +28,9 @@ export const FEEDBACK_TAGS: Record<string, string> = {
   too_heavy: tr('Too heavy'), too_light: tr('Too light'), pain: tr('Pain'), great: tr('Great'), tired: tr('Tired'),
   bored: tr('It bores me'), short_time: tr('Little time'), technique: tr('Technique to fix'),
 };
-export const PAIN_AREAS = ['spalla', 'gomito', 'polso', 'schiena bassa', 'anca', 'ginocchio', 'caviglia', 'collo'];
+/** Joint keys of the catalog (Hercules `JOINTS`), shown through tr. */
+export const PAIN_AREAS: [string, string][] = [['shoulder', 'Shoulder'], ['elbow', 'Elbow'], ['wrist', 'Wrist'], ['lower_back', 'alt::Lower back'],
+  ['hip', 'Hip'], ['knee', 'Knee'], ['ankle', 'Ankle'], ['neck', 'Neck']];
 export const MEASURES: Record<string, string> = {
   bodyweight: tr('Body weight'), body_fat: tr('Body fat'), waist: tr('Waist'), chest: tr('alt::Chest'), arm: tr('Arm'), thigh: tr('Thigh'),
   hips: tr('Hips'), neck: tr('Neck'), calf: tr('Calf'),
@@ -82,7 +84,7 @@ export function timeLabel(iso: string): string {
   return iso ? new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : '';
 }
 export function relDays(iso: string | null | undefined): string {
-  if (!iso) return 'mai';
+  if (!iso) return tr('never');
   const days = Math.floor((Date.parse(today() + 'T12:00:00') - Date.parse(localDay(iso) + 'T12:00:00')) / 86400000);
   return days <= 0 ? tr('today') : days === 1 ? tr('yesterday') : days < 14 ? tr("{0} days ago", days) : days < 60 ? tr('{0} weeks ago', Math.round(days / 7)) : tr('{0} months ago', Math.round(days / 30));
 }

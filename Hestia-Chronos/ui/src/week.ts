@@ -12,7 +12,7 @@ const C = `${API}/coach`;
 const DOMAIN_ICON: Record<string, string> = { fitness: 'dumbbell', selfcare: 'heart', finance: 'wallet', wardrobe: 'shirt' };
 export const areaIcon = (domain?: string) => DOMAIN_ICON[domain || ''] || 'target';
 const STATUS: Record<string, { text: string; tone: string }> = {
-  done: { text: 'fatto', tone: 'success' }, skipped: { text: 'saltato', tone: 'neutral' },
+  done: { text: tr('done'), tone: 'success' }, skipped: { text: tr('skipped'), tone: 'neutral' },
 };
 
 export const hhmm = (iso?: string | null) =>

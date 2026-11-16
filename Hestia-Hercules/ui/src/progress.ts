@@ -62,7 +62,7 @@ export class HerculesProgress extends LocalPage {
         { label: tr('Volume'), value: num(cur.volume), unit: 'kg', delta: delta(cur.volume || 0, prev.volume || 0) },
         { label: tr('Streak'), value: cur.sets ?? 0, delta: delta(cur.sets || 0, prev.sets || 0) },
         { label: tr('Time'), value: minutes(cur.duration_min) },
-        { label: tr('Total'), value: st.totals?.sessions ?? 0, hint: st.totals?.since ? 'dal ' + dayLabel(st.totals.since, false) : '' },
+        { label: tr('Total'), value: st.totals?.sessions ?? 0, hint: st.totals?.since ? tr('since {0}', dayLabel(st.totals.since, false)) : '' },
       ]}></hxk-stat>
 
       ${this.goals?.length ? html`<div class="card col"><h3>${tr("Goals")}</h3>${this.goals.map(g => html`<div class="between">
@@ -134,10 +134,10 @@ export class HerculesBody extends LocalPage {
       ${last ? html`<hxk-stat .items=${[
           { label: tr('Last'), value: kg(last.value), unit, hint: dayLabel(last.taken_at) },
           ...(avg7 !== null ? [{ label: tr('7-day average'), value: kg(Math.round(avg7 * 10) / 10), unit }] : []),
-          ...(first && first !== last ? [{ label: tr('alt::Change'), value: `${last.value - first.value >= 0 ? '+' : ''}${kg(Math.round((last.value - first.value) * 10) / 10)}`, unit, hint: 'dal ' + dayLabel(first.taken_at, false) }] : []),
+          ...(first && first !== last ? [{ label: tr('alt::Change'), value: `${last.value - first.value >= 0 ? '+' : ''}${kg(Math.round((last.value - first.value) * 10) / 10)}`, unit, hint: tr('since {0}', dayLabel(first.taken_at, false)) }] : []),
         ]}></hxk-stat>` : nothing}
       <div class="card col"><div class="between"><h3>${MEASURES[this.kind]}</h3>
-        <div class="tabs">${[[30, tr('1 month')], [90, '3 mesi'], [365, tr('1 year')], [0, tr('Everything')]].map(([d, l]) => html`<button class="tab" aria-pressed=${this.range === d} @click=${() => (this.range = d as number)}>${l}</button>`)}</div></div>
+        <div class="tabs">${[[30, tr('1 month')], [90, tr('3 months')], [365, tr('1 year')], [0, tr('Everything')]].map(([d, l]) => html`<button class="tab" aria-pressed=${this.range === d} @click=${() => (this.range = d as number)}>${l}</button>`)}</div></div>
         ${pts.length > 1 ? html`<hxk-chart type="line" height="220" unit=${unit} .labels=${pts.map(m => dayLabel(m.taken_at, false))} .series=${[{ name: MEASURES[this.kind], values: pts.map(m => m.value) }]}></hxk-chart>`
           : html`<div class="empty">${tr("Log at least two values to see the trend.")}</div>`}</div>
       ${pts.length ? html`<div class="card list">${[...pts].reverse().slice(0, 30).map(m => html`<div class="li" style="cursor:default">

@@ -3,9 +3,9 @@ import { locale, tr } from '@hestia/webui-sdk';
 export const API = '/api/ui';
 
 export const ROUTES: Record<string, { label: string; tone: string }> = {
-  quick: { label: 'rapida', tone: 'neutral' },
-  quick_chat: { label: 'conversazione', tone: 'info' },
-  agent: { label: 'agente', tone: 'accent' },
+  quick: { label: tr('quick'), tone: 'neutral' },
+  quick_chat: { label: tr('conversation'), tone: 'info' },
+  agent: { label: tr('agent'), tone: 'accent' },
 };
 
 export function num(n: number | null | undefined): string {
@@ -38,7 +38,7 @@ export function when(ts: number | null | undefined): string {
 
 export function ago(seconds: number | null | undefined): string {
   if (seconds == null) return tr('no chat since Oracle started');
-  if (seconds < 60) return 'adesso';
+  if (seconds < 60) return tr('just now');
   if (seconds < 3600) return `${Math.floor(seconds / 60)} min fa`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)} h fa`;
   return tr("{0} days ago", Math.floor(seconds / 86400));

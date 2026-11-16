@@ -12,8 +12,8 @@ import { formStyles } from './editor';
 
 export interface TemplateCreate { tpl: AgendaTemplate; body: TemplateBody; }
 type Freq = 'HOURLY' | 'DAILY' | 'WEEKLY' | 'MONTHLY';
-const UNIT1: Record<Freq, string> = { HOURLY: 'ora', DAILY: 'giorno', WEEKLY: 'settimana', MONTHLY: 'mese' };
-const UNITN: Record<Freq, string> = { HOURLY: 'ore', DAILY: 'giorni', WEEKLY: 'settimane', MONTHLY: 'mesi' };
+const UNIT1: Record<Freq, string> = { HOURLY: 'hour', DAILY: 'day', WEEKLY: 'week', MONTHLY: 'f::month' };   // through tr
+const UNITN: Record<Freq, string> = { HOURLY: 'hours', DAILY: 'days', WEEKLY: 'weeks', MONTHLY: 'months' };
 
 export class ChronosCalWizard extends LitElement {
   static properties = { seed: { attribute: false }, api: { attribute: false }, step: { state: true }, loading: { state: true },
@@ -94,7 +94,7 @@ export class ChronosCalWizard extends LitElement {
     const s = fromLocalInput(this.start); if (!s) return '';
     const e = fromLocalInput(this.end);
     const base = this.type === 'window' && e ? `${fmt.dateTime(s)} – ${fmt.time(e)}` : fmt.dateTime(s);
-    const unit = this.interval === 1 ? UNIT1[this.freq] : `${this.interval} ${UNITN[this.freq]}`;
+    const unit = this.interval === 1 ? tr(UNIT1[this.freq]) : `${this.interval} ${tr(UNITN[this.freq])}`;
     return this.type === 'task' ? base : tr("{0}, then every {1}", base, unit);
   }
 

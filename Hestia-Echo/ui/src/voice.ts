@@ -136,7 +136,7 @@ export class EchoVoice extends HestiaElement {
         <div class="mic">
           <button class=${this.recording ? 'on' : ''} @click=${() => this.toggleMic()} aria-label=${this.recording ? tr('Stop and transcribe') : tr('f::Log')}>
             <hxk-icon name=${this.recording ? 'stop' : 'mic'} size=${30}></hxk-icon></button>
-          <span class="small muted">${this.recording ? tr('I\'m listening… tap to finish') : this.busy === 'ascolto' ? 'Trascrivo…' : tr('Tap to speak')}</span>
+          <span class="small muted">${this.recording ? tr('I\'m listening… tap to finish') : this.busy === 'ascolto' ? tr('Transcribing…') : tr('Tap to speak')}</span>
         </div>
         ${this.heard ? this.fix !== null && this.fix !== undefined ? html`<textarea .value=${this.fix} @input=${(e: any) => (this.fix = e.target.value)}></textarea>
             <div class="actions"><hxk-button variant="ghost" @click=${() => (this.fix = null)}>${tr("Cancel")}</hxk-button>

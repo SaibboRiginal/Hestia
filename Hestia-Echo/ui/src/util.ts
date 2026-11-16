@@ -3,14 +3,14 @@ import { locale, tr } from '@hestia/webui-sdk';
 export const API = '/api/voice';
 
 export const STATES: Record<string, { label: string; tone: string }> = {
-  ready: { label: 'pronto', tone: 'success' },
+  ready: { label: tr('m::ready'), tone: 'success' },
   no_key: { label: tr('the key is missing'), tone: 'warning' },
   no_url: { label: tr('the address is missing'), tone: 'warning' },
   not_installed: { label: tr('not installed'), tone: 'warning' },
   downloading: { label: tr('downloading the model'), tone: 'info' },
-  quota: { label: 'senza quota', tone: 'warning' },
-  missing: { label: 'fornitore tolto', tone: 'danger' },
-  wrong_direction: { label: 'direzione sbagliata', tone: 'danger' },
+  quota: { label: tr('out of quota'), tone: 'warning' },
+  missing: { label: tr('provider removed'), tone: 'danger' },
+  wrong_direction: { label: tr('wrong direction'), tone: 'danger' },
 };
 
 export const DIRECTIONS = [{ value: 'ascolto', label: tr('Listening (voice → text)') }, { value: 'voce', label: tr('Voice (text → speech)') }];

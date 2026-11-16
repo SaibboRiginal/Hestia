@@ -110,7 +110,7 @@ export class ArgusHealth extends HestiaElement {
   private renderIncident(i: any, open: boolean) {
     const [tone, label] = statusOf(i.status);
     return html`<div class="card incident">
-      <div class="row wrap"><b>${i.service}</b><hxk-badge tone=${open ? tone : 'success'}>${open ? label : 'risolto'}</hxk-badge>
+      <div class="row wrap"><b>${i.service}</b><hxk-badge tone=${open ? tone : 'success'}>${open ? label : tr('resolved')}</hxk-badge>
         <span class="small muted grow">${open ? tr("for {0}", duration(i.duration_seconds)) : tr("lasted {0} · {1}", duration(i.duration_seconds), when(i.closed_at))}</span>
         ${open ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === i.service} @click=${() => this.recheck(i.service, true)}>${tr("Recheck")}</hxk-button>` : nothing}</div>
       ${open && i.error ? html`<div class="small muted">${i.error}</div>` : nothing}

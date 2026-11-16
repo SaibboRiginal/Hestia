@@ -8,9 +8,9 @@ import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk
 const API = '/api/backup';
 
 const STEP: Record<string, string> = {
-  start: 'inizio', dump: tr('copy of the data'), encrypt: 'cifratura', upload: tr('uploading to Drive'), retention: 'pulizia',
-  download: 'scaricamento', decrypt: 'apertura', restore: tr('restore on trial'), migrate: 'aggiornamento',
-  compare: 'controllo', swap: tr('data replacement'),
+  start: tr('start'), dump: tr('copy of the data'), encrypt: tr('encryption'), upload: tr('uploading to Drive'), retention: tr('cleanup'),
+  download: tr('downloading'), decrypt: tr('opening'), restore: tr('restore on trial'), migrate: tr('upgrade'),
+  compare: tr('alt::check'), swap: tr('data replacement'),
 };
 const JOB: Record<string, string> = { backup: tr('Backup'), verify: tr('Check'), restore: tr('Restore'), undo: tr('Undo') };
 
@@ -155,7 +155,7 @@ export class ArchiveBackupPanel extends HestiaElement {
           <hxk-icon name=${it.verify === 'ok' ? 'check-circle' : it.verify === 'fail' ? 'x-circle' : 'history'} size="16"
             tone=${it.verify === 'ok' ? 'success' : it.verify === 'fail' ? 'danger' : 'neutral'}></hxk-icon>
           <div class="grow"><div class="tnum">${when(it.created_at)}</div>
-            <div class="small muted">${size(it.size)}${it.monthly ? ' · mensile' : ''}${it.verify === 'ok' ? html` ${tr("· verified on")} ${when(it.verified_at)}`
+            <div class="small muted">${size(it.size)}${it.monthly ? tr(' · monthly') : ''}${it.verify === 'ok' ? html` ${tr("· verified on")} ${when(it.verified_at)}`
               : it.verify === 'fail' ? tr(' · check failed') : ''}</div></div>
           <hxk-button size="sm" variant="ghost" icon="undo" ?disabled=${!!job || !st.passphrase_set} @click=${() => this.restore(it)}>${tr("f::Restore")}</hxk-button>
         </div>`)}

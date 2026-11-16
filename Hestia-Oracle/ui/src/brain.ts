@@ -122,7 +122,7 @@ export class OracleBrain extends HestiaElement {
         <span class="grow"></span><span class="small muted num">${ms(t.ms)}</span></div>
       ${t.preview ? html`<div class="preview" title=${t.preview}>${t.preview}</div>` : nothing}
       ${(t.tools || []).length ? html`<div class="line">${t.tools.map((x: any) => html`<span class=${x.ok ? (x.writes ? 'chip w' : 'chip') : 'chip ko'}
-          title=${x.ok ? (x.writes ? tr('changed something') : 'lettura') : tr('failed')}>${x.ok ? '' : html`<hxk-icon name="x" size=${11}></hxk-icon> `}${x.tool}</span>`)}</div>` : nothing}
+          title=${x.ok ? (x.writes ? tr('changed something') : tr('reading')) : tr('failed')}>${x.ok ? '' : html`<hxk-icon name="x" size=${11}></hxk-icon> `}${x.tool}</span>`)}</div>` : nothing}
       <div class="small muted">${t.provider} · ${t.model}${t.usage?.calls ? tr(' · {0} calls · {1} / {2} tokens', t.usage.calls, num(t.usage.input_tokens), num(t.usage.output_tokens)) : ''}${t.usage?.cost_usd ? ` · ${cost(t.usage.cost_usd)}` : ''}</div>
     </div>`;
   }
@@ -143,14 +143,14 @@ export class OracleBrain extends HestiaElement {
     const runs: any[] = c.runs || [];
     return html`<hxk-card heading=${tr("Claude Code")} subtitle=${tr("Development engine (Claude subscription)")}>
       <div class="line" style="margin-bottom:8px">
-        <hxk-badge tone=${c.available ? 'success' : 'warning'}>${c.available ? 'pronto' : tr('not ready')}</hxk-badge>
+        <hxk-badge tone=${c.available ? 'success' : 'warning'}>${c.available ? tr('m::ready') : tr('not ready')}</hxk-badge>
         ${c.available && c.model ? html`<span class="chip">${tr("model")} ${c.model}</span>` : nothing}
         ${c.running ? html`<hxk-badge tone="info">${c.running} ${tr("running")}</hxk-badge>` : nothing}</div>
       ${c.available ? nothing : html`<div class="note">${c.detail}</div>`}
       ${runs.map(r => html`<div class="row2"><div class="grow"><div class="truncate">${r.task || 'task'}</div>
           <div class="small muted">${when(r.started_at)}${r.error ? ` · ${r.error}` : ''}</div></div>
         <div class="num small">${r.state === 'running' ? html`<hxk-badge tone="info">${tr("running")}</hxk-badge>`
-          : html`<hxk-badge tone=${r.ok ? 'success' : 'danger'}>${r.ok ? 'ok' : 'fallito'}</hxk-badge>`}
+          : html`<hxk-badge tone=${r.ok ? 'success' : 'danger'}>${r.ok ? 'ok' : tr('failed')}</hxk-badge>`}
           <div class="muted">${r.state === 'running' ? '' : `${ms(r.ms)} · ${tr('{0} turns', r.turns)}${r.cost_usd ? ` · ${cost(r.cost_usd)}` : ''}`}</div></div></div>`)}
       ${!runs.length && c.available ? html`<div class="note">${tr("No job since Oracle started.")}</div>` : nothing}
     </hxk-card>`;

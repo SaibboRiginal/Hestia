@@ -19,8 +19,8 @@ function dayLabel(iso?: string | null): string {
 }
 
 function inDays(n: number | null): string {
-  if (n === null || n === undefined) return 'passato';
-  return n === 0 ? 'oggi' : n === 1 ? 'domani' : tr("in {0} days", n);
+  if (n === null || n === undefined) return tr('m::past');
+  return n === 0 ? tr('today') : n === 1 ? tr('tomorrow') : tr("in {0} days", n);
 }
 
 export class ChronosSpecial extends HestiaElement {

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { RouterLink } from '@angular/router';
 import { UI } from '../../ui';
 import { SetupApi, SetupState } from './setup.api';
-import { TrPipe } from '../../core/i18n';
+import { TrPipe, tr } from '../../core/i18n';
 
 const LABELS: Record<string, string> = { cervello: tr('models'), voce: tr('voice'), telegram: 'Telegram', backup: tr('backup'), esterni: tr('external accounts') };
 

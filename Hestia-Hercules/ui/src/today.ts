@@ -135,7 +135,7 @@ export class HerculesToday extends HestiaElement {
     if (this.L.activeSession()) { this.host.toast(tr('A workout is already in progress'), 'warning'); return; }
     const c = this.todayCheckin();
     this.L.put('session', uuid(), {
-      name: t ? t.name : 'Allenamento libero', status: 'active', started_at: nowIso(), template_id: t?.id ?? null, program_id: null,
+      name: t ? t.name : tr('Free workout'), status: 'active', started_at: nowIso(), template_id: t?.id ?? null, program_id: null,
       exercises: t ? this.planFor(t) : [], readiness: c ? { energy: c.energy, sleep: c.sleep, pain_areas: c.pain_areas, time_minutes: c.time_minutes } : {},
       source: 'live', notes: '', adaptation_id: null,
     });
@@ -298,7 +298,7 @@ export class HerculesToday extends HestiaElement {
       const w = best(mine.filter(s => s.exercise_id === exId), s => s.weight_kg), wh = best(hist, s => s.weight_kg);
       if (w > wh) out.push({ exercise: name, label: tr('Maximum weight'), value: w });
       const e = best(mine.filter(s => s.exercise_id === exId), s => e1rm(s.weight_kg, s.reps)), eh = best(hist, s => e1rm(s.weight_kg, s.reps));
-      if (e > eh) out.push({ exercise: name, label: '1RM stimato', value: Math.round(e * 10) / 10 });
+      if (e > eh) out.push({ exercise: name, label: tr('estimated 1RM'), value: Math.round(e * 10) / 10 });
     }
     return out;
   }
@@ -468,7 +468,7 @@ export class HerculesToday extends HestiaElement {
       <div class="col"><span class="small muted">${tr("Time available")}</span><div class="chips">
         ${[20, 30, 45, 60, 90].map(v => html`<button class="chip" aria-pressed=${c.time === v} @click=${() => set({ time: c.time === v ? null : v })}>${v} ${tr("min")}</button>`)}</div></div>
       <div class="col"><span class="small muted">${tr("Aches or pains")}</span><div class="chips">
-        ${PAIN_AREAS.map(p => html`<button class="chip warn" aria-pressed=${c.pain.includes(p)} @click=${() => set({ pain: c.pain.includes(p) ? c.pain.filter(x => x !== p) : [...c.pain, p] })}>${p}</button>`)}</div></div>
+        ${PAIN_AREAS.map(([p, label]) => html`<button class="chip warn" aria-pressed=${c.pain.includes(p)} @click=${() => set({ pain: c.pain.includes(p) ? c.pain.filter(x => x !== p) : [...c.pain, p] })}>${tr(label)}</button>`)}</div></div>
       <input class="in" placeholder=${tr("Anything else? (e.g. slept little, bench taken)")} .value=${c.text} @input=${(e: any) => set({ text: e.target.value })}>
       <div class="row wrap">
         <hxk-button variant="primary" icon="refresh" ?loading=${this.busy === 'adapt'} ?disabled=${!t}
