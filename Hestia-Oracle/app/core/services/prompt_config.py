@@ -387,6 +387,12 @@ def prompt_with_variant(
     return prompt(resolved_key, **kwargs), variant, resolved_key
 
 
+def assistant_label() -> str:
+    """The name that marks her turns in a transcript the model reads («Hestia» or the name the owner chose)."""
+    from hestia_common import identity as _id
+    return (_identity() or _id.default()).get("assistant") or _id.DEFAULT_NAME
+
+
 def _identity() -> dict[str, str] | None:
     """Assistant name, she/he, owner (personal settings, live). ``None`` → defaults (settings not loaded yet)."""
     try:

@@ -50,7 +50,7 @@ export class EchoVoice extends HestiaElement {
   `];
 
   constructor() {
-    super(); this.tab = 'prova'; this.recording = false; this.busy = ''; this.heard = null; this.text = tr('Ciao, sono Hestia. Ti sento forte e chiaro.');
+    super(); this.tab = 'prova'; this.recording = false; this.busy = ''; this.heard = null; this.text = tr('Ciao, sono {assistant}. Ti sento forte e chiaro.');
     this.said = null; this.usage = null; this.kept = null; this.days = 30; this.error = ''; this.fix = null;
   }
 

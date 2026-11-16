@@ -36,7 +36,7 @@ def try_claim(message) -> bool:
         payload = (resp.json() or {}).get("payload") or {}
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=setup_claim_unreachable error=%s", exc)
-        core.bot.reply_to(message, tr("Non riesco a parlare con Hestia adesso. Riprova tra un minuto."))
+        core.bot.reply_to(message, tr("Non riesco a parlare con {assistant} adesso. Riprova tra un minuto."))
         return True
     if payload.get("ok"):
         logger.info("event=setup_owner_claimed")

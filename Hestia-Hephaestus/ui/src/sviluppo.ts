@@ -320,7 +320,7 @@ export class HephaestusSviluppo extends HestiaElement {
       <hxk-button variant="ghost" icon="refresh" title=${tr("Aggiorna")} @click=${() => this.store.refresh()}></hxk-button>
       ${this.mode === 'tasks' ? html`<hxk-button variant=${this.picking ? 'primary' : 'ghost'} title=${tr("Scegli dei task e copiali per un'altra AI (markdown)")}
         @click=${() => { this.picking = !this.picking; this.picked = new Set(); }}>${icon('copy', 15)} <span class="hide-phone">${tr("Copia per AI")}</span></hxk-button>` : nothing}
-      <hxk-button variant="ghost" icon="sparkle" title=${tr("Descrivi a Hestia cosa serve: propone o crea lo sviluppo")} @click=${() => this.askHestia()}><span class="hide-phone">${tr("Chiedi a Hestia")}</span></hxk-button>
+      <hxk-button variant="ghost" icon="sparkle" title=${tr("Descrivi a {assistant} cosa serve: propone o crea lo sviluppo")} @click=${() => this.askHestia()}><span class="hide-phone">${tr("Chiedi a {assistant}")}</span></hxk-button>
       <hxk-button variant="primary" icon="plus" @click=${() => this.openNew()}>${tr("Nuovo sviluppo")}</hxk-button>
     </div>`;
   }

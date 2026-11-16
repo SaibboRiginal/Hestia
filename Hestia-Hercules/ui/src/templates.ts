@@ -124,7 +124,7 @@ export class HerculesTemplates extends LocalPage {
                 }}><option value="">${tr("Riposo")}</option>${tpls.map(t => html`<option value=${t.id} ?selected=${d?.template_id === t.id}>${t.name}</option>`)}</select></div>`;
             })}</div>`}
           <div class="row"><hxk-button size="sm" variant="ghost" @click=${() => this.saveProgram({ ...prog, active: false })}>${tr("Disattiva programma")}</hxk-button></div>`
-        : html`<div class="muted small">${tr("Senza programma Hestia propone la scheda preferita fatta meno di recente.")}</div>
+        : html`<div class="muted small">${tr("Senza programma {assistant} propone la scheda preferita fatta meno di recente.")}</div>
           <div><hxk-button icon="calendar" ?disabled=${!tpls.length} @click=${() => this.saveProgram({ id: uuid(), name: tr('Il mio programma'), mode: 'weekly', active: true, days: [], notes: '' })}>${tr("Crea programma")}</hxk-button></div>`}
       </div>
 

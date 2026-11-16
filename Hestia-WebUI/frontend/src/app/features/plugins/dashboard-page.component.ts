@@ -36,9 +36,9 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Piccolo'), m: tr('Medio'
         @if (isHome()) {
           <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" icon="waveform" (click)="toggleLive()" [attr.aria-pressed]="live.on"
                   [attr.aria-label]="live.on ? ('Ferma Parla' | tr) : ('Parla' | tr)"
-                   [title]="'Parla con Hestia a voce (Ctrl+Shift+Spazio)' | tr"><span class="lbl">{{ live.on ? ('Ferma' | tr) : ('Parla' | tr) }}</span></button>
+                   [title]="'Parla con {assistant} a voce (Ctrl+Shift+Spazio)' | tr"><span class="lbl">{{ live.on ? ('Ferma' | tr) : ('Parla' | tr) }}</span></button>
         }
-        <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">{{ "Crea con Hestia" | tr }}</button>
+        <button hx-btn variant="ghost" icon="sparkle" class="ask" (click)="askHestia()">{{ "Crea con {assistant}" | tr }}</button>
         <button hx-btn variant="secondary" icon="edit" (click)="startEdit()">{{ "Modifica" | tr }}</button>
         <hx-menu [items]="menuItems()" (select)="onMenu($event)">
           <button hx-btn variant="ghost" icon="more" iconOnly  [attr.aria-label]="'Altre azioni' | tr" trigger></button>
@@ -50,7 +50,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Piccolo'), m: tr('Medio'
       <nav class="tabs"  [attr.aria-label]="'Dashboard' | tr">
         @for (d of plugins.dashboards(); track d.id) {
           <a [routerLink]="d.id === 'home' ? '/home' : '/d/' + d.id" [class.on]="d.id === current()?.id">
-            {{ d.title }}@if (d.created_by === 'oracle') { <hx-icon name="sparkle" [size]="12"  [title]="'Creata da Hestia' | tr" /> }
+            {{ d.title }}@if (d.created_by === 'oracle') { <hx-icon name="sparkle" [size]="12"  [title]="'Creata da {assistant}' | tr" /> }
           </a>
         }
       </nav>
@@ -63,7 +63,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Piccolo'), m: tr('Medio'
         <div class="center"><hx-spinner /></div>
       } @else if (!items().length) {
         <hx-empty icon="grid"  [title]="'Nessun widget' | tr">
-          {{ "I moduli con un'interfaccia mettono qui i loro widget. Puoi aggiungerli tu o chiedere a Hestia di comporre una dashboard." | tr }}
+          {{ "I moduli con un'interfaccia mettono qui i loro widget. Puoi aggiungerli tu o chiedere a {assistant} di comporre una dashboard." | tr }}
           <button hx-btn variant="primary" icon="plus" (click)="startEdit(); adding.set(true)">{{ "Aggiungi widget" | tr }}</button>
         </hx-empty>
       } @else {
@@ -224,11 +224,11 @@ export class DashboardPageComponent {
   readonly subtitle = computed(() => {
     const d = this.current();
     if (!d) return tr('Dashboard non trovata');
-    if (d.created_by === 'oracle') return tr('Creata da Hestia');
+    if (d.created_by === 'oracle') return tr('Creata da {assistant}');
     return this.isHome() ? tr('Le tue azioni rapide e i widget dei moduli') : '';
   });
   readonly menuItems = computed(() => [
-    ...(this.phone() ? [{ id: 'ask', label: tr('Crea con Hestia'), icon: 'sparkle' }] : []),
+    ...(this.phone() ? [{ id: 'ask', label: tr('Crea con {assistant}'), icon: 'sparkle' }] : []),
     { id: 'new', label: tr('Nuova dashboard'), icon: 'plus' },
     ...(this.current() && !this.isHome() ? [{ id: 'rename', label: tr('Rinomina'), icon: 'edit' }, { id: 'delete', label: tr('Elimina'), icon: 'trash', danger: true }] : []),
   ]);

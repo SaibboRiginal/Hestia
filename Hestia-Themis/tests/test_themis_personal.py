@@ -144,3 +144,39 @@ def test_language_is_personal_and_fills_owner_language():
     values = {identity.LANGUAGE: "EN"}
     assert identity.render("Write in {owner_language}.", identity.read(values.get)) == "Write in English."
     assert identity.read({identity.LANGUAGE: "klingon"}.get)["language"] == "it"     # unknown → default
+
+
+# ── The chosen name in every fixed text (docs/work/2026-11-16-nome-ovunque) ──────────────────────────────────
+
+@pytest.mark.unit
+def test_named_fills_only_name_and_gender():
+    from hestia_common import identity
+    she = identity.named("Chiedi a {assistant}, {g:sola|solo} {0} {owner}")
+    assert she == "Chiedi a Hestia, sola {0} {owner}"                  # other braces stay for str.format
+    he = identity.named("Chiedi a {assistant}, {g:sola|solo}", {"assistant": "Leo", "gender": "lui"})
+    assert he == "Chiedi a Leo, solo" and identity.named("Nessun token") == "Nessun token"
+
+
+@pytest.mark.unit
+def test_fixed_texts_say_the_chosen_name_in_every_language(monkeypatch):
+    from hestia_common import i18n
+    values = {"themis.personal.assistant_name": "Leo", "themis.personal.assistant_gender": "lui",
+              "themis.personal.language": "it"}
+    monkeypatch.setattr(i18n, "_reader", values.get)
+    assert i18n.t("Pianificato da {assistant}") == "Pianificato da Leo"
+    assert i18n.t("Richiesto da {0}. Annulla o sposta dall'agenda di {assistant}.", "te") == \
+        "Richiesto da te. Annulla o sposta dall'agenda di Leo."
+    values["themis.personal.language"] = "en"
+    assert i18n.t("Pianificato da {assistant}") == "Planned by Leo"
+    monkeypatch.setattr(i18n, "_reader", None)
+    assert i18n.t("Pianificato da {assistant}").endswith("Hestia")     # no reader yet → the default name
+
+
+@pytest.mark.unit
+def test_setting_labels_with_the_name_are_rendered_in_italian_too(monkeypatch):
+    from hestia_common import i18n, settings_client
+    monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo",
+                                          "themis.personal.language": "it"}.get)
+    spec = {"key": "x.y", "label": "{assistant} in altre AI · spazio massimo", "help": "Come ti risponde {assistant}."}
+    out = settings_client.translated(spec, "it")
+    assert out["label"] == "Leo in altre AI · spazio massimo" and out["help"] == "Come ti risponde Leo."

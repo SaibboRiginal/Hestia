@@ -95,7 +95,9 @@ def translated(definition: dict, lang: str) -> dict:
     """A copy of a declared setting (or preset) with the texts people read in ``lang`` (``hestia_common.i18n``):
     label, help, group, unit and the labels of static options. Keys and values never change."""
     from hestia_common import i18n
-    if not lang or lang == i18n.FALLBACK:
+    if (not lang or lang == i18n.FALLBACK) and not any(
+            "{assistant}" in str(definition.get(n) or "") or "{g:" in str(definition.get(n) or "")
+            for n in ("label", "help", "group")):
         return definition
     out = dict(definition)
     for name in ("label", "help", "group", "unit"):

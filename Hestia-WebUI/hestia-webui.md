@@ -641,3 +641,7 @@ text is the key of `Hestia-Shared/hestia_common/locales/<lang>/messages.json`; m
 unreachable → Italian texts, never an error page. Saving «Lingua» (`CentralSettingsApi.set/reset/undo`) reloads the
 page once. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
 them; no personal data).
+The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-nome-ovunque`): `tr` fills
+`{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
+manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
+she/he reloads the page (`followIdentity`), except during the setup.

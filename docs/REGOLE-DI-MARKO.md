@@ -70,6 +70,9 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
   while, less if you do not answer, little in the first days. And she **observes before proposing**: no
   improvement or setting proposal on a new install, only after days of data and the same thing seen on several
   days (faults are reported at once; on demand always works).
+- (2026-11-16) The name you chose is everywhere it speaks of her as a person (buttons, pages, Telegram, voice);
+  «Hestia» stays only for the app. What she wrote first stays in the conversation where you answer. Something
+  clearly wrong is fixed, not asked about.
 
 ## R7 — Working style (2026-10-22, 2026-10-24)
 - Threads merge their own PR once CI is green, unless they need an answer from the owner; main must always be ready

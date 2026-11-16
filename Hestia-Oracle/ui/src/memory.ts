@@ -77,7 +77,7 @@ export class OracleMemory extends HestiaElement {
       && (!q || `${m.fact} ${m.topic} ${(m.domains || []).join(' ')}`.toLowerCase().includes(q)));
     return html`<div class="page">
       <div class="head"><div class="grow"><h1>${tr("Memoria")}</h1>
-        <div class="sub">${tr("Quello che Hestia ricorda di te e da dove l'ha saputo")}</div></div>
+        <div class="sub">${tr("Quello che {assistant} ricorda di te e da dove l'ha saputo")}</div></div>
         <hxk-button variant="ghost" icon="refresh" title=${tr("Aggiorna")} @click=${() => this.load()}></hxk-button></div>
       <div class="bar"><input type="search" placeholder=${tr("Cerca nei ricordi (es. «palestra»)")} .value=${this.q}
         @input=${(e: any) => (this.q = e.target.value)}></div>
@@ -86,7 +86,7 @@ export class OracleMemory extends HestiaElement {
         ${origins.map(o => html`<button class="chip ${this.from === o ? 'on' : ''}" @click=${() => (this.from = o)}>${o}</button>`)}
       </div>` : nothing}
       <hxk-card>${shown.length ? shown.map(m => this.renderRow(m))
-        : html`<hxk-state kind="empty" text=${this.rows.length ? tr('Nessun ricordo corrisponde') : tr('Hestia non ricorda ancora nulla di te')}></hxk-state>`}</hxk-card>
+        : html`<hxk-state kind="empty" text=${this.rows.length ? tr('Nessun ricordo corrisponde') : tr('{assistant} non ricorda ancora nulla di te')}></hxk-state>`}</hxk-card>
     </div>`;
   }
 }

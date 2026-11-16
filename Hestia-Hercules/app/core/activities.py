@@ -513,7 +513,7 @@ class Activities:
 
     def _schedule(self, plan: dict, slot: dict) -> None:
         w = slot.get("weather") or {}
-        desc = tr("Pianificato da Hestia") + (f" · previsione {w.get('temp_c')}°, {w.get('condition')}" if w else "")
+        desc = tr("Pianificato da {assistant}") + (f" · previsione {w.get('temp_c')}°, {w.get('condition')}" if w else "")
         self._create_event(f"slot:{slot['id']}", label(plan["kind"]), slot["start"], slot["end"],
                            location=plan.get("place") or "", description=desc, reminders=[30])
         if self.agenda:

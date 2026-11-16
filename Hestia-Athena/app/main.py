@@ -161,7 +161,7 @@ runtime = AthenaRuntime()
 UI_DIST = os.getenv("ATHENA_UI_DIST", "/ui/dist")   # outside /code/app: the compose dev mount must not hide it
 API = "/api/athena"
 ui = plugin_client("athena", title="Pensieri", icon="zap", color="amber", kind="core", dist=UI_DIST,
-                   description="Cosa pensa Hestia da sola: osserva, propone, filtra con il punteggio, agisce.",
+                   description="Cosa pensa {assistant} da {g:sola|solo}: osserva, propone, filtra con il punteggio, agisce.",
                    version=SERVICE_VERSION)
 ui.webui(
     entry="athena.js", api_prefix=f"{API}/",

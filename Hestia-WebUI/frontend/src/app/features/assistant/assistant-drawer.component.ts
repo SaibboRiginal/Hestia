@@ -34,11 +34,11 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
   template: `
     @if (assistant.isOpen()) {
       <div class="scrim hx-fade-in" (click)="assistant.close()"></div>
-      <aside class="drawer hx-glass" role="dialog"  [attr.aria-label]="'Crea con Hestia' | tr" [style.width.px]="width()">
+      <aside class="drawer hx-glass" role="dialog"  [attr.aria-label]="'Crea con {assistant}' | tr" [style.width.px]="width()">
         <hx-resize [(width)]="width" edge="left" [min]="340" [def]="440" key="assistant" />
         <header>
           <hx-icon name="sparkle" [size]="17" class="spark" />
-          <h2>{{ "Crea con Hestia" | tr }}</h2>
+          <h2>{{ "Crea con {assistant}" | tr }}</h2>
           <div class="hx-grow"></div>
           <button hx-btn variant="ghost" size="sm" icon="plus" iconOnly  [attr.aria-label]="'Nuova conversazione' | tr"  [title]="'Nuova conversazione' | tr"
                   (click)="reset()" [disabled]="chat.isStreaming()"></button>
@@ -178,7 +178,7 @@ export class AssistantDrawerComponent implements AfterViewChecked {
   readonly suggestions = computed(() => {
     const c = this.ctx();
     return c?.suggestions?.length ? c.suggestions : DEFAULT_SUGGESTIONS[c?.page ?? ''] ?? [
-      tr('Pianifica per Hestia un controllo ogni sera alle 22'), tr('Cosa ha in programma Hestia stanotte?')];
+      tr('Pianifica per te un controllo ogni sera alle 22'), tr('Cosa hai in programma stanotte?')];
   });
   readonly placeholder = computed(() => this.signalR.connectionState() !== 'connected' ? tr('Connessione in corso…')
     : this.ctx()?.page === 'calendar' ? tr('Es. "ogni venerdì alle 18 controlla le email di Scout"') : tr('Cosa vuoi creare o cambiare?'));

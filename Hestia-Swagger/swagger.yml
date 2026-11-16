@@ -9141,13 +9141,15 @@ paths:
       summary: Fixed texts for the WebUI and plugins in a language (Italian source → translation)
       description: >-
         messages = locales/<lang>/messages.json with the English catalog merged under it; Italian returns an empty map
-        (the source texts are Italian). No lang = the personal setting themis.personal.language.
+        (the source texts are Italian). No lang = the personal setting themis.personal.language. assistant and
+        gender (lei | lui) fill {assistant} and {g:lei|lui} in the texts (the assistant's chosen name only, never
+        the owner's).
       servers:
         - url: http://localhost:19016
       parameters:
         - {name: lang, in: query, required: false, schema: {type: string, example: en}}
       responses:
-        "200": {description: "{language, messages}"}
+        "200": {description: "{language, messages, assistant, gender}"}
 
   /api/settings/modules:
     get:
@@ -12840,7 +12842,7 @@ paths:
       servers:
         - url: http://localhost:19015
       responses:
-        "200": {description: "{language, messages}"}
+        "200": {description: "{language, messages, assistant, gender}"}
 
   /api/webui/i18n.js:
     get:

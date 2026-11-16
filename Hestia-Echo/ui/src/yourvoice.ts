@@ -9,7 +9,7 @@ import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, secs, when } from './util';
 
 const MIN_SECONDS = 6;
-const SAMPLE = tr('Leggi ad alta voce: «Ciao Hestia, questa è la mia voce. Oggi ti racconto la giornata, cosa ho fatto ') +
+const SAMPLE = tr('Leggi ad alta voce: «Ciao {assistant}, questa è la mia voce. Oggi ti racconto la giornata, cosa ho fatto ') +
                tr('e cosa devo ricordare per domani, con calma e senza fretta.»');
 
 export class EchoYourVoice extends HestiaElement {

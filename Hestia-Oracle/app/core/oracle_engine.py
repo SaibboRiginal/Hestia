@@ -2774,8 +2774,9 @@ class OracleEngine:
             }
 
         # Build compactable text
+        her = prompt_config.assistant_label()
         compactable_text = "\n".join(
-            f"{'User' if m.get('role') == 'user' else 'Hestia'}: {str(m.get('content', ''))}"
+            f"{'User' if m.get('role') == 'user' else her}: {str(m.get('content', ''))}"
             for m in to_compact
         )
 

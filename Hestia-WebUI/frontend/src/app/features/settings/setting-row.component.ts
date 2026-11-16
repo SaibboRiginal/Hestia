@@ -19,7 +19,7 @@ export function showValue(item: SettingItem, v: unknown): string {
 }
 
 const ACTORS: Record<string, string> = {
-  webui: tr('tu (WebUI)'), telegram: tr('tu (Telegram)'), user: 'tu', oracle: tr('proposta di Hestia'), athena: tr('proposta di Athena'),
+  webui: tr('tu (WebUI)'), telegram: tr('tu (Telegram)'), user: 'tu', oracle: tr('proposta di {assistant}'), athena: tr('proposta di Athena'),
 };
 
 /**

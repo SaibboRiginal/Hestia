@@ -22,7 +22,7 @@ const VIEWS: { value: CalView; label: string; title: string }[] = [
 ];
 const NEW_MENU: MenuItem[] = [
   { id: 'free', label: tr('Evento libero'), icon: 'edit' }, { id: 'module', label: tr('Da un modulo…'), icon: 'zap' },
-  { id: 'ai', label: tr('Crea con Hestia…'), icon: 'sparkle' }, { id: 'd', label: '', divider: true },
+  { id: 'ai', label: tr('Crea con {assistant}…'), icon: 'sparkle' }, { id: 'd', label: '', divider: true },
   { id: 'ics', label: tr('Agenda sul telefono (ICS)…'), icon: 'external' },
 ];
 type NumKey = 'frequentPerDay' | 'frequentDays' | 'rareCount' | 'rareDays' | 'pastDays' | 'scrollHour' | 'workStart' | 'workEnd';
@@ -173,7 +173,7 @@ export class ChronosAgenda extends HestiaElement {
     this.sel = null;
     this.host.assistant({ label: tr("Agenda · {0}{1}", fmt.dayLong(d), at ? ', ' + fmt.time(at) : ''), prompt,
       hints: this.hints({ giorno: dayKey(d), ora: at ? fmt.time(at) : undefined, vista: this.store.view,
-                          agenda: tr('agenda di Hestia (strumenti agenda_assistente_*)') }) });
+                          agenda: tr('agenda di {assistant} (strumenti agenda_assistente_*)') }) });
   }
   private askAbout(ev: CalEvent) {
     const it = ev.item;
@@ -386,7 +386,7 @@ export class ChronosAgenda extends HestiaElement {
 
   private renderIcs() {
     return html`<chronos-dialog .open=${this.icsOpen} heading=${tr("Agenda sul telefono")} @close=${() => (this.icsOpen = false)}>
-      <p class="ics-p">${tr("Feed iCalendar di sola lettura dell'agenda di Hestia (eventi, task e finestre; i job periodici restano qui).")}</p>
+      <p class="ics-p">${tr("Feed iCalendar di sola lettura dell'agenda di {assistant} (eventi, task e finestre; i job periodici restano qui).")}</p>
       <p class="ics-p small">${tr("Per l'abbonamento dal telefono imposta")} <code>WEBUI_ICS_KEY</code> ${tr("(almeno 16 caratteri) nel servizio WebUI e aggiungi come calendario \"da URL\" (Google Calendar, Apple Calendario)")} <code>${location.origin}/api/webui/agenda/feed.ics?key=&lt;la tua chiave&gt;</code>${tr(". Chi ha il link vede l'agenda: non condividerlo. Intanto puoi scaricare il file.")}</p>
       <div slot="footer"><hxk-button variant="primary" icon="external" @click=${() => void this.downloadIcs()}>${tr("Scarica .ics")}</hxk-button></div>
     </chronos-dialog>`;

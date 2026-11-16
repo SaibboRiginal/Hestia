@@ -25,7 +25,7 @@ export class CalStore {
   vp: CalendarPrefs = { ...DEFAULT_PREFS };
   sideW = 256;
   /** Layers: only the AI agenda today; external calendars will be added here. */
-  sources: CalendarSource[] = [{ id: 'hestia', label: tr('Agenda di Hestia'), kind: 'ai', enabled: true }];
+  sources: CalendarSource[] = [{ id: 'hestia', label: tr('Agenda di {assistant}'), kind: 'ai', enabled: true }];
   // data
   occurrences: AgendaOccurrence[] = [];
   /** Weather of the visible range (empty when the weather service is away or the range is past/far). */

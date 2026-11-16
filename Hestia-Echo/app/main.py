@@ -459,11 +459,11 @@ def _agenda_rules() -> list[dict]:
 
 # ── plugin (UI bundle, core) ─────────────────────────────────────────────────
 ui = PluginClient("echo", title="Voce", icon="mic", color="teal", kind="core", dist=UI_DIST,
-                  description="Ascolto e voce di Hestia: fornitori, catene, usi, prove, uso e audio conservati.",
+                  description="Ascolto e voce di {assistant}: fornitori, catene, usi, prove, uso e audio conservati.",
                   version=SERVICE_VERSION)
 ui.webui(entry="echo.js", api_prefix=f"{API}/",
          pages=[page("voce", "Voce", element="echo-voice", icon="mic", order=125,
-                     help="Come Hestia ascolta e parla: fornitori, catene di ascolto e di voce, usi di ogni modulo, "
+                     help="Come {assistant} ascolta e parla: fornitori, catene di ascolto e di voce, usi di ogni modulo, "
                           "modalità esterna, prova del microfono e delle voci, uso e costi, le tue registrazioni.")])
 # ── MCP tools (assistant, Telegram, WebUI): your voice ───────────────────────
 from hestia_common.mcp_helpers import MCPTool, create_mcp_router  # noqa: E402

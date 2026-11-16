@@ -72,7 +72,7 @@ ui = PluginClient("chronos", title="Agenda dell'assistente", icon="repeat", colo
                   description="Cosa fa l'assistente da solo e quando: esecuzioni, errori, regole, routine, eventi speciali.",
                   version=os.getenv("CALENDAR_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="chronos.js", api_prefix="/api/agenda/",
-         pages=[page("agenda", "Agenda di Hestia", element="chronos-agenda", icon="calendar", order=150,
+         pages=[page("agenda", "Agenda di {assistant}", element="chronos-agenda", icon="calendar", order=150,
                      help="Il calendario dell'assistente: eventi, task, job e finestre di ogni modulo, in vista giorno, "
                           "settimana, mese o elenco. Crea, sposta, salta o annulla; i tuoi cambi vincono sui moduli."),
                 page("settimana", "La tua settimana", element="chronos-week", icon="calendar", order=149,
@@ -701,7 +701,7 @@ def _presence_boot() -> None:
         if not registered:
             try:
                 assistant_agenda.register_rules("chronos", [daily_window(
-                    presence_settings.SLEEP_WINDOW, "Hestia: notte (sonno profondo)", 1, 7,
+                    presence_settings.SLEEP_WINDOW, tr("{assistant}: notte (sonno profondo)"), 1, 7,
                     description="Di notte l'assistente va in sonno profondo: lavori pesanti permessi, "
                                 "solo notifiche urgenti. Sposta o salta per cambiare la notte."),
                     weekly_coach.week_job_rule(), *life_api.boot_rules()])

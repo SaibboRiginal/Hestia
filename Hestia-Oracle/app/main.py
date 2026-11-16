@@ -234,10 +234,10 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
                           "Code; scheda Uso (chiamate, token, cache e costi per modulo e conversazione) e scheda "
                           "Modelli (fornitori, catene di modelli, uso scelto da ogni modulo)."),
                 page("documenti", "Documenti", element="oracle-documents", icon="file", order=121,
-                     help="I file che hai condiviso con Hestia (in chat o da qui): cercali come fa la chat, "
+                     help="I file che hai condiviso con {assistant} (in chat o da qui): cercali come fa la chat, "
                           "aggiungine di nuovi, tienili per sempre o eliminali."),
                 page("memoria", "Memoria", element="oracle-memory", icon="bookmark", order=122,
-                     help="Quello che Hestia ricorda di te: imparato in chat o annotato da un'AI esterna "
+                     help="Quello che {assistant} ricorda di te: imparato in chat o annotato da un'AI esterna "
                           "(Claude, ChatGPT) collegata a Hestia. Cerca, filtra per origine, dimentica.")],
          widgets=[widget("uso-oggi", "Uso modelli oggi", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="cervello", icon="chart",
@@ -1045,6 +1045,10 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if turn_origin["level"] == "utente" and not req.queued:
             # A written or spoken message answers the assistant's open question (it is in the history).
             engine.close_open_questions(current_session)
+            if req.save_history is not False:
+                # The message she wrote first goes in this conversation, before his (docs/work/2026-11-16-nome-ovunque).
+                from core.services import opener_history
+                opener_history.absorb(engine._hub, _chat_route, current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         if req.spoken:

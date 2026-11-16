@@ -78,11 +78,23 @@ def current() -> str:
     return language(_reader)
 
 
+def identity_now() -> dict:
+    """Who the assistant is for this process (its name and she/he), from the same reader; defaults without one."""
+    from hestia_common import identity
+    if _reader is None:
+        return identity.default()
+    try:
+        return identity.read(_reader)
+    except Exception:  # noqa: BLE001 - a text is never lost because settings are unreachable
+        return identity.default()
+
+
 def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
     """``text`` (Italian source) in the owner's language; with arguments it is then ``str.format``-ed.
 
-    ``t("Ciao {name}", name=n)`` · ``t("{0} file", count)``. Never raises: a broken translation falls back to the
-    source text."""
+    ``t("Ciao {name}", name=n)`` · ``t("{0} file", count)``. ``{assistant}`` and ``{g:lei|lui}`` take the
+    assistant's chosen name and gender (``identity.named``) before formatting. Never raises: a broken translation
+    falls back to the source text."""
     source = "" if text is None else str(text)
     code = str(lang or current())[:2]
     out = source
@@ -92,6 +104,10 @@ def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
             if isinstance(hit, str) and hit:
                 out = hit
                 break
+    if "{assistant}" in out or "{g:" in out or "{assistant}" in source or "{g:" in source:
+        from hestia_common import identity
+        ident = identity_now()
+        out, source = identity.named(out, ident), identity.named(source, ident)
     if not (args or kwargs):
         return out
     try:
