@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-16
+- Your messages no longer wait behind background work: every request to the local model now waits in one line inside the assistant, your chat (and the work of the tools it calls) goes first, recaps, thoughts and module jobs after. New setting «Modelli locali · risposte preparate insieme» (default 1, one at a time): raise it the day your PC can run more together; cloud models never wait → `docs/work/2026-11-16-bus-llm/` [ext-chat]
+
 ## 2026-11-15
 - The site speaks your language too: every page, menu, button, card, notice and the pages of every module (calendar, workouts, wardrobe, expenses, houses, settings…) follow «Lingua» (Italian and English ready); changing «Lingua» reloads the page in the new language → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 - Every module now speaks your language: notices, errors, confirmations and cards of backup, health, updates, development, voice, links to Google/Garmin, workouts, self care, wardrobe, expenses, mood, deadlines, home and the others follow «Lingua» (Italian and English ready) → `docs/work/2026-11-14-backend-inglese/` [ext-chat]

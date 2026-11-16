@@ -43,6 +43,16 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
 - `ChainAgent` (same interface as `UniversalAgent`) walks the chain at every call, reading settings live (no restart,
   no reconfigure); `AgentFactory.create()` builds one per Oracle use case (`generic`, `reasoning`, `code`,
   `documents`, `embedding` slots). Streams fall back only before the first token.
+- **LLM bus** (dossier `docs/work/2026-11-16-bus-llm`, `core/services/llm_bus.py`): every model call of a **local**
+  step (`llm_providers.is_local`: Ollama, llama-server, a local OpenAI-compatible server) takes one worker of a single
+  queue; setting `oracle.bus.locali_insieme` (default 1, live) = local calls served together (match Ollama
+  `OLLAMA_NUM_PARALLEL` / llama-server `--parallel`). One call waits, never a whole turn, so between two steps of a long
+  job a chat call passes ahead. Priority `chat` (turn started by the owner: `/api/chat` and `/api/chat/document` with
+  origin level `utente`) before `sottofondo` (routines, autonomous turns, `/api/llm/generate`, `/api/llm/chat`, memory
+  threads); same priority = arrival order. A `/api/llm/generate` call made while an owner turn waits for its tools is
+  promoted to `chat` (it is that tool's work). Cloud steps and embeddings never wait; a nested call on the thread that
+  holds a worker never waits (no deadlock with 1 worker); a stream holds its worker until it ends. Log
+  `event=llm_bus_wait priority=… use_case=… waited_ms=…` when a call waited ≥ 0.5 s.
 - One-time migration: old `oracle.models.*` values (before 2026-10-19) become chains `<use case>-personale` when neither
   `oracle.chains` nor `oracle.usecases` was ever stored (`core/services/llm_migration.py`).
 - Claude Code for Forge (`/api/llm/code`) uses the first `claude_cli` step of use case `forge.codice` (none → CLI default).

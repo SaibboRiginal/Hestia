@@ -34,6 +34,7 @@ import requests
 
 from core.services import prompt_config
 from core.services import stream_emitter as _stream_emitter
+from core.services import llm_bus as _llm_bus
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
@@ -797,15 +798,21 @@ def run_agent_loop(
                         tool_name=tc.get("name", ""),
                     ))
 
-            if len(tool_calls_list) == 1:
-                _results_list = [_exec_one(tool_calls_list[0])]
-            else:
-                with concurrent.futures.ThreadPoolExecutor(
-                    max_workers=min(len(tool_calls_list), max_parallel_tools)
-                ) as executor:
-                    # map() keeps call order, so the scratchpad lines match
-                    # the order the model asked for.
-                    _results_list = list(executor.map(_exec_one, tool_calls_list))
+            # While the owner's turn waits for its tools, the model calls those modules make go ahead of
+            # background work in the local-model queue (llm_bus.owner_waiting).
+            with _llm_bus.owner_waiting():
+                if len(tool_calls_list) == 1:
+                    _results_list = [_exec_one(tool_calls_list[0])]
+                else:
+                    import contextvars
+                    _ctx = contextvars.copy_context()   # tools in threads keep this turn's priority
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=min(len(tool_calls_list), max_parallel_tools)
+                    ) as executor:
+                        # map() keeps call order, so the scratchpad lines match
+                        # the order the model asked for.
+                        _results_list = list(executor.map(
+                            lambda tc: _ctx.copy().run(_exec_one, tc), tool_calls_list))
 
             # Emit thinking + scratchpad for each result
             for r in _results_list:

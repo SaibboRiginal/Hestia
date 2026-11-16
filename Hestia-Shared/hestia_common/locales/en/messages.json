@@ -5701,5 +5701,7 @@
  "color-mix(in srgb, {0} 86%, #000)": "color-mix(in srgb, {0} 86%, #000)",
  "color-mix(in srgb, {0} {1}%, transparent)": "color-mix(in srgb, {0} {1}%, transparent)",
  "{0} × {1} · {2}": "{0} × {1} · {2}",
- "× {0} · {1}": "× {0} · {1}"
+ "× {0} · {1}": "× {0} · {1}",
+ "Modelli locali · risposte preparate insieme": "Local models · answers prepared together",
+ "Quante richieste il modello locale lavora nello stesso momento; le altre aspettano in fila e i tuoi messaggi passano sempre davanti ai lavori in sottofondo. 1 = una alla volta. Alzalo solo se il programma del modello ne regge di più insieme (Ollama: OLLAMA_NUM_PARALLEL, llama-server: --parallel).": "How many requests the local model works on at the same time; the others wait in line and your messages always go ahead of background work. 1 = one at a time. Raise it only if the program running the model can handle more at once (Ollama: OLLAMA_NUM_PARALLEL, llama-server: --parallel)."
 }

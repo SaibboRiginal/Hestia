@@ -303,6 +303,13 @@ _PROVIDER = [
     setting(THINKING_FAMILIES, "Ollama · famiglie di modelli che ragionano", "list", _DEFAULT_THINKING_FAMILIES,
             group="Contesto", order=6, advanced=True,
             help="Con ragionamento «Automatico», un modello di queste famiglie ragiona prima di rispondere."),
+    # LLM bus (core/services/llm_bus.py, dossier 2026-11-16-bus-llm): local calls served together.
+    setting("oracle.bus.locali_insieme", "Modelli locali · risposte preparate insieme", "int", 1, group="Contesto",
+            min=1, max=16, order=7,
+            help="Quante richieste il modello locale lavora nello stesso momento; le altre aspettano in fila e i "
+                 "tuoi messaggi passano sempre davanti ai lavori in sottofondo. 1 = una alla volta. Alzalo solo "
+                 "se il programma del modello ne regge di più insieme (Ollama: OLLAMA_NUM_PARALLEL, "
+                 "llama-server: --parallel)."),
 ]
 _MEMORY = [
     setting(NOTICE_WAIT, "Attesa per gli avvisi di memoria", "float", 8.0, group="Memoria", min=0, max=60,

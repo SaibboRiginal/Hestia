@@ -21,6 +21,8 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Iterator
 
+from core.services import llm_bus
+
 logger = logging.getLogger("hestia_oracle.llm_chains")
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -472,7 +474,11 @@ class ChainAgent:
         for index, step, agent in self.steps():
             with self._usage(index, step) as usage:
                 try:
-                    result = getattr(agent, method)(*args, **kwargs)
+                    if method == "embed":    # embeddings never queue (llm_bus docstring)
+                        result = agent.embed(*args, **kwargs)
+                    else:
+                        with llm_bus.slot(step["provider"], self.use_case):
+                            result = getattr(agent, method)(*args, **kwargs)
                 except Exception as exc:
                     self._failed(step, exc, errors, usage)
                     continue
@@ -515,12 +521,14 @@ class ChainAgent:
                 continue
             with self._usage(index, step) as usage:
                 try:
-                    if sees:
-                        result = agent.ask_with_attachment(file_bytes, mime_type, user_message)
-                    else:
-                        logger.info("event=vision_bridge_used use_case=%s model=%s", self.use_case, step["model"])
-                        result = agent.ask(f"[Attached image, described by a model that sees]\n{description}\n\n"
-                                           f"{user_message}")
+                    with llm_bus.slot(step["provider"], self.use_case):
+                        if sees:
+                            result = agent.ask_with_attachment(file_bytes, mime_type, user_message)
+                        else:
+                            logger.info("event=vision_bridge_used use_case=%s model=%s", self.use_case,
+                                        step["model"])
+                            result = agent.ask(f"[Attached image, described by a model that sees]\n{description}"
+                                               f"\n\n{user_message}")
                 except Exception as exc:
                     self._failed(step, exc, errors, usage)
                     continue
@@ -542,6 +550,9 @@ class ChainAgent:
             with self._usage(index, step) as usage:
                 pass   # the context is re-bound around each next(): a generator may resume elsewhere
             stream = agent.ask_stream(user_message)
+            # One local worker for the whole stream of this step (the model is generating until it ends).
+            bus = llm_bus.slot(step["provider"], self.use_case, mark=False)
+            bus.__enter__()
             try:
                 while True:
                     bound = llm_usage.resume(usage)
@@ -561,6 +572,8 @@ class ChainAgent:
                     raise
                 self._failed(step, exc, errors, usage)
                 continue
+            finally:
+                bus.__exit__(None, None, None)
             llm_usage.finish(usage)
             return
         raise self._exhausted(errors)

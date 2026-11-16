@@ -69,6 +69,9 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.m
   **use cases** `<module>.<task>` declared by each module in its Hub registration (`capabilities.llm_usecases` via
   `hestia_common.oracle_usecases`) and mapped to chain/mode/thinking in `oracle.usecases`. One editor: Oracle →
   Cervello → Modelli. A new module that needs an LLM declares its use cases; it never names a provider or model.
+- **LLM bus** (`core/services/llm_bus.py`, dossier `docs/work/2026-11-16-bus-llm`): each call to a local model waits
+  for one of `oracle.bus.locali_insieme` workers (default 1: the owner's PC runs one model at a time); owner turns
+  (`chat`) go before `sottofondo`; cloud steps and embeddings skip it. Never add another LLM queue or lock.
 - Brain mode `oracle.brain.mode` interna (chains) | esterna (Claude Code / Codex run the loop with Hestia's tools
   through `core.services.mcp_bridge`; Archive stays the session truth). Usage rows → Archive `llm-usage`.
 - `/api/llm/generate {prompt, use_case, voice?}` plain prompt (`voice: true` = a text for the owner, written as the assistant; never write «Sei Hestia…» in a module); `/api/llm/chat {use_case, messages, tools}` OpenAI-compatible
