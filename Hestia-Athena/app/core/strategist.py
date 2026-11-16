@@ -39,30 +39,30 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
     # Service health (most important signal)
     if snapshot.unhealthy_services:
         lines.append(
-            tr("Unhealthy services: {0}.", ', '.join(snapshot.unhealthy_services))
+            "Unhealthy services: {0}.".format(', '.join(snapshot.unhealthy_services))
         )
     else:
         svc_names = [s.name for s in snapshot.services[:8]] if snapshot.services else []
         if svc_names:
-            lines.append(tr("Active services ({0}): {1}.", len(svc_names), ', '.join(svc_names)))
+            lines.append("Active services ({0}): {1}.".format(len(svc_names), ', '.join(svc_names)))
         else:
-            lines.append(tr("No service registered on Hub."))
+            lines.append("No service registered on Hub.")
 
     # Life domains are not here: they reach the «Vita» track as module signals (reflection.py).
 
     # Self state
     self_parts = [f"{snapshot.active_commitments} active commitments"]
     if snapshot.unresolved_commitments:
-        self_parts.append(tr("{0} unresolved", snapshot.unresolved_commitments))
+        self_parts.append("{0} unresolved".format(snapshot.unresolved_commitments))
     if snapshot.failure_streak:
         self_parts.append(f"{snapshot.failure_streak} failures in a row")
-    lines.append(tr("Athena state: ") + ", ".join(self_parts))
+    lines.append("Athena state: " + ", ".join(self_parts))
 
     if snapshot.recent_errors:
-        lines.append(tr("Errors in the last hour: ") + "; ".join(snapshot.recent_errors[:4]))
+        lines.append("Errors in the last hour: " + "; ".join(snapshot.recent_errors[:4]))
 
     if snapshot.quality_issues:
-        lines.append(tr("Answer quality: ") + "; ".join(snapshot.quality_issues[:4]))
+        lines.append("Answer quality: " + "; ".join(snapshot.quality_issues[:4]))
 
     if snapshot.settings:
         lines.append("SETTINGS (key=value [choices]): " + "; ".join(snapshot.settings))
@@ -70,7 +70,7 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
         lines.append(snapshot.presence)
 
     if snapshot.raw_errors:
-        lines.append(tr("Observation errors: {0}", ', '.join(snapshot.raw_errors[:3])))
+        lines.append("Observation errors: {0}".format(', '.join(snapshot.raw_errors[:3])))
 
     return "\n".join(lines)
 
