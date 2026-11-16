@@ -280,7 +280,7 @@ class OAuthServer:
 
     def approve(self, request_id: str, consent: Consent) -> dict:
         if consent.scope not in SCOPES:
-            raise AccessError(f"Scope sconosciuto '{consent.scope}': usa read o write")
+            raise AccessError(tr("Unknown scope '{0}': use read or write", consent.scope))
         req = self._request(request_id, pop=True)
         code = CODE_PREFIX + secrets.token_urlsafe(32)
         days = int(consent.expires_days) if consent.expires_days else None

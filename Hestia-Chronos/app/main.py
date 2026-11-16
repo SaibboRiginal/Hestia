@@ -917,7 +917,7 @@ def agenda_display(items: list[dict], days: int, start: datetime) -> dict:
             rows.append(item(it.get("title") or tr("Event"), [when, it.get("location")]))
     title = tr("Today's agenda") if days == 1 else tr("Agenda · next {0} days", days)
     return display(title, items=rows, lines=[] if rows else [tr("Nothing in the agenda.")],
-                   footer=f"e altri {len(items) - 30}" if len(items) > 30 else "",
+                   footer=tr("and {0} more", len(items) - 30) if len(items) > 30 else "",
                    actions=[action(tr("New event"), "create_event", style="primary"),
                             action(tr("Next days") if days == 1 else tr("Today only"), "agenda" if days == 1 else "agenda_today")])
 

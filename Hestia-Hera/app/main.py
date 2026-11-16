@@ -199,7 +199,7 @@ kit.tools([
             handler=lambda days=30: {"items": people.upcoming(days),
                                      "display": display(tr("Upcoming dates"), items=[
                                          item(tr("{0} of {1}", u['label'], u['person']), [u["next"][8:10] + "/" + u["next"][5:7],
-                                                                                f"tra {u['in_days']} g"])
+                                                                                tr("in {0} d", u['in_days'])])
                                          for u in people.upcoming(days)[:20]])},
             title="Upcoming dates", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Regali", "primary": 4}),

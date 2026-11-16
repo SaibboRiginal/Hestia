@@ -72,14 +72,14 @@ def _plan_recheck(service: str, status: str, error: str | None) -> None:
     minutes = min(cap, first * 2 ** (attempt - 1))
     when = datetime.now(timezone.utc).timestamp() + minutes * 60
     _agenda.plan(
-        _repair_key(service), f"🩺 Ricontrollo {service} ({status}) — tentativo {attempt}",
+        _repair_key(service), tr("🩺 Recheck {0} ({1}) — attempt {2}", service, status, attempt),
         datetime.fromtimestamp(when, tz=timezone.utc),
         action={"service": "argus", "path": f"/api/argus/recheck/{service}", "method": "POST",
                 "body": {"trigger": "agenda"}, "timeout_seconds": 30},
         description=tr("Service {0} unhealthy: {1}. Argus checks again and asks Hephaestus for the repair again.",
                        service, str(error or "unknown")[:200]),
         params={"service": service, "attempt": attempt})
-    health_history.note_action(service, "recheck_planned", f"Ricontrollo in agenda tra {minutes} min (tentativo {attempt})")
+    health_history.note_action(service, "recheck_planned", tr("Recheck planned in {0} min (attempt {1})", minutes, attempt))
 
 
 def _close_repair(service: str) -> None:
@@ -106,7 +106,7 @@ def recheck(service: str) -> dict:
             oracle_watch.observe("up")
         elif was:
             send_recovery(service)
-        return {"status": "ok", "service": service, "health": "up", "message": f"{service} risponde ✓"}
+        return {"status": "ok", "service": service, "health": "up", "message": tr("{0} answers ✓", service)}
     health_history.note_unhealthy(service, report_status, error)
     if service == oracle_watch.ORACLE:
         oracle_watch.observe(report_status if target is not None else None, error)

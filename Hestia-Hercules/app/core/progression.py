@@ -100,7 +100,7 @@ def suggest(data: Data, item: dict, exercise: dict, *, formula: str = "epley", i
             sets.append({**p, "weight_kg": w_for(p), "reps": p.get("reps_max") or p.get("reps_min")})
             wi += 1
         out.update(sets=sets, action="rpe",
-                   reason=f"Dal massimale stimato {fmt_kg(last['best_e1rm'])} kg e RPE {fmt_kg(work_plan[0].get('rpe') if work_plan else 8)}.")
+                   reason=tr("From the estimated max {0} kg and RPE {1}.", fmt_kg(last['best_e1rm']), fmt_kg(work_plan[0].get('rpe') if work_plan else 8)))
         return out
 
     reps_min = min((p.get("reps_min") or 0 for p in work_plan), default=0) or None

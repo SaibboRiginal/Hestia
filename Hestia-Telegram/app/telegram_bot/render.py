@@ -139,7 +139,7 @@ def _list_in(payload: dict) -> tuple[str, list] | None:
 def _items(rows: list, limit: int = MAX_ITEMS) -> list[str]:
     lines = [_item_line(r) for r in rows[:limit]]
     if len(rows) > limit:
-        lines.append(ui.note(f"e altri {len(rows) - limit}"))
+        lines.append(ui.note(tr("and {0} more", len(rows) - limit)))
     return lines
 
 

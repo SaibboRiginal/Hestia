@@ -153,7 +153,7 @@ app.include_router(recap.recap_router("psyche", lambda d, n: recap.piece("psyche
 def _line(r: dict) -> list[str]:
     meta = [f"{r['mood']}/5 {r['mood_word']}"]
     if r.get("energy"):
-        meta.append(f"energia {r['energy']}/5")
+        meta.append(tr("energy {0}/5", r['energy']))
     if r.get("labels"):
         meta.append(", ".join(r["labels"][:3]))
     return meta
@@ -186,7 +186,7 @@ def _today() -> dict:
 def _history(days: int = 30) -> dict:
     h = psyche.history(days)
     st = h["stats"]
-    sub = (f"media {st['mood_avg']:.1f}/5 · {st['good_days']} giorni buoni · {st['bad_days']} no"
+    sub = (tr("average {0:.1f}/5 · {1} good days · {2} bad", st['mood_avg'], st['good_days'], st['bad_days'])
            if st["mood_avg"] is not None else "")
     return {"days": h["days"], "stats": st,
             "display": display(tr("Mood, last {0} days", days), subtitle=sub,

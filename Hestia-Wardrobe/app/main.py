@@ -491,7 +491,7 @@ def review_run():
     review = [o["name"] for o in wardrobe.outfits(limit=500)["items"] if not o["complete"]]
     lines = []
     if s["forgotten"]:
-        lines.append(f"• Dimenticati: {len(s['forgotten'])} (es. {', '.join(f['name'] for f in s['forgotten'][:3])})")
+        lines.append(tr("• Forgotten: {0} (e.g. {1})", len(s['forgotten']), ', '.join(f['name'] for f in s['forgotten'][:3])))
     if repair:
         lines.append(tr("• To repair: {0}", ', '.join(repair[:5])))
     if laundry:
@@ -609,7 +609,7 @@ def suggest_display(r: dict) -> dict:
                      if x)
     rows = [item(o["name"] or tr("Idea {0}", n), [", ".join(o["pieces"]), (o.get("why") or [""])[0]])
             for n, o in enumerate(r.get("items") or [], 1)]
-    acts = [action(f"Metto {o['name'] or f'idea {n}'}"[:24], "wardrobe_log_worn",
+    acts = [action(tr("I'll wear {0}", o['name'] or f'idea {n}')[:24], "wardrobe_log_worn",
                    {"outfit": o["name"]} if o.get("saved") else {"pieces": o["piece_ids"]}, style="primary" if n == 1 else "")
             for n, o in enumerate((r.get("items") or [])[:3], 1)]
     return display(tr("What should I wear"), subtitle=sub, items=rows,

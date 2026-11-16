@@ -25,9 +25,9 @@ def _number(defn: dict, value: Any, cast) -> Any:
     if cast is int and isinstance(value, float) and value != int(value):
         raise SettingValueError(tr("whole number expected"))
     if defn.get("min") is not None and number < defn["min"]:
-        raise SettingValueError(f"minimo {defn['min']}")
+        raise SettingValueError(tr("minimum {0}", defn['min']))
     if defn.get("max") is not None and number > defn["max"]:
-        raise SettingValueError(f"massimo {defn['max']}")
+        raise SettingValueError(tr("maximum {0}", defn['max']))
     return number
 
 
@@ -96,4 +96,4 @@ def validate(defn: dict, value: Any) -> Any:
                 except SettingValueError as exc:
                     raise SettingValueError(f"{sub.get('label') or name}: {exc}")
         return out
-    raise SettingValueError(f"tipo sconosciuto {kind}")
+    raise SettingValueError(tr("unknown type {0}", kind))

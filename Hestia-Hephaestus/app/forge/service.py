@@ -243,7 +243,7 @@ class Forge:
         """Pause: keep the task as a silent proposal (no notification), the user starts it by hand."""
         with self._lock:
             task["held_by_pause"] = True
-        self._set_state(task, "proposed", f"sviluppo in pausa: {note}")
+        self._set_state(task, "proposed", tr("development paused: {0}", note))
         logger.info("event=forge_task_held_by_pause task_id=%s source=%s", task["id"], task.get("source"))
 
     def set_default_engine(self, engine: str) -> dict[str, Any]:
@@ -434,7 +434,7 @@ class Forge:
                 logger.exception("[🔄] event=forge_task_crashed task_id=%s", task_id)
                 task["error"] = str(exc)[:1000]
                 self._set_state(task, "failed", f"crash: {exc}")
-                self._notify(task, f"❌ Forge task <code>{task_id}</code> fallito: {exc}")
+                self._notify(task, tr("❌ Forge task <code>{0}</code> failed: {1}", task_id, exc))
 
     # ── public API ──────────────────────────────────────────────────────────
     def status(self) -> dict[str, Any]:
@@ -671,7 +671,7 @@ class Forge:
         self._set_state(task, "scheduled", f"{note}; {st['reason']}")
         nights = self.agenda.window(KEY_NIGHTS) or {}
         self.agenda.show_task(task["id"], task["request"], nights.get("next_open") or st["next_reset"],
-                              f"Task Forge programmato (Claude Pro). id={task['id']}",
+                              f"Forge task scheduled (Claude Pro). id={task['id']}",
                               parent=task.get("agenda_parent"))
         self._notify(task, (
             tr("🌙 <b>Scheduled development</b> <code>{0}</code> (Claude Pro)\n{1}\nIt starts in the night window before the reset ({2}). To start it now: \"approva sviluppo {3} subito\".", task['id'][:6], _esc(task['request'][:300]), _esc(st['next_reset'][:16]), task['id'][:6])))
@@ -690,7 +690,7 @@ class Forge:
                                                            self.claude_budget.schedule.night_max_tasks))
                 if st["used_tonight"] < cap:
                     return True, tr("agenda: night window")
-                return False, f"agenda: tetto notturno raggiunto ({st['used_tonight']}/{cap})"
+                return False, tr("agenda: night cap reached ({0}/{1})", st['used_tonight'], cap)
             skipped = nights.get("skipped_now") or final.get("skipped_now")
             return False, tr("agenda: window skipped by the user") if skipped else tr("agenda: window closed")
         return self.claude_budget.can_start()
@@ -832,13 +832,12 @@ class Forge:
             with self._lock:
                 task["team"] = [{"title": p["title"], "difficulty": p["difficulty"], "state": "queued"}
                                 for p in pieces]
-            self._notify(task, f"🧩 Forge <code>{task['id'][:6]}</code>: lavoro diviso in {len(pieces)} pezzi.")
+            self._notify(task, tr("🧩 Forge <code>{0}</code>: work split into {1} pieces.", task['id'][:6], len(pieces)))
             summaries, all_ok = [], True
             for n, piece in enumerate(pieces):
                 piece_engine = self._engine_for_piece(piece, engine)
                 prompt = build_task_prompt(
-                    f"[Pezzo {n + 1}/{len(pieces)}: {piece['title']}] {piece['request']}\n\nLavoro completo: "
-                    f"{task['request']}", piece["services"] or task["services"], context, workdoc, src)
+                    f"[Piece {n + 1}/{len(pieces)}: {piece['title']}] {piece['request']}\n\nWhole job: {task['request']}", piece["services"] or task["services"], context, workdoc, src)
                 result = self._engine_pass(task, piece_engine, worktree, prompt, test_runner)
                 if result is None:
                     return
@@ -1053,7 +1052,7 @@ class Forge:
             ext["pending"] = False
             task["summary"] = tr("{0}\n\n(branch {1} of {2})", summary, branch, by)
         self._review(task, worktree, base_sha, head, task["summary"], True,
-                     heading=f"Forge: correzione esterna pronta ({by})")
+                     heading=tr("Forge: external fix ready ({0})", by))
 
     def _check_mergeable(self, task: dict) -> None:
         repo = self.cfg.repo_path
@@ -1081,7 +1080,7 @@ class Forge:
         except git_ops.GitError as exc:
             task["error"] = str(exc)[:1000]
             self._set_state(task, "awaiting_review", f"merge failed: {exc}")
-            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: merge fallito (conflitto?) — {_esc(str(exc)[:300])}")
+            self._notify(task, tr("⚠️ Forge <code>{0}</code>: merge failed (conflict?) — {1}", task['id'][:6], _esc(str(exc)[:300])))
             return
         with self._lock:
             task["merge_sha"] = merge_sha
@@ -1108,8 +1107,7 @@ class Forge:
         if ok and not unhealthy:
             self._set_state(task, "deployed", f"{dplan.summary()}")
             self._notify(task, (
-                f"🚀 <b>Forge: in produzione</b> <code>{task['id'][:6]}</code> → {_esc(dplan.summary())}.\n"
-                f"Rollback: \"rollback sviluppo {task['id'][:6]}\"." + rebuild_note))
+                tr("🚀 <b>Forge: in production</b> <code>{0}</code> → {1}.\nRollback: \"rollback sviluppo {2}\".", task['id'][:6], _esc(dplan.summary()), task['id'][:6]) + rebuild_note))
             if dplan.restart_self:
                 self._restart_self()
             return

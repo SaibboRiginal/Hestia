@@ -164,8 +164,7 @@ class Evidence:
             elif known < need_known:
                 out.update(ready=False, note=tr("Still observing: {0} {1} of {2} before proposing improvements.", max(0, known), _giorni(known), need_known))
             elif len(days) < need_days:
-                out.update(ready=False, note=f"Raccolgo prove: visto in {len(days)} {_giorni(len(days))} su "
-                                             f"{need_days} richiesti (dal {_short(days[0])}).")
+                out.update(ready=False, note=tr("Collecting evidence: seen on {0} {1} out of {2} needed (since {3}).", len(days), _giorni(len(days)), need_days, _short(days[0])))
             else:
                 out.update(ready=True, note=tr("Seen on {0} different days since {1}.", len(days), _short(days[0])))
             if out["ready"]:

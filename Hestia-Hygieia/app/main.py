@@ -202,13 +202,13 @@ def product_level(id: str, body: dict = Body(...)):
 @app.post(f"{API}/products/{{id}}/repurchase")
 def product_repurchase(id: str, body: dict = Body(default={})):
     out = hygieia.repurchase(id, body)
-    return {**out, "label": f"{out['name']} ricomprato"}
+    return {**out, "label": tr("{0} bought again", out['name'])}
 
 
 @app.post(f"{API}/products/{{id}}/use")
 def product_use(id: str, body: dict = Body(default={})):
     out = hygieia.log_product(id, body.get("date"), body.get("note") or "")
-    return {**out, "label": f"{out['name']} usato"}
+    return {**out, "label": tr("{0} used", out['name'])}
 
 
 @app.delete(f"{API}/products/{{id}}/use")
@@ -257,7 +257,7 @@ def routine_done(id: str, body: dict = Body(default={})):
     out = hygieia.log_routine(id, body.get("date"), body.get("status") or "done", body.get("steps"), body.get("note") or "",
                               source=body.get("source") or "webui")
     signals.changed()
-    return {**out, "label": f"{out['name']} fatta"}
+    return {**out, "label": tr("{0} done", out['name'])}
 
 
 @app.delete(f"{API}/routines/{{id}}/done")
@@ -271,7 +271,7 @@ def routine_undone(id: str, date: str = ""):
 def routine_skip(id: str, body: dict = Body(default={})):
     out = hygieia.log_routine(id, body.get("date"), "skipped", None, body.get("note") or "", source=body.get("source") or "webui")
     signals.changed()
-    return {**out, "label": f"{out['name']} saltata"}
+    return {**out, "label": tr("{0} skipped", out['name'])}
 
 
 @app.post(f"{API}/routines/{{id}}/snooze")
@@ -300,7 +300,7 @@ def today_display(plan: dict) -> dict:
         rows.append(item(p.get("name") or tr("Routine"), [label, p.get("reason") or p.get("hint"),
                                                       ", ".join(steps[:4]) + ("…" if len(steps) > 4 else "")], tone=tone))
     due = next((p for p in plan.get("routines") or [] if p.get("state") == "due"), None)
-    acts = [action(f"Fatta: {due['name']}"[:24], "selfcare_log", {"routine": due["name"], "status": "done"}, style="primary")] if due else []
+    acts = [action(tr("Done: {0}", due['name'])[:24], "selfcare_log", {"routine": due["name"], "status": "done"}, style="primary")] if due else []
     return display(tr("Self care today"), items=rows, lines=[] if rows else [tr("Nothing scheduled today.")],
                    actions=acts + [action(tr("f::Log"), "selfcare_log"), action(tr("Shopping list"), "selfcare_shopping")])
 
@@ -461,7 +461,7 @@ def quick_routine(id: str, body: dict = Body(default={})):
     out = hygieia.log_routine(id, body.get("date"), "done", None, body.get("note") or "",
                               source=body.get("source") or "quick")
     signals.changed()
-    return {**out, "label": f"{out['name']} fatta ✓ {out['hint']}".strip()}
+    return {**out, "label": tr("{0} done ✓ {1}", out['name'], out['hint']).strip()}
 
 
 @app.delete(f"{API}/quick/routine/{{id}}")
@@ -479,7 +479,7 @@ def quick_products():
 @app.post(f"{API}/quick/product/{{id}}")
 def quick_product(id: str, body: dict = Body(default={})):
     out = hygieia.log_product(id, body.get("date"), body.get("note") or "", source="quick")
-    return {**out, "label": f"{out['name']} usato"}
+    return {**out, "label": tr("{0} used", out['name'])}
 
 
 @app.delete(f"{API}/quick/product/{{id}}")

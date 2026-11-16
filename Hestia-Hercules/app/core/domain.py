@@ -168,7 +168,7 @@ def logged_set(d: dict) -> dict:
         raise Invalid(tr("invalid set type: {0}", t))
     for k in ("session_id", "session_exercise_id", "exercise_id"):
         if not d.get(k):
-            raise Invalid(f"{k} mancante")
+            raise Invalid(tr("{0} missing", k))
     return {**d, "session_id": str(d["session_id"]), "session_exercise_id": str(d["session_exercise_id"]),
             "exercise_id": str(d["exercise_id"]), "type": t,
             "position": _num(d.get("position"), lo=0, hi=200, integer=True) or 0,
@@ -254,7 +254,7 @@ def _activities():
 def normalize(kind: str, data: dict) -> dict:
     fn = NORMALIZERS.get(kind)
     if fn is None:
-        raise Invalid(f"tipo sconosciuto: {kind}")
+        raise Invalid(tr("unknown type: {0}", kind))
     return fn(dict(data or {}))
 
 

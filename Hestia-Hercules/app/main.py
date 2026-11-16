@@ -888,8 +888,8 @@ def _next_display(n: dict) -> dict:
     def _target(pairs: list) -> str:
         kg = [w for w, _ in pairs if w]
         reps = [r for _, r in pairs if r]
-        return " · ".join(x for x in (f"{_kg(max(kg))}" if kg else "", f"{reps[0]} rip" if reps else "") if x)
-    items = [item(p["exercise"] or tr("Exercise"), [f"{p['sets']} serie", _target(p.get("target") or [])])
+        return " · ".join(x for x in (f"{_kg(max(kg))}" if kg else "", tr("{0} reps", reps[0]) if reps else "") if x)
+    items = [item(p["exercise"] or tr("Exercise"), [tr("{0} sets", p['sets']), _target(p.get("target") or [])])
              for p in n.get("plan") or []]
     minutes = n.get("estimated_minutes")
     subtitle = " · ".join(x for x in (n.get("reason") or "", f"{minutes} min" if minutes else "") if x)

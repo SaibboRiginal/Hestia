@@ -149,7 +149,7 @@ class Hygieia:
 
     def add_option(self, name: str, body: dict) -> dict:
         if name not in catalog.LISTS:
-            raise Invalid(f"lista sconosciuta: {name}")
+            raise Invalid(tr("unknown list: {0}", name))
         label = str(body.get("label") or body.get("value") or "").strip()
         if name == "conflicts":
             if not body.get("a") or not body.get("b"):
@@ -249,7 +249,7 @@ class Hygieia:
             ev.append({"type": "level_changed", "date": today, "to": new["level"],
                        "text": catalog.LEVELS.get(new["level"], new["level"]).lower()})
         if old.get("rating") != new.get("rating") and new.get("rating"):
-            ev.append({"type": "rated", "date": today, "to": new["rating"], "text": f"voto {int(new['rating'])}/5"})
+            ev.append({"type": "rated", "date": today, "to": new["rating"], "text": tr("rating {0}/5", int(new['rating']))})
         if old.get("verdict") != new.get("verdict") and new.get("verdict"):
             ev.append({"type": "rated", "date": today, "to": new["verdict"],
                        "text": catalog.VERDICTS.get(new["verdict"], new["verdict"]).lower()})
@@ -679,7 +679,7 @@ class Hygieia:
         hours, minutes = divmod(int(sleep["minutes"]), 60)
         note = f"{hours} h {minutes:02d} min"
         if sleep.get("deep_minutes"):
-            note += f", profondo {sleep['deep_minutes']} min"
+            note += tr(", deep {0} min", sleep['deep_minutes'])
         scores = {"qualita": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
         row_id = f"device-sleep-{d}"
         old = self.store.get("journal", row_id, deleted=True)
@@ -848,13 +848,13 @@ class Hygieia:
                 expired = v["expires_in"] < 0
                 out.append({"key": f"expiry:{v['id']}", "type": "expiry", "product_id": v["id"], "name": v["name"],
                             "level": "warning" if expired else "info", "days": v["expires_in"],
-                            "text": tr("{0} has expired", v['name']) if expired else f"{v['name']} scade tra {v['expires_in']} giorni"})
+                            "text": tr("{0} has expired", v['name']) if expired else tr("{0} expires in {1} days", v['name'], v['expires_in'])})
             if v.get("status") == "in_use" and v.get("product_key") not in has_spare:
                 fe = v.get("finish_estimate") or {}
                 if v.get("level") == "almost_empty" or (fe.get("days_left") is not None and fe["days_left"] <= restock_days):
                     out.append({"key": f"restock:{v['id']}", "type": "restock", "product_id": v["id"], "name": v["name"],
                                 "level": "info", "days": fe.get("days_left"),
-                                "text": f"{v['name']} sta finendo" + (f" (≈{fe['days_left']} giorni)" if fe.get("days_left") is not None else "")})
+                                "text": tr("{0} is running out", v['name']) + (tr(" (≈{0} days)", fe['days_left']) if fe.get("days_left") is not None else "")})
             if v.get("status") in ("finished", "discarded") and v.get("routines") and v.get("product_key") not in current_keys:
                 out.append({"key": f"missing:{v['id']}", "type": "missing", "product_id": v["id"], "name": v["name"],
                             "level": "info", "text": tr("{0} is finished but still in {1}", v['name'], v['routines'][0]['name'])})
@@ -935,7 +935,7 @@ class Hygieia:
         today = self.today().isoformat()
         return [{"id": p["id"], "label": p["name"], "icon": "drop", "favorite": True,
                  "state": "done" if today in uses.get(p["id"], []) else "todo",
-                 "hint": f"{len(uses.get(p['id'], []))} usi"}
+                 "hint": tr("{0} uses", len(uses.get(p['id'], [])))}
                 for p in self.items("product") if p.get("favorite") and p.get("status") in ("in_use", "stock")]
 
     # ── reminders (SPEC §7) ─────────────────────────────────────────────────
@@ -1025,7 +1025,7 @@ class Hygieia:
         if today_bits:
             parts.append(tr("today: ") + "; ".join(today_bits))
         if in_use:
-            parts.append(f"in uso {len(in_use)} prodotti")
+            parts.append(tr("in use {0} products", len(in_use)))
         supplements = [p["name"] for p in in_use if p.get("category") == "integratore"]
         if supplements:
             parts.append(tr("supplements: ") + ", ".join(supplements[:5]))

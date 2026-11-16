@@ -263,8 +263,7 @@ class Psyche:
             out["sentences"].append(tr("{0} more day{1} with the mood noted are needed to see a trend.", missing, 'o' if missing == 1 else 'i'))
             return out
         s = out["sentences"]
-        s.append(f"Ultimi 30 giorni: umore medio {stats['mood_avg']:.1f} su 5 ({mood_word(stats['mood_avg'])}), "
-                 f"{stats['good_days']} giorni buoni e {stats['bad_days']} giorni no.")
+        s.append(tr("Last 30 days: average mood {0:.1f} out of 5 ({1}), {2} good days and {3} bad days.", stats['mood_avg'], mood_word(stats['mood_avg']), stats['good_days'], stats['bad_days']))
         if prev["mood_avg"] is not None and prev["days"] >= min_days:
             delta = stats["mood_avg"] - prev["mood_avg"]
             if abs(delta) >= 0.3:
@@ -290,7 +289,7 @@ class Psyche:
         if bad_causes:
             c, n = bad_causes.most_common(1)[0]
             if n >= 2:
-                s.append(f"Nei giorni no torna spesso «{c}» ({n} volte).")
+                s.append(tr("On bad days «{0}» comes up often ({1} times).", c, n))
         good_causes = Counter(c for d in recent if d["mood"] >= 4 for c in d["causes"])
         if good_causes:
             c, n = good_causes.most_common(1)[0]

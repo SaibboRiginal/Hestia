@@ -127,7 +127,7 @@ def home(chat_id) -> None:
     lines = []
     nxt = _next_event(chat_id)
     if nxt:
-        lines.append(f"• Prossimo: {nxt}")
+        lines.append(tr("• Next: {0}", nxt))
     counts = _counts()
     waiting = int(counts.get("pending") or 0) or int(counts.get("unread") or 0)
     if waiting:

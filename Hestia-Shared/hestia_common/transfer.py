@@ -271,7 +271,7 @@ class Transfer:
     def section(self, sid: str) -> Section:
         s = self.sections.get(sid)
         if not s:
-            raise TransferError(f"sezione {sid} sconosciuta", 404)
+            raise TransferError(tr("unknown section {0}", sid), 404)
         return s
 
     def capabilities(self) -> dict:
@@ -387,7 +387,7 @@ class Transfer:
         """``payload`` = the module block of the file (``export`` output). ``modes`` per section override
         ``mode``; ``selection`` narrows to sections/keys like export."""
         if mode not in MODES:
-            raise TransferError(f"modo {mode}: ammessi {', '.join(MODES)}")
+            raise TransferError(tr("mode {0}: allowed {1}", mode, ', '.join(MODES)))
         sections_in = (payload or {}).get("sections") or {}
         if int((payload or {}).get("format") or FORMAT) > FORMAT:
             raise TransferError(tr("file from a newer version of Hestia: update Hestia"), 422)
@@ -399,7 +399,7 @@ class Transfer:
                 continue
             smode = (modes or {}).get(sid) or mode
             if smode not in MODES:
-                raise TransferError(f"modo {smode}: ammessi {', '.join(MODES)}")
+                raise TransferError(tr("mode {0}: allowed {1}", smode, ', '.join(MODES)))
             report["sections"][sid] = self._import_section(sid, block or {}, smode, dry_run, sel or {}, files_map)
         totals = {k: sum(int(s.get(k) or 0) for s in report["sections"].values())
                   for k in ("added", "updated", "unchanged", "skipped", "deleted", "problems")}

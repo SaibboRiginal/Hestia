@@ -81,7 +81,7 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
         return 0, ["pioggia"]
     if rain >= 30:
         score -= 35
-        why.append(f"pioggia possibile {rain}%")
+        why.append(tr("rain possible {0}%", rain))
     if sunrise and sunset and not (sunrise[:5] <= f"{hh:02d}:30" and f"{hh:02d}:00" < sunset[:5]):
         return 0, ["buio"]
     if not h.get("is_day", True) and not (sunrise and sunset):
@@ -96,7 +96,7 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
             why.append(f"fresco ({t}°)")
         elif t > hi:
             score -= int((t - hi) * 4)
-            why.append(f"caldo ({t}°)")
+            why.append(tr("hot ({0}°)", t))
         else:
             why.append(f"{t}°")
     wind = h.get("wind_kmh") or 0
@@ -513,7 +513,7 @@ class Activities:
 
     def _schedule(self, plan: dict, slot: dict) -> None:
         w = slot.get("weather") or {}
-        desc = tr("Planned by Hestia") + (f" · previsione {w.get('temp_c')}°, {w.get('condition')}" if w else "")
+        desc = tr("Planned by Hestia") + (tr(" · forecast {0}°, {1}", w.get('temp_c'), w.get('condition')) if w else "")
         self._create_event(f"slot:{slot['id']}", label(plan["kind"]), slot["start"], slot["end"],
                            location=plan.get("place") or "", description=desc, reminders=[30])
         if self.agenda:
@@ -521,7 +521,7 @@ class Activities:
             self.agenda.plan(f"hercules.activity.{slot['id']}", tr("{0}: did you do it?", label(plan['kind'])), ask_at,
                              action={"service": "hercules", "method": "POST",
                                      "path": f"{self.api}/activities/{plan['id']}/slots/{slot['id']}/ask"},
-                             description=f"{label(plan['kind'])} {slot_text(slot)}: dopo ti chiedo se l'hai fatto.",
+                             description=tr("{0} {1}: afterwards I'll ask whether you did it.", label(plan['kind']), slot_text(slot)),
                              params={"place": plan.get("place") or "", "start": slot["start"]})
 
     def _unschedule(self, plan: dict, slot: dict) -> None:

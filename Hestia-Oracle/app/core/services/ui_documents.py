@@ -112,7 +112,7 @@ def ingest(engine, name: str, mime: str, data_b64: str, max_bytes: int) -> dict:
     if not file_bytes:
         raise DocumentError(400, tr("empty file"))
     if len(file_bytes) > max_bytes:
-        raise DocumentError(413, f"File troppo grande: massimo {max_bytes // (1024 * 1024)} MB")
+        raise DocumentError(413, tr("File too large: maximum {0} MB", max_bytes // (1024 * 1024)))
     document_id = uuid.uuid4().hex
     model = getattr(getattr(engine, "_agents", None), "generic_model_name", "") or ""
     threading.Thread(target=engine._archiver.archive,

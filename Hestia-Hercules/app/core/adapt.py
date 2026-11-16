@@ -205,7 +205,7 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 work = [s for s in ex.get("planned") or [] if s.get("type") != "warmup"]
                 if work:
                     ex["planned"].append(dict(work[-1]))
-                    trace.append(f"Giornata buona: +1 serie su {meta(ex).get('name')}.")
+                    trace.append(tr("Good day: +1 set on {0}.", meta(ex).get('name')))
                 break
 
     # 5. time limit → drop least important first, then trim sets

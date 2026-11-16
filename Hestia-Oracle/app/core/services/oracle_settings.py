@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.settings_client import SettingsClient, preset, setting
@@ -255,7 +256,7 @@ _AGENT = [
             help="At each answer the assistant reads today's commitments from the calendar (a few more tokens)."),
 ]
 _TIMEOUTS = [
-    setting(f"oracle.timeouts.{name}", f"Tempo massimo · {label.lower()}", "int", default, group="Timings",
+    setting(f"oracle.timeouts.{name}", tr("Maximum time · {0}", label.lower()), "int", default, group="Timings",
             min=1, max=600, unit="s", order=i, advanced=True,
             help="Beyond this time the step is skipped or the backup plan is used.")
     for i, (name, (label, default)) in enumerate(TIMEOUTS.items())
@@ -344,15 +345,15 @@ _DOCUMENTS = [
 _AB = []
 for _i, (_surface, (_prefix, _label)) in enumerate(AB_SURFACES.items()):
     _AB += [
-        setting(f"{_prefix}.enabled", f"Esperimento prompt · {_label}", "bool", False, group="Experiments",
+        setting(f"{_prefix}.enabled", tr("Prompt experiment · {0}", _label), "bool", False, group="Experiments",
                 order=_i * 10, advanced=True,
                 help="Splits requests between prompt variants to compare them."),
-        setting(f"{_prefix}.variants", f"Esperimento prompt · {_label} · varianti", "list",
+        setting(f"{_prefix}.variants", tr("Prompt experiment · {0} · variants", _label), "list",
                 ["control", "experimental"], group="Experiments", order=_i * 10 + 1, advanced=True),
-        setting(f"{_prefix}.default", f"Esperimento prompt · {_label} · variante normale", "string", "control",
+        setting(f"{_prefix}.default", tr("Prompt experiment · {0} · normal variant", _label), "string", "control",
                 group="Experiments", order=_i * 10 + 2, advanced=True,
                 help="Used when the experiment is off."),
-        setting(f"{_prefix}.force", f"Esperimento prompt · {_label} · forza variante", "string", "",
+        setting(f"{_prefix}.force", tr("Prompt experiment · {0} · force variant", _label), "string", "",
                 group="Experiments", order=_i * 10 + 3, advanced=True,
                 help="If set, always used (even with the experiment off)."),
     ]

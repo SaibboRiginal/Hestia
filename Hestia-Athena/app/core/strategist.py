@@ -51,11 +51,11 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
     # Life domains are not here: they reach the «Vita» track as module signals (reflection.py).
 
     # Self state
-    self_parts = [f"{snapshot.active_commitments} impegni attivi"]
+    self_parts = [f"{snapshot.active_commitments} active commitments"]
     if snapshot.unresolved_commitments:
         self_parts.append(tr("{0} unresolved", snapshot.unresolved_commitments))
     if snapshot.failure_streak:
-        self_parts.append(f"{snapshot.failure_streak} fallimenti consecutivi")
+        self_parts.append(f"{snapshot.failure_streak} failures in a row")
     lines.append(tr("Athena state: ") + ", ".join(self_parts))
 
     if snapshot.recent_errors:

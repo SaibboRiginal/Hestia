@@ -179,7 +179,7 @@ class Learning:
             lines = "\n".join(f"• {str(t)[:160]}" for t in f["facts"][:4])
             publish("service.action_required", f"memory.proposal.{pid}", {
                 "_title": tr("Memory · {0}", label), "_source": tr("Memory"), "_level": "info",
-                "_message": f"{f['why']}\n{lines}" + (f"\nDiventa: <i>{f['merged'][:200]}</i>" if f.get("merged") else ""),
+                "_message": f"{f['why']}\n{lines}" + (tr("\nBecomes: <i>{0}</i>", f['merged'][:200]) if f.get("merged") else ""),
                 "dedupe_key": f"memory.proposal:{','.join(map(str, sorted(f['retire'])))}",
                 "_actions": [{"id": "apply", "label": tr("Apply"), "style": "primary", "service": "athena",
                               "method": "POST", "path": f"/api/athena/memory/proposals/{pid}/apply"},

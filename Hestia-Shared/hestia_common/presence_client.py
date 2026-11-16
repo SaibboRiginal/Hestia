@@ -56,7 +56,7 @@ def ago(minutes: float | None) -> str:
         return f"{int(minutes)} min fa"
     if minutes < 48 * 60:
         return f"{int(minutes // 60)} h fa"
-    return f"{int(minutes // 1440)} giorni fa"
+    return tr("{0} days ago", int(minutes // 1440))
 
 
 class PresenceClient:
@@ -143,7 +143,7 @@ class PresenceClient:
         parts = [f"Assistant state: {state.get('label') or state.get('base')}"]
         if state.get("last_interaction_at"):
             client = state.get("last_interaction_client") or ""
-            parts.append(f"ultima interazione {ago(state.get('idle_minutes'))}" + (f" ({client})" if client else ""))
+            parts.append(tr("last interaction {0}", ago(state.get('idle_minutes'))) + (f" ({client})" if client else ""))
         else:
             parts.append(tr("no interaction recorded"))
         notice = (state.get("effects") or {}).get("chat.notice")

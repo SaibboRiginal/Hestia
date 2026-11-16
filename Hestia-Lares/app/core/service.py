@@ -134,7 +134,7 @@ class Home:
         elif domain == "climate" and value not in (None, ""):
             service, data["temperature"] = "set_temperature", float(value)
         elif domain in ("switch", "fan", "media_player") and command in ("open", "close", "lock", "unlock"):
-            raise Invalid(f"{e['name']}: usa on, off o toggle")
+            raise Invalid(tr("{0}: use on, off or toggle", e['name']))
         try:
             self.ha.call(domain, service, data)
         except HAError as exc:

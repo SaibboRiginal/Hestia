@@ -93,7 +93,7 @@ class HerculesCoach:
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "time_of_day": tod,
                                 "min_gap_days": 2 if remaining <= 3 else 1,
                                 "tags": ["workout", effort], "priority": "should",
-                                "reason": f"{prog_.get('hint')}" + (f" · prossima: {nxt['name']}" if nxt else "")
+                                "reason": f"{prog_.get('hint')}" + (tr(" · next: {0}", nxt['name']) if nxt else "")
                                           + reason_extra, "link": "oggi"})
         state = " · ".join((summary.get("lines") or [])[:2])
         return {"state": state, "needs": out}
@@ -123,7 +123,7 @@ class HerculesCoach:
         after = int(res.get("minutes_after") or 0)
         if not after or after > minutes:
             return {"ok": False}
-        return {"ok": True, "minutes": after, "title": f"{t['name']} (corto)",
+        return {"ok": True, "minutes": after, "title": tr("{0} (short)", t['name']),
                 "note": tr("short version {0}' instead of {1}'", after, res.get('minutes_before'))}
 
     def on_placed(self, week: str, items: list[dict]) -> None:
@@ -155,7 +155,7 @@ class HerculesCoach:
                      and (g.get("per") or "week") == "week"), None)
         notes = []
         if goal:
-            notes.append(f"obiettivo {goal.get('times')} a settimana: {len(done)} fatti")
+            notes.append(f"goal {goal.get('times')} per week: {len(done)} done")
         flags = set(h.summary().get("flags") or [])
         if "deload_suggested" in flags:
             notes.append(tr("low energy often: deload advised"))

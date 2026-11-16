@@ -160,7 +160,7 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
         for x in cur["routines"]:
             before = [r for p in prev for r in p["routines"] if r["routine_id"] == x["routine_id"]]
             b = tr(", before {0}/{1} in 4 weeks", sum(r['done'] for r in before), round(sum(r['need'] for r in before))) if before else ""
-            bits.append(f"{x['name']} {x['done']}/{round(x['need'], 1):g}" + (f" saltata {x['skipped']}" if x["skipped"] else "") + b)
+            bits.append(f"{x['name']} {x['done']}/{round(x['need'], 1):g}" + (tr(" skipped {0}", x['skipped']) if x["skipped"] else "") + b)
         missed = [x for x in cur["routines"] if x["done"] < x["need"]]
         head = tr("Self care · week {0}%", cur['percent'])
         if missed:

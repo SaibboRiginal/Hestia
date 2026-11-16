@@ -214,7 +214,7 @@ def piece(data: dict, categories: dict[str, dict], color_vocab: dict[str, dict] 
         by_label = {slug(c["label"]): c for c in categories.values()}
         cat = by_label.get(cat_key)
     if not cat:
-        raise Invalid(f"categoria '{data.get('category')}' sconosciuta")
+        raise Invalid(tr("unknown category '{0}'", data.get('category')))
     sub_key = slug(data.get("subcategory")) if data.get("subcategory") else ""
     if cat.get("parent"):                     # a subcategory was given as category
         sub_key, cat = cat["key"], categories.get(cat["parent"], cat)
@@ -359,7 +359,7 @@ def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) ->
 # ── vocabularies ────────────────────────────────────────────────────────────
 def vocabulary(name: str, values: list[dict]) -> list[dict]:
     if name not in DEFAULT_VOCABULARIES:
-        raise Invalid(f"vocabolario '{name}' sconosciuto")
+        raise Invalid(tr("unknown vocabulary '{0}'", name))
     out, seen = [], set()
     for i, v in enumerate(values or []):
         if not isinstance(v, dict):

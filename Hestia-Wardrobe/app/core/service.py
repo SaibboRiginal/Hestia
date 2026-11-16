@@ -440,7 +440,7 @@ class Wardrobe:
     def _wear_label(self, w: dict, outfits: dict, pieces: dict) -> str:
         name = (outfits.get(w.get("outfit_id") or "") or {}).get("name") or \
             " + ".join((pieces.get(p) or {}).get("name", "?") for p in (w.get("piece_ids") or [])[:3])
-        return f"{name} indossato" + ("" if w["date"] == self.today().isoformat() else tr(" on {0}", w['date']))
+        return tr("{0} worn", name) + ("" if w["date"] == self.today().isoformat() else tr(" on {0}", w['date']))
 
     def delete_wear(self, id: str) -> dict:
         self.get("wear", id)
@@ -555,18 +555,18 @@ class Wardrobe:
         laundry = [p for p in self.store.items("piece") if p.get("status") == "laundry"]
         styles = s["by_style"][:2]
         last = (self.wears(limit=1)["items"] or [None])[0]
-        parts = [f"{t['garments']} capi, {t['shoes']} scarpe, {t['accessories']} accessori, {t['outfits']} outfit"]
+        parts = [tr("{0} garments, {1} shoes, {2} accessories, {3} outfits", t['garments'], t['shoes'], t['accessories'], t['outfits'])]
         if styles:
             parts.append(tr("style ") + "/".join(x["key"].replace("_", " ") for x in styles))
         if laundry:
-            parts.append(f"in lavanderia {len(laundry)}")
+            parts.append(tr("in the laundry {0}", len(laundry)))
         if s["forgotten"]:
-            parts.append(f"dimenticati >{int(self.cfg('forgotten_days', 180))}g: {len(s['forgotten'])}")
+            parts.append(tr("forgotten >{0}d: {1}", int(self.cfg('forgotten_days', 180)), len(s['forgotten'])))
         if last:
-            parts.append(f"ultimo indossato {last['date'][8:10]}/{last['date'][5:7]} {last.get('outfit_name') or ''}".strip())
+            parts.append(tr("last worn {0}/{1} {2}", last['date'][8:10], last['date'][5:7], last.get('outfit_name') or '').strip())
         g = self.goal_progress()
         if g:
-            parts.append(f"obiettivo {g['hint']}")
+            parts.append(tr("goal {0}", g['hint']))
         if t["wishlist"]:
             parts.append(f"wishlist {t['wishlist']}")
         return {"text": " · ".join(parts), "totals": t, "laundry": [p["name"] for p in laundry][:10],
@@ -653,12 +653,12 @@ class Wardrobe:
         if topic == "forgotten":
             items = f["forgotten"]
             text = (tr("Not worn for {0}+ days: {1}. E.g. ", self.FORGOTTEN_DAYS, len(items))
-                    + ", ".join(f"{x['name']} ({x['days']}g)" if x.get("days") else f"{x['name']} (mai)"
+                    + ", ".join(f"{x['name']} ({x['days']}g)" if x.get("days") else tr("{0} (never)", x['name'])
                                 for x in items[:8]))
         elif topic == "laundry_backlog":
             items = f["laundry"]
             text = (tr("In the laundry for more than {0} days: {1}. ", self.LAUNDRY_DAYS, len(items))
-                    + ", ".join(f"{p['name']} dal {str(p.get('updated_at') or '')[:10]}" for p in items[:8]))
+                    + ", ".join(tr("{0} since {1}", p['name'], str(p.get('updated_at') or '')[:10]) for p in items[:8]))
         else:
             items = f["repair"]
             text = tr("To repair: {0}. ", len(items)) + ", ".join(p["name"] for p in items[:8])
@@ -966,7 +966,7 @@ class Wardrobe:
             for x in s["slots"]:
                 if x["piece_id"] not in piece_ids:
                     piece_ids.append(x["piece_id"])
-        return self.save_collection({"name": name or f"Valigia {place or d0.strftime('%d/%m')}".strip(), "type": "packing",
+        return self.save_collection({"name": name or tr("Suitcase {0}", place or d0.strftime('%d/%m')).strip(), "type": "packing",
                                      "piece_ids": piece_ids, "outfit_ids": outfit_ids,
                                      "trip": {"from": d0.isoformat(), "to": d1.isoformat(), "place": place,
                                               **({"weather": weather} if weather else {})}})

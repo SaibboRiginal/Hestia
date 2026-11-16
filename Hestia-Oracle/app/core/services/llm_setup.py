@@ -221,7 +221,7 @@ def ensure_runtime(name: str, runtime: dict | None = None) -> bool:
         entry = {"type": "ollama" if runtime.get("type") == "ollama" else "openai",
                  "label": str(runtime.get("label") or name)[:80], "url": url}
     elif spec is not None:
-        entry = {"type": "openai", "label": f"{spec['label']} (locale)", "url": f"http://{_host()}:{spec['port']}/v1"}
+        entry = {"type": "openai", "label": tr("{0} (local)", spec['label']), "url": f"http://{_host()}:{spec['port']}/v1"}
     else:
         return False
     current = oracle_settings.settings.get(oracle_settings.PROVIDERS_KEY)
@@ -229,7 +229,7 @@ def ensure_runtime(name: str, runtime: dict | None = None) -> bool:
                                      else llm_providers.DEFAULT_PROVIDERS).items()}
     provs[name] = entry
     ok = oracle_settings.settings.put(oracle_settings.PROVIDERS_KEY, provs, actor="user",
-                                      reason=f"Setup guidato: {entry['label']}")
+                                      reason=tr("Guided setup: {0}", entry['label']))
     logger.info("event=llm_setup_runtime_added provider=%s ok=%s", name, ok)
     return bool(ok)
 

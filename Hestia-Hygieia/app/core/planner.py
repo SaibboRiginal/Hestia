@@ -89,10 +89,10 @@ def goal_state(cadence: dict | None, done_days: list[date], today: date, week_st
         st = "done" if done_today else ("due" if today_on else "off")
         nxt = next(((today + timedelta(days=i)) for i in range(1, 8) if (today + timedelta(days=i)).weekday() in c["days"]), None)
         return {**base, "state": st, "done": done_today, "times": 1, "per": "day", "behind": st == "due",
-                "hint": tr("done today") if done_today else ("oggi" if today_on else (f"prossima {nxt.strftime('%d/%m')}" if nxt else ""))}
+                "hint": tr("done today") if done_today else ("oggi" if today_on else (tr("next {0}", nxt.strftime('%d/%m')) if nxt else ""))}
     if mode == "as_needed":
         return {**base, "state": "done" if done_today else "rest", "done": done_today, "times": 0, "per": "",
-                "hint": tr("done today") if done_today else (f"ultima {since} g fa" if since is not None else "mai fatta"),
+                "hint": tr("done today") if done_today else (tr("last {0} d ago", since) if since is not None else "mai fatta"),
                 "behind": False}
     per, times = c["per"], c["times"]
     start = period_start(today, per, week_start)
@@ -202,10 +202,10 @@ class Day:
                     continue
                 notes = conflict_notes(mine, self.core_families(other), self.custom_conflicts)
                 if notes:
-                    out.setdefault(oid, f"non oggi: {other.get('name')} ({notes[0]})")
+                    out.setdefault(oid, tr("not today: {0} ({1})", other.get('name'), notes[0]))
         for oid, other in self.routines.items():       # symmetric explicit pairs
             if r["id"] in (other.get("not_same_day_as") or []):
-                out.setdefault(oid, f"non oggi: {other.get('name')}")
+                out.setdefault(oid, tr("not today: {0}", other.get('name')))
         return out
 
     def plan_routine(self, r: dict) -> dict:
@@ -231,7 +231,7 @@ class Day:
                         last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
                         hours = (self.now - last_dt).total_seconds() / 3600
                         if hours < float(gap):
-                            state, reason = "blocked", f"fatta {int(hours)} h fa (minimo {int(gap)} h)"
+                            state, reason = "blocked", tr("done {0} h ago (minimum {1} h)", int(hours), int(gap))
                     except ValueError:
                         pass
         steps = self.plan_steps(r, today_logs[-1] if today_logs else None)

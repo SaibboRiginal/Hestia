@@ -130,7 +130,7 @@ def cmd_decrypt(args) -> None:
         raise SystemExit(tr("{0} does not exist.", src))
     out = src.with_name(src.name + ".dump")
     manifest = unseal(src, out, pw)
-    print(f"{out} (pg_restore) — creato {manifest.get('created_at')}, {len(manifest.get('counts') or {})} tabelle")
+    print(f"{out} (pg_restore) — created {manifest.get('created_at')}, {len(manifest.get('counts') or {})} tables")
 
 
 def main(argv: list[str] | None = None) -> None:

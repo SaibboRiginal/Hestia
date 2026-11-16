@@ -106,7 +106,7 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
             for t in _lines(p.get(key)):
                 facts.append(f"[{title}|{tag}] {t}")
         if p.get("note"):
-            facts.append(f"[{title}|nota] {p['note']}")
+            facts.append(f"[{title}|note] {p['note']}")
     when = (tr("today={0} tomorrow={1}", day_label(day), day_label(nxt)) if momento == "sera"
             else tr("yesterday={0} today={1}", day_label(day), day_label(nxt)))
     tone = ("friendly, warm, one short opening sentence" if style == "amichevole"

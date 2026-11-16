@@ -156,7 +156,7 @@ def _documenti(chat_id, args):
         if not d.get("is_permanent"):
             actions.append(Action(tr("Keep {0}", ui.label(title, 14)), "documento_fissa",
                                   {"document_id": str(d.get("document_id"))}))
-    return Rendered(ui.card(tr("Saved documents"), lines, subtitle=f"{len(docs)} in memoria"), actions=actions[:12])
+    return Rendered(ui.card(tr("Saved documents"), lines, subtitle=tr("{0} in memory", len(docs))), actions=actions[:12])
 
 
 def _documento_fissa(chat_id, args):

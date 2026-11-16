@@ -114,10 +114,10 @@ def _answer(items: list[dict]) -> tuple[bool, str]:
     last = items[-1]
     chat_id = int(last["target"])
     ref = last.get("client_ref")
-    what = tr("to the queued message") if len(items) == 1 else f"ai {len(items)} messaggi in coda"
+    what = tr("to the queued message") if len(items) == 1 else tr("to the {0} queued messages", len(items))
     try:
         status_msg = core.bot.send_message(
-            chat_id, f"<i>Rispondo {what}…</i>", parse_mode="HTML",
+            chat_id, tr("<i>Answering {0}…</i>", what), parse_mode="HTML",
             reply_to_message_id=int(ref) if ref and str(ref).isdigit() else None,
             allow_sending_without_reply=True)
     except Exception as exc:

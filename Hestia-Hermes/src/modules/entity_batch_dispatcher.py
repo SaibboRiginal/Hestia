@@ -180,25 +180,25 @@ def _narrate_entities(entry: _BatchEntry) -> str:
 
         parts: list[str] = []
         if title:
-            parts.append(f"Titolo: {title}")
+            parts.append(f"Title: {title}")
         if address:
-            parts.append(f"Indirizzo: {address}")
+            parts.append(f"Address: {address}")
         if price:
             try:
-                parts.append(f"Prezzo: €{int(float(price)):,}")
+                parts.append(f"Price: €{int(float(price)):,}")
             except (TypeError, ValueError):
-                parts.append(f"Prezzo: {price}")
+                parts.append(f"Price: {price}")
         if specs.get("surface_m2"):
-            parts.append(f"Superficie: {specs['surface_m2']} mq")
+            parts.append(f"Surface: {specs['surface_m2']} m²")
         if specs.get("rooms"):
-            parts.append(f"Locali: {specs['rooms']}")
+            parts.append(f"Rooms: {specs['rooms']}")
         if specs.get("balcony_or_terrace"):
             parts.append("Balcone/terrazzo: sì")
         if specs.get("garage_or_parking"):
             parts.append("Garage/parcheggio: sì")
         if summary:
             # Use a meaningful slice of the summary
-            parts.append(f"Descrizione: {summary[:400]}")
+            parts.append(f"Description: {summary[:400]}")
         if url:
             parts.append(f"Link: {url}")
         lines.append("\n".join(parts))
@@ -209,11 +209,11 @@ def _narrate_entities(entry: _BatchEntry) -> str:
     filters = entry.filters or {}
     filter_desc_parts: list[str] = []
     if filters.get("city"):
-        filter_desc_parts.append(f"zona {filters['city']}")
+        filter_desc_parts.append(f"area {filters['city']}")
     if filters.get("max_price"):
         try:
             filter_desc_parts.append(
-                f"budget massimo €{int(float(filters['max_price'])):,}")
+                f"max budget €{int(float(filters['max_price'])):,}")
         except (TypeError, ValueError):
             pass
     filters_desc = f" ({', '.join(filter_desc_parts)})" if filter_desc_parts else ""

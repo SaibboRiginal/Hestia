@@ -164,7 +164,7 @@ kit.settings.on_change(_settings_changed)
 
 # ── tools ────────────────────────────────────────────────────────────────────
 def _when(d: dict) -> str:
-    return "scaduta" if d["in_days"] < 0 else "oggi" if d["in_days"] == 0 else f"tra {d['in_days']} g"
+    return "scaduta" if d["in_days"] < 0 else "oggi" if d["in_days"] == 0 else tr("in {0} d", d['in_days'])
 
 
 def _card(d: dict) -> dict:

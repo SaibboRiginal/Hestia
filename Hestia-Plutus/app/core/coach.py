@@ -58,16 +58,16 @@ class PlutusCoach:
             out.append({"id": REVIEW_NEED, "title": tr("Review expenses"), "kind": "block", "count": 1, "minutes": 15,
                         "time_of_day": "evening", "tags": ["admin"], "priority": "could",
                         "reason": tr("{0} transactions to check", s['to_review']), "link": "movimenti"})
-        state = f"speso {s['spent']:.2f} {cur}" + (f" su {s['budget']:.2f}" if s.get("budget") else "")
+        state = f"spent {s['spent']:.2f} {cur}" + (f" su {s['budget']:.2f}" if s.get("budget") else "")
         return {"state": state, "needs": out}
 
     def review(self, start: date, end: date) -> dict:
         s = self.p.summary(start.isoformat())
         with_budget = [c for c in s["categories"] if c.get("budget")]
         over = [c["label"] for c in with_budget if c["spent"] > c["budget"]]
-        notes = [f"budget superato: {', '.join(over)}"] if over else []
+        notes = [f"budget exceeded: {', '.join(over)}"] if over else []
         if s.get("budget"):
-            notes.append(f"mese: {s['spent']:.2f} su {s['budget']:.2f} {s['currency']}")
+            notes.append(f"month: {s['spent']:.2f} of {s['budget']:.2f} {s['currency']}")
         kept = len(with_budget) - len(over)
         return {"done": kept, "missed": len(over), "notes": notes,
                 "adherence": round(kept / len(with_budget), 2) if with_budget else None}

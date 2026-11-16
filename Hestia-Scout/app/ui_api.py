@@ -359,7 +359,7 @@ def recap_facts(views: list[dict], day) -> dict:
         names.append(", ".join(b for b in bits if b))
     text = f"{len(new)} nuov{'o annuncio' if len(new) == 1 else 'i annunci'}: " + "; ".join(names)
     if len(new) > 2:
-        text += f" e altri {len(new) - 2}"
+        text += tr("alt:: and {0} more", len(new) - 2)
     return {"done": [{"text": text}]}
 
 

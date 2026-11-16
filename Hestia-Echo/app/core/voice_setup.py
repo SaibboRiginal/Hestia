@@ -221,7 +221,7 @@ def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) 
             if not models and not voices:
                 continue
             rows.append({"name": f["name"], "label": f["label"], "type": f["type"], "local": True, "found": True,
-                         "url": f["url"], "note": f"{ENGINE_NOTES[f['type']]} Trovato su {f['where']}.",
+                         "url": f["url"], "note": tr("{0} Found on {1}.", ENGINE_NOTES[f['type']], f['where']),
                          "needs_key": False, "key": False, "state": "ready", "models": models, "voices": voices})
         rows.sort(key=lambda r: (not r["local"], r["type"] != PREFERRED[direction][0]))
         chain = chains.get(direction) or {"steps": []}

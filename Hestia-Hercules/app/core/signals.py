@@ -160,7 +160,7 @@ def detail(h: "Hercules", topic: str, today: date | None = None) -> str | None:
         for e in reversed(hist):
             d = local_date(e["date"], h.tz)
             top = f"{progression.fmt_kg(e['top_weight'])}×{e['top_reps']}" if e["top_weight"] is not None \
-                else f"{e['max_reps']} rip"
+                else tr("{0} reps", e['max_reps'])
             e1 = f" e1RM {progression.fmt_kg(e['best_e1rm'])}" if e["best_e1rm"] else ""
             bits.append(f"{d.strftime('%d/%m') if d else '?'} {top}{e1}")
         return tr("Workout · {0}, last sessions: ", _name(data, ref)) + "; ".join(bits) if bits else None
@@ -169,7 +169,7 @@ def detail(h: "Hercules", topic: str, today: date | None = None) -> str | None:
         if not prs:
             return None
         return tr("Workout · {0}, recent records: ", _name(data, ref)) + "; ".join(
-            f"{p['label']} {progression.fmt_kg(p['value'])} (prima {progression.fmt_kg(p.get('previous'))})" for p in prs)
+            tr("{0} {1} (before {2})", p['label'], progression.fmt_kg(p['value']), progression.fmt_kg(p.get('previous'))) for p in prs)
     if topic == "missed_streak":
         missed = missed_streak(h, today)
         if not missed:
@@ -180,14 +180,13 @@ def detail(h: "Hercules", topic: str, today: date | None = None) -> str | None:
         if not low:
             return None
         return tr("Workout · low energy check-in: ") + "; ".join(
-            f"{(local_date(c.get('at'), h.tz) or today).strftime('%d/%m')} energia {c.get('energy')}"
-            + (f", sonno {c['sleep']}" if c.get("sleep") else "") for c in low)
+            tr("{0} energy {1}", (local_date(c.get('at'), h.tz) or today).strftime('%d/%m'), c.get('energy'))
+            + (tr(", sleep {0}", c['sleep']) if c.get("sleep") else "") for c in low)
     if topic == "week_goal":
         goals = [g["progress"] for g in h.goals() if g["progress"]["per"] == "week"]
         if not goals:
             return None
         week = records.periods(data, "week", 1, h.tz, h.week_start(), today)[-1]
-        return tr("Workout · ") + "; ".join(f"{g['label']}: {g['hint']}, mancano {g['remaining']}, "
-                                             f"{g['days_left']} giorni alla fine" for g in goals) \
-            + f" · settimana: {week['sessions']} allenamenti, {week['volume']} kg"
+        return tr("Workout · ") + "; ".join(tr("{0}: {1}, {2} missing, {3} days to the end", g['label'], g['hint'], g['remaining'], g['days_left']) for g in goals) \
+            + tr(" · week: {0} workouts, {1} kg", week['sessions'], week['volume'])
     return None

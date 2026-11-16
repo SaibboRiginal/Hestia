@@ -328,7 +328,7 @@ def _review_card(limit: int = 1) -> dict:
     if not i["needs_owner"]:
         acts.insert(0, action(tr("Accept"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
                               style="primary"))
-    return {**out, "display": display(tr("To review"), subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
+    return {**out, "display": display(tr("To review"), subtitle=tr("reasons: {0}", ', '.join(i['reasons']) or '—'),
                                       lines=lines, actions=acts)}
 
 
@@ -383,7 +383,7 @@ def _scopri_card(client: str = "telegram") -> dict:
     out = usage.scopri(client if client in CLIENTS else "telegram", limit=8)
     items = out["items"]
     return {**out, "display": display(
-        tr("Discover"), subtitle=f"{out['total']} funzioni poco usate su {out['tools']}",
+        tr("Discover"), subtitle=tr("{0} little-used functions out of {1}", out['total'], out['tools']),
         lines=[] if items else [tr("You've already tried everything.")],
         items=[item(i["title"], [i["description"][:90], i["reason"]]) for i in items],
         actions=[action(i["title"], i["tool"]) for i in items[:6]])}
@@ -563,7 +563,7 @@ try:
                                      "adapter_name": adapter_name, "schedule": "window",
                                      "requested_by": requested_by, "job_id": job_id},
                             "timeout_seconds": 60},
-                    description=f"Richiesto da {requested_by}. Annulla o sposta dall'agenda di Hestia.",
+                    description=tr("Requested by {0}. Cancel or move it from Hestia's agenda.", requested_by),
                     params={"dataset_name": ds_name, "job_id": job_id})
                 _save_job({"job_id": job_id, "status": "scheduled", "dataset_name": ds_name,
                            "requested_by": requested_by, "start_at": start_at,

@@ -609,7 +609,7 @@ class Hercules:
         if sleep is None and energy is None:
             return None
         return self.checkin({"sleep": sleep, "energy": energy, "source": "device",
-                             "free_text": f"dall'orologio · prontezza {item['readiness']}" if item.get("readiness")
+                             "free_text": tr("from the watch · readiness {0}", item['readiness']) if item.get("readiness")
                              is not None else tr("from the watch")})
 
     def feedback(self, body: dict) -> dict:
@@ -642,7 +642,7 @@ class Hercules:
                                               "original": plan, "result": result, "accepted": False})
         names = {e["id"]: e.get("name") for e in catalog_map.values()}
         return {"adaptation_id": adaptation["id"], **base, **result,
-                "plan_text": [f"{names.get(e['exercise_id'], '?')}: {len(e.get('planned') or [])} serie"
+                "plan_text": [tr("{0}: {1} sets", names.get(e['exercise_id'], '?'), len(e.get('planned') or []))
                               for e in result["exercises"] if not e.get("skipped")]}
 
     def _recent_pain(self, readiness: dict) -> int:
@@ -827,7 +827,7 @@ class Hercules:
         sessions = [s for s in data.sessions if records.local_date(s.get("started_at"), self.tz) == day]
         for sess in sessions:
             sm = records.session_summary(data, sess)
-            parts = [f"{sm['exercises']} esercizi", f"{sm['sets']} serie"]
+            parts = [tr("{0} exercises", sm['exercises']), tr("{0} sets", sm['sets'])]
             if sm.get("duration_min"):
                 parts.append(f"{sm['duration_min']} min")
             done.append({"text": f"{sm.get('name') or tr('Training')}: " + ", ".join(parts), "tone": "success"})
@@ -853,7 +853,7 @@ class Hercules:
                                                    or nw.get("reason") == "Spostato a oggi.")
         if planned_for_next and not nw.get("skipped"):
             mins = nw.get("estimated_minutes")
-            upcoming.append({"text": f"{nw['template']['name']}" + (f" · circa {mins} min" if mins else "")})
+            upcoming.append({"text": f"{nw['template']['name']}" + (tr(" · about {0} min", mins) if mins else "")})
         goals = self.goals()
         note = f"{goals[0]['progress']['label']}: {goals[0]['progress']['hint']}" if goals and (done or missed) else ""
         return {"done": done, "missed": missed, "next": upcoming, "note": note}
@@ -934,7 +934,7 @@ class Hercules:
             kind, rid = op.get("kind"), op.get("id")
             try:
                 if kind not in domain.NORMALIZERS or kind in ("adaptation", "reminder", "activity_plan", "activity"):
-                    raise domain.Invalid(f"tipo sconosciuto: {kind}")
+                    raise domain.Invalid(tr("unknown type: {0}", kind))
                 if not rid:
                     raise domain.Invalid(tr("missing id"))
                 updated = op.get("updated_at") or now_iso()

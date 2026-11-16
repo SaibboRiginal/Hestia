@@ -561,7 +561,7 @@ def _review_text(r: dict) -> str:
     text = (_voice(prompt) or "").strip()
     if text:
         return text[:1200]
-    parts = [f"{r['month']}: spesi {r['spent']:.2f} {cur}"
+    parts = [tr("{0}: spent {1:.2f} {2}", r['month'], r['spent'], cur)
              + (tr(" on a budget of {0:.2f}", r['budget']) if r.get("budget") else "")
              + tr(" (month before {0:.2f}).", r['previous_spent'])]
     if r["over_budget"]:
@@ -715,7 +715,7 @@ def _tx_item(t: dict) -> dict:
 
 def summary_display(s: dict) -> dict:
     lines = [tr("Spent {0}", money(s.get('spent'))) + (f" su {money(s['budget'])}" if s.get("budget") else "")
-             + (f" · restano {money(s['left'])}" if s.get("budget") and s.get("left") is not None else "")]
+             + (tr(" · {0} left", money(s['left'])) if s.get("budget") and s.get("left") is not None else "")]
     if s.get("income"):
         lines.append(tr("Income {0}", money(s['income'])))
     if s.get("pace") and s.get("budget") and s["pace"] > s["budget"]:
@@ -732,9 +732,9 @@ def summary_display(s: dict) -> dict:
 
 
 def search_display(items: list[dict], total: float) -> dict:
-    return display(tr("Transactions"), subtitle=f"{len(items)} · totale {money(abs(total))}" if items else "",
+    return display(tr("Transactions"), subtitle=tr("{0} · total {1}", len(items), money(abs(total))) if items else "",
                    items=[_tx_item(t) for t in items[:20]], lines=[] if items else [tr("No transaction found.")],
-                   footer=f"e altri {len(items) - 20}" if len(items) > 20 else "",
+                   footer=tr("and {0} more", len(items) - 20) if len(items) > 20 else "",
                    actions=[action(tr("Add expense"), "finance_add", style="primary")])
 
 
@@ -816,14 +816,14 @@ try:
 
     def _recurring() -> dict:
         plutus.detect_recurring()
-        return {"items": [f"{r['merchant']} {r['amount']:.2f} {r['period']} prossimo {r['next']} [{r['status']}]"
+        return {"items": [tr("{0} {1:.2f} {2} next {3} [{4}]", r['merchant'], r['amount'], r['period'], r['next'], r['status'])
                           for r in plutus.recurring()]}
 
     def _stats(months: int = 6) -> dict:
         s = plutus.stats(months)
         return {"currency": s["currency"], "avg_spent": s["avg_spent"],
-                "months": [f"{m['label']}: {m['spent']:.2f} spese, {m['income']:.2f} entrate" for m in s["months"]],
-                "categories": [f"{c['label']} {c['total']:.2f} (media {c['avg']:.2f})" for c in s["categories"][:10]],
+                "months": [tr("{0}: {1:.2f} expenses, {2:.2f} income", m['label'], m['spent'], m['income']) for m in s["months"]],
+                "categories": [tr("{0} {1:.2f} (average {2:.2f})", c['label'], c['total'], c['avg']) for c in s["categories"][:10]],
                 "merchants": [f"{m['merchant']} {m['total']:.2f} ×{m['count']}" for m in s["merchants"][:10]]}
 
     S = {"type": "string"}

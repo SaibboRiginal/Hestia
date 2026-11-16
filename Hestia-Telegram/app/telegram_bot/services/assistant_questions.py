@@ -148,7 +148,7 @@ def handle_callback(call) -> None:
     # Answer the tap at once: the reply that follows is a whole chat turn.
     core.bot.answer_callback_query(call.id, shown[:60])
     original = call.message.html_text or call.message.text
-    core.bot.edit_message_text(f"{original}\n<i>Risposta: {escape(shown)}</i>", chat_id=call.message.chat.id,
+    core.bot.edit_message_text(tr("{0}\n<i>Answer: {1}</i>", original, escape(shown)), chat_id=call.message.chat.id,
                                message_id=call.message.message_id, parse_mode="HTML")
     if not _submit(call.message, token, entry, answer):
         core.bot.edit_message_text(original, chat_id=call.message.chat.id, message_id=call.message.message_id,

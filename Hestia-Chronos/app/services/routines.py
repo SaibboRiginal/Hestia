@@ -291,7 +291,7 @@ def on_signal(name: str, data: dict | None = None) -> list[str]:
     ran = []
     for r in list_routines():
         if (r.get("on") or {}).get("signal") == name and r["status"] == "confirmed":
-            threading.Thread(target=_safe_run, args=(r["key"], f"evento {name}: "
+            threading.Thread(target=_safe_run, args=(r["key"], f"event {name}: "
                              + json.dumps(data or {}, ensure_ascii=False, default=str)[:2000]), daemon=True).start()
             ran.append(r["key"])
     return ran

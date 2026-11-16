@@ -181,7 +181,7 @@ class Updater:
         if notes:
             text += tr(" News:\n") + "\n".join(f"• {n}" for n in notes[:5])
             if len(notes) > 5:
-                text += f"\n…e altre {len(notes) - 5}."
+                text += tr("\n…and {0} more.", len(notes) - 5)
         if available.get("major"):
             text += tr("\nBig version: if something is needed on the computer afterwards, I'll tell you.")
         text += tr("\nInstall now? If something goes wrong, I go back to the previous version by myself.")

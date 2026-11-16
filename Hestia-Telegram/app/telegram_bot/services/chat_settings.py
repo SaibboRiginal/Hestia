@@ -90,7 +90,7 @@ def panel(chat_id, message_id=None) -> None:
     st = core.get_session_settings(str(chat_id))
     lines = [f"{ui.esc(tr(s.label))}: <b>{ui.esc(tr(label_of(s.key, value(st, s.key))).split(' · ')[0])}</b>"
              for s in SETTINGS]
-    lines.append(f"Risposte a voce: <b>{tr('yes') if voice_service.is_live(chat_id) else 'no'}</b>")
+    lines.append(tr("Spoken answers: <b>{0}</b>", tr('yes') if voice_service.is_live(chat_id) else 'no'))
     custom = str(st.get("custom_prompt") or "").strip()
     lines.append(tr("Personal instructions: ") + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
                                             if custom else "<i>nessuna</i>"))

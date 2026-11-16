@@ -150,7 +150,7 @@ def tool_list(route: Route, tag: str = "", query: str = "", limit: int = 10) -> 
     """``chat_list``: the conversations (newest first), filtered by tag and words, as a card."""
     out = list_chats(route, q=str(query or ""), tag=str(tag or ""), limit=max(1, min(int(limit or 10), 30)))
     items = out.get("items") or []
-    sub = f"{out.get('total', len(items))} conversazioni" + (tr(" with «{0}»", tag) if tag else "")
+    sub = tr("{0} conversations", out.get('total', len(items))) + (tr(" with «{0}»", tag) if tag else "")
     return {**out, "display": display(
         tr("Conversations"), subtitle=sub, lines=[] if items else [tr("No conversations.")],
         items=[item(i["title"], [", ".join(t["name"] for t in i.get("tags") or []) or tr("without labels"),

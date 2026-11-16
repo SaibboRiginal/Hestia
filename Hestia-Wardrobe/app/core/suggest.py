@@ -80,7 +80,7 @@ class Suggester:
         lo, hi = warmth_band(temp_c, season)
         if lo <= total <= hi:
             score += 12
-            reasons.append(f"adatto a {round(temp_c)}°" if temp_c is not None else tr("suited to the season ({0})", SEASONS[season].lower()))
+            reasons.append(tr("suited to {0}°", round(temp_c)) if temp_c is not None else tr("suited to the season ({0})", SEASONS[season].lower()))
         else:
             score -= 6 * (lo - total if total < lo else total - hi)
         explicit = [p.get("weather") or {} for p in ps]
@@ -132,7 +132,7 @@ class Suggester:
                      and self.last_worn.get(p["id"])]
         if forgotten:
             score += 4 * len(forgotten)
-            reasons.append(f"rimette in giro {forgotten[0]['name']}")
+            reasons.append(tr("brings back {0}", forgotten[0]['name']))
         if saved:
             if saved.get("favorite"):
                 score += 8

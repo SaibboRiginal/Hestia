@@ -176,7 +176,7 @@ kit.tools([
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_animali", description="The pets created.", parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": rows, "display": display(tr("Pets"), items=[
-                item(p["name"], [p["species"], f"{len(p.get('images') or {})}/3 immagini"]) for p in rows],
+                item(p["name"], [p["species"], tr("{0}/3 images", len(p.get('images') or {}))]) for p in rows],
                 lines=[] if rows else [tr("No pet.")])})(look.pets()),
             title="Pets", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_genera", description=("Ask for the images again: target profile (background) or pet; ref = profile key or the pet's "

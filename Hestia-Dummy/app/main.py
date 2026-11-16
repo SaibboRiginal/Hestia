@@ -13,6 +13,7 @@ from typing import Any, AsyncIterator
 import requests
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -178,7 +179,7 @@ def _recap_piece(day, nxt) -> dict:
     if not last or datetime.fromisoformat(str(last)).astimezone().date() != day:
         return recap.empty("dummy")
     return recap.piece("dummy", "alt::Test", icon="flask", emoji="🧪", order=990,
-                       done=[recap.item(f"Riconciliazione alle {recap.hhmm(last)} ({count} modifiche in totale)",
+                       done=[recap.item(tr("Reconciliation at {0} ({1} changes in total)", recap.hhmm(last), count),
                                         tone="success")])
 
 

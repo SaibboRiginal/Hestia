@@ -94,7 +94,7 @@ class DocumentAnalyser:
             # (blob), so no copy in the RAG archive.
             self._save_history(session_id, filename or mime_type, user_message, handed["text"])
             yield stream_emitter.emit_signal(
-                event="attachment_handled", message=f"📎 Passato a {handed['service']}.",
+                event="attachment_handled", message=tr("📎 Handed to {0}.", handed['service']),
                 data={k: handed.get(k) for k in ("service", "blob_id", "import_id") if handed.get(k)})
             logger.info("event=analyser_done session_id=%s total_ms=%s route=handoff service=%s", session_id,
                         int((time.perf_counter() - t0) * 1000), handed["service"])
@@ -186,7 +186,7 @@ class DocumentAnalyser:
         try:
             return self._analyst.ask(text_prompt)
         except Exception:
-            return f"📝 Trascrizione:\n\n{transcript[:2000]}"
+            return tr("📝 Transcript:\n\n{0}", transcript[:2000])
 
     def _answer_via_llm(self, file_bytes: bytes, mime_type: str, full_prompt: str) -> str:
         """Send file to the analyst chain, then local-text last resort."""

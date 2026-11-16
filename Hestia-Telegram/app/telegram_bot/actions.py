@@ -280,7 +280,7 @@ def _run(chat_id, flow: dict, tool: catalog.Tool) -> None:
     logger.info("event=telegram_action_run action=%s ok=%s values=%d", tool.name, ok, len(flow["values"]))
     rows: list = []
     if not ok:
-        html = ui.error(f"Non sono riuscita: {title}", _human_problem(payload))
+        html = ui.error(tr("I couldn't do it: {0}", title), _human_problem(payload))
         rows.append([ui.button(tr("Try again"), "f:retry")])
     else:
         result = payload if isinstance(payload, Rendered) else render(payload, title, marker)

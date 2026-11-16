@@ -164,7 +164,7 @@ def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", 
                                               "notes": notes or None}.items() if v not in (None, "")})
     else:
         d = {**food.diet(), "unchanged": True}   # read only: no «Fatto» in the chat
-    lines = [f"Obiettivo: {d['kcal'] or '—'} kcal · {d['protein'] or '—'} g proteine"] + d["rules"][:10]
+    lines = [tr("Goal: {0} kcal · {1} g protein", d['kcal'] or '—', d['protein'] or '—')] + d["rules"][:10]
     return {**d, "display": display(tr("Diet"), lines=lines, actions=[action(tr("Edit"), "cibo_dieta")])}
 
 

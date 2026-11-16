@@ -102,7 +102,7 @@ class WeatherService:
     def _json(self, url: str, params: dict) -> dict:
         resp = self._get(url, params)
         if getattr(resp, "status_code", 200) >= 400:
-            raise WeatherError("error", f"servizio meteo: HTTP {resp.status_code}")
+            raise WeatherError("error", tr("weather service: HTTP {0}", resp.status_code))
         return resp.json() or {}
 
     def geocode(self, query: str, count: int = 5) -> list[dict]:
@@ -401,7 +401,7 @@ def recap_facts(service: "WeatherService", nxt: str) -> dict:
     line = f"{day.get('min_c')}–{day.get('max_c')}°, {day.get('condition') or ''}".rstrip(", ")
     hours = day.get("rain_hours") or []
     if hours:
-        line += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else tr(", rain at {0}", hours[0])
+        line += tr(", rain {0}–{1}", hours[0], hours[-1]) if len(hours) > 1 else tr(", rain at {0}", hours[0])
     label = (f.get("place") or {}).get("name") or tr("Home")
     return {"next": [{"text": tr("Tomorrow in {0}: {1}", label, line), **({"tone": "warning"} if is_rainy(day) else {})}],
             "icon": day.get("icon") or "cloud-sun"}

@@ -250,7 +250,7 @@ class ScoutRetrievalService:
             return ""
         try:
             n = int(float(value))
-            return f"{n} locali" if n > 1 else "1 locale"
+            return tr("{0} rooms", n) if n > 1 else "1 locale"
         except (ValueError, TypeError):
             return ""
 
@@ -281,9 +281,9 @@ class ScoutRetrievalService:
                              [self._fmt_price(it.get("price")), self._fmt_surface(specs.get("surface_m2")),
                               self._fmt_rooms(specs.get("rooms")), str(it.get("address") or "").strip()],
                              url=str(it.get("url") or "").strip()))
-        return display(tr("Available houses"), subtitle=f"{len(items)} trovate" if items else "", items=rows,
+        return display(tr("Available houses"), subtitle=tr("{0} found", len(items)) if items else "", items=rows,
                        lines=[] if rows else [tr("No house found.")],
-                       footer=f"e altre {len(items) - 20}" if len(items) > 20 else "",
+                       footer=tr("alt::and {0} more", len(items) - 20) if len(items) > 20 else "",
                        actions=[action(tr("Search"), "scout.search", style="primary"), action(tr("Check emails"), "scout_fetch")])
 
     def search_formatted(self, req: RealEstateSearchRequest, items: list[dict] | None = None) -> str:
@@ -313,4 +313,4 @@ class ScoutRetrievalService:
             else:
                 lines.append(f"• {title} — {detail}" if detail else f"• {title}")
 
-        return f"🏠 **Case disponibili** ({len(items)})\n\n" + "\n\n".join(lines)
+        return tr("🏠 **Available houses** ({0})\n\n", len(items)) + "\n\n".join(lines)

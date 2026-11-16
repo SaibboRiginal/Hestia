@@ -75,7 +75,7 @@ def _bounds(d: date) -> tuple[datetime, datetime]:
 
 
 def _cap(lines: list[str]) -> list[str]:
-    return lines if len(lines) <= _MAX_LINES else lines[:_MAX_LINES - 1] + [f"e altri {len(lines) - _MAX_LINES + 1}"]
+    return lines if len(lines) <= _MAX_LINES else lines[:_MAX_LINES - 1] + [tr("and {0} more", len(lines) - _MAX_LINES + 1)]
 
 
 def recap(day: date, nxt: date) -> dict:

@@ -1096,7 +1096,7 @@ class OracleEngine:
 
         # ── Phase 4: AGENT LOOP (unified — all tools, all commands) ───────────
         yield stream_emitter.emit_status(
-            f"🧠 Analisi domini: {', '.join(intent.valid_domains)}..."
+            tr("🧠 Analysing domains: {0}...", ', '.join(intent.valid_domains))
         )
 
         # Load preferences for agent loop context
@@ -2716,7 +2716,7 @@ class OracleEngine:
         if not last:
             return "", log, frames
         state = conversation_goal.active(self._hub, session_id)
-        head = tr("Goal") + (f" (giro {state['rounds']}/{total})" if state else tr(" — done"))
+        head = tr("Goal") + (tr(" (round {0}/{1})", state['rounds'], total) if state else tr(" — done"))
         return f"**{head}:** {last}", log, frames
 
     # ── Context compaction (REST + MCP) ──────────────────────────────────────

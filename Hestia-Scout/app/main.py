@@ -439,7 +439,7 @@ if _HAS_MCP:
         names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
                  "unknown": "without a state"}
         when = str(newest or "")[:10]
-        return display(tr("Houses"), subtitle=f"{total} annunci", footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",
+        return display(tr("Houses"), subtitle=tr("{0} listings", total), footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",
                        items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
                                                                                          key=lambda kv: -kv[1])],
                        actions=[action(tr("Search houses"), "scout.search", style="primary")])

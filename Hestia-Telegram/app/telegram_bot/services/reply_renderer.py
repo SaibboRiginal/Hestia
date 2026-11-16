@@ -91,10 +91,10 @@ class ReplyRenderer:
             self.steps.append("• " + str(evt["content"]).strip().split("\n")[0][:180])
         elif action == "tool_call" and tool:
             self.tool_calls += 1
-            self.steps.append(f"• Uso: {_tool_label(tool)}")
+            self.steps.append(tr("• Using: {0}", _tool_label(tool)))
         elif action == "tool_result" and tool:
             n = meta.get("result_count")
-            self.steps.append((tr("  done") if meta.get("ok") else tr("  failed")) + (f" · {n} risultati" if n else ""))
+            self.steps.append((tr("  done") if meta.get("ok") else tr("  failed")) + (tr(" · {0} results", n) if n else ""))
         if self.thinking_mode == "live" and not self.tokens:
             self._live_edit()
 

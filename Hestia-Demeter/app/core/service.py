@@ -254,9 +254,9 @@ class Nutrition:
         y = self.day_summary(day)
         done = []
         if y["meals"]:
-            text = f"{len(y['meals'])} pasti, {y['kcal']} kcal" + (f" su {y['kcal_target']}" if y["kcal_target"] else "")
+            text = tr("{0} meals, {1} kcal", len(y['meals']), y['kcal']) + (f" su {y['kcal_target']}" if y["kcal_target"] else "")
             if y["unknown"]:
-                text += f" ({y['unknown']} senza numeri)"
+                text += tr(" ({0} without numbers)", y['unknown'])
             done.append({"text": text})
         todo = [s for s in self.supplements_today(nxt)]
         return {"done": done, "next": [{"text": tr("Supplements: ") + ", ".join(s["name"] for s in todo[:6])}] if todo else []}

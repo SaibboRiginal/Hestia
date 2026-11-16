@@ -67,7 +67,7 @@ class DriveFiles:
                 raise DriveError(tr("Google Drive not authorized: link Google again"), 409, "drive_scope_missing")
             if "accessNotConfigured" in text or "has not been used" in text or "disabled" in text:
                 raise DriveError(tr("Google Drive API not enabled in the Google project"), 409, "drive_api_disabled")
-            raise DriveError(f"{what}: accesso negato ({resp.status_code})", 409, "drive_forbidden")
+            raise DriveError(tr("{0}: access denied ({1})", what, resp.status_code), 409, "drive_forbidden")
         if resp.status_code == 404:
             raise DriveError(tr("{0}: not found", what), 404, "not_found")
         if resp.status_code >= 400:
@@ -189,7 +189,7 @@ class DriveFiles:
         if not up:
             raise DriveError(tr("unknown or expired upload"), 404, "unknown_upload")
         if offset != up["received"]:
-            raise DriveError(f"posizione attesa {up['received']}, ricevuta {offset}", 409, "bad_offset")
+            raise DriveError(tr("expected position {0}, received {1}", up['received'], offset), 409, "bad_offset")
         last = offset + len(data) >= up["size"]
         if not data or (not last and len(data) % (256 * 1024)):
             raise DriveError(tr("chunks must be multiples of 256 KiB (except the last)"), 422, "bad_chunk")

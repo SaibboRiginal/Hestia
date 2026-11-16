@@ -653,7 +653,7 @@ class NotificationCenter:
             detail=f"action failed: {code}")
         logger.warning("[🔄] event=notification_action_failed notification_id=%s service=%s status=%s",
                        notification_id, action.get("service"), code)
-        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+        return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def submit_secret(self, notification_id: str, values: dict[str, Any], client: str) -> tuple[int, dict[str, Any]]:
         """Cindy 4: the owner's values go to the module that asked, through the Hub. Never stored, never logged
@@ -686,7 +686,7 @@ class NotificationCenter:
         self.archive.patch_outbound_event(
             notification_id, "seen", only_if_states=["answered"],
             payload_merge={"answer": {**answer, "status": "error"}}, detail=f"secret form failed: {code}")
-        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+        return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def reply(self, notification_id: str, answer: Any, client: str) -> tuple[int, dict[str, Any]]:
         """The owner's answer to a notification question: first answer wins, forwarded to the module that asked."""
@@ -732,7 +732,7 @@ class NotificationCenter:
             payload_merge={"answer": {**claim, "status": "error"}}, detail=f"question reply failed: {code}")
         logger.warning("[🔄] event=notification_question_failed notification_id=%s service=%s status=%s",
                        notification_id, question["service"], code)
-        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+        return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def remind_pending(self, now: datetime | None = None) -> dict[str, int]:
         """Cindy 5: one grouped reminder for what still waits for an answer after ``hermes.attesa.richiamo_ore``;
@@ -760,9 +760,9 @@ class NotificationCenter:
         lines = [f"• {html.escape(v['title'] or v['message'][:80])}" for _, v in due[:8]]
         more = len(due) - len(lines)
         message = (tr("Still waiting for your answer:\n") + "\n".join(lines)
-                   + (f"\n…e altre {more}." if more > 0 else ""))
+                   + (tr("\n…and {0} more.", more) if more > 0 else ""))
         self.publish(message=message, event_type="assistant.pending_reminder", domain="assistant",
-                     title=f"Da decidere: {len(due)}", level="info", source="hermes",
+                     title=tr("To decide: {0}", len(due)), level="info", source="hermes",
                      replaces="hermes.pending_reminder",
                      link={"module": "hermes", "page": "notifiche", "params": {"filter": "pending"}})
         logger.info("event=notification_pending_reminded count=%d", len(due))
@@ -879,7 +879,7 @@ class NotificationCenter:
         waiting = [v["title"] or v["message"][:60] for v in views if v["pending"]]
         if waiting:
             missed.append({"text": tr("Waiting for your answer: ") + ", ".join(dict.fromkeys(waiting[:4]))
-                                   + (f" e altre {len(waiting) - 4}" if len(waiting) > 4 else ""),
+                                   + (tr(" and {0} more", len(waiting) - 4) if len(waiting) > 4 else ""),
                            "tone": "warning"})
         return {"done": done, "missed": missed}
 
@@ -960,7 +960,7 @@ class NotificationCenter:
                 lines.append(f"• {html.escape(str(title))}" + (f" <i>({html.escape(str(source))})</i>" if source else ""))
             more = len(unread) - len(lines)
             message = (f"<b>{len(unread)} notific{'a' if len(unread) == 1 else 'he'}</b> mentre riposavo:\n"
-                       + "\n".join(lines) + (f"\n…e altre {more} nella posta." if more > 0 else ""))
+                       + "\n".join(lines) + (tr("\n…and {0} more in the inbox.", more) if more > 0 else ""))
             self.publish(message=message, event_type="assistant.digest", domain="assistant",
                          title=tr("While I was resting"), level="info", source="hermes",
                          event_payload={"_urgent": True, "count": len(unread)})

@@ -61,8 +61,8 @@ def _describe(value: Any, d: dict | None = None) -> str:
         parts = []
         for v in value[:6]:
             items = v.get("items")
-            parts.append(f"«{v['title']}»" + (f" ({len(items)} elementi)" if isinstance(items, list) else ""))
-        return ", ".join(parts) + (f" e altri {len(value) - 6}" if len(value) > 6 else "")
+            parts.append(f"«{v['title']}»" + (tr(" ({0} items)", len(items)) if isinstance(items, list) else ""))
+        return ", ".join(parts) + (tr("alt:: and {0} more", len(value) - 6) if len(value) > 6 else "")
     return _short(value, 160)
 
 
@@ -237,7 +237,7 @@ class Themis:
     def get(self, key: str, *, client: str = "", session: str = "", include_status: bool = True) -> dict:
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         found = [i for i in self.list(module=d["module"], client=client, session=session,
                                       include_status=include_status)["items"] if i["key"] == key]
         return found[0] if found else dict(d, value=d.get("default"), source="default")
@@ -247,7 +247,7 @@ class Themis:
         (``{other.key}`` placeholders filled with current values), so every client gets the same list."""
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         if d.get("options"):
             from hestia_common.settings_client import translated
             return {"key": key, "options": translated(d, self.owner_language())["options"], "source": "static"}
@@ -293,7 +293,7 @@ class Themis:
             actor: str = "user", reason: str = "") -> dict:
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         if actor in ACTORS_ASSISTANT:
             raise ThemisError(tr("the assistant can only propose changes"), 403)
         try:
@@ -314,7 +314,7 @@ class Themis:
               actor: str = "user") -> dict:
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         scope, scope_id = self._target(d, scope, scope_id)
         self.hub.ok("archive", "DELETE", "api/settings-store/values", query={
             "key": key, "scope": scope, "scope_id": scope_id, "actor": actor, "history_keep": HISTORY_KEEP})
@@ -456,10 +456,10 @@ class Themis:
     def _proposal_text(self, d: dict, row: dict, current: Any) -> str:
         who = {"oracle": "Hestia (chat)", "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
         if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
-            who = f"{who[len('external:'):]} (AI esterna)"
+            who = tr("{0} (external AI)", who[len('external:'):])
         text = (tr("⚙️ {0} proposes to change «{1}» ({2}): {3} → {4}.", who, d.get('label') or d.get('key'), d.get('module'), _describe(current, d), _describe(row.get('value'), d)))
         if row.get("reason"):
-            text += f"\nMotivo: {row['reason']}"
+            text += tr("\nReason: {0}", row['reason'])
         return text
 
     @staticmethod
@@ -541,7 +541,7 @@ class Themis:
             "key": proposal["key"], "scope": proposal.get("scope") or "system",
             "scope_id": proposal.get("scope_id") or "", "value": proposal.get("value"),
             "actor": proposal.get("proposer") or "assistant",
-            "reason": f"proposta approvata ({by}): {proposal.get('reason') or ''}"[:500],
+            "reason": f"proposal approved ({by}): {proposal.get('reason') or ''}"[:500],
             "history_keep": HISTORY_KEEP})
         if (proposal.get("scope") or "system") == "system" and d.get("module"):
             self._notify_reload(d["module"], proposal["key"])
@@ -549,8 +549,7 @@ class Themis:
         self._emit("settings.changed", f"settings.changed:{proposal['proposal_id']}",
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),
                     "title": tr("Setting changed"), "level": "success",
-                    "_message": f"✅ Impostazione cambiata: {d.get('label') or proposal['key']} → "
-                                f"{_describe(proposal.get('value'), d)}"})
+                    "_message": tr("✅ Setting changed: {0} → {1}", d.get('label') or proposal['key'], _describe(proposal.get('value'), d))})
         return {"key": proposal["key"], "value": proposal.get("value"), "revision": self.revision}
 
     # ── outbound: always through Hermes ─────────────────────────────────────
