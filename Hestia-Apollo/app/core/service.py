@@ -192,7 +192,7 @@ class Images:
                 self._finish(jid, {**j, "workflow_id": flow["id"]}, error=str(exc))
             except Exception as exc:
                 logger.warning("[🔄] event=apollo_job_failed error=%s", exc)
-                self._finish(jid, {**j, "workflow_id": flow["id"]}, error=f"errore inatteso: {exc}")
+                self._finish(jid, {**j, "workflow_id": flow["id"]}, error=tr("unexpected error: {0}", exc))
             return True
 
     def _blob(self, data: bytes, mime: str, jid: str, n: int) -> str:

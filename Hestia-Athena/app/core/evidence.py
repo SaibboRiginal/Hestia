@@ -167,7 +167,7 @@ class Evidence:
                 out.update(ready=False, note=f"Raccolgo prove: visto in {len(days)} {_giorni(len(days))} su "
                                              f"{need_days} richiesti (dal {_short(days[0])}).")
             else:
-                out.update(ready=True, note=f"Visto in {len(days)} giorni diversi dal {_short(days[0])}.")
+                out.update(ready=True, note=tr("Seen on {0} different days since {1}.", len(days), _short(days[0])))
             if out["ready"]:
                 row["days"], row["proposed_day"] = [], today      # proposed: it must build up again from zero
             self._rows[key] = row
@@ -188,4 +188,4 @@ class Evidence:
 
 
 def _giorni(n: int) -> str:
-    return "giorno" if n == 1 else "giorni"
+    return tr("day") if n == 1 else tr("days")

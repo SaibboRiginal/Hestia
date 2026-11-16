@@ -318,16 +318,16 @@ def _parse(value: Any) -> datetime | None:
     return at if at.tzinfo else at.replace(tzinfo=timezone.utc)
 
 
-# The reasons are hidden text for the model (English); the owner reads them in Italian on the Pensieri page.
-_SHOWN = (("How they feel today:", "Come ti senti oggi:"), ("You two have not talked for about", "Non vi sentite da circa"),
-          (" hours", " ore"), ("energy ", "energia "), ("(because of ", "(per "), ("One of their areas:", "Una tua area:"))
+# The reasons are hidden text for the model (English); the owner reads them in his language on the Thoughts page.
+_SHOWN = (("How they feel today:", "How you feel today:"), ("You two have not talked for about", "You two haven't talked for about"),
+          (" hours", " hours"), ("energy ", "energy "), ("(because of ", "(because of "), ("One of their areas:", "One of your areas:"))
 
 
 def shown(reason: str) -> str:
     """A reason as the owner reads it."""
     text = str(reason or "")
     for hidden, plain in _SHOWN:
-        text = text.replace(hidden, plain)
+        text = text.replace(hidden, tr(plain))
     return text
 
 

@@ -91,7 +91,7 @@ def _restart(service: str, attempt: int, limit: int) -> None:
     res = res if isinstance(res, dict) else {"detail": str(res)[:200]}
     healthy = bool(ok and res.get("healthy"))
     status = str(res.get("status") or ("error" if not ok else ""))
-    text = {"ok": "Riavviato" + (" e di nuovo in salute" if healthy else ", ancora non risponde"),
+    text = {"ok": tr("Restarted and healthy again") if healthy else tr("Restarted, still not answering"),
             "skipped": tr("Restart left to the release in progress"), "refused": tr("Restart not allowed")}.get(
         status, "Riavvio non riuscito")
     health_history.note_action(service, "restart_result", text, ok=healthy)

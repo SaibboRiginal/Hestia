@@ -76,8 +76,8 @@ def _plan_recheck(service: str, status: str, error: str | None) -> None:
         datetime.fromtimestamp(when, tz=timezone.utc),
         action={"service": "argus", "path": f"/api/argus/recheck/{service}", "method": "POST",
                 "body": {"trigger": "agenda"}, "timeout_seconds": 30},
-        description=f"Servizio {service} non sano: {str(error or 'unknown')[:200]}. "
-                    "Argus ricontrolla e richiede di nuovo la riparazione a Hephaestus.",
+        description=tr("Service {0} unhealthy: {1}. Argus checks again and asks Hephaestus for the repair again.",
+                       service, str(error or "unknown")[:200]),
         params={"service": service, "attempt": attempt})
     health_history.note_action(service, "recheck_planned", f"Ricontrollo in agenda tra {minutes} min (tentativo {attempt})")
 
@@ -290,14 +290,11 @@ def _check_provider_auth() -> None:
                             "entity_id": f"argus-auth-{svc_name}-{p_name}-{_ts}",
                             "payload": {
                                 "action": f"reauth_{p_name}",
-                                "_message": (
-                                    f"⚠️ <b>{p_name.title()}</b> su "
-                                    f"<b>{svc_name.title()}</b> richiede "
-                                    "riautenticazione. Usa il pulsante qui sotto."
-                                ),
+                                "_message": tr("⚠️ <b>{0}</b> on <b>{1}</b> needs to sign in again. "
+                                               "Use the button below.", p_name.title(), svc_name.title()),
                                 "_actions": [
                                     {
-                                        "text": f"🔑 Riautentica {p_name.title()}",
+                                        "text": tr("🔑 Sign in to {0} again", p_name.title()),
                                         "command": f"gateway_auth_initiate_{p_name}",
                                     }
                                 ],

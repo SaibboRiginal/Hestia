@@ -117,7 +117,7 @@ def _create(prompt: str, purpose: str = "generico", negative: str = "", width: i
 S, I = {"type": "string"}, {"type": "integer"}
 G = "aspetto"
 kit.tools([
-    MCPTool(name="immagine_crea", description="Crea un'immagine: prompt (meglio in inglese), purpose " +
+    MCPTool(name="immagine_crea", description="Creates an image: prompt (better in English), purpose " +
             "|".join(PURPOSES) + ", negative, width, height.",
             parameters={"type": "object", "properties": {"prompt": S, "purpose": {"type": "string", "enum": list(
                 PURPOSES)}, "negative": S, "width": I, "height": I}, "required": ["prompt"]},
