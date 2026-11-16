@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.3 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools), 2c (module texts), 2d (WebUI and plugins) done |
+| 1.4 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools), 2c (module texts), 2d (WebUI and plugins) done |
 
 ## Goal
 Every text the model reads is English; every fixed text a person reads comes from translation files in the
@@ -44,7 +44,8 @@ what the assistant writes on its own follows the language setting (dossier `2026
   loads before any bundle, so module-level constants of the shell and of every plugin are translated too.
   Angular: `tr()` and the pipe `{{ 'Testo' | tr }}` (`core/i18n.ts`); plugins: `tr` of `@hestia/webui-sdk`.
   Saving «Lingua» (set, reset, undo) reloads the page. Technical strings (SVG paths, CSS) are never wrapped.
-- German, French and Spanish catalogs (until then they show English).
+- Languages: Italian and English only (Marko 2026-11-16); German, French and Spanish removed from «Lingua».
+  The standard for every module is `docs/LANGUAGES.md`, enforced by `tools/governance/check_i18n.py`.
 
 ## Acceptance criteria
 - No Italian sentence in a prompt, tool description, parameter description or `response_prompt`.

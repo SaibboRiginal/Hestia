@@ -639,5 +639,6 @@ Every fixed text of the shell and of the plugins follows «Lingua» (`themis.per
 templates `{{ 'Testo' | tr }}` / `[title]="'Testo' | tr"` (`TrPipe`); plugins `tr` of `@hestia/webui-sdk`. The Italian
 text is the key of `Hestia-Shared/hestia_common/locales/<lang>/messages.json`; missing → English → Italian. Themis
 unreachable → Italian texts, never an error page. Saving «Lingua» (`CentralSettingsApi.set/reset/undo`) reloads the
-page once. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
+page once. «Lingua» offers Italian and English (`LANGUAGES` in `identity.service.ts`, names never translated); the
+standard for texts is `docs/LANGUAGES.md`. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
 them; no personal data).

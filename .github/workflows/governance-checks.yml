@@ -50,6 +50,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: python tools/governance/check_icons.py
 
+      - name: Every fixed text has its English translation
+        if: ${{ !cancelled() }}
+        run: python tools/governance/check_i18n.py
+
       - name: Install gate dependencies
         if: ${{ !cancelled() }}
         env:

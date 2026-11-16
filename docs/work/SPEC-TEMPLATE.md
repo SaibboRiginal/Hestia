@@ -23,5 +23,6 @@ Versioning: minor = refinement, major = scope/design change. Every bump goes in 
 6. WebUI (icons, no emoji) and Telegram (tool + display):
 7. Stop, correct, undo:
 8. Docs that change:
+9. Texts (model English, people texts via `tr` + English catalog, `docs/LANGUAGES.md`):
 
 ## 5. Acceptance criteria
