@@ -42,6 +42,7 @@ from hestia_common.plugin_client import PluginClient, page, widget
 from hestia_common.voice_usecases import capabilities as voice_capabilities
 from .modules.notifications import VOICE_USECASES
 from hestia_common import recap
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger, log_buffer = setup_service_logging("hestia_hermes")
 
@@ -56,20 +57,18 @@ service = HermesService()
 
 # ── WebUI plugin (core module, Sistema section): Notifiche (inbox) + Consegne ────────────────────
 # Routes of Hermes are spread over /api/notifications, /api/events…: the plugin reads /api/ui/* only.
-ui = PluginClient("hermes", title="Notifiche", icon="bell", color="teal", kind="core", dist=UI_DIST,
-                  description="Le notifiche e dove sono arrivate: trattenute, silenziose, ritirate, risposte.",
+ui = PluginClient("hermes", title="Notifications", icon="bell", color="teal", kind="core", dist=UI_DIST,
+                  description="Notifications and where they arrived: held back, silent, withdrawn, answered.",
                   version=SERVICE_VERSION)
 ui.webui(entry="hermes.js", api_prefix="/api/ui/",
-         pages=[page("notifiche", "Notifiche", element="hermes-inbox", icon="bell", order=140,
+         pages=[page("notifiche", "Notifications", element="hermes-inbox", icon="bell", order=140,
                      badge={"source": "/api/ui/inbox/counts", "field": "unread"},
-                     help="L'elenco delle notifiche, uguale su ogni client (letta qui = letta su Telegram): "
-                          "da leggere, da rispondere, tutte; i pulsanti rispondono al modulo che ha chiesto."),
-                page("consegne", "Consegne", element="hermes-deliveries", icon="send", order=141, parent="notifiche",
-                     help="Ogni notifica e a quali client è arrivata (Telegram, WebUI…): trattenuta dalla presenza, "
-                          "silenziosa, ritirata dalla chat, risposta. L'elenco da leggere è in Notifiche.")],
-         widgets=[widget("oggi", "Consegne oggi", element="hermes-today-widget", sizes=["s", "m"], auto=True,
+                     help="The list of notifications, the same on every client (read here = read on Telegram): to read, to answer, all; the buttons answer the module that asked."),
+                page("consegne", "Deliveries", element="hermes-deliveries", icon="send", order=141, parent="notifiche",
+                     help="Every notification and which clients it reached (Telegram, WebUI…): held back by presence, silent, withdrawn from the chat, answered. The list to read is in Notifications.")],
+         widgets=[widget("oggi", "Deliveries today", element="hermes-today-widget", sizes=["s", "m"], auto=True,
                          open_page="consegne", icon="bell",
-                         help="Notifiche di oggi: consegnate, trattenute, fallite, in attesa di risposta.")])
+                         help="Today's notifications: delivered, held back, failed, waiting for an answer.")])
 app.include_router(ui.router())
 
 
@@ -145,18 +144,17 @@ def _register_agenda() -> None:
         return
     AgendaClient("hermes").register_async([job_rule(
         "hermes.notifications.retract",
-        "Pulisci le notifiche già gestite",
+        "Clean the notifications already handled",
         service="hermes", path="/api/notifications/retract-stale",
         recurrence="FREQ=HOURLY",
-        description="Toglie dalla chat Telegram le notifiche già viste o gestite (restano nell'elenco della WebUI).",
+        description="Removes from the Telegram chat the notifications already seen or handled (they stay in the WebUI list).",
         timeout_seconds=60,
     ), job_rule(
         "hermes.notifications.remind_pending",
-        "Promemoria delle cose da decidere",
+        "Reminder of the things to decide",
         service="hermes", path="/api/notifications/remind-pending",
         recurrence="FREQ=HOURLY",
-        description="Se una notifica aspetta una tua risposta da qualche ora ti mando un solo promemoria con "
-                    "tutte quelle in attesa.",
+        description="If a notification has been waiting for your answer for a few hours I send you a single reminder with all those waiting.",
         timeout_seconds=60,
     )])
 
@@ -307,7 +305,7 @@ app.include_router(create_log_control_router("hestia_hermes"))
 
 # Daily recap piece (docs/work/2026-10-20-recap-giornaliero): notifications of the day, answers still awaited.
 app.include_router(recap.recap_router(
-    "hermes", lambda day, nxt: recap.piece("hermes", "Notifiche", icon="bell", emoji="🔔", order=800,
+    "hermes", lambda day, nxt: recap.piece("hermes", "Notifications", icon="bell", emoji="🔔", order=800,
                                          **service.notifications.recap(day.isoformat()))))
 
 @app.get("/api/logs")
@@ -512,7 +510,7 @@ def _ui_guard(fn, *args, **kwargs):
         raise HTTPException(status_code=400, detail=str(exc))
     except ui_view.ArchiveUnavailable:
         logger.warning("[🔄] event=hermes_ui_archive_unavailable")
-        raise HTTPException(status_code=502, detail="archivio non disponibile")
+        raise HTTPException(status_code=502, detail="archive not available")
 
 
 @app.get("/api/ui/deliveries")
@@ -631,7 +629,7 @@ def ui_inbox_voice(notification_id: str, format: str = "mp3"):
     row = service.archive.get_outbound_event(notification_id) or {}
     voice = notifications_public_voice(((row.get("payload") or {}) if isinstance(row.get("payload"), dict) else {}).get("voice"))
     if not voice:
-        raise HTTPException(status_code=404, detail="questa notifica non ha la voce")
+        raise HTTPException(status_code=404, detail=tr("this notification has no voice"))
     try:
         status, payload = service.notifications.voice.call("GET", f"api/voice/audio/{voice['blob_id']}",
                                                            query={"format": format}, timeout=60)
@@ -639,5 +637,5 @@ def ui_inbox_voice(notification_id: str, format: str = "mp3"):
         logger.warning("[🔄] event=notification_voice_read_failed notification_id=%s error=%s", notification_id, exc)
         status, payload = 502, None
     if status != 200 or not isinstance(payload, dict):
-        raise HTTPException(status_code=502 if status in (0, 502) else status, detail="audio non disponibile")
+        raise HTTPException(status_code=502 if status in (0, 502) else status, detail=tr("audio not available"))
     return {"mime_type": payload.get("mime_type"), "audio_b64": payload.get("audio_b64"), **voice}

@@ -38,7 +38,7 @@ class TestNormalize:
         assert q["options"] == [{"value": "Pane", "label": "Pane"}, {"value": "latte", "label": "Latte"},
                                 {"value": "Uova", "label": "Uova"}]
         assert public_question(q) == {"kind": "multi_choice", "options": q["options"], "allow_other": True}
-        assert normalize_question({"service": "x", "path": "/p"})["options"][0]["label"] == "Sì"
+        assert normalize_question({"service": "x", "path": "/p"})["options"][0]["label"] == "Yes"
         free = normalize_question({"kind": "free_text", "service": "x", "path": "/p", "options": ["a", "b"]})
         assert free["options"] == [] and free["allow_other"] is True
 

@@ -19,17 +19,17 @@ from typing import Any, Callable
 
 from . import domain
 from .store import now_iso
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hercules.activities")
 
-KINDS = {"corsa": "Corsa", "bici": "Bici", "camminata": "Camminata", "nuoto": "Nuoto", "altro": "Attività"}
+KINDS = {"corsa": "Corsa", "bici": "Bici", "camminata": "Camminata", "nuoto": "Nuoto", "altro": "Activity"}
 ALIASES = {"run": "corsa", "running": "corsa", "correre": "corsa", "jogging": "corsa", "bike": "bici",
            "bicicletta": "bici", "ciclismo": "bici", "walk": "camminata", "camminare": "camminata",
            "passeggiata": "camminata", "hike": "camminata", "escursione": "camminata", "swim": "nuoto",
            "nuotare": "nuoto", "piscina": "nuoto"}
 SLOT_STATUS = ("proposed", "planned", "done", "missed", "moved", "cancelled")
-CALENDAR_NAME = "Allenamenti"
+CALENDAR_NAME = "Workouts"
 EARLIEST, LATEST = 6, 21          # hours a slot may start
 GOOD_SCORE = 70                    # «ottimo giorno» threshold
 
@@ -41,7 +41,7 @@ def kind_of(text: Any) -> str:
 
 
 def label(kind: str) -> str:
-    return KINDS.get(kind, "Attività")
+    return KINDS.get(kind, tr("Activity"))
 
 
 # ── normalizers (registered in domain.NORMALIZERS) ─────────────────────────
@@ -53,7 +53,7 @@ def norm_plan(d: dict) -> dict:
             continue
         status = s.get("status") or "proposed"
         if status not in SLOT_STATUS:
-            raise domain.Invalid(tr("stato non valido: {0}", status))
+            raise domain.Invalid(tr("invalid state: {0}", status))
         slots.append({**s, "id": s.get("id") or domain.new_id(), "status": status})
     return {**d, "kind": kind_of(d.get("kind")), "times": 1 if times is None else times,
             "minutes": domain._num(d.get("minutes"), lo=10, hi=600, integer=True) or 45,
@@ -63,7 +63,7 @@ def norm_plan(d: dict) -> dict:
 
 def norm_activity(d: dict) -> dict:
     if not d.get("date"):
-        raise domain.Invalid("data mancante")
+        raise domain.Invalid(tr("missing date"))
     return {**d, "kind": kind_of(d.get("kind")), "date": domain._str(d.get("date"), 10),
             "minutes": domain._num(d.get("minutes"), lo=1, hi=1440, integer=True),
             "km": domain._num(d.get("km"), lo=0, hi=1000), "note": domain._str(d.get("note"), 300),
@@ -81,7 +81,7 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
         return 0, ["pioggia"]
     if rain >= 30:
         score -= 35
-        why.append(f"pioggia possibile {rain}%")
+        why.append(tr("rain possible {0}%", rain))
     if sunrise and sunset and not (sunrise[:5] <= f"{hh:02d}:30" and f"{hh:02d}:00" < sunset[:5]):
         return 0, ["buio"]
     if not h.get("is_day", True) and not (sunrise and sunset):
@@ -90,13 +90,13 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
     lo, hi = (8, 20) if kind in ("corsa", "camminata") else (12, 24)
     if t is not None:
         if t < lo - 8 or t > hi + 10:
-            return 0, [f"{t}° troppo {'freddo' if t < lo else 'caldo'}"]
+            return 0, [tr("{0}° too cold", t) if t < lo else tr("{0}° too hot", t)]
         if t < lo:
             score -= int((lo - t) * 4)
-            why.append(f"fresco ({t}°)")
+            why.append(tr("cool ({0}°)", t))
         elif t > hi:
             score -= int((t - hi) * 4)
-            why.append(f"caldo ({t}°)")
+            why.append(tr("hot ({0}°)", t))
         else:
             why.append(f"{t}°")
     wind = h.get("wind_kmh") or 0
@@ -161,8 +161,7 @@ def pick_slots(candidates: list[dict], times: int) -> list[dict]:
 def slot_text(slot: dict) -> str:
     s = datetime.fromisoformat(slot["start"])
     w = slot.get("weather") or {}
-    days = [tr("lunedì"), tr("martedì"), tr("mercoledì"), tr("giovedì"), tr("venerdì"), "sabato", "domenica"]
-    out = tr("{0} {1} alle {2:%H:%M}", days[s.weekday()], s.day, s)
+    out = tr("{0} {1} at {2:%H:%M}", weekday_name(s.weekday()), s.day, s)
     if w.get("temp_c") is not None:
         out += f", {w['temp_c']}°"
     if w.get("condition"):
@@ -295,13 +294,13 @@ class Activities:
                "week": f"{d0.isoformat()} → {d1.isoformat()}", "place": (f.get("place") or {}).get("label") or place,
                "slots": [{"n": i + 1, "id": s["id"], "when": slot_text(s), "start": s["start"], "why": s["why"]}
                          for i, s in enumerate(saved["slots"])],
-               "next": "Conferma con fitness_confirm_activity (plan_id, slots facoltativi): nulla va in calendario prima."}
+               "next": "Confirm with fitness_confirm_activity (plan_id, optional slots): nothing goes in the calendar before."}
         if f.get("status") != "ok":
             out["weather"] = f.get("status")
-            out["hint"] = (tr("Previsione non disponibile: posso salvare solo l'intenzione e ti propongo i giorni al mattino")
-                           if f.get("status") != "needs_place" else tr("Aggiungi Casa nei tuoi luoghi per avere il meteo"))
+            out["hint"] = (tr("Forecast not available: I can only save the intention and I'll suggest the days in the morning")
+                           if f.get("status") != "needs_place" else tr("Add Home to your places to get the weather"))
         elif len(chosen) < plan["times"]:
-            out["hint"] = tr("Solo {0} momenti buoni questa settimana (pioggia, buio o impegni)", len(chosen))
+            out["hint"] = tr("Only {0} good moments this week (rain, dark or appointments)", len(chosen))
         logger.info("event=hercules_activity_proposed kind=%s times=%s slots=%s", saved["kind"], saved["times"], len(chosen))
         return out
 
@@ -321,7 +320,7 @@ class Activities:
                 elif len(xs) >= 13:            # an explicit time from the user: «giovedì alle 19»
                     start = datetime.fromisoformat(xs)
                     start = start if start.tzinfo else start.replace(tzinfo=self.tz)
-                    keep.append({"id": domain.new_id(), "start": start.isoformat(), "why": [tr("scelto da te")],
+                    keep.append({"id": domain.new_id(), "start": start.isoformat(), "why": [tr("chosen by you")],
                                  "end": (start + timedelta(minutes=int(plan.get("minutes") or 45))).isoformat()})
         kept_ids = {s["id"] for s in keep}
         new_slots = [s for s in plan.get("slots") or [] if s.get("status") != "proposed"]
@@ -340,8 +339,8 @@ class Activities:
         logger.info("event=hercules_activity_confirmed plan=%s slots=%s", plan_id, len(planned))
         return {"confirmed": True, "plan_id": plan_id, "kind": label(plan["kind"]), "times": plan["times"],
                 "planned": [slot_text(s) for s in planned],
-                "note": tr("Eventi nel calendario «Allenamenti»; dopo ogni uscita ti chiedo se l'hai fatta.")
-                        if planned else tr("Intenzione salvata: al mattino ti dico quando è un buon momento.")}
+                "note": tr("Events in the «Allenamenti» calendar; after each outing I ask if you did it.")
+                        if planned else tr("Intention saved: in the morning I tell you when it's a good moment.")}
 
     def add_slot(self, plan_id: str, start: str = "") -> dict:
         """«Pianifica» from the morning message or the plugin: a new planned slot (default: best today)."""
@@ -349,13 +348,13 @@ class Activities:
         if start:
             st = datetime.fromisoformat(start)
             st = st if st.tzinfo else st.replace(tzinfo=self.tz)
-            slot = {"id": domain.new_id(), "start": st.isoformat(), "why": [tr("scelto da te")],
+            slot = {"id": domain.new_id(), "start": st.isoformat(), "why": [tr("chosen by you")],
                     "end": (st + timedelta(minutes=int(plan.get("minutes") or 45))).isoformat()}
         else:
             today = self.h.today()
             cands, _ = self._candidates(plan, today, today)
             if not cands:
-                return {"error": tr("oggi non vedo un buon momento")}
+                return {"error": tr("today I see no good moment")}
             slot = {**cands[0], "id": domain.new_id()}
         slot["status"] = "planned"
         plan["slots"] = [*(plan.get("slots") or []), slot]
@@ -371,7 +370,7 @@ class Activities:
         plan = self.h.get("activity_plan", plan_id)
         slot = next((s for s in plan.get("slots") or [] if s.get("id") == slot_id), None)
         if not slot:
-            raise domain.Invalid(tr("momento non trovato"))
+            raise domain.Invalid(tr("moment not found"))
         return plan, slot
 
     def _set_slot(self, plan: dict, slot_id: str, **changes) -> dict:
@@ -387,7 +386,7 @@ class Activities:
                                      "slot_id": slot_id, "source": "slot", **({"ext": ext} if ext else {})})
         plan = self._set_slot(plan, slot_id, status="done")
         self._event_title(plan, slot, done=True)
-        self._close_question(slot_id, tr("Fatto"))
+        self._close_question(slot_id, tr("Done"))
         self._emit("done", plan_id, slot["start"])
         return {"done": True, **self.progress(plan)}
 
@@ -395,7 +394,7 @@ class Activities:
         plan, slot = self._slot(plan_id, slot_id)
         plan = self._set_slot(plan, slot_id, status="missed")
         self._event_title(plan, slot, done=False)
-        self._close_question(slot_id, tr("Non fatto"))
+        self._close_question(slot_id, tr("Not done"))
         return {"missed": True, **self.progress(plan)}
 
     def slot_moved(self, plan_id: str, slot_id: str, to: str = "") -> dict:
@@ -403,7 +402,7 @@ class Activities:
         plan, slot = self._slot(plan_id, slot_id)
         plan = self._set_slot(plan, slot_id, status="moved")
         self._unschedule(plan, slot)
-        self._close_question(slot_id, tr("Spostato"))
+        self._close_question(slot_id, tr("Moved"))
         if to:
             return {"moved": True, **self.add_slot(plan_id, to)}
         d0 = max(self.h.today(), date.fromisoformat(plan["week_from"]))
@@ -411,7 +410,7 @@ class Activities:
         used = {s["start"][:10] for s in plan["slots"] if s.get("status") in ("planned", "done")}
         cands, _ = self._candidates(plan, d0, d1, exclude_days=used | {slot["start"][:10]})
         if not cands:
-            return {"moved": True, "planned": None, "note": tr("Nessun altro buon momento questa settimana")}
+            return {"moved": True, "planned": None, "note": tr("No other good moment this week")}
         best = pick_slots(cands, 1)[0]
         return {"moved": True, **self.add_slot(plan_id, best["start"])}
 
@@ -471,7 +470,7 @@ class Activities:
 
     # ── calendar «Allenamenti» + agenda ─────────────────────────────────────
     def _calendar(self) -> str | None:
-        r = self._hecate("POST", "api/gateway/calendar/calendars", body={"name": CALENDAR_NAME, "provider": "google"})
+        r = self._hecate("POST", "api/gateway/calendar/calendars", body={"name": tr(CALENDAR_NAME), "provider": "google"})
         return r.get("calendar_id") if r.get("status") == "ok" else None
 
     def _create_event(self, link_id: str, title: str, start: str, end: str, *, location: str = "",
@@ -513,15 +512,15 @@ class Activities:
 
     def _schedule(self, plan: dict, slot: dict) -> None:
         w = slot.get("weather") or {}
-        desc = tr("Pianificato da {assistant}") + (f" · previsione {w.get('temp_c')}°, {w.get('condition')}" if w else "")
+        desc = tr("Planned by {assistant}") + (tr(" · forecast {0}°, {1}", w.get('temp_c'), w.get('condition')) if w else "")
         self._create_event(f"slot:{slot['id']}", label(plan["kind"]), slot["start"], slot["end"],
                            location=plan.get("place") or "", description=desc, reminders=[30])
         if self.agenda:
             ask_at = datetime.fromisoformat(slot["end"]) + timedelta(minutes=30)
-            self.agenda.plan(f"hercules.activity.{slot['id']}", tr("{0}: l'hai fatto?", label(plan['kind'])), ask_at,
+            self.agenda.plan(f"hercules.activity.{slot['id']}", tr("{0}: did you do it?", label(plan['kind'])), ask_at,
                              action={"service": "hercules", "method": "POST",
                                      "path": f"{self.api}/activities/{plan['id']}/slots/{slot['id']}/ask"},
-                             description=f"{label(plan['kind'])} {slot_text(slot)}: dopo ti chiedo se l'hai fatto.",
+                             description=tr("{0} {1}: afterwards I'll ask whether you did it.", label(plan['kind']), slot_text(slot)),
                              params={"place": plan.get("place") or "", "start": slot["start"]})
 
     def _unschedule(self, plan: dict, slot: dict) -> None:
@@ -535,7 +534,7 @@ class Activities:
         if self.agenda:
             self.agenda.done(f"hercules.activity.{slot['id']}")
 
-    def _close_question(self, slot_id: str, outcome: str = "Segnato") -> None:
+    def _close_question(self, slot_id: str, outcome: str = "Marked") -> None:
         """Answered from anywhere (plugin, chat): the live «L'hai fatto?» closes (Hermes ``closes``)."""
         key = f"hercules.activity.{slot_id}"
         try:
@@ -562,8 +561,8 @@ class Activities:
             if self.h.store.data("calendar_link", f"session:{s['id']}"):
                 continue
             end = s.get("ended_at") or s.get("started_at")
-            self._create_event(f"session:{s['id']}", s.get("name") or tr("Palestra"), s["started_at"], end,
-                               description="Allenamento registrato in Hestia")
+            self._create_event(f"session:{s['id']}", s.get("name") or tr("Gym"), s["started_at"], end,
+                               description=tr("Workout logged in Hestia"))
             n += 1
         return n
 
@@ -575,12 +574,12 @@ class Activities:
             return None
         base = f"{self.api}/activities/{plan_id}/slots/{slot_id}"
         s = datetime.fromisoformat(slot["start"])
-        text = tr("Hai fatto la {0} delle {1:%H:%M}?", label(plan['kind']).lower(), s)
-        actions = [{"id": "done", "label": tr("Fatto"), "text": tr("Fatto"), "style": "primary", "service": "hercules",
+        text = tr("Did you do the {0} at {1:%H:%M}?", label(plan['kind']).lower(), s)
+        actions = [{"id": "done", "label": tr("Done"), "text": tr("Done"), "style": "primary", "service": "hercules",
                     "method": "POST", "path": f"{base}/done", "body": {}, "resolves": True},
-                   {"id": "missed", "label": tr("Non fatto"), "text": tr("Non fatto"), "service": "hercules", "method": "POST",
+                   {"id": "missed", "label": tr("Not done"), "text": tr("Not done"), "service": "hercules", "method": "POST",
                     "path": f"{base}/missed", "body": {}, "resolves": True},
-                   {"id": "moved", "label": tr("Spostato"), "text": tr("Spostato"), "service": "hercules", "method": "POST",
+                   {"id": "moved", "label": tr("Moved"), "text": tr("Moved"), "service": "hercules", "method": "POST",
                     "path": f"{base}/moved", "body": {}, "resolves": True}]
         return {"key": f"hercules.activity.{slot_id}", "text": text, "actions": actions}
 
@@ -606,20 +605,20 @@ class Activities:
                 if hour and score_hour(hour, kind=plan["kind"])[0] >= 40:
                     continue                              # the planned slot still holds: nothing to say
                 alt = cands[0] if cands else None
-                text = tr("Pioggia alle {0} per la {1}", slot['start'][11:16], name)
+                text = tr("Rain at {0} for the {1}", slot['start'][11:16], name)
                 actions = []
                 if alt and alt["start"][:13] != slot["start"][:13]:
-                    text += tr(": meglio alle {0}?", alt['start'][11:16])
-                    actions.append({"id": "move", "label": tr("Sposta alle {0}", alt['start'][11:16]), "style": "primary",
+                    text += tr(": better at {0}?", alt['start'][11:16])
+                    actions.append({"id": "move", "label": tr("Move to {0}", alt['start'][11:16]), "style": "primary",
                                     "service": "hercules", "method": "POST",
                                     "path": f"{base}/slots/{slot['id']}/moved", "body": {"to": alt["start"]},
                                     "resolves": True})
                 else:
-                    text += tr(": oggi non vedo finestre asciutte. Spostiamo a un altro giorno?")
-                    actions.append({"id": "move", "label": tr("Altro giorno"), "style": "primary", "service": "hercules",
+                    text += tr(": today I see no dry windows. Shall we move to another day?")
+                    actions.append({"id": "move", "label": tr("Another day"), "style": "primary", "service": "hercules",
                                     "method": "POST", "path": f"{base}/slots/{slot['id']}/moved", "body": {},
                                     "resolves": True})
-                actions.append({"id": "keep", "label": tr("Tengo"), "service": "hercules", "method": "POST",
+                actions.append({"id": "keep", "label": tr("Keep"), "service": "hercules", "method": "POST",
                                 "path": f"{base}/keep", "body": {}, "resolves": True})
                 return {"key": f"hercules.activity.morning.{plan['id']}", "text": text, "actions": actions}
             future = [s for s in plan["slots"] if s.get("status") == "planned" and s["start"][:10] > today.isoformat()]
@@ -627,12 +626,13 @@ class Activities:
                 continue
             best = cands[0]
             w = best.get("weather") or {}
-            text = (tr("Ottimo giorno per {0}: {1}–{2}", 'la ' + name if plan['kind'] != 'altro' else 'muoverti', best['start'][11:16], best['end'][11:16])
+            text = ((tr("Great day for {0}: {1}–{2}", name, best['start'][11:16], best['end'][11:16]) if plan['kind'] != 'altro'
+                    else tr("Great day to move: {0}–{1}", best['start'][11:16], best['end'][11:16]))
                     + (f", {w['temp_c']}°" if w.get("temp_c") is not None else "")
                     + (f", {w['condition']}" if w.get("condition") else "") + f" · {prog['hint']}")
-            actions = [{"id": "plan", "label": tr("Pianifica"), "style": "primary", "service": "hercules", "method": "POST",
+            actions = [{"id": "plan", "label": tr("alt::Plan"), "style": "primary", "service": "hercules", "method": "POST",
                         "path": f"{base}/slots", "body": {"start": best["start"]}, "resolves": True},
-                       {"id": "no", "label": tr("Non oggi"), "service": "hercules", "method": "POST", "path": f"{base}/keep",
+                       {"id": "no", "label": tr("Not today"), "service": "hercules", "method": "POST", "path": f"{base}/keep",
                         "body": {}, "resolves": True}]
             return {"key": f"hercules.activity.morning.{plan['id']}", "text": text, "actions": actions}
         return None
@@ -656,12 +656,12 @@ class Activities:
             for s in p.get("slots") or []:
                 when = s["start"][11:16]
                 if s["start"][:10] == d and s.get("status") in ("missed", "planned"):
-                    state = (tr("non fatto") if p["kind"] == "nuoto" else tr("non fatta")) if s["status"] == "missed" \
-                        else tr("da segnare")
-                    missed.append({"text": tr("{0} delle {1}: {2}", label(p['kind']), when, state), "tone": "warning"})
+                    state = (tr("not done") if p["kind"] == "nuoto" else tr("f::not done")) if s["status"] == "missed" \
+                        else tr("to mark")
+                    missed.append({"text": tr("{0} at {1}: {2}", label(p['kind']), when, state), "tone": "warning"})
                 elif s["start"][:10] == n and s.get("status") == "planned":
                     w = s.get("weather") or {}
-                    upcoming.append({"text": tr("{0} alle {1}", label(p['kind']), when)
+                    upcoming.append({"text": tr("{0} at {1}", label(p['kind']), when)
                                      + (f" · {w['temp_c']}°" if w.get("temp_c") is not None else ""), "at": s["start"]})
         return {"done": done, "missed": missed, "next": upcoming}
 

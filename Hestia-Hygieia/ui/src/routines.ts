@@ -21,19 +21,19 @@ export class HygieiaCadence extends LitElement {
   render() {
     const v = this.value;
     const mode = v?.mode || 'none';
-    const modes: Array<[string, string]> = [['target', tr('Almeno N volte')], ['daily', tr('Ogni giorno')], ['fixed_days', tr('Giorni fissi')], ['as_needed', tr('Quando capita')]];
-    if (this.allowNone) modes.unshift(['none', tr('Ogni volta')]);
+    const modes: Array<[string, string]> = [['target', tr('At least N times')], ['daily', tr('Every day')], ['fixed_days', tr('Fixed days')], ['as_needed', tr('When it happens')]];
+    if (this.allowNone) modes.unshift(['none', tr('Every time')]);
     return html`<div class="chips">${modes.map(([m, l]) => html`<button class="chip" aria-pressed=${mode === m} @click=${() => this.set(
         m === 'none' ? null : m === 'target' ? { mode: m, times: v?.times || 2, per: v?.per || 'week' } : m === 'fixed_days' ? { mode: m, days: v?.days || [] } : { mode: m })}>${l}</button>`)}</div>
       ${mode === 'target' ? html`<div class="row wrap">
         <input class="in num" type="number" min="1" max="31" .value=${String(v.times || 1)} @change=${(e: any) => this.set({ ...v, times: Math.max(1, Number(e.target.value) || 1) })}>
-        <span>${(v.times || 1) === 1 ? 'volta' : 'volte'} a</span>
-        <div class="chips"><button class="chip" aria-pressed=${v.per !== 'month'} @click=${() => this.set({ ...v, per: 'week' })}>${tr("settimana")}</button>
-          <button class="chip" aria-pressed=${v.per === 'month'} @click=${() => this.set({ ...v, per: 'month' })}>${tr("mese")}</button></div></div>
-        <div class="small muted">${tr("Nessun giorno fisso: te la propongo quando sei indietro, distribuita nel")} ${v.per === 'month' ? 'mese' : tr('la settimana')}.</div>` : nothing}
+        <span>${(v.times || 1) === 1 ? tr('time a') : tr('times a')}</span>
+        <div class="chips"><button class="chip" aria-pressed=${v.per !== 'month'} @click=${() => this.set({ ...v, per: 'week' })}>${tr("week")}</button>
+          <button class="chip" aria-pressed=${v.per === 'month'} @click=${() => this.set({ ...v, per: 'month' })}>${tr("month")}</button></div></div>
+        <div class="small muted">${tr("No fixed day: I suggest it when you are behind, spread over the")} ${v.per === 'month' ? tr('the month') : tr('the week')}.</div>` : nothing}
       ${mode === 'fixed_days' ? html`<div class="chips">${WEEKDAYS.map((d, i) => html`<button class="chip" aria-pressed=${(v.days || []).includes(i)}
         @click=${() => { const s = new Set<number>(v.days || []); s.has(i) ? s.delete(i) : s.add(i); this.set({ ...v, days: [...s].sort() }); }}>${d}</button>`)}</div>` : nothing}
-      ${mode === 'none' ? html`<div class="small muted">${tr("Si fa ogni volta che fai la routine.")}</div>` : nothing}`;
+      ${mode === 'none' ? html`<div class="small muted">${tr("It's done every time you do the routine.")}</div>` : nothing}`;
   }
 }
 
@@ -62,7 +62,7 @@ export class HygieiaRoutines extends HestiaElement {
   private startCreate() { this.creating = { name: '', slot: 'evening', areas: ['viso'], cadence: { mode: 'target', times: 3, per: 'week' } }; }
   private async create() {
     const c = this.creating;
-    if (!c.name.trim()) { this.host.toast(tr('Dai un nome alla routine'), 'warning'); return; }
+    if (!c.name.trim()) { this.host.toast(tr('Name the routine'), 'warning'); return; }
     const r = await call(this.host, 'POST', `${API}/routines`, { body: { ...c, steps: [] } });
     if (r.ok) { this.creating = null; this.host.navigate('routine/' + r.data.id, { nuova: '1' }); }
   }
@@ -74,38 +74,38 @@ export class HygieiaRoutines extends HestiaElement {
   private sheet() {
     const c = this.creating;
     return html`<div class="sheet" @click=${(e: Event) => { if (e.target === e.currentTarget) this.creating = null; }}><div class="card col">
-      <div class="between"><h2>${tr("Nuova routine")}</h2><hxk-button variant="ghost" icon="x" @click=${() => (this.creating = null)}></hxk-button></div>
-      <input class="in" placeholder=${tr("Nome, es. Viso sera")} .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}
+      <div class="between"><h2>${tr("New routine")}</h2><hxk-button variant="ghost" icon="x" @click=${() => (this.creating = null)}></hxk-button></div>
+      <input class="in" placeholder=${tr("Name, e.g. Evening face")} .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}
         @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.create()} autofocus>
-      <h3>${tr("Quando")}</h3>
-      <div class="chips">${Object.entries(this.m?.slots || { morning: 'Mattina', evening: 'Sera', anytime: 'Quando capita' }).map(([k, l]) => html`
+      <h3>${tr("When")}</h3>
+      <div class="chips">${Object.entries(this.m?.slots || { morning: tr('Morning'), evening: tr('Evening'), anytime: tr('Whenever') }).map(([k, l]) => html`
         <button class="chip" aria-pressed=${c.slot === k} @click=${() => (this.creating = { ...c, slot: k })}>${slotIcon(k)} ${l}</button>`)}</div>
-      <h3>${tr("Zone")}</h3>
+      <h3>${tr("Zones")}</h3>
       <div class="chips">${(this.m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${c.areas.includes(a.value)}
         @click=${() => this.creating = { ...c, areas: c.areas.includes(a.value) ? c.areas.filter((x: string) => x !== a.value) : [...c.areas, a.value] }}>${a.label}</button>`)}</div>
-      <h3>${tr("Obiettivo")}</h3>
+      <h3>${tr("Goal")}</h3>
       <hygieia-cadence .value=${c.cadence} @change=${(e: CustomEvent) => (this.creating = { ...c, cadence: e.detail })}></hygieia-cadence>
-      <div class="row"><span class="grow"></span><hxk-button variant="primary" icon="check" @click=${() => this.create()}>${tr("Crea e aggiungi i passi")}</hxk-button></div>
+      <div class="row"><span class="grow"></span><hxk-button variant="primary" icon="check" @click=${() => this.create()}>${tr("Create and add the steps")}</hxk-button></div>
     </div></div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Oggi")}</button><h1>${tr("Routine")}</h1></div>
-      <hxk-button variant="primary" icon="plus" @click=${() => this.startCreate()}>${tr("Nuova")}</hxk-button></div>`;
+    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button><h1>${tr("Routine")}</h1></div>
+      <hxk-button variant="primary" icon="plus" @click=${() => this.startCreate()}>${tr("f::New")}</hxk-button></div>`;
     if (this.items === undefined) return html`<div class="page">${head}<hxk-state kind="loading"></hxk-state></div>`;
     if (this.items === null) return html`<div class="page">${head}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
     const active = this.items.filter(r => r.status === 'active'), other = this.items.filter(r => r.status !== 'active');
     const row = (r: any) => { const st = STATE[r.state] || STATE.rest; return html`<div class="li" @click=${() => this.host.navigate('routine/' + r.id)}>
       <div class="ico">${(r.areas || []).length ? icon('droplet', 18, 'info') : slotIcon(r.slot, 18)}</div>
       <div class="grow"><div class="truncate"><b>${r.name}</b></div>
-        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count} ${r.step_count === 1 ? 'passo' : 'passi'}${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
-      ${r.status === 'active' ? html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>` : html`<hxk-badge>${r.status === 'paused' ? tr('In pausa') : tr('Archiviata')}</hxk-badge>`}
-      <button class="star ${r.favorite ? 'on' : ''}" title=${tr("Preferita (in Home)")} @click=${(e: Event) => this.fav(r, e)}>${icon('star', 18, r.favorite ? 'warning' : 'muted')}</button>
+        <div class="small muted truncate">${slotIcon(r.slot, 12)} ${r.cadence_label} · ${r.step_count === 1 ? tr('1 step') : tr('{0} steps', r.step_count)}${r.status === 'active' && r.hint ? ' · ' + r.hint : ''}${r.reminder ? html` · ${icon('bell', 12, 'info')}` : nothing}</div></div>
+      ${r.status === 'active' ? html`<hxk-badge tone=${st.tone}>${st.text}</hxk-badge>` : html`<hxk-badge>${r.status === 'paused' ? tr('Paused') : tr('f::Archived')}</hxk-badge>`}
+      <button class="star ${r.favorite ? 'on' : ''}" title=${tr("Favourite (in Home)")} @click=${(e: Event) => this.fav(r, e)}>${icon('star', 18, r.favorite ? 'warning' : 'muted')}</button>
     </div>`; };
     return html`<div class="page">${head}
-      ${this.items.length ? nothing : html`<div class="card muted">${tr("Nessuna routine. Creane una: niente orari fissi, solo quante volte vuoi farla.")}</div>`}
+      ${this.items.length ? nothing : html`<div class="card muted">${tr("No routines. Create one: no fixed times, just how many times you want to do it.")}</div>`}
       ${active.length ? html`<div class="card list">${active.map(row)}</div>` : nothing}
-      ${other.length ? html`<h3>${tr("In pausa e archiviate")}</h3><div class="card list">${other.map(row)}</div>` : nothing}
-      <div><button class="link small" @click=${() => { this.archived = !this.archived; this.load(); }}>${this.archived ? tr('Nascondi archiviate') : tr('Mostra archiviate')}</button></div>
+      ${other.length ? html`<h3>${tr("Paused and archived")}</h3><div class="card list">${other.map(row)}</div>` : nothing}
+      <div><button class="link small" @click=${() => { this.archived = !this.archived; this.load(); }}>${this.archived ? tr('Hide archived') : tr('Show archived')}</button></div>
       ${this.creating ? this.sheet() : nothing}
     </div>`;
   }
@@ -197,15 +197,15 @@ export class HygieiaRoutine extends HestiaElement {
       note: s.note || '', paused_until: s.paused_until || null, not_same_day_as: s.not_same_day_as || [] }));
     const r = await call(this.host, 'PUT', `${API}/routines/${this.rid}`, { body: { steps, reason: this.reason } });
     this.saving = false;
-    if (r.ok) { this.host.toast(tr("Salvata{0}", r.data.version ? ' · versione ' + r.data.version : ''), 'success'); this.load(); }
+    if (r.ok) { this.host.toast(tr("Saved{0}", r.data.version ? tr(' · version {0}', r.data.version) : ''), 'success'); this.load(); }
   }
   private async undoVersion() {
-    if (!await this.host.confirm(tr('Torna alla versione precedente'), tr('I passi tornano come erano prima dell\'ultima modifica (resta nello storico).'))) return;
+    if (!await this.host.confirm(tr('alt::Back to the previous version'), tr('The steps go back to how they were before the last change (it stays in the history).'))) return;
     const r = await call(this.host, 'POST', `${API}/routines/${this.rid}/undo`);
-    if (r.ok) { this.host.toast(tr('Versione precedente ripristinata'), 'success'); this.load(); }
+    if (r.ok) { this.host.toast(tr('Previous version restored'), 'success'); this.load(); }
   }
   private async archive() {
-    if (!await this.host.confirm(tr('Archivia routine'), tr('Non comparirà più in Oggi; storico e statistiche restano.'), { label: tr('Archivia'), danger: true })) return;
+    if (!await this.host.confirm(tr('Archive routine'), tr('It won\'t appear in Today any more; history and statistics stay.'), { label: tr('f::Archive'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `${API}/routines/${this.rid}`);
     if (r.ok) this.host.navigate('routine');
   }
@@ -216,34 +216,34 @@ export class HygieiaRoutine extends HestiaElement {
     const paused = s.paused_until && s.paused_until > today();
     return html`<div class="step">
       <div class="sh">
-        <div class="ord"><button @click=${() => this.move(i, -1)} aria-label="Su">▲</button><button @click=${() => this.move(i, 1)} aria-label=${tr("Giù")}>▼</button></div>
+        <div class="ord"><button @click=${() => this.move(i, -1)} aria-label="Su">▲</button><button @click=${() => this.move(i, 1)} aria-label=${tr("Down")}>▼</button></div>
         <span class="num">${i + 1}</span>
         <div class="grow click" @click=${() => (this.edit = open ? '' : (s.id || `new${i}`))}>
-          <div class="truncate">${name}${s.optional ? html`<span class="small muted"> · facoltativo</span>` : nothing}</div>
+          <div class="truncate">${name}${s.optional ? html`<span class="small muted">${tr(' · optional')}</span>` : nothing}</div>
           <div class="small muted truncate">${[s.amount, s.wait_seconds ? `attendi ${s.wait_seconds}s` : '', s.cadence ? cadenceText(s.cadence) : '',
-            paused ? tr("in pausa fino al {0}", dayLabel(s.paused_until, false)) : ''].filter(Boolean).join(' · ') || tr('ogni volta')}</div>
+            paused ? tr("paused until {0}", dayLabel(s.paused_until, false)) : ''].filter(Boolean).join(' · ') || tr('every time')}</div>
         </div>
         <hxk-button size="sm" variant="ghost" icon=${open ? 'chevron-left' : 'edit'} @click=${() => (this.edit = open ? '' : (s.id || `new${i}`))}></hxk-button>
         <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.setSteps(this.steps.filter((_, k) => k !== i))}></hxk-button>
       </div>
       ${open ? html`<div class="col" style="padding-left:32px">
         <div class="form">
-          ${s.product_id ? nothing : html`<hxk-field label=${tr("Descrizione")} .value=${s.label} @change=${(e: CustomEvent) => this.updStep(i, { label: e.detail })}></hxk-field>`}
-          <hxk-field label=${tr("Quantità")} placeholder=${tr("es. 2 gocce, una noce")} .value=${s.amount || ''} @change=${(e: CustomEvent) => this.updStep(i, { amount: e.detail })}></hxk-field>
-          <hxk-field label=${tr("Attesa dopo")} type="int" unit=${tr("secondi")} .value=${s.wait_seconds || 0} @change=${(e: CustomEvent) => this.updStep(i, { wait_seconds: e.detail || 0 })}></hxk-field>
-          <hxk-field label=${tr("Facoltativo")} type="bool" .value=${!!s.optional} @change=${(e: CustomEvent) => this.updStep(i, { optional: e.detail })}></hxk-field>
-          <hxk-field class="full" label=${tr("Nota")} .value=${s.note || ''} @change=${(e: CustomEvent) => this.updStep(i, { note: e.detail })}></hxk-field>
+          ${s.product_id ? nothing : html`<hxk-field label=${tr("Description")} .value=${s.label} @change=${(e: CustomEvent) => this.updStep(i, { label: e.detail })}></hxk-field>`}
+          <hxk-field label=${tr("Quantity")} placeholder=${tr("e.g. 2 drops, a walnut-sized amount")} .value=${s.amount || ''} @change=${(e: CustomEvent) => this.updStep(i, { amount: e.detail })}></hxk-field>
+          <hxk-field label=${tr("Wait after")} type="int" unit=${tr("seconds")} .value=${s.wait_seconds || 0} @change=${(e: CustomEvent) => this.updStep(i, { wait_seconds: e.detail || 0 })}></hxk-field>
+          <hxk-field label=${tr("Optional")} type="bool" .value=${!!s.optional} @change=${(e: CustomEvent) => this.updStep(i, { optional: e.detail })}></hxk-field>
+          <hxk-field class="full" label=${tr("Note")} .value=${s.note || ''} @change=${(e: CustomEvent) => this.updStep(i, { note: e.detail })}></hxk-field>
         </div>
-        <h3>${tr("Frequenza di questo passo")}</h3>
+        <h3>${tr("Frequency of this step")}</h3>
         <hygieia-cadence allowNone .value=${s.cadence || null} @change=${(e: CustomEvent) => this.updStep(i, { cadence: e.detail })}></hygieia-cadence>
-        <div class="small muted">${tr("Con una frequenza propria (es. retinolo 3 volte a settimana) il passo compare solo quando serve, e i passi che non vanno insieme si alternano da soli.")}</div>
-        <h3>${tr("Pausa")}</h3>
+        <div class="small muted">${tr("With its own frequency (e.g. retinol 3 times a week) the step appears only when needed, and the steps that don't go together alternate by themselves.")}</div>
+        <h3>${tr("Pause")}</h3>
         <div class="row wrap">
-          ${paused ? html`<span class="pill">${tr("in pausa fino al")} ${dayLabel(s.paused_until, false)}</span>
-            <hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: null })}>${tr("Riprendi")}</hxk-button>`
-          : [7, 14, 30].map(d => html`<hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: addDays(today(), d) })}>${d} ${tr("giorni")}</hxk-button>`)}
+          ${paused ? html`<span class="pill">${tr("paused until")} ${dayLabel(s.paused_until, false)}</span>
+            <hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: null })}>${tr("Resume")}</hxk-button>`
+          : [7, 14, 30].map(d => html`<hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: addDays(today(), d) })}>${d} ${tr("days")}</hxk-button>`)}
         </div>
-        ${s.product_id ? html`<div><button class="link small" @click=${() => this.host.navigate('prodotti/' + s.product_id)}>${tr("Apri il prodotto ›")}</button></div>` : nothing}
+        ${s.product_id ? html`<div><button class="link small" @click=${() => this.host.navigate('prodotti/' + s.product_id)}>${tr("Open the product ›")}</button></div>` : nothing}
       </div>` : nothing}
     </div>`;
   }
@@ -251,89 +251,89 @@ export class HygieiaRoutine extends HestiaElement {
   private picker() {
     const items = search(this.products.filter(p => ['in_use', 'stock', 'paused'].includes(p.status)), this.q, p => `${p.brand} ${p.name} ${p.category}`);
     return html`<div class="sheet" @click=${(e: Event) => { if (e.target === e.currentTarget) this.picking = false; }}><div class="card col">
-      <div class="between"><h2>${tr("Aggiungi un passo")}</h2><hxk-button variant="ghost" icon="x" @click=${() => (this.picking = false)}></hxk-button></div>
-      <input class="in" placeholder=${tr("Cerca un prodotto o scrivi il passo (es. massaggio)")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}
+      <div class="between"><h2>${tr("Add a step")}</h2><hxk-button variant="ghost" icon="x" @click=${() => (this.picking = false)}></hxk-button></div>
+      <input class="in" placeholder=${tr("Search a product or write the step (e.g. massage)")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}
         @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && (items.length === 1 ? this.addProduct(items[0]) : this.addLabel())} autofocus>
       <div class="list">${items.slice(0, 30).map(p => html`<div class="li" @click=${() => this.addProduct(p)}>
         <div class="grow"><div class="truncate">${productName(p)}</div><div class="small muted">${label(this.m?.categories, p.category)}${(p.actives || []).length ? ' · ' + p.actives.map((a: any) => label(this.m?.actives, a.name)).join(', ') : ''}</div></div>
         <hxk-icon name="plus"></hxk-icon></div>`)}</div>
-      ${this.q.trim() ? html`<hxk-button icon="plus" @click=${() => this.addLabel()}>${tr("Passo senza prodotto: «")}${this.q.trim()}»</hxk-button>` : nothing}
-      <button class="link small" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Il prodotto non c'è? Aggiungilo ›")}</button>
+      ${this.q.trim() ? html`<hxk-button icon="plus" @click=${() => this.addLabel()}>${tr("Step without product: «")}${this.q.trim()}»</hxk-button>` : nothing}
+      <button class="link small" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("The product isn't there? Add it ›")}</button>
     </div></div>`;
   }
 
   render() {
     const back = html`<button class="link" @click=${() => this.host.navigate('routine')}>‹ Routine</button>`;
     if (this.r === undefined) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
-    if (this.r === 'missing') return html`<div class="page">${back}<hxk-state kind="empty" text=${tr("Routine non trovata")}></hxk-state></div>`;
+    if (this.r === 'missing') return html`<div class="page">${back}<hxk-state kind="empty" text=${tr("Routine not found")}></hxk-state></div>`;
     if (this.r === null) return html`<div class="page">${back}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
     const r = this.r, st = r.stats || {}, plan = r.plan || {};
     const s = STATE[plan.state] || STATE.rest;
     return html`<div class="page">
       ${back}
       <div class="head">
-        <input class="title" .value=${r.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })} aria-label=${tr("Nome")}>
-        <button class="link" title=${tr("Preferita")}
+        <input class="title" .value=${r.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })} aria-label=${tr("Name")}>
+        <button class="link" title=${tr("f::Favourite")}
           @click=${() => this.patch({ favorite: !r.favorite })}>${icon('star', 22, r.favorite ? 'warning' : 'muted')}</button>
       </div>
       <div class="row wrap">
         <hxk-badge tone=${s.tone}>${s.text}</hxk-badge><span class="small muted">${plan.state === 'blocked' || plan.state === 'paused' ? plan.reason : plan.hint}</span>
         <span class="grow"></span>
-        ${r.status === 'active' ? html`<hxk-button size="sm" icon="pause" @click=${() => this.patch({ status: 'paused' })}>${tr("Metti in pausa")}</hxk-button>`
-          : html`<hxk-button size="sm" icon="play" @click=${() => this.patch({ status: 'active' })}>${tr("Riattiva")}</hxk-button>`}
-        <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.archive()}>${tr("Archivia")}</hxk-button>
+        ${r.status === 'active' ? html`<hxk-button size="sm" icon="pause" @click=${() => this.patch({ status: 'paused' })}>${tr("alt::Pause")}</hxk-button>`
+          : html`<hxk-button size="sm" icon="play" @click=${() => this.patch({ status: 'active' })}>${tr("Turn back on")}</hxk-button>`}
+        <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.archive()}>${tr("f::Archive")}</hxk-button>
       </div>
 
       <div class="card sec">
-        <h2>${tr("Passi")}</h2>
-        ${this.steps.length ? html`<div>${this.steps.map((x, i) => this.stepEditor(x, i))}</div>` : html`<div class="empty">${tr("Nessun passo. Aggiungi i prodotti nell'ordine in cui li usi.")}</div>`}
-        <div><hxk-button icon="plus" @click=${() => (this.picking = true)}>${tr("Aggiungi passo")}</hxk-button></div>
+        <h2>${tr("Steps")}</h2>
+        ${this.steps.length ? html`<div>${this.steps.map((x, i) => this.stepEditor(x, i))}</div>` : html`<div class="empty">${tr("No steps. Add the products in the order you use them.")}</div>`}
+        <div><hxk-button icon="plus" @click=${() => (this.picking = true)}>${tr("Add step")}</hxk-button></div>
         ${(r.check || []).map((n: any) => html`<div class="note ${n.level}">${n.level === 'warning' ? icon('alert', 13, 'warning') : icon('info', 13, 'info')} ${n.text}</div>`)}
       </div>
       ${this.dirty ? html`<div class="save">
-        <input class="in grow" placeholder=${tr("Perché la cambi? (facoltativo, es. pelle irritata)")} .value=${this.reason} @input=${(e: any) => (this.reason = e.target.value)}>
-        <hxk-button variant="ghost" @click=${() => this.load()}>${tr("Annulla")}</hxk-button>
-        <hxk-button variant="primary" icon="check" ?loading=${this.saving} @click=${() => this.saveSteps()}>${tr("Salva")}</hxk-button>
+        <input class="in grow" placeholder=${tr("Why are you changing it? (optional, e.g. irritated skin)")} .value=${this.reason} @input=${(e: any) => (this.reason = e.target.value)}>
+        <hxk-button variant="ghost" @click=${() => this.load()}>${tr("Cancel")}</hxk-button>
+        <hxk-button variant="primary" icon="check" ?loading=${this.saving} @click=${() => this.saveSteps()}>${tr("Save")}</hxk-button>
       </div>` : nothing}
 
       <div class="card sec">
-        <h2>${tr("Quando")}</h2>
+        <h2>${tr("When")}</h2>
         <div class="chips">${Object.entries(this.m?.slots || {}).map(([k, l]) => html`<button class="chip" aria-pressed=${r.slot === k}
           @click=${() => this.patch({ slot: k })}>${slotIcon(k)} ${l}</button>`)}</div>
-        <h3>${tr("Obiettivo")}</h3>
+        <h3>${tr("Goal")}</h3>
         <hygieia-cadence .value=${r.cadence} @change=${(e: CustomEvent) => this.patch({ cadence: e.detail })}></hygieia-cadence>
-        <div class="row wrap"><span class="small">${tr("Al massimo")}</span>
+        <div class="row wrap"><span class="small">${tr("At most")}</span>
           <input class="in num" type="number" min="1" max="5" .value=${String(r.max_per_day || 1)} @change=${(e: any) => this.patch({ max_per_day: Number(e.target.value) || 1 })}>
-          <span class="small">${tr("volte al giorno")}</span></div>
-        <h3>${tr("Zone")}</h3>
+          <span class="small">${tr("times a day")}</span></div>
+        <h3>${tr("Zones")}</h3>
         <div class="chips">${(this.m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${(r.areas || []).includes(a.value)}
           @click=${() => this.patch({ areas: (r.areas || []).includes(a.value) ? r.areas.filter((x: string) => x !== a.value) : [...(r.areas || []), a.value] })}>${a.label}</button>`)}</div>
-        ${this.others.length ? html`<h3>${tr("Mai nello stesso giorno di")}</h3>
+        ${this.others.length ? html`<h3>${tr("Never on the same day as")}</h3>
           <div class="chips">${this.others.filter(o => o.status !== 'archived').map(o => html`<button class="chip" aria-pressed=${(r.not_same_day_as || []).includes(o.id)}
             @click=${() => this.patch({ not_same_day_as: (r.not_same_day_as || []).includes(o.id) ? r.not_same_day_as.filter((x: string) => x !== o.id) : [...(r.not_same_day_as || []), o.id] })}>${o.name}</button>`)}</div>
-          <div class="small muted">${tr("Le routine con attivi che non vanno insieme (es. retinolo e acidi) si escludono già da sole.")}</div>` : nothing}
-        <h3>${tr("Promemoria")}</h3>
+          <div class="small muted">${tr("Routines with active ingredients that don't go together (e.g. retinol and acids) already exclude each other.")}</div>` : nothing}
+        <h3>${tr("Reminders")}</h3>
         <label class="row"><input type="checkbox" .checked=${!!r.reminder} @change=${(e: any) => this.patch({ reminder: e.target.checked })}>
-          <span>${tr("Ricordamelo quando sono indietro")}</span></label>
-        <div class="small muted">${tr("Solo quando sei indietro, al massimo 2 a settimana (si cambia nelle impostazioni), mai accumulati: un solo avviso che si aggiorna con quante volte l'hai saltato.")}${r.reminder_state?.silenced_until ? tr(" Silenziato fino al {0}.", dayLabel(r.reminder_state.silenced_until, false)) : ''}</div>
+          <span>${tr("Remind me when I'm behind")}</span></label>
+        <div class="small muted">${tr("Only when you are behind, at most 2 a week (changed in the settings), never piled up: a single notice that updates with how many times you skipped it.")}${r.reminder_state?.silenced_until ? tr(" Muted until {0}.", dayLabel(r.reminder_state.silenced_until, false)) : ''}</div>
       </div>
 
       <div class="card sec">
-        <h2>${tr("Andamento")}</h2>
-        <hxk-stat .items=${[{ label: tr('Rispetto obiettivo'), value: st.adherence ?? '–', unit: st.adherence !== null && st.adherence !== undefined ? '%' : '' },
-          { label: tr('Di fila'), value: st.streak || 0, unit: st.per === 'month' ? 'mesi' : 'settimane' }, { label: tr('Volte in tutto'), value: st.total || 0 },
-          { label: tr('Ultima'), value: relDays(st.last_done) }]}></hxk-stat>
-        ${(st.history || []).length ? html`<div class="hist" title="Per ${st.per === 'month' ? 'mese' : 'settimana'}">
+        <h2>${tr("Trend")}</h2>
+        <hxk-stat .items=${[{ label: tr('Goal kept'), value: st.adherence ?? '–', unit: st.adherence !== null && st.adherence !== undefined ? '%' : '' },
+          { label: tr('In a row'), value: st.streak || 0, unit: st.per === 'month' ? tr('months') : tr('weeks') }, { label: tr('Times in total'), value: st.total || 0 },
+          { label: tr('f::Last'), value: relDays(st.last_done) }]}></hxk-stat>
+        ${(st.history || []).length ? html`<div class="hist" title=${st.per === 'month' ? tr('Per month') : tr('Per week')}>
           ${st.history.map((h: any) => html`<div class="bar ${h.met ? 'met' : ''}" title="${dayLabel(h.start, false)}: ${h.done}${h.need ? '/' + h.need : ''}"
             style="height:${Math.max(6, Math.min(100, (h.done / Math.max(1, h.need || h.done || 1)) * 100))}%"></div>`)}</div>
-          <div class="small muted">${tr("Ultime")} ${st.history.length} ${st.per === 'month' ? 'mesi' : 'settimane'}; verde = obiettivo raggiunto${st.skipped ? ` · saltata ${st.skipped} volte` : ''}</div>` : nothing}
+          <div class="small muted">${tr("Latest")} ${st.history.length} ${st.per === 'month' ? tr('months') : tr('weeks')}${tr('; green = goal reached')}${st.skipped ? tr(' · skipped {0} times', st.skipped) : ''}</div>` : nothing}
       </div>
 
       <div class="card sec">
-        <div class="between"><h2>${tr("Versioni")}</h2>${(r.versions || []).length > 1 ? html`<hxk-button size="sm" icon="undo" @click=${() => this.undoVersion()}>${tr("Torna alla precedente")}</hxk-button>` : nothing}</div>
+        <div class="between"><h2>${tr("Versions")}</h2>${(r.versions || []).length > 1 ? html`<hxk-button size="sm" icon="undo" @click=${() => this.undoVersion()}>${tr("Back to the previous one")}</hxk-button>` : nothing}</div>
         ${(r.versions || []).map((v: any) => html`<div class="ver">
           <b class="tnum">v${v.version}</b>
-          <div class="grow"><div class="small">${dayLabel(v.valid_from, false)}${v.by && v.by !== 'webui' ? tr(" · da {0}", v.by === 'assistant' ? 'assistente' : v.by) : ''}</div>
+          <div class="grow"><div class="small">${dayLabel(v.valid_from, false)}${v.by && v.by !== 'webui' ? tr(" · from {0}", v.by === 'assistant' ? 'assistente' : v.by) : ''}</div>
             ${v.diff ? html`<div class="small muted">${v.diff}</div>` : nothing}
             ${v.reason ? html`<div class="small">«${v.reason}»</div>` : nothing}</div></div>`)}
       </div>

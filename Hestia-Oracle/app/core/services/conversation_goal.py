@@ -125,10 +125,10 @@ def tool_specs() -> list[dict[str, Any]]:
                                             "long multi-step work: after each answer you keep working on it for a few "
                                             "rounds and update it.",
          "parameters": {"type": "object", "properties": {"text": {"type": "string", "description": "The goal"}},
-                        "required": ["text"]}, "title": tr("Obiettivo")},
+                        "required": ["text"]}, "title": tr("Goal")},
         {"name": "goal_done", "description": "The conversation goal is reached: close it with a summary.",
          "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": []},
-         "title": tr("Obiettivo raggiunto")},
+         "title": tr("Goal reached")},
         {"name": "goal_stop", "description": "Stop the conversation goal (the user asks so).",
-         "parameters": {"type": "object", "properties": {}}, "title": tr("Ferma obiettivo")},
+         "parameters": {"type": "object", "properties": {}}, "title": tr("Stop goal")},
     ]

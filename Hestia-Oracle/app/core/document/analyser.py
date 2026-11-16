@@ -73,9 +73,9 @@ class DocumentAnalyser:
         needs_local_audio = (is_audio or is_video) and not model_has_audio
 
         if is_audio or is_video:
-            yield stream_emitter.emit_status("🎙️ Trascrizione audio in corso...")
+            yield stream_emitter.emit_status(tr("🎙️ Transcribing the audio..."))
         else:
-            yield stream_emitter.emit_status("📄 Analisi documento in corso...")
+            yield stream_emitter.emit_status(tr("📄 Analysing the document..."))
 
         full_prompt = (
             f"{self._style_contract()}\n\n"
@@ -94,7 +94,7 @@ class DocumentAnalyser:
             # (blob), so no copy in the RAG archive.
             self._save_history(session_id, filename or mime_type, user_message, handed["text"])
             yield stream_emitter.emit_signal(
-                event="attachment_handled", message=f"📎 Passato a {handed['service']}.",
+                event="attachment_handled", message=tr("📎 Handed to {0}.", handed['service']),
                 data={k: handed.get(k) for k in ("service", "blob_id", "import_id") if handed.get(k)})
             logger.info("event=analyser_done session_id=%s total_ms=%s route=handoff service=%s", session_id,
                         int((time.perf_counter() - t0) * 1000), handed["service"])
@@ -125,7 +125,7 @@ class DocumentAnalyser:
             ).start()
             yield stream_emitter.emit_signal(
                 event="document_saved",
-                message="📎 Documento salvato nell'archivio.",
+                message=tr("📎 Document saved in the archive."),
                 data={
                     "document_id": document_id,
                     "filename": filename,
@@ -168,10 +168,10 @@ class DocumentAnalyser:
         client_instructions: str | None,
     ) -> Generator[str, None, str]:
         """Transcribe audio (voice module) then answer via text LLM. Yields status lines."""
-        yield stream_emitter.emit_status("🔊 Trascrizione...")
+        yield stream_emitter.emit_status(tr("🔊 Transcribing..."))
         transcript = transcription.transcribe_audio(file_bytes, mime_type)
         if not transcript:
-            return tr("⚠️ Non riesco a trascrivere l'audio. Prova a inviare un file in un formato supportato (mp3, wav, ogg, m4a).")
+            return tr("⚠️ I can't transcribe the audio. Try sending a file in a supported format (mp3, wav, ogg, m4a).")
 
         text_prompt = (
             f"{self._style_contract()}\n\n"
@@ -182,11 +182,11 @@ class DocumentAnalyser:
         if client_instructions and str(client_instructions).strip():
             text_prompt += f"\n\nCLIENT_INSTRUCTIONS:\n{str(client_instructions).strip()}"
 
-        yield stream_emitter.emit_status("🤖 Analisi trascrizione...")
+        yield stream_emitter.emit_status(tr("🤖 Analysing the transcript..."))
         try:
             return self._analyst.ask(text_prompt)
         except Exception:
-            return f"📝 Trascrizione:\n\n{transcript[:2000]}"
+            return tr("📝 Transcript:\n\n{0}", transcript[:2000])
 
     def _answer_via_llm(self, file_bytes: bytes, mime_type: str, full_prompt: str) -> str:
         """Send file to the analyst chain, then local-text last resort."""
@@ -210,7 +210,7 @@ class DocumentAnalyser:
             except Exception:
                 pass
 
-        return tr("⚠️ Non riesco ad analizzare il documento in questo momento.")
+        return tr("⚠️ I can't analyse the document right now.")
 
     def _save_history(self, session_id: str, file_label: str, user_message: str, answer: str) -> None:
         try:

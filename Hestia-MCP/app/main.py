@@ -51,16 +51,14 @@ SERVICE_VERSION = os.getenv("MCP_SERVICE_VERSION", "1.0.0")
 UI_DIST = os.getenv("MCP_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 
 # ── WebUI plugin (core module, Sistema section): Comandi & MCP + Accessi AI ──────────────────
-ui = PluginClient("mcp", title="Comandi & MCP", icon="command", color="blue", kind="core", dist=UI_DIST,
-                  description="Gli strumenti di Hestia e chi li può usare da fuori (AI esterne).",
+ui = PluginClient("mcp", title="Commands & MCP", icon="command", color="blue", kind="core", dist=UI_DIST,
+                  description="Hestia's tools and who can use them from outside (external AIs).",
                   version=SERVICE_VERSION)
 ui.webui(entry="mcp.js", api_prefix="/api/mcp/",
-         pages=[page("comandi", "Comandi & MCP", element="mcp-commands", icon="terminal", order=190,
-                     help="Tutti gli strumenti che Hestia offre (gli stessi di chat, Telegram e AI esterne): "
-                          "cerca, leggi i parametri ed eseguili."),
-                page("accessi", "Accessi AI", element="mcp-accesses", icon="external", order=191, parent="comandi",
-                     help="Token per collegare Claude Code, Claude Desktop, Cursor o un'altra AI agli strumenti di "
-                          "Hestia (MCP). Revoca e rinnovo in un tocco.")])
+         pages=[page("comandi", "Commands & MCP", element="mcp-commands", icon="terminal", order=190,
+                     help="All the tools Hestia offers (the same as chat, Telegram and external AIs): search, read the parameters and run them."),
+                page("accessi", "AI access", element="mcp-accesses", icon="external", order=191, parent="comandi",
+                     help="Tokens to link Claude Code, Claude Desktop, Cursor or another AI to Hestia's tools (MCP). Revoke and renew in one tap.")])
 
 # ── Service descriptor ───────────────────────────────────────────────────────
 

@@ -635,13 +635,17 @@ Replaces what the 2026-10-29 section says about the sidebar's top and the «Sist
 
 Every fixed text of the shell and of the plugins follows «Lingua» (`themis.personal.language`). `index.html` loads
 `/api/webui/i18n.js` (public, no-store: `I18nController` → Hub → Themis `/api/settings/i18n`) before any bundle; it sets
-`globalThis.__hestiaI18n = {language, messages}`. Code: `tr('Testo', ...args)` (`core/i18n.ts`, `{0}` placeholders),
-templates `{{ 'Testo' | tr }}` / `[title]="'Testo' | tr"` (`TrPipe`); plugins `tr` of `@hestia/webui-sdk`. The Italian
-text is the key of `Hestia-Shared/hestia_common/locales/<lang>/messages.json`; missing → English → Italian. Themis
-unreachable → Italian texts, never an error page. Saving «Lingua» (`CentralSettingsApi.set/reset/undo`) reloads the
+`globalThis.__hestiaI18n = {language, messages}`. Code: `tr('Text', ...args)` (`core/i18n.ts`, `{0}` placeholders),
+templates `{{ 'Text' | tr }}` / `[title]="'Text' | tr"` (`TrPipe`); plugins `tr` of `@hestia/webui-sdk`. The English
+text is the key of `Hestia-Shared/hestia_common/locales/<lang>/messages.json` (2026-11-16: source flipped to
+English); missing → the English source. Dates and numbers use `locale()` (`it-IT` | `en-GB`), never a literal.
+The HTTP interceptor localizes API payloads (labels declared in English by the modules). Themis unreachable →
+English texts, never an error page. Saving «Lingua» (`CentralSettingsApi.set/reset/undo`) reloads the
 page once. «Lingua» offers Italian and English (`LANGUAGES` in `identity.service.ts`, names never translated); the
 standard for texts is `docs/LANGUAGES.md`. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
 them; no personal data).
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-nome-ovunque`): `tr` fills
 `{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
 manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or

@@ -6,9 +6,9 @@
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATUS, ms, retry, when } from './util';
 
-const FILTERS = [{ id: '', label: tr('Tutte') }, { id: 'ok', label: tr('Riuscite') }, { id: 'failed', label: tr('Fallite') }, { id: 'skipped', label: tr('Saltate') }];
-const PERIODS = [{ h: 24, label: tr('Ultime 24 ore') }, { h: 24 * 7, label: tr('Ultimi 7 giorni') }, { h: 24 * 30, label: tr('Ultimi 30 giorni') }];
-const TYPES: Record<string, string> = { job: 'job', task: tr('attività'), window: 'finestre', event: 'eventi' };
+const FILTERS = [{ id: '', label: tr('All') }, { id: 'ok', label: tr('Succeeded') }, { id: 'failed', label: tr('f.pl::Failed') }, { id: 'skipped', label: tr('Skipped') }];
+const PERIODS = [{ h: 24, label: tr('Last 24 hours') }, { h: 24 * 7, label: tr('Last 7 days') }, { h: 24 * 30, label: tr('Last 30 days') }];
+const TYPES: Record<string, string> = { job: 'job', task: tr('activities'), window: tr('windows'), event: tr('events') };
 
 export class ChronosRuns extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, error: { state: true }, status: { state: true },
@@ -50,7 +50,7 @@ export class ChronosRuns extends HestiaElement {
     if (this.status) query.status = this.status;
     if (this.owner) query.owner = this.owner;
     const r = await this.host.api('GET', `${API}/runs`, { query });
-    if (!r.ok) { this.error = r.status === 0 ? tr('Chronos non raggiungibile') : r.error || tr('Chronos non raggiungibile'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Chronos not reachable') : r.error || tr('Chronos not reachable'); return; }
     this.error = ''; this.data = r.data;
   }
 
@@ -69,59 +69,59 @@ export class ChronosRuns extends HestiaElement {
     return html`<div class="r">
       <div class="grow col" style="gap:3px">
         <div class="row wrap"><span class="t">${row.title}</span><hxk-badge tone=${st.tone}>${st.text}</hxk-badge>
-          ${row.item_status === 'failed' ? html`<hxk-badge tone="danger" title=${tr("Ha superato i tentativi: l'agenda non lo riprova da sola")}>${tr("fermo")}</hxk-badge>` : nothing}</div>
+          ${row.item_status === 'failed' ? html`<hxk-badge tone="danger" title=${tr("It used up the attempts: the agenda doesn't retry it by itself")}>${tr("stopped")}</hxk-badge>` : nothing}</div>
         <div class="small muted tnum">${when(row.at)} · ${row.owner}${row.duration_ms !== null && row.duration_ms !== undefined ? ` · ${ms(row.duration_ms)}` : ''}
-          ${row.manual ? html` ${tr("· a mano")}${row.by && row.by !== 'user' ? ` (${row.by})` : ''}` : row.by && row.by !== 'agenda' ? html` · ${row.by}` : nothing}</div>
+          ${row.manual ? html` ${tr("· by hand")}${row.by && row.by !== 'user' ? ` (${row.by})` : ''}` : row.by && row.by !== 'agenda' ? html` · ${row.by}` : nothing}</div>
         ${row.status === 'failed' && row.detail ? html`<div class="det">${row.detail}</div>` : nothing}
-        ${this.open === id ? html`<div class="small muted">${tr("Chiave")} <code>${row.key}</code>${row.occurrence && !row.manual ? html` · occorrenza ${when(row.occurrence)}` : nothing}
-          ${row.status === 'ok' && row.detail ? html` · risposta <code>${row.detail}</code>` : nothing}</div>` : nothing}
+        ${this.open === id ? html`<div class="small muted">${tr("Key")} <code>${row.key}</code>${row.occurrence && !row.manual ? html` · ${tr("occurrence")} ${when(row.occurrence)}` : nothing}
+          ${row.status === 'ok' && row.detail ? html` · ${tr("response")} <code>${row.detail}</code>` : nothing}</div>` : nothing}
       </div>
       <div class="row">
-        ${row.can_run && row.status === 'failed' ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === id} @click=${() => this.run(row)}>${tr("Riprova")}</hxk-button>` : nothing}
-        <hxk-button size="sm" variant="ghost" @click=${() => (this.open = this.open === id ? '' : id)}>${this.open === id ? tr('Meno') : tr('Dettagli')}</hxk-button>
+        ${row.can_run && row.status === 'failed' ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === id} @click=${() => this.run(row)}>${tr("Try again")}</hxk-button>` : nothing}
+        <hxk-button size="sm" variant="ghost" @click=${() => (this.open = this.open === id ? '' : id)}>${this.open === id ? tr('Less') : tr('Details')}</hxk-button>
       </div>
     </div>`;
   }
 
   private renderOwners(owners: any[]) {
     if (!owners?.length) return nothing;
-    return html`<hxk-card heading=${tr("Regole per modulo")} subtitle=${tr("Cosa ogni modulo ha registrato nell'agenda dell'assistente")}>
+    return html`<hxk-card heading=${tr("Rules per module")} subtitle=${tr("What each module recorded in the assistant's agenda")}>
       <div class="own">${owners.map(o => html`<div class="o">
         <b>${o.owner}</b>
-        <div class="small muted">${o.rules} ${tr("regole ·")} ${Object.entries(o.types || {}).map(([t, n]) => `${n} ${TYPES[t] || t}`).join(', ')}</div>
+        <div class="small muted">${o.rules} ${tr("rules ·")} ${Object.entries(o.types || {}).map(([t, n]) => `${n} ${TYPES[t] || t}`).join(', ')}</div>
         <div class="row wrap">
-          ${o.active ? html`<hxk-badge tone="success">${o.active} ${tr("attive")}</hxk-badge>` : nothing}
-          ${o.paused ? html`<hxk-badge tone="warning">${o.paused} ${tr("in pausa")}</hxk-badge>` : nothing}
-          ${o.failed ? html`<hxk-badge tone="danger">${o.failed} ${tr("ferme")}</hxk-badge>` : nothing}
-          ${o.user_modified ? html`<hxk-badge tone="info" title=${tr("Cambiate da te: il modulo non le sovrascrive")}>${o.user_modified} ${tr("cambiate da te")}</hxk-badge>` : nothing}
+          ${o.active ? html`<hxk-badge tone="success">${o.active} ${tr("f.pl::active")}</hxk-badge>` : nothing}
+          ${o.paused ? html`<hxk-badge tone="warning">${o.paused} ${tr("paused")}</hxk-badge>` : nothing}
+          ${o.failed ? html`<hxk-badge tone="danger">${o.failed} ${tr("f.pl::stopped")}</hxk-badge>` : nothing}
+          ${o.user_modified ? html`<hxk-badge tone="info" title=${tr("Changed by you: the module doesn't overwrite them")}>${o.user_modified} ${tr("changed by you")}</hxk-badge>` : nothing}
         </div></div>`)}</div>
     </hxk-card>`;
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Esecuzioni")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("Runs")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const d = this.data;
     const s = d?.summary;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Esecuzioni")}</h1><span class="sub">${tr("I job dell'agenda dell'assistente: com'è andata ogni volta")}</span></div>
+      <div class="head"><h1>${tr("Runs")}</h1><span class="sub">${tr("The jobs of the assistant's agenda: how each run went")}</span></div>
       ${s ? html`<hxk-stat .items=${[
-        { label: tr('Riusciti'), value: s.ok, tone: 'success' },
-        { label: tr('Falliti'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? `${s.failed_items} fermi` : '' },
-        { label: tr('Saltati'), value: s.skipped },
-        { label: tr('Durata media'), value: s.avg_ms === null ? '–' : ms(s.avg_ms) },
+        { label: tr('pl::Succeeded'), value: s.ok, tone: 'success' },
+        { label: tr('pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? `${s.failed_items} fermi` : '' },
+        { label: tr('pl::Skipped'), value: s.skipped },
+        { label: tr('Average duration'), value: s.avg_ms === null ? '–' : ms(s.avg_ms) },
       ]}></hxk-stat>` : nothing}
       <div class="row wrap">
         <div class="chips grow">${FILTERS.map(f => html`<button class="chip" aria-pressed=${this.status === f.id} @click=${() => this.set('status', f.id)}>${f.label}</button>`)}</div>
-        <select aria-label=${tr("Periodo")} @change=${(e: any) => this.set('hours', Number(e.target.value))}>
+        <select aria-label=${tr("Period")} @change=${(e: any) => this.set('hours', Number(e.target.value))}>
           ${PERIODS.map(p => html`<option value=${p.h} ?selected=${this.hours === p.h}>${p.label}</option>`)}</select>
-        ${d?.owners?.length ? html`<select aria-label=${tr("Modulo")} @change=${(e: any) => this.set('owner', e.target.value)}>
-          <option value="">${tr("Tutti i moduli")}</option>${d.owners.map((o: any) => html`<option value=${o.owner} ?selected=${this.owner === o.owner}>${o.owner}</option>`)}</select>` : nothing}
+        ${d?.owners?.length ? html`<select aria-label=${tr("Module")} @change=${(e: any) => this.set('owner', e.target.value)}>
+          <option value="">${tr("All modules")}</option>${d.owners.map((o: any) => html`<option value=${o.owner} ?selected=${this.owner === o.owner}>${o.owner}</option>`)}</select>` : nothing}
       </div>
       ${!d ? html`<hxk-state kind="loading"></hxk-state>`
         : d.runs.length ? html`<div class="card">${d.runs.map((r: any) => this.renderRow(r))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("Nessuna esecuzione in questo periodo")}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("No run in this period")}></hxk-state>`}
       ${d ? this.renderOwners(d.owners) : nothing}
-      <p class="small muted">${tr("Ogni job tiene le sue ultime 50 esecuzioni. Il calendario dell'assistente è in Agenda.")}</p>
+      <p class="small muted">${tr("Each job keeps its last 50 runs. The assistant's calendar is in Agenda.")}</p>
     </div>`;
   }
 }

@@ -44,11 +44,11 @@ export class WardrobeSuggest extends WardrobeElement {
       const r = await call(this.host, 'POST', '/suggest/save', { slots: s.slots, name: s.name });
       if (!r.ok) return;
       id = r.data.id;
-      if (!worn) this.host.toast(tr('Outfit salvato'), 'success', { label: tr('Apri'), run: () => this.host.navigate('outfit/' + id) });
+      if (!worn) this.host.toast(tr('Outfit saved'), 'success', { label: tr('Open'), run: () => this.host.navigate('outfit/' + id) });
     }
     if (worn) {
       const r = await call(this.host, 'POST', `/outfits/${id}/worn`, this.day ? { date: this.day } : {});
-      if (r.ok) this.host.toast(r.data.label || tr('Segnato'), 'success', { label: tr('Annulla'), run: async () => { await call(this.host, 'DELETE', `/wears/${r.data.id}`); this.load(); } });
+      if (r.ok) this.host.toast(r.data.label || tr('Marked'), 'success', { label: tr('Cancel'), run: async () => { await call(this.host, 'DELETE', `/wears/${r.data.id}`); this.load(); } });
     }
     this.load();
   }
@@ -56,32 +56,32 @@ export class WardrobeSuggest extends WardrobeElement {
     const m = this.m, res = this.res, w = res?.weather;
     const manual = this.temp !== '' || this.rain !== null;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Cosa mi metto")}</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'capo', 'capi')} ${tr("disponibili")}</span>` : nothing}
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>${tr("Altre idee")}</hxk-button></div>
+      <div class="head"><h1>${tr("What should I wear")}</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'garment', 'garments')} ${tr("available")}</span>` : nothing}
+        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>${tr("More ideas")}</hxk-button></div>
       <div class="chips">${vocabOptions(m, 'occasion').map(o => html`<button class="chip" aria-pressed=${this.occasion === o.key} @click=${() => this.setOcc(o.key)}>${o.label}</button>`)}</div>
       <div class="opts">
-        <label class="row small">${tr("Temperatura")} <input class="in num" inputmode="decimal" placeholder=${w ? String(w.temp_c ?? '°C') : '°C'} .value=${this.temp} @change=${(e: any) => { this.temp = e.target.value; this.load(); }}> °C</label>
-        <button class="chip soft" aria-pressed=${this.rain ?? !!w?.rain} @click=${() => { this.rain = !(this.rain ?? !!w?.rain); this.load(); }}><hxk-icon name="umbrella" size=${14} tone="info"></hxk-icon> ${tr("Pioggia")}</button>
-        <select class="in" @change=${(e: any) => { this.styleKey = e.target.value; this.load(); }}><option value="">${tr("Ogni stile")}</option>
+        <label class="row small">${tr("Temperature")} <input class="in num" inputmode="decimal" placeholder=${w ? String(w.temp_c ?? '°C') : '°C'} .value=${this.temp} @change=${(e: any) => { this.temp = e.target.value; this.load(); }}> °C</label>
+        <button class="chip soft" aria-pressed=${this.rain ?? !!w?.rain} @click=${() => { this.rain = !(this.rain ?? !!w?.rain); this.load(); }}><hxk-icon name="umbrella" size=${14} tone="info"></hxk-icon> ${tr("Rain")}</button>
+        <select class="in" @change=${(e: any) => { this.styleKey = e.target.value; this.load(); }}><option value="">${tr("Any style")}</option>
           ${vocabOptions(m, 'style').map(s => html`<option value=${s.key} ?selected=${this.styleKey === s.key}>${s.label}</option>`)}</select>
-        <label class="row small">${tr("Giorno")} <input class="in" type="date" min=${localDay()} .value=${this.day || localDay()} @change=${(e: any) => { this.day = e.target.value === localDay() ? '' : e.target.value; this.load(); }}></label>
+        <label class="row small">${tr("Day")} <input class="in" type="date" min=${localDay()} .value=${this.day || localDay()} @change=${(e: any) => { this.day = e.target.value === localDay() ? '' : e.target.value; this.load(); }}></label>
       </div>
       ${w ? html`<div class="row small muted"><hxk-icon name=${w.icon || 'cloud'} size=${15} tone=${w.rain ? 'info' : 'warning'}></hxk-icon>
-          ${tr("Previsione")} ${w.place ? `${w.place}: ` : ''}${w.min_c != null ? `${w.min_c}–` : ''}${w.temp_c}°${w.condition ? `, ${w.condition}` : ''}
-          ${manual ? html`<hxk-button size="sm" variant="ghost" @click=${() => { this.temp = ''; this.rain = null; this.load(); }}>${tr("Usa la previsione")}</hxk-button>` : nothing}</div>` : nothing}
-      ${res === undefined ? html`<hxk-state kind="loading"></hxk-state>` : res === null ? html`<hxk-state kind="error" text=${tr("Suggerimenti non disponibili ora.")}></hxk-state>`
-        : !res.items.length ? html`<hxk-state kind="empty" text=${res.hint || tr('Nessuna proposta.')}></hxk-state>` : html`
+          ${tr("Forecast")} ${w.place ? `${w.place}: ` : ''}${w.min_c != null ? `${w.min_c}–` : ''}${w.temp_c}°${w.condition ? `, ${w.condition}` : ''}
+          ${manual ? html`<hxk-button size="sm" variant="ghost" @click=${() => { this.temp = ''; this.rain = null; this.load(); }}>${tr("Use the forecast")}</hxk-button>` : nothing}</div>` : nothing}
+      ${res === undefined ? html`<hxk-state kind="loading"></hxk-state>` : res === null ? html`<hxk-state kind="error" text=${tr("Suggestions not available right now.")}></hxk-state>`
+        : !res.items.length ? html`<hxk-state kind="empty" text=${res.hint || tr('No proposals.')}></hxk-state>` : html`
         <div class="grid" style="--min:300px">${res.items.map((s: any, i: number) => html`<div class="card sug">
-          <div class="between"><h2 class="truncate">${s.saved ? s.name : tr("Idea {0}", i + 1)}</h2>${s.saved ? html`<hxk-badge tone="accent">${tr("salvato")}</hxk-badge>` : nothing}</div>
+          <div class="between"><h2 class="truncate">${s.saved ? s.name : tr("Idea {0}", i + 1)}</h2>${s.saved ? html`<hxk-badge tone="accent">${tr("saved")}</hxk-badge>` : nothing}</div>
           <div class="pcs">${s.pieces.map((p: any) => html`<div class="tile" @click=${() => this.host.navigate('capi/' + p.id)}>
             <div class="ph">${img(this.host, p.photo, p.name)}</div><div class="tx"><span class="lab">${m?.slots[p.slot] || p.slot}</span><span class="nm">${p.name}</span>${dots(p.colors, 9)}</div></div>`)}</div>
           <div class="reasons">${s.reasons.map((r: string) => html`<span class="pill">${r}</span>`)}</div>
-          <div class="row wrap"><hxk-button variant="primary" size="sm" icon="check" @click=${() => this.save(s, true)}>${this.day ? tr('Segna per quel giorno') : tr('Indosso questo')}</hxk-button>
-            ${s.saved ? html`<hxk-button size="sm" variant="ghost" @click=${() => this.host.navigate('outfit/' + s.outfit_id)}>${tr("Apri")}</hxk-button>`
-              : html`<hxk-button size="sm" icon="plus" @click=${() => this.save(s, false)}>${tr("Salva outfit")}</hxk-button>`}
+          <div class="row wrap"><hxk-button variant="primary" size="sm" icon="check" @click=${() => this.save(s, true)}>${this.day ? tr('Mark for that day') : tr('I\'m wearing this')}</hxk-button>
+            ${s.saved ? html`<hxk-button size="sm" variant="ghost" @click=${() => this.host.navigate('outfit/' + s.outfit_id)}>${tr("Open")}</hxk-button>`
+              : html`<hxk-button size="sm" icon="plus" @click=${() => this.save(s, false)}>${tr("Save outfit")}</hxk-button>`}
             <span class="grow"></span>
-            <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Chiedi all'assistente")} @click=${() => this.host.assistant({ label: tr('Cosa mi metto'), hints: { pieces: s.pieces.map((p: any) => p.id).join(',') },
-              prompt: tr("Mi proponi questo: {0}. Va bene{1}?", s.pieces.map((p: any) => p.name).join(', '), this.occasion ? ' per ' + (vocabOptions(m, 'occasion').find(o => o.key === this.occasion)?.label || this.occasion).toLowerCase() : '') })}></hxk-button></div>
+            <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Ask the assistant")} @click=${() => this.host.assistant({ label: tr('What should I wear'), hints: { pieces: s.pieces.map((p: any) => p.id).join(',') },
+              prompt: tr("You propose this: {0}. Is it ok{1}?", s.pieces.map((p: any) => p.name).join(', '), this.occasion ? ' per ' + (vocabOptions(m, 'occasion').find(o => o.key === this.occasion)?.label || this.occasion).toLowerCase() : '') })}></hxk-button></div>
         </div>`)}</div>`}
     </div>`;
   }

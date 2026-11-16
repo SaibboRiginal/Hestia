@@ -99,7 +99,7 @@ def test_compose_writes_with_oracle_delivers_and_stores():
     assert out["delivered"] and out["day"] == "2026-10-20"
     oracle = next(j for s, j in hub.calls if s == "oracle")
     assert oracle["body"]["use_case"] == "athena.recap"
-    assert "[Allenamento|fatto] Push A" in oracle["body"]["prompt"]
+    assert "[Allenamento|done] Push A" in oracle["body"]["prompt"]
     hermes = next(j for s, j in hub.calls if s == "hermes")["body"]
     assert hermes["payload"]["replaces"] == "athena.recap"
     assert hermes["payload"]["_link"] == {"module": "athena", "page": "recap"}

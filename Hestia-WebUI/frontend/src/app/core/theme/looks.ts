@@ -25,15 +25,15 @@ export interface StyleDef {
 
 export const STYLES: StyleDef[] = [
   {
-    id: 'classico', label: tr('Classico'), help: tr('Caldo e tranquillo: titoli con le grazie, angoli morbidi, superfici piene.'),
+    id: 'classico', label: tr('Classic'), help: tr('Warm and calm: serif titles, soft corners, full surfaces.'),
     knobs: { corners: 'normali', borders: 'normali', glass: 'no', motion: 'normali' }, tokens: {},
   },
   {
-    id: 'vetro', label: tr('Vetro'), help: tr('Leggero: pannelli trasparenti e sfocati su uno sfondo sfumato, angoli più tondi, animazioni vive.'),
+    id: 'vetro', label: tr('Glass'), help: tr('Light: transparent and blurred panels on a gradient background, rounder corners, lively animations.'),
     knobs: { corners: 'arrotondati', borders: 'leggeri', glass: 'vetro', motion: 'vivaci' }, tokens: {},
   },
   {
-    id: 'netto', label: tr('Netto'), help: tr('Preciso: tutto senza grazie, angoli quasi dritti, bordi marcati e niente ombre.'),
+    id: 'netto', label: tr('Net'), help: tr('Precise: all sans serif, almost square corners, marked borders and no shadows.'),
     knobs: { corners: 'squadrati', borders: 'marcati', glass: 'no', motion: 'ridotte' },
     tokens: {
       '--font-serif': 'var(--font-sans)', '--font-chat': 'var(--font-sans)',
@@ -67,8 +67,8 @@ export const GLASS: Record<Glass, { surface: number; subtle: number; surface2: n
 
 /** Labels for the settings page. */
 export const KNOB_OPTIONS = {
-  corners: [{ value: 'squadrati', label: tr('Squadrati') }, { value: 'normali', label: tr('Normali') }, { value: 'arrotondati', label: tr('Arrotondati') }],
-  borders: [{ value: 'leggeri', label: tr('Leggeri') }, { value: 'normali', label: tr('Normali') }, { value: 'marcati', label: tr('Marcati') }],
-  glass: [{ value: 'no', label: tr('Nessuna') }, { value: 'leggera', label: tr('Leggera') }, { value: 'vetro', label: tr('Vetro') }],
-  motion: [{ value: 'nessuna', label: tr('Nessuna') }, { value: 'ridotte', label: tr('Ridotte') }, { value: 'normali', label: tr('Normali') }, { value: 'vivaci', label: tr('Vivaci') }],
+  corners: [{ value: 'squadrati', label: tr('Squared') }, { value: 'normali', label: tr('pl::Normal') }, { value: 'arrotondati', label: tr('Rounded') }],
+  borders: [{ value: 'leggeri', label: tr('pl::Light') }, { value: 'normali', label: tr('pl::Normal') }, { value: 'marcati', label: tr('alt::Marked') }],
+  glass: [{ value: 'no', label: tr('f::None') }, { value: 'leggera', label: tr('Light') }, { value: 'vetro', label: tr('Glass') }],
+  motion: [{ value: 'nessuna', label: tr('f::None') }, { value: 'ridotte', label: tr('Reduced') }, { value: 'normali', label: tr('pl::Normal') }, { value: 'vivaci', label: tr('Vivid') }],
 } as const;

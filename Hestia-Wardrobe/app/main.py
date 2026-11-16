@@ -58,22 +58,21 @@ API = "/api/wardrobe"
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("wardrobe")
 settings.declare([
-    setting("wardrobe.forgotten_days", "Capo dimenticato dopo", "int", 180, group="Generale", min=14, max=1095, unit="giorni",
-            help="Capi non indossati da più giorni di così finiscono tra i «dimenticati»."),
-    setting("wardrobe.photo.max_mb", "Dimensione massima foto", "int", 10, group="Generale", min=1, max=15, unit="MB"),
-    setting("wardrobe.suggest.count", "Outfit suggeriti", "int", 3, group="Suggerimenti", min=1, max=10),
-    setting("wardrobe.suggest.exclude_recent_days", "Non riproporre per", "int", 4, group="Suggerimenti", min=0, max=30,
-            unit="giorni", help="Un capo o un outfit segnato «Indossato» non viene riproposto per questi giorni."),
-    setting("wardrobe.tracking.goal_times", "Obiettivo «Indossato»", "int", 0, group="Indossato", min=0, max=31,
-            help="Quante volte vuoi segnare cosa indossi nel periodo. 0 = nessun obiettivo (segni solo quando ti va)."),
-    setting("wardrobe.tracking.goal_per", "Periodo dell'obiettivo", "enum", "week", group="Indossato",
-            options=[("day", "Al giorno"), ("week", "A settimana"), ("month", "Al mese")],
+    setting("wardrobe.forgotten_days", "Item forgotten after", "int", 180, group="General", min=14, max=1095, unit="days",
+            help="Items not worn for more days than this end up among the «forgotten» ones."),
+    setting("wardrobe.photo.max_mb", "Largest photo size", "int", 10, group="General", min=1, max=15, unit="MB"),
+    setting("wardrobe.suggest.count", "Suggested outfits", "int", 3, group="Suggestions", min=1, max=10),
+    setting("wardrobe.suggest.exclude_recent_days", "Don't propose again for", "int", 4, group="Suggestions", min=0, max=30,
+            unit="days", help="An item or outfit marked «Worn» is not proposed again for these days."),
+    setting("wardrobe.tracking.goal_times", "«Worn» goal", "int", 0, group="Worn", min=0, max=31,
+            help="How many times you want to record what you wear in the period. 0 = no goal (you record only when you feel like it)."),
+    setting("wardrobe.tracking.goal_per", "Goal period", "enum", "week", group="Worn",
+            options=[("day", "Per day"), ("week", "Per week"), ("month", "Per month")],
             depends_on={"key": "wardrobe.tracking.goal_times", "not_equals": 0}),
-    *reminder_settings("wardrobe", help="Solo con un obiettivo, solo se sei indietro e oggi non hai segnato nulla. Uno "
-                                        "alla volta; l'orario si cambia nell'agenda (Promemoria guardaroba)."),
+    *reminder_settings("wardrobe", help="Only with a goal, only if you are behind and you haven't recorded anything today. One at a time; the time is changed in the agenda (Wardrobe reminder)."),
     voice_setting("wardrobe", True),
-    setting("wardrobe.review.enabled", "Revisione mensile", "bool", False, group="Notifiche",
-            help="Una volta al mese: capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere."),
+    setting("wardrobe.review.enabled", "Monthly review", "bool", False, group="Notifications",
+            help="Once a month: forgotten items, to repair, in the laundry for long, outfits to review."),
 ]).follow_personal()                                       # week start, currency: personal settings shared by every module
 
 hub = Hub(HUB_API_URL)
@@ -105,13 +104,13 @@ async def _not_found(_: Request, exc: NotFound):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
+    return JSONResponse(status_code=503, content={"detail": tr("archive not reachable, try again shortly")})
 
 
 @app.exception_handler(HubError)
 async def _hub_error(_: Request, exc: HubError):
     logger.warning("[🔄] event=wardrobe_hub_call_failed status=%s", exc.status)
-    return JSONResponse(status_code=502, content={"detail": tr("servizio non raggiungibile, riprova tra poco")})
+    return JSONResponse(status_code=502, content={"detail": tr("service not reachable, try again shortly")})
 
 
 def _refresh() -> None:
@@ -328,7 +327,7 @@ def summary():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("wardrobe", tr("Guardaroba"), icon="shirt", emoji="👕", order=50, **wardrobe.recap(day, nxt))
+    return recap.piece("wardrobe", tr("Wardrobe"), icon="shirt", emoji="👕", order=50, **wardrobe.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("wardrobe", _recap_piece, today=lambda: wardrobe.today()))
@@ -393,7 +392,7 @@ def collection_delete(id: str):
 
 # ── AI help, export / import ─────────────────────────────────────────────────
 # A photo sent in chat with these words in its caption comes here (Oracle attachment hand-off, Telegram and WebUI).
-ATTACHMENT_HANDLERS = [{"mime": ["image/jpeg", "image/png", "image/webp"], "label": "Capo del guardaroba",
+ATTACHMENT_HANDLERS = [{"mime": ["image/jpeg", "image/png", "image/webp"], "label": "Wardrobe item",
                         "path": f"{API}/attachments", "match": ["guardaroba", "armadio", "nuovo capo"]}]
 
 
@@ -461,10 +460,10 @@ def reminder_check():
     actions = [{"id": f"wear-{i}", "label": c["label"], "text": f"👕 {c['label']}", "style": "primary" if i == 0 else None,
                 "service": "wardrobe", "method": "POST", "path": f"{API}/quick/{c['id']}", "body": {"source": "reminder"},
                 "resolves": True} for i, c in enumerate(decision.get("chips") or [])]
-    actions.append({"id": "skip", "label": tr("Salta"), "text": "⏭ Salta", "service": "wardrobe", "method": "POST",
+    actions.append({"id": "skip", "label": tr("Skip"), "text": "⏭ Skip", "service": "wardrobe", "method": "POST",
                     "path": f"{API}/reminder/skip", "body": {}})
     try:
-        _notify("wardrobe.reminder", tr("Guardaroba"), tr("👕 Cosa indossi oggi? · {0}", goal['hint']), actions, replaces=True,
+        _notify("wardrobe.reminder", tr("Wardrobe"), tr("👕 What are you wearing today? · {0}", goal['hint']), actions, replaces=True,
                 page="outfit")
         wardrobe.mark_reminder_sent()
     except Exception as exc:
@@ -477,7 +476,7 @@ def reminder_check():
 @app.post(f"{API}/reminder/skip")
 def reminder_skip(body: dict = Body(default={})):
     """«Non oggi» on the reminder, «Tieni» on a delete question: nothing to do, Hermes closes the card."""
-    return {"ok": True, "message": str((body or {}).get("message") or tr("Ok, niente per oggi"))[:120]}
+    return {"ok": True, "message": str((body or {}).get("message") or tr("Ok, nothing for today"))[:120]}
 
 
 @app.post(f"{API}/review/run")
@@ -492,17 +491,17 @@ def review_run():
     review = [o["name"] for o in wardrobe.outfits(limit=500)["items"] if not o["complete"]]
     lines = []
     if s["forgotten"]:
-        lines.append(f"• Dimenticati: {len(s['forgotten'])} (es. {', '.join(f['name'] for f in s['forgotten'][:3])})")
+        lines.append(tr("• Forgotten: {0} (e.g. {1})", len(s['forgotten']), ', '.join(f['name'] for f in s['forgotten'][:3])))
     if repair:
-        lines.append(tr("• Da riparare: {0}", ', '.join(repair[:5])))
+        lines.append(tr("• To repair: {0}", ', '.join(repair[:5])))
     if laundry:
-        lines.append(tr("• In lavanderia da tanto: {0}", ', '.join(laundry[:5])))
+        lines.append(tr("• In the laundry for long: {0}", ', '.join(laundry[:5])))
     if review:
-        lines.append(tr("• Outfit da rivedere: {0}", ', '.join(review[:5])))
+        lines.append(tr("• Outfits to review: {0}", ', '.join(review[:5])))
     if not lines:
         return {"send": False, "why": "nothing_to_say"}
     try:
-        _notify("wardrobe.review", tr("Guardaroba del mese"), tr("👕 Revisione del guardaroba\n") + "\n".join(lines), [],
+        _notify("wardrobe.review", tr("Wardrobe of the month"), tr("👕 Wardrobe review\n") + "\n".join(lines), [],
                 replaces=True, page="statistiche")
     except Exception as exc:
         logger.warning("[🔄] event=wardrobe_review_emit_failed error=%s fallback=next_month", exc)
@@ -511,49 +510,47 @@ def review_run():
 
 
 def _agenda_rules() -> list[dict]:
-    return [job_rule("wardrobe.reminder", tr("Promemoria guardaroba"), service="wardrobe", path=f"{API}/reminder/check",
+    return [job_rule("wardrobe.reminder", "Wardrobe reminder", service="wardrobe", path=f"{API}/reminder/check",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=TZ,
-                     description="Chiede cosa indossi solo se hai un obiettivo «Indossato», sei indietro e oggi non hai "
-                                 "segnato nulla. Spento nelle impostazioni = non invia niente (default)."),
-            job_rule("wardrobe.review", tr("Revisione mensile del guardaroba"), service="wardrobe", path=f"{API}/review/run",
+                     description="Asks what you are wearing only if you have a «Worn» goal, you are behind and you haven't recorded anything today. Off in the settings = it sends nothing (default)."),
+            job_rule("wardrobe.review", "Monthly wardrobe review", service="wardrobe", path=f"{API}/review/run",
                      recurrence="FREQ=MONTHLY;BYDAY=1SU", start_at="2026-01-04T10:00:00", tz=TZ,
-                     description="Capi dimenticati, da riparare, in lavanderia da tanto, outfit da rivedere. "
-                                 "Solo se la revisione mensile è accesa nelle impostazioni."),
-            signals_rule("wardrobe", tr("Guardaroba"), path=f"{API}/signals/run", tz=TZ)]
+                     description="Forgotten items, to repair, in the laundry for long, outfits to review. Only if the monthly review is on in the settings."),
+            signals_rule("wardrobe", "Wardrobe", path=f"{API}/signals/run", tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
-ui = PluginClient("wardrobe", title="Guardaroba", icon="shirt", color="purple",
-                  description="Capi, accessori, outfit e cosa mettersi.", dist=UI_DIST, version=SERVICE_VERSION)
+ui = PluginClient("wardrobe", title="Wardrobe", icon="shirt", color="purple",
+                  description="Items, accessories, outfits and what to wear.", dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="wardrobe.js", api_prefix=f"{API}/",
-    pages=[page("capi", "Guardaroba", element="wardrobe-pieces", icon="shirt", order=50,
-                help="Tutti i tuoi capi con foto, filtri e ricerca."),
-           page("capi/:id", "Capo", element="wardrobe-piece", detail=True, parent="capi"),
-           page("accessori", "Accessori", element="wardrobe-accessories", icon="tag", order=51, parent="capi"),
+    pages=[page("capi", "Wardrobe", element="wardrobe-pieces", icon="shirt", order=50,
+                help="All your items with photos, filters and search."),
+           page("capi/:id", "Item", element="wardrobe-piece", detail=True, parent="capi"),
+           page("accessori", "Accessories", element="wardrobe-accessories", icon="tag", order=51, parent="capi"),
            page("outfit", "Outfit", element="wardrobe-outfits", icon="grid", order=52, parent="capi"),
            page("outfit/:id", "Outfit", element="wardrobe-outfit", detail=True, parent="capi"),
-           page("cosa-mi-metto", "Cosa mi metto", element="wardrobe-suggest", icon="sparkle", order=53, parent="capi"),
-           page("statistiche", "Statistiche", element="wardrobe-stats", icon="chart", order=54, parent="capi"),
-           page("liste", "Valigie e liste", element="wardrobe-collections", icon="list", order=55, parent="capi"),
-           page("liste/:id", "Lista", element="wardrobe-collection", detail=True, parent="capi"),
-           page("vocabolari", "Vocabolari", element="wardrobe-vocab", icon="settings", order=56, parent="capi")],
-    widgets=[widget("oggi", "Oggi indosso", element="wardrobe-today-widget", sizes=["m", "l"], auto=True,
+           page("cosa-mi-metto", "What should I wear", element="wardrobe-suggest", icon="sparkle", order=53, parent="capi"),
+           page("statistiche", "Statistics", element="wardrobe-stats", icon="chart", order=54, parent="capi"),
+           page("liste", "Suitcases and lists", element="wardrobe-collections", icon="list", order=55, parent="capi"),
+           page("liste/:id", "alt::List", element="wardrobe-collection", detail=True, parent="capi"),
+           page("vocabolari", "Vocabularies", element="wardrobe-vocab", icon="settings", order=56, parent="capi")],
+    widgets=[widget("oggi", "Wearing today", element="wardrobe-today-widget", sizes=["m", "l"], auto=True,
                     open_page="outfit", icon="shirt",
-                    params={"occasion": {"type": "string", "label": "Occasione (es. ufficio)"}}),
-             widget("suggerito", "Outfit di oggi", element="wardrobe-suggest-widget", sizes=["m", "l"],
+                    params={"occasion": {"type": "string", "label": "Occasion (e.g. office)"}}),
+             widget("suggerito", "Today's outfit", element="wardrobe-suggest-widget", sizes=["m", "l"],
                     open_page="cosa-mi-metto", icon="sparkle",
-                    params={"occasion": {"type": "string", "label": "Occasione"}}),
-             widget("lavanderia", "In lavanderia", element="wardrobe-laundry-widget", sizes=["s", "m"], open_page="capi",
+                    params={"occasion": {"type": "string", "label": "Occasion"}}),
+             widget("lavanderia", "In the laundry", element="wardrobe-laundry-widget", sizes=["s", "m"], open_page="capi",
                     icon="refresh"),
-             widget("dimenticati", "Capi dimenticati", element="wardrobe-forgotten-widget", sizes=["m", "l"], auto=True,
+             widget("dimenticati", "Forgotten clothes", element="wardrobe-forgotten-widget", sizes=["m", "l"], auto=True,
                     open_page="statistiche", icon="clock"),
-             widget("numeri", "Guardaroba in numeri", element="wardrobe-kpi-widget", sizes=["s", "m"], auto=True,
+             widget("numeri", "Wardrobe in numbers", element="wardrobe-kpi-widget", sizes=["s", "m"], auto=True,
                     open_page="statistiche", icon="chart"),
-             widget("ultimi", "Ultimi outfit", element="wardrobe-recent-widget", sizes=["m", "l"], open_page="outfit",
+             widget("ultimi", "Latest outfits", element="wardrobe-recent-widget", sizes=["m", "l"], open_page="outfit",
                     icon="clock")],
     quick_actions=[
-        quick_action("indossato", "Outfit indossato", "POST", f"{API}/quick/{{id}}", icon="shirt", group="Guardaroba",
+        quick_action("indossato", "Outfit worn", "POST", f"{API}/quick/{{id}}", icon="shirt", group="Wardrobe",
                      source=f"{API}/quick/outfits", undo={"method": "DELETE", "path": f"{API}/quick/{{id}}"},
                      favorite=True, order=50),
     ],
@@ -563,16 +560,16 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("wardrobe", hub, sections=[
-    StoreSection("capi", "Capi", store, ["piece"], icon="shirt",
+    StoreSection("capi", "Items", store, ["piece"], icon="shirt",
                  subtitle=lambda r: " · ".join(x for x in (r["data"].get("category"), r["data"].get("brand")) if x),
                  depends_on=["vocabolari", "foto"]),
     StoreSection("outfit", "Outfit", store, ["outfit"], icon="sparkle", depends_on=["capi", "foto"]),
-    StoreSection("indossati", "Indossati", store, ["wear"], icon="history",
-                 title=lambda r: tr("Indossato il {0}", r['data'].get('date')), depends_on=["capi", "outfit"]),
-    StoreSection("liste", "Liste", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
-    StoreSection("vocabolari", "Vocabolari", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
-    StoreSection("foto", "Foto", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
-                 title=lambda r: r["data"].get("name") or tr("Foto"), subtitle=lambda r: r["data"].get("owner") or ""),
+    StoreSection("indossati", "alt::Worn", store, ["wear"], icon="history",
+                 title=lambda r: tr("Worn on {0}", r['data'].get('date')), depends_on=["capi", "outfit"]),
+    StoreSection("liste", "Lists", store, ["collection"], icon="list", depends_on=["capi", "outfit"]),
+    StoreSection("vocabolari", "Vocabularies", store, ["taxonomy"], icon="tag", title=lambda r: r["id"]),
+    StoreSection("foto", "Photo", store, ["photo"], icon="camera", file_fields=["original", "medium", "thumb"],
+                 title=lambda r: r["data"].get("name") or tr("Photo"), subtitle=lambda r: r["data"].get("owner") or ""),
 ])
 app.include_router(transfer.router())
 
@@ -598,12 +595,12 @@ def _brief_piece(p: dict) -> dict:
 def summary_display(s: dict) -> dict:
     lines = [x for x in str(s.get("text") or "").split(" · ") if x]
     if s.get("laundry"):
-        lines.append(tr("In lavanderia: ") + ", ".join(s["laundry"][:5]))
+        lines.append(tr("In the laundry: ") + ", ".join(s["laundry"][:5]))
     if s.get("forgotten"):
-        lines.append(tr("Da riprendere: ") + ", ".join(s["forgotten"][:4]))
-    return display(tr("Guardaroba"), lines=[x for x in lines if not x.startswith("in lavanderia ")],
-                   actions=[action(tr("Cosa mi metto"), "wardrobe_suggest", style="primary"), action(tr("Cerca"), "wardrobe_search"),
-                            action(tr("Aggiungi capo"), "wardrobe_add")])
+        lines.append(tr("To pick up: ") + ", ".join(s["forgotten"][:4]))
+    return display(tr("Wardrobe"), lines=[x for x in lines if not x.startswith(tr("in the laundry {0}", "").strip() + " ")],
+                   actions=[action(tr("What should I wear"), "wardrobe_suggest", style="primary"), action(tr("Search"), "wardrobe_search"),
+                            action(tr("Add item"), "wardrobe_add")])
 
 
 def suggest_display(r: dict) -> dict:
@@ -612,12 +609,12 @@ def suggest_display(r: dict) -> dict:
                      if x)
     rows = [item(o["name"] or tr("Idea {0}", n), [", ".join(o["pieces"]), (o.get("why") or [""])[0]])
             for n, o in enumerate(r.get("items") or [], 1)]
-    acts = [action(f"Metto {o['name'] or f'idea {n}'}"[:24], "wardrobe_log_worn",
+    acts = [action(tr("I'll wear {0}", o['name'] or f'idea {n}')[:24], "wardrobe_log_worn",
                    {"outfit": o["name"]} if o.get("saved") else {"pieces": o["piece_ids"]}, style="primary" if n == 1 else "")
             for n, o in enumerate((r.get("items") or [])[:3], 1)]
-    return display(tr("Cosa mi metto"), subtitle=sub, items=rows,
-                   lines=[] if rows else [tr("Non trovo una combinazione adatta tra i capi disponibili.")],
-                   actions=acts + [action(tr("Altre idee"), "wardrobe_suggest")])
+    return display(tr("What should I wear"), subtitle=sub, items=rows,
+                   lines=[] if rows else [tr("I can't find a suitable combination among the available items.")],
+                   actions=acts + [action(tr("More ideas"), "wardrobe_suggest")])
 
 
 try:
@@ -632,7 +629,7 @@ try:
     def _piece(piece: str = "") -> dict:
         p = wardrobe.find_piece(piece)
         if not p:
-            return {"error": tr("capo '{0}' non trovato", piece)}
+            return {"error": tr("item '{0}' not found", piece)}
         d = wardrobe.piece_detail(p["id"])
         return {**_brief_piece(d), "brand": d.get("brand"), "size": d.get("size"), "materials": d.get("materials"),
                 "purchase": d.get("purchase"), "wear_count": d.get("wear_count"), "cost_per_wear": d.get("cost_per_wear"),
@@ -652,7 +649,7 @@ try:
               location: str = "") -> dict:
         p = wardrobe.find_piece(piece)
         if not p:
-            return {"error": tr("capo '{0}' non trovato", piece)}
+            return {"error": tr("item '{0}' not found", piece)}
         upd = {k: v for k, v in (changes or {}).items() if k not in ("id", "photos")}
         if status:
             upd["status"] = status
@@ -678,7 +675,7 @@ try:
             p = wardrobe.find_piece(str(text))
             (ids.append(p["id"]) if p else missing.append(text))
         if missing:
-            return {"error": tr("capi non trovati: {0}", ', '.join(map(str, missing)))}
+            return {"error": tr("items not found: {0}", ', '.join(map(str, missing)))}
         o = wardrobe.save_outfit({"name": name, "piece_ids": ids, "occasions": occasions, "styles": styles,
                                   "favorite": favorite, "source": "assistant"})
         return {"saved": True, "id": o["id"], "name": o["name"], "pieces": [x["name"] for x in o["pieces"]]}
@@ -698,13 +695,13 @@ try:
         if outfit:
             o = wardrobe.find_outfit(outfit)
             if not o:
-                return {"error": tr("outfit '{0}' non trovato", outfit)}
+                return {"error": tr("outfit '{0}' not found", outfit)}
             body["outfit_id"] = o["id"]
         ids = []
         for text in pieces or []:
             p = wardrobe.find_piece(str(text))
             if not p:
-                return {"error": tr("capo '{0}' non trovato", text)}
+                return {"error": tr("item '{0}' not found", text)}
             ids.append(p["id"])
         if ids:
             body["piece_ids"] = ids
@@ -732,20 +729,20 @@ try:
         """Never deletes by itself: asks the user through Hermes (button), the button does the delete."""
         target = wardrobe.find_piece(piece) if piece else wardrobe.find_outfit(outfit) if outfit else None
         if not target:
-            return {"error": tr("indica il capo o l'outfit da eliminare")}
+            return {"error": tr("give the item or the outfit to delete")}
         kind = "pieces" if piece else "outfits"
-        label = tr("il capo") if piece else "l'outfit"
+        label = tr("the item") if piece else tr("the outfit")
         try:
-            _notify(f"wardrobe.delete.{target['id']}", tr("Guardaroba"), f"🗑 Elimino {label} «{target['name']}»?",
-                    [{"id": "delete", "label": tr("Elimina"), "text": "🗑 Elimina", "style": "danger", "service": "wardrobe",
+            _notify(f"wardrobe.delete.{target['id']}", tr("Wardrobe"), f"🗑 Elimino {label} «{target['name']}»?",
+                    [{"id": "delete", "label": tr("Delete"), "text": "🗑 Delete", "style": "danger", "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}?hard=true", "body": {}, "resolves": True},
-                     {"id": "archive", "label": tr("Archivia"), "text": tr("📦 Solo archivia"), "service": "wardrobe",
+                     {"id": "archive", "label": tr("f::Archive"), "text": tr("📦 Archive only"), "service": "wardrobe",
                       "method": "DELETE", "path": f"{API}/{kind}/{target['id']}", "body": {}, "resolves": True},
-                     {"id": "keep", "label": tr("Tieni"), "text": tr("Tieni"), "service": "wardrobe", "method": "POST",
-                      "path": f"{API}/reminder/skip", "body": {"message": tr("Tenuto")}, "resolves": True}], replaces=False)
+                     {"id": "keep", "label": tr("alt::Keep"), "text": tr("alt::Keep"), "service": "wardrobe", "method": "POST",
+                      "path": f"{API}/reminder/skip", "body": {"message": tr("Kept")}, "resolves": True}], replaces=False)
         except Exception as exc:
-            return {"error": tr("non riesco a chiedere conferma ora ({0}); usa la pagina Guardaroba", exc)}
-        return {"asked": True, "message": tr("Ho chiesto conferma per eliminare {0} «{1}»", label, target['name'])}
+            return {"error": tr("I can't ask for confirmation now ({0}); use the Wardrobe page", exc)}
+        return {"asked": True, "message": tr("I asked for confirmation to delete {0} «{1}»", label, target['name'])}
 
     S = {"type": "string"}
     I = {"type": "integer"}
@@ -756,35 +753,35 @@ try:
     _tools = [
         MCPTool(name="wardrobe_summary", description=("Wardrobe at a glance: how many garments/outfits, style, in the laundry, forgotten, last outfit "
                                                       "worn, goal. Use it first for questions about the wardrobe or clothes."), parameters={"type": "object", "properties": {}}, handler=_t(_summary),
-                title="Riepilogo guardaroba", clients=["telegram", "ui"], telegram_group="guardaroba",
-                telegram={"section": "Capi", "summary": True}),
+                title="Wardrobe summary", clients=["telegram", "ui"], telegram_group="guardaroba",
+                telegram={"section": "Items", "summary": True}),
         MCPTool(name="wardrobe_search", description=("Search the garments, shoes and accessories the user owns (free text: name, color, material, "
                                                      "brand; filters kind garment|shoes|accessory, season spring|summer|autumn|winter, status "
                                                      "active|laundry|lent|to_repair|to_donate|wishlist, not_worn_days)."),
                 parameters={"type": "object", "properties": {"query": S, "kind": S, "category": S, "season": S, "status": S,
                                                              "color": S, "not_worn_days": I, "limit": I}},
-                handler=_t(_search), title="Cerca nel guardaroba", clients=["telegram", "ui"], telegram_group="guardaroba",
-                telegram={"section": "Capi", "primary": 3, "label": "Cerca"}),
+                handler=_t(_search), title="Search the wardrobe", clients=["telegram", "ui"], telegram_group="guardaroba",
+                telegram={"section": "Items", "primary": 3, "label": "Search"}),
         MCPTool(name="wardrobe_piece", description=("Detail of a garment (by name or id): size, materials, purchase, outfits it is in, how many "
                                                     "times marked worn."), parameters={"type": "object", "properties": {"piece": S},
                                                                                 "required": ["piece"]},
-                handler=_t(_piece), title="Dettaglio capo", clients=["ui"], telegram_visible=False, telegram_group="guardaroba",
-                telegram={"section": "Capi"}),
+                handler=_t(_piece), title="Item detail", clients=["ui"], telegram_visible=False, telegram_group="guardaroba",
+                telegram={"section": "Items"}),
         MCPTool(name="wardrobe_add", description=("Add a garment the user says they have/bought. category: key or name (shirt, jeans, sneakers, "
                                                   "jacket, watch…). colors: names (navy blue, white). warmth/formality 1-5 if known."),
                 parameters={"type": "object", "properties": {"name": S, "category": S, "colors": L, "brand": S, "size": S,
                                                              "seasons": L, "styles": L, "materials": L, "price": N,
                                                              "purchase_date": S, "store_name": S, "notes": S, "status": S,
                                                              "warmth": I, "formality": I}, "required": ["name", "category"]},
-                handler=_t(_add), title="Aggiungi capo", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
-                telegram={"section": "Capi", "primary": 4}),
+                handler=_t(_add), title="Add item", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
+                telegram={"section": "Items", "primary": 4}),
         MCPTool(name="wardrobe_update", description=("Edit a garment: status (laundry = in the laundry, active = back in the wardrobe, lent, "
                                                      "to_repair, to_donate, donated), favorite, location or other fields in changes."),
                 parameters={"type": "object", "properties": {"piece": S, "status": S, "favorite": B, "location": S,
                                                              "changes": {"type": "object"}}, "required": ["piece"]},
-                handler=_t(_edit), title="Modifica capo", method="PATCH", clients=["ui"], telegram_visible=False,
+                handler=_t(_edit), title="Edit item", method="PATCH", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
-                telegram={"section": "Capi"}),
+                telegram={"section": "Items"}),
         MCPTool(name="wardrobe_outfits", description="The user's saved outfits (filters: text, season, occasion, favourites).",
                 parameters={"type": "object", "properties": {"query": S, "season": S, "occasion": S, "favorite": B,
                                                              "limit": I}},
@@ -794,42 +791,37 @@ try:
                                                             "approves a suggested one."),
                 parameters={"type": "object", "properties": {"name": S, "pieces": L, "occasions": L, "styles": L,
                                                              "favorite": B}, "required": ["pieces"]},
-                handler=_t(_create_outfit), title="Crea outfit", method="POST", clients=["ui"], telegram_visible=False,
+                handler=_t(_create_outfit), title="Create outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Outfit"}),
-        MCPTool(name="wardrobe_suggest", description=("«Cosa mi metto»: outfits from the available garments (not in the laundry, right season and "
-                                                      "temperature, not worn recently) with the reasons. occasion: work, office, evening, date, "
-                                                      "travel, home, sport, ceremony, weekend, party. temp_c/rain: leave them empty to use the day's "
-                                                      "forecast (place = place, empty = home); set them only if the user says them. Add your own taste "
-                                                      "and explanation."),
+        MCPTool(name="wardrobe_suggest", description=("«What do I wear»: outfits from the available garments (not in the laundry, right season and temperature, not worn recently) with the reasons. occasion: work, office, evening, date, travel, home, sport, ceremony, weekend, party. temp_c/rain: leave them empty to use the day's forecast (place = place, empty = home); set them only if the user says them. Add your own taste and explanation."),
                 parameters={"type": "object", "properties": {"occasion": S, "temp_c": N, "rain": B, "date": S,
                                                              "styles": L, "count": I, "place": S}},
-                handler=_t(_suggest), title="Cosa mi metto", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
+                handler=_t(_suggest), title="What should I wear", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Outfit", "primary": 1}),
         MCPTool(name="wardrobe_log_worn", description=("Mark what the user wore (outfit by name, or garments), default today. Optional: the user does "
                                                        "it only when they want."),
                 parameters={"type": "object", "properties": {"outfit": S, "pieces": L, "date": S, "note": S}},
-                handler=_t(_worn), title="Indossato", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
+                handler=_t(_worn), title="Worn", method="POST", clients=["telegram", "ui"], telegram_group="guardaroba",
                 telegram={"section": "Outfit", "primary": 2}),
         MCPTool(name="wardrobe_stats", description=("Statistics: composition by category/color/season, value, forgotten garments, gaps; use (most "
                                                     "worn, cost per wear) only as an indication."),
-                parameters={"type": "object", "properties": {}}, handler=_t(_stats), title="Statistiche guardaroba",
+                parameters={"type": "object", "properties": {}}, handler=_t(_stats), title="Wardrobe statistics",
                 clients=["telegram", "ui"], telegram_group="guardaroba",
-                telegram={"section": "Statistiche", "label": "Statistiche"}),
+                telegram={"section": "Statistics", "label": "Statistics"}),
         MCPTool(name="wardrobe_packing", description=("Prepare a packing list for a trip (dates YYYY-MM-DD, place, occasion): one outfit a day from "
                                                       "the available garments. temp_c/rain empty = the place's forecast for those days (within 16 "
                                                       "days)."),
                 parameters={"type": "object", "properties": {"place": S, "date_from": S, "date_to": S, "occasion": S,
                                                              "temp_c": N, "rain": B}, "required": ["date_from"]},
-                handler=_t(_packing), title="Valigia", method="POST", clients=["ui"], telegram_visible=False,
+                handler=_t(_packing), title="Suitcase", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
                 telegram={"section": "Viaggi"}),
-        MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation "
-                                                     "with the buttons Elimina / Archivia / Tieni."),
+        MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation with the buttons Delete / Archive / Keep."),
                 parameters={"type": "object", "properties": {"piece": S, "outfit": S}},
-                handler=_t(_delete), title="Elimina capo o outfit", method="POST", clients=["ui"], telegram_visible=False,
+                handler=_t(_delete), title="Delete item or outfit", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="guardaroba",
-                telegram={"section": "Capi"}),
+                telegram={"section": "Items"}),
     ]
 
     def _coerced(t: MCPTool):
@@ -873,8 +865,8 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 # LLM use cases: the chain (it must see images) is chosen in Oracle → Cervello → Modelli.
-LLM_USECASES = [llm_usecase("wardrobe.foto", "Guardaroba · foto dei capi", chain="visione",
-                            help="Descrive la foto di un nuovo capo (nome, categoria, colori, stile).")]
+LLM_USECASES = [llm_usecase("wardrobe.foto", "Wardrobe · item photos", chain="visione",
+                            help="Describes the photo of a new item (name, category, colours, style).")]
 
 
 def _registration() -> dict:

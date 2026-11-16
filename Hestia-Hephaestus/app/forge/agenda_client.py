@@ -55,16 +55,16 @@ class AgendaClient(_SharedAgendaClient):
         first_night = datetime.combine(ref_monday.date(), n_start)
         final_start = reset - timedelta(hours=s.final_hours)
         rules = [{
-            "key": KEY_NIGHTS, "type": "window", "title": tr("Claude Pro: notti prima del reset"),
-            "description": tr("Lavoro automatico su Claude Pro (max {0}/notte). Salta una notte per bloccarla.", s.night_max_tasks),
+            "key": KEY_NIGHTS, "type": "window", "title": "Claude Pro: nights before the reset",
+            "description": tr("Automatic work on Claude Pro (max {0}/night). Skip a night to block it.", s.night_max_tasks),
             "start_at": first_night.isoformat(), "end_at": (first_night + timedelta(minutes=night_len_min)).isoformat(),
             "recurrence": f"FREQ=WEEKLY;BYDAY={','.join(days) or 'SU'}", "tz": s.tz,
             "params": {"night_max_tasks": s.night_max_tasks},
         }]
         if s.final_hours > 0:
             rules.append({
-                "key": KEY_FINAL, "type": "window", "title": tr("Claude Pro: ultime ore prima del reset"),
-                "description": tr("Usa tutto il residuo settimanale."),
+                "key": KEY_FINAL, "type": "window", "title": "Claude Pro: last hours before the reset",
+                "description": "Uses all the weekly remainder.",
                 "start_at": (final_start - timedelta(days=7)).isoformat(),
                 "end_at": (reset - timedelta(days=7)).isoformat(),
                 "recurrence": "FREQ=WEEKLY", "tz": s.tz,

@@ -171,10 +171,10 @@ def card(review: dict) -> str:
     """Italian lines for the owner (no module names)."""
     verdict = review.get("verdict")
     if verdict == "non_disponibile":
-        return tr("Revisione automatica: non disponibile ora.")
+        return tr("Automatic review: not available now.")
     if verdict == "ok":
-        return tr("Revisione automatica: nessun problema trovato.")
+        return tr("Automatic review: no problem found.")
     rounds = review.get("rounds") or 0
-    head = tr("Revisione automatica: {0} punti", len(review['issues'])) + (tr(" (dopo un giro di correzioni)") if rounds else "")
+    head = tr("Automatic review: {0} points", len(review['issues'])) + (tr(" (after a round of fixes)") if rounds else "")
     rows = [f"• {i['priority']} · {i['file'] or '-'}: {i['problem'][:160]}" for i in review["issues"][:5]]
     return "\n".join([head, *rows])

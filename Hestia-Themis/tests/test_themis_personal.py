@@ -138,7 +138,7 @@ def test_language_is_personal_and_fills_owner_language():
     from hestia_common import identity
     from hestia_common.settings_client import PERSONAL
     spec = PERSONAL[identity.LANGUAGE]
-    assert spec["default"] == "it" and spec["group"] == "Tu e l'assistente"
+    assert spec["default"] == "it" and spec["group"] == "You and the assistant"
     assert [o["value"] for o in spec["options"]] == list(identity.LANGUAGES)
     assert identity.render("Write in {owner_language}.", identity.default()) == "Write in Italian."
     values = {identity.LANGUAGE: "EN"}
@@ -163,13 +163,16 @@ def test_fixed_texts_say_the_chosen_name_in_every_language(monkeypatch):
     values = {"themis.personal.assistant_name": "Leo", "themis.personal.assistant_gender": "lui",
               "themis.personal.language": "it"}
     monkeypatch.setattr(i18n, "_reader", values.get)
-    assert i18n.t("Pianificato da {assistant}") == "Pianificato da Leo"
-    assert i18n.t("Richiesto da {0}. Annulla o sposta dall'agenda di {assistant}.", "te") == \
+    assert i18n.t("Planned by {assistant}") == "Pianificato da Leo"
+    assert i18n.t("Requested by {0}. Cancel or move it from {assistant}'s agenda.", "te") == \
         "Richiesto da te. Annulla o sposta dall'agenda di Leo."
+    assert i18n.localize({"label": "{assistant}'s agenda"}) == {"label": "Agenda di Leo"}
     values["themis.personal.language"] = "en"
-    assert i18n.t("Pianificato da {assistant}") == "Planned by Leo"
+    assert i18n.t("Planned by {assistant}") == "Planned by Leo"
+    assert i18n.t("What {assistant} thinks on {g:her|his} own: observes, proposes, filters with the score, acts.") \
+        .startswith("What Leo thinks on his own")
     monkeypatch.setattr(i18n, "_reader", None)
-    assert i18n.t("Pianificato da {assistant}").endswith("Hestia")     # no reader yet → the default name
+    assert i18n.t("Planned by {assistant}").endswith("Hestia")     # no reader yet → the default name
 
 
 @pytest.mark.unit
@@ -177,6 +180,6 @@ def test_setting_labels_with_the_name_are_rendered_in_italian_too(monkeypatch):
     from hestia_common import i18n, settings_client
     monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo",
                                           "themis.personal.language": "it"}.get)
-    spec = {"key": "x.y", "label": "{assistant} in altre AI · spazio massimo", "help": "Come ti risponde {assistant}."}
+    spec = {"key": "x.y", "label": "{assistant} in other AIs · most space", "help": "How {assistant} answers you, on every client."}
     out = settings_client.translated(spec, "it")
-    assert out["label"] == "Leo in altre AI · spazio massimo" and out["help"] == "Come ti risponde Leo."
+    assert out["label"] == "Leo in altre AI · spazio massimo" and out["help"] == "Come ti risponde Leo, su ogni client."

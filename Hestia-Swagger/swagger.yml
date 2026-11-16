@@ -9138,18 +9138,17 @@ paths:
   /api/settings/i18n:
     get:
       tags: [Themis]
-      summary: Fixed texts for the WebUI and plugins in a language (Italian source → translation)
+      summary: Fixed texts for the WebUI and plugins in a language (English source → translation)
       description: >-
-        messages = locales/<lang>/messages.json with the English catalog merged under it; Italian returns an empty map
-        (the source texts are Italian). No lang = the personal setting themis.personal.language. assistant and
-        gender (lei | lui) fill {assistant} and {g:lei|lui} in the texts (the assistant's chosen name only, never
-        the owner's).
+        messages = locales/<lang>/messages.json (English source text → that language, today only it); English and a
+        language without a catalog return an empty map (the source texts are English). No lang = the personal
+        setting themis.personal.language.
       servers:
         - url: http://localhost:19016
       parameters:
         - {name: lang, in: query, required: false, schema: {type: string, example: en}}
       responses:
-        "200": {description: "{language, messages, assistant, gender}"}
+        "200": {description: "{language, messages}"}
 
   /api/settings/modules:
     get:
@@ -12838,11 +12837,11 @@ paths:
       tags: [WebUI]
       summary: Fixed texts of the site in the owner's language (no token required to call it)
       description: >-
-        Themis /api/settings/i18n through Hub. Themis unreachable → {language: it, messages: {}} (Italian source texts).
+        Themis /api/settings/i18n through Hub. Themis unreachable → {language: en, messages: {}} (the English source texts).
       servers:
         - url: http://localhost:19015
       responses:
-        "200": {description: "{language, messages, assistant, gender}"}
+        "200": {description: "{language, messages}"}
 
   /api/webui/i18n.js:
     get:

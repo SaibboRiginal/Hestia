@@ -86,13 +86,13 @@ export class MicRecorder {
 
 /** Why «Ascolta» gave no sound, in words for the owner (the cause the server gave, when it gave one). */
 export function listenError(err: unknown, stage: 'speak' | 'play'): string {
-  if (stage === 'play') return tr('Non riesco a far partire l\'audio in questo browser.');
+  if (stage === 'play') return tr('I can\'t start the audio in this browser.');
   const e = err as { status?: number; error?: { detail?: unknown; error?: unknown } } | null;
-  if (!e || e.status === 0) return tr('Non riesco a leggerlo: il sito non raggiunge il server.');
+  if (!e || e.status === 0) return tr('I can\'t read it: the site doesn\'t reach the server.');
   const detail = e.error?.detail ?? e.error?.error;
-  if (typeof detail === 'string' && detail.trim()) return tr("Non riesco a leggerlo: {0}", detail.trim().slice(0, 160));
-  if (e.status === 502 || e.status === 503 || e.status === 504) return tr('Non riesco a leggerlo: la voce non è pronta o non risponde.');
-  return tr('Non riesco a leggerlo ora.');
+  if (typeof detail === 'string' && detail.trim()) return tr("I can't read it: {0}", detail.trim().slice(0, 160));
+  if (e.status === 502 || e.status === 503 || e.status === 504) return tr('I can\'t read it: the voice is not ready or doesn\'t answer.');
+  return tr('I can\'t read it now.');
 }
 
 @Injectable({ providedIn: 'root' })

@@ -32,14 +32,14 @@ SKIP_KEYS = {"status", "ok", "tool", "params", "trace_id", "session_id", "notify
              "display", "_meta", "meta", "version", "revision", "etag", "hash", "embedding", "html", "body_html"}
 
 FIELD_LABELS = {
-    "total": "Totale", "count": "Quanti", "amount": "Importo", "spent": "Speso", "budget": "Budget",
-    "remaining": "Rimane", "date": "Data", "when": "Quando", "start": "Inizio", "end": "Fine", "next": "Prossimo",
-    "status": "Stato", "state": "Stato", "location": "Luogo", "place": "Luogo", "note": "Nota", "notes": "Note",
-    "category": "Categoria", "temperature": "Temperatura", "temp_c": "Temperatura", "weather": "Meteo",
-    "updated_at": "Aggiornato", "created_at": "Creato", "last": "Ultimo", "goal": "Obiettivo", "streak": "Serie",
-    "week": "Settimana", "month": "Mese", "score": "Punteggio", "message": "Messaggio", "detail": "Dettaglio",
-    "summary": "Riepilogo", "reason": "Motivo", "description": "Descrizione", "price": "Prezzo", "size": "Taglia",
-    "enabled": "Attivo", "active": "Attivo", "paused": "In pausa", "mode": "Modalità", "level": "Livello",
+    "total": "Total", "count": "How many", "amount": "Amount", "spent": "Spent", "budget": "Budget",
+    "remaining": "Left", "date": "Date", "when": "When", "start": "Start", "end": "End", "next": "Next",
+    "status": "Status", "state": "Status", "location": "Place", "place": "Place", "note": "Note", "notes": "Notes",
+    "category": "Category", "temperature": "Temperature", "temp_c": "Temperature", "weather": "Weather",
+    "updated_at": "Updated", "created_at": "Created", "last": "Last", "goal": "Goal", "streak": "Streak",
+    "week": "Week", "month": "Month", "score": "Score", "message": "Message", "detail": "Detail",
+    "summary": "Summary", "reason": "Reason", "description": "Description", "price": "Price", "size": "Size",
+    "enabled": "Active", "active": "Active", "paused": "Paused", "mode": "alt::Mode", "level": "Level",
 }
 
 _ISO = re.compile(r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$")
@@ -73,7 +73,7 @@ def value_text(value: Any, key: str = "") -> str:
     if value is None or value == "" or value == [] or value == {}:
         return ""
     if isinstance(value, bool):
-        return tr("Sì") if value else "No"
+        return tr("Yes") if value else "No"
     if isinstance(value, float):
         text = f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
         text = text.rstrip("0").rstrip(",")
@@ -139,7 +139,7 @@ def _list_in(payload: dict) -> tuple[str, list] | None:
 def _items(rows: list, limit: int = MAX_ITEMS) -> list[str]:
     lines = [_item_line(r) for r in rows[:limit]]
     if len(rows) > limit:
-        lines.append(ui.note(f"e altri {len(rows) - limit}"))
+        lines.append(ui.note(tr("and {0} more", len(rows) - limit)))
     return lines
 
 
@@ -196,7 +196,7 @@ def _cap(html: str) -> str:
     if len(html) <= MAX_CHARS:
         return html
     cut = html[:MAX_CHARS].rsplit("\n", 1)[0]
-    return cut + "\n" + ui.note(tr("… continua: chiedimelo in chat per il resto."))
+    return cut + "\n" + ui.note(tr("… more: ask me in the chat for the rest."))
 
 
 def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
@@ -208,14 +208,14 @@ def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
                 return render(json.loads(s), title, marker)
             except ValueError:
                 pass
-        body = ui.esc(s[:MAX_CHARS]) if s else ui.note("Fatto.")
+        body = ui.esc(s[:MAX_CHARS]) if s else ui.note(tr("Done."))
         return Rendered(ui.card(title, [body], marker=marker))
     if isinstance(payload, list):
         if not payload:
-            return Rendered(ui.card(title, [ui.note(tr("Niente da mostrare."))], marker=marker))
+            return Rendered(ui.card(title, [ui.note(tr("Nothing to show."))], marker=marker))
         return Rendered(_cap(ui.card(title, _items(payload), marker=marker)))
     if not isinstance(payload, dict):
-        return Rendered(ui.card(title, [ui.esc(value_text(payload) or "Fatto.")], marker=marker))
+        return Rendered(ui.card(title, [ui.esc(value_text(payload) or tr("Done."))], marker=marker))
     if isinstance(payload.get("display"), dict):
         return _display(payload["display"], title, marker)
     if isinstance(payload.get("result"), (dict, list)) and len(payload) <= 3:
@@ -232,11 +232,11 @@ def render(payload: Any, title: str = "", marker: str = "") -> Rendered:
         skip.add(key)
         scalar = _fields(payload, skip)
         lines.extend(scalar[:6])
-        lines.extend(_items(rows) if rows else [ui.note(tr("Niente da mostrare."))])
+        lines.extend(_items(rows) if rows else [ui.note(tr("Nothing to show."))])
     else:
         lines.extend(_fields(payload, skip))
     if not lines:
-        lines = [ui.note("Fatto.")]
+        lines = [ui.note(tr("Done."))]
     if payload.get("ok") is False or str(payload.get("status") or "").lower() in ("error", "failed"):
         return Rendered(_cap(ui.card(title, lines, tone="danger")))
     return Rendered(_cap(ui.card(title, lines, subtitle=subtitle, marker=marker)))

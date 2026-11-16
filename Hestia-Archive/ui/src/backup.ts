@@ -3,20 +3,20 @@
  * Drive, «Ripristina» on each one, «Annulla ripristino», «Esegui backup ora», «Verifica ora».
  * SPEC docs/work/2026-10-20-backup-drive §2. The texts name no module.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/backup';
 
 const STEP: Record<string, string> = {
-  start: 'inizio', dump: tr('copia dei dati'), encrypt: 'cifratura', upload: tr('caricamento su Drive'), retention: 'pulizia',
-  download: 'scaricamento', decrypt: 'apertura', restore: tr('ripristino in prova'), migrate: 'aggiornamento',
-  compare: 'controllo', swap: tr('sostituzione dei dati'),
+  start: tr('start'), dump: tr('copy of the data'), encrypt: tr('encryption'), upload: tr('uploading to Drive'), retention: tr('cleanup'),
+  download: tr('downloading'), decrypt: tr('opening'), restore: tr('restore on trial'), migrate: tr('upgrade'),
+  compare: tr('alt::check'), swap: tr('data replacement'),
 };
-const JOB: Record<string, string> = { backup: tr('Backup'), verify: tr('Verifica'), restore: tr('Ripristino'), undo: tr('Annullamento') };
+const JOB: Record<string, string> = { backup: tr('Backup'), verify: tr('Check'), restore: tr('Restore'), undo: tr('Undo') };
 
 function when(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function size(n?: number): string {
@@ -64,7 +64,7 @@ export class ArchiveBackupPanel extends HestiaElement {
   private async load(fresh = false) {
     const [s, l] = await Promise.all([this.host.api('GET', `${API}/status`, { query: fresh ? { fresh: true } : {} }),
                                       this.host.api('GET', `${API}/list`)]);
-    if (!s.ok) { this.error = tr('Backup non raggiungibile'); return; }
+    if (!s.ok) { this.error = tr('Backup not reachable'); return; }
     this.error = ''; this.st = s.data; this.list = l.ok ? l.data : { items: [], pending: [], error: l.error };
     window.clearTimeout(this.timer);
     if (this.st.job) this.timer = window.setTimeout(() => this.load(), 2500);   // follow a job in progress
@@ -74,7 +74,7 @@ export class ArchiveBackupPanel extends HestiaElement {
     this.busy = path;
     const r = await this.host.api('POST', `${API}/${path}`, { body });
     this.busy = '';
-    if (!r.ok) { this.host.toast((r.data?.detail?.message) || r.error || tr('Non riuscito'), 'danger'); return; }
+    if (!r.ok) { this.host.toast((r.data?.detail?.message) || r.error || tr('alt::Failed'), 'danger'); return; }
     this.host.toast(done, 'info');
     this.load();
   }
@@ -83,39 +83,39 @@ export class ArchiveBackupPanel extends HestiaElement {
     this.busy = 'connect';
     const r = await this.host.api('POST', `${API}/drive/connect`, { body: {} });
     this.busy = '';
-    if (!r.ok || !r.data?.ok || !r.data.auth_url) { this.host.toast(r.data?.message || tr('Collegamento non disponibile'), 'danger'); return; }
+    if (!r.ok || !r.data?.ok || !r.data.auth_url) { this.host.toast(r.data?.message || tr('Link not available'), 'danger'); return; }
     window.open(r.data.auth_url, '_blank', 'noopener');
-    this.host.toast(r.data.user_code ? `Codice: ${r.data.user_code}` : tr('Concedi l\'accesso nella pagina di Google, poi torna qui'), 'info');
+    this.host.toast(r.data.user_code ? `Codice: ${r.data.user_code}` : tr('Grant access on Google\'s page, then come back here'), 'info');
     window.setTimeout(() => this.load(true), 20000);
   }
 
   private async restore(item: any) {
-    const ok = await this.host.confirm(tr('Ripristinare questo backup?'),
-      tr("I dati tornano al {0}. Tutto quello che è cambiato dopo viene sostituito. ", when(item.created_at)) +
-      tr('Puoi annullare finché non fai un altro ripristino.'), { label: tr('Ripristina'), danger: true });
-    if (ok) this.act('restore', { file_id: item.id, confirm: true }, tr('Ripristino avviato'));
+    const ok = await this.host.confirm(tr('Restore this backup?'),
+      tr("The data goes back to {0}. Everything that changed afterwards is replaced. ", when(item.created_at)) +
+      tr('You can undo until you do another restore.'), { label: tr('f::Restore'), danger: true });
+    if (ok) this.act('restore', { file_id: item.id, confirm: true }, tr('Restore started'));
   }
 
   private async undo() {
     const r = this.st?.last_restore;
-    const text = r?.undone ? tr('I dati tornano a quelli del backup ripristinato.') : tr('I dati tornano com\'erano subito prima del ripristino.');
-    const ok = await this.host.confirm(r?.undone ? tr('Rifare il ripristino?') : tr('Annullare il ripristino?'), text,
-      { label: r?.undone ? tr('Rifai') : tr('Annulla ripristino'), danger: true });
-    if (ok) this.act('undo', { confirm: true }, tr('Fatto'));
+    const text = r?.undone ? tr('The data goes back to that of the restored backup.') : tr('The data goes back to how it was right before the restore.');
+    const ok = await this.host.confirm(r?.undone ? tr('Redo the restore?') : tr('Undo the restore?'), text,
+      { label: r?.undone ? tr('Redo') : tr('Undo restore'), danger: true });
+    if (ok) this.act('undo', { confirm: true }, tr('Done'));
   }
 
   private notes() {
     const st = this.st, out = [];
     if (!st.passphrase_set) out.push(html`<div class="note" data-tone="danger"><hxk-icon name="alert" size="16" tone="danger"></hxk-icon>
-      <span>${tr("Manca la passphrase dei backup: aggiungi")} <code>HESTIA_BACKUP_PASSPHRASE</code> ${tr("al file .env e riavvia. Salvala anche in un password manager: senza, i backup non si aprono.")}</span></div>`);
+      <span>${tr("The backup passphrase is missing: add")} <code>HESTIA_BACKUP_PASSPHRASE</code> ${tr("to the .env file and restart. Save it in a password manager too: without it, backups cannot be opened.")}</span></div>`);
     if (st.drive && !st.drive.connected || st.drive && st.drive.scope_ok === false) out.push(html`<div class="note" data-tone="warning">
-      <hxk-icon name="unlock" size="16" tone="warning"></hxk-icon><span class="grow">${tr("Google Drive non collegato")}${st.drive.error ? html`: ${st.drive.error}` : nothing}${tr(". Ricollega Google concedendo l'accesso a Drive (vede solo i file che crea Hestia).")}</span>
-      <hxk-button size="sm" icon="link" ?loading=${this.busy === 'connect'} @click=${() => this.connect()}>${tr("Collega Google Drive")}</hxk-button></div>`);
+      <hxk-icon name="unlock" size="16" tone="warning"></hxk-icon><span class="grow">${tr("Google Drive not linked")}${st.drive.error ? html`: ${st.drive.error}` : nothing}${tr(". Link Google again granting access to Drive (it only sees the files Hestia creates).")}</span>
+      <hxk-button size="sm" icon="link" ?loading=${this.busy === 'connect'} @click=${() => this.connect()}>${tr("Link Google Drive")}</hxk-button></div>`);
     if (st.problem) out.push(html`<div class="note" data-tone=${st.problem.code === 'drive' ? 'warning' : 'danger'}>
       <hxk-icon name="alert" size="16" tone=${st.problem.code === 'drive' ? 'warning' : 'danger'}></hxk-icon><span>${st.problem.text}</span></div>`);
     const r = st.last_restore;
     if (r && r.ok === false) out.push(html`<div class="note" data-tone="danger"><hxk-icon name="x" size="16" tone="danger"></hxk-icon>
-      <span>${tr("Ultimo ripristino non riuscito (")}${when(r.at)}): ${r.error}${tr(". I dati non sono cambiati.")}</span></div>`);
+      <span>${tr("Last restore failed (")}${when(r.at)}): ${r.error}${tr(". The data did not change.")}</span></div>`);
     return out;
   }
 
@@ -128,39 +128,39 @@ export class ArchiveBackupPanel extends HestiaElement {
     return html`<div class="box">
       ${this.notes()}
       ${job ? html`<div class="note"><hxk-icon name="hourglass" size="16"></hxk-icon>
-        <span>${JOB[job.kind] || job.kind} ${tr("in corso:")} ${STEP[job.step] || job.step}…</span></div>` : nothing}
+        <span>${JOB[job.kind] || job.kind} ${tr("running:")} ${STEP[job.step] || job.step}…</span></div>` : nothing}
       <div class="row">
         <div class="grow">
-          <div class="t">${last ? html`${tr("Ultimo backup")} ${when(last.created_at)}` : tr('Nessun backup ancora')}</div>
+          <div class="t">${last ? html`${tr("Last backup")} ${when(last.created_at)}` : tr('No backup yet')}</div>
           <div class="small muted">
-            ${last ? html`${size(last.size)} · ${last.uploaded ? tr('su Google Drive') : tr('in attesa di Drive')}` : nothing}
-            ${ver ? html` · verifica ${ver.ok ? html`${tr("riuscita il")} ${when(ver.verified_at)}` : html`${tr("fallita il")} ${when(ver.verified_at)}`}` : nothing}
+            ${last ? html`${size(last.size)} · ${last.uploaded ? tr('on Google Drive') : tr('waiting for Drive')}` : nothing}
+            ${ver ? html` · ${tr("check")} ${ver.ok ? html`${tr("succeeded on")} ${when(ver.verified_at)}` : html`${tr("failed on")} ${when(ver.verified_at)}`}` : nothing}
           </div>
         </div>
         <hxk-button icon="upload" ?loading=${this.busy === 'run'} ?disabled=${!!job || !st.passphrase_set}
-          @click=${() => this.act('run', {}, tr('Backup avviato'))}>${tr("Esegui backup ora")}</hxk-button>
+          @click=${() => this.act('run', {}, tr('Backup started'))}>${tr("Run backup now")}</hxk-button>
         <hxk-button variant="ghost" icon="check" ?loading=${this.busy === 'verify'} ?disabled=${!!job || !items.length}
-          @click=${() => this.act('verify', {}, tr('Verifica avviata'))}>${tr("Verifica ora")}</hxk-button>
+          @click=${() => this.act('verify', {}, tr('Check started'))}>${tr("alt::Check now")}</hxk-button>
       </div>
       ${st.undo_available && r?.ok ? html`<div class="note" data-tone="success"><hxk-icon name="history" size="16" tone="success"></hxk-icon>
-        <span class="grow">${r.undone ? html`${tr("Ripristino annullato il")} ${when(r.undo_at)}.` : html`${tr("Dati ripristinati al")} ${when(r.backup_created_at)} ${tr("(il")} ${when(r.at)}).`}</span>
-        <hxk-button size="sm" variant="ghost" icon="undo" ?disabled=${!!job} @click=${() => this.undo()}>${r.undone ? tr('Rifai ripristino') : tr('Annulla ripristino')}</hxk-button></div>` : nothing}
-      <h4>${tr("Storico su Google Drive")}</h4>
+        <span class="grow">${r.undone ? html`${tr("Restore undone on")} ${when(r.undo_at)}.` : html`${tr("Data restored to")} ${when(r.backup_created_at)} ${tr("(the")} ${when(r.at)}).`}</span>
+        <hxk-button size="sm" variant="ghost" icon="undo" ?disabled=${!!job} @click=${() => this.undo()}>${r.undone ? tr('Redo restore') : tr('Undo restore')}</hxk-button></div>` : nothing}
+      <h4>${tr("History on Google Drive")}</h4>
       ${this.list?.error ? html`<div class="small muted">${this.list.error}</div>` : nothing}
-      ${!items.length && !pending.length && !this.list?.error ? html`<div class="small muted">${tr("Ancora nessun backup su Drive.")}</div>` : nothing}
+      ${!items.length && !pending.length && !this.list?.error ? html`<div class="small muted">${tr("No backup on Drive yet.")}</div>` : nothing}
       <div>
         ${pending.map((p: any) => html`<div class="item"><hxk-icon name="clock" size="16" tone="warning"></hxk-icon>
-          <div class="grow"><div class="tnum">${when(p.created_at)}</div><div class="small muted">${size(p.size)} ${tr("· sul PC, in attesa di Drive")}</div></div></div>`)}
+          <div class="grow"><div class="tnum">${when(p.created_at)}</div><div class="small muted">${size(p.size)} ${tr("· on the PC, waiting for Drive")}</div></div></div>`)}
         ${items.map((it: any) => html`<div class="item">
           <hxk-icon name=${it.verify === 'ok' ? 'check-circle' : it.verify === 'fail' ? 'x-circle' : 'history'} size="16"
             tone=${it.verify === 'ok' ? 'success' : it.verify === 'fail' ? 'danger' : 'neutral'}></hxk-icon>
           <div class="grow"><div class="tnum">${when(it.created_at)}</div>
-            <div class="small muted">${size(it.size)}${it.monthly ? ' · mensile' : ''}${it.verify === 'ok' ? html` ${tr("· verificato il")} ${when(it.verified_at)}`
-              : it.verify === 'fail' ? ' · verifica fallita' : ''}</div></div>
-          <hxk-button size="sm" variant="ghost" icon="undo" ?disabled=${!!job || !st.passphrase_set} @click=${() => this.restore(it)}>${tr("Ripristina")}</hxk-button>
+            <div class="small muted">${size(it.size)}${it.monthly ? tr(' · monthly') : ''}${it.verify === 'ok' ? html` ${tr("· verified on")} ${when(it.verified_at)}`
+              : it.verify === 'fail' ? tr(' · check failed') : ''}</div></div>
+          <hxk-button size="sm" variant="ghost" icon="undo" ?disabled=${!!job || !st.passphrase_set} @click=${() => this.restore(it)}>${tr("f::Restore")}</hxk-button>
         </div>`)}
       </div>
-      <div class="small muted">${tr("Ne tengo")} ${st.settings?.keep_daily ?? 3} ${tr("recenti e")} ${st.settings?.keep_monthly ?? 3} ${tr("mensili (impostazioni qui sopra). Orario e frequenza sono nell'agenda: «Backup» e «Verifica backup».")}</div>
+      <div class="small muted">${tr("I keep")} ${st.settings?.keep_daily ?? 3} ${tr("recent and")} ${st.settings?.keep_monthly ?? 3} ${tr("monthly (settings above). Time and frequency are in the agenda: «Backup» and «Backup check».")}</div>
     </div>`;
   }
 }

@@ -85,15 +85,15 @@ def observe(service: str, healthy: bool, *, now: float | None = None) -> str | N
 
 
 def _restart(service: str, attempt: int, limit: int) -> None:
-    health_history.note_action(service, "restart", tr("Riavvio automatico {0}/{1}", attempt, limit))
+    health_history.note_action(service, "restart", tr("Automatic restart {0}/{1}", attempt, limit))
     ok, res = hub_client.route("hephaestus", "api/hephaestus/restart", "POST",
                                {"service": service, "reason": "argus.immune", "attempt": attempt}, timeout=120)
     res = res if isinstance(res, dict) else {"detail": str(res)[:200]}
     healthy = bool(ok and res.get("healthy"))
     status = str(res.get("status") or ("error" if not ok else ""))
-    text = {"ok": "Riavviato" + (" e di nuovo in salute" if healthy else ", ancora non risponde"),
-            "skipped": "Riavvio lasciato al rilascio in corso", "refused": "Riavvio non permesso"}.get(
-        status, "Riavvio non riuscito")
+    text = {"ok": tr("Restarted and healthy again") if healthy else tr("Restarted, still not answering"),
+            "skipped": tr("Restart left to the release in progress"), "refused": tr("Restart not allowed")}.get(
+        status, tr("Restart failed"))
     health_history.note_action(service, "restart_result", text, ok=healthy)
     logger.info("[🔄] event=immune_restart_done service=%s attempt=%s status=%s healthy=%s",
                 service, attempt, status, healthy)
@@ -108,18 +108,18 @@ def _restart(service: str, attempt: int, limit: int) -> None:
 
 def _give_up(service: str, attempts: int) -> None:
     logger.warning("[🔄] event=immune_gave_up service=%s attempts=%s", service, attempts)
-    health_history.note_action(service, "gave_up", tr("Mi fermo dopo {0} riavvii: serve una mano", attempts))
+    health_history.note_action(service, "gave_up", tr("I stop after {0} restarts: a hand is needed", attempts))
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=notice_key(service),
-        payload={"_message": tr("🩺 <b>Una parte di Hestia non riparte da sola</b>: ho provato {0} volte. Il resto funziona; i dettagli sono nel registro della pagina Salute.", attempts),
-                 "_title": tr("Non riparte da sola"), "_level": "warning", "_source": "argus",
+        payload={"_message": tr("🩺 <b>A part of Hestia does not restart by itself</b>: I tried {0} times. The rest works; the details are in the log of the Health page.", attempts),
+                 "_title": tr("Does not restart by itself"), "_level": "warning", "_source": "argus",
                  "replaces": notice_key(service), "service": service, "status": "repair_gave_up"})
 
 
 def _publish_back(service: str) -> None:
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=f"{notice_key(service)}.back",
-        payload={"_message": tr("✅ <b>Tornato a posto</b>: la parte che non ripartiva ora funziona."),
-                 "_title": tr("Tornato a posto"), "_level": "success", "_source": "argus",
-                 "closes": notice_key(service), "decision": "resolved", "outcome_text": tr("Tornato a posto"),
+        payload={"_message": tr("✅ <b>Back in order</b>: the part that did not restart now works."),
+                 "_title": tr("Back in order"), "_level": "success", "_source": "argus",
+                 "closes": notice_key(service), "decision": "resolved", "outcome_text": tr("Back in order"),
                  "service": service, "status": "repair_back"})

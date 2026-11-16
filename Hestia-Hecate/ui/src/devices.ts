@@ -14,7 +14,7 @@ export class HecateDevices extends HestiaElement {
 
   render() {
     return html`<div class="page">
-      <div class="head"><h1>${tr("Dispositivi")}</h1><span class="sub">${tr("Gli account e i dispositivi che mandano dati da soli")}</span></div>
+      <div class="head"><h1>${tr("Devices")}</h1><span class="sub">${tr("The accounts and devices that send data by themselves")}</span></div>
       <div class="wrap"><hecate-connections .host=${this.host}></hecate-connections></div>
     </div>`;
   }

@@ -61,8 +61,8 @@ def _describe(value: Any, d: dict | None = None) -> str:
         parts = []
         for v in value[:6]:
             items = v.get("items")
-            parts.append(f"«{v['title']}»" + (f" ({len(items)} elementi)" if isinstance(items, list) else ""))
-        return ", ".join(parts) + (f" e altri {len(value) - 6}" if len(value) > 6 else "")
+            parts.append(f"«{v['title']}»" + (tr(" ({0} items)", len(items)) if isinstance(items, list) else ""))
+        return ", ".join(parts) + (tr("alt:: and {0} more", len(value) - 6) if len(value) > 6 else "")
     return _short(value, 160)
 
 
@@ -111,7 +111,7 @@ class Themis:
     def register(self, owner: str, definitions: list[dict], presets: list[dict] | None,
                  effective: dict | None, follows: list | None = None) -> dict:
         if not owner or not isinstance(definitions, list):
-            raise ThemisError("owner e definitions obbligatori")
+            raise ThemisError(tr("owner and definitions are required"))
         if self.registry.register(owner, definitions, presets, effective, follows):
             self._bump(f"schema:{owner}")
         try:
@@ -119,7 +119,7 @@ class Themis:
             shared = self.shared_values(owner)
         except Exception as exc:
             logger.warning("[🔄] event=themis_archive_unreachable owner=%s error=%s", owner, exc)
-            raise ThemisError(tr("archivio non raggiungibile"), 503)
+            raise ThemisError(tr("archive not reachable"), 503)
         return {"owner": owner, "values": values, "shared": shared, "revision": self.revision}
 
     # ── module state ────────────────────────────────────────────────────────
@@ -242,7 +242,7 @@ class Themis:
     def get(self, key: str, *, client: str = "", session: str = "", include_status: bool = True) -> dict:
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         found = [i for i in self.list(module=d["module"], client=client, session=session,
                                       include_status=include_status)["items"] if i["key"] == key]
         return found[0] if found else dict(d, value=d.get("default"), source="default")
@@ -252,7 +252,7 @@ class Themis:
         (``{other.key}`` placeholders filled with current values), so every client gets the same list."""
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         if d.get("options"):
             from hestia_common.settings_client import translated
             return {"key": key, "options": translated(d, self.owner_language())["options"], "source": "static"}
@@ -285,22 +285,22 @@ class Themis:
         if d.get("scope") == "user":
             scope = scope or "profile"
             if scope not in USER_SCOPES:
-                raise ThemisError("scope ammessi: profile, client, session")
+                raise ThemisError(tr("allowed scopes: profile, client, session"))
             scope_id = PROFILE_ID if scope == "profile" else (scope_id or "")
             if not scope_id:
-                raise ThemisError(tr("scope_id obbligatorio per scope {0}", scope))
+                raise ThemisError(tr("scope_id required for scope {0}", scope))
             return scope, scope_id
         if scope not in (None, "", "system"):
-            raise ThemisError(tr("questa impostazione vale per tutto il sistema (scope system)"))
+            raise ThemisError(tr("this setting applies to the whole system (scope system)"))
         return "system", ""
 
     def set(self, key: str, value: Any, *, scope: str | None = None, scope_id: str | None = None,
             actor: str = "user", reason: str = "") -> dict:
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         if actor in ACTORS_ASSISTANT:
-            raise ThemisError(tr("l'assistente può solo proporre modifiche"), 403)
+            raise ThemisError(tr("the assistant can only propose changes"), 403)
         try:
             value = validate(d, value)
         except SettingValueError as exc:
@@ -319,7 +319,7 @@ class Themis:
               actor: str = "user") -> dict:
         d = self.registry.definition(key)
         if not d:
-            raise ThemisError(f"impostazione {key} sconosciuta", 404)
+            raise ThemisError(tr("unknown setting {0}", key), 404)
         scope, scope_id = self._target(d, scope, scope_id)
         self.hub.ok("archive", "DELETE", "api/settings-store/values", query={
             "key": key, "scope": scope, "scope_id": scope_id, "actor": actor, "history_keep": HISTORY_KEEP})
@@ -360,7 +360,7 @@ class Themis:
                 continue
             reason = str(r.get("reason") or "")
             kind = ("undo" if reason == "annulla" else "reset" if r.get("new_value") is None
-                    else "approved" if reason.startswith("proposta approvata") else
+                    else "approved" if reason.startswith(("proposal approved", "proposta approvata")) else
                     "preset" if reason.startswith("preset ") else "change")
             out.append({**r, "label": d.get("label") or r.get("key"), "module": row_module, "type": d.get("type"),
                         "kind": kind, "latest": latest,
@@ -374,7 +374,7 @@ class Themis:
         """Restore the value before the last change (as a new change, so undo is undoable)."""
         rows = self.history(key, scope=scope, scope_id=scope_id, limit=1)
         if not rows:
-            raise ThemisError(tr("niente da annullare"), 404)
+            raise ThemisError(tr("nothing to undo"), 404)
         old = rows[0].get("old_value")
         if old is None:
             return self.reset(key, scope=scope, scope_id=scope_id, actor=actor)
@@ -383,7 +383,7 @@ class Themis:
     def apply_preset(self, module: str, preset_id: str, *, actor: str = "user") -> dict:
         preset = next((p for p in self.registry.presets(module) if p.get("id") == preset_id), None)
         if not preset:
-            raise ThemisError("preset sconosciuto", 404)
+            raise ThemisError(tr("unknown preset"), 404)
         applied = {}
         for key, value in (preset.get("values") or {}).items():
             applied[key] = self.set(key, value, actor=actor, reason=f"preset {preset.get('label')}")["value"]
@@ -397,7 +397,7 @@ class Themis:
         for key, value in merged.items():
             self.hub.ok("archive", "PUT", "api/settings-store/values", body={
                 "key": key, "scope": "session", "scope_id": session, "value": value,
-                "actor": client or "user", "reason": "nuova sessione", "history_keep": 1})
+                "actor": client or "user", "reason": tr("new session"), "history_keep": 1})
         if merged:
             self._bump(f"session:{session}")
         return {"session": session, "copied": sorted(merged), "revision": self.revision}
@@ -428,7 +428,7 @@ class Themis:
         if not d:
             raise ThemisError(self._unknown_key_hint(key), 404)
         if d.get("oracle", "propose") != "propose":
-            raise ThemisError(tr("questa impostazione può cambiarla solo l'utente"), 403)
+            raise ThemisError(tr("only the user can change this setting"), 403)
         try:
             value = validate(d, value)
         except SettingValueError as exc:
@@ -461,18 +461,18 @@ class Themis:
     def _proposal_text(self, d: dict, row: dict, current: Any) -> str:
         who = {"oracle": tr("{assistant} (chat)"), "athena": "Athena"}.get(row.get("proposer"), row.get("proposer") or "Hestia")
         if str(who).startswith("external:"):   # an external AI through the Hestia-MCP door
-            who = f"{who[len('external:'):]} (AI esterna)"
-        text = (tr("⚙️ {0} propone di cambiare «{1}» ({2}): {3} → {4}.", who, d.get('label') or d.get('key'), d.get('module'), _describe(current, d), _describe(row.get('value'), d)))
+            who = tr("{0} (external AI)", who[len('external:'):])
+        text = (tr("⚙️ {0} proposes to change «{1}» ({2}): {3} → {4}.", who, d.get('label') or d.get('key'), d.get('module'), _describe(current, d), _describe(row.get('value'), d)))
         if row.get("reason"):
-            text += f"\nMotivo: {row['reason']}"
+            text += tr("\nReason: {0}", row['reason'])
         return text
 
     @staticmethod
     def _decision_actions(pid: str) -> list[dict]:
         return [
-            {"id": "approve", "label": tr("Approva"), "text": "✅ Approva", "style": "primary", "service": "themis",
+            {"id": "approve", "label": tr("Approve"), "text": "✅ Approva", "style": "primary", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
-            {"id": "reject", "label": tr("Rifiuta"), "text": "❌ Rifiuta", "style": "danger", "service": "themis",
+            {"id": "reject", "label": tr("Reject"), "text": "❌ Rifiuta", "style": "danger", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
         ]
 
@@ -484,7 +484,7 @@ class Themis:
         if row.get("reason"):
             prompt += f"\n{row['reason']}"
         actions = self._decision_actions(pid)
-        return {"question_id": f"themis:{pid}", "header": tr("Confermi la modifica?"), "prompt": prompt,
+        return {"question_id": f"themis:{pid}", "header": tr("Do you confirm the change?"), "prompt": prompt,
                 "options": [{"label": a["label"], "value": a["id"]} for a in actions],
                 "actions": {a["id"]: {k: a[k] for k in ("service", "method", "path", "body")} for a in actions}}
 
@@ -513,11 +513,11 @@ class Themis:
                               body={"status": status, "decided_by": by, "only_if_status": "pending"})
         except HubError as exc:
             if exc.status == 409:
-                raise ThemisError(tr("proposta già gestita"), 409, {"status": "already_decided"})
+                raise ThemisError(tr("proposal already handled"), 409, {"status": "already_decided"})
             raise
         self._bump(f"proposal_{status}:{proposal['proposal_id']}")
         if notify:
-            outcome = {"approved": "Approvata", "rejected": "Rifiutata", "expired": "Scaduta"}.get(status, status)
+            outcome = {"approved": tr("alt::Approved"), "rejected": tr("alt::Rejected"), "expired": "Expired"}.get(status, status)
             self._emit("settings.proposal_closed", f"settings.proposal_closed:{proposal['proposal_id']}",
                        {"proposal_id": proposal["proposal_id"], "decision": status, "key": proposal.get("key"),
                         "closes": f"settings.proposal:{proposal['proposal_id']}",
@@ -527,10 +527,10 @@ class Themis:
     def decide(self, proposal_id: str, approve: bool, *, by: str = "user") -> dict:
         found = [p for p in self.proposals() if p.get("proposal_id") == proposal_id]
         if not found:
-            raise ThemisError("proposta sconosciuta", 404)
+            raise ThemisError(tr("unknown proposal"), 404)
         proposal = found[0]
         if proposal.get("status") != "pending":
-            raise ThemisError(tr("proposta già {0}", proposal.get('status')), 409,
+            raise ThemisError(tr("proposal already {0}", proposal.get('status')), 409,
                               {"status": "already_decided", "decision": proposal.get("status")})
         if not approve:
             self._close(proposal, "rejected", by, notify=True)
@@ -546,16 +546,15 @@ class Themis:
             "key": proposal["key"], "scope": proposal.get("scope") or "system",
             "scope_id": proposal.get("scope_id") or "", "value": proposal.get("value"),
             "actor": proposal.get("proposer") or "assistant",
-            "reason": f"proposta approvata ({by}): {proposal.get('reason') or ''}"[:500],
+            "reason": f"proposal approved ({by}): {proposal.get('reason') or ''}"[:500],
             "history_keep": HISTORY_KEEP})
         if (proposal.get("scope") or "system") == "system" and d.get("module"):
             self._notify_reload(d["module"], proposal["key"])
         self._bump(f"approved:{proposal['key']}")
         self._emit("settings.changed", f"settings.changed:{proposal['proposal_id']}",
                    {"key": proposal["key"], "label": d.get("label"), "value": proposal.get("value"),
-                    "title": tr("Impostazione cambiata"), "level": "success",
-                    "_message": f"✅ Impostazione cambiata: {d.get('label') or proposal['key']} → "
-                                f"{_describe(proposal.get('value'), d)}"})
+                    "title": tr("Setting changed"), "level": "success",
+                    "_message": tr("✅ Setting changed: {0} → {1}", d.get('label') or proposal['key'], _describe(proposal.get('value'), d))})
         return {"key": proposal["key"], "value": proposal.get("value"), "revision": self.revision}
 
     # ── outbound: always through Hermes ─────────────────────────────────────
@@ -566,7 +565,7 @@ class Themis:
                     "event_type": "service.action_required" if kind == "settings.proposal" else kind,
                     "domain": "system", "entity_id": entity_id,
                     "payload": {"kind": kind, "service": "themis", "source": "themis", "domain": "settings",
-                                "_source": "themis", "_title": payload.get("title") or tr("Impostazioni"),
+                                "_source": "themis", "_title": payload.get("title") or tr("Settings"),
                                 "target": "owner", "dedupe_key": entity_id, **payload}}, timeout=8)
             except Exception as exc:
                 logger.warning("[🔄] event=themis_hermes_emit_failed kind=%s error=%s "
@@ -575,7 +574,7 @@ class Themis:
 
     def _notify_proposal(self, d: dict, row: dict, current: Any, origin: dict | None = None) -> None:
         pid = row.get("proposal_id", "")
-        payload = {"proposal_id": pid, "key": d.get("key"), "title": tr("Proposta di modifica impostazione"),
+        payload = {"proposal_id": pid, "key": d.get("key"), "title": tr("Setting change proposal"),
                    "level": "warning", "_message": self._proposal_text(d, row, current),
                    "_actions": self._decision_actions(pid)}
         if origin:   # asked in a chat: the card is there; Hermes keeps a quiet inbox copy (no push)

@@ -332,7 +332,7 @@ def coerce(tool) -> Callable[..., Any]:
         except (Invalid, NotFound) as exc:
             return {"error": str(exc)}
         except StoreUnavailable:
-            return {"error": tr("archivio non raggiungibile, riprova tra poco")}
+            return {"error": tr("archive not reachable, try again shortly")}
     return run
 
 
@@ -377,7 +377,7 @@ class ModuleKit:
 
         @app.exception_handler(StoreUnavailable)
         async def _store_down(_: Request, exc: StoreUnavailable):
-            return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
+            return JSONResponse(status_code=503, content={"detail": tr("archive not reachable, try again shortly")})
 
         @app.get("/health")
         def health():

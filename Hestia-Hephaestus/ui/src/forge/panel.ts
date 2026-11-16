@@ -9,10 +9,10 @@ import type { ForgeTask } from './models';
 import type { ForgeStore, SidePanel } from './store';
 
 const TABS: { id: SidePanel; label: string; icon: string }[] = [
-  { id: 'overview', label: tr('Panoramica'), icon: 'info' }, { id: 'files', label: tr('File'), icon: 'file' },
+  { id: 'overview', label: tr('Overview'), icon: 'info' }, { id: 'files', label: tr('File'), icon: 'file' },
   { id: 'diff', label: tr('Diff'), icon: 'diff' }, { id: 'dossier', label: tr('Dossier'), icon: 'list' },
-  { id: 'tests', label: tr('Test'), icon: 'flask' }, { id: 'logs', label: tr('Log'), icon: 'terminal' },
-  { id: 'branch', label: tr('Ramo'), icon: 'branch' },
+  { id: 'tests', label: tr('Test'), icon: 'flask' }, { id: 'logs', label: tr('Logs'), icon: 'terminal' },
+  { id: 'branch', label: tr('Branch'), icon: 'branch' },
 ];
 
 export class HephaestusTaskPanel extends LitElement {
@@ -81,40 +81,40 @@ export class HephaestusTaskPanel extends LitElement {
     const history = [...(t.history ?? [])].reverse();
     return html`
       <dl class="kv">
-        <dt>${tr("Stato")}</dt><dd><hxk-badge tone=${m.tone}>${m.label}</hxk-badge></dd>
-        <dt>${tr("Motore")}</dt><dd>${ENGINE_LABEL[t.engine ?? ''] ?? t.engine ?? '—'}${t.engine_requested && t.engine_requested !== 'auto' && t.engine_requested !== t.engine
-          ? html`<span class="muted"> (richiesto ${t.engine_requested})</span>` : nothing}</dd>
-        <dt>${tr("Origine")}</dt><dd>${t.requested_by || 'utente'} ${tr("via")} ${t.source || 'hestia'}</dd>
-        ${t.services?.length ? html`<dt>${tr("Servizi")}</dt><dd>${t.services.join(', ')}</dd>` : nothing}
+        <dt>${tr("Status")}</dt><dd><hxk-badge tone=${m.tone}>${m.label}</hxk-badge></dd>
+        <dt>${tr("Engine")}</dt><dd>${ENGINE_LABEL[t.engine ?? ''] ?? t.engine ?? '—'}${t.engine_requested && t.engine_requested !== 'auto' && t.engine_requested !== t.engine
+          ? html`<span class="muted">${tr(" (requested {0})", t.engine_requested)}</span>` : nothing}</dd>
+        <dt>${tr("Origin")}</dt><dd>${t.requested_by || tr('user')} ${tr('via')} ${t.source || 'hestia'}</dd>
+        ${t.services?.length ? html`<dt>${tr("Services")}</dt><dd>${t.services.join(', ')}</dd>` : nothing}
         ${t.workdoc ? html`<dt>${tr("Dossier")}</dt><dd><button class="lnk mono" @click=${() => s.setPanel('dossier')}>${t.workdoc}</button></dd>` : nothing}
-        ${t.parent_task ? html`<dt>${tr("Segue")}</dt><dd><button class="lnk mono" @click=${() => this.dispatchEvent(new CustomEvent('open-task', { detail: t.parent_task, bubbles: true, composed: true }))}>${t.parent_task.slice(0, 6)}</button></dd>` : nothing}
-        ${t.turns ? html`<dt>${tr("Turni")}</dt><dd>${t.turns}</dd>` : nothing}
-        ${t.cost_usd != null ? html`<dt>${tr("Costo")}</dt><dd>$${t.cost_usd.toFixed(3)}</dd>` : nothing}
-        ${t.engine_ms ? html`<dt>${tr("Durata")}</dt><dd>${duration(t.engine_ms)}</dd>` : nothing}
-        ${tot ? html`<dt>${tr("Modifiche")}</dt><dd><button class="lnk" @click=${() => s.setPanel('files')}>${tot.files} ${tr("file")}</button> · <b class="a">+${tot.added}</b> <b class="d">−${tot.deleted}</b></dd>` : nothing}
-        ${t.tests ? html`<dt>${tr("Test")}</dt><dd><button class="lnk" @click=${() => s.setPanel('tests')}>${t.tests.ok === true ? html`<hxk-icon name="check" size=${14} tone="success"></hxk-icon> ${tr("passati")}` : t.tests.ok === false ? html`<hxk-icon name="x" size=${14} tone="danger"></hxk-icon> ${tr("falliti")}` : html`<hxk-icon name="minus" size=${14} tone="muted"></hxk-icon> ${tr("nessun test")}`}</button></dd>` : nothing}
-        ${t.branch ? html`<dt>${tr("Ramo")}</dt><dd><button class="lnk mono" @click=${() => s.setPanel('branch')}>${t.branch}</button></dd>` : nothing}
-        ${t.external?.branch ? html`<dt>${tr("Consegnato")}</dt><dd><span class="mono">${t.external.branch}</span> <span class="muted">da ${t.external.by || '?'}</span></dd>` : nothing}
+        ${t.parent_task ? html`<dt>${tr("Follows")}</dt><dd><button class="lnk mono" @click=${() => this.dispatchEvent(new CustomEvent('open-task', { detail: t.parent_task, bubbles: true, composed: true }))}>${t.parent_task.slice(0, 6)}</button></dd>` : nothing}
+        ${t.turns ? html`<dt>${tr("Shifts")}</dt><dd>${t.turns}</dd>` : nothing}
+        ${t.cost_usd != null ? html`<dt>${tr("Cost")}</dt><dd>$${t.cost_usd.toFixed(3)}</dd>` : nothing}
+        ${t.engine_ms ? html`<dt>${tr("Duration")}</dt><dd>${duration(t.engine_ms)}</dd>` : nothing}
+        ${tot ? html`<dt>${tr("Changes")}</dt><dd><button class="lnk" @click=${() => s.setPanel('files')}>${tot.files} ${tr("file")}</button> · <b class="a">+${tot.added}</b> <b class="d">−${tot.deleted}</b></dd>` : nothing}
+        ${t.tests ? html`<dt>${tr("Test")}</dt><dd><button class="lnk" @click=${() => s.setPanel('tests')}>${t.tests.ok === true ? html`<hxk-icon name="check" size=${14} tone="success"></hxk-icon> ${tr("past")}` : t.tests.ok === false ? html`<hxk-icon name="x" size=${14} tone="danger"></hxk-icon> ${tr("alt2::failed")}` : html`<hxk-icon name="minus" size=${14} tone="muted"></hxk-icon> ${tr("no tests")}`}</button></dd>` : nothing}
+        ${t.branch ? html`<dt>${tr("Branch")}</dt><dd><button class="lnk mono" @click=${() => s.setPanel('branch')}>${t.branch}</button></dd>` : nothing}
+        ${t.external?.branch ? html`<dt>${tr("Delivered")}</dt><dd><span class="mono">${t.external.branch}</span> <span class="muted">da ${t.external.by || '?'}</span></dd>` : nothing}
         ${t.merge_sha ? html`<dt>${tr("Merge")}</dt><dd><button class="lnk mono" @click=${() => this.openRepo({ view: 'commit', sha: t.merge_sha! })}>${t.merge_sha.slice(0, 8)}</button></dd>` : nothing}
-        <dt>${tr("Creato")}</dt><dd>${shortDate(t.created_at)}</dd>
+        <dt>${tr("Created")}</dt><dd>${shortDate(t.created_at)}</dd>
       </dl>
       ${t.error ? html`<div class="err">${icon('alert', 14)} ${t.error}</div>` : nothing}
       ${this.review(t)}
-      ${t.deploy_plan ? html`<h4>${tr("Piano di deploy")}</h4><p class="small">
-        ${t.deploy_plan.restart.length ? html`Riavvio: <b>${t.deploy_plan.restart.join(', ')}</b>. ` : nothing}
-        ${t.deploy_plan.rebuild.length ? html`${tr("Da ricostruire a mano:")} <code>${"up-all.bat --build"} ${t.deploy_plan.rebuild.join(' ')}</code>. ` : nothing}
-        ${t.deploy_plan.restart_self ? tr('Hephaestus si riavvia da solo per ultimo. ') : nothing}
-        ${!t.deploy_plan.restart.length && !t.deploy_plan.rebuild.length && !t.deploy_plan.restart_self ? tr('Nessun servizio da riavviare.') : nothing}</p>` : nothing}
-      <h4>${tr("Note")}</h4>
+      ${t.deploy_plan ? html`<h4>${tr("Deploy plan")}</h4><p class="small">
+        ${t.deploy_plan.restart.length ? html`${tr("Restart:")} <b>${t.deploy_plan.restart.join(', ')}</b>. ` : nothing}
+        ${t.deploy_plan.rebuild.length ? html`${tr("To rebuild by hand:")} <code>${"up-all.bat --build"} ${t.deploy_plan.rebuild.join(' ')}</code>. ` : nothing}
+        ${t.deploy_plan.restart_self ? tr('Hephaestus restarts itself last. ') : nothing}
+        ${!t.deploy_plan.restart.length && !t.deploy_plan.rebuild.length && !t.deploy_plan.restart_self ? tr('No service to restart.') : nothing}</p>` : nothing}
+      <h4>${tr("Notes")}</h4>
       ${(t.notes ?? []).length ? html`<div class="notes">${(t.notes ?? []).map(n => html`<div>
-        <div class="small muted">${n.by} · ${shortDate(n.ts)}</div><div class="nt">${n.text}</div></div>`)}</div>` : html`<div class="small muted">${tr("Nessuna nota.")}</div>`}
+        <div class="small muted">${n.by} · ${shortDate(n.ts)}</div><div class="nt">${n.text}</div></div>`)}</div>` : html`<div class="small muted">${tr("No notes.")}</div>`}
       <div class="addnote">
-        <textarea rows="2" placeholder=${tr("Aggiungi un'analisi o un'indicazione (la usa il motore quando parte o riprova)…")}
+        <textarea rows="2" placeholder=${tr("Add an analysis or a direction (the engine uses it when it starts or retries)…")}
           .value=${this.note} @input=${(e: any) => (this.note = e.target.value)}></textarea>
         <div><hxk-button size="sm" variant="ghost" icon="plus" ?disabled=${this.note.trim().length < 3} ?loading=${s.busy}
-          @click=${async () => { if (await s.addNote(this.note.trim())) this.note = ''; }}>${tr("Aggiungi nota")}</hxk-button></div>
+          @click=${async () => { if (await s.addNote(this.note.trim())) this.note = ''; }}>${tr("Add note")}</hxk-button></div>
       </div>
-      <h4>${tr("Cronologia")}</h4>
+      <h4>${tr("alt2::History")}</h4>
       <ol class="timeline">${history.map(h => html`<li><span class="dot" data-tone=${meta(h.state).tone}></span>
         <div><b>${meta(h.state).label}</b>&nbsp; <span class="muted">${shortDate(h.ts)}</span>
           ${h.note ? html`<div class="note">${h.note}</div>` : nothing}</div></li>`)}</ol>`;
@@ -125,46 +125,46 @@ export class HephaestusTaskPanel extends LitElement {
     const r = t.review;
     if (!r) return nothing;
     const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'non_disponibile' ? 'neutral' : r.blocking ? 'danger' : 'warning';
-    const head = r.verdict === 'ok' ? tr('Nessun problema trovato') : r.verdict === 'non_disponibile' ? tr('Non disponibile ora')
-      : `${r.issues.length} ${r.issues.length === 1 ? 'punto' : 'punti'}${r.blocking ? `, ${r.blocking} importanti` : ''}`;
+    const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'non_disponibile' ? tr('Not available now')
+      : `${r.issues.length === 1 ? tr('1 point') : tr('{0} points', r.issues.length)}${r.blocking ? tr(', {0} important', r.blocking) : ''}`;
     const ptone: Record<string, string> = { alta: 'danger', media: 'warning', bassa: 'neutral' };
-    return html`<h4>${tr("Revisione automatica")}</h4>
+    return html`<h4>${tr("Automatic review")}</h4>
       <div class="review"><div class="tsum"><hxk-badge tone=${tone}>${head}</hxk-badge>
-        ${r.rounds ? html`<span class="small muted">${tr("dopo un giro di correzioni (")}${r.first?.length ?? 0} ${tr("punti trovati la prima volta)")}</span>` : nothing}</div>
+        ${r.rounds ? html`<span class="small muted">${tr("after a round of fixes (")}${r.first?.length ?? 0} ${tr("points found the first time)")}</span>` : nothing}</div>
       ${r.issues.map(i => html`<div class="issue"><hxk-badge tone=${ptone[i.priority] || 'neutral'}>${i.priority}</hxk-badge>
-        <div><span class="mono">${i.file || '—'}</span> ${i.problem}${i.evidence ? html`<div class="small muted">Prova: ${i.evidence}</div>` : nothing}</div></div>`)}</div>`;
+        <div><span class="mono">${i.file || '—'}</span> ${i.problem}${i.evidence ? html`<div class="small muted">${tr("Evidence:")} ${i.evidence}</div>` : nothing}</div></div>`)}</div>`;
   }
 
   private files() {
     const f = this.store.files;
     if (!f) return html`<hxk-state kind="loading"></hxk-state>`;
     return html`
-      ${f.live ? html`<p class="small muted">${tr("Modifiche in corso nella cartella di lavoro del task (si aggiornano da sole).")}</p>` : nothing}
+      ${f.live ? html`<p class="small muted">${tr("Changes in progress in the task's working folder (they update by themselves).")}</p>` : nothing}
       ${f.files.length ? f.files.map(x => html`<button class="frow" @click=${() => { this.onlyPath = x.path; this.store.setPanel('diff'); }}>
           <span class="st" data-st=${x.status ?? 'M'} title=${FILE_STATUS[x.status ?? 'M'] ?? ''}>${x.status}</span>
           <span class="mono">${x.path}</span>
           <span class="cnt">${x.binary ? 'bin' : x.added !== null ? html`<b class="a">+${x.added}</b> <b class="d">−${x.deleted}</b>` : nothing}</span></button>`)
-        : html`<hxk-state kind="empty" text=${tr("Nessun file modificato")}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("No file changed")}></hxk-state>`}
       ${f.error ? html`<div class="err">${f.error}</div>` : nothing}`;
   }
 
   private dossier() {
     const w = this.store.workdoc;
     if (!w) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (!w.docs.length) return html`<hxk-state kind="empty" text=${tr("Questo task non ha (ancora) un dossier in docs/work.")}></hxk-state>`;
+    if (!w.docs.length) return html`<hxk-state kind="empty" text=${tr("This task has no dossier in docs/work (yet).")}></hxk-state>`;
     const cur = w.docs.find(d => d.path === this.doc) ?? w.docs[0];
     return html`<div class="docnav">${w.docs.map(d => html`<button class=${d === cur ? 'on' : ''} title=${d.path}
-        @click=${() => (this.doc = d.path)}>${d.group === 'changed' ? html`<hxk-icon name="edit" size=${12} tone="accent" title=${tr("modificato")}></hxk-icon> ` : ''}${d.name}</button>`)}</div>
+        @click=${() => (this.doc = d.path)}>${d.group === 'changed' ? html`<hxk-icon name="edit" size=${12} tone="accent" title=${tr("changed")}></hxk-icon> ` : ''}${d.name}</button>`)}</div>
       <div class="docpath mono">${cur.path}</div><hephaestus-md .text=${cur.content}></hephaestus-md>`;
   }
 
   private tests() {
     const tt = this.store.tests;
     if (!tt) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (!tt.ran) return html`<hxk-state kind="empty" text=${tr("Test non ancora eseguiti: Forge li esegue dopo il lavoro del motore.")}></hxk-state>`;
+    if (!tt.ran) return html`<hxk-state kind="empty" text=${tr("Tests not run yet: Forge runs them after the engine's work.")}></hxk-state>`;
     const keys = Object.keys(tt.summary || {}).filter(k => k !== 'failed_tests');
     const failed: string[] = tt.summary?.['failed_tests'] ?? [];
-    return html`<div class="tsum"><hxk-badge tone=${tt.ok === true ? 'success' : tt.ok === false ? 'danger' : 'neutral'}>${tt.ok === true ? 'passati' : tt.ok === false ? 'falliti' : tr('nessun test')}</hxk-badge>
+    return html`<div class="tsum"><hxk-badge tone=${tt.ok === true ? 'success' : tt.ok === false ? 'danger' : 'neutral'}>${tt.ok === true ? tr('passed') : tt.ok === false ? tr('pl::failed') : tr('no tests')}</hxk-badge>
         ${keys.map(k => html`<span class="small">${tt.summary[k]} ${k}</span>`)}</div>
       ${failed.length ? html`<ul class="failed">${failed.map(f => html`<li class="mono">${f}</li>`)}</ul>` : nothing}
       <pre class="log">${tt.output}</pre>`;
@@ -173,8 +173,8 @@ export class HephaestusTaskPanel extends LitElement {
   private logs() {
     const l = this.store.logs;
     if (!l) return html`<hxk-state kind="loading"></hxk-state>`;
-    return html`${l.error ? html`<h4>${tr("Errore")}</h4><pre class="log err-log">${l.error}</pre>` : nothing}
-      <h4>${tr("Motore")}</h4><pre class="log">${l.engine || '(vuoto)'}</pre>
+    return html`${l.error ? html`<h4>${tr("Error")}</h4><pre class="log err-log">${l.error}</pre>` : nothing}
+      <h4>${tr("Engine")}</h4><pre class="log">${l.engine || tr('(empty)')}</pre>
       ${l.deploy ? html`<h4>${tr("Deploy")}</h4><pre class="log">${l.deploy}</pre>` : nothing}
       <p class="small muted">${l.hint}</p>`;
   }
@@ -182,17 +182,17 @@ export class HephaestusTaskPanel extends LitElement {
   private branch() {
     const t = this.store.task!;
     return html`<dl class="kv">
-        <dt>${tr("Ramo")}</dt><dd class="mono">${t.branch || '—'}</dd>
-        <dt>${tr("Base")}</dt><dd class="mono">${t.base_branch || '—'}${t.base_sha ? ` @ ${t.base_sha.slice(0, 8)}` : ''}</dd>
+        <dt>${tr("Branch")}</dt><dd class="mono">${t.branch || '—'}</dd>
+        <dt>${tr("Basic")}</dt><dd class="mono">${t.base_branch || '—'}${t.base_sha ? ` @ ${t.base_sha.slice(0, 8)}` : ''}</dd>
         ${t.commit_sha ? html`<dt>${tr("Commit")}</dt><dd><button class="lnk mono" @click=${() => this.openRepo({ view: 'commit', sha: t.commit_sha! })}>${t.commit_sha.slice(0, 8)}</button></dd>` : nothing}
         ${t.merge_sha ? html`<dt>${tr("Merge")}</dt><dd><button class="lnk mono" @click=${() => this.openRepo({ view: 'commit', sha: t.merge_sha! })}>${t.merge_sha.slice(0, 8)}</button></dd>` : nothing}
       </dl>
       <div class="row-btns">
         ${t.branch && t.base_branch && !['rejected', 'no_changes'].includes(t.state) ? html`<hxk-button size="sm"
-          @click=${() => this.openRepo({ view: 'compare', base: t.base_branch!, head: t.merge_sha || t.branch! })}>${icon('diff', 14)} ${tr("Confronta nel repository")}</hxk-button>` : nothing}
-        <hxk-button size="sm" variant="ghost" @click=${() => this.openRepo({ view: 'branches' })}>${icon('branch', 14)} ${tr("Tutti i rami")}</hxk-button>
+          @click=${() => this.openRepo({ view: 'compare', base: t.base_branch!, head: t.merge_sha || t.branch! })}>${icon('diff', 14)} ${tr("Compare in the repository")}</hxk-button>` : nothing}
+        <hxk-button size="sm" variant="ghost" @click=${() => this.openRepo({ view: 'branches' })}>${icon('branch', 14)} ${tr("All branches")}</hxk-button>
       </div>
-      ${t.diff_stat ? html`<h4>${tr("Riepilogo")}</h4><pre class="log">${t.diff_stat}</pre>` : nothing}`;
+      ${t.diff_stat ? html`<h4>${tr("Summary")}</h4><pre class="log">${t.diff_stat}</pre>` : nothing}`;
   }
 
   render() {
@@ -205,7 +205,7 @@ export class HephaestusTaskPanel extends LitElement {
         @click=${() => s.setPanel(t.id)}>${icon(t.icon, 14)}<span>${t.label}</span>${t.id === 'files' && nFiles ? html`<i>${nFiles}</i>` : nothing}</button>`)}</div>
       <div class="body">${s.panel === 'overview' ? this.overview()
         : s.panel === 'files' ? this.files()
-        : s.panel === 'diff' ? (s.files ? html`${this.onlyPath ? html`<button class="lnk" @click=${() => (this.onlyPath = null)}>${tr("← Tutti i file")}</button>` : nothing}
+        : s.panel === 'diff' ? (s.files ? html`${this.onlyPath ? html`<button class="lnk" @click=${() => (this.onlyPath = null)}>${tr("← All files")}</button>` : nothing}
             <hephaestus-diff .diff=${s.files.diff} .only=${this.onlyPath} ?truncated=${!!s.files.truncated}></hephaestus-diff>` : html`<hxk-state kind="loading"></hxk-state>`)
         : s.panel === 'dossier' ? this.dossier()
         : s.panel === 'tests' ? this.tests()

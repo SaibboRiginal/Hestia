@@ -1,5 +1,5 @@
 /** Plutus UI helpers: API calls, money and dates, category chips, shared styles of pages and widgets. */
-import { css, html, nothing, tr } from '@hestia/webui-sdk';
+import { css, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 export const API = '/api/finance';
@@ -9,7 +9,7 @@ export async function call<T = any>(host: HestiaHost, method: HttpMethod, path: 
                                     opts?: { query?: Record<string, any>; body?: unknown; quiet?: boolean }): Promise<ApiResult<T>> {
   const r = await host.api<T>(method, path.startsWith('/') ? path : `${API}/${path}`, opts);
   if (!r.ok && !opts?.quiet && method !== 'GET') {
-    const msg = r.error === 'offline' || r.status === 0 ? tr('Non raggiungibile, riprova') : r.error || tr('Errore');
+    const msg = r.error === 'offline' || r.status === 0 ? tr('Not reachable, try again') : r.error || tr('Error');
     host.toast(msg, 'warning');
   }
   return r;
@@ -27,7 +27,7 @@ export const dropMeta = () => { metaCache = null; };
 
 export function money(x: number | null | undefined, currency = 'EUR', sign = false): string {
   if (x === null || x === undefined) return '–';
-  const s = Number(x).toLocaleString('it-IT', { style: 'currency', currency });
+  const s = Number(x).toLocaleString(locale(), { style: 'currency', currency });
   return sign && x > 0 ? '+' + s : s;
 }
 export function localDay(d: Date = new Date()): string {
@@ -48,12 +48,12 @@ export function addMonths(iso: string, n: number): string {
 }
 export function dayLabel(iso: string | null | undefined): string {
   if (!iso) return '';
-  if (iso === today()) return tr('Oggi');
-  if (iso === addDays(today(), -1)) return tr('Ieri');
-  return new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+  if (iso === today()) return tr('Today');
+  if (iso === addDays(today(), -1)) return tr('Yesterday');
+  return new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
-export const SOURCE: Record<string, string> = { manual: tr('a mano'), quick: 'veloce', chat: 'chat', email: 'email', statement: 'estratto' };
-export const PERIOD: Record<string, string> = { weekly: tr('ogni settimana'), monthly: tr('ogni mese'), yearly: tr("ogni anno") };
+export const SOURCE: Record<string, string> = { manual: tr('by hand'), quick: tr('quick'), chat: 'chat', email: 'email', statement: tr('statement') };
+export const PERIOD: Record<string, string> = { weekly: tr('every week'), monthly: tr('every month'), yearly: tr("every year") };
 
 export const catDot = (t: any) => html`<span class="dot" style="background:var(--cal-${colorIndex(t.category_color || t.color)})"></span>`;
 const COLORS = ['green', 'blue', 'teal', 'orange', 'purple', 'red', 'pink', 'amber', 'indigo', 'cyan', 'rose', 'slate', 'gray'];
@@ -64,10 +64,10 @@ export function txRow(host: HestiaHost, t: any, cur: string) {
   const sub = [t.category_label, t.account, SOURCE[t.source] || t.source].filter(Boolean).join(' · ');
   return html`<div class="li" @click=${() => host.navigate('movimenti/' + t.id)}>
     ${catDot(t)}
-    <div class="grow"><div class="truncate"><b>${t.merchant || t.description || tr('Movimento')}</b></div>
+    <div class="grow"><div class="truncate"><b>${t.merchant || t.description || tr('Transaction')}</b></div>
       <div class="small muted truncate">${dayLabel(t.date)} · ${sub}</div></div>
-    ${t.status === 'to_review' ? html`<span class="pill warn">${tr("da rivedere")}</span>` : nothing}
-    ${!t.counted ? html`<span class="pill" title=${tr("Collegato a un altro movimento o trasferimento: non conta nei totali")}>${tr("non conta")}</span>` : nothing}
+    ${t.status === 'to_review' ? html`<span class="pill warn">${tr("to review")}</span>` : nothing}
+    ${!t.counted ? html`<span class="pill" title=${tr("Linked to another transaction or transfer: it doesn't count in the totals")}>${tr("doesn't count")}</span>` : nothing}
     <span class="tnum amt ${t.amount > 0 ? 'in' : ''}">${money(t.amount, t.currency || cur, true)}</span></div>`;
 }
 

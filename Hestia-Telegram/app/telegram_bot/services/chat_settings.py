@@ -23,19 +23,19 @@ class Setting:
 
 
 SETTINGS: tuple[Setting, ...] = (
-    Setting("tone", "Tono", (("warm", "Caldo"), ("neutral", "Neutro"), ("direct", "Diretto"), ("formal", "Formale")),
-            "warm", "Come ti rispondo."),
-    Setting("mode", "Modalità",
-            (("auto", "Auto · decido io"), ("quick", "Rapida · senza strumenti"),
-             ("thinking", "Pensata · ragiono e uso gli strumenti"), ("cot", "Passo passo · più lenta")),
-            "auto", "Quanto ragiono prima di rispondere."),
-    Setting("thinking_display", "Ragionamento",
-            (("hidden", "Nascosto"), ("compact", "Compatto · riquadro chiuso"),
-             ("detailed", "Dettagliato · riquadro aperto"), ("live", "In diretta · i passi mentre lavoro")),
-            "compact", "Come vedi i passi e gli strumenti che uso."),
-    Setting("notice_mode", "Messaggi di sistema",
-            (("inline", "Sotto la risposta"), ("important", "Solo importanti"), ("hidden", "Nascosti")),
-            "inline", "Memoria salvata, azioni fatte, errori."),
+    Setting("tone", "Tone", (("warm", "Warm"), ("neutral", "Neutral"), ("direct", "Direct"), ("formal", "Formal")),
+            "warm", "How I answer you."),
+    Setting("mode", "alt::Mode",
+            (("auto", "Auto · I decide"), ("quick", "Quick · no tools"),
+             ("thinking", "Thoughtful · I reason and use tools"), ("cot", "Step by step · slower")),
+            "auto", "How much I reason before answering."),
+    Setting("thinking_display", "Reasoning",
+            (("hidden", "Hidden"), ("compact", "Compact · box closed"),
+             ("detailed", "Detailed · box open"), ("live", "Live · the steps while I work")),
+            "compact", "How you see the steps and tools I use."),
+    Setting("notice_mode", "System messages",
+            (("inline", "Under the answer"), ("important", "Only important ones"), ("hidden", "pl::Hidden")),
+            "inline", "Saved memory, actions done, errors."),
 )
 
 BY_KEY = {s.key: s for s in SETTINGS}
@@ -90,15 +90,15 @@ def panel(chat_id, message_id=None) -> None:
     st = core.get_session_settings(str(chat_id))
     lines = [f"{ui.esc(tr(s.label))}: <b>{ui.esc(tr(label_of(s.key, value(st, s.key))).split(' · ')[0])}</b>"
              for s in SETTINGS]
-    lines.append(f"Risposte a voce: <b>{tr('sì') if voice_service.is_live(chat_id) else 'no'}</b>")
+    lines.append(tr("Spoken answers: <b>{0}</b>", tr('yes') if voice_service.is_live(chat_id) else 'no'))
     custom = str(st.get("custom_prompt") or "").strip()
-    lines.append(tr("Istruzioni personali: ") + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
-                                            if custom else "<i>nessuna</i>"))
+    lines.append(tr("Personal instructions: ") + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
+                                            if custom else tr("<i>none</i>")))
     buttons = [ui.button(s.label, f"set:param:{s.key}") for s in SETTINGS]
-    buttons += [ui.button(tr("Risposte a voce"), "set:voce"), ui.button(tr("Istruzioni personali"), "set:param:custom_prompt")]
+    buttons += [ui.button(tr("Voice replies"), "set:voce"), ui.button(tr("Personal instructions"), "set:param:custom_prompt")]
     rows = ui.grid(buttons)
-    rows.append([ui.button(tr("Ripristina"), "set:reset"), ui.button("‹ Impostazioni", "n:imp")])
-    nav.place(chat_id, ui.card(tr("Chat"), lines, crumbs=[tr("Impostazioni")]), ui.keyboard(rows), message_id)
+    rows.append([ui.button(tr("f::Restore"), "set:reset"), ui.button(tr("‹ Settings"), "n:imp")])
+    nav.place(chat_id, ui.card(tr("Chat"), lines, crumbs=[tr("Settings")]), ui.keyboard(rows), message_id)
 
 
 def option_view(chat_id, key: str, message_id=None) -> None:
@@ -107,8 +107,8 @@ def option_view(chat_id, key: str, message_id=None) -> None:
     s = BY_KEY[key]
     current = value(core.get_session_settings(str(chat_id)), key)
     rows = [[ui.button(("• " if v == current else "") + tr(lbl), f"set:v:{key}:{v}", limit=40)] for v, lbl in s.options]
-    rows.append([ui.button(ui.BACK, "set:menu")])
-    nav.place(chat_id, ui.card(s.label, [ui.note(s.help)] if s.help else [], crumbs=[tr("Impostazioni"), tr("Chat")]),
+    rows.append([ui.button(tr(ui.BACK), "set:menu")])
+    nav.place(chat_id, ui.card(s.label, [ui.note(s.help)] if s.help else [], crumbs=[tr("Settings"), tr("Chat")]),
               ui.keyboard(rows), message_id)
 
 
@@ -116,10 +116,10 @@ def ask_custom_prompt(chat_id, message_id=None) -> None:
     core, ui = _ui()
     from telegram_bot import nav, store
     store.set_flow(chat_id, {"kind": "chat_setting", "key": "custom_prompt", "message_id": message_id})
-    rows = [[ui.button(tr("Togli le istruzioni"), "set:v:custom_prompt:-")], [ui.button(ui.CANCEL, "set:menu")]]
-    nav.place(chat_id, ui.card(tr("Istruzioni personali"), [
-        tr("Scrivi qui in chat come vuoi che ti risponda."), ui.note(tr("Es. dammi del tu e vai dritta al punto."))],
-        crumbs=[tr("Impostazioni"), tr("Chat")]), ui.keyboard(rows), message_id)
+    rows = [[ui.button(tr("Remove the instructions"), "set:v:custom_prompt:-")], [ui.button(ui.CANCEL, "set:menu")]]
+    nav.place(chat_id, ui.card(tr("Personal instructions"), [
+        tr("Write here in the chat how you want me to answer you."), ui.note(tr("E.g. be informal and get straight to the point."))],
+        crumbs=[tr("Settings"), tr("Chat")]), ui.keyboard(rows), message_id)
 
 
 def on_text(chat_id, text: str) -> bool:
@@ -156,7 +156,7 @@ def handle(call) -> None:
             core.set_session_setting(str(chat_id), key, "")
             from telegram_bot import store
             store.clear_flow(chat_id)
-            note = tr("Istruzioni tolte")
+            note = tr("Instructions removed")
         elif key in BY_KEY and val in dict(BY_KEY[key].options):
             core.set_session_setting(str(chat_id), key, val)
             note = label_of(key, val).split(" · ")[0]
@@ -167,7 +167,7 @@ def handle(call) -> None:
         panel(chat_id, mid)
     elif action == "reset":
         core.reset_session_settings(str(chat_id))
-        note = tr("Impostazioni predefinite")
+        note = tr("Default settings")
         panel(chat_id, mid)
     else:
         panel(chat_id, mid)

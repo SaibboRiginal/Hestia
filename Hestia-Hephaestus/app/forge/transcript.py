@@ -63,7 +63,7 @@ def normalize_claude(raw_events: Iterable[dict]) -> list[dict]:
         ts = ev.get("timestamp") or ""
         if kind == "system":
             if ev.get("subtype") == "init":
-                out.append({"kind": "system", "ts": ts, "text": "Sessione Claude Code avviata",
+                out.append({"kind": "system", "ts": ts, "text": "Claude Code session started",
                             "meta": {"model": ev.get("model"), "cwd": ev.get("cwd"),
                                      "tools": ev.get("tools"), "session_id": ev.get("session_id"),
                                      "permission_mode": ev.get("permissionMode")}})
@@ -83,7 +83,7 @@ def normalize_claude(raw_events: Iterable[dict]) -> list[dict]:
                                 "text": _clip(block.get("text"))})
                 elif btype in ("thinking", "redacted_thinking"):
                     out.append({"kind": "thinking", "ts": ts,
-                                "text": _clip(block.get("thinking") or "[ragionamento oscurato]")})
+                                "text": _clip(block.get("thinking") or tr("[reasoning hidden]"))})
                 elif btype == "tool_use":
                     out.append({"kind": "tool_use", "ts": ts, "tool": block.get("name"), "id": block.get("id"),
                                 "input": block.get("input") or {}})
@@ -153,7 +153,7 @@ class TaskArtifacts:
         d = self.dir(task_id)
         d.mkdir(parents=True, exist_ok=True)
         (d / "transcript.jsonl").unlink(missing_ok=True)
-        self.append(task_id, {"kind": "system", "text": tr("Motore: {0}", engine), "meta": {"engine": engine}})
+        self.append(task_id, {"kind": "system", "text": tr("Engine: {0}", engine), "meta": {"engine": engine}})
         self.append(task_id, {"kind": "user", "text": _clip(prompt, 60_000), "meta": {"role": "task_prompt"}})
 
     def append(self, task_id: str, event: dict) -> None:

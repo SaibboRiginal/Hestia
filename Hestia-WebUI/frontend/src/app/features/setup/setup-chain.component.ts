@@ -63,56 +63,56 @@ export function keyStep(key: string, home: string): { provider: string; model: s
   imports: [TrPipe, ...UI, FormsModule, SetupPickComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="chosen"  [attr.aria-label]="'Scelti' | tr">
+    <section class="chosen"  [attr.aria-label]="'pl::Chosen' | tr">
       <div class="head">
-        <b>{{ single() ? ('Scelto' | tr) : ('Scelti' | tr) }}</b>
-        @if (!single() && rows().length > 1) { <small>{{ "in quest'ordine: se uno non risponde, passa al successivo" | tr }}</small> }
+        <b>{{ single() ? ('Chosen' | tr) : ('pl::Chosen' | tr) }}</b>
+        @if (!single() && rows().length > 1) { <small>{{ "in this order: if one does not answer, it moves to the next" | tr }}</small> }
       </div>
       @for (r of rows(); track r.key; let i = $index) {
         <div class="crow">
           <span class="num">{{ i + 1 }}</span>
-          <span class="ct"><b>{{ r.title }}</b><small>{{ r.where }}@if (r.waiting) { · <span class="warn">{{ "manca la chiave" | tr }}</span> }</small>
+          <span class="ct"><b>{{ r.title }}</b><small>{{ r.where }}@if (r.waiting) { · <span class="warn">{{ "the key is missing" | tr }}</span> }</small>
             @if (trialState()?.key === r.key && trialState()!.text) { <small class="heard">{{ trialState()!.text }}</small> }</span>
           @if (trial() && !r.waiting) {
             @if (trialState()?.key === r.key && trialState()!.busy) { <span class="ib"><hx-spinner /></span> }
             @else {
               <button type="button" class="ib try" [class.rec]="trialState()?.key === r.key && trialState()!.recording"
-                      [attr.aria-label]="trial() === 'voce' ? ('Ascolta' | tr) : (trialState()?.key === r.key && trialState()!.recording ? ('Ferma e prova' | tr) : ('Prova a parlare' | tr))"
+                      [attr.aria-label]="trial() === 'voce' ? ('Listen' | tr) : (trialState()?.key === r.key && trialState()!.recording ? ('Stop and try' | tr) : ('Try speaking' | tr))"
                       (click)="emitTry(r.key)">
                 <hx-icon [name]="trialState()?.key === r.key && (trialState()!.recording || trialState()!.playing) ? 'stop' : (trial() === 'voce' ? 'play' : 'mic')" [size]="16" />
               </button>
             }
           }
           @if (!single() && rows().length > 1) {
-            <button type="button" class="ib"  [attr.aria-label]="'Sposta prima' | tr" [disabled]="i === 0" (click)="move(i, -1)"><hx-icon name="chevron-up" [size]="16" /></button>
-            <button type="button" class="ib"  [attr.aria-label]="'Sposta dopo' | tr" [disabled]="i === rows().length - 1" (click)="move(i, 1)"><hx-icon name="chevron-down" [size]="16" /></button>
+            <button type="button" class="ib"  [attr.aria-label]="'Move earlier' | tr" [disabled]="i === 0" (click)="move(i, -1)"><hx-icon name="chevron-up" [size]="16" /></button>
+            <button type="button" class="ib"  [attr.aria-label]="'Move later' | tr" [disabled]="i === rows().length - 1" (click)="move(i, 1)"><hx-icon name="chevron-down" [size]="16" /></button>
           }
-          <button type="button" class="ib"  [attr.aria-label]="'Togli' | tr" (click)="remove(r)"><hx-icon name="x" [size]="16" /></button>
+          <button type="button" class="ib"  [attr.aria-label]="'Remove' | tr" (click)="remove(r)"><hx-icon name="x" [size]="16" /></button>
         </div>
-      } @empty { <p class="none">{{ "Niente ancora: scegli qui sotto." | tr }}</p> }
+      } @empty { <p class="none">{{ "Nothing yet: choose below." | tr }}</p> }
     </section>
 
     <div class="tabs" role="tablist">
       <button type="button" role="tab" [attr.aria-selected]="tab() === 'locale'" [class.on]="tab() === 'locale'" (click)="tab.set('locale')">
-        <span class="tl"><hx-icon name="host" [size]="16" /> {{ "Locale" | tr }}</span><small>{{ "gratis e privato" | tr }}</small></button>
+        <span class="tl"><hx-icon name="host" [size]="16" /> {{ "Local" | tr }}</span><small>{{ "free and private" | tr }}</small></button>
       <button type="button" role="tab" [attr.aria-selected]="tab() === 'cloud'" [class.on]="tab() === 'cloud'" (click)="tab.set('cloud')">
-        <span class="tl"><hx-icon name="cloud" [size]="16" /> {{ "Cloud" | tr }}</span><small>{{ "con una chiave" | tr }}</small></button>
+        <span class="tl"><hx-icon name="cloud" [size]="16" /> {{ "Cloud" | tr }}</span><small>{{ "with a key" | tr }}</small></button>
     </div>
 
     @if (tab() === 'locale') {
       <section class="pane">
         @if (homeItems().length) {
-          <app-setup-pick [items]="homeItems()" [selected]="home()" [limit]="5"  [placeholder]="'Cerca' | tr" (picked)="pickHome($event)"
+          <app-setup-pick [items]="homeItems()" [selected]="home()" [limit]="5"  [placeholder]="'Search' | tr" (picked)="pickHome($event)"
                           [trial]="trial()" [trialState]="itemTrial('h|')" (tried)="tryItem('h|' + $event)" />
         } @else {
           <p class="none">{{ homeEmpty() }}</p>
         }
         @if (programs().length) {
-          @if (homeItems().length) { <p class="more-head">{{ "Altri programmi gratis: installane uno, aprilo e premi «Cerca di nuovo»." | tr }}</p> }
+          @if (homeItems().length) { <p class="more-head">{{ "Other free programs: install one, open it and press «Search again»." | tr }}</p> }
           @for (r of programs(); track r.name; let first = $first) {
             <a class="prog" [href]="r.site" target="_blank" rel="noopener">
               <span class="ct"><b>{{ r.label }}</b><small>{{ r.note }}</small></span>
-              @if (first && !homeItems().length) { <span class="tag">{{ "Consigliato" | tr }}</span> }
+              @if (first && !homeItems().length) { <span class="tag">{{ "Recommended" | tr }}</span> }
               <hx-icon name="external" [size]="15" tone="muted" />
             </a>
           }
@@ -120,18 +120,18 @@ export function keyStep(key: string, home: string): { provider: string; model: s
         <ng-content select="[home-extra]" />
         <div class="net">
           @if (hosts().length) {
-            <span class="hosts">{{ "Cerco anche su:" | tr }} @for (h of hosts(); track h) { <span class="chip">{{ h }}<button type="button"  [attr.aria-label]="'Togli' | tr" (click)="removeHost.emit(h)"><hx-icon name="x" [size]="12" /></button></span> }</span>
+            <span class="hosts">{{ "I also search on:" | tr }} @for (h of hosts(); track h) { <span class="chip">{{ h }}<button type="button"  [attr.aria-label]="'Remove' | tr" (click)="removeHost.emit(h)"><hx-icon name="x" [size]="12" /></button></span> }</span>
           }
           @if (netOpen()) {
             <div class="netrow">
-              <input class="hx-input" autocomplete="off" spellcheck="false"  [attr.aria-label]="'Indirizzo dell\\'altro computer' | tr"
-                     [ngModel]="draft()" (ngModelChange)="draft.set($event)" (keydown.enter)="add()"  [placeholder]="'Indirizzo, per esempio 192.168.1.20' | tr" />
-              <button hx-btn variant="secondary" [disabled]="!draft().trim()" [loading]="searching()" (click)="add()">{{ "Cerca lì" | tr }}</button>
+              <input class="hx-input" autocomplete="off" spellcheck="false"  [attr.aria-label]="'Address of the other computer' | tr"
+                     [ngModel]="draft()" (ngModelChange)="draft.set($event)" (keydown.enter)="add()"  [placeholder]="'Address, for example 192.168.1.20' | tr" />
+              <button hx-btn variant="secondary" [disabled]="!draft().trim()" [loading]="searching()" (click)="add()">{{ "Search there" | tr }}</button>
             </div>
           }
           <div class="links">
-            @if (!netOpen()) { <button type="button" class="link" (click)="netOpen.set(true)">{{ "È su un altro computer della rete?" | tr }}</button> }
-            <button type="button" class="link" [disabled]="searching()" (click)="again.emit()">{{ searching() ? 'Cerco…' : ('Cerca di nuovo' | tr) }}</button>
+            @if (!netOpen()) { <button type="button" class="link" (click)="netOpen.set(true)">{{ "Is it on another computer in the network?" | tr }}</button> }
+            <button type="button" class="link" [disabled]="searching()" (click)="again.emit()">{{ searching() ? 'Cerco…' : ('Search again' | tr) }}</button>
           </div>
         </div>
       </section>
@@ -149,38 +149,38 @@ export function keyStep(key: string, home: string): { provider: string; model: s
               <div class="svc-body">
                 @if (p.kind === 'token') {
                   @if (p.tokenHint) { <p class="hint">{{ p.tokenHint }}</p> }
-                  <input class="hx-input mono" type="password" autocomplete="off" [attr.aria-label]="p.tokenLabel || ('Codice' | tr)"
+                  <input class="hx-input mono" type="password" autocomplete="off" [attr.aria-label]="p.tokenLabel || ('Code' | tr)"
                          [ngModel]="tokens()[p.name] || ''" (ngModelChange)="typeToken(p.name, $event)"
-                         [placeholder]="p.keySet ? ('Già inserito: lascia vuoto per tenerlo' | tr) : (p.tokenPlaceholder || ('Incolla qui il codice' | tr))" />
+                         [placeholder]="p.keySet ? ('Already entered: leave empty to keep it' | tr) : (p.tokenPlaceholder || ('Paste the code here' | tr))" />
                   <div class="row">
-                    <button hx-btn [variant]="inUse(p.name) ? 'ghost' : 'primary'" [disabled]="!ready()[p.name]" (click)="useService(p.name)">{{ inUse(p.name) ? ('Togli' | tr) : ('Usa' | tr) }}</button>
+                    <button hx-btn [variant]="inUse(p.name) ? 'ghost' : 'primary'" [disabled]="!ready()[p.name]" (click)="useService(p.name)">{{ inUse(p.name) ? ('Remove' | tr) : ('Use' | tr) }}</button>
                   </div>
                 } @else if (p.kind === 'key' && (!ready()[p.name] || editKey().includes(p.name))) {
                   @if (testing() === p.name && !keys[p.name]) {
-                    <p class="hint"><hx-spinner /> {{ "Provo la chiave salvata…" | tr }}</p>
+                    <p class="hint"><hx-spinner /> {{ "Trying the saved key…" | tr }}</p>
                   } @else {
-                    <input class="hx-input mono" type="password" autocomplete="off" [attr.aria-label]="('Chiave di ' | tr) + p.label"
+                    <input class="hx-input mono" type="password" autocomplete="off" [attr.aria-label]="('Key of ' | tr) + p.label"
                            [ngModel]="keys[p.name] || ''" (ngModelChange)="keys[p.name] = $event" (keydown.enter)="check(p.name)"
-                           [placeholder]="p.keySet ? ('Chiave salvata: incollane un\\'altra per cambiarla' | tr) : ('Incolla qui la chiave' | tr)" />
+                           [placeholder]="p.keySet ? ('Key saved: paste another one to change it' | tr) : ('Paste the key here' | tr)" />
                     @if (errors()[p.name]) { <p class="err"><hx-icon name="alert" [size]="14" tone="danger" /> {{ errors()[p.name] }}</p> }
                     <div class="row">
-                      @if (p.keyLink) { <a hx-btn variant="ghost" icon="external" [href]="p.keyLink" target="_blank" rel="noopener">{{ "Prendi la chiave" | tr }}</a> }
-                      <button hx-btn variant="primary" [loading]="testing() === p.name" [disabled]="!keys[p.name] && !p.keySet" (click)="check(p.name)">{{ keys[p.name] ? ('Salva e prova' | tr) : ('Prova' | tr) }}</button>
+                      @if (p.keyLink) { <a hx-btn variant="ghost" icon="external" [href]="p.keyLink" target="_blank" rel="noopener">{{ "Get the key" | tr }}</a> }
+                      <button hx-btn variant="primary" [loading]="testing() === p.name" [disabled]="!keys[p.name] && !p.keySet" (click)="check(p.name)">{{ keys[p.name] ? ('Save and try' | tr) : ('alt::Test' | tr) }}</button>
                     </div>
                   }
                 } @else {
                   @if (p.kind === 'key') {
-                    <p class="ok"><hx-icon name="check-circle" [size]="15" tone="success" /> {{ notes()[p.name] || ('La chiave funziona.' | tr) }}
-                      <button type="button" class="link" (click)="openKey(p.name)">{{ "Cambia chiave" | tr }}</button></p>
+                    <p class="ok"><hx-icon name="check-circle" [size]="15" tone="success" /> {{ notes()[p.name] || ('The key works.' | tr) }}
+                      <button type="button" class="link" (click)="openKey(p.name)">{{ "Change key" | tr }}</button></p>
                   }
                   @if ((lists()[p.name] || []).length) {
                     <app-setup-pick [items]="lists()[p.name]" [multi]="!single()" [chosen]="picks()[p.name] || []" [selected]="(picks()[p.name] || [])[0] || ''"
-                                    [limit]="5"  [placeholder]="'Cerca' | tr" (picked)="pick(p.name, $event)"
+                                    [limit]="5"  [placeholder]="'Search' | tr" (picked)="pick(p.name, $event)"
                                     [trial]="trial()" [trialState]="itemTrial('m:' + p.name + ':')" (tried)="tryItem('m:' + p.name + ':' + $event)" />
                   } @else if (p.kind === 'none') {
-                    <div class="row"><button hx-btn [variant]="inUse(p.name) ? 'ghost' : 'primary'" (click)="useService(p.name)">{{ inUse(p.name) ? ('Togli' | tr) : ('Usa' | tr) }}</button></div>
+                    <div class="row"><button hx-btn [variant]="inUse(p.name) ? 'ghost' : 'primary'" (click)="useService(p.name)">{{ inUse(p.name) ? ('Remove' | tr) : ('Use' | tr) }}</button></div>
                   } @else {
-                    @if (testing() === p.name || !listed(p.name)) { <p class="hint"><hx-spinner /> {{ "Leggo i modelli…" | tr }}</p> }
+                    @if (testing() === p.name || !listed(p.name)) { <p class="hint"><hx-spinner /> {{ "Reading the models…" | tr }}</p> }
                     @else { <p class="none">{{ emptyList() }}</p> }
                   }
                 }
@@ -241,15 +241,15 @@ export function keyStep(key: string, home: string): { provider: string; model: s
 })
 export class SetupChainComponent {
   homeItems = input<PickItem[]>([]);
-  homeEmpty = input<string>(tr('Non ho trovato niente su questo computer né nella rete.'));
+  homeEmpty = input<string>(tr('I found nothing on this computer or in the network.'));
   programs = input<HomeProgram[]>([]);
   hosts = input<string[]>([]);
   searching = input<boolean>(false);
   services = input<ServiceRow[]>([]);
   /** Reads the service's list with the key (a typed key is saved first). Throws when the answer is lost. */
   tester = input.required<(name: string, key: string) => Promise<ServiceCheck>>();
-  cloudEmpty = input<string>(tr('Nessun servizio cloud per questo passo.'));
-  emptyList = input<string>(tr('La chiave funziona, ma il servizio non ha niente da scegliere qui.'));
+  cloudEmpty = input<string>(tr('No cloud service for this step.'));
+  emptyList = input<string>(tr('The key works, but the service has nothing to choose here.'));
   single = input<boolean>(false);
   /** «Prova» on each chosen row: hear a voice ('voce') or speak and see what it understood ('ascolto'). */
   trial = input<'' | 'voce' | 'ascolto'>('');
@@ -321,7 +321,7 @@ export class SetupChainComponent {
     return ranked(chosenKeys(home, this.order(), this.picks()), this.rank()).map(key => {
       if (key === 'h') {
         const it = this.homeItems().find(i => i.id === home);
-        return { key, title: it?.title || home.split('|').slice(1).join('|'), where: tr('Locale'), waiting: false, kind: 'home' as const };
+        return { key, title: it?.title || home.split('|').slice(1).join('|'), where: tr('Local'), waiting: false, kind: 'home' as const };
       }
       const { provider: svc, model: id } = keyStep(key, home);
       const label = this.row(svc)?.label || svc;
@@ -400,12 +400,12 @@ export class SetupChainComponent {
   status(p: ServiceRow): string {
     if (this.inUse(p.name)) {
       const n = (this.picks()[p.name] || []).length;
-      return n ? tr("In uso: {0}", n === 1 ? '1 scelto' : n + ' scelti') : tr('In uso');
+      return n ? tr("In use: {0}", n === 1 ? tr('1 chosen') : tr('{0} chosen', n)) : tr('In use');
     }
     if (p.kind === 'none') return p.note || '';
-    if (this.ready()[p.name]) return tr('Pronto: scegli qui');
-    if (p.kind === 'token') return p.keySet ? tr('Codice inserito') : (p.note || tr('Serve il codice'));
-    return p.keySet ? tr('Chiave salvata') : (p.note || tr('Serve una chiave'));
+    if (this.ready()[p.name]) return tr('Ready: choose here');
+    if (p.kind === 'token') return p.keySet ? tr('Code entered') : (p.note || tr('The code is needed'));
+    return p.keySet ? tr('Key saved') : (p.note || tr('A key is needed'));
   }
 
   add() {
@@ -442,16 +442,16 @@ export class SetupChainComponent {
             this.order.set(this.single() ? [name] : [...this.order(), name]);
           }
         }
-        this.notes.set({ ...this.notes(), [name]: r.detail || tr('La chiave funziona.') });
+        this.notes.set({ ...this.notes(), [name]: r.detail || tr('The key works.') });
         this.editKey.set(this.editKey().filter(n => n !== name));
         this.mark(name, true);
       } else {
-        this.errors.set({ ...this.errors(), [name]: r.detail || tr('Non funziona.') });
+        this.errors.set({ ...this.errors(), [name]: r.detail || tr('It doesn\'t work.') });
         this.openKey(name);
         this.mark(name, false);
       }
     } catch (e: any) {
-      this.errors.set({ ...this.errors(), [name]: e?.message || tr('Qualcosa non ha funzionato, riprova tra poco.') });
+      this.errors.set({ ...this.errors(), [name]: e?.message || tr('Something didn\'t work, try again shortly.') });
       this.openKey(name);
       this.mark(name, false);
     } finally {

@@ -136,7 +136,7 @@ class ContextBuilder:
                 at = at.replace(tzinfo=timezone.utc)
             at = at.astimezone(_tz())
             days = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-            months = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+            months = ("Jan", "Feb", "Tue", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
             return f"[{days[at.weekday()]} {at.day} {months[at.month - 1]} {at:%H:%M}]"
         except Exception:
             return ""

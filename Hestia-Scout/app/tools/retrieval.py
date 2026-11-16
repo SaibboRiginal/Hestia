@@ -250,7 +250,7 @@ class ScoutRetrievalService:
             return ""
         try:
             n = int(float(value))
-            return f"{n} locali" if n > 1 else "1 locale"
+            return tr("{0} rooms", n) if n > 1 else "1 locale"
         except (ValueError, TypeError):
             return ""
 
@@ -277,24 +277,24 @@ class ScoutRetrievalService:
         rows = []
         for it in items[:20]:
             specs = it.get("specs") if isinstance(it.get("specs"), dict) else {}
-            rows.append(item(str(it.get("title") or tr("Casa")).strip(),
+            rows.append(item(str(it.get("title") or tr("Home")).strip(),
                              [self._fmt_price(it.get("price")), self._fmt_surface(specs.get("surface_m2")),
                               self._fmt_rooms(specs.get("rooms")), str(it.get("address") or "").strip()],
                              url=str(it.get("url") or "").strip()))
-        return display(tr("Case disponibili"), subtitle=f"{len(items)} trovate" if items else "", items=rows,
-                       lines=[] if rows else [tr("Nessuna casa trovata.")],
-                       footer=f"e altre {len(items) - 20}" if len(items) > 20 else "",
-                       actions=[action(tr("Cerca"), "scout.search", style="primary"), action(tr("Controlla email"), "scout_fetch")])
+        return display(tr("Available houses"), subtitle=tr("{0} found", len(items)) if items else "", items=rows,
+                       lines=[] if rows else [tr("No house found.")],
+                       footer=tr("alt::and {0} more", len(items) - 20) if len(items) > 20 else "",
+                       actions=[action(tr("Search"), "scout.search", style="primary"), action(tr("Check emails"), "scout_fetch")])
 
     def search_formatted(self, req: RealEstateSearchRequest, items: list[dict] | None = None) -> str:
         """Return pre-formatted markdown with one [title](url) bullet per listing.
         The LLM can pass this through directly without needing to format links."""
         items = self.search(req) if items is None else items
         if not items:
-            return tr("Nessuna casa trovata.")
+            return tr("No house found.")
         lines = []
         for item in items:
-            title = str(item.get("title") or tr("Casa")).strip()
+            title = str(item.get("title") or tr("Home")).strip()
             url = str(item.get("url") or "").strip()
             price = self._fmt_price(item.get("price"))
             address = str(item.get("address") or "").strip()
@@ -313,4 +313,4 @@ class ScoutRetrievalService:
             else:
                 lines.append(f"• {title} — {detail}" if detail else f"• {title}")
 
-        return f"🏠 **Case disponibili** ({len(items)})\n\n" + "\n\n".join(lines)
+        return tr("🏠 **Available houses** ({0})\n\n", len(items)) + "\n\n".join(lines)

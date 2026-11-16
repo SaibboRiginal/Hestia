@@ -8,7 +8,7 @@ import { AppearanceService } from '../services/appearance.service';
 import { tr, TrPipe } from '../core/i18n';
 
 const LABELS: Record<string, string> = {
-  starting: tr('Accendo il microfono…'), listening: tr('Ti ascolto'), hearing: tr('Ti sento…'), thinking: tr('Ci penso…'), speaking: tr('Sto parlando'),
+  starting: tr('Turning the microphone on…'), listening: tr('I\'m listening'), hearing: tr('I hear you…'), thinking: tr('Thinking…'), speaking: tr('Speaking'),
 };
 
 /**
@@ -29,10 +29,10 @@ const LABELS: Record<string, string> = {
           @if (live.partial()) { <div class="pt">{{ live.partial() }}</div> }
         </div>
         @if (live.state() === 'speaking' || live.state() === 'thinking') {
-          <button hx-btn variant="secondary" size="sm" icon="stop" (click)="live.interrupt()">{{ "Interrompi" | tr }}</button>
+          <button hx-btn variant="secondary" size="sm" icon="stop" (click)="live.interrupt()">{{ "alt2::Stop" | tr }}</button>
         }
-        <a hx-btn variant="ghost" size="sm" icon="chat" iconOnly routerLink="/chat"  [attr.aria-label]="'Apri la chat' | tr"  [title]="'Apri la chat' | tr"></a>
-        <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi Parla' | tr" (click)="live.stop()"></button>
+        <a hx-btn variant="ghost" size="sm" icon="chat" iconOnly routerLink="/chat"  [attr.aria-label]="'Open the chat' | tr"  [title]="'Open the chat' | tr"></a>
+        <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Close Talk' | tr" (click)="live.stop()"></button>
       </div>
     }`,
   styles: [`

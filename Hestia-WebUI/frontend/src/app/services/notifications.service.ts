@@ -125,7 +125,7 @@ export class NotificationsService {
       this.hasMore.set(items.length >= 40);
       if (res?.counts) this.counts.set(res.counts);
     } catch {
-      this.toast.error('Notifiche non disponibili: Hermes non risponde');
+      this.toast.error(tr('Notifications not available right now'));
     } finally {
       this.loading.set(false);
     }
@@ -145,7 +145,7 @@ export class NotificationsService {
       await this.loadCounts();
       if (this.filter() === 'unread') await this.refresh();
     } catch {
-      this.toast.error('Non riuscito, riprova');
+      this.toast.error(tr('Did not work, try again'));
     }
   }
 
@@ -161,9 +161,9 @@ export class NotificationsService {
       if (e.status === 409) {
         const answer: NotificationAnswer = e.error?.answer ?? {};
         this.applyAnswer(n.id, answer);
-        this.toast.show(answer.by && answer.by !== CLIENT ? tr("Già gestita da {0}", clientLabel(answer.by)) : tr('Già gestita'), 'info');
+        this.toast.show(answer.by && answer.by !== CLIENT ? tr("Already handled by {0}", clientLabel(answer.by)) : tr('Already handled'), 'info');
       } else {
-        this.toast.error(`Non riuscito: ${e.error?.detail || 'riprova più tardi'}`);
+        this.toast.error(tr('Did not work: {0}', e.error?.detail || tr('try again later')));
       }
     } finally {
       this.busy.set(null);
@@ -211,10 +211,10 @@ export class NotificationsService {
     const mode = this.toastMode();
     const important = n.pending || n.level === 'warning' || n.level === 'error';
     if (mode === 'none' || (mode === 'important' && !important)) return;
-    const base = noEmoji(n.title || '') || plain(n.message).slice(0, 140) || tr('Nuova notifica');
+    const base = noEmoji(n.title || '') || plain(n.message).slice(0, 140) || tr('New notification');
     const text = n.repeat ? `${base} · ${n.repeat.text}` : base;
     this.toast.show(text, toneOf(n.level), {
-      label: n.pending ? tr('Rispondi') : tr('Apri'),
+      label: n.pending ? tr('Reply') : tr('Open'),
       // That notification, first and highlighted (the page's filter would otherwise hide an answered or read one).
       run: () => void this.router.navigateByUrl(`${PAGE}?focus=${encodeURIComponent(n.id)}`),
     }, n.pending ? 10000 : 6000);

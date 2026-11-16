@@ -37,7 +37,7 @@ export class AthenaSignals extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/signals`, { query: { limit: 100, weeks: 12 } });
-    if (!r.ok) { this.error = r.status === 0 ? tr('Riflessione non raggiungibile') : r.error || tr('Segnali non disponibili'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Reflection not reachable') : r.error || tr('Signals not available'); return; }
     this.error = '';
     this.data = r.data;
   }
@@ -51,8 +51,8 @@ export class AthenaSignals extends HestiaElement {
     return html`<div class="sig">
       <hxk-icon name=${sev.icon} style=${`color:var(--${sev.tone === 'neutral' ? 'text-3' : sev.tone})`}></hxk-icon>
       <div class="grow"><div>${s.text}</div>
-        <div class="small muted">${area(s.domain)} · ${sev.label} · aggiornato ${ago(s.updated_at)}</div></div>
-      ${s.page ? html`<hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.open(s)}>${tr("Apri")}</hxk-button>` : nothing}
+        <div class="small muted">${area(s.domain)} · ${sev.label} · ${tr("updated {0}", ago(s.updated_at))}</div></div>
+      ${s.page ? html`<hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.open(s)}>${tr("Open")}</hxk-button>` : nothing}
     </div>`;
   }
 
@@ -76,30 +76,30 @@ export class AthenaSignals extends HestiaElement {
     const links: any[] = (d.links || []).filter((l: any) => !this.domain || l.a_domain === this.domain || l.b_domain === this.domain);
     const obs: any[] = d.observations || [];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Segnali")}</h1><span class="sub">${tr("Quello che ogni area nota sui suoi dati, e cosa ne ricava la riflessione")}</span>
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Aggiorna")}</hxk-button></div>
+      <div class="head"><h1>${tr("Signals")}</h1><span class="sub">${tr("What each area notices in its data, and what the reflection gets from it")}</span>
+        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
       ${domains.length > 1 ? html`<div class="filters" role="group" aria-label=${tr("Area")}>
-        <button aria-pressed=${String(!this.domain)} @click=${() => (this.domain = '')}>${tr("Tutte")}</button>
+        <button aria-pressed=${String(!this.domain)} @click=${() => (this.domain = '')}>${tr("All")}</button>
         ${domains.map(dm => html`<button aria-pressed=${String(this.domain === dm)} @click=${() => (this.domain = dm)}>${area(dm)}</button>`)}</div>` : nothing}
 
-      <hxk-card heading=${tr("Segnali attivi")} subtitle=${tr("Frasi brevi calcolate dalle aree, senza intelligenza artificiale")}>
+      <hxk-card heading=${tr("Active signals")} subtitle=${tr("Short sentences computed from the areas, without artificial intelligence")}>
         ${sig.length ? sig.map(s => this.signalRow(s))
-          : html`<div class="small muted">${tr("Nessun segnale attivo. Le aree li pubblicano man mano che raccolgono dati.")}</div>`}
+          : html`<div class="small muted">${tr("No active signal. The areas publish them as they collect data.")}</div>`}
       </hxk-card>
 
-      <hxk-card heading=${tr("Collegamenti tra aree")} subtitle=${tr("Due andamenti che si muovono insieme da settimane: non vuol dire che uno causi l'altro")}>
+      <hxk-card heading=${tr("Links between areas")} subtitle=${tr("Two trends that move together for weeks: it doesn't mean one causes the other")}>
         ${links.length ? html`<ul class="items">${links.map(l => html`<li class="small">${linkText(l)}</li>`)}</ul>`
-          : html`<div class="small muted">${tr("Nessun collegamento abbastanza forte per ora: servono alcune settimane di dati in almeno due aree.")}</div>`}
+          : html`<div class="small muted">${tr("No link strong enough for now: a few weeks of data in at least two areas are needed.")}</div>`}
       </hxk-card>
 
-      <hxk-card heading=${tr("Osservazioni recenti")} subtitle=${tr("Arrivano nel recap della sera, sotto «Da tenere d'occhio»")}>
+      <hxk-card heading=${tr("Recent observations")} subtitle=${tr("They arrive in the evening recap, under «To keep an eye on»")}>
         ${obs.length ? obs.map(o => html`<div class="obs"><div class="line"><b class="grow">${o.title}</b>
             ${(o.domains || []).map((dm: string) => html`<span class="small muted">${area(dm)}</span>`)}</div>
           <div>${o.text}</div><div class="small muted">${when(o.at)}</div></div>`)
-          : html`<div class="small muted">${tr("Ancora nessuna osservazione.")}</div>`}
+          : html`<div class="small muted">${tr("No observation yet.")}</div>`}
       </hxk-card>
 
-      ${series.length ? html`<h2>${tr("Andamento settimanale")}</h2>
+      ${series.length ? html`<h2>${tr("Weekly trend")}</h2>
         <div class="grid">${series.map(([n, s]) => this.seriesCard(n, s))}</div>` : nothing}
     </div>`;
   }

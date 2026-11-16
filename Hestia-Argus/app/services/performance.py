@@ -140,27 +140,27 @@ def check(sample: dict, storage: dict | None, alert: Callable[[str, str, str], N
     need = cfg.get_int(cfg.PERF_CPU_SAMPLES, 1)
     for svc, m in sorted(sample.items()):
         if m.get("mem_mb") is not None and m["mem_mb"] > mem_max:
-            alert(svc, "memory", tr("Usa {0:.0f} MB di memoria (limite {1} MB).", m['mem_mb'], mem_max))
+            alert(svc, "memory", tr("Uses {0:.0f} MB of memory (limit {1} MB).", m['mem_mb'], mem_max))
             out.append(f"{svc}:memory")
         if _over(f"{svc}:cpu", m.get("cpu") is not None and m["cpu"] > cpu_max) == need:
-            alert(svc, "cpu", tr("Processore al {0:.0f}% da {1} misure di fila (limite {2}%).", m['cpu'], need, cpu_max))
+            alert(svc, "cpu", tr("Processor at {0:.0f}% for {1} measures in a row (limit {2}%).", m['cpu'], need, cpu_max))
             out.append(f"{svc}:cpu")
         if _over(f"{svc}:ms", m.get("ms") is not None and m["ms"] > ms_max) == need:
-            alert(svc, "response", tr("Risponde lento: {0} ms da {1} misure di fila (limite {2} ms).", m['ms'], need, ms_max))
+            alert(svc, "response", tr("Slow to answer: {0} ms for {1} measures in a row (limit {2} ms).", m['ms'], need, ms_max))
             out.append(f"{svc}:response")
     if storage and storage.get("database_bytes") is not None:
         total = int(storage["database_bytes"] or 0)
         limit = cfg.get_int(cfg.STORAGE_DB_GB, 1) * 1024 ** 3
         if total > limit:
-            alert("archive", "storage_size", tr("I dati salvati sono {0:.1f} GB (limite {1} GB).", total / 1024 ** 3, cfg.get_int(cfg.STORAGE_DB_GB, 1)))
+            alert("archive", "storage_size", tr("The saved data is {0:.1f} GB (limit {1} GB).", total / 1024 ** 3, cfg.get_int(cfg.STORAGE_DB_GB, 1)))
             out.append("archive:storage_size")
         growth = storage_growth_day()
         growth_max = cfg.get_int(cfg.STORAGE_GROWTH_MB, 1)
         if growth is not None and growth / 1048576 > growth_max:
             top = sorted((storage.get("blobs_by_module") or {}).items(), key=lambda kv: -kv[1].get("bytes", 0))[:3]
             who = ", ".join(f"{k} {v.get('bytes', 0) / 1048576:.0f} MB" for k, v in top)
-            alert("archive", "storage_growth", tr("I dati salvati sono cresciuti di {0:.0f} MB nell'ultimo giorno (limite {1} MB).", growth / 1048576, growth_max)
-                                               + (tr(" File più grandi: {0}.", who) if who else ""))
+            alert("archive", "storage_growth", tr("The saved data grew by {0:.0f} MB in the last day (limit {1} MB).", growth / 1048576, growth_max)
+                                               + (tr(" Biggest files: {0}.", who) if who else ""))
             out.append("archive:storage_growth")
     return out
 

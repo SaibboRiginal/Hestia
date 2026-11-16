@@ -15,7 +15,7 @@ export interface RepoNav { view: RepoView; ref?: string; path?: string; sha?: st
 const LANE = 14, ROW = 34;
 const TABS: { id: RepoView; label: string; icon: string }[] = [
   { id: 'log', label: tr('Commit'), icon: 'commit' }, { id: 'files', label: tr('File'), icon: 'folder' },
-  { id: 'branches', label: tr('Rami'), icon: 'branch' }, { id: 'compare', label: tr('Confronta'), icon: 'diff' },
+  { id: 'branches', label: tr('Branches'), icon: 'branch' }, { id: 'compare', label: tr('Compare'), icon: 'diff' },
   { id: 'tags', label: tr('Tag'), icon: 'tag' }, { id: 'dossiers', label: tr('Dossier'), icon: 'list' },
 ];
 
@@ -167,7 +167,7 @@ export class HephaestusRepo extends LitElement {
 
   private async run(fn: () => Promise<void>) {
     this.loading = true;
-    try { await fn(); } catch (e) { this.host.toast(errText(e, tr('Repository non raggiungibile')), 'danger'); }
+    try { await fn(); } catch (e) { this.host.toast(errText(e, tr('Repository not reachable')), 'danger'); }
     finally { this.loading = false; }
   }
 
@@ -197,7 +197,7 @@ export class HephaestusRepo extends LitElement {
 
   private fileList(files: FileStat[]) {
     return html`<div class="files">
-      <button class="frow ${this.onlyFile ? '' : 'on'}" @click=${() => (this.onlyFile = null)}><b>${tr("Tutti i file")}</b> <span class="meta">(${files.length})</span></button>
+      <button class="frow ${this.onlyFile ? '' : 'on'}" @click=${() => (this.onlyFile = null)}><b>${tr("All files")}</b> <span class="meta">(${files.length})</span></button>
       ${files.map(f => html`<button class="frow ${this.onlyFile === f.path ? 'on' : ''}" @click=${() => (this.onlyFile = f.path)}>
         <span class="st" data-st=${f.status ?? 'M'}>${f.status}</span><span class="mono">${f.path}</span>
         <span class="cnt">${f.binary ? 'bin' : html`<b class="a">+${f.added}</b> <b class="d">−${f.deleted}</b>`}</span></button>`)}</div>`;
@@ -207,8 +207,8 @@ export class HephaestusRepo extends LitElement {
     if (this.graphFrom !== this.commits) { this.graph = layoutGraph(this.commits); this.graphFrom = this.commits; }
     const gw = Math.max(1, ...this.graph.map(g => g.width)) * LANE + 8;
     return html`<div class="toolbar">
-        <label class="row small"><input type="checkbox" .checked=${this.allRefs} @change=${(e: any) => { this.allRefs = e.target.checked; this.loadLog(); }}> ${tr("Tutti i rami")}</label>
-        ${this.logPath ? html`<span class="chip">${tr("Solo")} <code>${this.logPath}</code><button @click=${() => { this.logPath = ''; this.loadLog(); }}>${icon('x', 12)}</button></span>` : nothing}
+        <label class="row small"><input type="checkbox" .checked=${this.allRefs} @change=${(e: any) => { this.allRefs = e.target.checked; this.loadLog(); }}> ${tr("All branches")}</label>
+        ${this.logPath ? html`<span class="chip">${tr("Only")} <code>${this.logPath}</code><button @click=${() => { this.logPath = ''; this.loadLog(); }}>${icon('x', 12)}</button></span>` : nothing}
       </div>
       <div class="log">${this.commits.map((c, i) => {
         const g = this.graph[i];
@@ -222,8 +222,8 @@ export class HephaestusRepo extends LitElement {
           <span class="meta hide-phone">${c.author}</span><span class="meta mono hide-phone">${c.short}</span>
           <span class="meta" title=${c.date}>${ago(c.date)}</span></button>`;
       })}
-        ${this.hasMore ? html`<div><hxk-button variant="ghost" size="sm" @click=${() => this.loadLog(true)}>${tr("Carica altri")}</hxk-button></div>` : nothing}
-        ${!this.commits.length && !this.loading ? html`<hxk-state kind="empty" text=${tr("Nessun commit")}></hxk-state>` : nothing}
+        ${this.hasMore ? html`<div><hxk-button variant="ghost" size="sm" @click=${() => this.loadLog(true)}>${tr("pl::Load more")}</hxk-button></div>` : nothing}
+        ${!this.commits.length && !this.loading ? html`<hxk-state kind="empty" text=${tr("No commits")}></hxk-state>` : nothing}
       </div>`;
   }
 
@@ -237,8 +237,8 @@ export class HephaestusRepo extends LitElement {
           ${c.parents.length > 1 ? html` · <hxk-badge tone="info">${"merge"}</hxk-badge>` : nothing}
           ${c.refs.map(r => html`<span class="refb">${r}</span>`)}</div>
         ${c.body ? html`<pre class="body-msg">${c.body}</pre>` : nothing}
-        <div class="sub">${c.parents.map(p => html`<button class="lnk mono" @click=${() => this.go({ view: 'commit', sha: p })}>${tr("genitore")} ${p.slice(0, 8)}</button>`)}
-          <button class="lnk" @click=${() => this.go({ view: 'files', ref: c.sha, path: '' })}>${tr("Sfoglia i file a questo commit")}</button></div>
+        <div class="sub">${c.parents.map(p => html`<button class="lnk mono" @click=${() => this.go({ view: 'commit', sha: p })}>${tr("parent")} ${p.slice(0, 8)}</button>`)}
+          <button class="lnk" @click=${() => this.go({ view: 'files', ref: c.sha, path: '' })}>${tr("Browse the files at this commit")}</button></div>
       </div>
       ${this.fileList(c.files)}
       <hephaestus-diff .diff=${c.diff} ?truncated=${c.truncated} .only=${this.onlyFile}></hephaestus-diff>`;
@@ -251,17 +251,17 @@ export class HephaestusRepo extends LitElement {
     return html`<div class="crumbs"><button class="lnk" @click=${() => this.openPath('')}>${this.ref}</button>
         ${crumbs.map(p => html` / <button class="lnk" @click=${() => this.openPath(p.path)}>${p.name}</button>`)}</div>
       ${f ? html`<div class="fhead"><span class="mono">${f.path}</span><span class="meta">${fileSize(f.size)}</span><span class="grow"></span>
-            ${this.isMd(f.path) ? html`<div class="seg"><button class=${this.mdMode === 'render' ? 'on' : ''} @click=${() => (this.mdMode = 'render')}>${tr("Anteprima")}</button>
-              <button class=${this.mdMode === 'source' ? 'on' : ''} @click=${() => (this.mdMode = 'source')}>${tr("Sorgente")}</button></div>` : nothing}
-            <hxk-button variant="ghost" size="sm" @click=${() => { this.logPath = f.path; this.go({ view: 'log' }); }}>${icon('commit', 14)} ${tr("Storia")}</hxk-button></div>
-          ${f.binary ? html`<hxk-state kind="empty" text=${tr("File binario")}></hxk-state>`
+            ${this.isMd(f.path) ? html`<div class="seg"><button class=${this.mdMode === 'render' ? 'on' : ''} @click=${() => (this.mdMode = 'render')}>${tr("Preview")}</button>
+              <button class=${this.mdMode === 'source' ? 'on' : ''} @click=${() => (this.mdMode = 'source')}>${tr("Source")}</button></div>` : nothing}
+            <hxk-button variant="ghost" size="sm" @click=${() => { this.logPath = f.path; this.go({ view: 'log' }); }}>${icon('commit', 14)} ${tr("alt::History")}</hxk-button></div>
+          ${f.binary ? html`<hxk-state kind="empty" text=${tr("Binary file")}></hxk-state>`
             : this.isMd(f.path) && this.mdMode === 'render' ? html`<div class="mdbox"><hephaestus-md .text=${f.content}></hephaestus-md></div>`
             : html`<div class="src">${f.content.split('\n').map((l, i) => html`<div><i>${i + 1}</i><span>${l}</span></div>`)}</div>`}
-          ${f.truncated ? html`<div class="note">${tr("File troncato: troppo grande da mostrare per intero.")}</div>` : nothing}`
+          ${f.truncated ? html`<div class="note">${tr("File truncated: too big to show in full.")}</div>` : nothing}`
         : html`<div class="tree">${this.tree.map(e => html`<button class="trow" ?disabled=${e.secret}
             @click=${() => e.type === 'tree' ? this.openPath(e.path) : this.openFile(e.path)}>
             ${icon(e.type === 'tree' ? 'folder' : 'file', 15)}<span>${e.name}</span>
-            ${e.secret ? html`<hxk-badge tone="warning">${tr("segreto, non mostrato")}</hxk-badge>` : nothing}
+            ${e.secret ? html`<hxk-badge tone="warning">${tr("secret, not shown")}</hxk-badge>` : nothing}
             <span class="grow"></span><span class="meta">${e.size !== null ? fileSize(e.size) : ''}</span></button>`)}</div>`}`;
   }
 
@@ -270,12 +270,12 @@ export class HephaestusRepo extends LitElement {
       ${icon('branch', 15)}
       <div class="min0"><div class="bname">${b.name}
           ${b.base ? html`<hxk-badge tone="accent">${tr("base")}</hxk-badge>` : nothing}
-          ${b.current ? html`<hxk-badge tone="success">${tr("attivo")}</hxk-badge>` : nothing}
+          ${b.current ? html`<hxk-badge tone="success">${tr("active")}</hxk-badge>` : nothing}
           ${b.forge_task ? html`<hxk-badge tone="info">Forge</hxk-badge>` : nothing}</div>
         <div class="meta truncate">${b.subject} · ${b.author} · ${ago(b.date)}</div></div>
-      ${!b.base ? html`<span class="ab" title=${tr("Commit avanti / indietro rispetto al ramo base")}><b class="a">↑${b.ahead}</b> <b class="d">↓${b.behind}</b></span>` : nothing}
-      <hxk-button variant="ghost" size="sm" @click=${() => this.go({ view: 'log', ref: b.name })}>${tr("Storia")}</hxk-button>
-      ${!b.base ? html`<hxk-button variant="ghost" size="sm" @click=${() => this.go({ view: 'compare', base: this.baseBranch, head: b.name })}>${tr("Confronta")}</hxk-button>` : nothing}
+      ${!b.base ? html`<span class="ab" title=${tr("Commits ahead / behind compared to the base branch")}><b class="a">↑${b.ahead}</b> <b class="d">↓${b.behind}</b></span>` : nothing}
+      <hxk-button variant="ghost" size="sm" @click=${() => this.go({ view: 'log', ref: b.name })}>${tr("alt::History")}</hxk-button>
+      ${!b.base ? html`<hxk-button variant="ghost" size="sm" @click=${() => this.go({ view: 'compare', base: this.baseBranch, head: b.name })}>${tr("Compare")}</hxk-button>` : nothing}
       ${b.forge_task ? html`<hxk-button variant="ghost" size="sm" @click=${() => this.dispatchEvent(new CustomEvent('open-task', { detail: b.forge_task, bubbles: true, composed: true }))}>${icon('terminal', 14)} ${tr("Task")}</hxk-button>` : nothing}
     </div>`)}</div>`;
   }
@@ -291,8 +291,8 @@ export class HephaestusRepo extends LitElement {
     const c = this.cmp;
     return html`<div class="toolbar">${this.branchSelect(this.cmpBase, v => (this.cmpBase = v))}<span>…</span>
         ${this.branchSelect(this.cmpHead, v => (this.cmpHead = v))}
-        <hxk-button size="sm" variant="primary" @click=${() => this.loadCompare()}>${tr("Confronta")}</hxk-button></div>
-      ${c ? html`<p class="meta">${c.head} ${tr("è")} <b>${c.ahead}</b> ${tr("commit avanti e")} <b>${c.behind}</b> ${tr("indietro rispetto a")} ${c.base}.</p>
+        <hxk-button size="sm" variant="primary" @click=${() => this.loadCompare()}>${tr("Compare")}</hxk-button></div>
+      ${c ? html`<p class="meta">${c.head} ${tr("is")} <b>${c.ahead}</b> ${tr("commits ahead and")} <b>${c.behind}</b> ${tr("alt::behind")} ${c.base}.</p>
         ${c.commits.map(k => html`<button class="crow small" @click=${() => this.go({ view: 'commit', sha: k.sha })}><span class="mono meta">${k.short}</span>
           <span class="subj">${k.subject}</span><span class="meta">${ago(k.date)}</span></button>`)}
         ${this.fileList(c.files)}
@@ -302,18 +302,18 @@ export class HephaestusRepo extends LitElement {
   private tagsView() {
     return this.tags.length ? this.tags.map(t => html`<button class="crow small" @click=${() => this.go({ view: 'commit', sha: t.sha })}>${icon('tag', 14)}
         <span class="subj">${t.name} <span class="meta">${t.subject}</span></span><span class="meta">${ago(t.date)}</span></button>`)
-      : html`<hxk-state kind="empty" text=${tr("Il repository non ha ancora tag.")}></hxk-state>`;
+      : html`<hxk-state kind="empty" text=${tr("The repository has no tags yet.")}></hxk-state>`;
   }
 
   private dossiersView() {
-    return html`<div class="toolbar"><hxk-button variant="ghost" size="sm" @click=${() => { this.view = 'files'; this.openFile('CHANGELOG.md'); }}>${icon('file', 14)} ${tr("CHANGELOG generale")}</hxk-button></div>
+    return html`<div class="toolbar"><hxk-button variant="ghost" size="sm" @click=${() => { this.view = 'files'; this.openFile('CHANGELOG.md'); }}>${icon('file', 14)} ${tr("General CHANGELOG")}</hxk-button></div>
       ${this.dossiers.length ? this.dossiers.map(d => html`<button class="drow" @click=${() => { this.view = 'files'; this.openPath(d.path); }}>
           <div class="min0"><div class="bname truncate">${d.title || d.name}</div><div class="meta truncate">${d.name}${d.source ? ` · ${d.source}` : ''}</div></div>
           ${d.version ? html`<hxk-badge>v${d.version}</hxk-badge>` : nothing}
           ${d.status ? html`<hxk-badge tone="info">${d.status}</hxk-badge>` : nothing}
-          ${d.progress ? html`<span class="prog" title="${d.progress.done} su ${d.progress.total} punti fatti"><span style="width:${d.progress.total ? 100 * d.progress.done / d.progress.total : 0}%"></span></span>
+          ${d.progress ? html`<span class="prog" title="${tr("{0} of {1} points done", d.progress.done, d.progress.total)}"><span style="width:${d.progress.total ? 100 * d.progress.done / d.progress.total : 0}%"></span></span>
             <span class="meta">${d.progress.done}/${d.progress.total}</span>` : nothing}</button>`)
-        : html`<hxk-state kind="empty" text=${tr("Nessun dossier")}></hxk-state>`}`;
+        : html`<hxk-state kind="empty" text=${tr("No dossier")}></hxk-state>`}`;
   }
 
   render() {
@@ -322,7 +322,7 @@ export class HephaestusRepo extends LitElement {
       <div class="tabs">${TABS.map(t => html`<button class=${v === t.id || (t.id === 'log' && v === 'commit') ? 'on' : ''}
           @click=${() => this.go({ view: t.id })}>${icon(t.icon, 14)} ${t.label}</button>`)}
         <span class="grow"></span>
-        <label class="refsel" title=${tr("Ramo o commit mostrato")}>${icon('branch', 14)}${this.branchSelect(this.ref, r => this.setRef(r))}</label>
+        <label class="refsel" title=${tr("Branch or commit shown")}>${icon('branch', 14)}${this.branchSelect(this.ref, r => this.setRef(r))}</label>
       </div>
       <div class="body">
         ${this.loading ? html`<hxk-state kind="loading"></hxk-state>` : nothing}

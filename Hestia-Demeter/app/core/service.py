@@ -21,8 +21,9 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_demeter.service")
 
-SLOTS = {"colazione": "Colazione", "pranzo": "Pranzo", "cena": "Cena", "spuntino": "Spuntino"}
-TIMES = {"morning": "mattina", "midday": "pranzo", "afternoon": "pomeriggio", "evening": "sera", "any": "quando vuoi"}
+SLOTS = {"colazione": "Breakfast", "pranzo": "Lunch", "cena": "Dinner", "spuntino": "Snack"}
+TIMES = {"morning": "in the morning", "midday": "at lunch", "afternoon": "in the afternoon", "evening": "in the evening",
+         "any": "whenever you like"}
 ESTIMATE_USE = "demeter.stima"
 
 
@@ -76,7 +77,7 @@ class Nutrition:
                 "rules": [str(r)[:200] for r in rules][:30], "notes": str(body.get("notes", old["notes"]))[:2000],
                 "updated_at": now_iso()}
         if data["kcal"] is not None and not 800 <= data["kcal"] <= 6000:
-            raise Invalid(tr("kcal al giorno tra 800 e 6000"))
+            raise Invalid(tr("kcal per day between 800 and 6000"))
         self.store.upsert("diet", "current", data)
         self.on_event("changed", {})
         return data
@@ -86,12 +87,12 @@ class Nutrition:
                  source: str = "manual") -> dict:
         text = str(text or "").strip()[:500]
         if not text:
-            raise Invalid(tr("cosa hai mangiato?"))
+            raise Invalid(tr("what did you eat?"))
         now = self.now()
         try:
             d = date.fromisoformat(day[:10]) if day else now.date()
         except ValueError:
-            raise Invalid("data AAAA-MM-GG") from None
+            raise Invalid(tr("date YYYY-MM-DD")) from None
         slot = slot if slot in SLOTS else guess_slot(now)
         meal = {"date": d.isoformat(), "slot": slot, "text": text,
                 "kcal": int(kcal) if kcal not in (None, "") else None,
@@ -106,7 +107,7 @@ class Nutrition:
         """Oracle writes kcal/protein of a meal without numbers (marked ``estimated``); the owner's numbers win."""
         meal = self.store.data("meal", mid)
         if not meal:
-            raise NotFound(tr("pasto non trovato"))
+            raise NotFound(tr("meal not found"))
         if meal.get("kcal") is not None or not self.hub:
             return {**meal, "id": mid}
         out = parse_estimate(self.hub.llm(
@@ -121,7 +122,7 @@ class Nutrition:
     def update_meal(self, mid: str, body: dict) -> dict:
         meal = self.store.data("meal", mid)
         if not meal:
-            raise NotFound(tr("pasto non trovato"))
+            raise NotFound(tr("meal not found"))
         for k in ("text", "slot"):
             if body.get(k):
                 meal[k] = str(body[k])[:500]
@@ -134,7 +135,7 @@ class Nutrition:
 
     def delete_meal(self, mid: str) -> dict:
         if not self.store.delete("meal", mid):
-            raise NotFound(tr("pasto non trovato"))
+            raise NotFound(tr("meal not found"))
         return {"deleted": True}
 
     def meals(self, day: str = "", days: int = 1) -> list[dict]:
@@ -172,17 +173,17 @@ class Nutrition:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(tr("nessun integratore «{0}»", ref))
-        raise Invalid(tr("più integratori corrispondono: ") + ", ".join(h["name"] for h in hits[:5]))
+            raise NotFound(tr("no supplement «{0}»", ref))
+        raise Invalid(tr("several supplements match: ") + ", ".join(h["name"] for h in hits[:5]))
 
     def save_supplement(self, body: dict, sid: str | None = None) -> dict:
         old = self.find_supplement(sid) if sid else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:80]
         if not name:
-            raise Invalid(tr("serve il nome"))
+            raise Invalid(tr("the name is needed"))
         tod = body.get("time_of_day") or old.get("time_of_day") or "morning"
         if tod not in TIMES:
-            raise Invalid("momento: " + ", ".join(TIMES))
+            raise Invalid(tr("time: ") + ", ".join(TIMES))
         days = body.get("days", old.get("days") or [])
         data = {"name": name, "dose": str(body.get("dose", old.get("dose") or ""))[:60], "time_of_day": tod,
                 "days": sorted({int(d) for d in days if 0 <= int(d) <= 6}),
@@ -227,12 +228,12 @@ class Nutrition:
             n = {"id": f"supplement.{s['id']}", "title": s["name"] + (f" ({s['dose']})" if s.get("dose") else ""),
                  "kind": "slot", "per": "day", "count": 1, "time_of_day": s["time_of_day"], "days": s.get("days") or [],
                  "tags": [f"supplement.{s['id']}"], "priority": "should", "link": "integratori",
-                 "reason": "a stomaco pieno" if s.get("with_food") else ""}
+                 "reason": tr("on a full stomach") if s.get("with_food") else ""}
             if s.get("training_days_only"):
                 n["with"] = {"tag": "workout", "relation": "same_day"}
             out.append(n)
         t = self.day_summary()
-        state = tr("oggi {0}", t['kcal']) + (f"/{t['kcal_target']}" if t["kcal_target"] else "") + " kcal"
+        state = tr("today {0}", t['kcal']) + (f"/{t['kcal_target']}" if t["kcal_target"] else "") + " kcal"
         return {"state": state, "needs": out}
 
     def review(self, start: date, end: date) -> dict:
@@ -245,7 +246,7 @@ class Nutrition:
             logged = [x for x in logged if x["meals"] and not x["unknown"]]
             if logged:
                 avg = sum(x["kcal"] for x in logged) / len(logged)
-                notes.append(f"media {avg:.0f} kcal su {len(logged)} giorni (obiettivo {diet['kcal']})")
+                notes.append(f"average {avg:.0f} kcal over {len(logged)} days (goal {diet['kcal']})")
         return {"done": done, "missed": max(0, due - done), "adherence": round(done / due, 2) if due else None,
                 "notes": notes}
 
@@ -253,9 +254,9 @@ class Nutrition:
         y = self.day_summary(day)
         done = []
         if y["meals"]:
-            text = f"{len(y['meals'])} pasti, {y['kcal']} kcal" + (f" su {y['kcal_target']}" if y["kcal_target"] else "")
+            text = tr("{0} meals, {1} kcal", len(y['meals']), y['kcal']) + (f" su {y['kcal_target']}" if y["kcal_target"] else "")
             if y["unknown"]:
-                text += f" ({y['unknown']} senza numeri)"
+                text += tr(" ({0} without numbers)", y['unknown'])
             done.append({"text": text})
         todo = [s for s in self.supplements_today(nxt)]
-        return {"done": done, "next": [{"text": tr("Integratori: ") + ", ".join(s["name"] for s in todo[:6])}] if todo else []}
+        return {"done": done, "next": [{"text": tr("Supplements: ") + ", ".join(s["name"] for s in todo[:6])}] if todo else []}

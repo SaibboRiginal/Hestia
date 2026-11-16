@@ -4,6 +4,8 @@ Only completed, non-discarded sessions count. Warm-up sets never count for recor
 """
 from __future__ import annotations
 
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Iterable
@@ -55,7 +57,8 @@ class Data:
     """Indexes the store once per revision: done sessions by time, sets by session and exercise."""
 
     def __init__(self, sessions: list[dict], sets: list[dict], exercises: list[dict], measurements: list[dict]):
-        self.exercises = {e["id"]: e for e in exercises}
+        # Names in the owner's language: catalog names are English source texts, the user's own stay as typed.
+        self.exercises = {e["id"]: {**e, "name": tr(e["name"])} if e.get("name") else e for e in exercises}
         self.sessions = sorted((s for s in sessions if s.get("status") == "done"),
                                key=lambda s: s.get("started_at") or "")
         self.session_by_id = {s["id"]: s for s in sessions}
@@ -157,8 +160,8 @@ def exercise_records(data: Data, exercise_id: str, formula: str = "epley", *, be
     return rec
 
 
-_PR_LABELS = {"heaviest": "peso massimo", "best_e1rm": "massimale stimato", "best_set_volume": "miglior serie",
-              "best_session_volume": "volume", "most_reps": "più ripetizioni", "longest_s": "durata"}
+_PR_LABELS = {"heaviest": "heaviest weight", "best_e1rm": "estimated max", "best_set_volume": "best set",
+              "best_session_volume": "volume", "most_reps": "most reps", "longest_s": "duration"}
 
 
 def session_prs(data: Data, session: dict, formula: str = "epley") -> list[dict]:

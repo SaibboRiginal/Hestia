@@ -17,8 +17,8 @@ import {
 import { PHASE, when } from './util';
 
 const FILTERS: { id: Filter; label: string }[] = [
-  { id: 'all', label: tr('Tutti') }, { id: 'open', label: tr('Aperti') }, { id: 'modules', label: tr('Dai moduli') },
-  { id: 'done', label: tr('Applicati') }, { id: 'failed', label: tr('Non riusciti') },
+  { id: 'all', label: tr('pl::All') }, { id: 'open', label: tr('alt::Open') }, { id: 'modules', label: tr('From the modules') },
+  { id: 'done', label: tr('Applied') }, { id: 'failed', label: tr('alt4::Failed') },
 ];
 
 type Size = 'wide' | 'mid' | 'phone';
@@ -223,23 +223,23 @@ export class HephaestusSviluppo extends HestiaElement {
   private askHestia() {
     const t = this.store.task;
     this.host.assistant(t ? {
-      label: tr("Sviluppo · {0}", t.request.slice(0, 60)),
-      hints: { pagina: 'forge', task: t.id, stato: t.state, workdoc: t.workdoc || '', servizi: (t.services ?? []).join(','), richiesta: t.request.slice(0, 300) },
-      suggestions: [tr('Spiegami cosa ha cambiato questo task'), tr('Perché è fallito e cosa propongo?'), tr('Crea uno sviluppo di seguito che…')],
+      label: tr("Development · {0}", t.request.slice(0, 60)),
+      hints: { page: 'forge', task: t.id, state: t.state, workdoc: t.workdoc || '', services: (t.services ?? []).join(','), request: t.request.slice(0, 300) },
+      suggestions: [tr('Explain to me what this task changed'), tr('Why did it fail and what do I propose?'), tr('Create a follow-up development that…')],
     } : {
-      label: tr('Sviluppo'), hints: { pagina: 'forge' },
-      suggestions: [tr('Aggiungi a Hestia un comando che…'), tr('Correggi questo problema: …'), tr('Cosa sta sviluppando Forge adesso?')],
+      label: tr('Development'), hints: { page: 'forge' },
+      suggestions: [tr('Add to Hestia a command that…'), tr('Fix this problem: …'), tr('What is Forge developing now?')],
     });
   }
 
   private async togglePause(paused: boolean) {
-    if (paused || await this.host.confirm(tr('Riprendere lo sviluppo?'), tr('I moduli tornano ad avviare task da soli secondo i permessi. I task trattenuti durante la pausa restano da avviare a mano.'), { label: tr('Riprendi') })) {
+    if (paused || await this.host.confirm(tr('Resume the development?'), tr('Modules start tasks by themselves again according to the permissions. Tasks held during the pause are still to be started by hand.'), { label: tr('Resume') })) {
       await this.store.setPaused(paused);
     }
   }
   private async approve(t: ForgeTask) {
-    const tests = t.tests?.ok === false ? tr(' Attenzione: i test sono falliti.') : '';
-    if (await this.host.confirm(tr('Applicare la modifica?'), tr("Forge fa il merge del ramo e, se configurato, riavvia i servizi.{0}", tests), { label: tr('Approva e applica') })) {
+    const tests = t.tests?.ok === false ? tr(' Warning: the tests failed.') : '';
+    if (await this.host.confirm(tr('Apply the change?'), tr("Forge merges the branch and, if configured, restarts the services.{0}", tests), { label: tr('Approve and apply') })) {
       this.store.act('approve');
     }
   }
@@ -249,10 +249,10 @@ export class HephaestusSviluppo extends HestiaElement {
     this.store.act('approve', { ...(now ? { now: true } : {}), ...(engine ? { engine } : {}) });
   }
   private async reject() {
-    if (await this.host.confirm(tr('Rifiutare il task?'), tr('Il ramo viene eliminato e la modifica scartata.'), { label: tr('Rifiuta'), danger: true })) this.store.act('reject');
+    if (await this.host.confirm(tr('Reject the task?'), tr('The branch is deleted and the change discarded.'), { label: tr('Reject'), danger: true })) this.store.act('reject');
   }
   private async rollback() {
-    if (await this.host.confirm(tr('Annullare la modifica?'), tr('Forge crea un commit di revert del merge e riavvia i servizi coinvolti.'), { label: tr('Rollback'), danger: true })) this.store.act('rollback');
+    if (await this.host.confirm(tr('Undo the change?'), tr('Forge creates a revert commit of the merge and restarts the services involved.'), { label: tr('Rollback'), danger: true })) this.store.act('rollback');
   }
   private async sendFollowUp(t: ForgeTask) {
     const text = this.followUp.trim();
@@ -291,14 +291,14 @@ export class HephaestusSviluppo extends HestiaElement {
     try {
       const r = await this.store.api.exportMd(ids);
       const n = r.count === 1 ? '1 task' : `${r.count} task`;
-      if (download) { downloadText(r.filename, r.markdown); this.host.toast(tr("Scaricato {0} ({1})", r.filename, n), 'success'); }
+      if (download) { downloadText(r.filename, r.markdown); this.host.toast(tr("Downloaded {0} ({1})", r.filename, n), 'success'); }
       else if (await copyText(r.markdown)) {
-        this.host.toast(tr("Copiato per AI: {0}. Incollalo nella chat dell'altra AI.", n), 'success',
-          { label: tr('Scarica .md'), run: () => downloadText(r.filename, r.markdown) });
-      } else { downloadText(r.filename, r.markdown); this.host.toast(tr("Appunti non disponibili: scaricato {0}", r.filename), 'info'); }
-      if (r.missing?.length) this.host.toast(tr("Non trovati: {0}", r.missing.join(', ')), 'warning');
+        this.host.toast(tr("Copied for AI: {0}. Paste it in the chat of the other AI.", n), 'success',
+          { label: tr('Download .md'), run: () => downloadText(r.filename, r.markdown) });
+      } else { downloadText(r.filename, r.markdown); this.host.toast(tr("Clipboard not available: downloaded {0}", r.filename), 'info'); }
+      if (r.missing?.length) this.host.toast(tr("Not found: {0}", r.missing.join(', ')), 'warning');
     } catch (e) {
-      this.host.toast(errText(e, tr('Esportazione non riuscita')), 'danger');
+      this.host.toast(errText(e, tr('Export failed')), 'danger');
     } finally {
       this.exporting = false;
     }
@@ -307,21 +307,21 @@ export class HephaestusSviluppo extends HestiaElement {
   // ── render ─────────────────────────────────────────────────────────────
   private header() {
     const s = this.store, st = s.status, c = s.counts;
-    const sub = c.review ? tr("{0} da rivedere · Forge sviluppa Hestia su rami separati", c.review) : tr('Forge sviluppa Hestia su rami separati: niente cambia finché non approvi');
+    const sub = c.review ? tr("{0} to review · Forge develops Hestia on separate branches", c.review) : tr('Forge develops Hestia on separate branches: nothing changes until you approve');
     return html`<div class="phead">
-      <div class="ptitle"><h1>${tr("Sviluppo")}</h1><div class="sub">${sub}</div></div>
+      <div class="ptitle"><h1>${tr("Development")}</h1><div class="sub">${sub}</div></div>
       <div class="seg" role="tablist">
         <button class=${this.mode === 'tasks' ? 'on' : ''} @click=${() => this.setMode('tasks')}>${icon('terminal', 14)} ${tr("Task")}</button>
         <button class=${this.mode === 'repo' ? 'on' : ''} @click=${() => this.setMode('repo')}>${icon('branch', 14)} ${tr("Repository")}</button>
       </div>
       ${st ? html`<hxk-button variant=${st.paused ? 'primary' : 'ghost'} icon=${st.paused ? 'play' : 'pause'} ?loading=${s.busy}
-        title=${st.paused ? tr('Riprendi lo sviluppo automatico') : tr('Metti in pausa: nessun task parte da solo')}
-        @click=${() => this.togglePause(!st.paused)}>${st.paused ? tr('Riprendi') : tr('Pausa')}</hxk-button>` : nothing}
-      <hxk-button variant="ghost" icon="refresh" title=${tr("Aggiorna")} @click=${() => this.store.refresh()}></hxk-button>
-      ${this.mode === 'tasks' ? html`<hxk-button variant=${this.picking ? 'primary' : 'ghost'} title=${tr("Scegli dei task e copiali per un'altra AI (markdown)")}
-        @click=${() => { this.picking = !this.picking; this.picked = new Set(); }}>${icon('copy', 15)} <span class="hide-phone">${tr("Copia per AI")}</span></hxk-button>` : nothing}
-      <hxk-button variant="ghost" icon="sparkle" title=${tr("Descrivi a {assistant} cosa serve: propone o crea lo sviluppo")} @click=${() => this.askHestia()}><span class="hide-phone">${tr("Chiedi a {assistant}")}</span></hxk-button>
-      <hxk-button variant="primary" icon="plus" @click=${() => this.openNew()}>${tr("Nuovo sviluppo")}</hxk-button>
+        title=${st.paused ? tr('Resume automatic development') : tr('Pause: no task starts by itself')}
+        @click=${() => this.togglePause(!st.paused)}>${st.paused ? tr('Resume') : tr('Pause')}</hxk-button>` : nothing}
+      <hxk-button variant="ghost" icon="refresh" title=${tr("Refresh")} @click=${() => this.store.refresh()}></hxk-button>
+      ${this.mode === 'tasks' ? html`<hxk-button variant=${this.picking ? 'primary' : 'ghost'} title=${tr("Choose some tasks and copy them for another AI (markdown)")}
+        @click=${() => { this.picking = !this.picking; this.picked = new Set(); }}>${icon('copy', 15)} <span class="hide-phone">${tr("Copy for AI")}</span></hxk-button>` : nothing}
+      <hxk-button variant="ghost" icon="sparkle" title=${tr("Describe to {assistant} what is needed: it proposes or creates the development")} @click=${() => this.askHestia()}><span class="hide-phone">${tr("Ask {assistant}")}</span></hxk-button>
+      <hxk-button variant="primary" icon="plus" @click=${() => this.openNew()}>${tr("New development")}</hxk-button>
     </div>`;
   }
 
@@ -331,18 +331,18 @@ export class HephaestusSviluppo extends HestiaElement {
     return html`<aside class="list">
       ${this.size !== 'phone' ? html`<div class="grip" @pointerdown=${(e: PointerEvent) => this.grip(e, 'list')}></div>` : nothing}
       <div class="lhead">
-        <div class="search">${icon('search', 15)}<input placeholder=${tr("Cerca task…")} .value=${s.search}
+        <div class="search">${icon('search', 15)}<input placeholder=${tr("Search task…")} .value=${s.search}
           @input=${(e: any) => { s.search = e.target.value; this.rev++; }}></div>
         <div class="chips">${FILTERS.map(f => html`<button class=${s.filter === f.id ? 'on' : ''} @click=${() => { s.filter = f.id; this.rev++; }}>${f.label}
           ${f.id === 'open' && s.counts.open ? html`<i>${s.counts.open}</i>` : nothing}</button>`)}</div>
       </div>
-      ${s.status?.paused ? html`<div class="paused">${icon('pause', 14)}<div><b>${tr("Sviluppo in pausa")}</b> ${tr("Nessun task parte da solo: quelli proposti restano qui finché premi Avvia.")}</div></div>` : nothing}
+      ${s.status?.paused ? html`<div class="paused">${icon('pause', 14)}<div><b>${tr("Development paused")}</b> ${tr("No task starts by itself: the proposed ones stay here until you press Start.")}</div></div>` : nothing}
       ${this.picking ? html`<div class="pickbar">
-        <span class="grow">${this.picked.size ? `${this.picked.size} scelti` : tr('Scegli i task da copiare')}</span>
-        <button class="plain" @click=${() => { this.picked = new Set(visible.map(t => t.id)); }}>${tr("Tutti")}</button>
-        <hxk-button size="sm" variant="primary" ?disabled=${!this.picked.size} ?loading=${this.exporting} @click=${() => this.exportAi([...this.picked])}>${icon('copy', 14)} ${tr("Copia")}</hxk-button>
-        <hxk-button size="sm" variant="ghost" ?disabled=${!this.picked.size || this.exporting} title=${tr("Scarica come file .md")} @click=${() => this.exportAi([...this.picked], true)}>${icon('download', 14)}</hxk-button>
-        <hxk-button size="sm" variant="ghost" icon="x" title=${tr("Annulla")} @click=${() => { this.picking = false; this.picked = new Set(); }}></hxk-button>
+        <span class="grow">${this.picked.size ? tr('{0} chosen', this.picked.size) : tr('Choose the tasks to copy')}</span>
+        <button class="plain" @click=${() => { this.picked = new Set(visible.map(t => t.id)); }}>${tr("pl::All")}</button>
+        <hxk-button size="sm" variant="primary" ?disabled=${!this.picked.size} ?loading=${this.exporting} @click=${() => this.exportAi([...this.picked])}>${icon('copy', 14)} ${tr("Copy")}</hxk-button>
+        <hxk-button size="sm" variant="ghost" ?disabled=${!this.picked.size || this.exporting} title=${tr("Download as .md file")} @click=${() => this.exportAi([...this.picked], true)}>${icon('download', 14)}</hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="x" title=${tr("Cancel")} @click=${() => { this.picking = false; this.picked = new Set(); }}></hxk-button>
       </div>` : nothing}
       <div class="rows">
         ${s.loading && !s.tasks.length ? html`<hxk-state kind="loading"></hxk-state>` : nothing}
@@ -355,31 +355,31 @@ export class HephaestusSviluppo extends HestiaElement {
             ${this.picking ? html`<input type="checkbox" .checked=${this.picked.has(t.id)} tabindex="-1" @click=${(e: Event) => e.preventDefault()}>`
               : html`<span class="sdot ${['running', 'merging', 'approved'].includes(t.state) ? 'pulse' : ''}" data-tone=${m.tone}></span>`}
             <div class="tmain"><div class="treq">${t.request}</div>
-              <div class="tmeta">${m.label} · <span class=${byModule(t) ? 'by' : ''}>${sourceLabel(t.source)}</span> · ${engineOf(t)} · ${ago(t.created_at)}${t.parent_task ? html` · <span title=${tr("Segue un task precedente")}>↳</span>` : nothing}</div>
+              <div class="tmeta">${m.label} · <span class=${byModule(t) ? 'by' : ''}>${sourceLabel(t.source)}</span> · ${engineOf(t)} · ${ago(t.created_at)}${t.parent_task ? html` · <span title=${tr("Follows a previous task")}>↳</span>` : nothing}</div>
             </div></button>`;
         })}
         ${!visible.length && !s.loading && !s.error ? html`<hxk-state kind="empty"
-          text=${s.tasks.length ? tr('Nessun task con questo filtro.') : tr('Nessun task. Chiedi a Forge di sviluppare qualcosa: lavora su un ramo separato e niente cambia finché non approvi.')}></hxk-state>` : nothing}
+          text=${s.tasks.length ? tr('No task with this filter.') : tr('No tasks. Ask Forge to develop something: it works on a separate branch and nothing changes until you approve.')}></hxk-state>` : nothing}
       </div>
     </aside>`;
   }
 
-  private engineSelect(value: string, set: (v: string) => void, emptyLabel = tr('Predefinito'), cls = '') {
-    return html`<select class=${cls} title=${tr("Chi lo sviluppa")} @change=${(e: any) => set(e.target.value)}>
+  private engineSelect(value: string, set: (v: string) => void, emptyLabel = tr('Default'), cls = '') {
+    return html`<select class=${cls} title=${tr("Who develops it")} @change=${(e: any) => set(e.target.value)}>
       ${ENGINES.map(e => html`<option value=${e} ?selected=${e === value}>${e ? engineLabel(e) : emptyLabel}</option>`)}</select>`;
   }
 
   private actions(t: ForgeTask) {
     const s = this.store;
-    const pick = () => this.engineSelect(this.startEngine, v => (this.startEngine = v), tr('Motore proposto'), 'eng-pick');
-    const rej = html`<hxk-button size="sm" variant="ghost" icon="x" @click=${() => this.reject()}>${tr("Rifiuta")}</hxk-button>`;
+    const pick = () => this.engineSelect(this.startEngine, v => (this.startEngine = v), tr('Proposed engine'), 'eng-pick');
+    const rej = html`<hxk-button size="sm" variant="ghost" icon="x" @click=${() => this.reject()}>${tr("Reject")}</hxk-button>`;
     return html`<div class="acts">
-      ${t.state === 'proposed' ? html`${pick()}<hxk-button size="sm" variant="primary" icon="play" ?loading=${s.busy} @click=${() => this.start()}>${tr("Avvia")}</hxk-button>${rej}` : nothing}
-      ${t.state === 'scheduled' ? html`${pick()}<hxk-button size="sm" variant="primary" icon="play" ?loading=${s.busy} title=${tr("Non aspettare la finestra Claude")} @click=${() => this.start(true)}>${tr("Avvia ora")}</hxk-button>${rej}` : nothing}
-      ${t.state === 'awaiting_review' ? html`<hxk-button size="sm" variant="primary" icon="check" ?loading=${s.busy} @click=${() => this.approve(t)}>${tr("Approva e applica")}</hxk-button>${rej}` : nothing}
+      ${t.state === 'proposed' ? html`${pick()}<hxk-button size="sm" variant="primary" icon="play" ?loading=${s.busy} @click=${() => this.start()}>${tr("alt::Start")}</hxk-button>${rej}` : nothing}
+      ${t.state === 'scheduled' ? html`${pick()}<hxk-button size="sm" variant="primary" icon="play" ?loading=${s.busy} title=${tr("Don't wait for the Claude window")} @click=${() => this.start(true)}>${tr("Start now")}</hxk-button>${rej}` : nothing}
+      ${t.state === 'awaiting_review' ? html`<hxk-button size="sm" variant="primary" icon="check" ?loading=${s.busy} @click=${() => this.approve(t)}>${tr("Approve and apply")}</hxk-button>${rej}` : nothing}
       ${t.state === 'merged' || t.state === 'deployed' ? html`<hxk-button size="sm" variant="ghost" icon="undo" @click=${() => this.rollback()}>${tr("Rollback")}</hxk-button>` : nothing}
-      ${['failed', 'no_changes', 'rejected', 'rolled_back'].includes(t.state) ? html`<hxk-button size="sm" icon="refresh" ?loading=${s.busy} @click=${() => s.act('retry')}>${tr("Riprova")}</hxk-button>` : nothing}
-      <hxk-button size="sm" variant="ghost" ?loading=${this.exporting} title=${tr("Copia questo task per un'altra AI (markdown)")} @click=${() => this.exportAi([t.id])}>${icon('copy', 14)}</hxk-button>
+      ${['failed', 'no_changes', 'rejected', 'rolled_back'].includes(t.state) ? html`<hxk-button size="sm" icon="refresh" ?loading=${s.busy} @click=${() => s.act('retry')}>${tr("Try again")}</hxk-button>` : nothing}
+      <hxk-button size="sm" variant="ghost" ?loading=${this.exporting} title=${tr("Copy this task for another AI (markdown)")} @click=${() => this.exportAi([t.id])}>${icon('copy', 14)}</hxk-button>
     </div>`;
   }
 
@@ -395,29 +395,29 @@ export class HephaestusSviluppo extends HestiaElement {
     const working = s.active || s.transcriptLive;
     return html`
       <div class="thead">
-        ${this.size === 'phone' ? html`<hxk-button variant="ghost" size="sm" title=${tr("Indietro")} @click=${() => this.select(null)}>${icon('arrow-left', 15)}</hxk-button>` : nothing}
+        ${this.size === 'phone' ? html`<hxk-button variant="ghost" size="sm" title=${tr("Back")} @click=${() => this.select(null)}>${icon('arrow-left', 15)}</hxk-button>` : nothing}
         <div class="grow">
           <div class="ttitle" title=${t.request}>${t.request}</div>
           <div class="tsub"><hxk-badge tone=${m.tone}>${m.label}</hxk-badge><span class="mono">${t.id.slice(0, 6)}</span> · ${engineOf(t)}
-            · <span title=${t.requested_by || ''}>${byModule(t) ? tr('proposto da ') + sourceLabel(t.source) : tr('chiesto da te')}</span>
+            · <span title=${t.requested_by || ''}>${byModule(t) ? tr('proposed by ') + sourceLabel(t.source) : tr('asked by you')}</span>
             ${t.workdoc ? html` · <span class="mono truncate">${t.workdoc}</span>` : nothing}</div>
         </div>
         ${this.actions(t)}
       </div>
       ${this.size !== 'wide' ? html`<div class="ctabs"><div class="seg">
-        <button class=${this.centerTab === 'chat' ? 'on' : ''} @click=${() => { this.centerTab = 'chat'; this.lastLen = -1; }}>${icon('chat', 14)} ${tr("Conversazione")}</button>
-        <button class=${this.centerTab === 'details' ? 'on' : ''} @click=${() => (this.centerTab = 'details')}>${icon('info', 14)} ${tr("Dettagli")}</button></div></div>` : nothing}
+        <button class=${this.centerTab === 'chat' ? 'on' : ''} @click=${() => { this.centerTab = 'chat'; this.lastLen = -1; }}>${icon('chat', 14)} ${tr("Conversation")}</button>
+        <button class=${this.centerTab === 'details' ? 'on' : ''} @click=${() => (this.centerTab = 'details')}>${icon('info', 14)} ${tr("Details")}</button></div></div>` : nothing}
       ${this.size === 'wide' || this.centerTab === 'chat' ? html`
         <div class="chat" @scroll=${(e: Event) => { const el = e.currentTarget as HTMLElement; this.stick = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
-          ${t.summary && !s.active ? html`<div class="summary">${icon('sparkle', 15)}<div><b>${tr("Riepilogo del motore")}</b><div class="pre-wrap">${t.summary}</div></div></div>` : nothing}
+          ${t.summary && !s.active ? html`<div class="summary">${icon('sparkle', 15)}<div><b>${tr("Engine summary")}</b><div class="pre-wrap">${t.summary}</div></div></div>` : nothing}
           <hephaestus-transcript .events=${s.transcript} ?working=${working}></hephaestus-transcript>
         </div>
         <div class="composer">
           <textarea rows="2" .value=${this.followUp} @input=${(e: any) => (this.followUp = e.target.value)} @keydown=${(e: KeyboardEvent) => this.composerKey(e)}
-            placeholder=${tr("Chiedi una modifica a questo lavoro… (nuovo task che continua lo stesso dossier)")}></textarea>
+            placeholder=${tr("Ask for a change to this job… (new task that continues the same dossier)")}></textarea>
           <div class="crow">${this.engineSelect(this.followEngine, v => (this.followEngine = v))}
-            <span class="hint">${tr("Ctrl+Invio per inviare")}</span><span class="grow"></span>
-            <hxk-button size="sm" variant="primary" ?disabled=${this.followUp.trim().length < 8} ?loading=${s.busy} @click=${() => this.sendFollowUp(t)}>${icon('send', 14)} ${tr("Invia")}</hxk-button>
+            <span class="hint">${tr("Ctrl+Enter to send")}</span><span class="grow"></span>
+            <hxk-button size="sm" variant="primary" ?disabled=${this.followUp.trim().length < 8} ?loading=${s.busy} @click=${() => this.sendFollowUp(t)}>${icon('send', 14)} ${tr("Send")}</hxk-button>
           </div>
         </div>` : this.panel()}`;
   }
@@ -426,14 +426,14 @@ export class HephaestusSviluppo extends HestiaElement {
     const st = this.store.status, b = this.store.budget;
     const ph = b ? PHASE[b.phase] || { label: b.phase, tone: 'neutral' } : null;
     return html`<div class="placeholder">
-      ${icon('terminal', 26)}<h3>${tr("Seleziona un task")}</h3>
-      <p>${tr("Qui vedi la conversazione completa del motore (ragionamento, comandi, file letti e modificati), il diff, il dossier, i test e i log.")}</p>
+      ${icon('terminal', 26)}<h3>${tr("Select a task")}</h3>
+      <p>${tr("Here you see the engine's full conversation (reasoning, commands, files read and changed), the diff, the dossier, the tests and the logs.")}</p>
       ${st ? html`<div class="engines">
         ${Object.entries(st.engines ?? {}).map(([name, e]) => html`<div class="eng"><span class="sdot" data-tone=${e.available ? 'success' : 'neutral'}></span>
-          <b>${engineLabel(name)}</b>${name === st.engine_default ? html`<hxk-badge tone="accent">${tr("predefinito")}</hxk-badge>` : nothing}
+          <b>${engineLabel(name)}</b>${name === st.engine_default ? html`<hxk-badge tone="accent">${tr("default")}</hxk-badge>` : nothing}
           <span class="muted small truncate" title=${e.detail}>${e.detail}</span></div>`)}
-        <div class="eng muted small">Repository: ${st.repo_ok ? (st.base_branch || 'ok') : tr('non montato')} ${tr("· in coda:")} ${(st.queue ?? []).length}</div>
-        ${ph ? html`<div class="eng small"><span class="muted">${tr("Budget Claude:")}</span> <hxk-badge tone=${ph.tone}>${ph.label}</hxk-badge>
+        <div class="eng muted small">Repository: ${st.repo_ok ? (st.base_branch || 'ok') : tr('not mounted')} ${tr("· queued:")} ${(st.queue ?? []).length}</div>
+        ${ph ? html`<div class="eng small"><span class="muted">${tr("Claude budget:")}</span> <hxk-badge tone=${ph.tone}>${ph.label}</hxk-badge>
           <span class="muted truncate">${b.reason || ''}${b.next_reset ? ` · reset ${when(b.next_reset)}` : ''}</span></div>` : nothing}
       </div>` : nothing}
     </div>`;
@@ -442,22 +442,22 @@ export class HephaestusSviluppo extends HestiaElement {
   private newDialog() {
     return html`<dialog class="new" @close=${() => (this.newOpen = false)} @cancel=${() => (this.newOpen = false)}>
       ${this.newOpen ? html`<div class="dlg">
-        <header><h2>${tr("Nuovo sviluppo")}</h2><hxk-button variant="ghost" size="sm" icon="x" title=${tr("Chiudi")} @click=${() => this.closeNew()}></hxk-button></header>
-        <div class="fld"><label>${tr("Cosa vuoi che Forge sviluppi o corregga? *")}</label>
-          <textarea rows="5" .value=${this.nReq} @input=${(e: any) => (this.nReq = e.target.value)} placeholder=${tr("Es. Nel calendario aggiungi l'export ICS dell'agenda…")}></textarea>
-          <div class="h">${tr("Più dettagli dai, migliore il risultato. Forge lavora su un ramo separato: niente cambia finché non approvi.")}</div></div>
+        <header><h2>${tr("New development")}</h2><hxk-button variant="ghost" size="sm" icon="x" title=${tr("Close")} @click=${() => this.closeNew()}></hxk-button></header>
+        <div class="fld"><label>${tr("What do you want Forge to develop or fix? *")}</label>
+          <textarea rows="5" .value=${this.nReq} @input=${(e: any) => (this.nReq = e.target.value)} placeholder=${tr("E.g. In the calendar add the ICS export of the agenda…")}></textarea>
+          <div class="h">${tr("The more details you give, the better the result. Forge works on a separate branch: nothing changes until you approve.")}</div></div>
         <div class="two">
-          <div class="fld"><label>${tr("Motore")}</label>${this.engineSelect(this.nEngine, v => (this.nEngine = v))}</div>
-          <div class="fld"><label>${tr("Servizi coinvolti")}</label><input .value=${this.nServices} placeholder=${"chronos, webui"} @input=${(e: any) => (this.nServices = e.target.value)}>
-            <div class="h">${tr("Facoltativo, separati da virgola")}</div></div>
+          <div class="fld"><label>${tr("Engine")}</label>${this.engineSelect(this.nEngine, v => (this.nEngine = v))}</div>
+          <div class="fld"><label>${tr("Services involved")}</label><input .value=${this.nServices} placeholder=${"chronos, webui"} @input=${(e: any) => (this.nServices = e.target.value)}>
+            <div class="h">${tr("Optional, comma separated")}</div></div>
         </div>
-        <div class="fld"><label>${tr("Continua un dossier")}</label>
+        <div class="fld"><label>${tr("Continue a dossier")}</label>
           <select @change=${(e: any) => (this.nWorkdoc = e.target.value)}>
-            <option value="" ?selected=${!this.nWorkdoc}>${tr("Nuovo dossier")}</option>
+            <option value="" ?selected=${!this.nWorkdoc}>${tr("New dossier")}</option>
             ${this.dossiers.map(d => html`<option value=${d.name} ?selected=${d.name === this.nWorkdoc}>${d.name}${d.progress ? ` · ${d.progress.done}/${d.progress.total}` : ''}</option>`)}
-          </select><div class="h">${tr("Facoltativo: Forge riprende SPEC e PROGRESS di un lavoro esistente")}</div></div>
-        <footer><hxk-button variant="ghost" @click=${() => this.closeNew()}>${tr("Annulla")}</hxk-button>
-          <hxk-button variant="primary" ?disabled=${this.nReq.trim().length < 8} ?loading=${this.store.busy} @click=${() => this.submitNew()}>${icon('send', 14)} ${tr("Avvia sviluppo")}</hxk-button></footer>
+          </select><div class="h">${tr("Optional: Forge picks up SPEC and PROGRESS of an existing job")}</div></div>
+        <footer><hxk-button variant="ghost" @click=${() => this.closeNew()}>${tr("Cancel")}</hxk-button>
+          <hxk-button variant="primary" ?disabled=${this.nReq.trim().length < 8} ?loading=${this.store.busy} @click=${() => this.submitNew()}>${icon('send', 14)} ${tr("Start development")}</hxk-button></footer>
       </div>` : nothing}
     </dialog>`;
   }

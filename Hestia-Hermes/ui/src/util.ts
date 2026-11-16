@@ -1,5 +1,5 @@
 /** Shared helpers of the Hermes plugin (labels in Italian, dates in it-IT). */
-import { css, tr } from '@hestia/webui-sdk';
+import { css, locale, tr } from '@hestia/webui-sdk';
 
 export const API = '/api/ui';
 
@@ -9,8 +9,8 @@ export function when(iso?: string | null): string {
   const today = new Date();
   const sameDay = d.toDateString() === today.toDateString();
   return sameDay
-    ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 /** Local midnight as ISO (what "oggi" means for the user). */
@@ -22,8 +22,8 @@ export function todayStart(): string {
 
 export const CLIENT_STATE: Record<string, { text: string; tone: string }> = {
   delivered: { text: 'consegnata', tone: 'success' },
-  skipped: { text: tr('solo elenco'), tone: 'neutral' },
-  failed: { text: 'fallita', tone: 'danger' },
+  skipped: { text: tr('list only'), tone: 'neutral' },
+  failed: { text: tr('f::failed'), tone: 'danger' },
   dead: { text: 'abbandonata', tone: 'danger' },
 };
 

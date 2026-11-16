@@ -21,19 +21,18 @@ SERVICE_VERSION = "1.0.0"
 UI_DIST = os.getenv("ARGUS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 API = "/api/argus"
 
-ui = PluginClient("argus", title="Salute", icon="pulse", color="green", kind="core", dist=UI_DIST,
-                  description="Come stanno i servizi nel tempo, gli incidenti, cosa è stato riparato, i log.",
+ui = PluginClient("argus", title="Health", icon="pulse", color="green", kind="core", dist=UI_DIST,
+                  description="How the services are doing over time, incidents, what was repaired, logs.",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="argus.js", api_prefix=f"{API}/",
-    pages=[page("salute", "Salute", element="argus-health", icon="pulse", order=110,
-                help="Salute di ogni servizio nel tempo, incidenti aperti e cosa ha fatto Argus, log con filtri."),
-           page("prestazioni", "Prestazioni", element="argus-performance", icon="chart", order=111,
-                help="Memoria, processore, tempo di risposta e riavvii di ogni modulo, il giro attraverso l'hub, "
-                     "quanto pesano database e file e quanto crescono al giorno. Oltre i limiti arriva un avviso.")],
-    widgets=[widget("stato", "Stato sistema", element="argus-status-widget", sizes=["s", "m", "l"], auto=True,
+    pages=[page("salute", "Health", element="argus-health", icon="pulse", order=110,
+                help="Health of each service over time, open incidents and what Argus did, logs with filters."),
+           page("prestazioni", "Performance", element="argus-performance", icon="chart", order=111,
+                help="Memory, processor, response time and restarts of each module, the trip through the hub, how much databases and files weigh and how fast they grow per day. Beyond the limits a notice arrives.")],
+    widgets=[widget("stato", "System status", element="argus-status-widget", sizes=["s", "m", "l"], auto=True,
                     open_page="salute", icon="pulse",
-                    help="Servizi sani su totale e incidenti aperti, dall'ultimo controllo di Argus.")],
-    quick_actions=[quick_action("ricontrolla", "Ricontrolla", "POST", f"{API}/recheck/{{id}}", icon="refresh",
-                                group="Sistema", source=f"{API}/recheck-targets", order=110)],
+                    help="Healthy services out of total and open incidents, from Argus' latest check.")],
+    quick_actions=[quick_action("ricontrolla", "Recheck", "POST", f"{API}/recheck/{{id}}", icon="refresh",
+                                group="System", source=f"{API}/recheck-targets", order=110)],
 )

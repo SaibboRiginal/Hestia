@@ -13,12 +13,12 @@ export async function setFlag(el: HestiaElement, l: Listing, flag: Listing['flag
   const r = await el.host.api<Listing>('PATCH', `/api/ui/listings/${l.id}`, { body: { flag: next } });
   if (!r.ok) {
     done({ ...l, flag: before });
-    el.host.toast(r.error === 'offline' ? tr('Sei offline: riprova quando torna la rete') : tr('Non sono riuscito a salvare'), 'danger');
+    el.host.toast(r.error === 'offline' ? tr('You are offline: try again when the network is back') : tr('I couldn\'t save'), 'danger');
     return;
   }
-  const text = next === 'favorite' ? tr('Aggiunta alle preferite') : next === 'discarded' ? tr('Casa scartata') : tr('Segno tolto');
+  const text = next === 'favorite' ? tr('Added to favourites') : next === 'discarded' ? tr('House discarded') : tr('Mark removed');
   el.host.toast(text, 'success', {
-    label: tr('Annulla'),
+    label: tr('Cancel'),
     run: async () => {
       const u = await el.host.api<Listing>('PATCH', `/api/ui/listings/${l.id}`, { body: { flag: before } });
       if (u.ok) done(u.data);
@@ -119,8 +119,8 @@ export class ScoutListings extends HestiaElement {
     this.cycling = true;
     const r = await this.host.api<{ status: string }>('POST', '/api/ui/cycle');
     this.cycling = false;
-    if (!r.ok) { this.host.toast(tr('Non riesco ad avviare il controllo'), 'danger'); return; }
-    this.host.toast(r.data.status === 'busy' ? tr('Un controllo è già in corso') : tr('Controllo email avviato: le nuove case arrivano a breve'), 'info');
+    if (!r.ok) { this.host.toast(tr('I can\'t start the check'), 'danger'); return; }
+    this.host.toast(r.data.status === 'busy' ? tr('A check is already running') : tr('Email check started: the new houses arrive shortly'), 'info');
     window.setTimeout(() => { this.load(); this.loadStats(); }, 20_000);
   }
 
@@ -128,43 +128,43 @@ export class ScoutListings extends HestiaElement {
     const s = this.stats;
     return html`<div class="page">
       <div class="head">
-        <div><h1>${tr("Case")}</h1><div class="sub">${s ? tr("{0} case seguite · {1} nuove questa settimana", num(s.total), num(s.new)) : tr('Annunci arrivati per email')}</div></div>
+        <div><h1>${tr("Houses")}</h1><div class="sub">${s ? tr("{0} houses followed · {1} new this week", num(s.total), num(s.new)) : tr('Listings arrived by email')}</div></div>
         <div class="acts">
-          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistiche')}>${tr("Statistiche")}</hxk-button>
-          <hxk-button icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Controlla email")}</hxk-button>
+          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</hxk-button>
+          <hxk-button icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Check emails")}</hxk-button>
         </div>
       </div>
       ${s && !this.ctx.phone ? html`<hxk-stat .items=${[
-        { label: tr('Seguite'), value: num(s.total) },
-        { label: tr('Nuove (7 giorni)'), value: num(s.new), tone: s.new ? 'success' : undefined },
-        { label: tr('Preferite'), value: num(s.favorites) },
-        { label: tr('Prezzo medio'), value: compactEuro(s.avg_price) },
-        { label: '€/m² medio', value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
+        { label: tr('Followed'), value: num(s.total) },
+        { label: tr('alt::New (7 days)'), value: num(s.new), tone: s.new ? 'success' : undefined },
+        { label: tr('Favourites'), value: num(s.favorites) },
+        { label: tr('Average price'), value: compactEuro(s.avg_price) },
+        { label: tr('average €/m²'), value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
       ]}></hxk-stat>` : nothing}
       <div class="bar">
-        <input class="q" type="search" placeholder=${tr("Cerca per via, zona, titolo…")} .value=${this.f.q}
-               @input=${(e: Event) => this.set('q', (e.target as HTMLInputElement).value, true)} aria-label=${tr("Cerca")}>
-        <select aria-label=${tr("Città")} .value=${this.f.city} @change=${(e: Event) => this.set('city', (e.target as HTMLSelectElement).value)}>
-          <option value="">${tr("Tutte le città")}</option>
+        <input class="q" type="search" placeholder=${tr("Search by street, area, title…")} .value=${this.f.q}
+               @input=${(e: Event) => this.set('q', (e.target as HTMLInputElement).value, true)} aria-label=${tr("Search")}>
+        <select aria-label=${tr("City")} .value=${this.f.city} @change=${(e: Event) => this.set('city', (e.target as HTMLSelectElement).value)}>
+          <option value="">${tr("All cities")}</option>
           ${this.cities.map(c => html`<option value=${c} ?selected=${c === this.f.city}>${c}</option>`)}
         </select>
-        <select aria-label=${tr("Ordina")} @change=${(e: Event) => this.set('sort', (e.target as HTMLSelectElement).value)}>
-          ${[['new', tr('Più recenti')], ['price_asc', tr('Prezzo ↑')], ['price_desc', tr('Prezzo ↓')], ['ppm2', tr('€/m² più basso')], ['surface', tr('Più grandi')]]
+        <select aria-label=${tr("Sort")} @change=${(e: Event) => this.set('sort', (e.target as HTMLSelectElement).value)}>
+          ${[['new', tr('Most recent')], ['price_asc', tr('Price ↑')], ['price_desc', tr('Price ↓')], ['ppm2', tr('lower €/m²')], ['surface', tr('Largest')]]
             .map(([v, l]) => html`<option value=${v} ?selected=${v === this.f.sort}>${l}</option>`)}
         </select>
-        <hxk-button class="ftoggle" variant="ghost" icon="filter" @click=${() => this.showFilters = !this.showFilters}>${tr("Filtri")}</hxk-button>
+        <hxk-button class="ftoggle" variant="ghost" icon="filter" @click=${() => this.showFilters = !this.showFilters}>${tr("Filters")}</hxk-button>
       </div>
       <div class="adv ${this.showFilters ? 'open' : ''}">
-        <div class="seg" role="tablist" aria-label=${tr("Quali case")}>
-          ${[['', tr('Da valutare')], ['favorite', tr('Preferite')], ['discarded', tr('Scartate')], ['all', tr('Tutte')]].map(([v, l]) =>
+        <div class="seg" role="tablist" aria-label=${tr("Which houses")}>
+          ${[['', tr('To evaluate')], ['favorite', tr('Favourites')], ['discarded', tr('f.pl::Discarded')], ['all', tr('All')]].map(([v, l]) =>
             html`<button role="tab" class=${this.f.flag === v ? 'on' : ''} aria-selected=${this.f.flag === v} @click=${() => this.set('flag', v)}>${l}</button>`)}
         </div>
-        <label>${tr("Prezzo max")}<input type="number" inputmode="numeric" step="10000" placeholder="€" .value=${this.f.price_max}
+        <label>${tr("Max price")}<input type="number" inputmode="numeric" step="10000" placeholder="€" .value=${this.f.price_max}
                @change=${(e: Event) => this.set('price_max', (e.target as HTMLInputElement).value)}></label>
-        <label>${tr("Locali min")}<input type="number" inputmode="numeric" min="1" .value=${this.f.rooms_min}
+        <label>${tr("Local min")}<input type="number" inputmode="numeric" min="1" .value=${this.f.rooms_min}
                @change=${(e: Event) => this.set('rooms_min', (e.target as HTMLInputElement).value)}></label>
-        <label>${tr("Stato")}<select @change=${(e: Event) => this.set('status', (e.target as HTMLSelectElement).value)}>
-          ${[['', tr('Tutti')], ['available', tr('Disponibile')], ['in_negotiation', tr('In trattativa')], ['sold', tr('Venduto')], ['unknown', tr('Da verificare')]]
+        <label>${tr("Status")}<select @change=${(e: Event) => this.set('status', (e.target as HTMLSelectElement).value)}>
+          ${[['', tr('pl::All')], ['available', tr('Available')], ['in_negotiation', tr('Under negotiation')], ['sold', tr('Sold')], ['unknown', tr('To check')]]
             .map(([v, l]) => html`<option value=${v} ?selected=${v === this.f.status}>${l}</option>`)}
         </select></label>
       </div>
@@ -177,10 +177,10 @@ export class ScoutListings extends HestiaElement {
       return html`<hxk-state kind=${this.error === 'offline' ? 'offline' : 'error'} @retry=${() => this.load()}></hxk-state>`;
     if (this.loading && !this.items.length) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!this.items.length)
-      return html`<hxk-state kind="empty" text=${this.f.flag === 'favorite' ? tr('Nessuna preferita: tocca la stella su una casa per salvarla') : tr('Nessuna casa con questi filtri')}></hxk-state>`;
-    return html`<div class="count">${num(this.total)} ${tr("case")}</div>
+      return html`<hxk-state kind="empty" text=${this.f.flag === 'favorite' ? tr('No favourites: tap the star on a house to save it') : tr('No house with these filters')}></hxk-state>`;
+    return html`<div class="count">${num(this.total)} ${tr("houses")}</div>
       <div class="grid">${this.items.map(l => this.card(l))}</div>
-      ${this.more ? html`<hxk-button class="moreb" variant="ghost" ?loading=${this.loading} @click=${() => this.load(true)}>${tr("Mostra altre")}</hxk-button>` : nothing}`;
+      ${this.more ? html`<hxk-button class="moreb" variant="ghost" ?loading=${this.loading} @click=${() => this.load(true)}>${tr("Show more")}</hxk-button>` : nothing}`;
   }
 
   private card(l: Listing) {
@@ -194,10 +194,10 @@ export class ScoutListings extends HestiaElement {
         <div class="foot">
           ${l.status !== 'unknown' ? html`<hxk-badge tone=${statusTone(l.status)}>${l.status_label}</hxk-badge>` : nothing}
           <span class="when">${ago(l.created_at)}</span>
-          <button class="flagbtn fav ${l.flag === 'favorite' ? 'on' : ''}" title=${l.flag === 'favorite' ? tr('Togli dalle preferite') : tr('Preferita')}
+          <button class="flagbtn fav ${l.flag === 'favorite' ? 'on' : ''}" title=${l.flag === 'favorite' ? tr('alt::Remove from favorites') : tr('f::Favourite')}
                   aria-pressed=${l.flag === 'favorite'} @click=${(e: Event) => { stop(e); setFlag(this, l, 'favorite', x => this.replace(x)); }}>
             <hxk-icon name="star" size="16"></hxk-icon></button>
-          <button class="flagbtn dis ${l.flag === 'discarded' ? 'on' : ''}" title=${l.flag === 'discarded' ? tr('Rimetti tra le case da valutare') : tr('Scarta')}
+          <button class="flagbtn dis ${l.flag === 'discarded' ? 'on' : ''}" title=${l.flag === 'discarded' ? tr('Put back among the houses to evaluate') : tr('Discard')}
                   aria-pressed=${l.flag === 'discarded'} @click=${(e: Event) => { stop(e); setFlag(this, l, 'discarded', x => this.replace(x)); }}>
             <hxk-icon name="eye-off" size="16"></hxk-icon></button>
         </div>

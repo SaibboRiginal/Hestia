@@ -66,7 +66,7 @@ def _day(value: Any) -> str | None:
             return date.fromisoformat(s[:10]).isoformat()
         except ValueError:
             pass
-    raise Invalid(tr("data non valida: {0!r}", value))
+    raise Invalid(tr("invalid date: {0!r}", value))
 
 
 def _num(value: Any) -> float | None:
@@ -75,7 +75,7 @@ def _num(value: Any) -> float | None:
     try:
         return float(str(value).replace(",", "."))
     except ValueError:
-        raise Invalid(tr("numero non valido: {0!r}", value))
+        raise Invalid(tr("invalid number: {0!r}", value))
 
 
 def _list(value: Any) -> list:
@@ -126,7 +126,7 @@ class Hygieia:
         self.store.refresh()
         row = self.store.data(kind, id)
         if not row:
-            raise NotFound(tr("{0} {1} non trovato", kind, id))
+            raise NotFound(tr("{0} {1} not found", kind, id))
         return row
 
     def items(self, kind: str) -> list[dict]:
@@ -149,16 +149,16 @@ class Hygieia:
 
     def add_option(self, name: str, body: dict) -> dict:
         if name not in catalog.LISTS:
-            raise Invalid(f"lista sconosciuta: {name}")
+            raise Invalid(tr("unknown list: {0}", name))
         label = str(body.get("label") or body.get("value") or "").strip()
         if name == "conflicts":
             if not body.get("a") or not body.get("b"):
-                raise Invalid("servono due attivi (a, b)")
+                raise Invalid(tr("two actives are needed (a, b)"))
             data = {"list": name, "a": catalog.slug(body["a"]), "b": catalog.slug(body["b"]),
-                    "note": body.get("note") or tr("{0} e {1} non nello stesso giorno", body['a'], body['b'])}
+                    "note": body.get("note") or tr("{0} and {1} not on the same day", body['a'], body['b'])}
         else:
             if not label:
-                raise Invalid("nome mancante")
+                raise Invalid(tr("missing name"))
             data = {"list": name, "value": catalog.slug(body.get("value") or label), "label": label}
             for k in ("family", "area", "icon", "lower_better"):
                 if body.get(k) not in (None, ""):
@@ -190,7 +190,7 @@ class Hygieia:
         merged = {**(old or {}), **p}
         name = str(merged.get("name") or "").strip()
         if not name:
-            raise Invalid(tr("il nome del prodotto è obbligatorio"))
+            raise Invalid(tr("the product name is required"))
         merged["name"] = name
         merged["brand"] = str(merged.get("brand") or "").strip()
         merged["areas"] = [catalog.slug(a) for a in _list(merged.get("areas"))]
@@ -198,16 +198,16 @@ class Hygieia:
         merged["tags"] = [str(t) for t in _list(merged.get("tags"))]
         status = merged.get("status") or "in_use"
         if status not in catalog.STATUSES:
-            raise Invalid(tr("stato non valido: {0}", status))
+            raise Invalid(tr("invalid state: {0}", status))
         merged["status"] = status
         if merged.get("level") and merged["level"] not in catalog.LEVELS:
-            raise Invalid(tr("livello non valido: {0}", merged['level']))
+            raise Invalid(tr("invalid level: {0}", merged['level']))
         if merged.get("verdict") and merged["verdict"] not in catalog.VERDICTS:
-            raise Invalid(tr("giudizio non valido: {0}", merged['verdict']))
+            raise Invalid(tr("invalid rating: {0}", merged['verdict']))
         for k in ("size", "price", "pao_months", "rating"):
             merged[k] = _num(merged.get(k))
         if merged.get("rating") is not None and not 1 <= merged["rating"] <= 5:
-            raise Invalid(tr("voto da 1 a 5"))
+            raise Invalid(tr("rating from 1 to 5"))
         for k in ("purchased_at", "opened_at", "finished_at", "expires_at"):
             merged[k] = _day(merged.get(k))
         if status == "in_use" and not merged.get("opened_at"):
@@ -233,11 +233,11 @@ class Hygieia:
         today = self.today().isoformat()
         if not old:
             ev = [{"type": "bought" if new["status"] != "wishlist" else "note", "date": new.get("purchased_at") or today,
-                   "text": "aggiunto" if new["status"] != "wishlist" else "in lista desideri"}]
+                   "text": tr("added") if new["status"] != "wishlist" else tr("in the wish list")}]
             if new["status"] == "in_use":
-                ev.append({"type": "opened", "date": new.get("opened_at") or today, "text": "aperto"})
+                ev.append({"type": "opened", "date": new.get("opened_at") or today, "text": tr("opened")})
             if new.get("replaces_id"):
-                ev.append({"type": "replaced", "date": today, "text": tr("sostituisce un altro prodotto"),
+                ev.append({"type": "replaced", "date": today, "text": tr("replaces another product"),
                            "replaces_id": new["replaces_id"]})
             return ev
         ev = []
@@ -249,7 +249,7 @@ class Hygieia:
             ev.append({"type": "level_changed", "date": today, "to": new["level"],
                        "text": catalog.LEVELS.get(new["level"], new["level"]).lower()})
         if old.get("rating") != new.get("rating") and new.get("rating"):
-            ev.append({"type": "rated", "date": today, "to": new["rating"], "text": f"voto {int(new['rating'])}/5"})
+            ev.append({"type": "rated", "date": today, "to": new["rating"], "text": tr("rating {0}/5", int(new['rating']))})
         if old.get("verdict") != new.get("verdict") and new.get("verdict"):
             ev.append({"type": "rated", "date": today, "to": new["verdict"],
                        "text": catalog.VERDICTS.get(new["verdict"], new["verdict"]).lower()})
@@ -328,14 +328,14 @@ class Hygieia:
             avg = sum(lives) / len(lives)
             left = max(0, round(avg - days_open))
             return {"days_left": left, "date": (today + timedelta(days=left)).isoformat(),
-                    "basis": tr("media di {0} confezioni ({1} giorni)", len(lives), round(avg))}
+                    "basis": tr("average of {0} packs ({1} days)", len(lives), round(avg))}
         level = LEVEL_VALUE.get(p.get("level") or "")
         if level is not None and level < 1 and days_open >= 7:
             rate = (1 - level) / days_open
             left = round(level / rate) if rate > 0 else None
             if left is not None:
                 return {"days_left": left, "date": (today + timedelta(days=left)).isoformat(),
-                        "basis": tr("livello «{0}» dopo {1} giorni", catalog.LEVELS[p['level']].lower(), days_open)}
+                        "basis": tr("level «{0}» after {1} days", catalog.LEVELS[p['level']].lower(), days_open)}
         return None
 
     def products(self, q: str = "", area: str = "", category: str = "", status: str = "", active: str = "",
@@ -413,9 +413,9 @@ class Hygieia:
             step["order"] = i + 1
             if step.get("product_id"):
                 if not self.store.data("product", step["product_id"]):
-                    raise Invalid(tr("prodotto {0} non trovato", step['product_id']))
+                    raise Invalid(tr("product {0} not found", step['product_id']))
             elif not str(step.get("label") or "").strip():
-                raise Invalid(tr("il passo {0} non ha né prodotto né descrizione", i + 1))
+                raise Invalid(tr("step {0} has neither product nor description", i + 1))
             step["wait_seconds"] = int(_num(step.get("wait_seconds")) or 0)
             step["cadence"] = norm_cadence(step["cadence"]) if step.get("cadence") else None
             step["not_same_day_as"] = [str(x) for x in _list(step.get("not_same_day_as"))]
@@ -432,11 +432,11 @@ class Hygieia:
     def save_routine(self, body: dict, id: str | None = None, reason: str = "", source: str = "webui") -> dict:
         old = self.store.data("routine", id) if id else None
         if id and not old:
-            raise NotFound(tr("routine {0} non trovata", id))
+            raise NotFound(tr("routine {0} not found", id))
         r = {**(old or {}), **{k: body[k] for k in ROUTINE_FIELDS if k in body}}
         name = str(r.get("name") or "").strip()
         if not name:
-            raise Invalid(tr("il nome della routine è obbligatorio"))
+            raise Invalid(tr("the routine name is required"))
         r["name"] = name
         r["areas"] = [catalog.slug(a) for a in _list(r.get("areas"))]
         r["slot"] = r.get("slot") if r.get("slot") in catalog.SLOTS else (r.get("slot") or "anytime")
@@ -463,7 +463,7 @@ class Hygieia:
             r["version"] = version
             rows.append({"kind": "version", "id": f"{rid}:{version}", "parent_id": rid, "ref_id": str(version),
                          "at": now_iso(), "data": {"routine_id": rid, "version": version, "steps": r["steps"],
-                                                   "reason": reason or ("creata" if not old else ""),
+                                                   "reason": reason or (tr("created") if not old else ""),
                                                    "valid_from": self.today().isoformat(), "by": source,
                                                    "diff": self._diff(old.get("steps") if old else [], r["steps"])}})
         r.pop("id", None)
@@ -482,7 +482,7 @@ class Hygieia:
         parts += [f"~ {n}" for n in changed]
         if not parts and [s.get("product_id") or s.get("label") for s in before or []] != \
                 [s.get("product_id") or s.get("label") for s in after]:
-            parts.append("ordine cambiato")
+            parts.append(tr("order changed"))
         return ", ".join(parts) if before is not None else ""
 
     def routines(self, include_archived: bool = False) -> list[dict]:
@@ -513,9 +513,9 @@ class Hygieia:
     def undo_routine(self, rid: str, source: str = "webui") -> dict:
         vs = self.versions(rid)
         if len(vs) < 2:
-            raise Conflict(tr("nessuna versione precedente"))
+            raise Conflict(tr("no previous version"))
         prev = vs[1]
-        return self.save_routine({"steps": prev["steps"]}, id=rid, reason=tr("ripristinata la versione {0}", prev['version']),
+        return self.save_routine({"steps": prev["steps"]}, id=rid, reason=tr("version {0} restored", prev['version']),
                                  source=source)
 
     def delete_routine(self, rid: str) -> dict:
@@ -564,13 +564,13 @@ class Hygieia:
                     note: str = "", source: str = "webui") -> dict:
         r = self.get("routine", rid)
         if status not in ("done", "partial", "skipped"):
-            raise Invalid(tr("stato non valido (done, partial, skipped)"))
+            raise Invalid(tr("invalid state (done, partial, skipped)"))
         d = _day(day) or self.today().isoformat()
         plan = self.day(date.fromisoformat(d)).plan_routine(r)
         done_today = [l for l in self.items("log") if l.get("routine_id") == rid and l.get("date") == d
                       and l.get("status") in DONE_STATUSES]
         if status != "skipped" and len(done_today) >= int(r.get("max_per_day") or 1):
-            raise Conflict(tr("{0} è già segnata {1} volta/e il {2}", r['name'], len(done_today), d), log_id=done_today[-1]["id"])
+            raise Conflict(tr("{0} is already marked {1} time(s) on {2}", r['name'], len(done_today), d), log_id=done_today[-1]["id"])
         if steps is None:
             chosen = {s["step_id"] for s in plan["steps"] if s["include"] and not s.get("optional")}
         else:
@@ -611,7 +611,7 @@ class Hygieia:
             (routine_id and l.get("routine_id") == routine_id) or
             (product_id and not l.get("routine_id") and any(s.get("product_id") == product_id for s in l.get("steps") or [])))]
         if not rows:
-            raise NotFound(tr("niente da annullare"))
+            raise NotFound(tr("nothing to undo"))
         rows.sort(key=lambda l: l.get("done_at") or "")
         self.store.delete("log", rows[-1]["id"])
         return {"undone": True, "id": rows[-1]["id"]}
@@ -648,14 +648,14 @@ class Hygieia:
         for e in entries:
             area = catalog.slug(e.get("area") or "")
             if not area:
-                raise Invalid("area mancante")
+                raise Invalid(tr("missing area"))
             scores = {}
             for k, v in (e.get("scores") or {}).items():
                 n = _num(v)
                 if n is None:
                     continue
                 if not 1 <= n <= 5:
-                    raise Invalid(tr("{0}: voto da 1 a 5", k))
+                    raise Invalid(tr("{0}: rating from 1 to 5", k))
                 scores[catalog.slug(k)] = n
             if not scores and not e.get("note") and not e.get("tags"):
                 continue
@@ -665,7 +665,7 @@ class Hygieia:
                                   **({"audio_id": e["audio_id"], "duration_s": e.get("duration_s")}
                                      if e.get("audio_id") else {})}})
         if not rows:
-            raise Invalid(tr("niente da salvare"))
+            raise Invalid(tr("nothing to save"))
         self.store.write(rows)
         return [{**r["data"], "id": r["id"]} for r in rows]
 
@@ -679,7 +679,7 @@ class Hygieia:
         hours, minutes = divmod(int(sleep["minutes"]), 60)
         note = f"{hours} h {minutes:02d} min"
         if sleep.get("deep_minutes"):
-            note += f", profondo {sleep['deep_minutes']} min"
+            note += tr(", deep {0} min", sleep['deep_minutes'])
         scores = {"qualita": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
         row_id = f"device-sleep-{d}"
         old = self.store.get("journal", row_id, deleted=True)
@@ -804,12 +804,12 @@ class Hygieia:
             d = e.get("date") or (e.get("at") or "")[:10]
             if start <= d <= end:
                 p = products.get(e.get("product_id")) or {}
-                out.append({"date": d, "type": e.get("type"), "title": p.get("name") or tr("Prodotto"),
+                out.append({"date": d, "type": e.get("type"), "title": p.get("name") or tr("Product"),
                             "text": e.get("text") or "", "product_id": e.get("product_id"), "areas": p.get("areas") or []})
         for j in self.items("journal"):
             if start <= j.get("date", "") <= end:
                 scores = ", ".join(f"{k} {int(v)}" for k, v in (j.get("scores") or {}).items())
-                out.append({"date": j["date"], "type": "journal", "title": tr("Diario · {0}", j.get('area')),
+                out.append({"date": j["date"], "type": "journal", "title": tr("Diary · {0}", j.get('area')),
                             "text": "; ".join(x for x in (scores, j.get("note")) if x), "areas": [j.get("area")]})
         return list(reversed(sorted(out, key=lambda t: t["date"])))
 
@@ -848,16 +848,16 @@ class Hygieia:
                 expired = v["expires_in"] < 0
                 out.append({"key": f"expiry:{v['id']}", "type": "expiry", "product_id": v["id"], "name": v["name"],
                             "level": "warning" if expired else "info", "days": v["expires_in"],
-                            "text": tr("{0} è scaduto", v['name']) if expired else f"{v['name']} scade tra {v['expires_in']} giorni"})
+                            "text": tr("{0} has expired", v['name']) if expired else tr("{0} expires in {1} days", v['name'], v['expires_in'])})
             if v.get("status") == "in_use" and v.get("product_key") not in has_spare:
                 fe = v.get("finish_estimate") or {}
                 if v.get("level") == "almost_empty" or (fe.get("days_left") is not None and fe["days_left"] <= restock_days):
                     out.append({"key": f"restock:{v['id']}", "type": "restock", "product_id": v["id"], "name": v["name"],
                                 "level": "info", "days": fe.get("days_left"),
-                                "text": f"{v['name']} sta finendo" + (f" (≈{fe['days_left']} giorni)" if fe.get("days_left") is not None else "")})
+                                "text": tr("{0} is running out", v['name']) + (tr(" (≈{0} days)", fe['days_left']) if fe.get("days_left") is not None else "")})
             if v.get("status") in ("finished", "discarded") and v.get("routines") and v.get("product_key") not in current_keys:
                 out.append({"key": f"missing:{v['id']}", "type": "missing", "product_id": v["id"], "name": v["name"],
-                            "level": "info", "text": tr("{0} è finito ma è ancora in {1}", v['name'], v['routines'][0]['name'])})
+                            "level": "info", "text": tr("{0} is finished but still in {1}", v['name'], v['routines'][0]['name'])})
         return out
 
     def shopping(self) -> dict:
@@ -871,7 +871,7 @@ class Hygieia:
             if p.get("status") == "finished" and p.get("verdict") == "repurchase" and p.get("product_key") not in keys \
                     and p.get("product_key") not in seen and not any(r["id"] == p["id"] for r in restock):
                 seen.add(p.get("product_key"))
-                again.append({**p, "why": tr("finito, da ricomprare")})
+                again.append({**p, "why": tr("finished, to buy again")})
         return {"wishlist": wish, "restock": restock, "repurchase": again,
                 "count": len(wish) + len(restock) + len(again)}
 
@@ -888,14 +888,14 @@ class Hygieia:
                     if n:
                         separated = bool(a.get("cadence") and b.get("cadence"))
                         notes.append({"level": "info" if separated else "warning", "steps": [day._step_name(a), day._step_name(b)],
-                                      "text": n[0] + (tr(" Il pianificatore li alterna già.") if separated else
-                                                      tr(" Dai a uno dei due un obiettivo proprio così li alterno."))})
+                                      "text": n[0] + (tr(" The planner already alternates them.") if separated else
+                                                      tr(" Give one of the two its own goal so I alternate them."))})
             if r.get("slot") == "morning" and "viso" in (r.get("areas") or []) and not any(
                     "spf" in day.step_families(s) or (self.store.data("product", s.get("product_id") or "") or {}).get("category") == "spf"
                     for s in steps):
-                notes.append({"level": "info", "steps": [], "text": tr("Manca una protezione solare nella routine viso del mattino.")})
+                notes.append({"level": "info", "steps": [], "text": tr("A sunscreen is missing in the morning face routine.")})
             for oid, why in day.implicit_partners(r).items():
-                notes.append({"level": "info", "steps": [], "text": tr("Con «{0}»: {1}", (day.routines.get(oid) or {}).get('name'), why)})
+                notes.append({"level": "info", "steps": [], "text": tr("With «{0}»: {1}", (day.routines.get(oid) or {}).get('name'), why)})
             return {"routine": r["name"], "notes": notes, "ok": not any(n["level"] == "warning" for n in notes)}
         fam: set[str] = set()
         label = product
@@ -907,7 +907,7 @@ class Hygieia:
         if actives:
             fam |= catalog.families([catalog.slug(a) for a in actives], [o for o in self.options("actives") if o.get("custom")])
         if not fam:
-            return {"product": label, "notes": [], "ok": True, "text": tr("nessun attivo noto da confrontare")}
+            return {"product": label, "notes": [], "ok": True, "text": tr("no known active ingredient to compare")}
         for p in self.items("product"):
             if p.get("status") != "in_use" or p.get("name") == label:
                 continue
@@ -935,7 +935,7 @@ class Hygieia:
         today = self.today().isoformat()
         return [{"id": p["id"], "label": p["name"], "icon": "drop", "favorite": True,
                  "state": "done" if today in uses.get(p["id"], []) else "todo",
-                 "hint": f"{len(uses.get(p['id'], []))} usi"}
+                 "hint": tr("{0} uses", len(uses.get(p['id'], [])))}
                 for p in self.items("product") if p.get("favorite") and p.get("status") in ("in_use", "stock")]
 
     # ── reminders (SPEC §7) ─────────────────────────────────────────────────
@@ -967,7 +967,7 @@ class Hygieia:
         per = c.get("per") if c["mode"] == "target" else "week"
         until = period_next(period_start(self.today(), per, self.week_start()), per).isoformat()
         self._mark_reminder(rid, silenced_until=until)
-        return {"routine_id": rid, "silenced_until": until, "label": tr("{0}: niente promemoria fino al {1}", r['name'], until)}
+        return {"routine_id": rid, "silenced_until": until, "label": tr("{0}: no reminders until {1}", r['name'], until)}
 
     def reminder_decisions(self) -> list[dict]:
         if not self.setting("hygieia.reminder.enabled", False):   # common reminder switch, off by default
@@ -1014,8 +1014,8 @@ class Hygieia:
         parts = []
         today_bits = []
         for p in plan["routines"]:
-            mark = {"done": "✓", "due": "da fare", "suggested": "consigliata", "blocked": "non oggi", "wait": "fatta da poco",
-                    "ok": "obiettivo ok", "off": "", "rest": ""}.get(p["state"], p["state"])
+            mark = {"done": "✓", "due": tr("to do"), "suggested": tr("suggested"), "blocked": tr("not today"), "wait": tr("alt::done recently"),
+                    "ok": tr("goal ok"), "off": "", "rest": ""}.get(p["state"], p["state"])
             if p["state"] in ("off", "rest"):
                 continue
             bit = f"{p['name']} {mark}".strip()
@@ -1023,15 +1023,15 @@ class Hygieia:
                 bit += f" ({p['hint']})"
             today_bits.append(bit)
         if today_bits:
-            parts.append(tr("oggi: ") + "; ".join(today_bits))
+            parts.append(tr("today: ") + "; ".join(today_bits))
         if in_use:
-            parts.append(f"in uso {len(in_use)} prodotti")
+            parts.append(tr("in use {0} products", len(in_use)))
         supplements = [p["name"] for p in in_use if p.get("category") == "integratore"]
         if supplements:
-            parts.append("integratori: " + ", ".join(supplements[:5]))
+            parts.append(tr("supplements: ") + ", ".join(supplements[:5]))
         for a in alerts[:3]:
             parts.append(a["text"])
-        text = " · ".join(parts) or tr("nessuna routine ancora")
+        text = " · ".join(parts) or tr("no routine yet")
         return {"text": text, "plan": plan, "alerts": alerts, "in_use": len(in_use)}
 
     def overview(self) -> dict:
@@ -1063,12 +1063,12 @@ class Hygieia:
                       if l.get("routine_id") and l.get("status") in DONE_STATUSES]
         done_names = [n for n in dict.fromkeys(done_names) if n]
         if done_names:
-            done.append({"text": tr("Fatte: ") + ", ".join(done_names), "tone": "success"})
+            done.append({"text": tr("Done: ") + ", ".join(done_names), "tone": "success"})
         used = [(products.get((l.get("steps") or [{}])[0].get("product_id") or "") or {}).get("name")
                 for l in logs if not l.get("routine_id") and l.get("status") in DONE_STATUSES]
         used = [n for n in dict.fromkeys(used) if n]
         if used:
-            done.append({"text": tr("Usati: ") + ", ".join(used)})
+            done.append({"text": tr("Used: ") + ", ".join(used)})
         skipped = [routines.get(l.get("routine_id") or "", {}).get("name") for l in logs
                    if l.get("routine_id") and l.get("status") == "skipped"]
         skipped = [n for n in dict.fromkeys(skipped) if n and n not in done_names]
@@ -1077,17 +1077,17 @@ class Hygieia:
             left = [p["name"] for p in self.day(day).plan() if p["state"] == "due" and p["name"] not in done_names
                     and p["name"] not in skipped and (p.get("goal") or {}).get("per") == "day"]
             if left:
-                missed.append({"text": tr("Non fatte: ") + ", ".join(left), "tone": "warning"})
+                missed.append({"text": tr("Not done: ") + ", ".join(left), "tone": "warning"})
         if skipped:
-            missed.append({"text": tr("Saltate: ") + ", ".join(skipped), "tone": "warning"})
+            missed.append({"text": tr("Skipped: ") + ", ".join(skipped), "tone": "warning"})
         due = [p["name"] for p in self.day(nxt).plan() if p["state"] == "due"]
         if due:
-            upcoming.append({"text": tr("Da fare: ") + ", ".join(due)})
+            upcoming.append({"text": tr("To do: ") + ", ".join(due)})
         alerts = [a["text"] for a in self.alerts()[:2]]
         out = {"done": done, "missed": missed, "next": upcoming, "note": " · ".join(alerts)}
         if day == self.today() and not self.told_today(day):
             # B9: after the evening recap, «Racconta la giornata» opens the spoken diary (a voice note)
-            out["actions"] = [{"label": tr("Racconta la giornata"), "command": DIARY_TOOL}]
+            out["actions"] = [{"label": tr("Tell me about your day"), "command": DIARY_TOOL}]
         return out
 
     def told_today(self, day: date) -> bool:
@@ -1098,7 +1098,7 @@ class Hygieia:
         (tag ``voce``, the kept recording as ``audio_id``). Reflection reads it like every diary entry."""
         text = str((heard or {}).get("text") or "").strip()
         if not text:
-            raise Invalid(tr("non ho sentito niente, riprova"))
+            raise Invalid(tr("I heard nothing, try again"))
         body = {"date": date_, "area": DIARY_AREA, "note": text, "tags": ["voce"],
                 "audio_id": heard.get("blob_id") or "", "duration_s": heard.get("duration_s")}
         return self.journal_add(body, source="voce")[0]

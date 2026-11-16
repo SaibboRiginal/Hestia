@@ -7,21 +7,21 @@ import unicodedata
 
 # id, label, icon, color, kind (expense | income | transfer)
 CATEGORIES = [
-    ("spesa", "Spesa", "cart", "green", "expense"),
-    ("casa", "Casa e bollette", "home", "blue", "expense"),
-    ("trasporti", "Trasporti", "car", "teal", "expense"),
-    ("ristoranti", "Ristoranti e bar", "coffee", "orange", "expense"),
-    ("abbonamenti", "Abbonamenti", "repeat", "purple", "expense"),
-    ("salute", "Salute", "heart", "red", "expense"),
-    ("cura", "Cura personale", "sparkle", "pink", "expense"),
-    ("svago", "Svago", "music", "amber", "expense"),
+    ("spesa", "Groceries", "cart", "green", "expense"),
+    ("casa", "Home and bills", "home", "blue", "expense"),
+    ("trasporti", "pl::Transport", "car", "teal", "expense"),
+    ("ristoranti", "Restaurants and bars", "coffee", "orange", "expense"),
+    ("abbonamenti", "Subscriptions", "repeat", "purple", "expense"),
+    ("salute", "Health", "heart", "red", "expense"),
+    ("cura", "Personal care", "sparkle", "pink", "expense"),
+    ("svago", "Leisure", "music", "amber", "expense"),
     ("shopping", "Shopping", "bag", "indigo", "expense"),
-    ("viaggi", "Viaggi", "plane", "cyan", "expense"),
-    ("regali", "Regali", "gift", "rose", "expense"),
-    ("lavoro", "Lavoro e studio", "briefcase", "slate", "expense"),
-    ("altro", "Altro", "dots", "gray", "expense"),
-    ("entrate", "Entrate", "arrow-down", "green", "income"),
-    ("trasferimenti", "Trasferimenti", "swap", "gray", "transfer"),
+    ("viaggi", "pl::Travel", "plane", "cyan", "expense"),
+    ("regali", "Gifts", "gift", "rose", "expense"),
+    ("lavoro", "Work and study", "briefcase", "slate", "expense"),
+    ("altro", "Other", "dots", "gray", "expense"),
+    ("entrate", "f.pl::Income", "arrow-down", "green", "income"),
+    ("trasferimenti", "Transfers", "swap", "gray", "transfer"),
 ]
 
 # pattern (lowercase substring of merchant/description) → category. Seeded once, editable by the user.

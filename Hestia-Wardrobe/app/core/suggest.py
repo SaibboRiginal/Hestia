@@ -80,7 +80,7 @@ class Suggester:
         lo, hi = warmth_band(temp_c, season)
         if lo <= total <= hi:
             score += 12
-            reasons.append(f"adatto a {round(temp_c)}°" if temp_c is not None else tr("adatto alla stagione ({0})", SEASONS[season].lower()))
+            reasons.append(tr("suited to {0}°", round(temp_c)) if temp_c is not None else tr("suited to the season ({0})", SEASONS[season].lower()))
         else:
             score -= 6 * (lo - total if total < lo else total - hi)
         explicit = [p.get("weather") or {} for p in ps]
@@ -89,7 +89,7 @@ class Suggester:
             score -= 15
         if rain and any((p.get("weather") or {}).get("rain_ok") for p in ps):
             score += 6
-            reasons.append(tr("va bene con la pioggia"))
+            reasons.append(tr("good with the rain"))
         # occasion & style
         if occasion:
             lo_f, hi_f = OCCASION_FORMALITY.get(occasion, (1, 5))
@@ -97,7 +97,7 @@ class Suggester:
             avg = sum(forms) / max(1, len(forms))
             if lo_f - 0.5 <= avg <= hi_f + 0.5:
                 score += 10
-                reasons.append(tr("giusto per l'occasione"))
+                reasons.append(tr("right for the occasion"))
             else:
                 score -= 5 * min(abs(avg - lo_f), abs(avg - hi_f))
             tagged = [p for p in ps if occasion in (p.get("occasions") or [])]
@@ -111,7 +111,7 @@ class Suggester:
                 hits += 2
             if hits:
                 score += 3 * hits
-                reasons.append(tr("nel tuo stile"))
+                reasons.append(tr("in your style"))
         forms = [int(p.get("formality") or 3) for p in ps if p.get("kind") != "accessory"]
         if forms and max(forms) - min(forms) > 2:
             score -= 8 * (max(forms) - min(forms) - 2)
@@ -119,7 +119,7 @@ class Suggester:
         accents = {c["key"] for p in ps for c in (p.get("colors") or [])[:1] if c.get("key") not in NEUTRAL_COLORS}
         if len(accents) <= 1:
             score += 6
-            reasons.append(tr("colori che stanno bene insieme") if accents else "colori neutri, facile")
+            reasons.append(tr("colours that go well together") if accents else tr("neutral colours, easy"))
         elif len(accents) > 2:
             score -= 7 * (len(accents) - 2)
         patterned = [p for p in ps if p.get("pattern") not in ("", "plain", None)]
@@ -132,11 +132,11 @@ class Suggester:
                      and self.last_worn.get(p["id"])]
         if forgotten:
             score += 4 * len(forgotten)
-            reasons.append(f"rimette in giro {forgotten[0]['name']}")
+            reasons.append(tr("brings back {0}", forgotten[0]['name']))
         if saved:
             if saved.get("favorite"):
                 score += 8
-                reasons.append("tra i preferiti")
+                reasons.append(tr("among the favourites"))
             if saved.get("rating"):
                 score += 2 * (int(saved["rating"]) - 3)
         else:

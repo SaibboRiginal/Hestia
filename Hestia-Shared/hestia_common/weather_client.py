@@ -41,7 +41,7 @@ def day_summary(day: dict | None) -> str:
     out = f"{day.get('min_c')}–{day.get('max_c')}°, {day.get('condition') or ''}".rstrip(", ")
     hours = day.get("rain_hours") or []
     if hours:
-        out += f", pioggia {hours[0]}–{hours[-1]}" if len(hours) > 1 else tr(", pioggia alle {0}", hours[0])
+        out += tr(", rain {0}–{1}", hours[0], hours[-1]) if len(hours) > 1 else tr(", rain at {0}", hours[0])
     return out
 
 

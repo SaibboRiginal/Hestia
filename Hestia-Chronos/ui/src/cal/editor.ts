@@ -20,9 +20,9 @@ type Errors = { title?: string; start?: string; end?: string; body?: string };
 
 const TYPES: AgendaType[] = ['event', 'task', 'job', 'window'];
 const FREQS: { value: Freq; label: string }[] = [
-  { value: 'none', label: tr('Non si ripete') }, { value: 'MINUTELY', label: tr('Ogni N minuti') }, { value: 'HOURLY', label: tr('Ogni N ore') },
-  { value: 'DAILY', label: tr('Giornaliera') }, { value: 'WEEKLY', label: tr('Settimanale') }, { value: 'MONTHLY', label: tr('Mensile') },
-  { value: 'YEARLY', label: tr('Annuale') }, { value: 'custom', label: tr('Regola personalizzata (RRULE)') },
+  { value: 'none', label: tr('Doesn\'t repeat') }, { value: 'MINUTELY', label: tr('Every N minutes') }, { value: 'HOURLY', label: tr('Every N hours') },
+  { value: 'DAILY', label: tr('Daily') }, { value: 'WEEKLY', label: tr('Weekly') }, { value: 'MONTHLY', label: tr('Monthly') },
+  { value: 'YEARLY', label: tr('Yearly') }, { value: 'custom', label: tr('Custom rule (RRULE)') },
 ];
 
 export const formStyles = css`
@@ -79,7 +79,7 @@ export class ChronosCalEditor extends LitElement {
     const end = it && !dup ? (it.end_at ? new Date(it.end_at) : null)
       : (s.end ?? (it?.end_at ? new Date(s.start.getTime() + (new Date(it.end_at).getTime() - new Date(it.start_at).getTime())) : addMinutes(s.start, 60)));
     this.f = {
-      title: it ? (dup ? `${it.title} (copia)` : it.title) : (s.prefill?.title ?? ''),
+      title: it ? (dup ? tr('{0} (copy)', it.title) : it.title) : (s.prefill?.title ?? ''),
       description: it?.description ?? s.prefill?.description ?? '',
       start: toLocalInput(start), end: end ? toLocalInput(end) : '', type: it?.type ?? s.type ?? 'event',
       svc: it?.action?.service ?? '', method: it?.action?.method ?? 'POST', path: it?.action?.path ?? '',
@@ -124,12 +124,12 @@ export class ChronosCalEditor extends LitElement {
     e?.preventDefault();
     const f = this.f, errs: Errors = {};
     const start = fromLocalInput(f.start), end = this.needsEnd ? fromLocalInput(f.end) : null;
-    if (!f.title.trim()) errs.title = tr('Serve un titolo');
-    if (!start) errs.start = tr('Data/ora non valida');
-    if (f.type === 'window' && !end) errs.end = tr('Una finestra ha bisogno della fine');
-    if (start && end && end <= start) errs.end = tr('La fine deve essere dopo l\'inizio');
+    if (!f.title.trim()) errs.title = tr('A title is needed');
+    if (!start) errs.start = tr('Invalid date/time');
+    if (f.type === 'window' && !end) errs.end = tr('A window needs its end');
+    if (start && end && end <= start) errs.end = tr('The end must be after the start');
     let body: unknown = undefined;
-    if (f.body.trim()) { try { body = JSON.parse(f.body); } catch { errs.body = tr('JSON non valido'); } }
+    if (f.body.trim()) { try { body = JSON.parse(f.body); } catch { errs.body = tr('Invalid JSON'); } }
     this.errors = errs;
     if (Object.keys(errs).length) return;
     const action = (f.type === 'task' || f.type === 'job') && f.svc.trim() && f.path.trim()
@@ -158,24 +158,24 @@ export class ChronosCalEditor extends LitElement {
     const s = this.seed, f = this.f, r = this.rep, er = this.errors;
     const series = this.editing && r.freq !== 'none';
     const typeOpts = TYPES.map(t => ({ value: t, label: TYPE_META[t].label, title: TYPE_META[t].hint }));
-    return html`<chronos-dialog .open=${!!s} heading=${this.editing ? tr('Modifica voce') : tr('Nuova voce in agenda')} size="lg" @close=${() => fire(this, 'close')}>
+    return html`<chronos-dialog .open=${!!s} heading=${this.editing ? tr('alt::Edit item') : tr('New agenda item')} size="lg" @close=${() => fire(this, 'close')}>
       ${s ? html`<form class="form" @submit=${(e: Event) => this.save(e)}>
-        ${this.field(tr('Titolo'), html`<input class="title" .value=${f.title} placeholder=${tr("Es. Controlla le email della banca")}
+        ${this.field(tr('Title'), html`<input class="title" .value=${f.title} placeholder=${tr("E.g. Check the bank's emails")}
           @input=${(e: any) => this.set('title', e.target.value)}>`, { req: true, err: er.title })}
-        ${this.field(tr('Tipo'), segmented(typeOpts, f.type, v => { if (!this.editing) this.set('type', v); }),
-          { hint: this.editing ? tr('Il tipo non si cambia: duplica la voce per crearne una di altro tipo.') : TYPE_META[f.type].hint })}
+        ${this.field(tr('Type'), segmented(typeOpts, f.type, v => { if (!this.editing) this.set('type', v); }),
+          { hint: this.editing ? tr('The type can\'t be changed: duplicate the item to create one of another type.') : TYPE_META[f.type].hint })}
         <div class="row2">
-          ${this.field(series ? tr('Inizio della serie') : tr('Inizio'), html`<input type="datetime-local" .value=${f.start}
+          ${this.field(series ? tr('Start of the streak') : tr('Start'), html`<input type="datetime-local" .value=${f.start}
             @change=${(e: any) => this.onStart(e.target.value)}>`,
-            { req: true, err: er.start, hint: series ? tr("Prima occorrenza della regola: spostala per cambiare l'orario di tutte") : '' })}
-          ${this.needsEnd ? this.field(tr('Fine'), html`<input type="datetime-local" .value=${f.end}
+            { req: true, err: er.start, hint: series ? tr("First occurrence of the rule: move it to change the time of all") : '' })}
+          ${this.needsEnd ? this.field(tr('End'), html`<input type="datetime-local" .value=${f.end}
             @change=${(e: any) => this.set('end', e.target.value)}>`, { req: f.type === 'window', err: er.end }) : nothing}
         </div>
-        ${f.type === 'task' ? nothing : this.field(tr('Ripetizione'), html`
+        ${f.type === 'task' ? nothing : this.field(tr('Repetition'), html`
           <div class="rep">
             <select @change=${(e: any) => this.patchRep({ freq: e.target.value })}>
               ${FREQS.map(o => html`<option value=${o.value} ?selected=${o.value === r.freq}>${o.label}</option>`)}</select>
-            ${r.freq !== 'none' && r.freq !== 'custom' ? html`<span class="inl">${tr("ogni")} <input class="num" type="number" min="1" .value=${String(r.interval)}
+            ${r.freq !== 'none' && r.freq !== 'custom' ? html`<span class="inl">${tr("every")} <input class="num" type="number" min="1" .value=${String(r.interval)}
               @change=${(e: any) => this.patchRep({ interval: +e.target.value || 1 })}></span>` : nothing}
           </div>
           ${r.freq === 'WEEKLY' ? html`<div class="days">${WEEKDAYS.map(d => html`<button type="button" class="day ${r.byday.includes(d) ? 'on' : ''}"
@@ -184,35 +184,35 @@ export class ChronosCalEditor extends LitElement {
             @change=${(e: any) => this.patchRep({ raw: e.target.value })}>` : nothing}
           ${r.freq !== 'none' && r.freq !== 'custom' ? html`<div class="rep end">
             <span class="inl">Fine: <input type="date" style="width:auto" .value=${r.until || ''} @change=${(e: any) => this.patchRep({ until: e.target.value, count: null })}></span>
-            <span class="inl">${tr("oppure dopo")} <input class="num" type="number" min="1" .value=${r.count ? String(r.count) : ''}
-              @change=${(e: any) => this.patchRep({ count: +e.target.value || null, until: '' })}> ${tr("volte")}</span></div>` : nothing}`,
+            <span class="inl">${tr("or after")} <input class="num" type="number" min="1" .value=${r.count ? String(r.count) : ''}
+              @change=${(e: any) => this.patchRep({ count: +e.target.value || null, until: '' })}> ${tr("times")}</span></div>` : nothing}`,
           { hint: describeRRule(buildRRule(r)) })}
-        ${f.type === 'job' && r.freq !== 'none' ? this.field(tr('Orario flessibile'), html`<div class="rep">
-            <span class="inl">${tr("tra")} <input type="time" style="width:auto" .value=${f.flexFrom} @change=${(e: any) => this.set('flexFrom', e.target.value)}></span>
+        ${f.type === 'job' && r.freq !== 'none' ? this.field(tr('Flexible time'), html`<div class="rep">
+            <span class="inl">${tr("in")} <input type="time" style="width:auto" .value=${f.flexFrom} @change=${(e: any) => this.set('flexFrom', e.target.value)}></span>
             <span class="inl">e <input type="time" style="width:auto" .value=${f.flexTo} @change=${(e: any) => this.set('flexTo', e.target.value)}></span></div>`,
-          { hint: f.flexFrom && f.flexTo ? tr('Se a quell\'ora hai un impegno parte subito prima o subito dopo, dentro questa fascia.')
-            : tr('Facoltativo: lascia vuoto per un orario fisso.') }) : nothing}
-        ${this.field(tr('Descrizione'), html`<textarea rows="3" .value=${f.description} @input=${(e: any) => this.set('description', e.target.value)}></textarea>`)}
+          { hint: f.flexFrom && f.flexTo ? tr('If at that time you have an appointment it starts right before or right after, inside this slot.')
+            : tr('Optional: leave empty for a fixed time.') }) : nothing}
+        ${this.field(tr('Description'), html`<textarea rows="3" .value=${f.description} @input=${(e: any) => this.set('description', e.target.value)}></textarea>`)}
         ${f.type === 'task' || f.type === 'job' ? html`<details class="adv" ?open=${!!f.svc}>
-          <summary>${tr("Azione da eseguire (via Hub)")}</summary>
+          <summary>${tr("Action to run (via Hub)")}</summary>
           <div class="row3">
-            ${this.field(tr('Servizio'), html`<input .value=${f.svc} placeholder=${"scout"} @input=${(e: any) => this.set('svc', e.target.value)}>`)}
-            ${this.field(tr('Metodo'), html`<select @change=${(e: any) => this.set('method', e.target.value)}>
+            ${this.field(tr('Service'), html`<input .value=${f.svc} placeholder=${"scout"} @input=${(e: any) => this.set('svc', e.target.value)}>`)}
+            ${this.field(tr('Method'), html`<select @change=${(e: any) => this.set('method', e.target.value)}>
               ${['POST', 'GET', 'PUT', 'PATCH', 'DELETE'].map(m => html`<option ?selected=${m === f.method}>${m}</option>`)}</select>`)}
-            ${this.field(tr('Percorso'), html`<input class="mono" .value=${f.path} placeholder="/api/scout/cycle" @input=${(e: any) => this.set('path', e.target.value)}>`)}
+            ${this.field(tr('Path'), html`<input class="mono" .value=${f.path} placeholder="/api/scout/cycle" @input=${(e: any) => this.set('path', e.target.value)}>`)}
           </div>
-          ${this.field(tr('Body JSON'), html`<textarea class="mono" rows="3" .value=${f.body} placeholder='{"trigger": "agenda"}'
+          ${this.field(tr('JSON body'), html`<textarea class="mono" rows="3" .value=${f.body} placeholder='{"trigger": "agenda"}'
             @input=${(e: any) => this.set('body', e.target.value)}></textarea>`, { err: er.body })}
         </details>` : nothing}
-        ${this.editing && s.item?.created_by !== 'user' ? html`<p class="note">${tr("Questa voce è di")} <b>${s.item?.owner}</b>${tr(": dopo la tua modifica il modulo non la sovrascriverà più.")}</p>` : nothing}
+        ${this.editing && s.item?.created_by !== 'user' ? html`<p class="note">${tr("This item belongs to")} <b>${s.item?.owner}</b>${tr(": after your change the module won't overwrite it any more.")}</p>` : nothing}
         <button type="submit" hidden></button>
       </form>` : nothing}
       <div slot="footer" style="display:flex;gap:8px;width:100%;flex-wrap:wrap">
-        ${this.editing ? nothing : html`<hxk-button class="ask" variant="ghost" icon="sparkle" title=${tr("Descrivi a parole cosa vuoi: {assistant} crea la voce")}
-          @click=${() => this.ask()}>${tr("Chiedi a {assistant}")}</hxk-button>`}
+        ${this.editing ? nothing : html`<hxk-button class="ask" variant="ghost" icon="sparkle" title=${tr("Describe in words what you want: {assistant} creates the item")}
+          @click=${() => this.ask()}>${tr("Ask {assistant}")}</hxk-button>`}
         <span style="flex:1"></span>
-        <hxk-button variant="ghost" @click=${() => fire(this, 'close')}>${tr("Annulla")}</hxk-button>
-        <hxk-button variant="primary" @click=${() => this.save()}>${this.editing ? tr('Salva') : tr('Crea')}</hxk-button>
+        <hxk-button variant="ghost" @click=${() => fire(this, 'close')}>${tr("Cancel")}</hxk-button>
+        <hxk-button variant="primary" @click=${() => this.save()}>${this.editing ? tr('Save') : tr('Create')}</hxk-button>
       </div>
     </chronos-dialog>`;
   }

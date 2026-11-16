@@ -6,13 +6,13 @@ import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/web
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/images';
-const STATUS: Record<string, [string, string]> = { queued: [tr('in coda'), 'neutral'], running: [tr('in corso'), 'info'], done: ['pronta', 'success'], failed: [tr('non riuscita'), 'danger'] };
-const WHY: Record<string, string> = { missing_flow: tr('Manca un flusso per questo tipo di immagine: caricalo in Flussi.'),
-  not_configured: tr('Il generatore di immagini non è ancora collegato.') };
+const STATUS: Record<string, [string, string]> = { queued: [tr('queued'), 'neutral'], running: [tr('running'), 'info'], done: [tr('f::ready'), 'success'], failed: [tr('f::failed'), 'danger'] };
+const WHY: Record<string, string> = { missing_flow: tr('A workflow for this kind of image is missing: upload it in Workflows.'),
+  not_configured: tr('The image generator is not linked yet.') };
 
 async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string, body?: unknown, query?: Record<string, any>): Promise<ApiResult<T>> {
   const r = await host.api<T>(method, `${API}${path}`, { body, query });
-  if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Non raggiungibile, riprova') : r.error || tr('Errore'), 'warning');
+  if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Not reachable, try again') : r.error || tr('Error'), 'warning');
   return r;
 }
 
@@ -53,26 +53,26 @@ export class ApolloImages extends HestiaElement {
     this.busy = true;
     const r = await call(this.host, 'POST', '/jobs', { prompt: this.prompt, purpose: this.purpose, by: 'user', notify: true });
     this.busy = false;
-    if (r.ok) { this.prompt = ''; if (r.data.status === 'failed') this.host.toast(WHY[r.data.error] || tr('Non riuscita'), 'warning'); this.load(); }
+    if (r.ok) { this.prompt = ''; if (r.data.status === 'failed') this.host.toast(WHY[r.data.error] || tr('alt2::Failed'), 'warning'); this.load(); }
   }
   render() {
     const s = this.s;
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Immagini")}</h1><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('flussi')}>${tr("Flussi (")}${s.flows})</hxk-button></div>
-      ${!s.configured ? html`<div class="card small">${tr("Il generatore non è collegato: servono l'indirizzo del tuo ComfyUI (APOLLO_COMFYUI_URL nel file di configurazione) e un flusso caricato.")}</div>`
-        : !s.reachable ? html`<div class="card small">${tr("ComfyUI non risponde adesso: le richieste restano in coda.")}</div>` : nothing}
+      <div class="between"><h1>${tr("Images")}</h1><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('flussi')}>${tr("Workflows (")}${s.flows})</hxk-button></div>
+      ${!s.configured ? html`<div class="card small">${tr("The generator is not linked: the address of your ComfyUI (APOLLO_COMFYUI_URL in the configuration file) and an uploaded workflow are needed.")}</div>`
+        : !s.reachable ? html`<div class="card small">${tr("ComfyUI doesn't answer now: the requests stay in the queue.")}</div>` : nothing}
       <div class="card col">
-        <textarea placeholder=${tr("Descrivi l'immagine (meglio in inglese)")} .value=${this.prompt} @input=${(e: any) => { this.prompt = e.target.value; }}></textarea>
+        <textarea placeholder=${tr("Describe the image (better in English)")} .value=${this.prompt} @input=${(e: any) => { this.prompt = e.target.value; }}></textarea>
         <div class="row wrap"><select @change=${(e: any) => { this.purpose = e.target.value; }}>
             ${Object.entries(s.purposes as Record<string, string>).map(([k, v]) => html`<option value=${k} ?selected=${k === this.purpose}>${v}</option>`)}</select>
-          <hxk-button variant="primary" icon="sparkle" ?loading=${this.busy} @click=${() => this.create()}>${tr("Crea")}</hxk-button></div>
+          <hxk-button variant="primary" icon="sparkle" ?loading=${this.busy} @click=${() => this.create()}>${tr("Create")}</hxk-button></div>
       </div>
       ${this.jobs.length ? html`<div class="grid" style="--min: 160px">${this.jobs.map(j => html`<div class="thumb" @click=${() => this.host.navigate('lavoro/' + j.id)}>
           ${j.status === 'done' && j.blob_ids?.length ? html`<img loading="lazy" src=${this.host.image(`${API}/jobs/${j.id}/image/0`)} alt="">` : html`<hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge>`}
           <div class="cap truncate">${j.prompt}</div></div>`)}</div>`
-        : html`<hxk-state kind="empty" text=${tr("Ancora nessuna immagine.")}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("No image yet.")}></hxk-state>`}
     </div>`;
   }
 }
@@ -93,12 +93,12 @@ export class ApolloJob extends HestiaElement {
   render() {
     const j = this.j;
     if (j === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (j === null) return html`<hxk-state kind="error" text=${tr("Immagine non trovata.")}></hxk-state>`;
+    if (j === null) return html`<hxk-state kind="error" text=${tr("Image not found.")}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Immagine")}</h1><hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge></div>
+      <div class="between"><h1>${tr("Image")}</h1><hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge></div>
       <div class="small muted">${j.prompt}</div>
       ${j.status === 'failed' ? html`<div class="card small">${WHY[j.error] || j.error}</div>` : nothing}
-      <div class="col big">${(j.blob_ids || []).map((_: string, n: number) => html`<a href=${this.host.image(`${API}/jobs/${j.id}/image/${n}`)} download=${`immagine-${n + 1}.png`}>
+      <div class="col big">${(j.blob_ids || []).map((_: string, n: number) => html`<a href=${this.host.image(`${API}/jobs/${j.id}/image/${n}`)} download=${`image-${n + 1}.png`}>
         <img src=${this.host.image(`${API}/jobs/${j.id}/image/${n}`)} alt=""></a>`)}</div>
     </div>`;
   }
@@ -118,31 +118,31 @@ export class ApolloFlows extends HestiaElement {
     if (!f) return;
     f.text().then(t => {
       try { this.draft = { ...this.draft, graph: JSON.parse(t), file: f.name, name: this.draft?.name || f.name.replace(/\.json$/i, '') }; }
-      catch { this.host.toast(tr('Il file non è un JSON valido'), 'warning'); }
+      catch { this.host.toast(tr('The file is not valid JSON'), 'warning'); }
     });
   }
   private async save() {
-    if (!this.draft?.graph) { this.host.toast(tr('Scegli il file del flusso'), 'warning'); return; }
+    if (!this.draft?.graph) { this.host.toast(tr('Choose the workflow file'), 'warning'); return; }
     const { file, ...body } = this.draft;
     const r = await call(this.host, 'POST', '/flows', body);
-    if (r.ok) { this.draft = null; this.host.toast(tr('Flusso caricato'), 'success'); this.load(); }
+    if (r.ok) { this.draft = null; this.host.toast(tr('Workflow uploaded'), 'success'); this.load(); }
   }
   render() {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Flussi")}</h1><hxk-button variant="primary" icon="upload" @click=${() => { this.draft = { purpose: 'generico', default: true }; }}>${tr("Carica")}</hxk-button></div>
-      <div class="small muted">${tr("In ComfyUI: Salva → API Format. Un flusso per tipo di immagine; il testo, la misura e il seme vanno nei nodi soliti (li trovo da solo).")}</div>
+      <div class="between"><h1>${tr("Workflows")}</h1><hxk-button variant="primary" icon="upload" @click=${() => { this.draft = { purpose: 'generico', default: true }; }}>${tr("Upload")}</hxk-button></div>
+      <div class="small muted">${tr("In ComfyUI: Save → API Format. One workflow per kind of image; the text, the size and the seed go in the usual nodes (I find them myself).")}</div>
       ${this.draft ? html`<div class="card col">
         <input type="file" accept=".json,application/json" @change=${(e: any) => this.pick(e)}>
-        <div class="row wrap"><hxk-field label=${tr("Nome")} .value=${this.draft.name || ''} @change=${(e: any) => { this.draft = { ...this.draft, name: e.detail }; }}></hxk-field>
-          <hxk-field label=${tr("Tipo di immagine")} type="enum" .options=${Object.entries(this.purposes).map(([value, label]) => ({ value, label }))} .value=${this.draft.purpose} @change=${(e: any) => { this.draft = { ...this.draft, purpose: e.detail }; }}></hxk-field>
-          <hxk-field label=${tr("Predefinito per questo tipo")} type="bool" .value=${this.draft.default} @change=${(e: any) => { this.draft = { ...this.draft, default: e.detail }; }}></hxk-field></div>
-        <div class="row"><hxk-button variant="primary" @click=${() => this.save()}>${tr("Salva")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.draft = null; }}>${tr("Annulla")}</hxk-button></div></div>` : nothing}
-      <div class="card">${this.items.length ? this.items.map(f => html`<div class="flow"><div class="grow"><div>${f.name}${f.default ? html` <hxk-badge tone="accent">${tr("predefinito")}</hxk-badge>` : nothing}</div>
+        <div class="row wrap"><hxk-field label=${tr("Name")} .value=${this.draft.name || ''} @change=${(e: any) => { this.draft = { ...this.draft, name: e.detail }; }}></hxk-field>
+          <hxk-field label=${tr("Image type")} type="enum" .options=${Object.entries(this.purposes).map(([value, label]) => ({ value, label }))} .value=${this.draft.purpose} @change=${(e: any) => { this.draft = { ...this.draft, purpose: e.detail }; }}></hxk-field>
+          <hxk-field label=${tr("Default for this type")} type="bool" .value=${this.draft.default} @change=${(e: any) => { this.draft = { ...this.draft, default: e.detail }; }}></hxk-field></div>
+        <div class="row"><hxk-button variant="primary" @click=${() => this.save()}>${tr("Save")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.draft = null; }}>${tr("Cancel")}</hxk-button></div></div>` : nothing}
+      <div class="card">${this.items.length ? this.items.map(f => html`<div class="flow"><div class="grow"><div>${f.name}${f.default ? html` <hxk-badge tone="accent">${tr("default")}</hxk-badge>` : nothing}</div>
           <div class="small muted">${this.purposes[f.purpose] || f.purpose} · ${Object.keys(f.inputs || {}).join(', ')}</div></div>
-          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Eliminare il flusso?'), f.name, { label: tr('Elimina'), danger: true })) { await call(this.host, 'DELETE', `/flows/${f.id}`); this.load(); } }}></hxk-button></div>`)
-        : html`<hxk-state kind="empty" text=${tr("Nessun flusso caricato.")}></hxk-state>`}</div>
+          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete the workflow?'), f.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/flows/${f.id}`); this.load(); } }}></hxk-button></div>`)
+        : html`<hxk-state kind="empty" text=${tr("No workflow uploaded.")}></hxk-state>`}</div>
     </div>`;
   }
 }

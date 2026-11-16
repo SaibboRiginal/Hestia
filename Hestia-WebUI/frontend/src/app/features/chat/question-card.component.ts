@@ -34,14 +34,14 @@ import { TrPipe } from '../../core/i18n';
       @if (freeField()) {
         <div class="qf">
           <input class="hx-input" [(ngModel)]="text" (keydown.enter)="submit()"
-                 [placeholder]="q.options.length ? ('Altro…' | tr) : 'Rispondi…'" />
-          @if (!multi()) { <button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!text.trim()">{{ "Invia" | tr }}</button> }
+                 [placeholder]="q.options.length ? ('Other…' | tr) : ('Answer…' | tr)" />
+          @if (!multi()) { <button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!text.trim()">{{ "Send" | tr }}</button> }
         </div>
       }
       @if (multi()) {
-        <div class="qf"><button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!picked().length && !text.trim()">{{ "Invia" | tr }}</button></div>
+        <div class="qf"><button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!picked().length && !text.trim()">{{ "Send" | tr }}</button></div>
       }
-      @if (!q.required) { <button class="skipq" (click)="send('')">{{ "Salta" | tr }}</button> }
+      @if (!q.required) { <button class="skipq" (click)="send('')">{{ "Skip" | tr }}</button> }
     </div>
   `,
   styles: [`

@@ -1,22 +1,28 @@
 """Texts people read, in their language (dossier docs/work/2026-11-14-backend-inglese).
 
-Everything the model reads is English and lives in the code (tool descriptions, prompts). Everything a person
-reads comes from ``hestia_common/locales/<lang>/<catalog>.json``; a missing language or key falls back to
-English, then Italian, then to what the caller passes. The language is the personal setting ``themis.personal.language``
-(``identity.LANGUAGE``): a module reads it with its own ``SettingsClient`` after ``follow_personal()``.
+The code is English, always (standard: ``docs/LANGUAGES.md``). Everything the model reads lives in the code as
+English; every fixed text a person reads is written in English in the code and translated through
+``hestia_common/locales/<lang>/<catalog>.json`` (today: ``it``). A missing key shows the English source. The
+language is the personal setting ``themis.personal.language`` (``identity.LANGUAGE``): a module reads it with its own
+``SettingsClient`` after ``follow_personal()``.
+
+A source text may carry a context tag, ``"f::Active"``, when one English text needs two translations (gender,
+number, two meanings): the tag picks the catalog entry and is never shown.
 
 Catalog ``tools``: ``{tool_name: {"summary": "...", "params": {param: "help"}}}``.
 """
 from __future__ import annotations
 
 import json
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
 LOCALES = Path(__file__).parent / "locales"
-FALLBACK = "it"
-_CHAIN_TAIL = ("en",)  # a language without its own catalog reads English before the Italian source
+FALLBACK = "it"   # the owner's language when the setting is unknown
+SOURCE = "en"     # the language of every text in the code
+_CTX = re.compile(r"^[a-z][a-z0-9.]*::")
 
 
 @lru_cache(maxsize=32)
@@ -42,9 +48,9 @@ def language(get: Callable[[str], Any] | None = None) -> str:
 
 
 def tool_text(tool: str, lang: str = FALLBACK) -> dict:
-    """The people texts of a tool: ``{"summary"?, "params"?}`` in ``lang``, else English, else Italian, else ``{}``."""
+    """The people texts of a tool: ``{"summary"?, "params"?}`` in ``lang``, else English, else ``{}``."""
     code = str(lang or FALLBACK)[:2]
-    for code in dict.fromkeys((code, *(() if code == FALLBACK else _CHAIN_TAIL), FALLBACK)):
+    for code in dict.fromkeys((code, SOURCE, "it")):
         entry = catalog("tools", code).get(str(tool or ""))
         if isinstance(entry, dict):
             return entry
@@ -60,10 +66,9 @@ def param_help(tool: str, param: str, lang: str = FALLBACK) -> str:
     return str(params.get(param) or "") if isinstance(params, dict) else ""
 
 
-# ── fixed texts (catalog ``messages``: ``{italian source text: translation}``) ─────────────────────────────────
-# The Italian text in the code is the key: a language without a translation shows English when there is one,
-# else the Italian source. The language reader is registered once per process by
-# ``SettingsClient.follow_personal()``; a caller may pass ``lang`` explicitly.
+# ── fixed texts (catalog ``messages``: ``{english source text: translation}``) ─────────────────────────────────
+# The English text in the code is the key; a language without the entry shows the English source. The language
+# reader is registered once per process by ``SettingsClient.follow_personal()``; a caller may pass ``lang``.
 _reader: Callable[[str], Any] | None = None
 
 
@@ -89,31 +94,87 @@ def identity_now() -> dict:
         return identity.default()
 
 
-def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
-    """``text`` (Italian source) in the owner's language; with arguments it is then ``str.format``-ed.
+def _named(*texts: str) -> tuple[str, ...]:
+    """``{assistant}`` and ``{g:lei|lui}`` filled with the assistant's chosen name and gender (``identity.named``)."""
+    if not any("{assistant}" in x or "{g:" in x for x in texts):
+        return texts
+    from hestia_common import identity
+    ident = identity_now()
+    return tuple(identity.named(x, ident) for x in texts)
 
-    ``t("Ciao {name}", name=n)`` · ``t("{0} file", count)``. ``{assistant}`` and ``{g:lei|lui}`` take the
+
+def bare(text: str) -> str:
+    """The source text without its context tag (``"f::Active"`` → ``"Active"``)."""
+    return _CTX.sub("", text, count=1)
+
+
+def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
+    """``text`` (English source) in the owner's language; with arguments it is then ``str.format``-ed.
+
+    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. ``{assistant}`` and ``{g:lei|lui}`` take the
     assistant's chosen name and gender (``identity.named``) before formatting. Never raises: a broken translation
     falls back to the source text."""
     source = "" if text is None else str(text)
     code = str(lang or current())[:2]
-    out = source
-    if code != FALLBACK and source:
-        for c in dict.fromkeys((code, *_CHAIN_TAIL)):
-            hit = catalog("messages", c).get(source)
-            if isinstance(hit, str) and hit:
-                out = hit
-                break
-    if "{assistant}" in out or "{g:" in out or "{assistant}" in source or "{g:" in source:
-        from hestia_common import identity
-        ident = identity_now()
-        out, source = identity.named(out, ident), identity.named(source, ident)
+    plain = bare(source)
+    out = plain
+    if code != SOURCE and source:
+        hit = catalog("messages", code).get(source)
+        if isinstance(hit, str) and hit:
+            out = hit
+    out, plain = _named(out, plain)
     if not (args or kwargs):
         return out
     try:
         return out.format(*args, **kwargs)
     except (IndexError, KeyError, ValueError):
         try:
-            return source.format(*args, **kwargs)
+            return plain.format(*args, **kwargs)
         except (IndexError, KeyError, ValueError):
-            return source
+            return plain
+
+
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December")
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def month_name(month: int, lang: str | None = None) -> str:
+    """Name of ``month`` (1-12) in the owner's language («gennaio» in Italian)."""
+    return t(MONTHS[(int(month) - 1) % 12], lang=lang)
+
+
+def weekday_name(weekday: int, lang: str | None = None) -> str:
+    """Name of ``weekday`` (0 = Monday, as ``date.weekday()``) in the owner's language, lower case."""
+    return t(WEEKDAYS[int(weekday) % 7], lang=lang)
+
+
+# Keys whose string value is never a people text (ids, codes, states): ``localize`` leaves them alone.
+KEEP_KEYS = frozenset({"id", "key", "value", "status", "state", "type", "kind", "slug", "path", "url", "href",
+                       "code", "icon", "color", "tone", "module", "service", "method", "tool", "command",
+                       "domain", "source", "role", "lang", "language", "page", "link", "view", "tab", "event",
+                       "event_type", "use_case", "provider", "model", "format", "mime", "unit_code", "action",
+                       "name_id", "entity_id", "dedupe_key", "replaces", "query", "q", "args", "params"})
+
+
+def localize(payload: Any, lang: str | None = None) -> Any:
+    """A copy of a JSON payload whose people texts are in the owner's language: every string value that is a
+    catalog key (an English source text) is translated, except under ``KEEP_KEYS``. Module-level labels (manifests,
+    pages, widgets, cards, choices) are written in English and translated here, at the edge to the owner."""
+    code = str(lang or current())[:2]
+    table = catalog("messages", code) if code != SOURCE else {}
+
+    def text(node: str) -> str:
+        hit = table.get(node)
+        out = hit if isinstance(hit, str) and hit else (bare(node) if _CTX.match(node) else node)
+        return _named(out)[0]
+
+    def walk(node: Any, key: str = "") -> Any:
+        if isinstance(node, dict):
+            return {k: (v if k in KEEP_KEYS else walk(v, k)) for k, v in node.items()}
+        if isinstance(node, list):
+            return [walk(v, key) for v in node]
+        if isinstance(node, str):
+            return text(node)
+        return node
+    return walk(payload)

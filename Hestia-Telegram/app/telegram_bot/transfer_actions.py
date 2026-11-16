@@ -46,7 +46,7 @@ def modules() -> dict[str, dict]:
         services = (resp.json() or {}).get("services") or []
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=transfer_registry_failed error=%s", exc)
-        raise TransferError(tr("Non riesco a vedere i moduli adesso, riprova tra poco.")) from exc
+        raise TransferError(tr("I can't see the modules right now, try again shortly.")) from exc
     return {s["name"]: s["capabilities"]["transfer"] for s in services
             if isinstance(s, dict) and isinstance((s.get("capabilities") or {}).get("transfer"), dict)}
 
@@ -72,9 +72,9 @@ def decode(raw: bytes) -> dict:
     try:
         data = json.loads(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
     except (OSError, ValueError) as exc:
-        raise TransferError(tr("Questo file non è un file di Hestia.")) from exc
+        raise TransferError(tr("This file is not a Hestia file.")) from exc
     if not isinstance(data, dict) or data.get("hestia") != "transfer" or (data.get("format") or 1) > FORMAT:
-        raise TransferError(tr("Questo file non è di Hestia, o è di una versione più recente."))
+        raise TransferError(tr("This file is not from Hestia, or is from a newer version."))
     return data
 
 
@@ -99,10 +99,10 @@ def _lines(reports: dict, labels: dict) -> list[str]:
     for owner, rep in reports.items():
         name = labels.get(owner) or owner.title()
         if rep.get("missing"):
-            lines.append(ui.item(name, [tr("non presente qui, saltato")]))
+            lines.append(ui.item(name, [tr("not here, skipped")]))
             continue
         if rep.get("error"):
-            lines.append(ui.item(name, [tr("non risponde")]))
+            lines.append(ui.item(name, [tr("does not answer")]))
             continue
         totals = {k: 0 for k in ("added", "updated", "unchanged", "skipped", "problems")}
         for r in (rep.get("sections") or {}).values():
@@ -111,7 +111,7 @@ def _lines(reports: dict, labels: dict) -> list[str]:
         parts = [f"{totals[k]} {label}" for k, label in (("added", "nuovi"), ("updated", "aggiornati"),
                                                          ("skipped", "ignorati"), ("problems", "problemi"))
                  if totals[k]]
-        lines.append(ui.item(name, parts or [tr("nessuna modifica")]))
+        lines.append(ui.item(name, parts or [tr("no changes")]))
     return lines
 
 
@@ -123,13 +123,13 @@ def _labels(available: dict) -> dict:
 def esporta(chat_id, args):
     available = modules()
     if not available:
-        raise TransferError(tr("Nessun modulo ha dati da esportare adesso."))
+        raise TransferError(tr("No module has data to export right now."))
     data = build(sorted(available))
     name = f"hestia-{datetime.now().strftime('%Y-%m-%d')}.hestia"
     logger.info("event=telegram_transfer_export modules=%d records=%d", len(data["modules"]), _count(data))
-    return Rendered(ui.card(tr("Dati esportati"), [
-        tr("{0} elementi da {1} aree, senza foto.", _count(data), len(data['modules'])),
-        ui.note(tr("Il file contiene dati personali: tienilo per te. Per riportarli: «Importa dati»."))]),
+    return Rendered(ui.card(tr("Data exported"), [
+        tr("{0} items from {1} areas, without photos.", _count(data), len(data['modules'])),
+        ui.note(tr("The file contains personal data: keep it to yourself. To bring it back: «Import data»."))]),
         document=(name, encode(data)))
 
 
@@ -137,7 +137,7 @@ def importa(chat_id, args):
     f = args.get("file") or {}
     raw = base64.b64decode(f.get("data_b64") or "") if isinstance(f, dict) else b""
     if not raw:
-        raise TransferError(tr("Mandami il file .hestia."))
+        raise TransferError(tr("Send me the .hestia file."))
     data = decode(raw)
     available = modules()
     reports = run(data, dry_run=True, available=available)
@@ -147,31 +147,31 @@ def importa(chat_id, args):
     token = uuid.uuid4().hex[:10]
     _pending[token] = {"data": data, "chat_id": str(chat_id), "at": time.time()}
     logger.info("event=telegram_transfer_preview modules=%d records=%d", len(data["modules"]), _count(data))
-    return Rendered(ui.card(tr("Anteprima dell'importazione"), [
+    return Rendered(ui.card(tr("Import preview"), [
         *_lines(reports, _labels(available)),
-        ui.note(tr("Unisci: aggiunge e aggiorna, non elimina nulla. Prima ti mando una copia di come è adesso."))],
-        subtitle=tr("file del {0}", str(data.get('exported_at') or '')[:10])),
-        actions=[Action(tr("Importa"), "importa_conferma", {"token": token}, style="primary"),
-                 Action(tr("Annulla"), "importa_annulla", {"token": token})])
+        ui.note(tr("Merge: adds and updates, deletes nothing. First I send you a copy of how it is now."))],
+        subtitle=tr("file of {0}", str(data.get('exported_at') or '')[:10])),
+        actions=[Action(tr("Import"), "importa_conferma", {"token": token}, style="primary"),
+                 Action(tr("Cancel"), "importa_annulla", {"token": token})])
 
 
 def importa_conferma(chat_id, args):
     p = _pending.pop(str(args.get("token") or ""), None)
     if not p or p["chat_id"] != str(chat_id):
-        raise TransferError(tr("Questa anteprima è scaduta: mandami di nuovo il file."))
+        raise TransferError(tr("This preview has expired: send me the file again."))
     available = modules()
     owners = [o for o in p["data"]["modules"] if o in available]
     before = build(owners)
     reports = run(p["data"], dry_run=False, available=available)
     logger.info("event=telegram_transfer_import modules=%d", len(owners))
-    return Rendered(ui.outcome(tr("Dati importati")) + "\n" + "\n".join(_lines(reports, _labels(available))) + "\n"
-                    + ui.note(tr("Il file qui sotto è com'era prima: importalo per tornare indietro.")),
+    return Rendered(ui.outcome(tr("Data imported")) + "\n" + "\n".join(_lines(reports, _labels(available))) + "\n"
+                    + ui.note(tr("The file below is how it was before: import it to go back.")),
                     document=(f"hestia-prima-{datetime.now().strftime('%Y-%m-%d-%H%M')}.hestia", encode(before)))
 
 
 def importa_annulla(chat_id, args):
     _pending.pop(str(args.get("token") or ""), None)
-    return Rendered(ui.outcome(tr("Importazione annullata")))
+    return Rendered(ui.outcome(tr("Import cancelled")))
 
 
 # ── restore a Drive backup (owner only: no assistant tool restores) ───────────
@@ -179,18 +179,18 @@ def ripristina(chat_id, args):
     ok, hist = catalog.route("archive", "api/backup/list", timeout=30)
     items = (hist or {}).get("items") or [] if ok and isinstance(hist, dict) else []
     if not ok:
-        raise TransferError(tr("Non riesco a leggere i backup adesso, riprova tra poco."))
+        raise TransferError(tr("I can't read the backups right now, try again shortly."))
     if not items:
-        return Rendered(ui.card(tr("Ripristina un backup"), [ui.note(tr("Nessun backup su Google Drive."))]))
+        return Rendered(ui.card(tr("Restore a backup"), [ui.note(tr("No backup on Google Drive."))]))
     lines, actions = [], []
     for b in items[:6]:
         when = str(b.get("created_at") or "")[:16].replace("T", " ")
         meta = [f"{int(b.get('size') or 0) / 1048576:.0f} MB"] + (["verificato"] if b.get("verified_at") else [])
         lines.append(ui.item(when, meta))
-        actions.append(Action(tr("Ripristina {0}", when[:10]), "ripristina_conferma", {"file_id": str(b["id"])},
+        actions.append(Action(tr("Restore {0}", when[:10]), "ripristina_conferma", {"file_id": str(b["id"])},
                               style="danger"))
-    return Rendered(ui.card(tr("Ripristina un backup"), [*lines, ui.note(
-        tr("Tutti i dati tornano come in quel momento; quelli di adesso si possono riavere con «Annulla ripristino»."))]),
+    return Rendered(ui.card(tr("Restore a backup"), [*lines, ui.note(
+        tr("All data goes back to how it was at that moment; today's can be brought back with «Undo restore»."))]),
         actions=actions)
 
 
@@ -200,44 +200,44 @@ def ripristina_conferma(chat_id, args):
     if not ok:
         detail = (out or {}).get("detail") if isinstance(out, dict) else None
         message = detail.get("message") if isinstance(detail, dict) else None
-        raise TransferError(tr("Ripristino non avviato: {0}.", message) if message else tr("Ripristino non avviato, riprova."))
+        raise TransferError(tr("Restore not started: {0}.", message) if message else tr("Restore not started, try again."))
     logger.info("event=telegram_backup_restore_started")
-    return Rendered(ui.outcome(tr("Ripristino avviato")) + "\n" + ui.note(
-        tr("Dura qualche minuto: ti avviso quando ha finito.")),
-        actions=[Action(tr("Stato dei backup"), "backup_status"), Action(tr("Annulla ripristino"), "ripristina_annulla",
+    return Rendered(ui.outcome(tr("Restore started")) + "\n" + ui.note(
+        tr("It takes a few minutes: I'll tell you when it's done.")),
+        actions=[Action(tr("Backup status"), "backup_status"), Action(tr("Undo restore"), "ripristina_annulla",
                                                                      style="danger")])
 
 
 def ripristina_annulla(chat_id, args):
     ok, out = catalog.route("archive", "api/backup/undo", "POST", body={"confirm": True}, timeout=30)
     if not ok:
-        raise TransferError(tr("Non c'è un ripristino da annullare.") if "nothing_to_undo" in str(out)
-                            else tr("Non riesco ad annullare adesso, riprova."))
-    return Rendered(ui.outcome(tr("Torno ai dati di prima del ripristino")))
+        raise TransferError(tr("There is no restore to undo.") if "nothing_to_undo" in str(out)
+                            else tr("I can't undo right now, try again."))
+    return Rendered(ui.outcome(tr("Going back to the data before the restore")))
 
 
 def tools() -> list[catalog.Tool]:
     T = catalog.Tool
     return [
-        T("esporta", "Esporta i dati", "Un file con i tuoi dati e le impostazioni, da portare su un altro Hestia",
-          group="sistema", hints={"section": "Dati e backup"}, handler=esporta),
-        T("importa", "Importa dati", "Riporta i dati da un file .hestia (prima vedi l'anteprima)", group="sistema",
-          hints={"section": "Dati e backup"},
+        T("esporta", "Export the data", "A file with your data and settings, to take to another Hestia",
+          group="sistema", hints={"section": "Data and backups"}, handler=esporta),
+        T("importa", "Import data", "Brings data back from a .hestia file (you see a preview first)", group="sistema",
+          hints={"section": "Data and backups"},
           schema={"type": "object", "required": ["file"], "properties": {"file": {
-              "type": "string", "contentMediaType": "application/octet-stream", "title": "Il file .hestia"}}},
+              "type": "string", "contentMediaType": "application/octet-stream", "title": "The .hestia file"}}},
           handler=importa),
-        T("importa_conferma", "Conferma importazione", "", group="sistema", hints={"section": "interno"},
+        T("importa_conferma", "Confirm import", "", group="sistema", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           writes=True, handler=importa_conferma),
-        T("importa_annulla", "Annulla importazione", "", group="sistema", hints={"section": "interno"},
+        T("importa_annulla", "Cancel import", "", group="sistema", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           handler=importa_annulla),
-        T("ripristina", "Ripristina un backup", "Riporta tutti i dati a un backup su Google Drive", group="sistema",
-          hints={"section": "Dati e backup"}, handler=ripristina),
-        T("ripristina_conferma", "Ripristina", "", group="sistema", hints={"section": "interno"},
+        T("ripristina", "Restore a backup", "Brings all data back to a backup on Google Drive", group="sistema",
+          hints={"section": "Data and backups"}, handler=ripristina),
+        T("ripristina_conferma", "f::Restore", "", group="sistema", hints={"section": "interno"},
           schema={"type": "object", "properties": {"file_id": {"type": "string"}}, "required": ["file_id"]},
           writes=True, destructive=True, handler=ripristina_conferma),
-        T("ripristina_annulla", "Annulla ripristino", "Torna ai dati di prima dell'ultimo ripristino",
-          group="sistema", hints={"section": "Dati e backup"}, writes=True, destructive=True,
+        T("ripristina_annulla", "Undo restore", "Back to the data before the last restore",
+          group="sistema", hints={"section": "Data and backups"}, writes=True, destructive=True,
           handler=ripristina_annulla),
     ]

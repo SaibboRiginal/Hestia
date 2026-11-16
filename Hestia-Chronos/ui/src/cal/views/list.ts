@@ -42,24 +42,24 @@ export function groupByDay(events: CalEvent[], from: Date, now: number): Group[]
 /** Badge (+ detail line) for a row: the run result for past items, the state for upcoming ones. */
 export function outcome(ev: CalEvent, now: number): Outcome | null {
   const o = ev.occ;
-  if (o.skipped) return { label: 'saltata', tone: 'neutral' };
+  if (o.skipped) return { label: tr('f::skipped'), tone: 'neutral' };
   const started = ev.start.getTime() <= now, ended = (ev.end ?? ev.start).getTime() < now;
   if (o.run) {
-    if (!o.run.ok) return { label: 'fallito' + ((ev.failedCount ?? 0) > 1 ? ' ×' + ev.failedCount : ''), tone: 'danger', detail: o.run.detail || undefined };
+    if (!o.run.ok) return { label: tr('failed') + ((ev.failedCount ?? 0) > 1 ? ' ×' + ev.failedCount : ''), tone: 'danger', detail: o.run.detail || undefined };
     return { label: 'ok' + (o.run.duration_ms ? ' · ' + dur(o.run.duration_ms) : ''), tone: 'success', detail: o.run.detail || undefined };
   }
   if (o.status && o.status !== 'confirmed') {
     const s = STATUS_META[o.status] ?? STATUS_META.confirmed;
     return { label: s.label, tone: s.tone };
   }
-  if (started && !ended) return { label: tr('in corso'), tone: 'accent' };
+  if (started && !ended) return { label: tr('running'), tone: 'accent' };
   if (ended) {
     if (!ev.item?.action) return { label: 'concluso', tone: 'neutral' };
     const lr = !o.recurring ? ev.item.last_result : null;   // one-off item: its result is the rule's last result
-    if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: 'fallito', tone: 'danger', detail: lr.detail || undefined };
-    return { label: tr('nessun esito'), tone: 'warning' };
+    if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: tr('failed'), tone: 'danger', detail: lr.detail || undefined };
+    return { label: tr('no outcome'), tone: 'warning' };
   }
-  if (o.moved) return { label: 'spostata', tone: 'info' };
+  if (o.moved) return { label: tr('f::moved'), tone: 'info' };
   return null;
 }
 
@@ -111,7 +111,7 @@ export class ChronosCalList extends LitElement {
   }
 
   private nowLine(): TemplateResult {
-    return html`<div class="now"><span class="dot"></span><span class="lbl">${tr("Adesso ·")} ${fmt.time(new Date(this.now))}</span><span class="line"></span></div>`;
+    return html`<div class="now"><span class="dot"></span><span class="lbl">${tr("Now ·")} ${fmt.time(new Date(this.now))}</span><span class="line"></span></div>`;
   }
 
   private row(ev: CalEvent) {
@@ -136,12 +136,12 @@ export class ChronosCalList extends LitElement {
     const w = this.weather.events[ev.id];
     if (!w?.hour) return nothing;
     const wet = ['rain', 'drizzle', 'storm', 'snow'].includes(w.hour.icon);
-    return html`<span class="wx"><hxk-icon name=${w.hour.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${w.place ? w.place + ': ' : ''}${w.hour.temp_c}°, ${w.hour.condition}${w.hour.rain_prob ? ` (pioggia ${w.hour.rain_prob}%)` : ''}</span>`;
+    return html`<span class="wx"><hxk-icon name=${w.hour.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${w.place ? w.place + ': ' : ''}${w.hour.temp_c}°, ${w.hour.condition}${w.hour.rain_prob ? tr(' (rain {0}%)', w.hour.rain_prob) : ''}</span>`;
   }
 
   render() {
     const groups = groupByDay(this.events, this.from, this.now);
-    if (!groups.length) return html`<hxk-state kind="empty" text=${tr("Niente in programma: nessuna voce nel periodo con i filtri attuali.")}></hxk-state>`;
+    if (!groups.length) return html`<hxk-state kind="empty" text=${tr("Nothing scheduled: no item in the period with the current filters.")}></hxk-state>`;
     return groups.map(g => html`${g.nowBefore ? this.nowLine() : nothing}
       <section><h3 class=${g.today ? 'today' : ''}>${g.label}${wxChip(this.weather.days[g.key], extLines(this.weather, g.key))}</h3>
         ${g.events.map(ev => html`${g.nowAt === ev.id ? this.nowLine() : nothing}${this.row(ev)}`)}

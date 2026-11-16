@@ -6,14 +6,15 @@ instead of an Italian voice reading English (or the other way round). Short or u
 from __future__ import annotations
 
 import logging
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("echo.lang")
 
-NAMES = {"it": "italiano", "en": "inglese", "es": "spagnolo", "fr": "francese", "de": "tedesco", "pt": "portoghese",
-         "ja": "giapponese", "zh": "cinese", "hi": "hindi", "nl": "olandese", "pl": "polacco", "ru": "russo"}
+NAMES = {"it": "lang::Italian", "en": "lang::English", "es": "lang::Spanish", "fr": "lang::French", "de": "lang::German", "pt": "lang::Portuguese",
+         "ja": "lang::Japanese", "zh": "lang::Chinese", "hi": "lang::Hindi", "nl": "lang::Dutch", "pl": "lang::Polish", "ru": "lang::Russian"}
 # What the setup's «Ascolta» says, in the language of the voice tried. ``{assistant}`` is the name the owner gave her
 # (docs/work/2026-11-16-nome-ovunque); scripts that do not use Latin letters keep their own spelling only for the
-# default name.
+# default name. Each sentence is in its own language on purpose (the voice of that language reads it).
 SAMPLE = {"it": "Ciao, sono {assistant}. Questa è la mia voce.", "en": "Hi, I'm {assistant}. This is my voice.",
           "es": "Hola, soy {assistant}. Esta es mi voz.", "fr": "Bonjour, je suis {assistant}. Voici ma voix.",
           "de": "Hallo, ich bin {assistant}. Das ist meine Stimme.",
@@ -55,4 +56,4 @@ def detect(text: str, fallback: str) -> str:
 
 
 def name(code: str) -> str:
-    return NAMES.get((code or "")[:2], code or "")
+    return tr(NAMES[(code or "")[:2]]) if (code or "")[:2] in NAMES else (code or "")

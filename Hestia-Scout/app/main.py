@@ -53,8 +53,8 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_scout")
 
 # What Scout asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
-LLM_USECASES = [llm_usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
-                            help="Estrae i dati degli annunci dalle mail di Scout.")]
+LLM_USECASES = [llm_usecase("scout.annunci", "Scout · reading listings", chain="veloce",
+                            help="Extracts the listing data from Scout's emails.")]
 
 TARGET_DOMAIN = "real_estate"
 
@@ -128,9 +128,9 @@ _cycle_state: dict[str, Any] = {"running": False, "last_started": None, "last_fi
 
 def _mail_rules() -> list[dict]:
     senders, queries = scout_settings.mail_rule_parts()
-    return [mail_rule(MAIL_KEY, tr("Annunci immobiliari"), path="/api/scout/mail", domain=TARGET_DOMAIN,
+    return [mail_rule(MAIL_KEY, "Real estate listings", path="/api/scout/mail", domain=TARGET_DOMAIN,
                       senders=senders, queries=queries,
-                      description="Email dei portali immobiliari: Scout estrae e aggiorna gli immobili.")]
+                      description="Emails from property portals: Scout extracts and updates the houses.")]
 
 
 def _on_settings_change(changed: dict) -> None:
@@ -238,7 +238,7 @@ api_app.include_router(ui_plugin.router())
 api_app.include_router(build_ui_router(
     ui_store, run_cycle=check_now, cycle_status=scout_cycle_status))
 api_app.include_router(recap.recap_router(
-    "scout", lambda day, nxt: recap.piece("scout", tr("Case"), icon="home", emoji="🏠", order=20,
+    "scout", lambda day, nxt: recap.piece("scout", tr("Houses"), icon="home", emoji="🏠", order=20,
                                          **recap_facts(ui_store.views(), day))))
 
 # ── export / import (hestia_common.transfer): the listings with the user's own marks ─────────────────────
@@ -251,7 +251,7 @@ class ListingsSection(Section):
     deletes: listings come back from the mail cycle anyway."""
 
     def __init__(self, store: ListingStore):
-        super().__init__("annunci", tr("Annunci"), icon="home", deletes=False)
+        super().__init__("annunci", tr("Listings"), icon="home", deletes=False)
         self.store = store
 
     def records(self, *, deleted: bool = False) -> list[dict]:
@@ -274,7 +274,7 @@ class ListingsSection(Section):
             if not self.store.archive.upsert_entity({"entity_id": r["key"], "domain": self.store.domain,
                                                      "status": r.get("status") or "active",
                                                      "payload": r.get("payload") or {}}):
-                raise RuntimeError(tr("archivio non raggiungibile"))
+                raise RuntimeError(tr("archive not reachable"))
         self.store.records(fresh=True)
 
 
@@ -406,7 +406,7 @@ if _HAS_MCP:
     def _mcp_scout_fetch() -> dict:
         """Trigger a full email fetch + parse + extract cycle on demand."""
         check_now()
-        return {"status": "ok", "message": tr("Controllo avviato: le email annunci dell'ultimo giorno vengono ripassate e lette.")}
+        return {"status": "ok", "message": tr("Check started: the listing emails of the last day are gone through and read.")}
 
     def _mcp_scout_stats() -> dict:
         """Return real_estate domain summary: counts, statuses, date ranges."""
@@ -436,13 +436,13 @@ if _HAS_MCP:
 
     def stats_display(total: int, by_status: dict, newest) -> dict:
         from hestia_common.display import action, display, item
-        names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
-                 "unknown": "senza stato"}
+        names = {"available": tr("available"), "sold": tr("sold"), "rented": tr("rented"), "removed": tr("removed"),
+                 "unknown": "without a state"}
         when = str(newest or "")[:10]
-        return display(tr("Case"), subtitle=f"{total} annunci", footer=tr("Ultimo arrivato il {0}/{1}", when[8:10], when[5:7]) if when else "",
+        return display(tr("Houses"), subtitle=tr("{0} listings", total), footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",
                        items=[item(names.get(k, k.replace("_", " ")), [str(v)]) for k, v in sorted(by_status.items(),
                                                                                          key=lambda kv: -kv[1])],
-                       actions=[action(tr("Cerca case"), "scout.search", style="primary")])
+                       actions=[action(tr("Search houses"), "scout.search", style="primary")])
 
     mcp_tools = [
         MCPTool(name="scout.search",
@@ -459,10 +459,10 @@ if _HAS_MCP:
                         "limit": {"type": "integer", "description": "Max results (default 30)"},
                     },
                 }, handler=_mcp_scout_search,
-                title="Cerca case", method="POST", path="/api/tools/real_estate/search",
+                title="Search houses", method="POST", path="/api/tools/real_estate/search",
                 clients=["*"], response_mode="oracle_natural", response_prompt="",
                 telegram_visible=True, telegram_group="case",
-                telegram={"section": "Case", "primary": 2}),
+                telegram={"section": "Houses", "primary": 2}),
         MCPTool(name="scout_reconcile",
                 description="Run Scout data reconciliation maintenance.",
                 parameters={
@@ -471,33 +471,33 @@ if _HAS_MCP:
                         "dry_run": {"type": "boolean", "description": "Simulate without changes"},
                     },
                 }, handler=_mcp_scout_reconcile,
-                title="Riconcilia case", method="POST", path="/api/module/maintenance/reconcile",
+                title="Reconcile houses", method="POST", path="/api/module/maintenance/reconcile",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Summarise the Scout reconciliation result: whether it was a dry run and what was checked.",
                 telegram_visible=True, telegram_group="case",
-                telegram={"section": "Avanzate"}),
+                telegram={"section": "Advanced"}),
         MCPTool(name="scout_fetch",
                 description="Check listing emails NOW: Iris passes the last day's listing mails again and Scout "
                             "parses and extracts them (new mails normally arrive by themselves). "
                             "Use when the user wants to check for new house listings NOW.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_fetch,
-                title="Controlla email delle case", method="POST", path="/api/scout/check",
+                title="Check house emails", method="POST", path="/api/scout/check",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Confirm the fetch cycle started and that the logs show the result.",
                 telegram_visible=True, telegram_group="case",
-                telegram={"section": "Case", "primary": 3, "label": "Controlla email"}),
+                telegram={"section": "Houses", "primary": 3, "label": "Check emails"}),
         MCPTool(name="scout_stats",
                 description="Return real_estate domain statistics: total entities, "
                             "breakdown by listing status (available/sold/etc), "
                             "and date range of when listings were added.",
                 parameters={"type": "object", "properties": {}, "required": []},
                 handler=_mcp_scout_stats,
-                title="Statistiche case", method="GET", path="/api/scout/stats",
+                title="House statistics", method="GET", path="/api/scout/stats",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Show the real estate statistics readably.",
                 telegram_visible=True, telegram_group="case",
-                telegram={"section": "Case", "summary": True}),
+                telegram={"section": "Houses", "summary": True}),
     ]
     api_app.include_router(create_mcp_router(mcp_tools, service_name="scout"))
     # REST paths of MCP-only tools (scout_stats → GET /api/scout/stats); Hub/Telegram call by path.

@@ -64,13 +64,13 @@ def _extract_json(raw: str) -> dict:
     raw = re.sub(r"^```[a-zA-Z]*\s*|```\s*$", "", raw.strip())
     m = re.search(r"\{.*\}", raw, re.S)
     if not m:
-        raise ParseError(tr("risposta non in JSON"), 502)
+        raise ParseError(tr("answer not in JSON"), 502)
     try:
         data = json.loads(m.group(0))
     except json.JSONDecodeError as exc:
-        raise ParseError(tr("JSON non valido: {0}", exc), 502) from exc
+        raise ParseError(tr("invalid JSON: {0}", exc), 502) from exc
     if not isinstance(data, dict):
-        raise ParseError(tr("JSON non è un oggetto"), 502)
+        raise ParseError(tr("JSON is not an object"), 502)
     return data
 
 
@@ -115,7 +115,7 @@ def normalize(data: dict, text: str, now: datetime, tz: ZoneInfo) -> dict:
 def parse(text: str, now: datetime | None = None, tz_name: str | None = None) -> dict:
     text = (text or "").strip()
     if len(text) < 3:
-        raise ParseError("testo troppo corto")
+        raise ParseError(tr("text too short"))
     try:
         tz = ZoneInfo(tz_name or _TZ_DEFAULT)
     except Exception:
@@ -129,7 +129,7 @@ def parse(text: str, now: datetime | None = None, tz_name: str | None = None) ->
         raise
     except Exception as exc:
         logger.warning("[🔄] event=agenda_parse_oracle_failed error=%s", exc)
-        raise ParseError(tr("Oracle non raggiungibile"), 503) from exc
+        raise ParseError(tr("Oracle not reachable"), 503) from exc
     draft = normalize(_extract_json(raw), text, now, tz)
     logger.info("event=agenda_parsed type=%s recurring=%s", draft["type"], bool(draft["recurrence"]))
     return draft
@@ -160,7 +160,7 @@ def _utc(iso: str) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def to_ics(occurrences: list[dict], name: str = "Agenda di Hestia") -> str:
+def to_ics(occurrences: list[dict], name: str = "Hestia's agenda") -> str:
     """Expanded occurrences (not RRULEs: overrides/skips are already applied) as VEVENTs."""
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Hestia//Agenda//IT", "CALSCALE:GREGORIAN",

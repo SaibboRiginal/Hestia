@@ -63,11 +63,11 @@ def parse(hdrs: Mapping[str, Any] | None = None, client: str = "") -> dict[str, 
 def default_label(kind: str, ref: str = "") -> str:
     """Short user-facing label (never a module name: R5)."""
     if kind == "routine":
-        return tr("Da una tua routine")
+        return tr("From one of your routines")
     if kind == "esterno":
-        return tr("Da un'altra AI collegata")
+        return tr("From another linked AI")
     if kind in ("autonomo", "modulo"):
-        return tr("Iniziativa dell'assistente")
+        return tr("Assistant's initiative")
     return ""
 
 

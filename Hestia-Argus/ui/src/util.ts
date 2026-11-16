@@ -1,13 +1,13 @@
-import { css, tr } from '@hestia/webui-sdk';
+import { css, locale, tr } from '@hestia/webui-sdk';
 
 export const API = '/api/argus';
 
 export const STATUS: Record<string, [string, string]> = {
-  up: ['success', 'ok'], degraded: ['warning', 'degradato'], down: ['danger', tr('giù')],
+  up: ['success', 'ok'], degraded: ['warning', tr('degraded')], down: ['danger', tr('down')],
 };
 
 export function statusOf(s?: string | null): [string, string] {
-  return (s && STATUS[s]) || ['neutral', s || tr('nessun dato')];
+  return (s && STATUS[s]) || ['neutral', s || tr('no data')];
 }
 
 /** epoch seconds → "12 s fa" / "5 min fa" / date. */
@@ -22,7 +22,7 @@ export function ago(epoch?: number | null): string {
 
 export function when(epoch?: number | null): string {
   if (!epoch) return '–';
-  return new Date(epoch * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(epoch * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function duration(sec?: number | null): string {

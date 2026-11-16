@@ -46,7 +46,7 @@ export class HygieiaProductForm extends LitElement {
     this.activeQ = '';
   }
   private async save() {
-    if (!this.v.name.trim()) { this.host.toast(tr('Il nome è obbligatorio'), 'warning'); return; }
+    if (!this.v.name.trim()) { this.host.toast(tr('The name is required'), 'warning'); return; }
     this.saving = true;
     const body: any = {};
     for (const k of Object.keys(EMPTY)) body[k] = this.v[k] === '' ? null : this.v[k];
@@ -54,7 +54,7 @@ export class HygieiaProductForm extends LitElement {
     const r = this.product?.id ? await call(this.host, 'PUT', `${API}/products/${this.product.id}`, { body })
       : await call(this.host, 'POST', `${API}/products`, { body });
     this.saving = false;
-    if (r.ok) { this.host.toast(this.product?.id ? tr('Prodotto aggiornato') : `${r.data.name} aggiunto`, 'success'); this.close(r.data); }
+    if (r.ok) { this.host.toast(this.product?.id ? tr('Product updated') : tr('{0} added', r.data.name), 'success'); this.close(r.data); }
   }
   render() {
     const v = this.v, m = this.m;
@@ -62,58 +62,58 @@ export class HygieiaProductForm extends LitElement {
     const activeOpts = (m?.actives || []).filter((a: any) => this.activeQ && a.label.toLowerCase().includes(this.activeQ.toLowerCase())
       && !v.actives.some((x: any) => x.name === a.value)).slice(0, 8);
     return html`<div class="sheet" @click=${(e: Event) => { if (e.target === e.currentTarget) this.close(); }}><div class="card col">
-      <div class="between"><h2>${this.product?.id ? tr('Modifica prodotto') : tr('Nuovo prodotto')}</h2><hxk-button variant="ghost" icon="x" @click=${() => this.close()}></hxk-button></div>
+      <div class="between"><h2>${this.product?.id ? tr('Edit product') : tr('New product')}</h2><hxk-button variant="ghost" icon="x" @click=${() => this.close()}></hxk-button></div>
       <div class="form">
-        <hxk-field label=${tr("Nome *")} placeholder=${tr("es. Retinol 0.2% in Squalane")} .value=${v.name} @change=${(e: CustomEvent) => this.set('name', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Marca")} placeholder=${tr("es. The Ordinary")} .value=${v.brand} @change=${(e: CustomEvent) => this.set('brand', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Name *")} placeholder=${tr("e.g. Retinol 0.2% in Squalane")} .value=${v.name} @change=${(e: CustomEvent) => this.set('name', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Brand")} placeholder=${tr("e.g. The Ordinary")} .value=${v.brand} @change=${(e: CustomEvent) => this.set('brand', e.detail)}></hxk-field>
       </div>
-      <h3>${tr("Zone")}</h3>
+      <h3>${tr("Zones")}</h3>
       <div class="chips">${(m?.areas || []).map((a: any) => html`<button class="chip" aria-pressed=${v.areas.includes(a.value)}
         @click=${() => this.set('areas', v.areas.includes(a.value) ? v.areas.filter((x: string) => x !== a.value) : [...v.areas, a.value])}>${a.label}</button>`)}</div>
       <div class="form">
-        <hxk-field label=${tr("Tipo")} type="enum" .options=${[{ value: '', label: '—' }, ...cats.map((c: any) => ({ value: c.value, label: c.label }))]} .value=${v.category || ''}
+        <hxk-field label=${tr("Type")} type="enum" .options=${[{ value: '', label: '—' }, ...cats.map((c: any) => ({ value: c.value, label: c.label }))]} .value=${v.category || ''}
           @change=${(e: CustomEvent) => this.set('category', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Stato")} type="enum" .options=${Object.entries(m?.statuses || {}).map(([value, l]) => ({ value, label: l as string }))} .value=${v.status}
+        <hxk-field label=${tr("Status")} type="enum" .options=${Object.entries(m?.statuses || {}).map(([value, l]) => ({ value, label: l as string }))} .value=${v.status}
           @change=${(e: CustomEvent) => this.set('status', e.detail)}></hxk-field>
       </div>
-      <h3>${tr("Attivi")}</h3>
-      <div class="chips">${v.actives.map((a: any) => html`<button class="chip" aria-pressed="true" title=${tr("Togli")}
+      <h3>${tr("pl::Active")}</h3>
+      <div class="chips">${v.actives.map((a: any) => html`<button class="chip" aria-pressed="true" title=${tr("Remove")}
         @click=${() => this.set('actives', v.actives.filter((x: any) => x.name !== a.name))}>${label(m?.actives, a.name)}${a.percent ? ` ${a.percent}%` : ''} ${icon('x', 12)}</button>`)}</div>
-      <div class="row"><input class="in grow" placeholder=${tr("Aggiungi attivo (retinolo, niacinamide…)")} .value=${this.activeQ}
+      <div class="row"><input class="in grow" placeholder=${tr("Add an active ingredient (retinol, niacinamide…)")} .value=${this.activeQ}
         @input=${(e: any) => (this.activeQ = e.target.value)} @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addActive()}>
-        <hxk-button size="sm" icon="plus" @click=${() => this.addActive()}>${tr("Aggiungi")}</hxk-button></div>
+        <hxk-button size="sm" icon="plus" @click=${() => this.addActive()}>${tr("Add")}</hxk-button></div>
       ${activeOpts.length ? html`<div class="chips">${activeOpts.map((a: any) => html`<button class="chip"
         @click=${() => { this.set('actives', [...v.actives, { name: a.value }]); this.activeQ = ''; }}>${a.label}</button>`)}</div>` : nothing}
-      <div class="row"><hxk-field label=${tr("Preferito (in Home)")} type="bool" .value=${!!v.favorite} @change=${(e: CustomEvent) => this.set('favorite', e.detail)}></hxk-field></div>
-      <button class="link small" @click=${() => (this.more = !this.more)}>${this.more ? tr('Meno dettagli') : tr('Altri dettagli: prezzo, date, scadenza, voto…')}</button>
+      <div class="row"><hxk-field label=${tr("alt::Favourite (in Home)")} type="bool" .value=${!!v.favorite} @change=${(e: CustomEvent) => this.set('favorite', e.detail)}></hxk-field></div>
+      <button class="link small" @click=${() => (this.more = !this.more)}>${this.more ? tr('Fewer details') : tr('More details: price, dates, expiry, rating…')}</button>
       ${this.more ? html`<div class="form">
-        <hxk-field label=${tr("Linea")} .value=${v.line || ''} @change=${(e: CustomEvent) => this.set('line', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Formato")} type="float" .value=${v.size} unit=${v.unit || 'ml'} @change=${(e: CustomEvent) => this.set('size', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Unità")} type="enum" .options=${m?.units || ['ml', 'g']} .value=${v.unit || 'ml'} @change=${(e: CustomEvent) => this.set('unit', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Prezzo")} type="float" unit=${m?.currency || 'EUR'} .value=${v.price} @change=${(e: CustomEvent) => this.set('price', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Negozio")} .value=${v.shop || ''} @change=${(e: CustomEvent) => this.set('shop', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Line")} .value=${v.line || ''} @change=${(e: CustomEvent) => this.set('line', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Format")} type="float" .value=${v.size} unit=${v.unit || 'ml'} @change=${(e: CustomEvent) => this.set('size', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Unit")} type="enum" .options=${m?.units || ['ml', 'g']} .value=${v.unit || 'ml'} @change=${(e: CustomEvent) => this.set('unit', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Price")} type="float" unit=${m?.currency || 'EUR'} .value=${v.price} @change=${(e: CustomEvent) => this.set('price', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Shop")} .value=${v.shop || ''} @change=${(e: CustomEvent) => this.set('shop', e.detail)}></hxk-field>
         <hxk-field label=${tr("Link")} .value=${v.url || ''} @change=${(e: CustomEvent) => this.set('url', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Comprato il")} type="date" .value=${v.purchased_at || ''} @change=${(e: CustomEvent) => this.set('purchased_at', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Aperto il")} type="date" .value=${v.opened_at || ''} @change=${(e: CustomEvent) => this.set('opened_at', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Dopo l'apertura (PAO)")} type="int" unit=${tr("mesi")} .value=${v.pao_months} @change=${(e: CustomEvent) => this.set('pao_months', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Scadenza")} type="date" .value=${v.expires_at || ''} @change=${(e: CustomEvent) => this.set('expires_at', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Livello")} type="enum" .options=${[{ value: '', label: '—' }, ...Object.entries(m?.levels || {}).map(([value, l]) => ({ value, label: l as string }))]}
+        <hxk-field label=${tr("Bought on")} type="date" .value=${v.purchased_at || ''} @change=${(e: CustomEvent) => this.set('purchased_at', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Opened on")} type="date" .value=${v.opened_at || ''} @change=${(e: CustomEvent) => this.set('opened_at', e.detail)}></hxk-field>
+        <hxk-field label=${tr("After opening (PAO)")} type="int" unit=${tr("months")} .value=${v.pao_months} @change=${(e: CustomEvent) => this.set('pao_months', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Deadline")} type="date" .value=${v.expires_at || ''} @change=${(e: CustomEvent) => this.set('expires_at', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Level")} type="enum" .options=${[{ value: '', label: '—' }, ...Object.entries(m?.levels || {}).map(([value, l]) => ({ value, label: l as string }))]}
           .value=${v.level || ''} @change=${(e: CustomEvent) => this.set('level', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Voto (1–5)")} type="int" .value=${v.rating} @change=${(e: CustomEvent) => this.set('rating', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Lo ricompreresti?")} type="enum" .options=${[{ value: '', label: '—' }, ...Object.entries(m?.verdicts || {}).map(([value, l]) => ({ value, label: l as string }))]}
+        <hxk-field label=${tr("Rating (1–5)")} type="int" .value=${v.rating} @change=${(e: CustomEvent) => this.set('rating', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Would you buy it again?")} type="enum" .options=${[{ value: '', label: '—' }, ...Object.entries(m?.verdicts || {}).map(([value, l]) => ({ value, label: l as string }))]}
           .value=${v.verdict || ''} @change=${(e: CustomEvent) => this.set('verdict', e.detail)}></hxk-field>
-        <hxk-field label=${tr("Etichette")} type="list" .value=${v.tags || []} @change=${(e: CustomEvent) => this.set('tags', e.detail)}></hxk-field>
-        <hxk-field class="full" label=${tr("Note")} type="textarea" .value=${v.notes || ''} @change=${(e: CustomEvent) => this.set('notes', e.detail)}></hxk-field>
-        <hxk-field class="full" label=${tr("INCI (ingredienti)")} type="textarea" .value=${v.inci || ''} @change=${(e: CustomEvent) => this.set('inci', e.detail)}></hxk-field>
+        <hxk-field label=${tr("Labels")} type="list" .value=${v.tags || []} @change=${(e: CustomEvent) => this.set('tags', e.detail)}></hxk-field>
+        <hxk-field class="full" label=${tr("Notes")} type="textarea" .value=${v.notes || ''} @change=${(e: CustomEvent) => this.set('notes', e.detail)}></hxk-field>
+        <hxk-field class="full" label=${tr("INCI (ingredients)")} type="textarea" .value=${v.inci || ''} @change=${(e: CustomEvent) => this.set('inci', e.detail)}></hxk-field>
       </div>` : nothing}
-      <div class="row"><span class="grow"></span><hxk-button variant="ghost" @click=${() => this.close()}>${tr("Annulla")}</hxk-button>
-        <hxk-button variant="primary" icon="check" ?loading=${this.saving} @click=${() => this.save()}>${tr("Salva")}</hxk-button></div>
+      <div class="row"><span class="grow"></span><hxk-button variant="ghost" @click=${() => this.close()}>${tr("Cancel")}</hxk-button>
+        <hxk-button variant="primary" icon="check" ?loading=${this.saving} @click=${() => this.save()}>${tr("Save")}</hxk-button></div>
     </div></div>`;
   }
 }
 
-const VIEWS: Array<[string, string]> = [['current', tr('In uso e scorta')], ['wishlist', tr('Desideri')], ['finished,discarded', tr('Finiti')], ['', tr('Tutti')]];
-const SORTS: Array<[string, string]> = [['', tr('Più usati')], ['expiry', tr('Scadenza')], ['last_used', tr('Usati di recente')], ['name', tr('Nome')], ['price', tr('Prezzo')]];
+const VIEWS: Array<[string, string]> = [['current', tr('In use and in stock')], ['wishlist', tr('Wishes')], ['finished,discarded', tr('pl::Finished')], ['', tr('pl::All')]];
+const SORTS: Array<[string, string]> = [['', tr('Most used')], ['expiry', tr('Deadline')], ['last_used', tr('Recently used')], ['name', tr('Name')], ['price', tr('Price')]];
 
 export class HygieiaProducts extends HestiaElement {
   static properties = { ...HestiaElement.properties, items: { state: true }, view: { state: true }, area: { state: true }, q: { state: true },
@@ -151,7 +151,7 @@ export class HygieiaProducts extends HestiaElement {
     return html`<div class="li" @click=${() => this.host.navigate('prodotti/' + p.id)}>
       <div class="grow">
         <div class="truncate">${p.favorite ? html`${icon('star', 13, 'warning')} ` : nothing}<b>${p.name}</b>${p.brand ? html`<span class="muted"> · ${p.brand}</span>` : nothing}</div>
-        <div class="small muted truncate">${[label(this.m?.categories, p.category), p.uses ? `${p.uses} usi` : '', p.last_used ? `ultimo ${relDays(p.last_used)}` : '',
+        <div class="small muted truncate">${[label(this.m?.categories, p.category), p.uses ? tr('{0} uses', p.uses) : '', p.last_used ? tr('last {0}', relDays(p.last_used)) : '',
           (p.routines || []).map((r: any) => r.name).join(', ')].filter(Boolean).join(' · ')}</div>
       </div>
       ${exp !== null && exp !== undefined && exp <= 60 && ['in_use', 'stock'].includes(p.status) ? html`<span class="pill ${exp < 0 ? 'bad' : 'warn'}">${icon('hourglass', 12)} ${inDays(exp)}</span>` : nothing}
@@ -160,13 +160,13 @@ export class HygieiaProducts extends HestiaElement {
     </div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Oggi")}</button><h1>${tr("Prodotti")}</h1>
+    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
       ${this.items ? html`<span class="sub">${this.items.length}</span>` : nothing}</div>
-      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('spesa')}>${tr("Spesa")}</hxk-button>
-        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Nuovo")}</hxk-button></div></div>`;
+      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('spesa')}>${tr('Shopping list')}</hxk-button>
+        <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div></div>`;
     return html`<div class="page">${head}
       <div class="filters">
-        <input class="in grow" style="min-width:180px" placeholder=${tr("Cerca per nome, marca, tipo…")} .value=${this.q} @input=${(e: any) => this.setQ(e.target.value)}>
+        <input class="in grow" style="min-width:180px" placeholder=${tr("Search by name, brand, type…")} .value=${this.q} @input=${(e: any) => this.setQ(e.target.value)}>
         <select class="in" @change=${(e: any) => { this.sort = e.target.value; this.load(); }}>${SORTS.map(([v, l]) => html`<option value=${v} ?selected=${v === this.sort}>${l}</option>`)}</select>
       </div>
       <div class="tabs">${VIEWS.map(([v, l]) => html`<button class="tab" aria-pressed=${this.view === v} @click=${() => { this.view = v; this.load(); }}>${l}</button>`)}</div>
@@ -175,8 +175,8 @@ export class HygieiaProducts extends HestiaElement {
       ${this.items === undefined ? html`<hxk-state kind="loading"></hxk-state>`
         : this.items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`
         : this.items.length ? html`<div class="card list">${this.items.map(p => this.row(p))}</div>`
-        : html`<div class="card col" style="align-items:flex-start"><div class="muted">${this.q || this.area ? tr('Nessun prodotto con questi filtri.') : tr('Ancora nessun prodotto qui.')}</div>
-            <hxk-button icon="plus" @click=${() => (this.form = true)}>${tr("Aggiungi un prodotto")}</hxk-button></div>`}
+        : html`<div class="card col" style="align-items:flex-start"><div class="muted">${this.q || this.area ? tr('No product with these filters.') : tr('No product here yet.')}</div>
+            <hxk-button icon="plus" @click=${() => (this.form = true)}>${tr("Add a product")}</hxk-button></div>`}
       ${this.form ? html`<hygieia-product-form .host=${this.host} @close=${(e: CustomEvent) => { this.form = false; if (e.detail) this.host.navigate('prodotti/' + e.detail.id); }}></hygieia-product-form>` : nothing}
     </div>`;
   }
@@ -207,18 +207,18 @@ export class HygieiaProduct extends HestiaElement {
   }
   private async use() {
     const r = await call(this.host, 'POST', `${API}/products/${this.rid}/use`, { body: {} });
-    if (r.ok) this.host.toast(tr('Uso segnato'), 'success', { label: tr('Annulla'), run: async () => { await call(this.host, 'DELETE', `${API}/products/${this.rid}/use`); this.load(); } });
+    if (r.ok) this.host.toast(tr('Usage recorded'), 'success', { label: tr('Cancel'), run: async () => { await call(this.host, 'DELETE', `${API}/products/${this.rid}/use`); this.load(); } });
     this.load();
   }
   private async drop() {
-    if (!await this.host.confirm(tr('Elimina prodotto'), tr('Lo togli dall\'elenco. Se l\'hai finito o buttato, meglio segnarlo così: resta nello storico.'), { label: tr('Elimina'), danger: true })) return;
+    if (!await this.host.confirm(tr('Delete product'), tr('You remove it from the list. If you finished it or threw it away, better mark it so: it stays in the history.'), { label: tr('Delete'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `${API}/products/${this.rid}`);
     if (r.ok) this.host.navigate('prodotti');
   }
   render() {
-    const back = html`<button class="link" @click=${() => this.host.navigate('prodotti')}>‹ Prodotti</button>`;
+    const back = html`<button class="link" @click=${() => this.host.navigate('prodotti')}>${tr('‹ Products')}</button>`;
     if (this.p === undefined) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
-    if (this.p === 'missing') return html`<div class="page">${back}<hxk-state kind="empty" text=${tr("Prodotto non trovato")}></hxk-state></div>`;
+    if (this.p === 'missing') return html`<div class="page">${back}<hxk-state kind="empty" text=${tr("Product not found")}></hxk-state></div>`;
     if (this.p === null) return html`<div class="page">${back}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
     const p = this.p, m = this.m;
     const fe = p.finish_estimate;
@@ -229,44 +229,44 @@ export class HygieiaProduct extends HestiaElement {
         <div class="col" style="gap:2px"><h1>${p.favorite ? html`${icon('star', 20, 'warning')} ` : nothing}${p.name}</h1>
           <div class="muted">${[p.brand, p.line, label(m?.categories, p.category), (p.areas || []).map((a: string) => label(m?.areas, a)).join(', ')].filter(Boolean).join(' · ')}</div></div>
         <div class="row"><hxk-badge tone=${STATUS_TONE[p.status] || 'neutral'}>${p.status_label}</hxk-badge>
-          <hxk-button size="sm" icon="edit" @click=${() => (this.form = true)}>${tr("Modifica")}</hxk-button></div>
+          <hxk-button size="sm" icon="edit" @click=${() => (this.form = true)}>${tr("Edit")}</hxk-button></div>
       </div>
       <div class="row wrap">
-        ${current ? html`<hxk-button variant="primary" icon="check" @click=${() => this.use()}>${tr("Usato oggi")}</hxk-button>` : nothing}
-        ${p.status === 'stock' || p.status === 'paused' || p.status === 'wishlist' ? html`<hxk-button icon="play" @click=${() => this.act('status', { status: 'in_use' })}>${p.status === 'wishlist' ? tr('Comprato, in uso') : tr('Inizia a usarlo')}</hxk-button>` : nothing}
-        ${p.status === 'wishlist' ? html`<hxk-button @click=${() => this.act('status', { status: 'stock' })}>${tr("Comprato, in scorta")}</hxk-button>` : nothing}
-        ${p.status === 'in_use' ? html`<hxk-button icon="pause" @click=${() => this.act('status', { status: 'paused' })}>${tr("Pausa")}</hxk-button>
-          <hxk-button icon="check" @click=${() => this.act('status', { status: 'finished' })}>${tr("Finito")}</hxk-button>` : nothing}
-        ${current ? html`<hxk-button variant="ghost" icon="trash" @click=${() => this.act('status', { status: 'discarded' })}>${tr("Buttato")}</hxk-button>` : nothing}
-        <hxk-button icon="refresh" @click=${() => this.act('repurchase')}>${tr("Ricomprato")}</hxk-button>
-        <hxk-button variant="ghost" icon="star" @click=${() => call(this.host, 'PUT', `${API}/products/${this.rid}`, { body: { favorite: !p.favorite } }).then(() => this.load())}>${p.favorite ? tr('Togli dai preferiti') : tr('Preferito')}</hxk-button>
+        ${current ? html`<hxk-button variant="primary" icon="check" @click=${() => this.use()}>${tr("Used today")}</hxk-button>` : nothing}
+        ${p.status === 'stock' || p.status === 'paused' || p.status === 'wishlist' ? html`<hxk-button icon="play" @click=${() => this.act('status', { status: 'in_use' })}>${p.status === 'wishlist' ? tr('Bought, in use') : tr('Start using it')}</hxk-button>` : nothing}
+        ${p.status === 'wishlist' ? html`<hxk-button @click=${() => this.act('status', { status: 'stock' })}>${tr("Bought, in stock")}</hxk-button>` : nothing}
+        ${p.status === 'in_use' ? html`<hxk-button icon="pause" @click=${() => this.act('status', { status: 'paused' })}>${tr("Pause")}</hxk-button>
+          <hxk-button icon="check" @click=${() => this.act('status', { status: 'finished' })}>${tr("Finished")}</hxk-button>` : nothing}
+        ${current ? html`<hxk-button variant="ghost" icon="trash" @click=${() => this.act('status', { status: 'discarded' })}>${tr("Thrown away")}</hxk-button>` : nothing}
+        <hxk-button icon="refresh" @click=${() => this.act('repurchase')}>${tr("Bought again")}</hxk-button>
+        <hxk-button variant="ghost" icon="star" @click=${() => call(this.host, 'PUT', `${API}/products/${this.rid}`, { body: { favorite: !p.favorite } }).then(() => this.load())}>${p.favorite ? tr('Remove from favorites') : tr('Favourite')}</hxk-button>
       </div>
-      <hxk-stat .items=${[{ label: tr('Usi'), value: p.uses || 0, hint: p.last_used ? `ultimo ${relDays(p.last_used)}` : '' },
-        { label: tr('Aperto da'), value: p.days_open ?? '–', unit: p.days_open !== null && p.days_open !== undefined ? 'giorni' : '' },
-        { label: tr('Scadenza'), value: p.expiry ? dayLabel(p.expiry, false) : '–', hint: inDays(p.expires_in), tone: p.expires_in !== null && p.expires_in < 0 ? 'danger' : p.expires_in !== null && p.expires_in <= 30 ? 'warning' : '' },
-        ...(fe ? [{ label: tr('Finisce tra'), value: `~${fe.days_left}`, unit: 'giorni', hint: fe.basis }] : []),
-        ...(p.price ? [{ label: tr('Prezzo'), value: money(p.price, p.currency), hint: p.price_per_use ? tr("{0} a uso", money(p.price_per_use, p.currency)) : '' }] : [])]}></hxk-stat>
-      ${p.status === 'in_use' ? html`<div class="card sec"><h2>${tr("Quanto ne resta")}</h2>
-        <div class="lvls">${Object.entries(m?.levels || {}).map(([k, l]) => html`<button class="chip" aria-pressed=${p.level === k} @click=${() => this.act('level', { level: k }, tr('Livello aggiornato'))}>${l}</button>`)}</div></div>` : nothing}
-      ${(p.actives || []).length ? html`<div class="card sec"><h2>${tr("Attivi")}</h2><div class="chips">${p.actives.map((a: any) => html`<span class="pill">${label(m?.actives, a.name)}${a.percent ? ` ${a.percent}%` : ''}</span>`)}</div></div>` : nothing}
-      <div class="card sec"><h2>${tr("Nelle routine")}</h2>
+      <hxk-stat .items=${[{ label: tr('Uses'), value: p.uses || 0, hint: p.last_used ? tr('last {0}', relDays(p.last_used)) : '' },
+        { label: tr('Opened by'), value: p.days_open ?? '–', unit: p.days_open !== null && p.days_open !== undefined ? tr('days') : '' },
+        { label: tr('Deadline'), value: p.expiry ? dayLabel(p.expiry, false) : '–', hint: inDays(p.expires_in), tone: p.expires_in !== null && p.expires_in < 0 ? 'danger' : p.expires_in !== null && p.expires_in <= 30 ? 'warning' : '' },
+        ...(fe ? [{ label: tr('Ends in'), value: `~${fe.days_left}`, unit: tr('days'), hint: fe.basis }] : []),
+        ...(p.price ? [{ label: tr('Price'), value: money(p.price, p.currency), hint: p.price_per_use ? tr("{0} per use", money(p.price_per_use, p.currency)) : '' }] : [])]}></hxk-stat>
+      ${p.status === 'in_use' ? html`<div class="card sec"><h2>${tr("How much is left")}</h2>
+        <div class="lvls">${Object.entries(m?.levels || {}).map(([k, l]) => html`<button class="chip" aria-pressed=${p.level === k} @click=${() => this.act('level', { level: k }, tr('Level updated'))}>${l}</button>`)}</div></div>` : nothing}
+      ${(p.actives || []).length ? html`<div class="card sec"><h2>${tr("pl::Active")}</h2><div class="chips">${p.actives.map((a: any) => html`<span class="pill">${label(m?.actives, a.name)}${a.percent ? ` ${a.percent}%` : ''}</span>`)}</div></div>` : nothing}
+      <div class="card sec"><h2>${tr("In the routines")}</h2>
         ${(p.routines || []).length ? html`<div class="list">${p.routines.map((r: any) => html`<div class="li" @click=${() => this.host.navigate('routine/' + r.id)}><span class="grow">${r.name}</span><hxk-icon name="chevron-right"></hxk-icon></div>`)}</div>`
-          : html`<div class="empty">${tr("In nessuna routine: lo segni con «Usato oggi» o aggiungilo a una routine.")}</div>`}</div>
-      ${(p.usage_weeks || []).length > 1 ? html`<div class="card sec"><h2>${tr("Uso per settimana")}</h2>
-        <hxk-chart type="bar" height="120" .labels=${p.usage_weeks.map((w: any) => dayLabel(w.week, false))} .series=${[{ name: tr('Usi'), values: p.usage_weeks.map((w: any) => w.uses) }]}></hxk-chart></div>` : nothing}
-      ${p.rating || p.verdict || p.notes ? html`<div class="card sec"><h2>${tr("Giudizio")}</h2>
+          : html`<div class="empty">${tr("In no routine: mark it with «Used today» or add it to a routine.")}</div>`}</div>
+      ${(p.usage_weeks || []).length > 1 ? html`<div class="card sec"><h2>${tr("Usage per week")}</h2>
+        <hxk-chart type="bar" height="120" .labels=${p.usage_weeks.map((w: any) => dayLabel(w.week, false))} .series=${[{ name: tr('Uses'), values: p.usage_weeks.map((w: any) => w.uses) }]}></hxk-chart></div>` : nothing}
+      ${p.rating || p.verdict || p.notes ? html`<div class="card sec"><h2>${tr("alt::Rating")}</h2>
         ${p.rating ? html`<div class="row" style="gap:2px" title=${`${p.rating}/5`}>${[1, 2, 3, 4, 5].map(i => icon('star', 16, i <= Math.round(p.rating) ? 'warning' : 'muted'))}</div>` : nothing}
         ${p.verdict ? html`<div>${m?.verdicts?.[p.verdict] || p.verdict}</div>` : nothing}
         ${p.notes ? html`<div class="small" style="white-space:pre-wrap">${p.notes}</div>` : nothing}</div>` : nothing}
-      ${(p.siblings || []).length ? html`<div class="card sec"><h2>${tr("Altre confezioni")}</h2><div class="list">${p.siblings.map((s: any) => html`
-        <div class="li" @click=${() => this.host.navigate('prodotti/' + s.id)}><div class="grow"><div>${s.status_label}${s.purchased_at ? ` · comprato ${dayLabel(s.purchased_at, false)}` : ''}</div>
-          <div class="small muted">${s.days_open !== null && s.days_open !== undefined ? tr("durato {0} giorni", s.days_open) : ''}${s.price ? ` · ${money(s.price, s.currency)}` : ''}</div></div></div>`)}</div></div>` : nothing}
-      <div class="card sec"><h2>${tr("Storia")}</h2>
+      ${(p.siblings || []).length ? html`<div class="card sec"><h2>${tr("Other packs")}</h2><div class="list">${p.siblings.map((s: any) => html`
+        <div class="li" @click=${() => this.host.navigate('prodotti/' + s.id)}><div class="grow"><div>${s.status_label}${s.purchased_at ? tr(' · bought {0}', dayLabel(s.purchased_at, false)) : ''}</div>
+          <div class="small muted">${s.days_open !== null && s.days_open !== undefined ? tr("lasted {0} days", s.days_open) : ''}${s.price ? ` · ${money(s.price, s.currency)}` : ''}</div></div></div>`)}</div></div>` : nothing}
+      <div class="card sec"><h2>${tr("alt::History")}</h2>
         ${(p.events || []).map((e: any) => html`<div class="ev"><span>${eventIcon(e.type)}</span><span class="muted tnum" style="min-width:70px">${dayLabel(e.date, false)}</span><span>${e.text}</span></div>`)}
-        ${p.url ? html`<a class="link small" href=${p.url} target="_blank" rel="noopener">${tr("Pagina del prodotto ›")}</a>` : nothing}
+        ${p.url ? html`<a class="link small" href=${p.url} target="_blank" rel="noopener">${tr("Product page ›")}</a>` : nothing}
         ${p.inci ? html`<details><summary class="small muted">${tr("INCI")}</summary><div class="small" style="white-space:pre-wrap">${p.inci}</div></details>` : nothing}
       </div>
-      <div><hxk-button variant="ghost" icon="trash" @click=${() => this.drop()}>${tr("Elimina")}</hxk-button></div>
+      <div><hxk-button variant="ghost" icon="trash" @click=${() => this.drop()}>${tr("Delete")}</hxk-button></div>
       ${this.form ? html`<hygieia-product-form .host=${this.host} .product=${p} @close=${(e: CustomEvent) => { this.form = false; if (e.detail) this.load(); }}></hygieia-product-form>` : nothing}
     </div>`;
   }

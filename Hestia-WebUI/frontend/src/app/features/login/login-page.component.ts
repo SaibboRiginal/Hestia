@@ -14,12 +14,12 @@ import { tr, TrPipe } from '../../core/i18n';
       <form class="card hx-card" (ngSubmit)="submit()">
         <div class="logo">◈</div>
         <h1>Hestia</h1>
-        <p class="sub">{{ "Inserisci il token di accesso" | tr }}</p>
-        <hx-field [error]="error()"  [hint]="'Lo ottieni con /webui_token su Telegram' | tr">
+        <p class="sub">{{ "Enter the access token" | tr }}</p>
+        <hx-field [error]="error()"  [hint]="'You get it with /webui_token on Telegram' | tr">
           <input class="hx-input mono" name="token" [(ngModel)]="token" type="password" autocomplete="off"
-                  [placeholder]="'token…' | tr" autofocus />
+                  [placeholder]="'tokens…' | tr" autofocus />
         </hx-field>
-        <button hx-btn variant="primary" size="lg" block type="submit" [loading]="loading()" [disabled]="!token">{{ "Entra" | tr }}</button>
+        <button hx-btn variant="primary" size="lg" block type="submit" [loading]="loading()" [disabled]="!token">{{ "Enter" | tr }}</button>
       </form>
     </div>`,
   styles: [`
@@ -54,6 +54,6 @@ export class LoginPageComponent {
     const ok = await this.auth.login(this.token.trim());
     this.loading.set(false);
     if (ok) this.router.navigateByUrl(this.next);
-    else this.error.set(tr('Token non valido o scaduto'));
+    else this.error.set(tr('Invalid or expired token'));
   }
 }

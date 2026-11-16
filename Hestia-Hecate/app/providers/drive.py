@@ -64,14 +64,14 @@ class DriveFiles:
         if resp.status_code in (401, 403):
             text = getattr(resp, "text", "")[:300]
             if "insufficient" in text.lower() or "scope" in text.lower():
-                raise DriveError(tr("Google Drive non autorizzato: ricollega Google"), 409, "drive_scope_missing")
+                raise DriveError(tr("Google Drive not authorized: link Google again"), 409, "drive_scope_missing")
             if "accessNotConfigured" in text or "has not been used" in text or "disabled" in text:
-                raise DriveError(tr("Google Drive API non abilitata nel progetto Google"), 409, "drive_api_disabled")
-            raise DriveError(f"{what}: accesso negato ({resp.status_code})", 409, "drive_forbidden")
+                raise DriveError(tr("Google Drive API not enabled in the Google project"), 409, "drive_api_disabled")
+            raise DriveError(tr("{0}: access denied ({1})", what, resp.status_code), 409, "drive_forbidden")
         if resp.status_code == 404:
-            raise DriveError(tr("{0}: non trovato", what), 404, "not_found")
+            raise DriveError(tr("{0}: not found", what), 404, "not_found")
         if resp.status_code >= 400:
-            raise DriveError(tr("{0}: Google ha risposto {1} {2}", what, resp.status_code, getattr(resp, 'text', '')[:200]))
+            raise DriveError(tr("{0}: Google answered {1} {2}", what, resp.status_code, getattr(resp, 'text', '')[:200]))
         return resp
 
     def reset(self) -> None:
@@ -93,14 +93,14 @@ class DriveFiles:
         body: dict[str, Any] = {"name": name, "mimeType": FOLDER_MIME, "appProperties": {"hestia": marker}}
         if parent:
             body["parents"] = [parent]
-        created = self._check(s.post(API, json=body, params={"fields": "id"}), "crea cartella").json()
+        created = self._check(s.post(API, json=body, params={"fields": "id"}), tr("create folder")).json()
         logger.info("event=drive_folder_created name=%s", name)
         return created["id"]
 
     def folder_id(self, folder: str) -> str:
         folder = (folder or "").strip().lower()
         if not _FOLDER_RE.match(folder):
-            raise DriveError(tr("cartella non valida: {0!r}", folder), 422, "bad_folder")
+            raise DriveError(tr("invalid folder: {0!r}", folder), 422, "bad_folder")
         with self._lock:
             if folder in self._folders:
                 return self._folders[folder]
@@ -140,7 +140,7 @@ class DriveFiles:
     def update(self, file_id: str, app_properties: dict) -> dict:
         body = {"appProperties": {str(k): (None if v is None else str(v)) for k, v in (app_properties or {}).items()}}
         resp = self._session().patch(f"{API}/{file_id}", json=body, params={"fields": FIELDS})
-        return _view(self._check(resp, "aggiorna file").json())
+        return _view(self._check(resp, tr("update file")).json())
 
     def trash(self, file_id: str) -> None:
         self._check(self._session().patch(f"{API}/{file_id}", json={"trashed": True}, params={"fields": "id"}),
@@ -156,7 +156,7 @@ class DriveFiles:
         end = min(size, offset + max(1, int(length))) - 1
         resp = self._session().get(f"{API}/{file_id}", params={"alt": "media"},
                                    headers={"Range": f"bytes={offset}-{end}"})
-        data = self._check(resp, "scarica file").content
+        data = self._check(resp, tr("download file")).content
         logger.info("event=drive_download file=%s offset=%d bytes=%d", file_id, offset, len(data))
         return data, size
 
@@ -164,15 +164,15 @@ class DriveFiles:
     def upload_start(self, folder: str, name: str, size: int, mime: str = "application/octet-stream",
                      app_properties: dict | None = None) -> str:
         if size <= 0:
-            raise DriveError("file vuoto", 422, "empty")
+            raise DriveError(tr("empty file"), 422, "empty")
         fid = self.folder_id(folder)
         meta = {"name": name, "parents": [fid], "mimeType": mime,
                 "appProperties": {str(k): str(v) for k, v in (app_properties or {}).items()}}
         resp = self._session().post(UPLOAD, params={"uploadType": "resumable", "fields": FIELDS}, json=meta,
                                     headers={"X-Upload-Content-Type": mime, "X-Upload-Content-Length": str(size)})
-        url = self._check(resp, "avvia caricamento").headers.get("Location")
+        url = self._check(resp, tr("start upload")).headers.get("Location")
         if not url:
-            raise DriveError(tr("Google non ha dato l'indirizzo di caricamento"))
+            raise DriveError(tr("Google did not give the upload address"))
         upload_id = uuid.uuid4().hex
         now = time.time()
         with self._lock:
@@ -187,19 +187,19 @@ class DriveFiles:
         with self._lock:
             up = self._uploads.get(upload_id)
         if not up:
-            raise DriveError("caricamento sconosciuto o scaduto", 404, "unknown_upload")
+            raise DriveError(tr("unknown or expired upload"), 404, "unknown_upload")
         if offset != up["received"]:
-            raise DriveError(f"posizione attesa {up['received']}, ricevuta {offset}", 409, "bad_offset")
+            raise DriveError(tr("expected position {0}, received {1}", up['received'], offset), 409, "bad_offset")
         last = offset + len(data) >= up["size"]
         if not data or (not last and len(data) % (256 * 1024)):
-            raise DriveError(tr("i pezzi devono essere multipli di 256 KiB (tranne l'ultimo)"), 422, "bad_chunk")
+            raise DriveError(tr("chunks must be multiples of 256 KiB (except the last)"), 422, "bad_chunk")
         end = offset + len(data) - 1
         resp = self._session().put(up["url"], data=data, headers={
             "Content-Length": str(len(data)), "Content-Range": f"bytes {offset}-{end}/{up['size']}"})
         if resp.status_code == 308:
             up["received"] = end + 1
             return {"received": up["received"], "done": False}
-        f = self._check(resp, "carica pezzo").json()
+        f = self._check(resp, tr("upload piece")).json()
         with self._lock:
             self._uploads.pop(upload_id, None)
         logger.info("event=drive_upload folder=%s name=%s bytes=%d", up["folder"], up["name"], up["size"])
@@ -211,10 +211,10 @@ def google_session_factory():
     from providers.google import load_google_credentials
     creds, error = load_google_credentials()
     if creds is None:
-        raise DriveError(error or tr("Google non collegato"), 409, "no_token")
+        raise DriveError(error or tr("Google not linked"), 409, "no_token")
     scopes = set(getattr(creds, "scopes", None) or getattr(creds, "granted_scopes", None) or [])
     if scopes and DRIVE_FILE_SCOPE not in scopes and "https://www.googleapis.com/auth/drive" not in scopes:
-        raise DriveError(tr("Google Drive non autorizzato: ricollega Google"), 409, "drive_scope_missing")
+        raise DriveError(tr("Google Drive not authorized: link Google again"), 409, "drive_scope_missing")
     from google.auth.transport.requests import AuthorizedSession
     return AuthorizedSession(creds)
 

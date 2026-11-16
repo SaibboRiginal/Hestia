@@ -127,13 +127,13 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
     for a in alerts:
         if a.kind == "health":
             lines.append(
-                f"- Servizio '{a.service}': stato {a.level.upper()} — {a.message}"
+                tr("- Service '{0}': state {1} — {2}", a.service, a.level.upper(), a.message)
             )
         elif a.kind == "performance":
-            lines.append(f"- Servizio '{a.service}' prestazioni: {a.message}")
+            lines.append(tr("- Service '{0}' performance: {1}", a.service, a.message))
         else:
             lines.append(
-                f"- Servizio '{a.service}' [{a.level.upper()}]: {a.message[:300]}"
+                tr("- Service '{0}' [{1}]: {2}", a.service, a.level.upper(), a.message[:300])
             )
     raw = "\n".join(lines)
 
@@ -147,7 +147,7 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
 
     narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():
-        count = f" · {len(alerts)} eventi" if len(alerts) > 1 else ""
+        count = tr(" · {0} events", len(alerts)) if len(alerts) > 1 else ""
         return f"🔔 <b>Hestia Monitor{count}</b>\n\n{narrated.strip()}"
 
     # Fallback: compact grouped plain text (still a single message, not one per alert)
@@ -160,7 +160,7 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
     for svc, msgs in by_service.items():
         fallback_lines.append(f"<b>{svc}</b>: {msgs[0]}")
         if len(msgs) > 1:
-            fallback_lines.append(f"  <i>(+{len(msgs) - 1} altri)</i>")
+            fallback_lines.append(tr("  <i>(+{0} more)</i>", len(msgs) - 1))
 
     count = len(alerts)
     return (
@@ -209,7 +209,7 @@ def send_recovery(service: str) -> None:
     if narrated and narrated.strip():
         text = f"✅ <b>Hestia Monitor</b>\n\n{narrated.strip()}"
     else:
-        text = tr("✅ <b>Hestia Monitor</b>\n<code>{0}</code> è di nuovo online.", service)
+        text = tr("✅ <b>Hestia Monitor</b>\n<code>{0}</code> is back online.", service)
 
     hermes_client.publish_event(
         domain="system",

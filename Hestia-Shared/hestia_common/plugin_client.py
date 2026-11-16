@@ -11,11 +11,11 @@ own configuration (visibility, dashboards) as its own Themis settings.
     ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/app/ui/dist")
     ui.webui(
         entry="scout.js", api_prefix="/api/ui/",
-        pages=[page("case", "Case", element="scout-listings", icon="home", order=10),
-               page("case/:id", "Annuncio", element="scout-listing", detail=True)],
-        widgets=[widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l"], auto=True,
-                        params={"city": {"type": "string", "label": "Città"}})],
-        quick_actions=[quick_action("fetch", "Controlla email", "POST", "/api/ui/cycle", icon="refresh")],
+        pages=[page("case", "Houses", element="scout-listings", icon="home", order=10),
+               page("case/:id", "Listing", element="scout-listing", detail=True)],
+        widgets=[widget("nuove", "New houses", element="scout-new-widget", sizes=["m", "l"], auto=True,
+                        params={"city": {"type": "string", "label": "City"}})],
+        quick_actions=[quick_action("fetch", "Check email", "POST", "/api/ui/cycle", icon="refresh")],
     )
     app.include_router(ui.router())                 # GET /api/ui/manifest · GET /ui/<client>/<file>
     payload["capabilities"].update(ui.capabilities(base_url))   # in the Hub registration

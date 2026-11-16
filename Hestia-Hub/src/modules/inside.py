@@ -28,16 +28,16 @@ API = "/api/ui"
 ONLINE_WINDOW = 180.0       # modules re-register every 60 s (same window as the catalog)
 SELF_TOPOLOGY = ["layer:foundation", "domain:registry", "status:stable"]
 
-ui = PluginClient("hub", title="Mappa del sistema", icon="host", color="blue", kind="core", dist=UI_DIST,
-                  description="La mappa di Hestia: ogni servizio registrato, dove gira e se risponde.",
+ui = PluginClient("hub", title="System map", icon="host", color="blue", kind="core", dist=UI_DIST,
+                  description="Hestia's map: every registered service, where it runs and whether it answers.",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hub.js", api_prefix=f"{API}/",
-    pages=[page("mappa", "Mappa", element="hub-map", icon="host", order=100,
-                help="Ogni servizio di Hestia: online o no, nodo, versione, ultimo segnale, tag di topologia.")],
-    widgets=[widget("online", "Servizi online", element="hub-online-widget", sizes=["s", "m"], auto=True,
+    pages=[page("mappa", "Map", element="hub-map", icon="host", order=100,
+                help="Every Hestia service: online or not, node, version, last signal, topology tags.")],
+    widgets=[widget("online", "Services online", element="hub-online-widget", sizes=["s", "m"], auto=True,
                     open_page="mappa", icon="host",
-                    help="Quanti servizi hanno dato segno di vita negli ultimi 3 minuti.")],
+                    help="How many services gave a sign of life in the last 3 minutes.")],
 )
 
 

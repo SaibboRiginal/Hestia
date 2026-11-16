@@ -32,12 +32,12 @@ def parse_day(text: Any) -> str:
         s = f"{m.group(3) + '-' if m.group(3) else ''}{int(m.group(2)):02d}-{int(m.group(1)):02d}"
     m = _MMDD.match(s)
     if not m:
-        raise Invalid(tr("data non valida: usa GG/MM o AAAA-MM-GG"))
+        raise Invalid(tr("invalid date: use DD/MM or YYYY-MM-DD"))
     year, month, day = m.group(1), int(m.group(2)), int(m.group(3))
     try:
         date(int(year or 2000), month, day)
     except ValueError:
-        raise Invalid(tr("data non valida: questo giorno non esiste")) from None
+        raise Invalid(tr("invalid date: this day does not exist")) from None
     return f"{year + '-' if year else ''}{month:02d}-{day:02d}"
 
 
@@ -89,8 +89,8 @@ class People:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(tr("nessuna persona «{0}»", ref))
-        raise Invalid(tr("più persone corrispondono: ") + ", ".join(h["name"] for h in hits[:5]))
+            raise NotFound(tr("no person «{0}»", ref))
+        raise Invalid(tr("several people match: ") + ", ".join(h["name"] for h in hits[:5]))
 
     def view(self, p: dict) -> dict:
         today = self.today()
@@ -109,17 +109,17 @@ class People:
         old = self.find(pid) if pid else {}
         name = str(body.get("name") or old.get("name") or "").strip()[:80]
         if not name:
-            raise Invalid(tr("serve il nome"))
+            raise Invalid(tr("the name is needed"))
         relation = body.get("relation", old.get("relation") or "altro")
         relation = relation if relation in RELATIONS else "altro"
         dates = old.get("dates") or []
         if body.get("birthday"):
             dates = [d for d in dates if d.get("kind") != "birthday"] + [
-                {"kind": "birthday", "label": tr("Compleanno"), "day": parse_day(body["birthday"]),
+                {"kind": "birthday", "label": tr("Birthday"), "day": parse_day(body["birthday"]),
                  "lead_days": int(body.get("lead_days") or 7)}]
         for d in body.get("dates") or []:
             dates.append({"kind": d.get("kind") if d.get("kind") in DATE_KINDS else "custom",
-                          "label": str(d.get("label") or tr("Data importante"))[:60], "day": parse_day(d.get("day")),
+                          "label": str(d.get("label") or tr("Important date"))[:60], "day": parse_day(d.get("day")),
                           "lead_days": int(d.get("lead_days") or 7)})
         data = {**{k: v for k, v in old.items() if k != "id"}, "name": name, "relation": relation, "dates": dates,
                 "likes": _list(body["likes"]) if "likes" in body else old.get("likes") or [],
@@ -147,7 +147,7 @@ class People:
         p = self.find(ref)
         text = str(text or "").strip()[:200]
         if not text:
-            raise Invalid("quale idea regalo?")
+            raise Invalid(tr("which gift idea?"))
         ideas = p.get("gift_ideas") or []
         if any(g["text"].casefold() == text.casefold() for g in ideas):
             return self.view(p)
@@ -193,7 +193,7 @@ class People:
         """Every date of the card → a yearly special event in the calendar (Chronos keeps the owner's edits)."""
         for i, d in enumerate(p.get("dates") or []):
             day = d["day"] if len(d["day"]) == 10 else f"2000-{d['day']}"
-            title = tr("{0} di {1}", d['label'], p['name']) if d["kind"] != "custom" else f"{d['label']} · {p['name']}"
+            title = tr("{0} of {1}", d['label'], p['name']) if d["kind"] != "custom" else f"{d['label']} · {p['name']}"
             self._hub("POST", "api/special", {"title": title, "day": day, "kind": d["kind"], "lead_days": d["lead_days"],
                                               "person": p["name"], "person_id": p["id"], "yearly": True,
                                               "source": "persone", "key": f"hera-{p['id']}-{i}", "by": "hera"})
@@ -216,9 +216,9 @@ class People:
         ideas = [g["text"] for g in p.get("gift_ideas") or [] if not g.get("done")][:5]
         if self.hub and ideas:
             self.hub.notify({"event_type": "service.action_required", "domain": "people", "entity_id": f"hera-{pid}",
-                             "payload": {"kind": "hera.gift", "service": "hera", "_source": tr("Persone"),
-                                         "_title": tr("Idee per {0}", p['name']), "level": "info", "target": "owner",
-                                         "_message": tr("Hai segnato: ") + "; ".join(ideas), "icon": "heart",
+                             "payload": {"kind": "hera.gift", "service": "hera", "_source": tr("People"),
+                                         "_title": tr("Ideas for {0}", p['name']), "level": "info", "target": "owner",
+                                         "_message": tr("You noted: ") + "; ".join(ideas), "icon": "heart",
                                          "replaces": f"hera.gift.{pid}",
                                          "_link": {"module": "hera", "page": f"persona/{pid}"}}})
         return {"handled": True, "ideas": len(ideas)}
@@ -230,18 +230,18 @@ class People:
             if self.hub:
                 self.hub.notify({"event_type": "service.action_required", "domain": "people",
                                  "entity_id": f"hera-contact-{p['id']}",
-                                 "payload": {"kind": "hera.contact", "service": "hera", "_source": tr("Persone"),
-                                             "_title": tr("Senti {0}?", p['name']), "level": "info", "target": "owner",
-                                             "_message": tr("L'ultima volta: {0}.", p['last_contact']), "icon": "user",
+                                 "payload": {"kind": "hera.contact", "service": "hera", "_source": tr("People"),
+                                             "_title": tr("Call {0}?", p['name']), "level": "info", "target": "owner",
+                                             "_message": tr("Last time: {0}.", p['last_contact']), "icon": "user",
                                              "replaces": f"hera.contact.{p['id']}",
-                                             "_actions": [{"id": "fatto", "label": tr("Sentito"), "service": "hera",
+                                             "_actions": [{"id": "fatto", "label": tr("Talked"), "service": "hera",
                                                            "path": f"/api/people/{p['id']}/contact", "body": {},
                                                            "resolves": True}]}})
         return {"due": len(due)}
 
     def recap(self, day: date, nxt: date) -> dict:
         soon = [u for u in self.upcoming(7) if u["in_days"] <= (nxt - self.today()).days + 6]
-        return {"next": [{"text": tr("{0} di {1} ", u['label'], u['person']) + ("domani" if u["in_days"] == 1 else
-                                                                       f"tra {u['in_days']} giorni"
-                                                                       if u["in_days"] else "oggi")}
+        return {"next": [{"text": tr("{0} of {1} ", u['label'], u['person']) + (tr("tomorrow") if u["in_days"] == 1 else
+                                                                       tr("in {0} days", u['in_days'])
+                                                                       if u["in_days"] else tr("today"))}
                          for u in soon[:4]]}

@@ -27,16 +27,16 @@ interface Pick { on: boolean; keys: string[] | null; }
 
 const SETTINGS = 'themis';
 const MODES: { value: TransferMode; label: string; title: string }[] = [
-  { value: 'append', label: tr('Aggiungi'), title: tr('Solo le cose nuove; quelle che hai già restano come sono') },
-  { value: 'merge', label: tr('Unisci'), title: tr('Nuove + aggiorna quelle già presenti se nel file sono più recenti') },
-  { value: 'replace', label: tr('Sostituisci'), title: tr('Vince il file; quello che c’è solo qui viene eliminato (solo nelle sezioni spuntate e intere)') },
+  { value: 'append', label: tr('Add'), title: tr('Only the new things; those you already have stay as they are') },
+  { value: 'merge', label: tr('alt::Merge'), title: tr('New ones + update those already present if they are more recent in the file') },
+  { value: 'replace', label: tr('Replace'), title: tr('The file wins; what exists only here is deleted (only in the ticked, whole sections)') },
 ];
 const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string }[] = [
-  { key: 'added', label: 'nuovi', tone: 'success' },
-  { key: 'updated', label: 'aggiornati', tone: 'info' },
-  { key: 'skipped', label: 'ignorati', tone: 'neutral' },
-  { key: 'deleted', label: 'eliminati', tone: 'danger' },
-  { key: 'problems', label: 'problemi', tone: 'warning' },
+  { key: 'added', label: tr('pl::new'), tone: 'success' },
+  { key: 'updated', label: tr('pl::updated'), tone: 'info' },
+  { key: 'skipped', label: tr('pl::ignored'), tone: 'neutral' },
+  { key: 'deleted', label: tr('pl::deleted'), tone: 'danger' },
+  { key: 'problems', label: tr('problems'), tone: 'warning' },
 ];
 
 /**
@@ -56,8 +56,8 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
     </div>
 
     @if (tab() === 'export') {
-      <p class="hx-small hx-muted intro">{{ "Scegli cosa portare su un altro Hestia: moduli interi, sezioni o singoli elementi. Mai chiavi, token o password." | tr }}</p>
-      @if (!nodes().length && !busy()) { <hx-empty icon="download"  [title]="'Niente da esportare' | tr" /> }
+      <p class="hx-small hx-muted intro">{{ "Choose what to bring to another Hestia: whole modules, sections or single elements. Never keys, tokens or passwords." | tr }}</p>
+      @if (!nodes().length && !busy()) { <hx-empty icon="download"  [title]="'Nothing to export' | tr" /> }
       <div class="tree">
         @for (n of nodes(); track n.module) {
           <div class="mod">
@@ -80,9 +80,9 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                   <span class="label" [title]="s.help || ''">{{ s.label }}</span>
                   @if (s.hasFiles) { <hx-badge tone="info">{{ "file" | tr }}</hx-badge> }
                   <span class="hx-grow"></span>
-                  @if (pick(s.uid).keys; as k) { <span class="hx-small accent">{{ k.length }} {{ "scelti" | tr }}</span> }
+                  @if (pick(s.uid).keys; as k) { <span class="hx-small accent">{{ k.length }} {{ "chosen" | tr }}</span> }
                   <span class="n">{{ s.count ?? '–' }}</span>
-                  @if (s.count) { <button hx-btn variant="ghost" size="sm" (click)="openPicker(s)">{{ "Scegli" | tr }}</button> }
+                  @if (s.count) { <button hx-btn variant="ghost" size="sm" (click)="openPicker(s)">{{ "Choose" | tr }}</button> }
                 </div>
               }
             }
@@ -90,11 +90,11 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
         }
       </div>
       <div class="opts">
-        <label class="opt"><span>{{ "Solo modifiche dal" | tr }}</span><hx-date [(value)]="since" /></label>
-        @if (since()) { <button hx-btn variant="ghost" size="sm" icon="x" (click)="since.set('')">{{ "Tutto" | tr }}</button> }
-        <hx-toggle [(checked)]="includeFiles"  [label]="'Includi foto' | tr" />
+        <label class="opt"><span>{{ "Only changes since" | tr }}</span><hx-date [(value)]="since" /></label>
+        @if (since()) { <button hx-btn variant="ghost" size="sm" icon="x" (click)="since.set('')">{{ "Everything" | tr }}</button> }
+        <hx-toggle [(checked)]="includeFiles"  [label]="'Include photos' | tr" />
         <span class="hx-grow"></span>
-        <button hx-btn variant="primary" icon="download" [disabled]="!selectedCount() || !!busy()" (click)="doExport()">{{ "Esporta" | tr }}</button>
+        <button hx-btn variant="primary" icon="download" [disabled]="!selectedCount() || !!busy()" (click)="doExport()">{{ "Export" | tr }}</button>
       </div>
     }
 
@@ -102,19 +102,19 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
       @if (!file()) {
         <label class="drop" (dragover)="$event.preventDefault()" (drop)="onDrop($event)">
           <hx-icon name="upload" [size]="22" />
-          <span>{{ "Scegli o trascina qui un file" | tr }} <b>.hestia</b></span>
+          <span>{{ "Choose or drag a file here" | tr }} <b>.hestia</b></span>
           <input type="file" accept=".hestia,.json,.gz" (change)="onFile($any($event.target).files?.[0])" hidden />
         </label>
       } @else {
         <div class="filebar">
           <hx-icon name="file" [size]="16" /><b>{{ fileLabel() }}</b>
-          <span class="hx-small hx-muted">{{ "esportato il" | tr }} {{ file()!.exported_at | date:'d/M/yyyy HH:mm' }}
-            @if (file()!.since) { {{ "· solo modifiche dal" | tr }} {{ file()!.since | date:'d/M/yyyy' }} }</span>
+          <span class="hx-small hx-muted">{{ "exported on" | tr }} {{ file()!.exported_at | date:'d/M/yyyy HH:mm' }}
+            @if (file()!.since) { {{ "· only changes since" | tr }} {{ file()!.since | date:'d/M/yyyy' }} }</span>
           <span class="hx-grow"></span>
-          <button hx-btn variant="ghost" size="sm" icon="x" (click)="clearFile()">{{ "Chiudi" | tr }}</button>
+          <button hx-btn variant="ghost" size="sm" icon="x" (click)="clearFile()">{{ "Close" | tr }}</button>
         </div>
         <div class="opts">
-          <span class="hx-small">{{ "Modo" | tr }}</span>
+          <span class="hx-small">{{ "Mode" | tr }}</span>
           <hx-segmented [options]="modes" [(value)]="mode" (changed)="report.set(null)" />
           <span class="hx-small hx-muted">{{ modeHelp() }}</span>
         </div>
@@ -132,13 +132,13 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                          (change)="toggle(s.uid, $any($event.target).checked)" [attr.aria-label]="s.label" />
                   <hx-icon [name]="s.icon" [size]="15" class="si" />
                   <span class="label">{{ s.label }}</span>
-                  @if (s.missing) { <hx-badge tone="warning">{{ "non presente qui" | tr }}</hx-badge> }
+                  @if (s.missing) { <hx-badge tone="warning">{{ "not present here" | tr }}</hx-badge> }
                   <span class="hx-grow"></span>
                   <span class="n">{{ s.count }}</span>
                   @if (!s.missing) {
                     <select class="hx-select mini" [value]="sectionMode(s.uid)" (change)="setSectionMode(s.uid, $any($event.target).value)"
-                             [title]="'Modo di questa sezione' | tr">
-                      <option value="">{{ "come sopra" | tr }}</option>
+                             [title]="'Mode of this section' | tr">
+                      <option value="">{{ "as above" | tr }}</option>
                       @for (m of modes; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
                     </select>
                   }
@@ -150,13 +150,13 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                         <button class="chip" [attr.data-tone]="o.tone" (click)="toggleDetail(s.uid + ':' + o.key)">{{ r[o.key] }} {{ o.label }}</button>
                       }
                     }
-                    @if (!r.added && !r.updated && !r.deleted && !r.skipped && !r.problems) { <span class="hx-small hx-muted">{{ "nessuna modifica" | tr }}</span> }
-                    @if (r.partial && sectionModeOf(s.uid) === 'replace') { <span class="hx-small hx-muted">{{ "sezione parziale: niente eliminazioni" | tr }}</span> }
+                    @if (!r.added && !r.updated && !r.deleted && !r.skipped && !r.problems) { <span class="hx-small hx-muted">{{ "no changes" | tr }}</span> }
+                    @if (r.partial && sectionModeOf(s.uid) === 'replace') { <span class="hx-small hx-muted">{{ "partial section: no deletions" | tr }}</span> }
                   </div>
                   @for (o of outcomes; track o.key) {
                     @if (detail().has(s.uid + ':' + o.key)) {
                       <ul class="det">@for (t of r.items[o.key]; track $index) { <li>{{ t }}</li> }
-                        @if (r[o.key] > r.items[o.key].length) { <li class="hx-muted">{{ "… e altri" | tr }} {{ r[o.key] - r.items[o.key].length }}</li> }</ul>
+                        @if (r[o.key] > r.items[o.key].length) { <li class="hx-muted">{{ "… and others" | tr }} {{ r[o.key] - r.items[o.key].length }}</li> }</ul>
                     }
                   }
                 }
@@ -166,33 +166,33 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
         </div>
         <div class="opts">
           @if (reportDone()) {
-            <span class="ok"><hx-icon name="check-circle" [size]="16" /> {{ "Importazione completata" | tr }}</span>
+            <span class="ok"><hx-icon name="check-circle" [size]="16" /> {{ "Import completed" | tr }}</span>
           }
           <span class="hx-grow"></span>
-          <button hx-btn variant="secondary" icon="eye" [disabled]="!selectedCount() || !!busy()" (click)="preview()">{{ "Anteprima" | tr }}</button>
-          <button hx-btn variant="primary" icon="upload" [disabled]="!report() || reportDone() || !!busy()" (click)="doImport()">{{ "Importa" | tr }}</button>
+          <button hx-btn variant="secondary" icon="eye" [disabled]="!selectedCount() || !!busy()" (click)="preview()">{{ "Preview" | tr }}</button>
+          <button hx-btn variant="primary" icon="upload" [disabled]="!report() || reportDone() || !!busy()" (click)="doImport()">{{ "Import" | tr }}</button>
         </div>
       }
     }
 
     @if (tab() === 'restore') {
-      <p class="hx-small hx-muted intro">{{ "Prima di ogni importazione Hestia salva com'erano le sezioni coinvolte. Ripristina = le riapre nell'importazione con «Sostituisci». Ne tiene" | tr }} {{ keep() }} {{ "(impostazione «Punti di ripristino da tenere»)." | tr }}</p>
-      @if (!points().length && !busy()) { <hx-empty icon="history"  [title]="'Nessun punto di ripristino' | tr" /> }
+      <p class="hx-small hx-muted intro">{{ "Before every import Hestia saves how the sections involved were. Restore = reopens them in the import with «Replace». It keeps" | tr }} {{ keep() }} {{ "(setting «Restore points to keep»)." | tr }}</p>
+      @if (!points().length && !busy()) { <hx-empty icon="history"  [title]="'No restore point' | tr" /> }
       @for (p of points(); track p.id) {
         <div class="row point">
           <hx-icon name="history" [size]="16" class="si" />
           <span class="label">{{ p.created_at | date:'d/M/yyyy HH:mm' }}</span>
           <span class="hx-small hx-muted hx-truncate">{{ p.label }} · {{ moduleNames(p.modules) }}</span>
           <span class="hx-grow"></span>
-          <button hx-btn variant="secondary" size="sm" icon="undo" (click)="openRestore(p)">{{ "Ripristina" | tr }}</button>
-          <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly  [title]="'Elimina' | tr" (click)="deletePoint(p)"></button>
+          <button hx-btn variant="secondary" size="sm" icon="undo" (click)="openRestore(p)">{{ "f::Restore" | tr }}</button>
+          <button hx-btn variant="ghost" size="sm" icon="trash" iconOnly  [title]="'Delete' | tr" (click)="deletePoint(p)"></button>
         </div>
       }
     }
 
     <hx-modal [open]="!!picker()" [title]="picker()?.title || ''" size="md" (closed)="picker.set(null)">
       @if (picker(); as p) {
-        <input class="hx-input" type="search"  [placeholder]="'Cerca' | tr" [value]="p.q" (input)="searchPicker($any($event.target).value)" />
+        <input class="hx-input" type="search"  [placeholder]="'Search' | tr" [value]="p.q" (input)="searchPicker($any($event.target).value)" />
         <div class="plist">
           @for (it of p.items; track it.key) {
             <label class="pitem">
@@ -201,12 +201,12 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
                 @if (it.subtitle) { <span class="hx-small hx-muted"> · {{ it.subtitle }}</span> }</span>
             </label>
           }
-          @if (!p.items.length) { <span class="hx-small hx-muted">{{ "Nessun elemento" | tr }}</span> }
+          @if (!p.items.length) { <span class="hx-small hx-muted">{{ "No items" | tr }}</span> }
         </div>
       }
       <div footer>
-        <button hx-btn variant="ghost" (click)="clearPicker()">{{ "Tutta la sezione" | tr }}</button>
-        <button hx-btn variant="primary" (click)="applyPicker()">{{ "Usa" | tr }} {{ picker()?.chosen?.size || 0 }} {{ "scelti" | tr }}</button>
+        <button hx-btn variant="ghost" (click)="clearPicker()">{{ "The whole section" | tr }}</button>
+        <button hx-btn variant="primary" (click)="applyPicker()">{{ "Use" | tr }} {{ picker()?.chosen?.size || 0 }} {{ "chosen" | tr }}</button>
       </div>
     </hx-modal>
   `,
@@ -255,9 +255,9 @@ export class TransferSettingsComponent implements OnInit {
   private dialogs = inject(DialogService);
 
   readonly tabs = [
-    { value: 'export', label: tr('Esporta'), icon: 'download' },
-    { value: 'import', label: tr('Importa'), icon: 'upload' },
-    { value: 'restore', label: tr('Ripristino'), icon: 'history' },
+    { value: 'export', label: tr('Export'), icon: 'download' },
+    { value: 'import', label: tr('Import'), icon: 'upload' },
+    { value: 'restore', label: tr('Restore'), icon: 'history' },
   ];
   readonly modes = MODES;
   readonly outcomes = OUTCOMES;
@@ -304,7 +304,7 @@ export class TransferSettingsComponent implements OnInit {
   // ── tree helpers (shared by export and import) ────────────────────────────
   private meta(module: string) {
     const m = this.plugins.modules().get(module);
-    if (module === SETTINGS) return { title: tr('Personali'), icon: 'user', core: true };
+    if (module === SETTINGS) return { title: tr('Personal'), icon: 'user', core: true };
     return { title: m?.title || moduleLabel(module), icon: m?.icon || 'puzzle', core: m?.kind === 'core' };
   }
   private sortNodes(nodes: Node[]): Node[] {
@@ -337,7 +337,7 @@ export class TransferSettingsComponent implements OnInit {
 
   // ── export ────────────────────────────────────────────────────────────────
   private async loadExport() {
-    this.busy.set(tr('Carico i moduli…'));
+    this.busy.set(tr('Loading the modules…'));
     try {
       const { modules } = await this.api.modules();
       this.here.set(new Set(modules.map(m => m.module)));
@@ -365,7 +365,7 @@ export class TransferSettingsComponent implements OnInit {
       }
       this.nodes.set(this.sortNodes([...byModule.values()].filter(n => n.sections.length)));
     } catch (e) {
-      this.toast.error(apiError(e, 'Moduli non raggiungibili'));
+      this.toast.error(apiError(e, tr('Modules not reachable')));
     } finally { this.busy.set(''); }
   }
 
@@ -421,7 +421,7 @@ export class TransferSettingsComponent implements OnInit {
     const file: TransferFile = { hestia: 'transfer', format: FORMAT, exported_at: new Date().toISOString(), since,
       include_files: includeFiles, modules: {}, files: {} };
     for (const [owner, sections] of groups) {
-      this.busy.set(tr("Esporto {0}…", this.meta(owner).title));
+      this.busy.set(tr("Exporting {0}…", this.meta(owner).title));
       const out = await this.api.export(owner, { sections, since, include_files: includeFiles });
       file.modules[owner] = out;
       for (const id of out.files ?? []) {
@@ -443,9 +443,9 @@ export class TransferSettingsComponent implements OnInit {
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
       const pulled = Object.values(file.modules).reduce((n, m) => n + Object.values(m.pulled ?? {}).reduce((k, v) => k + v.length, 0), 0);
-      this.toast.success(pulled ? tr("File pronto (aggiunti {0} elementi collegati)", pulled) : tr('File pronto'));
+      this.toast.success(pulled ? tr("File ready ({0} linked elements added)", pulled) : tr('File ready'));
     } catch (e) {
-      this.toast.error(apiError(e, 'Esportazione non riuscita'));
+      this.toast.error(apiError(e, tr('Export failed')));
     } finally { this.busy.set(''); }
   }
 
@@ -491,7 +491,7 @@ export class TransferSettingsComponent implements OnInit {
       await this.loadHere();
       this.selectAllImport();
     } catch (e) {
-      this.toast.error(e instanceof Error ? e.message : 'File non leggibile');
+      this.toast.error(e instanceof Error ? e.message : tr('File not readable'));
     }
   }
   onDrop(ev: DragEvent) { ev.preventDefault(); void this.onFile(ev.dataTransfer?.files?.[0]); }
@@ -518,7 +518,7 @@ export class TransferSettingsComponent implements OnInit {
   }
 
   async preview() {
-    this.busy.set('Anteprima…');
+    this.busy.set(tr('Preview…'));
     this.reportDone.set(false);
     try {
       const out: Record<string, ImportReport> = {};
@@ -527,45 +527,45 @@ export class TransferSettingsComponent implements OnInit {
       }
       this.report.set(out);
     } catch (e) {
-      this.toast.error(apiError(e, 'Anteprima non riuscita'));
+      this.toast.error(apiError(e, tr('Preview failed')));
     } finally { this.busy.set(''); }
   }
 
   async doImport() {
     const groups = this.grouped(this.importNodes(), false);
     const deletes = Object.values(this.report() ?? {}).reduce((n, r) => n + (r.totals?.['deleted'] ?? 0), 0);
-    const ok = await this.dialogs.confirm('Importare?',
-      deletes ? tr("Verranno eliminati {0} elementi. Prima salvo un punto di ripristino.", deletes) : tr('Prima salvo un punto di ripristino.'),
-      tr('Importa'), deletes > 0);
+    const ok = await this.dialogs.confirm(tr('Import?'),
+      deletes ? tr("{0} items will be deleted. First I save a restore point.", deletes) : tr('First I save a restore point.'),
+      tr('Import'), deletes > 0);
     if (!ok) return;
     try {
-      this.busy.set(tr('Salvo il punto di ripristino…'));
+      this.busy.set(tr('Saving the restore point…'));
       const before = await this.buildFile(groups, null, false);
-      await this.api.saveRestorePoint({ label: tr("Prima di importare {0}", this.fileLabel()), modules: [...groups.keys()], file: before });
+      await this.api.saveRestorePoint({ label: tr("Before importing {0}", this.fileLabel()), modules: [...groups.keys()], file: before });
       const out: Record<string, ImportReport> = {};
       for (const [owner, sections] of groups) {
         const map: Record<string, string> = {};
         const files = this.file()!.files?.[owner] ?? {};
         const ids = Object.keys(files);
         for (const [i, id] of ids.entries()) {
-          this.busy.set(tr("Carico i file di {0} ({1}/{2})…", this.meta(owner).title, i + 1, ids.length));
+          this.busy.set(tr("Uploading the files of {0} ({1}/{2})…", this.meta(owner).title, i + 1, ids.length));
           const r = await this.api.upload(owner, { id, ...files[id] });
           map[r.old_id] = r.new_id;
         }
-        this.busy.set(tr("Importo {0}…", this.meta(owner).title));
+        this.busy.set(tr("Importing {0}…", this.meta(owner).title));
         out[owner] = await this.api.import(owner, this.body(owner, sections, false, map));
       }
       this.report.set(out);
       this.reportDone.set(true);
-      this.toast.success(tr('Importazione completata'));
+      this.toast.success(tr('Import completed'));
     } catch (e) {
-      this.toast.error(apiError(e, 'Importazione non riuscita: puoi tornare indietro da «Ripristino»'));
+      this.toast.error(apiError(e, tr('Import failed: you can go back from «Restore»')));
     } finally { this.busy.set(''); }
   }
 
   // ── restore points ────────────────────────────────────────────────────────
   private async loadPoints() {
-    this.busy.set('Carico…');
+    this.busy.set(tr('Loading…'));
     try {
       const r = await this.api.restorePoints();
       this.points.set(r.items);
@@ -578,7 +578,7 @@ export class TransferSettingsComponent implements OnInit {
       const file = await this.api.restorePoint(p.id);
       this.tab.set('import');
       this.file.set(file);
-      this.fileLabel.set(tr('Punto di ripristino'));
+      this.fileLabel.set(tr('Restore point'));
       this.reset();
       this.mode.set('replace');
       await this.loadHere();
@@ -587,7 +587,7 @@ export class TransferSettingsComponent implements OnInit {
   }
 
   async deletePoint(p: RestorePoint) {
-    if (!await this.dialogs.confirm(tr('Eliminare il punto di ripristino?'), '', tr('Elimina'), true)) return;
+    if (!await this.dialogs.confirm(tr('Delete the restore point?'), '', tr('Delete'), true)) return;
     try { await this.api.deleteRestorePoint(p.id); this.points.update(l => l.filter(x => x.id !== p.id)); }
     catch (e) { this.toast.error(apiError(e)); }
   }

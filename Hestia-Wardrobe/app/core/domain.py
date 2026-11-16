@@ -1,6 +1,6 @@
 """Wardrobe data model (SPEC §4): validation and normalisation of pieces, outfits, wears, collections, vocabularies.
 
-Archive stores rows as JSON; everything about their meaning lives here. Labels are Italian (they reach the user).
+Archive stores rows as JSON; everything about their meaning lives here. Labels are English source texts; clients show them in the owner's language.
 """
 from __future__ import annotations
 
@@ -19,18 +19,18 @@ def new_id() -> str:
     return uuid.uuid4().hex
 
 
-KINDS = {"garment": "Capo", "shoes": "Scarpe", "accessory": "Accessorio"}
-SEASONS = {"spring": "Primavera", "summer": "Estate", "autumn": "Autunno", "winter": "Inverno"}
-STATUSES = {"active": "Nell'armadio", "laundry": "In lavanderia", "lent": "Prestato", "stored": "Messo via",
-            "to_repair": "Da riparare", "to_donate": "Da donare", "donated": "Donato", "sold": "Venduto",
-            "wishlist": "Desiderato", "archived": "Archiviato"}
+KINDS = {"garment": "Item", "shoes": "Shoes", "accessory": "Accessory"}
+SEASONS = {"spring": "Spring", "summer": "Summer", "autumn": "Autumn", "winter": "Winter"}
+STATUSES = {"active": "In the wardrobe", "laundry": "In the laundry", "lent": "Lent", "stored": "Put away",
+            "to_repair": "To repair", "to_donate": "To donate", "donated": "Donated", "sold": "Sold",
+            "wishlist": "Wished for", "archived": "Archived"}
 WEARABLE = {"active"}                         # what suggestions may use
 OWNED = set(STATUSES) - {"wishlist", "donated", "sold", "archived"}
-CONDITIONS = {"new": "Nuovo", "good": "Buono", "worn": "Usurato", "to_repair": "Da riparare"}
-SLOTS = {"base": "Strato base", "top": "Sopra", "mid": "Strato intermedio", "outer": "Capospalla",
-         "bottom": "Sotto", "onepiece": "Pezzo unico", "shoes": "Scarpe", "accessory": "Accessori"}
+CONDITIONS = {"new": "New", "good": "alt::Good", "worn": "Worn out", "to_repair": "To repair"}
+SLOTS = {"base": "Base layer", "top": "Top", "mid": "Mid layer", "outer": "Outerwear",
+         "bottom": "Bottom", "onepiece": "One piece", "shoes": "Shoes", "accessory": "Accessories"}
 SLOT_ORDER = list(SLOTS)
-COLLECTION_TYPES = {"capsule": "Capsule", "packing": "Valigia", "shopping": "Da comprare", "custom": "Lista"}
+COLLECTION_TYPES = {"capsule": "Capsule", "packing": "Suitcase", "shopping": "To buy", "custom": "alt::List"}
 
 # ── default vocabularies (seeded once, then the user's) ─────────────────────
 # category: key, label, kind, parent (subcategory), slot (default outfit slot), warmth/formality hints
@@ -39,61 +39,61 @@ _C = lambda key, label, kind, slot, parent="", warmth=None, formality=None: {  #
     **({"warmth": warmth} if warmth else {}), **({"formality": formality} if formality else {})}
 
 DEFAULT_CATEGORIES = [
-    _C("top", "Parte sopra", "garment", "top"),
-    _C("tshirt", "T-shirt", "garment", "top", "top", 1, 1), _C("shirt", "Camicia", "garment", "top", "top", 2, 3),
-    _C("polo", "Polo", "garment", "top", "top", 1, 2), _C("tank", "Canotta", "garment", "base", "top", 1, 1),
-    _C("sweater", "Maglione", "garment", "mid", "top", 4, 3), _C("hoodie", "Felpa", "garment", "mid", "top", 3, 1),
-    _C("cardigan", "Cardigan", "garment", "mid", "top", 3, 3), _C("longsleeve", "Maglia a maniche lunghe", "garment", "top", "top", 2, 2),
-    _C("bottom", "Parte sotto", "garment", "bottom"),
-    _C("jeans", "Jeans", "garment", "bottom", "bottom", 3, 2), _C("trousers", "Pantaloni", "garment", "bottom", "bottom", 3, 3),
-    _C("chinos", "Chino", "garment", "bottom", "bottom", 2, 3), _C("shorts", "Pantaloncini", "garment", "bottom", "bottom", 1, 1),
-    _C("joggers", "Pantaloni tuta", "garment", "bottom", "bottom", 2, 1), _C("skirt", "Gonna", "garment", "bottom", "bottom", 2, 3),
-    _C("outerwear", "Capospalla", "garment", "outer"),
-    _C("jacket", "Giacca", "garment", "outer", "outerwear", 3, 3), _C("blazer", "Blazer", "garment", "outer", "outerwear", 2, 4),
-    _C("coat", "Cappotto", "garment", "outer", "outerwear", 5, 4), _C("puffer", "Piumino", "garment", "outer", "outerwear", 5, 1),
-    _C("raincoat", "Impermeabile", "garment", "outer", "outerwear", 2, 2), _C("vest", "Gilet", "garment", "mid", "outerwear", 3, 3),
-    _C("onepiece", "Pezzo unico", "garment", "onepiece"),
-    _C("dress", "Vestito", "garment", "onepiece", "onepiece", 2, 4), _C("suit", "Completo", "garment", "onepiece", "onepiece", 3, 5),
-    _C("jumpsuit", "Tuta intera", "garment", "onepiece", "onepiece", 2, 2),
-    _C("underwear", "Intimo e calze", "garment", "base"), _C("socks", "Calze", "garment", "base", "underwear", 1, 1),
-    _C("sport", "Sport", "garment", "top"), _C("sleepwear", "Pigiama", "garment", "top"), _C("swimwear", "Costume", "garment", "bottom"),
-    _C("shoes", "Scarpe", "shoes", "shoes"),
-    _C("sneakers", "Sneakers", "shoes", "shoes", "shoes", 2, 1), _C("dress_shoes", "Scarpe eleganti", "shoes", "shoes", "shoes", 2, 5),
-    _C("loafers", "Mocassini", "shoes", "shoes", "shoes", 2, 4), _C("boots", "Stivali", "shoes", "shoes", "shoes", 4, 3),
-    _C("sandals", "Sandali", "shoes", "shoes", "shoes", 1, 1), _C("running", "Scarpe sportive", "shoes", "shoes", "shoes", 2, 1),
-    _C("slippers", "Ciabatte", "shoes", "shoes", "shoes", 1, 1),
-    _C("accessory", "Accessori", "accessory", "accessory"),
+    _C("top", "Top part", "garment", "top"),
+    _C("tshirt", "T-shirt", "garment", "top", "top", 1, 1), _C("shirt", "Shirt", "garment", "top", "top", 2, 3),
+    _C("polo", "Polo", "garment", "top", "top", 1, 2), _C("tank", "Tank top", "garment", "base", "top", 1, 1),
+    _C("sweater", "Sweater", "garment", "mid", "top", 4, 3), _C("hoodie", "Hoodie", "garment", "mid", "top", 3, 1),
+    _C("cardigan", "Cardigan", "garment", "mid", "top", 3, 3), _C("longsleeve", "Long-sleeve top", "garment", "top", "top", 2, 2),
+    _C("bottom", "Bottom part", "garment", "bottom"),
+    _C("jeans", "Jeans", "garment", "bottom", "bottom", 3, 2), _C("trousers", "Trousers", "garment", "bottom", "bottom", 3, 3),
+    _C("chinos", "Chinos", "garment", "bottom", "bottom", 2, 3), _C("shorts", "Shorts", "garment", "bottom", "bottom", 1, 1),
+    _C("joggers", "Joggers", "garment", "bottom", "bottom", 2, 1), _C("skirt", "Skirt", "garment", "bottom", "bottom", 2, 3),
+    _C("outerwear", "Outerwear", "garment", "outer"),
+    _C("jacket", "Jacket", "garment", "outer", "outerwear", 3, 3), _C("blazer", "Blazer", "garment", "outer", "outerwear", 2, 4),
+    _C("coat", "Coat", "garment", "outer", "outerwear", 5, 4), _C("puffer", "Puffer jacket", "garment", "outer", "outerwear", 5, 1),
+    _C("raincoat", "Raincoat", "garment", "outer", "outerwear", 2, 2), _C("vest", "Waistcoat", "garment", "mid", "outerwear", 3, 3),
+    _C("onepiece", "One piece", "garment", "onepiece"),
+    _C("dress", "Dress", "garment", "onepiece", "onepiece", 2, 4), _C("suit", "Suit", "garment", "onepiece", "onepiece", 3, 5),
+    _C("jumpsuit", "Jumpsuit", "garment", "onepiece", "onepiece", 2, 2),
+    _C("underwear", "Underwear and socks", "garment", "base"), _C("socks", "Socks", "garment", "base", "underwear", 1, 1),
+    _C("sport", "Sport", "garment", "top"), _C("sleepwear", "Pyjamas", "garment", "top"), _C("swimwear", "Swimwear", "garment", "bottom"),
+    _C("shoes", "Shoes", "shoes", "shoes"),
+    _C("sneakers", "Sneakers", "shoes", "shoes", "shoes", 2, 1), _C("dress_shoes", "Dress shoes", "shoes", "shoes", "shoes", 2, 5),
+    _C("loafers", "Loafers", "shoes", "shoes", "shoes", 2, 4), _C("boots", "Boots", "shoes", "shoes", "shoes", 4, 3),
+    _C("sandals", "Sandals", "shoes", "shoes", "shoes", 1, 1), _C("running", "Trainers", "shoes", "shoes", "shoes", 2, 1),
+    _C("slippers", "Slippers", "shoes", "shoes", "shoes", 1, 1),
+    _C("accessory", "Accessories", "accessory", "accessory"),
     *[_C(k, label, "accessory", "accessory", "accessory") for k, label in [
-        ("bag", "Borsa"), ("backpack", "Zaino"), ("belt", "Cintura"), ("watch", "Orologio"), ("jewelry", "Gioielli"),
-        ("glasses", "Occhiali"), ("sunglasses", "Occhiali da sole"), ("hat", "Cappello"), ("beanie", "Berretto"),
-        ("scarf", "Sciarpa"), ("gloves", "Guanti"), ("tie", "Cravatta"), ("wallet", "Portafoglio"), ("other_acc", "Altro")]],
+        ("bag", "Bag"), ("backpack", "Backpack"), ("belt", "Belt"), ("watch", "Watch"), ("jewelry", "Jewellery"),
+        ("glasses", "Glasses"), ("sunglasses", "Sunglasses"), ("hat", "Hat"), ("beanie", "Beanie"),
+        ("scarf", "Scarf"), ("gloves", "Gloves"), ("tie", "Tie"), ("wallet", "Wallet"), ("other_acc", "Other")]],
 ]
 
 DEFAULT_VOCABULARIES: dict[str, list[dict]] = {
     "category": DEFAULT_CATEGORIES,
     "style": [{"key": k, "label": v} for k, v in [
-        ("casual", "Casual"), ("smart_casual", "Smart casual"), ("formal", "Elegante"), ("business", "Business"),
-        ("sport", "Sportivo"), ("streetwear", "Streetwear"), ("minimal", "Minimal"), ("vintage", "Vintage"),
-        ("outdoor", "Outdoor"), ("home", "Da casa")]],
+        ("casual", "Casual"), ("smart_casual", "Smart casual"), ("formal", "alt::Formal"), ("business", "Business"),
+        ("sport", "Sporty"), ("streetwear", "Streetwear"), ("minimal", "Minimal"), ("vintage", "Vintage"),
+        ("outdoor", "Outdoor"), ("home", "Homewear")]],
     "occasion": [{"key": k, "label": v} for k, v in [
-        ("work", "Lavoro"), ("office", "Ufficio"), ("evening", "Sera"), ("date", "Appuntamento"), ("travel", "Viaggio"),
-        ("home", "Casa"), ("sport", "Sport"), ("ceremony", "Cerimonia"), ("weekend", "Weekend"), ("party", "Festa")]],
+        ("work", "Work"), ("office", "Office"), ("evening", "Evening"), ("date", "alt::Date"), ("travel", "Travel"),
+        ("home", "Home"), ("sport", "Sport"), ("ceremony", "Ceremony"), ("weekend", "Weekend"), ("party", "Party")]],
     "pattern": [{"key": k, "label": v} for k, v in [
-        ("plain", "Tinta unita"), ("striped", "A righe"), ("checked", "A quadri"), ("printed", "Stampato"),
-        ("floral", "Floreale"), ("dotted", "A pois"), ("camo", "Mimetico"), ("logo", "Con logo"), ("textured", "Lavorato")]],
+        ("plain", "alt::Plain"), ("striped", "Striped"), ("checked", "Checked"), ("printed", "Printed"),
+        ("floral", "Floral"), ("dotted", "Polka dot"), ("camo", "Camouflage"), ("logo", "With logo"), ("textured", "Textured")]],
     "fit": [{"key": k, "label": v} for k, v in [
-        ("slim", "Slim"), ("regular", "Regolare"), ("relaxed", "Comodo"), ("oversize", "Oversize"), ("tailored", "Sartoriale")]],
+        ("slim", "Slim"), ("regular", "Regular"), ("relaxed", "Relaxed"), ("oversize", "Oversize"), ("tailored", "Tailored")]],
     "location": [{"key": k, "label": v} for k, v in [
-        ("wardrobe", "Armadio"), ("drawer", "Cassetto"), ("shoe_rack", "Scarpiera"), ("storage", "Scatola / cantina"),
-        ("other_house", "Altra casa"), ("suitcase", "In valigia")]],
+        ("wardrobe", "alt::Wardrobe"), ("drawer", "Drawer"), ("shoe_rack", "Shoe rack"), ("storage", "Box / cellar"),
+        ("other_house", "Other house"), ("suitcase", "In the suitcase")]],
     "color": [{"key": k, "label": v, "hex": h} for k, v, h in [
-        ("black", "Nero", "#111111"), ("white", "Bianco", "#f5f5f5"), ("grey", "Grigio", "#8a8a8a"),
-        ("navy", "Blu navy", "#1f2a44"), ("blue", "Blu", "#2f5fb3"), ("light_blue", "Azzurro", "#8fb8e8"),
-        ("beige", "Beige", "#d8c3a0"), ("brown", "Marrone", "#6b4423"), ("camel", "Cammello", "#b8875a"),
-        ("green", "Verde", "#3c7a3c"), ("olive", "Verde oliva", "#6b6b2f"), ("red", "Rosso", "#c0392b"),
-        ("burgundy", "Bordeaux", "#6d1f2c"), ("pink", "Rosa", "#e8a0b4"), ("orange", "Arancione", "#e67e22"),
-        ("yellow", "Giallo", "#f1c40f"), ("purple", "Viola", "#7d3c98"), ("denim", "Denim", "#4a6a8a"),
-        ("cream", "Panna", "#efe6d0"), ("gold", "Oro", "#c9a227"), ("silver", "Argento", "#c0c0c0")]],
+        ("black", "Black", "#111111"), ("white", "White", "#f5f5f5"), ("grey", "Grey", "#8a8a8a"),
+        ("navy", "Navy", "#1f2a44"), ("blue", "Blue", "#2f5fb3"), ("light_blue", "Light blue", "#8fb8e8"),
+        ("beige", "Beige", "#d8c3a0"), ("brown", "Brown", "#6b4423"), ("camel", "Camel", "#b8875a"),
+        ("green", "Green", "#3c7a3c"), ("olive", "Olive", "#6b6b2f"), ("red", "Red", "#c0392b"),
+        ("burgundy", "Bordeaux", "#6d1f2c"), ("pink", "Pink", "#e8a0b4"), ("orange", "Orange", "#e67e22"),
+        ("yellow", "Yellow", "#f1c40f"), ("purple", "Purple", "#7d3c98"), ("denim", "Denim", "#4a6a8a"),
+        ("cream", "Cream", "#efe6d0"), ("gold", "Gold", "#c9a227"), ("silver", "Silver", "#c0c0c0")]],
 }
 
 NEUTRAL_COLORS = {"black", "white", "grey", "navy", "beige", "brown", "camel", "cream", "denim", "silver", "gold"}
@@ -118,7 +118,7 @@ def _keys(value: Any, allowed: dict | set | None = None, limit: int = 30) -> lis
         if not k or k in out:
             continue
         if allowed is not None and k not in allowed:
-            raise Invalid(tr("valore '{0}' non valido (ammessi: {1})", v, ', '.join(sorted(allowed))))
+            raise Invalid(tr("invalid value '{0}' (allowed: {1})", v, ', '.join(sorted(allowed))))
         out.append(k)
     return out[:limit]
 
@@ -135,7 +135,7 @@ def _int(value: Any, lo: int, hi: int, default: int | None = None) -> int | None
     try:
         n = int(round(float(str(value).replace(",", "."))))
     except ValueError:
-        raise Invalid(tr("numero non valido: {0!r}", value))
+        raise Invalid(tr("invalid number: {0!r}", value))
     return max(lo, min(hi, n))
 
 
@@ -145,13 +145,13 @@ def _float(value: Any) -> float | None:
     try:
         return round(float(str(value).replace(",", ".").replace("€", "").strip()), 2)
     except ValueError:
-        raise Invalid(tr("numero non valido: {0!r}", value))
+        raise Invalid(tr("invalid number: {0!r}", value))
 
 
 def iso_date(value: Any, *, required: bool = False) -> str | None:
     if value in (None, ""):
         if required:
-            raise Invalid("data mancante")
+            raise Invalid(tr("missing date"))
         return None
     if isinstance(value, datetime):
         return value.date().isoformat()
@@ -159,11 +159,11 @@ def iso_date(value: Any, *, required: bool = False) -> str | None:
         return value.isoformat()
     s = str(value).strip()[:10]
     if not _DATE.match(s):
-        raise Invalid(tr("data non valida: {0!r} (formato AAAA-MM-GG)", value))
+        raise Invalid(tr("invalid date: {0!r} (format YYYY-MM-DD)", value))
     try:
         date.fromisoformat(s)
     except ValueError:
-        raise Invalid(tr("data non valida: {0!r}", value))
+        raise Invalid(tr("invalid date: {0!r}", value))
     return s
 
 
@@ -207,25 +207,25 @@ def piece(data: dict, categories: dict[str, dict], color_vocab: dict[str, dict] 
     """Normalise a piece (garment, shoes or accessory). Only ``name`` and ``category`` are required."""
     name = _text(data.get("name"), 120)
     if not name:
-        raise Invalid(tr("il nome del capo è obbligatorio"))
+        raise Invalid(tr("the name of the item is required"))
     cat_key = slug(data.get("category") or data.get("subcategory"))
     cat = categories.get(cat_key)
     if not cat:
         by_label = {slug(c["label"]): c for c in categories.values()}
         cat = by_label.get(cat_key)
     if not cat:
-        raise Invalid(f"categoria '{data.get('category')}' sconosciuta")
+        raise Invalid(tr("unknown category '{0}'", data.get('category')))
     sub_key = slug(data.get("subcategory")) if data.get("subcategory") else ""
     if cat.get("parent"):                     # a subcategory was given as category
         sub_key, cat = cat["key"], categories.get(cat["parent"], cat)
     sub = categories.get(sub_key) if sub_key else None
     kind = slug(data.get("kind")) or (sub or cat).get("kind") or "garment"
     if kind not in KINDS:
-        raise Invalid(tr("tipo '{0}' non valido", kind))
+        raise Invalid(tr("invalid type '{0}'", kind))
     hint = sub or cat
     status = slug(data.get("status")) or "active"
     if status not in STATUSES:
-        raise Invalid(tr("stato '{0}' non valido", status))
+        raise Invalid(tr("invalid state '{0}'", status))
     condition = slug(data.get("condition")) or "good"
     if condition not in CONDITIONS:
         condition = "good"
@@ -269,16 +269,16 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
         if not pid:
             continue
         if pid not in pieces:
-            raise Invalid(tr("capo {0} non trovato", pid))
+            raise Invalid(tr("item {0} not found", pid))
         slot = slug(s.get("slot")) or "top"
         if slot not in SLOTS:
-            raise Invalid(tr("posizione '{0}' non valida", slot))
+            raise Invalid(tr("invalid position '{0}'", slot))
         slots.append({"slot": slot, "piece_id": pid})
     for pid in data.get("piece_ids") or []:          # shortcut: pieces without slot → their category's slot
         if pid in pieces and pid not in {s["piece_id"] for s in slots}:
             slots.append({"slot": pieces[pid].get("_slot") or "top", "piece_id": pid})
     if not slots:
-        raise Invalid(tr("un outfit ha bisogno di almeno un capo"))
+        raise Invalid(tr("an outfit needs at least one item"))
     slots.sort(key=lambda s: SLOT_ORDER.index(s["slot"]))
     if not name:
         name = " + ".join(pieces[s["piece_id"]]["name"] for s in slots[:3])[:120]
@@ -302,18 +302,18 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
 def wear(data: dict, pieces: dict[str, dict], outfits: dict[str, dict], today: date) -> dict:
     oid = str(data.get("outfit_id") or "") or None
     if oid and oid not in outfits:
-        raise Invalid(tr("outfit non trovato"))
+        raise Invalid(tr("outfit not found"))
     pids = [str(p) for p in (data.get("piece_ids") or []) if p]
     for p in pids:
         if p not in pieces:
-            raise Invalid(tr("capo {0} non trovato", p))
+            raise Invalid(tr("item {0} not found", p))
     if oid and not pids:
         pids = [s["piece_id"] for s in outfits[oid].get("slots") or []]
     if not pids:
-        raise Invalid(tr("indica un outfit o almeno un capo"))
+        raise Invalid(tr("give an outfit or at least one item"))
     day = iso_date(data.get("date")) or today.isoformat()
     if day > today.isoformat():
-        raise Invalid(tr("non si può segnare un giorno futuro"))
+        raise Invalid(tr("a future day can't be marked"))
     w = data.get("weather") if isinstance(data.get("weather"), dict) else {}
     return {"date": day, "outfit_id": oid, "piece_ids": list(dict.fromkeys(pids)),
             "occasion": slug(data.get("occasion")) or "", "rating": _int(data.get("rating"), 1, 5),
@@ -336,10 +336,10 @@ def _trip_weather(w: dict) -> dict:
 def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) -> dict:
     name = _text(data.get("name"), 120)
     if not name:
-        raise Invalid(tr("il nome della lista è obbligatorio"))
+        raise Invalid(tr("the name of the list is required"))
     ctype = slug(data.get("type")) or "custom"
     if ctype not in COLLECTION_TYPES:
-        raise Invalid(tr("tipo di lista '{0}' non valido", ctype))
+        raise Invalid(tr("invalid list type '{0}'", ctype))
     pids = [p for p in dict.fromkeys(str(x) for x in data.get("piece_ids") or []) if p in pieces]
     oids = [o for o in dict.fromkeys(str(x) for x in data.get("outfit_ids") or []) if o in outfits]
     trip = data.get("trip") if isinstance(data.get("trip"), dict) else {}
@@ -359,7 +359,7 @@ def collection(data: dict, pieces: dict[str, dict], outfits: dict[str, dict]) ->
 # ── vocabularies ────────────────────────────────────────────────────────────
 def vocabulary(name: str, values: list[dict]) -> list[dict]:
     if name not in DEFAULT_VOCABULARIES:
-        raise Invalid(f"vocabolario '{name}' sconosciuto")
+        raise Invalid(tr("unknown vocabulary '{0}'", name))
     out, seen = [], set()
     for i, v in enumerate(values or []):
         if not isinstance(v, dict):

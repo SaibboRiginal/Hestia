@@ -4,11 +4,11 @@
  * <hub-online-widget> — "Servizi online": n / total, the offline ones by name.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/ui';
 const HEALTH: Record<string, [string, string]> = {
-  healthy: ['success', 'risponde'], degraded: ['warning', 'degradato'], unavailable: ['danger', tr('non risponde')],
+  healthy: ['success', tr('v::answers')], degraded: ['warning', tr('degraded')], unavailable: ['danger', tr('does not answer')],
 };
 
 function ago(epoch?: number | null): string {
@@ -17,7 +17,7 @@ function ago(epoch?: number | null): string {
   if (s < 60) return `${s} s fa`;
   if (s < 3600) return `${Math.round(s / 60)} min fa`;
   if (s < 86400) return `${Math.round(s / 3600)} h fa`;
-  return new Date(epoch * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(epoch * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export class HubMap extends HestiaElement {
@@ -52,15 +52,15 @@ export class HubMap extends HestiaElement {
     this.busy = probe;
     const r = await this.host.api('GET', `${API}/map`, { query: probe ? { probe: 'true' } : undefined });
     this.busy = false;
-    if (!r.ok) { this.error = r.error === 'offline' ? tr('Sei offline') : tr('Hub non raggiungibile'); return; }
+    if (!r.ok) { this.error = r.error === 'offline' ? tr('You are offline') : tr('Hub not reachable'); return; }
     this.error = ''; this.data = r.data;
   }
 
   private groups(list: any[]): Array<[string, any[]]> {
     const out = new Map<string, any[]>();
     for (const s of list) {
-      const k = this.group === 'node' ? s.node || 'nodo sconosciuto' : this.group === 'type' ? s.service_type || 'altro'
-        : s.topology?.layer || 'senza layer';
+      const k = this.group === 'node' ? s.node || tr('unknown node') : this.group === 'type' ? s.service_type || tr('other')
+        : s.topology?.layer || tr('no layer');
       if (!out.has(k)) out.set(k, []);
       out.get(k)!.push(s);
     }
@@ -73,12 +73,12 @@ export class HubMap extends HestiaElement {
       <span class="dot ${s.online ? 'on' : ''}" title=${s.online ? 'online' : 'offline'}></span>
       <div class="grow">
         <div class="row wrap"><b>${s.name}</b>
-          ${s.online ? nothing : html`<hxk-badge tone="danger">${tr("non raggiungibile")}</hxk-badge>`}
+          ${s.online ? nothing : html`<hxk-badge tone="danger">${tr("unreachable")}</hxk-badge>`}
           ${h ? html`<hxk-badge tone=${h[0]}>${h[1]}</hxk-badge>` : nothing}
-          ${s.instances > 1 ? html`<hxk-badge tone="info">${s.instances} ${tr("istanze")}</hxk-badge>` : nothing}
-          ${s.has_ui ? html`<hxk-badge>${tr("interfaccia")}</hxk-badge>` : nothing}${s.has_mcp ? html`<hxk-badge>MCP</hxk-badge>` : nothing}</div>
-        <div class="meta"><span>${tr("nodo")} ${s.node || '–'}</span><span>v${s.version || '?'}</span><span>${s.service_type || ''}</span>
-          <span class="tnum">${tr("ultimo segnale")} ${s.self ? 'adesso' : ago(s.last_heartbeat)}</span></div>
+          ${s.instances > 1 ? html`<hxk-badge tone="info">${s.instances} ${tr("instances")}</hxk-badge>` : nothing}
+          ${s.has_ui ? html`<hxk-badge>${tr("interface")}</hxk-badge>` : nothing}${s.has_mcp ? html`<hxk-badge>MCP</hxk-badge>` : nothing}</div>
+        <div class="meta"><span>${tr("node")} ${s.node || '–'}</span><span>v${s.version || '?'}</span><span>${s.service_type || ''}</span>
+          <span class="tnum">${tr("last signal")} ${s.self ? tr('just now') : ago(s.last_heartbeat)}</span></div>
         ${(s.topology_tags || []).length ? html`<div class="tags">${s.topology_tags.map((t: string) => html`<span class="tag">${t}</span>`)}</div>` : nothing}
       </div></div>`;
   }
@@ -90,28 +90,28 @@ export class HubMap extends HestiaElement {
     const q = this.filter.trim().toLowerCase();
     const list = (d.services || []).filter((s: any) => !q || [s.name, s.node, ...(s.topology_tags || []), ...(s.tags || [])]
       .some((v: string) => String(v || '').toLowerCase().includes(q)));
-    const groups: Array<[string, string]> = [['layer', tr('Per layer')], ['node', tr('Per nodo')], ['type', tr('Per tipo')]];
+    const groups: Array<[string, string]> = [['layer', tr('By layer')], ['node', tr('By node')], ['type', tr('By type')]];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Mappa")}</h1><span class="sub">${tr("Revisione registro")} ${d.revision} · aggiornata ${ago(d.updated_at)}</span>
+      <div class="head"><h1>${tr("Map")}</h1><span class="sub">${tr("Log review")} ${d.revision} · ${tr("updated {0}", ago(d.updated_at))}</span>
         <span class="grow"></span>
-        <hxk-button icon="check" ?loading=${this.busy} @click=${() => this.load(true)}>${tr("Verifica salute")}</hxk-button>
-        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Aggiorna")}</hxk-button></div>
-      ${this.error ? html`<hxk-state kind="error" text="${this.error}: mostro l'ultima mappa" @retry=${() => this.load()}></hxk-state>` : nothing}
+        <hxk-button icon="check" ?loading=${this.busy} @click=${() => this.load(true)}>${tr("Health check")}</hxk-button>
+        <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
+      ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last map", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
-        { label: tr('Servizi'), value: d.services_count },
+        { label: tr('Services'), value: d.services_count },
         { label: tr('Online'), value: d.online_count, tone: 'success' },
         { label: tr('Offline'), value: d.offline_count, tone: d.offline_count ? 'danger' : 'neutral',
-          delta: d.offline_count ? tr('nessun segnale da 3 min') : '', hint: tr("Online = registrato negli ultimi {0} minuti", Math.round(d.online_window_seconds / 60)) },
-        { label: tr('Revisione'), value: d.revision, hint: tr('Cresce a ogni registrazione o modifica di un servizio') },
+          delta: d.offline_count ? tr('no signal for 3 min') : '', hint: tr("Online = registered in the last {0} minutes", Math.round(d.online_window_seconds / 60)) },
+        { label: tr('Review'), value: d.revision, hint: tr('It grows with every registration or change of a service') },
       ]}></hxk-stat>
-      <div class="tools"><input type="search" placeholder=${tr("Cerca servizio, nodo o tag")} .value=${this.filter}
+      <div class="tools"><input type="search" placeholder=${tr("Search service, node or tag")} .value=${this.filter}
           @input=${(e: any) => (this.filter = e.target.value)}>
         <div class="grp">${groups.map(([k, l]) => html`<button class="chip" aria-pressed=${this.group === k}
           @click=${() => (this.group = k)}>${l}</button>`)}</div></div>
       ${list.length ? this.groups(list).map(([name, items]) => html`<div class="card layer">
           <h3>${name} <span class="small muted">${items.filter(s => s.online).length}/${items.length}</span></h3>
           <div>${items.map(s => this.row(s))}</div></div>`)
-        : html`<hxk-state kind="empty" text=${q ? tr('Nessun servizio corrisponde') : tr('Nessun servizio registrato')}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${q ? tr('No service matches') : tr('No service registered')}></hxk-state>`}
     </div>`;
   }
 }
@@ -131,17 +131,17 @@ export class HubOnlineWidget extends HestiaElement {
     this.error = !r.ok; if (r.ok) this.data = r.data;
   }
   render() {
-    if (this.error && !this.data) return html`<hxk-state kind="offline" text=${tr("Mappa non raggiungibile")} @retry=${() => this.load()}></hxk-state>`;
+    if (this.error && !this.data) return html`<hxk-state kind="offline" text=${tr("Map not reachable")} @retry=${() => this.load()}></hxk-state>`;
     if (!this.data) return html`<hxk-state kind="loading"></hxk-state>`;
     const d = this.data;
     const off = (d.services || []).filter((s: any) => !s.online).map((s: any) => s.name);
     const small = this.ctx?.size === 's';
     return html`<div class="w" @click=${() => this.host.navigate('mappa')}>
-      <span class="small muted">${tr("Servizi online")}</span>
+      <span class="small muted">${tr("Services online")}</span>
       <div class="big">${d.online_count}<span class="muted" style="font-size:15px"> / ${d.services_count}</span></div>
       ${off.length ? html`<div class="row wrap">${(small ? off.slice(0, 2) : off.slice(0, 6)).map((n: string) => html`<hxk-badge tone="danger">${n}</hxk-badge>`)}
           ${off.length > (small ? 2 : 6) ? html`<span class="small muted">+${off.length - (small ? 2 : 6)}</span>` : nothing}</div>`
-        : html`<hxk-badge tone="success">${tr("tutti online")}</hxk-badge>`}
+        : html`<hxk-badge tone="success">${tr("all online")}</hxk-badge>`}
     </div>`;
   }
 }

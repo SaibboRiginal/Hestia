@@ -31,7 +31,7 @@ export function spokenOptions(q: PendingQuestion | null): string {
   const labels = (q?.options || []).map(o => o.label).filter(Boolean);
   if (!q || q.kind === 'confirm' || labels.length < 2) return '';
   const list = `${labels.slice(0, -1).join(', ')} o ${labels[labels.length - 1]}`;
-  return q.kind === 'multi_choice' ? tr("Puoi sceglierne più di una: {0}.", list) : tr("Puoi dire: {0}.", list);
+  return q.kind === 'multi_choice' ? tr("You can choose more than one: {0}.", list) : tr("You can say: {0}.", list);
 }
 
 @Injectable({ providedIn: 'root' })
@@ -89,7 +89,7 @@ export class LiveVoiceService {
       this.analyser.fftSize = 1024;
       this.ctx.createMediaStreamSource(this.stream).connect(this.analyser);
     } catch {
-      this.error.set(tr('Il browser non mi dà il microfono.'));
+      this.error.set(tr('The browser doesn\'t give me the microphone.'));
       this.stop();
       return;
     }

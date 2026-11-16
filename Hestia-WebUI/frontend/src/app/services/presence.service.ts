@@ -36,23 +36,23 @@ export interface PresenceChange { at?: string; base: string; label: string; from
 /** What the current state changes in the system, in plain words (one line per effect). */
 const EFFECT_LABELS: Record<string, Record<string, string>> = {
   'work.heavy': {
-    allow: tr('Forge e addestramenti possono partire'),
-    local: tr('Lavori pesanti solo con i modelli locali'),
-    defer: tr('Forge e addestramenti aspettano che tu sia via'),
+    allow: tr('Forge and trainings can start'),
+    local: tr('Heavy jobs only with the local models'),
+    defer: tr('Forge and trainings wait until you are away'),
   },
   'llm.claude': {
-    allow: tr('Claude usabile anche dai lavori automatici (es. Forge di notte)'),
-    save: tr('Claude solo per le tue richieste: niente consumi automatici'),
-    deny: tr('Claude non viene usato'),
+    allow: tr('Claude usable by automatic jobs too (e.g. Forge at night)'),
+    save: tr('Claude only for your requests: no automatic usage'),
+    deny: tr('Claude is not used'),
   },
   'chat.reply': {
     live: '',
-    queued: tr('Non posso rispondere adesso: i messaggi in chat restano in coda e avranno risposta appena possibile'),
+    queued: tr('I can\'t answer right now: chat messages stay in the queue and get an answer as soon as possible'),
   },
   'notify.level': {
-    all: tr('Ti arrivano tutte le notifiche'),
-    important: tr('Solo notifiche importanti, le altre in un riepilogo dopo'),
-    urgent: tr('Solo notifiche urgenti, le altre in un riepilogo dopo'),
+    all: tr('You get all notifications'),
+    important: tr('Only important notifications, the others in a summary later'),
+    urgent: tr('Only urgent notifications, the others in a summary later'),
   },
 };
 
@@ -61,19 +61,19 @@ export function reasonLabel(r?: string): string {
   if (!r) return '';
   const [kind, a] = r.split(':');
   switch (kind) {
-    case 'interaction': return tr("hai interagito ({0})", a);
-    case 'activity_start': return tr('iniziato un lavoro');
-    case 'activity_stop': return tr('finito un lavoro');
-    case 'dnd_on': return tr('Non disturbare attivato');
-    case 'dnd_off': return tr('Non disturbare spento');
-    case 'tick': case 'read': return 'tempo trascorso';
-    case 'settings': return 'impostazioni cambiate';
-    case 'boot': return 'riavvio';
+    case 'interaction': return tr("you interacted ({0})", a);
+    case 'activity_start': return tr('started a job');
+    case 'activity_stop': return tr('finished a job');
+    case 'dnd_on': return tr('Do not disturb turned on');
+    case 'dnd_off': return tr('Do not disturb off');
+    case 'tick': case 'read': return tr('time passed');
+    case 'settings': return tr('settings changed');
+    case 'boot': return tr('restart');
     case 'signal': case 'clear':
-      if (a?.startsWith('resource.claude')) return 'quota Claude';
-      if (a?.startsWith('health.')) return tr('moduli in errore');
-      if (a?.startsWith('oracle.offline')) return tr('non disponibile o di nuovo disponibile');
-      if (a?.startsWith('manual.dnd')) return tr('Non disturbare scaduto');
+      if (a?.startsWith('resource.claude')) return tr('Claude quota');
+      if (a?.startsWith('health.')) return tr('modules with errors');
+      if (a?.startsWith('oracle.offline')) return tr('not available or available again');
+      if (a?.startsWith('manual.dnd')) return tr('Do not disturb expired');
       return '';
     default: return '';
   }
@@ -84,7 +84,7 @@ export function ago(minutes: number | null | undefined): string {
   if (minutes < 1) return 'adesso';
   if (minutes < 60) return `${Math.floor(minutes)} min fa`;
   if (minutes < 48 * 60) return `${Math.floor(minutes / 60)} h fa`;
-  return tr("{0} giorni fa", Math.floor(minutes / 1440));
+  return tr("{0} days ago", Math.floor(minutes / 1440));
 }
 
 @Injectable({ providedIn: 'root' })
@@ -145,9 +145,9 @@ export class PresenceService {
         ? await firstValueFrom(this.http.post<PresenceState>(`${this.base}/dnd`, minutes ? { minutes } : {}))
         : await firstValueFrom(this.http.delete<PresenceState>(`${this.base}/dnd`));
       this.state.set(res);
-      this.toast.success(on ? tr('Non disturbare attivo') : tr('Non disturbare spento'));
+      this.toast.success(on ? tr('Do not disturb active') : tr('Do not disturb off'));
     } catch {
-      this.toast.error('Stato non raggiungibile (Chronos)');
+      this.toast.error(tr('Status not available'));
     } finally {
       this.busy.set(false);
     }

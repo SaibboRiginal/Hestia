@@ -7,10 +7,10 @@ import { tr } from '../core/i18n';
 /** How the reasoning of an answer is shown (WebUI presentation, saved by the WebUI backend). */
 export type ThinkingDisplay = 'hidden' | 'compact' | 'detailed' | 'live';
 export const THINKING_DISPLAY_OPTIONS: { value: ThinkingDisplay; label: string; title: string }[] = [
-  { value: 'hidden', label: tr('Nascosto'), title: tr('Solo la risposta') },
-  { value: 'compact', label: tr('Compatto'), title: tr('Riquadro chiuso, un passo per riga') },
-  { value: 'detailed', label: tr('Dettagliato'), title: tr('Riquadro aperto con ragionamento e risultati completi') },
-  { value: 'live', label: tr('Dal vivo'), title: tr('Aperto mentre lavora, si chiude quando risponde') },
+  { value: 'hidden', label: tr('Hidden'), title: tr('Only the answer') },
+  { value: 'compact', label: tr('Compact'), title: tr('Closed box, one step per line') },
+  { value: 'detailed', label: tr('Detailed'), title: tr('Open box with full reasoning and results') },
+  { value: 'live', label: tr('Live'), title: tr('Open while it works, closes when it answers') },
 ];
 
 @Injectable({ providedIn: 'root' })

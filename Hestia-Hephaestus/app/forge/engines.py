@@ -21,6 +21,7 @@ from .agent_tools import AgentTools
 from . import forge_settings as fs
 from .config import ForgeConfig, normalize_engine
 from .prompts import SYSTEM_PROMPT
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge.engines")
 
@@ -139,7 +140,7 @@ class BuiltinEngine(Engine):
         self.context_window = int(info.get("context_window") or 0)
         self.group = "cloud" if info.get("billed", True) else "local"
         window = f", {self.context_window} token" if self.context_window else ""
-        return True, f"ok ({info.get('provider')}/{info.get('model')} via Oracle, catena {info.get('chain')}{window})"
+        return True, tr("ok ({0}/{1} via Oracle, chain {2}{3})", info.get('provider'), info.get('model'), info.get('chain'), window)
 
     def _budget(self) -> int:
         """Prompt chars that fit the model window, leaving ~30% for tool schemas and the answer.

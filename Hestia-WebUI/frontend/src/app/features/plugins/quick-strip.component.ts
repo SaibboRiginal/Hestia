@@ -18,24 +18,24 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (qa.chips().length || qa.loading()) {
-      <section class="strip"  [attr.aria-label]="'Azioni rapide' | tr">
+      <section class="strip"  [attr.aria-label]="'Quick actions' | tr">
         @for (c of shown(); track c.key) {
           <div class="chip" role="button" tabindex="0" [attr.data-state]="c.state || 'todo'" [attr.aria-busy]="qa.busy() === c.key"
                [attr.title]="c.hint ? c.label + ' · ' + c.hint : moduleTitle(c)" (click)="tap(c)" (keydown.enter)="tap(c)" (keydown.space)="$event.preventDefault(); tap(c)">
             @if (c.state === 'done') { <hx-icon name="check" [size]="16" /> } @else if (c.icon) { <hx-icon [name]="c.icon" [size]="16" /> }
             <span class="txt"><span class="lab">{{ c.label }}</span>@if (c.hint) {<span class="hint">{{ c.hint }}</span>}</span>
             <button class="mini" [class.pinned]="isPinned(c)" (click)="$event.stopPropagation(); plugins.togglePin(c.key)"
-                    [attr.aria-label]="isPinned(c) ? ('Togli dalla Home' | tr) : ('Fissa in Home' | tr)" [attr.title]="isPinned(c) ? ('Fissata' | tr) : ('Fissa in Home' | tr)">
+                    [attr.aria-label]="isPinned(c) ? ('Remove from Home' | tr) : ('Pin to Home' | tr)" [attr.title]="isPinned(c) ? ('Pinned' | tr) : ('Pin to Home' | tr)">
               <hx-icon name="star" [size]="13" />
             </button>
-            <button class="mini" (click)="openMore($event, c)"  [attr.aria-label]="'Altro giorno o dettagli' | tr"  [title]="'Altro giorno o dettagli' | tr">
+            <button class="mini" (click)="openMore($event, c)"  [attr.aria-label]="'Another day or details' | tr"  [title]="'Another day or details' | tr">
               <hx-icon name="more" [size]="15" />
             </button>
           </div>
         }
         @if (qa.secondary().length) {
           <button class="chip more-toggle" (click)="showAll.set(!showAll())">
-            {{ showAll() ? ('Meno' | tr) : ('Altre (' | tr) + qa.secondary().length + ')' }}
+            {{ showAll() ? ('Less' | tr) : ('Others (' | tr) + qa.secondary().length + ')' }}
           </button>
         }
         @if (qa.loading() && !qa.chips().length) { <hx-spinner [size]="16" /> }
@@ -46,7 +46,7 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
         <div class="sheet">
           <div class="st">{{ c.label }}</div>
           @if (c.hint) { <div class="sh">{{ c.hint }}</div> }
-          <hx-field  [label]="'Giorno' | tr"><hx-date [(value)]="date" /></hx-field>
+          <hx-field  [label]="'Day' | tr"><hx-date [(value)]="date" /></hx-field>
           @for (p of params(); track p.name) {
             <hx-field [label]="p.spec.label">
               @if (p.spec.type === 'enum') {
@@ -60,8 +60,8 @@ const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getT
               }
             </hx-field>
           }
-          <hx-field  [label]="'Nota' | tr"><input class="hx-input" [(ngModel)]="note"  [placeholder]="'facoltativa' | tr"></hx-field>
-          <button hx-btn variant="primary" size="sm" icon="check" (click)="submitMore(c)">{{ "Segna" | tr }}</button>
+          <hx-field  [label]="'Note' | tr"><input class="hx-input" [(ngModel)]="note"  [placeholder]="'f::optional' | tr"></hx-field>
+          <button hx-btn variant="primary" size="sm" icon="check" (click)="submitMore(c)">{{ "Mark" | tr }}</button>
         </div>
       }
     </hx-popover>`,

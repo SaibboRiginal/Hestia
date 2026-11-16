@@ -48,7 +48,7 @@ def _archive(engine, method: str, path: str, body: dict | None = None, query: di
     if not ok:
         detail = payload.get("detail") if isinstance(payload, dict) else payload
         status = 404 if "not found" in str(detail).lower() else 502
-        raise DocumentError(status, str(detail or tr("Archive non raggiungibile")))
+        raise DocumentError(status, str(detail or tr("Archive not reachable")))
     return payload
 
 
@@ -103,16 +103,16 @@ def ingest(engine, name: str, mime: str, data_b64: str, max_bytes: int) -> dict:
     """Start archiving one file (background, like a chat attachment). The document appears in the list when done."""
     mime = (mime or "application/octet-stream").split(";")[0].strip().lower()
     if not accepted(mime):
-        raise DocumentError(415, tr("Tipo di file non supportato: {0}", mime))
+        raise DocumentError(415, tr("File type not supported: {0}", mime))
     raw = data_b64.split(",", 1)[1] if data_b64.startswith("data:") and "," in data_b64 else data_b64
     try:
         file_bytes = base64.b64decode(raw or "", validate=False)
     except (binascii.Error, ValueError):
-        raise DocumentError(400, tr("data_b64 non è base64 valido"))
+        raise DocumentError(400, tr("data_b64 is not valid base64"))
     if not file_bytes:
-        raise DocumentError(400, "file vuoto")
+        raise DocumentError(400, tr("empty file"))
     if len(file_bytes) > max_bytes:
-        raise DocumentError(413, f"File troppo grande: massimo {max_bytes // (1024 * 1024)} MB")
+        raise DocumentError(413, tr("File too large: maximum {0} MB", max_bytes // (1024 * 1024)))
     document_id = uuid.uuid4().hex
     model = getattr(getattr(engine, "_agents", None), "generic_model_name", "") or ""
     threading.Thread(target=engine._archiver.archive,

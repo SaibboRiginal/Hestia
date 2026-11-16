@@ -46,5 +46,5 @@ export class SettingLinkComponent {
   go = output<void>();
 
   readonly query = computed(() => settingQuery({ key: this.key(), module: this.module(), section: this.section(), row: this.row() }));
-  readonly hint = computed(() => this.title() || tr('Apri questa impostazione'));
+  readonly hint = computed(() => this.title() || tr('Open this setting'));
 }

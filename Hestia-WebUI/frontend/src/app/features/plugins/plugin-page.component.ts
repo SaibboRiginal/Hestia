@@ -17,16 +17,16 @@ import { TrPipe } from '../../core/i18n';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (!plugins.catalog()) {
-      <div class="center">@if (plugins.catalogError()) { <hx-empty icon="offline"  [title]="'Catalogo dei moduli non raggiungibile' | tr" /> } @else { <hx-spinner /> }</div>
+      <div class="center">@if (plugins.catalogError()) { <hx-empty icon="offline"  [title]="'Module catalog not reachable' | tr" /> } @else { <hx-spinner /> }</div>
     } @else {
       @if (match(); as m) {
         @if (hasSettings()) {
-          <hx-setting-link class="gear" [module]="route().module" label="" [title]="('Impostazioni di ' | tr) + moduleTitle()" />
+          <hx-setting-link class="gear" [module]="route().module" label="" [title]="('Settings of ' | tr) + moduleTitle()" />
         }
         <hx-plugin-outlet [module]="route().module" [element]="m.page.element" [ctx]="ctx()" />
       } @else {
-        <div class="center"><hx-empty icon="puzzle"  [title]="'Pagina non trovata' | tr">
-          {{ moduleTitle() }} {{ "non ha questa pagina, oppure il modulo non è installato." | tr }}</hx-empty></div>
+        <div class="center"><hx-empty icon="puzzle"  [title]="'Page not found' | tr">
+          {{ moduleTitle() }} {{ "doesn't have this page, or the module is not installed." | tr }}</hx-empty></div>
       }
     }`,
   styles: [`

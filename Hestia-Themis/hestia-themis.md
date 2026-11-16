@@ -144,13 +144,16 @@ what the assistant proposed and confirms from the notification as usual.
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the unknown-key hint are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (settings in the owner's language)**: every label, help, group, unit and option label Themis serves (list, presets, options) is translated into «Lingua» (`themis.personal.language`) with `settings_client.translated`; the Italian text in the definition is the key of `locales/<lang>/messages.json`. Keys and values never change.
+**2026-11-14 (settings in the owner's language)**: every label, help, group, unit and option label Themis serves (list, presets, options) is translated into «Lingua» (`themis.personal.language`) with `settings_client.translated`; the English text in the definition is the key of `locales/<lang>/messages.json`. Keys and values never change.
 
 **2026-11-15 (catalog for the WebUI)**: `GET /api/settings/i18n?lang=` → `{language, messages}`: the fixed texts
-of `locales/<lang>/messages.json` (English merged under the language's own, Italian = empty map; no `lang` = «Lingua»).
+of `locales/<lang>/messages.json` (English source → that language; English or a language without a catalog = empty
+map; no `lang` = «Lingua»). (2026-11-16: the source flipped from Italian to English, dossier `2026-11-14-backend-inglese` v2.0.)
 The WebUI serves it to the browser before the app starts (`/api/webui/i18n.js`).
 **2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the catalog also carries `assistant` and `gender`
 (the assistant's chosen name and she/he, never the owner's name) for `{assistant}` / `{g:lei|lui}` in the texts.
 Themis's own fixed texts read the personal settings with `Themis.personal(key)` (registered as the i18n reader).
 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

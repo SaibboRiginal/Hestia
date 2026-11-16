@@ -73,4 +73,4 @@ def test_runtime_info_window_and_billing():
     assert runtime_info("ollama", 8192)["context_window"] == 8192
     assert runtime_info("gemini", 8192)["context_window"] == 1_048_576
     claude = runtime_info("claude_cli", 8192)
-    assert claude["context_window"] == 200_000 and "Abbonamento" in claude["billing"]
+    assert claude["context_window"] == 200_000 and "subscription" in claude["billing"]

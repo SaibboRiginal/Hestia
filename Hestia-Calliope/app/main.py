@@ -28,14 +28,14 @@ from .core.render import FORMATS, THEMES
 from .core.service import Documents
 
 API = "/api/office"
-kit = ModuleKit("calliope", port=19027, api=API, domain="office", title="Documenti", store="office-store",
+kit = ModuleKit("calliope", port=19027, api=API, domain="office", title="Documents", store="office-store",
                 when_to_use="create real documents: PDF, Word, Excel (letters, reports, tables, summaries)",
                 manual="documento_crea: write the content in simple HTML (h1-h3, p, ul/ol, table with th/td, b, i) and pick format pdf|docx|xlsx (xlsx: each table becomes a sheet). must_contain = phrases or numbers that must be there: the file is checked again before delivery.")
 app = kit.app
 kit.settings.declare([
-    setting("calliope.tema", "Stile dei documenti", "enum", "moderno", group="Documenti", order=0,
+    setting("calliope.tema", "Document style", "enum", "moderno", group="Documents", order=0,
             options=[(k, v["label"]) for k, v in THEMES.items()],
-            help="Lo stile usato quando non ne chiedi uno: Classico, Moderno o Sobrio."),
+            help="The style used when you don't ask for one: Classic, Modern or Sober."),
 ])
 docs = Documents(kit.store, kit.hub, kit.settings.get)
 
@@ -82,19 +82,19 @@ def _create(title: str, html: str, format: str = "pdf", theme: str = "", must_co
         return out
     return {**{k: out[k] for k in ("id", "title", "format", "name", "pages", "size")}, "created": True,
             "display": display(out["title"], subtitle=f"{out['format'].upper()} · {THEMES[out['theme']]['label']}",
-                               lines=[f"{out['pages']} {'pagine' if out['format'] == 'pdf' else 'parti'}, "
-                                      f"{max(1, out['size'] // 1024)} KB · controllato"],
+                               lines=[tr("{0} pages, {1} KB · checked", out['pages'], max(1, out['size'] // 1024)) if out['format'] == 'pdf'
+                                     else tr("{0} parts, {1} KB · checked", out['pages'], max(1, out['size'] // 1024))],
                                files=[file(out["blob_id"], out["name"], out["mime"])],
-                               actions=[action(tr("Elimina"), "documento_creato_elimina", {"document": out["id"]})])}
+                               actions=[action(tr("Delete"), "documento_creato_elimina", {"document": out["id"]})])}
 
 
 def _list() -> dict:
     rows = docs.list()
     return {"items": [{"id": d["id"], "title": d["title"], "format": d["format"], "created_at": d["created_at"]}
                       for d in rows],
-            "display": display(tr("Documenti creati"), items=[item(d["title"], [d["format"].upper(), d["created_at"][:10]])
+            "display": display(tr("Documents created"), items=[item(d["title"], [d["format"].upper(), d["created_at"][:10]])
                                                           for d in rows[:20]],
-                               lines=[] if rows else [tr("Nessun documento creato.")])}
+                               lines=[] if rows else [tr("No document created.")])}
 
 
 def _send(document: str) -> dict:
@@ -113,28 +113,27 @@ kit.tools([
                 "title": S, "html": {"type": "string", "description": "content in simple HTML"},
                 "format": {"type": "string", "enum": list(FORMATS)}, "theme": {"type": "string", "enum": list(THEMES)},
                 "must_contain": {"type": "array", "items": S}}, "required": ["title", "html"]},
-            handler=_create, title="Crea documento", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Documenti", "primary": 1}),
+            handler=_create, title="Create document", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Documents", "primary": 1}),
     MCPTool(name="documento_creati", description="The documents created recently.",
-            parameters={"type": "object", "properties": {}}, handler=_list, title="Documenti creati",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documenti", "primary": 2}),
+            parameters={"type": "object", "properties": {}}, handler=_list, title="Documents created",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents", "primary": 2}),
     MCPTool(name="documento_creato_invia", description="Send again the file of a created document.",
             parameters={"type": "object", "properties": {"document": S}, "required": ["document"]}, handler=_send,
-            title="Manda documento", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documenti"}),
+            title="Send document", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents"}),
     MCPTool(name="documento_creato_elimina", description="Delete a created document (and its file).",
             parameters={"type": "object", "properties": {"document": S}, "required": ["document"]},
-            handler=lambda document: docs.delete(document), title="Elimina documento creato", method="POST",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documenti"}),
+            handler=lambda document: docs.delete(document), title="Delete created document", method="POST",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents"}),
 ], prefix="documento_")
 
 transfer = Transfer("calliope", kit.hub, sections=[
-    StoreSection("documenti", "Documenti creati", kit.store, ["document"], icon="file",
+    StoreSection("documenti", "Documents created", kit.store, ["document"], icon="file",
                  title=lambda r: r["data"].get("title", ""), file_fields=["blob_id"]),
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
-kit.webui(icon="file", color="indigo", description="PDF, Word ed Excel veri, controllati prima di consegnarli.",
-          pages=[page("documenti", "Documenti creati", element="calliope-docs", icon="file", order=200,
-                      help="I documenti che l'assistente ha creato per te (PDF, Word, Excel): scaricali o creane uno "
-                           "nuovo. Puoi anche chiederlo in chat: «fammi un PDF con…».")])
+kit.webui(icon="file", color="indigo", description="Real PDF, Word and Excel files, checked before delivery.",
+          pages=[page("documenti", "Documents created", element="calliope-docs", icon="file", order=200,
+                      help="The documents the assistant created for you (PDF, Word, Excel): download them or create a new one. You can also ask in chat: «make me a PDF with…».")])
 kit.finish()

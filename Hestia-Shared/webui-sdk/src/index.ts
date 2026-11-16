@@ -12,7 +12,7 @@ export { classMap } from 'lit/directives/class-map.js';
 export { styleMap } from 'lit/directives/style-map.js';
 
 export * from './types';
-export { tr, language, named, assistantName } from './i18n';
+export { tr, language, locale, named, assistantName } from './i18n';
 export { tokens, kitStyles, toneColor } from './styles';
 export { HestiaElement, definePlugin, fillPath, plural } from './base';
 export { HxkIcon, HxkButton, HxkBadge, HxkCard, HxkStat, HxkState, HxkList } from './kit/basics';

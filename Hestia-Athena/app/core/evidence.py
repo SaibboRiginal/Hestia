@@ -147,8 +147,8 @@ class Evidence:
             known = (date.fromisoformat(today) - date.fromisoformat(self.start_day(now))).days
         except Exception:
             if on_demand:
-                return {"ready": True, "note": tr("Chiesto da te: proposto senza attendere altre prove.")}
-            return {"ready": False, "note": tr("Registro delle prove non leggibile: riprovo al prossimo giro."),
+                return {"ready": True, "note": tr("Asked by you: proposed without waiting for more evidence.")}
+            return {"ready": False, "note": tr("Evidence log not readable: I'll retry on the next round."),
                     "seen_days": 0, "need_days": need_days, "known_days": 0, "need_known": need_known}
         oldest = (date.fromisoformat(today) - timedelta(days=window - 1)).isoformat()
         with self._lock:
@@ -160,14 +160,13 @@ class Evidence:
             out = {"seen_days": len(days), "need_days": need_days, "known_days": max(0, known),
                    "need_known": need_known, "first_day": days[0]}
             if on_demand:
-                out.update(ready=True, note=tr("Chiesto da te: proposto senza attendere altre prove (visto in {0} {1}).", len(days), _giorni(len(days))))
+                out.update(ready=True, note=tr("Asked by you: proposed without waiting for more evidence (seen in {0} {1}).", len(days), _giorni(len(days))))
             elif known < need_known:
-                out.update(ready=False, note=tr("Sto ancora osservando: {0} {1} su {2} prima di proporre miglioramenti.", max(0, known), _giorni(known), need_known))
+                out.update(ready=False, note=tr("Still observing: {0} {1} of {2} before proposing improvements.", max(0, known), _giorni(known), need_known))
             elif len(days) < need_days:
-                out.update(ready=False, note=f"Raccolgo prove: visto in {len(days)} {_giorni(len(days))} su "
-                                             f"{need_days} richiesti (dal {_short(days[0])}).")
+                out.update(ready=False, note=tr("Collecting evidence: seen on {0} {1} out of {2} needed (since {3}).", len(days), _giorni(len(days)), need_days, _short(days[0])))
             else:
-                out.update(ready=True, note=f"Visto in {len(days)} giorni diversi dal {_short(days[0])}.")
+                out.update(ready=True, note=tr("Seen on {0} different days since {1}.", len(days), _short(days[0])))
             if out["ready"]:
                 row["days"], row["proposed_day"] = [], today      # proposed: it must build up again from zero
             self._rows[key] = row
@@ -188,4 +187,4 @@ class Evidence:
 
 
 def _giorni(n: int) -> str:
-    return "giorno" if n == 1 else "giorni"
+    return tr("day") if n == 1 else tr("days")

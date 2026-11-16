@@ -256,11 +256,11 @@ class Talk:
         except Exception as exc:
             logger.warning("[🔄] event=talk_oracle_failed trace_id=%s error=%s fallback=retry_later", trace_id, exc)
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": tr("modello non disponibile")}
+            return {"status": "failed", "detail": tr("model not available")}
         if status >= 400 or not isinstance(payload, dict):
             logger.warning("[🔄] event=talk_oracle_failed trace_id=%s status=%s fallback=retry_later", trace_id, status)
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": tr("modello non disponibile")}
+            return {"status": "failed", "detail": tr("model not available")}
         text = str(payload.get("text") or "").strip()
         if not text:
             logger.info("event=talk_nothing_to_say trace_id=%s reasons=%d", trace_id, len(reasons))
@@ -271,7 +271,7 @@ class Talk:
                "answered": None}
         if not self._deliver(row):
             self._wait(now, RETRY_AFTER_FAILURE)
-            return {"status": "failed", "detail": tr("messaggio non consegnato")}
+            return {"status": "failed", "detail": tr("message not delivered")}
         self._store(row, now)
         with self._lock:
             self._sent.insert(0, {**row, "at": now.isoformat()})
@@ -318,16 +318,16 @@ def _parse(value: Any) -> datetime | None:
     return at if at.tzinfo else at.replace(tzinfo=timezone.utc)
 
 
-# The reasons are hidden text for the model (English); the owner reads them in Italian on the Pensieri page.
-_SHOWN = (("How they feel today:", "Come ti senti oggi:"), ("You two have not talked for about", "Non vi sentite da circa"),
-          (" hours", " ore"), ("energy ", "energia "), ("(because of ", "(per "), ("One of their areas:", "Una tua area:"))
+# The reasons are hidden text for the model (English); the owner reads them in his language on the Thoughts page.
+_SHOWN = (("How they feel today:", "How you feel today:"), ("You two have not talked for about", "You two haven't talked for about"),
+          (" hours", " hours"), ("energy ", "energy "), ("(because of ", "(because of "), ("One of their areas:", "One of your areas:"))
 
 
 def shown(reason: str) -> str:
     """A reason as the owner reads it."""
     text = str(reason or "")
     for hidden, plain in _SHOWN:
-        text = text.replace(hidden, plain)
+        text = text.replace(hidden, tr(plain))
     return text
 
 

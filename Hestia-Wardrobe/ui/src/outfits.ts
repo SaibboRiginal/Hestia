@@ -42,7 +42,7 @@ export class WardrobeOutfitBuilder extends HestiaElement {
     this.slots = [...this.slots, { slot, piece_id: p.id }];
   }
   private save() {
-    if (!this.slots.length) { this.host.toast(tr('Scegli almeno un capo'), 'warning'); return; }
+    if (!this.slots.length) { this.host.toast(tr('Choose at least one item'), 'warning'); return; }
     this.dispatchEvent(new CustomEvent('save', { detail: { slots: this.slots, name: this.nm.trim() }, bubbles: true, composed: true }));
   }
   render() {
@@ -54,27 +54,27 @@ export class WardrobeOutfitBuilder extends HestiaElement {
     if (this.slotTab) list = list.filter(p => (p.kind === 'accessory' ? 'accessory' : p.kind === 'shoes' ? 'shoes' : p.slot) === this.slotTab);
     if (this.q) { const w = norm(this.q).split(/\s+/).filter(Boolean); list = list.filter(p => w.every(x => norm(`${p.name} ${p.category_label} ${p.subcategory_label} ${(p.colors || []).map((c: any) => c.name).join(' ')}`).includes(x))); }
     return html`<div class="col" style="gap:12px">
-      <input class="in" placeholder=${tr("Nome (vuoto = dai capi)")} .value=${this.nm} @input=${(e: any) => (this.nm = e.target.value)}>
+      <input class="in" placeholder=${tr("Name (empty = from the items)")} .value=${this.nm} @input=${(e: any) => (this.nm = e.target.value)}>
       <div class="sel">${sel.length ? sel.map(s => { const p = byId.get(s.piece_id); return html`<div class="srow">
           <span class="thumb">${img(this.host, p?.photos?.[0], p?.name || '')}</span>
           <span class="grow truncate">${p?.name || '…'}</span>
           <select class="in" @change=${(e: any) => (this.slots = this.slots.map(x => x.piece_id === s.piece_id ? { ...x, slot: e.target.value } : x))}>
             ${Object.entries(m?.slots || {}).map(([k, v]) => html`<option value=${k} ?selected=${s.slot === k}>${v}</option>`)}</select>
           <hxk-button size="sm" variant="ghost" icon="x" @click=${() => (this.slots = this.slots.filter(x => x.piece_id !== s.piece_id))}></hxk-button></div>`; })
-        : html`<div class="empty">${tr("Tocca i capi qui sotto: finiscono nella posizione giusta (sopra, sotto, scarpe…).")}</div>`}</div>
+        : html`<div class="empty">${tr("Tap the items below: they go in the right place (top, bottom, shoes…).")}</div>`}</div>
       <div class="row wrap" style="gap:6px">
-        <button class="chip soft" aria-pressed=${!this.slotTab} @click=${() => (this.slotTab = '')}>${tr("Tutti")}</button>
+        <button class="chip soft" aria-pressed=${!this.slotTab} @click=${() => (this.slotTab = '')}>${tr("pl::All")}</button>
         ${Object.entries(m?.slots || {}).map(([k, v]) => html`<button class="chip soft" aria-pressed=${this.slotTab === k} @click=${() => (this.slotTab = this.slotTab === k ? '' : k)}>${v}</button>`)}
-        <input class="in grow" style="min-width:140px" placeholder=${tr("Cerca…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}></div>
+        <input class="in grow" style="min-width:140px" placeholder=${tr("Search…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}></div>
       ${this.pieces === undefined ? html`<hxk-state kind="loading"></hxk-state>` : html`<div class="tiles">${list.map(p => html`
         <div class="tile" data-sel=${this.slots.some(s => s.piece_id === p.id)} @click=${() => this.add(p)}>
           <div class="ph">${img(this.host, p.photos?.[0], p.name)}</div>
           ${this.slots.some(s => s.piece_id === p.id) ? html`<span class="check"><hxk-icon name="check" size="14"></hxk-icon></span>` : nothing}
           ${p.status !== 'active' ? html`<hxk-badge class="badge" tone="info">${p.status_label}</hxk-badge>` : nothing}
           <div class="tx"><span class="nm">${p.name}</span></div></div>`)}
-        ${list.length ? nothing : html`<div class="empty">${tr("Nessun capo qui.")}</div>`}</div>`}
-      <div class="row"><hxk-button variant="primary" icon="check" @click=${() => this.save()}>${tr("Salva outfit")}</hxk-button>
-        <hxk-button variant="ghost" @click=${() => this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }))}>${tr("Annulla")}</hxk-button></div>
+        ${list.length ? nothing : html`<div class="empty">${tr("No item here.")}</div>`}</div>`}
+      <div class="row"><hxk-button variant="primary" icon="check" @click=${() => this.save()}>${tr("Save outfit")}</hxk-button>
+        <hxk-button variant="ghost" @click=${() => this.dispatchEvent(new CustomEvent('cancel', { bubbles: true, composed: true }))}>${tr("Cancel")}</hxk-button></div>
     </div>`;
   }
 }
@@ -83,8 +83,8 @@ async function markWorn(host: any, o: any, day = '', after?: () => void) {
   const r = await call(host, 'POST', `/outfits/${o.id}/worn`, day ? { date: day } : {});
   if (!r.ok) return;
   const w = r.data;
-  if (w.already) { host.toast(tr("«{0}» è già segnato {1}", o.name, day ? 'quel giorno' : 'oggi'), 'info'); return; }
-  host.toast(w.label || tr('Segnato'), 'success', { label: tr('Annulla'), run: async () => { await call(host, 'DELETE', `/wears/${w.id}`); after?.(); } });
+  if (w.already) { host.toast(tr("«{0}» is already recorded {1}", o.name, day ? tr('that day') : tr('today')), 'info'); return; }
+  host.toast(w.label || tr('Marked'), 'success', { label: tr('Cancel'), run: async () => { await call(host, 'DELETE', `/wears/${w.id}`); after?.(); } });
   after?.();
 }
 
@@ -121,29 +121,29 @@ export class WardrobeOutfits extends WardrobeElement {
     const m = this.m, items = this.items, today = localDay();
     return html`<div class="page">
       <div class="head"><h1>${tr("Outfit")}</h1><span class="sub">${items?.length ?? ''}</span><span class="grow"></span>
-        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.navigate('cosa-mi-metto')}>${tr("Cosa mi metto")}</hxk-button>
-        <hxk-button variant="primary" icon="plus" @click=${() => { this.building = !this.building; this.seed = []; }}>${tr("Nuovo outfit")}</hxk-button></div>
+        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.navigate('cosa-mi-metto')}>${tr("What should I wear")}</hxk-button>
+        <hxk-button variant="primary" icon="plus" @click=${() => { this.building = !this.building; this.seed = []; }}>${tr("New outfit")}</hxk-button></div>
       ${this.building ? html`<div class="card"><wardrobe-outfit-builder .host=${this.host} .ctx=${this.ctx} .meta=${m} .value=${this.seed}
           @save=${this.create} @cancel=${() => { this.building = false; this.seed = []; }}></wardrobe-outfit-builder></div>` : nothing}
-      <input class="in" placeholder=${tr("Cerca per nome o capo…")} .value=${this.q} @input=${(e: any) => { this.q = e.target.value; clearTimeout(this._t); this._t = setTimeout(() => this.load(), 220); }}>
+      <input class="in" placeholder=${tr("Search by name or item…")} .value=${this.q} @input=${(e: any) => { this.q = e.target.value; clearTimeout(this._t); this._t = setTimeout(() => this.load(), 220); }}>
       <div class="chips">
-        <button class="chip soft" aria-pressed=${this.f.favorite === 'true'} @click=${() => this.filter('favorite', 'true')}><hxk-icon name="star" size=${14} tone="warning"></hxk-icon> ${tr("Preferiti")}</button>
+        <button class="chip soft" aria-pressed=${this.f.favorite === 'true'} @click=${() => this.filter('favorite', 'true')}><hxk-icon name="star" size=${14} tone="warning"></hxk-icon> ${tr("pl::Favourites")}</button>
         ${m ? Object.entries(m.seasons).map(([k, v]) => html`<button class="chip soft" title=${v} aria-pressed=${this.f.season === k} @click=${() => this.filter('season', k)}>${seasonIcon(k)}</button>`) : nothing}
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, occasion: e.target.value }; this.load(); }}>
-          <option value="">${tr("Ogni occasione")}</option>${vocabOptions(m, 'occasion').map(o => html`<option value=${o.key} ?selected=${this.f.occasion === o.key}>${o.label}</option>`)}</select>
+          <option value="">${tr("Any occasion")}</option>${vocabOptions(m, 'occasion').map(o => html`<option value=${o.key} ?selected=${this.f.occasion === o.key}>${o.label}</option>`)}</select>
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, sort: e.target.value }; this.load(); }}>
-          ${Object.entries({ favorites: 'Preferiti prima', recent: 'Creati di recente', least_recent: 'Messi meno di recente', worn: 'Più messi', rating: 'Voto', name: 'Nome' })
+          ${Object.entries({ favorites: tr('Favourites first'), recent: tr('Recently created'), least_recent: tr('Least recently worn'), worn: tr('Most worn'), rating: tr('Rating'), name: tr('Name') })
             .map(([k, v]) => html`<option value=${k} ?selected=${this.f.sort === k}>${v}</option>`)}</select>
       </div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty"
-          text=${tr("Nessun outfit. Creane uno da «Nuovo outfit», da «Cosa mi metto» o selezionando dei capi nel Guardaroba.")}></hxk-state>` : html`
+          text=${tr("No outfit. Create one from «New outfit», from «What do I wear» or by selecting items in the Wardrobe.")}></hxk-state>` : html`
         <div class="tiles">${items.map(o => html`<div class="tile" @click=${() => this.host.navigate('outfit/' + o.id)}>
           <div class="ph">${collage(this.host, o)}</div>
           ${o.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}
-          ${!o.complete ? html`<hxk-badge class="badge" tone="warning">${tr("da rivedere")}</hxk-badge>` : !o.available ? html`<hxk-badge class="badge" tone="info">${tr("non disponibile")}</hxk-badge>` : nothing}
-          <hxk-button class="today" size="sm" variant=${o.last_worn === today ? 'primary' : 'default'} icon="check" title=${tr("Indossato oggi")}
-            @click=${(e: Event) => { e.stopPropagation(); markWorn(this.host, o, '', () => this.load()); }}>${o.last_worn === today ? tr('Oggi') : ''}</hxk-button>
-          <div class="tx"><span class="nm">${o.name}</span><span class="small muted truncate">${plural(o.pieces.length, 'capo', 'capi')}${o.last_worn ? ' · ' + relDays(o.last_worn) : ''}</span></div>
+          ${!o.complete ? html`<hxk-badge class="badge" tone="warning">${tr("to review")}</hxk-badge>` : !o.available ? html`<hxk-badge class="badge" tone="info">${tr("not available")}</hxk-badge>` : nothing}
+          <hxk-button class="today" size="sm" variant=${o.last_worn === today ? 'primary' : 'default'} icon="check" title=${tr("Worn today")}
+            @click=${(e: Event) => { e.stopPropagation(); markWorn(this.host, o, '', () => this.load()); }}>${o.last_worn === today ? tr('Today') : ''}</hxk-button>
+          <div class="tx"><span class="nm">${o.name}</span><span class="small muted truncate">${plural(o.pieces.length, 'garment', 'garments')}${o.last_worn ? ' · ' + relDays(o.last_worn) : ''}</span></div>
         </div>`)}</div>`}
     </div>`;
   }
@@ -190,8 +190,8 @@ export class WardrobeOutfit extends WardrobeElement {
     if (r.ok) this.o = { ...this.o, ...r.data.item };
   }
   private async drop(hard: boolean) {
-    const ok = await this.host.confirm(hard ? tr('Elimina outfit') : tr('Archivia outfit'), hard ? tr("«{0}» viene eliminato (i capi restano).", this.o.name) : tr("«{0}» esce dalla lista ma resta nello storico.", this.o.name),
-      { label: hard ? tr('Elimina') : tr('Archivia'), danger: hard });
+    const ok = await this.host.confirm(hard ? tr('Delete outfit') : tr('Archive outfit'), hard ? tr("alt::«{0}» is deleted (the items stay).", this.o.name) : tr("«{0}» leaves the list but stays in the history.", this.o.name),
+      { label: hard ? tr('Delete') : tr('f::Archive'), danger: hard });
     if (!ok) return;
     const r = await call(this.host, 'DELETE', `/outfits/${this.o.id}`, undefined, hard ? { hard: true } : undefined);
     if (r.ok) this.host.navigate('outfit');
@@ -199,47 +199,47 @@ export class WardrobeOutfit extends WardrobeElement {
   render() {
     const o = this.o, m = this.m;
     if (o === undefined) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
-    if (o === null) return html`<div class="page"><hxk-state kind="empty" text=${tr("Outfit non trovato.")}></hxk-state></div>`;
+    if (o === null) return html`<div class="page"><hxk-state kind="empty" text=${tr("Outfit not found.")}></hxk-state></div>`;
     const wornToday = o.last_worn === localDay();
     return html`<div class="page">
       <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('outfit')}>‹ Outfit</hxk-button></div>
       <div class="between"><div class="grow"><input class="in" style="font-size:20px;font-weight:650;width:100%;background:transparent;border-color:transparent"
           .value=${o.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })}>
-          <div class="small muted" style="padding-left:10px">${o.wear_count ? tr("segnato {0} volte · ultima {1}", o.wear_count, relDays(o.last_worn)) : tr('mai segnato')}${o.source === 'assistant' ? ' · proposto dall\'assistente' : ''}</div></div>
-        <button class="chip" aria-pressed=${!!o.favorite} title=${tr("Preferito (compare nella Home)")} @click=${() => this.patch({ favorite: !o.favorite }, o.favorite ? '' : 'Tra i preferiti: lo trovi nella Home')}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
-      ${!o.complete ? html`<div class="card" style="border-color:var(--warning)">${tr("Alcuni capi non ci sono più o sono stati dati via: modifica i capi dell'outfit.")}</div>` : nothing}
+          <div class="small muted" style="padding-left:10px">${o.wear_count ? tr("recorded {0} times · last {1}", o.wear_count, relDays(o.last_worn)) : tr('never recorded')}${o.source === 'assistant' ? tr(' · proposed by the assistant') : ''}</div></div>
+        <button class="chip" aria-pressed=${!!o.favorite} title=${tr("Favourite (appears in Home)")} @click=${() => this.patch({ favorite: !o.favorite }, o.favorite ? '' : tr('In the favourites: you find it in Home'))}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
+      ${!o.complete ? html`<div class="card" style="border-color:var(--warning)">${tr("Some items are no longer there or were given away: edit the items of the outfit.")}</div>` : nothing}
       <div class="row wrap">
-        <hxk-button variant=${wornToday ? 'default' : 'primary'} icon="check" @click=${() => markWorn(this.host, o, '', () => this.load())}>${tr("Indossato oggi")}</hxk-button>
+        <hxk-button variant=${wornToday ? 'default' : 'primary'} icon="check" @click=${() => markWorn(this.host, o, '', () => this.load())}>${tr("Worn today")}</hxk-button>
         <input class="in" type="date" max=${localDay()} .value=${this.day} @change=${(e: any) => (this.day = e.target.value)}>
-        ${this.day ? html`<hxk-button size="sm" @click=${() => { markWorn(this.host, o, this.day, () => this.load()); this.day = ''; }}>${tr("Segna")} ${dayLabel(this.day)}</hxk-button>` : nothing}
+        ${this.day ? html`<hxk-button size="sm" @click=${() => { markWorn(this.host, o, this.day, () => this.load()); this.day = ''; }}>${tr("Mark")} ${dayLabel(this.day)}</hxk-button>` : nothing}
         <span class="grow"></span>
-        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: o.name, hints: { outfit_id: o.id }, prompt: tr("Cosa ne pensi dell'outfit «{0}»?", o.name), suggestions: [tr('Come lo miglioro?'), tr('Che accessori ci metto?'), tr('Per che occasione va bene?')] })}>${tr("Chiedi")}</hxk-button>
+        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: o.name, hints: { outfit_id: o.id }, prompt: tr("What do you think of the outfit «{0}»?", o.name), suggestions: [tr('How do I improve it?'), tr('What accessories do I add?'), tr('Which occasion is it good for?')] })}>${tr("Ask")}</hxk-button>
       </div>
       ${this.editing ? html`<div class="card"><wardrobe-outfit-builder .host=${this.host} .ctx=${this.ctx} .meta=${m} .value=${o.slots} name=${o.name}
-          @save=${async (e: CustomEvent) => { if (await this.patch(e.detail, 'Salvato')) this.editing = false; }} @cancel=${() => (this.editing = false)}></wardrobe-outfit-builder></div>` : html`
-        <div class="card col"><div class="between"><h3>${tr("Capi")}</h3><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.editing = true)}>${tr("Cambia capi")}</hxk-button></div>
+          @save=${async (e: CustomEvent) => { if (await this.patch(e.detail, tr('Saved'))) this.editing = false; }} @cancel=${() => (this.editing = false)}></wardrobe-outfit-builder></div>` : html`
+        <div class="card col"><div class="between"><h3>${tr("Items")}</h3><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.editing = true)}>${tr("Change items")}</hxk-button></div>
           <div class="slots">${o.pieces.map((p: any) => html`<div class="tile slot" @click=${() => this.host.navigate('capi/' + p.id)}>
             <div class="ph">${img(this.host, p.photo, p.name)}</div>
             ${!p.available ? html`<hxk-badge class="badge" tone="info">${m?.statuses[p.status] || p.status}</hxk-badge>` : nothing}
             <div class="tx"><span class="lab">${p.slot_label}</span><span class="nm">${p.name}</span>${dots(p.colors, 10)}</div></div>`)}</div></div>`}
       <div class="card col">
-        <div class="row wrap" style="gap:14px"><span class="small muted">${tr("Voto")}</span>
+        <div class="row wrap" style="gap:14px"><span class="small muted">${tr("Rating")}</span>
           <span class="stars">${[1, 2, 3, 4, 5].map(n => html`<button aria-pressed=${(o.rating || 0) >= n} title=${`${n}/5`} @click=${() => this.patch({ rating: o.rating === n ? null : n })}><hxk-icon name="star" size=${20}></hxk-icon></button>`)}</span></div>
-        <div class="col" style="gap:4px"><span class="small muted">${tr("Occasioni")}</span><div class="chips">${vocabOptions(m, 'occasion').map(v => html`<button class="chip soft" aria-pressed=${(o.occasions || []).includes(v.key)} @click=${() => this.toggle('occasions', v.key)}>${v.label}</button>`)}</div></div>
-        <div class="col" style="gap:4px"><span class="small muted">${tr("Stile")}</span><div class="chips">${vocabOptions(m, 'style').map(v => html`<button class="chip soft" aria-pressed=${(o.styles || []).includes(v.key)} @click=${() => this.toggle('styles', v.key)}>${v.label}</button>`)}</div></div>
-        <div class="col" style="gap:4px"><span class="small muted">${tr("Stagioni")}</span><div class="chips">${Object.entries(m?.seasons || {}).map(([k, v]) => html`<button class="chip soft" aria-pressed=${(o.seasons || []).includes(k)} @click=${() => this.toggle('seasons', k)}>${seasonIcon(k)} ${v}</button>`)}</div></div>
-        <textarea class="in" rows="2" placeholder=${tr("Note (es. con la cintura marrone)")} .value=${o.notes || ''} @change=${(e: any) => this.patch({ notes: e.target.value })}></textarea>
+        <div class="col" style="gap:4px"><span class="small muted">${tr("Occasions")}</span><div class="chips">${vocabOptions(m, 'occasion').map(v => html`<button class="chip soft" aria-pressed=${(o.occasions || []).includes(v.key)} @click=${() => this.toggle('occasions', v.key)}>${v.label}</button>`)}</div></div>
+        <div class="col" style="gap:4px"><span class="small muted">${tr("Style")}</span><div class="chips">${vocabOptions(m, 'style').map(v => html`<button class="chip soft" aria-pressed=${(o.styles || []).includes(v.key)} @click=${() => this.toggle('styles', v.key)}>${v.label}</button>`)}</div></div>
+        <div class="col" style="gap:4px"><span class="small muted">${tr("Seasons")}</span><div class="chips">${Object.entries(m?.seasons || {}).map(([k, v]) => html`<button class="chip soft" aria-pressed=${(o.seasons || []).includes(k)} @click=${() => this.toggle('seasons', k)}>${seasonIcon(k)} ${v}</button>`)}</div></div>
+        <textarea class="in" rows="2" placeholder=${tr("Notes (e.g. with the brown belt)")} .value=${o.notes || ''} @change=${(e: any) => this.patch({ notes: e.target.value })}></textarea>
       </div>
-      <div class="card col"><div class="between"><h3>${tr("Foto indossato")}</h3><hxk-button size="sm" icon="camera" ?loading=${this.busy === 'photo'} @click=${() => this.addPhoto()}>${tr("Aggiungi")}</hxk-button></div>
+      <div class="card col"><div class="between"><h3>${tr("Worn photo")}</h3><hxk-button size="sm" icon="camera" ?loading=${this.busy === 'photo'} @click=${() => this.addPhoto()}>${tr("Add")}</hxk-button></div>
         ${o.photos?.length ? html`<div class="photos">${o.photos.map((id: string) => html`<div class="ph"><img src=${photo(this.host, id, 'medium')} alt="">
-            <button class="x" title=${tr("Togli")} @click=${() => this.removePhoto(id)}>×</button></div>`)}</div>`
-          : html`<div class="empty">${tr("Facoltativo: una foto allo specchio aiuta a ricordare com'era.")}</div>`}</div>
-      ${o.wears?.length ? html`<div class="card col"><h3>${tr("Storico")}</h3><div class="chips">${o.wears.map((w: any) => html`<span class="pill">${dayLabel(w.date)}
-          <button class="link" title=${tr("Togli")} @click=${async () => { await call(this.host, 'DELETE', `/wears/${w.id}`); this.load(); }}>×</button></span>`)}</div></div>` : nothing}
+            <button class="x" title=${tr("Remove")} @click=${() => this.removePhoto(id)}>×</button></div>`)}</div>`
+          : html`<div class="empty">${tr("Optional: a mirror photo helps to remember what it looked like.")}</div>`}</div>
+      ${o.wears?.length ? html`<div class="card col"><h3>${tr("History")}</h3><div class="chips">${o.wears.map((w: any) => html`<span class="pill">${dayLabel(w.date)}
+          <button class="link" title=${tr("Remove")} @click=${async () => { await call(this.host, 'DELETE', `/wears/${w.id}`); this.load(); }}>×</button></span>`)}</div></div>` : nothing}
       <div class="row"><span class="grow"></span>
-        ${o.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, 'Ripristinato')}>${tr("Ripristina")}</hxk-button>`
-          : html`<hxk-button size="sm" variant="ghost" @click=${() => this.drop(false)}>${tr("Archivia")}</hxk-button>`}
-        <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.drop(true)}>${tr("Elimina")}</hxk-button></div>
+        ${o.status === 'archived' ? html`<hxk-button size="sm" @click=${() => this.patch({ status: 'active' }, tr('Restored'))}>${tr("f::Restore")}</hxk-button>`
+          : html`<hxk-button size="sm" variant="ghost" @click=${() => this.drop(false)}>${tr("f::Archive")}</hxk-button>`}
+        <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.drop(true)}>${tr("Delete")}</hxk-button></div>
     </div>`;
   }
 }

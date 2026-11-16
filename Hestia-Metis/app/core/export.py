@@ -32,7 +32,7 @@ from .traces import STORE
 logger = logging.getLogger("hestia_metis.export")
 
 EVAL_SHARE = 10          # % of sessions held out
-_QUICK_TAIL = "MESSAGGIO UTENTE:"
+_QUICK_TAIL = "USER MESSAGE:"
 
 
 def _eval_session(session_id: str) -> bool:
@@ -46,7 +46,7 @@ def to_messages(trace: dict, review: dict | None) -> tuple[list[dict], str, str]
     if d.get("route") in ("quick", "quick_chat") and _QUICK_TAIL in system:
         system = system[: system.rfind(_QUICK_TAIL)].rstrip()          # the quick prompt ends with the message
     elif history:
-        system = f"{system}\n\nCONTESTO CONVERSAZIONE:\n{history}".strip()
+        system = f"{system}\n\nCONVERSATION CONTEXT:\n{history}".strip()
     msgs: list[dict] = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": user}]
     rv = review or {}
     drop = set(rv.get("remove_steps") or []) if rv.get("verdict") == "fix" else set()

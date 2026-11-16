@@ -74,7 +74,7 @@ class Gate:
         if path in self.OPEN_PATHS:
             return await call_next(request)
         if self.closed:
-            return JSONResponse({"detail": tr("archivio in manutenzione per pochi secondi, riprova")}, status_code=503,
+            return JSONResponse({"detail": tr("archive under maintenance for a few seconds, try again")}, status_code=503,
                                 headers={"Retry-After": "5"})
         with self._lock:
             self.inflight += 1

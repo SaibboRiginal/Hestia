@@ -36,7 +36,7 @@ export function ic(name: string, size = 16): TemplateResult {
 export function wxChip(day: { min_c: number | null; max_c: number | null; condition: string; icon: string; rain_hours?: string[] } | undefined,
                        extra: string[] = []): TemplateResult | typeof nothing {
   if (!day) return nothing;
-  const rain = day.rain_hours?.length ? `, pioggia ${day.rain_hours[0]}${day.rain_hours.length > 1 ? '–' + day.rain_hours[day.rain_hours.length - 1] : ''}` : '';
+  const rain = day.rain_hours?.length ? tr(', rain {0}', `${day.rain_hours[0]}${day.rain_hours.length > 1 ? '–' + day.rain_hours[day.rain_hours.length - 1] : ''}`) : '';
   const title = [`${day.condition}${rain}`, ...extra].join('\n');
   const wet = ['rain', 'drizzle', 'storm', 'snow'].includes(day.icon);
   return html`<span class="wx" title=${title}><hxk-icon name=${day.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${day.min_c ?? ''}–${day.max_c ?? ''}°</span>`;
@@ -98,7 +98,7 @@ export class ChronosDialog extends LitElement {
     if (!this.open) return nothing;
     return html`<div class="bd" @click=${(e: Event) => { if (e.target === e.currentTarget) this.close(); }}>
       <div class="dlg" role="dialog" aria-modal="true" aria-label=${this.heading}>
-        <header><h2>${this.heading}</h2><button class="x" aria-label=${tr("Chiudi")} @click=${this.close}><hxk-icon name="x" size="18"></hxk-icon></button></header>
+        <header><h2>${this.heading}</h2><button class="x" aria-label=${tr("Close")} @click=${this.close}><hxk-icon name="x" size="18"></hxk-icon></button></header>
         <div class="body"><slot></slot></div>
         <footer><slot name="footer"></slot></footer>
       </div></div>`;

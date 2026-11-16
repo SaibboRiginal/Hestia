@@ -22,17 +22,17 @@ _EPHEMERAL = {"type": "ephemeral"}
 
 class AnthropicProvider(LLMProvider):
     TYPE = "anthropic"
-    LABEL = "Compatibile Anthropic"
+    LABEL = "Anthropic compatible"
     CONTEXT_WINDOW = 200_000
-    BILLING = "API Anthropic · a consumo"
+    BILLING = "Anthropic API · pay per use"
     CONFIG_FIELDS = (
-        {"key": "base_url", "type": "string", "label": "Indirizzo (vuoto = Anthropic)", "default": ""},
-        {"key": "api_key", "type": "secret_ref", "label": "Chiave API (ORACLE_KEY_<NOME>)"},
-        {"key": "thinking_by_mode", "type": "object", "label": "Ragionamento per modalità",
+        {"key": "base_url", "type": "string", "label": "Address (empty = Anthropic)", "default": ""},
+        {"key": "api_key", "type": "secret_ref", "label": "API key (ORACLE_KEY_<NAME>)"},
+        {"key": "thinking_by_mode", "type": "object", "label": "Reasoning per mode",
          "default": {"fast": "off", "normal": "low", "deep": "high"}},
-        {"key": "prompt_cache", "type": "bool", "label": "Cache del prompt", "default": True},
-        {"key": "max_tokens", "type": "int", "label": "Token massimi per risposta", "default": 16000},
-        {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 180},
+        {"key": "prompt_cache", "type": "bool", "label": "Prompt cache", "default": True},
+        {"key": "max_tokens", "type": "int", "label": "Most tokens per answer", "default": 16000},
+        {"key": "timeout_sec", "type": "int", "label": "Timeout (seconds)", "default": 180},
     )
     CAPABILITIES = frozenset({"chat", "tools", "stream", "vision", "thinking"})
     MODELS = ("claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5")
@@ -101,7 +101,7 @@ class AnthropicProvider(LLMProvider):
         content = []
         if static:
             content.append({"type": "text", "text": static, **self._cache()})
-        content.append({"type": "text", "text": dynamic or "(vuoto)"})
+        content.append({"type": "text", "text": dynamic or "(empty)"})
         return content
 
     def _tools(self, tools: list[dict]) -> list[dict]:
@@ -159,7 +159,7 @@ class AnthropicProvider(LLMProvider):
             logger.warning("event=anthropic_refusal category=%s",
                            getattr(getattr(response, "stop_details", None), "category", None))
             if not texts:
-                texts.append(tr("Non posso aiutarti con questa richiesta."))
+                texts.append(tr("I can't help you with this request."))
         return "".join(texts).strip(), "\n".join(reasoning).strip(), calls
 
     # ── Calls ─────────────────────────────────────────────────────────────

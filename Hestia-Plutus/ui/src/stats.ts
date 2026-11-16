@@ -25,24 +25,24 @@ export class PlutusStats extends HestiaElement {
     const s = this.s;
     const unit = s?.currency === 'EUR' ? '€' : s?.currency || '';
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Statistiche")}</h1></div>
-      <div class="tabs">${[3, 6, 12, 24].map(n => html`<button class="tab" aria-pressed=${this.months === n} @click=${() => { this.months = n; this.s = undefined; this.load(); }}>${n} ${tr("mesi")}</button>`)}</div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Statistics")}</h1></div>
+      <div class="tabs">${[3, 6, 12, 24].map(n => html`<button class="tab" aria-pressed=${this.months === n} @click=${() => { this.months = n; this.s = undefined; this.load(); }}>${n} ${tr("months")}</button>`)}</div>
       ${s === undefined ? html`<hxk-state kind="loading"></hxk-state>` : s === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
-        <hxk-stat .items=${[{ label: tr('Media spese al mese'), value: money(s.avg_spent, s.currency) },
-          { label: tr('Totale spese'), value: money(s.months.reduce((a: number, m: any) => a + m.spent, 0), s.currency) },
-          { label: tr('Totale entrate'), value: money(s.months.reduce((a: number, m: any) => a + m.income, 0), s.currency) }]}></hxk-stat>
-        <div class="card col"><h2>${tr("Mese per mese")}</h2>
+        <hxk-stat .items=${[{ label: tr('Average spending per month'), value: money(s.avg_spent, s.currency) },
+          { label: tr('Total expenses'), value: money(s.months.reduce((a: number, m: any) => a + m.spent, 0), s.currency) },
+          { label: tr('Total income'), value: money(s.months.reduce((a: number, m: any) => a + m.income, 0), s.currency) }]}></hxk-stat>
+        <div class="card col"><h2>${tr("Month by month")}</h2>
           <hxk-chart type="bar" height="180" unit=${unit} .labels=${s.months.map((m: any) => m.label.split(' ')[0].slice(0, 3))}
-            .series=${[{ name: tr('Spese'), values: s.months.map((m: any) => m.spent) }, { name: tr('Entrate'), values: s.months.map((m: any) => m.income) }]}></hxk-chart></div>
-        ${s.categories.length ? html`<div class="card col"><h2>${tr("Per categoria")}</h2>
+            .series=${[{ name: tr('Expenses'), values: s.months.map((m: any) => m.spent) }, { name: tr('f.pl::Income'), values: s.months.map((m: any) => m.income) }]}></hxk-chart></div>
+        ${s.categories.length ? html`<div class="card col"><h2>${tr("By category")}</h2>
           <hxk-chart type="line" height="180" unit=${unit} .labels=${s.months.map((m: any) => m.label.split(' ')[0].slice(0, 3))}
             .series=${s.categories.slice(0, 6).map((c: any) => ({ name: c.label, values: s.months.map((m: any) => m.by_category[c.id] || 0) }))}></hxk-chart>
           <div class="list">${s.categories.map((c: any) => html`<div class="li" @click=${() => this.host.navigate('movimenti', { categoria: c.id })}>
-            ${catDot(c)}<span class="grow truncate">${c.label}</span><span class="small muted tnum">${tr("media")} ${money(c.avg, s.currency)}</span>
+            ${catDot(c)}<span class="grow truncate">${c.label}</span><span class="small muted tnum">${tr("average")} ${money(c.avg, s.currency)}</span>
             <span class="tnum amt">${money(c.total, s.currency)}</span></div>`)}</div></div>` : nothing}
-        ${s.merchants.length ? html`<div class="card col"><h2>${tr("Esercenti")}</h2>${s.merchants.map((m: any) => html`<div class="between small" style="padding:4px 0">
+        ${s.merchants.length ? html`<div class="card col"><h2>${tr("Merchants")}</h2>${s.merchants.map((m: any) => html`<div class="between small" style="padding:4px 0">
           <span class="truncate">${m.merchant} <span class="muted">×${m.count}</span></span><span class="tnum">${money(m.total, s.currency)}</span></div>`)}</div>` : nothing}
-        <div class="row wrap"><hxk-button variant="ghost" icon="link" @click=${() => this.exportData()}>${tr("Esporta tutto (JSON)")}</hxk-button></div>`}
+        <div class="row wrap"><hxk-button variant="ghost" icon="link" @click=${() => this.exportData()}>${tr("Export everything (JSON)")}</hxk-button></div>`}
     </div>`;
   }
 }
@@ -82,24 +82,24 @@ export class PlutusCategories extends HestiaElement {
     const cats = this.cats;
     const rules = this.rules.filter(r => !this.q || `${r.pattern} ${this.label(r.category)}`.toLowerCase().includes(this.q.toLowerCase()));
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Categorie e regole")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Categories and rules")}</h1></div>
       ${cats === undefined ? html`<hxk-state kind="loading"></hxk-state>` : cats === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
-        <div class="card col"><h2>${tr("Categorie")}</h2>
+        <div class="card col"><h2>${tr("Categories")}</h2>
           <div class="list">${cats.map(c => html`<div class="li" style="cursor:default;${c.archived ? 'opacity:.55' : ''}">${catDot(c)}
             <input class="in grow" .value=${c.label} @change=${(e: any) => this.saveCat(c, { label: e.target.value })}>
-            <span class="small muted">${c.kind === 'income' ? 'entrata' : c.kind === 'transfer' ? tr('non conta') : 'spesa'}</span>
-            <hxk-button size="sm" variant="ghost" @click=${() => this.saveCat(c, { archived: !c.archived })}>${c.archived ? tr('Riattiva') : tr('Archivia')}</hxk-button></div>`)}</div>
-          <div class="row"><input class="in grow" placeholder=${tr("Nuova categoria")} .value=${this.newCat} @input=${(e: any) => (this.newCat = e.target.value)}
-            @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addCat()}><hxk-button icon="plus" @click=${() => this.addCat()}>${tr("Aggiungi")}</hxk-button></div></div>
-        <div class="card col"><h2>${tr("Regole")}</h2>
-          <div class="small muted">${tr("Se il nome dell'esercente o la descrizione contiene il testo, il movimento va in quella categoria. Le impari anche correggendo un movimento con «usa sempre».")}</div>
-          <div class="row wrap"><input class="in grow" placeholder=${tr("Testo, es. palestra")} .value=${this.newRule.pattern} @input=${(e: any) => (this.newRule = { ...this.newRule, pattern: e.target.value })}>
+            <span class="small muted">${c.kind === 'income' ? tr('income') : c.kind === 'transfer' ? tr('doesn\'t count') : tr('expense')}</span>
+            <hxk-button size="sm" variant="ghost" @click=${() => this.saveCat(c, { archived: !c.archived })}>${c.archived ? tr('Turn back on') : tr('f::Archive')}</hxk-button></div>`)}</div>
+          <div class="row"><input class="in grow" placeholder=${tr("New category")} .value=${this.newCat} @input=${(e: any) => (this.newCat = e.target.value)}
+            @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.addCat()}><hxk-button icon="plus" @click=${() => this.addCat()}>${tr("Add")}</hxk-button></div></div>
+        <div class="card col"><h2>${tr("Rules")}</h2>
+          <div class="small muted">${tr("If the merchant name or the description contains the text, the transaction goes in that category. You also learn them by fixing a transaction with «always use».")}</div>
+          <div class="row wrap"><input class="in grow" placeholder=${tr("Text, e.g. gym")} .value=${this.newRule.pattern} @input=${(e: any) => (this.newRule = { ...this.newRule, pattern: e.target.value })}>
             <select class="in" @change=${(e: any) => (this.newRule = { ...this.newRule, category: e.target.value })}>
-              <option value="">${tr("Categoria…")}</option>${cats.filter(c => !c.archived).map(c => html`<option value=${c.id} ?selected=${c.id === this.newRule.category}>${c.label}</option>`)}</select>
-            <hxk-button icon="plus" ?disabled=${!this.newRule.pattern || !this.newRule.category} @click=${() => this.addRule()}>${tr("Aggiungi")}</hxk-button></div>
-          <input class="in" type="search" placeholder="Cerca tra ${this.rules.length} regole" .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
+              <option value="">${tr("Category…")}</option>${cats.filter(c => !c.archived).map(c => html`<option value=${c.id} ?selected=${c.id === this.newRule.category}>${c.label}</option>`)}</select>
+            <hxk-button icon="plus" ?disabled=${!this.newRule.pattern || !this.newRule.category} @click=${() => this.addRule()}>${tr("Add")}</hxk-button></div>
+          <input class="in" type="search" placeholder=${tr("Search among {0} rules", this.rules.length)} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
           <div class="list">${rules.map(r => html`<div class="li" style="cursor:default"><span class="grow truncate">«${r.pattern}»</span>
-            <span class="small">${this.label(r.category)}</span>${r.source === 'user' ? html`<span class="pill good">${tr("tua")}</span>` : nothing}
+            <span class="small">${this.label(r.category)}</span>${r.source === 'user' ? html`<span class="pill good">${tr("f::yours")}</span>` : nothing}
             <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.delRule(r)}></hxk-button></div>`)}</div></div>`}
     </div>`;
   }

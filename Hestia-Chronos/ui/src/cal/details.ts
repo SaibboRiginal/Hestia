@@ -55,16 +55,16 @@ export class ChronosCalDetails extends LitElement {
   private menu(): MenuItem[] {
     const e = this.ev, active = e.occ.status !== 'cancelled' && e.occ.status !== 'completed';
     return [
-      { id: 'edit', label: tr('Modifica'), icon: 'edit' },
-      { id: 'duplicate', label: tr('Duplica'), icon: 'copy' },
-      { id: 'ask', label: tr('Chiedi a {assistant}…'), icon: 'sparkle' },
-      ...(e.item?.action || e.occ.run ? [{ id: 'logs', label: tr('Log del modulo'), icon: 'terminal' }] : []),
-      ...(e.occ.moved ? [{ id: 'reset-move', label: tr('Ripristina orario originale'), icon: 'undo' }] : []),
-      ...(active && e.occ.status !== 'paused' && e.occ.recurring ? [{ id: 'pause', label: tr('Metti in pausa la regola'), icon: 'pause' }] : []),
-      ...(e.occ.status === 'paused' ? [{ id: 'resume', label: tr('Riattiva'), icon: 'play' }] : []),
+      { id: 'edit', label: tr('Edit'), icon: 'edit' },
+      { id: 'duplicate', label: tr('Duplicate'), icon: 'copy' },
+      { id: 'ask', label: tr('Ask {assistant}…'), icon: 'sparkle' },
+      ...(e.item?.action || e.occ.run ? [{ id: 'logs', label: tr('Module log'), icon: 'terminal' }] : []),
+      ...(e.occ.moved ? [{ id: 'reset-move', label: tr('Restore original time'), icon: 'undo' }] : []),
+      ...(active && e.occ.status !== 'paused' && e.occ.recurring ? [{ id: 'pause', label: tr('Pause the rule'), icon: 'pause' }] : []),
+      ...(e.occ.status === 'paused' ? [{ id: 'resume', label: tr('Turn back on'), icon: 'play' }] : []),
       { id: 'd', label: '', divider: true },
-      ...(active ? [{ id: 'cancel', label: e.occ.recurring ? tr('Annulla tutta la regola') : tr('Annulla'), icon: 'trash', danger: true }] : []),
-      ...(e.occ.status === 'cancelled' ? [{ id: 'restore', label: tr('Ripristina'), icon: 'undo' }] : []),
+      ...(active ? [{ id: 'cancel', label: e.occ.recurring ? tr('Cancel the whole rule') : tr('Cancel'), icon: 'trash', danger: true }] : []),
+      ...(e.occ.status === 'cancelled' ? [{ id: 'restore', label: tr('f::Restore'), icon: 'undo' }] : []),
     ];
   }
 
@@ -81,52 +81,52 @@ export class ChronosCalDetails extends LitElement {
       <div class="top" style="--c:${e.color}">
         <span class="sw"></span>
         <div class="grow"><h3>${e.occ.title}</h3><div class="when">${this.when()}</div></div>
-        <button class="ib" aria-label=${tr("Modifica")} title=${tr("Modifica")} @click=${() => this.act('edit')}>${ic('edit', 16)}</button>
+        <button class="ib" aria-label=${tr("Edit")} title=${tr("Edit")} @click=${() => this.act('edit')}>${ic('edit', 16)}</button>
         <chronos-menu .items=${this.menu()} @select=${(x: CustomEvent) => { x.stopPropagation(); this.act(x.detail); }}>
-          <button class="ib" aria-label=${tr("Altro")}>${ic('more', 16)}</button></chronos-menu>
-        <button class="ib" aria-label=${tr("Chiudi")} @click=${() => fire(this, 'close')}>${ic('x', 16)}</button>
+          <button class="ib" aria-label=${tr("Other")}>${ic('more', 16)}</button></chronos-menu>
+        <button class="ib" aria-label=${tr("Close")} @click=${() => fire(this, 'close')}>${ic('x', 16)}</button>
       </div>
       ${e.group?.length ? html`<div class="grp">
-        <div class="grp-h">${e.group.length} ${tr("esecuzioni il")} ${fmt.dayLong(e.start)} · ${rule}</div>
+        <div class="grp-h">${e.group.length} ${tr("runs on")} ${fmt.dayLong(e.start)} · ${rule}</div>
         <div class="grp-l">${e.group.map(g => html`<button class="gi ${g.occ.run?.ok === false ? 'ko' : g.occ.run?.ok ? 'ok' : ''} ${g.occ.skipped ? 'sk' : ''}"
-          title=${g.occ.run ? (g.occ.run.ok ? 'ok' : `fallita: ${g.occ.run.detail || ''}`) : tr('non ancora eseguita')}
+          title=${g.occ.run ? (g.occ.run.ok ? 'ok' : tr('failed: {0}', g.occ.run.detail || '')) : tr('not run yet')}
           @click=${() => fire(this, 'cal-pick-occ', g)}>${t(g.start)}</button>`)}</div>
-        <div class="grp-n">${tr("Clic su un orario per aprire quella singola esecuzione.")}</div></div>` : nothing}
-      ${e.occ.type === 'window' ? html`<p class="explain" style="--c:${e.color}">${ic('window', 14)}<span><b>${tr("Finestra")} ${t(e.start)}–${e.end ? t(e.end) : ''}.</b>
-        ${WINDOW_TEXT[e.occ.owner] ?? tr("{0} può lavorare solo in questo intervallo; fuori dalla finestra le sue attività aspettano.", ownerLabel(e.occ.owner))}</span></p>` : nothing}
+        <div class="grp-n">${tr("Click on a time to open that single run.")}</div></div>` : nothing}
+      ${e.occ.type === 'window' ? html`<p class="explain" style="--c:${e.color}">${ic('window', 14)}<span><b>${tr("Window")} ${t(e.start)}–${e.end ? t(e.end) : ''}.</b>
+        ${WINDOW_TEXT[e.occ.owner] ?? tr("{0} can work only in this interval; outside the window its activities wait.", ownerLabel(e.occ.owner))}</span></p>` : nothing}
       <div class="badges">
         <span class="ob" style="--c:${e.color}"><i></i>${ownerLabel(e.occ.owner)}</span>
         <span class="ob">${ic(type.icon, 11)} ${type.label}</span>
         <hxk-badge tone=${status.tone}>${status.label}</hxk-badge>
-        ${e.occ.skipped ? html`<hxk-badge tone="warning">${tr("occorrenza saltata")}</hxk-badge>` : nothing}
-        ${e.occ.moved ? html`<hxk-badge tone="info">${tr("spostata")}</hxk-badge>` : nothing}
-        ${e.item?.user_modified ? html`<hxk-badge tone="accent">${tr("modificata da te")}</hxk-badge>` : nothing}
+        ${e.occ.skipped ? html`<hxk-badge tone="warning">${tr("occurrence skipped")}</hxk-badge>` : nothing}
+        ${e.occ.moved ? html`<hxk-badge tone="info">${tr("moved")}</hxk-badge>` : nothing}
+        ${e.item?.user_modified ? html`<hxk-badge tone="accent">${tr("alt::changed by you")}</hxk-badge>` : nothing}
       </div>
       <dl>
         ${e.occ.recurring ? html`<dt>${ic('repeat', 14)}</dt><dd>${rule}</dd>` : nothing}
         ${e.item?.description ? html`<dt>${ic('list', 14)}</dt><dd class="desc">${e.item.description}</dd>` : nothing}
-        ${flex ? html`<dt>${ic('clock', 14)}</dt><dd>${tr("Orario flessibile tra")} ${flex.earliest || '…'} e ${flex.latest || '…'}${tr(": parte prima o dopo i tuoi impegni")}${e.occ.run?.flex ? html`<span class="detail">${tr("Questa volta alle")}
+        ${flex ? html`<dt>${ic('clock', 14)}</dt><dd>${tr("Flexible time between")} ${flex.earliest || '…'} e ${flex.latest || '…'}${tr(": it starts before or after your appointments")}${e.occ.run?.flex ? html`<span class="detail">${tr("This time at")}
           ${fmt.time(new Date(e.occ.run.flex.at))}, ${e.occ.run.flex.reason}</span>` : nothing}</dd>` : nothing}
         ${e.item?.action ? html`<dt>${ic('zap', 14)}</dt><dd><code>${e.item.action.method || 'POST'} ${e.item.action.service}${e.item.action.path}</code></dd>` : nothing}
         ${e.occ.run ? html`<dt>${ic(e.occ.run.ok ? 'check' : 'alert', 14)}</dt>
-          <dd class=${e.occ.run.ok ? '' : 'err'}>${tr("Questa esecuzione:")} ${e.occ.run.ok ? 'ok' : 'fallita'}${e.occ.run.duration_ms ? ` · ${e.occ.run.duration_ms} ms` : ''}
-            ${(e.failedCount ?? 0) > 1 ? tr(" · fallita {0} volte negli ultimi giorni", e.failedCount) : ''}
+          <dd class=${e.occ.run.ok ? '' : 'err'}>${tr("This run:")} ${e.occ.run.ok ? 'ok' : tr('f::failed')}${e.occ.run.duration_ms ? ` · ${e.occ.run.duration_ms} ms` : ''}
+            ${(e.failedCount ?? 0) > 1 ? tr(" · failed {0} times in the last days", e.failedCount) : ''}
             ${!e.occ.run.ok && e.occ.run.detail ? html`<span class="detail">${e.occ.run.detail}</span>` : nothing}</dd>`
           : lr ? html`<dt>${ic(lr.ok ? 'check' : 'alert', 14)}</dt>
-          <dd class=${lr.ok ? '' : 'err'}>${tr("Ultima esecuzione della regola")} ${fmt.relative(new Date(lr.at))}: ${lr.ok ? 'ok' : 'fallita'}
+          <dd class=${lr.ok ? '' : 'err'}>${tr("Last run of the rule")} ${fmt.relative(new Date(lr.at))}: ${lr.ok ? 'ok' : tr('f::failed')}
             ${!lr.ok ? html`<span class="detail">${lr.detail}</span>` : nothing}</dd>` : nothing}
-        ${e.item?.parent ? html`<dt>${ic('branch', 14)}</dt><dd>${tr("Collegata a")} <code>${e.item.parent}</code>${tr(": se annulli quella, si annulla anche questa")}</dd>` : nothing}
+        ${e.item?.parent ? html`<dt>${ic('branch', 14)}</dt><dd>${tr("Linked to")} <code>${e.item.parent}</code>${tr(": if you cancel that one, this one is cancelled too")}</dd>` : nothing}
         <dt>${ic('info', 14)}</dt><dd><code>${e.occ.key}</code></dd>
       </dl>
       <div class="actions">
-        ${e.occ.skipped ? html`<hxk-button size="sm" icon="undo" @click=${() => this.act('unskip')}>${tr("Ripristina")}</hxk-button>`
+        ${e.occ.skipped ? html`<hxk-button size="sm" icon="undo" @click=${() => this.act('unskip')}>${tr("f::Restore")}</hxk-button>`
           : e.occ.status !== 'cancelled' && e.occ.status !== 'completed'
-            ? html`<hxk-button size="sm" @click=${() => this.act('skip')}>${e.occ.recurring ? tr('Salta questa') : tr('Ignora')}</hxk-button>` : nothing}
-        ${e.item?.action && e.occ.status !== 'cancelled' ? html`<hxk-button size="sm" icon="play" @click=${() => this.act('run')}>${tr("Esegui ora")}</hxk-button>` : nothing}
-        ${e.occ.status === 'paused' ? html`<hxk-button size="sm" variant="primary" icon="play" @click=${() => this.act('resume')}>${tr("Riattiva")}</hxk-button>` : nothing}
-        ${e.occ.status === 'cancelled' ? html`<hxk-button size="sm" variant="primary" icon="undo" @click=${() => this.act('restore')}>${tr("Ripristina regola")}</hxk-button>` : nothing}
-        ${forge ? html`<hxk-button size="sm" @click=${() => this.host.navigate('sviluppo', { task: forge }, 'hephaestus')}>${tr("Apri in Sviluppo")}</hxk-button>` : nothing}
-        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Modifica o spiega questa voce a parole")} @click=${() => this.act('ask')}>${tr("Chiedi a {assistant}")}</hxk-button>
+            ? html`<hxk-button size="sm" @click=${() => this.act('skip')}>${e.occ.recurring ? tr('Skip this') : tr('Ignore')}</hxk-button>` : nothing}
+        ${e.item?.action && e.occ.status !== 'cancelled' ? html`<hxk-button size="sm" icon="play" @click=${() => this.act('run')}>${tr("alt::Run now")}</hxk-button>` : nothing}
+        ${e.occ.status === 'paused' ? html`<hxk-button size="sm" variant="primary" icon="play" @click=${() => this.act('resume')}>${tr("Turn back on")}</hxk-button>` : nothing}
+        ${e.occ.status === 'cancelled' ? html`<hxk-button size="sm" variant="primary" icon="undo" @click=${() => this.act('restore')}>${tr("Restore rule")}</hxk-button>` : nothing}
+        ${forge ? html`<hxk-button size="sm" @click=${() => this.host.navigate('sviluppo', { task: forge }, 'hephaestus')}>${tr("Open in Development")}</hxk-button>` : nothing}
+        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Edit or explain this item in words")} @click=${() => this.act('ask')}>${tr("Ask {assistant}")}</hxk-button>
       </div>`;
   }
 }

@@ -32,15 +32,15 @@ def complete_oauth_from_paste(provider: str, url: str) -> str:
     ok, payload = catalog.route("hecate", f"api/gateway/auth/complete/{provider}", "POST", body={"code": url})
     name = html.escape(provider.capitalize())
     if ok and isinstance(payload, dict) and payload.get("status") == "authorized":
-        return tr("🟢 <b>{0} collegato</b>\nIl calendario è attivo.", name)
+        return tr("🟢 <b>{0} linked</b>\nThe calendar is active.", name)
     detail = payload.get("detail") if isinstance(payload, dict) else payload
     if isinstance(detail, dict):
         msg = str(detail.get("error") or detail)
         hint = str(detail.get("hint") or "")
     else:
-        msg, hint = str(detail or "errore sconosciuto"), ""
+        msg, hint = str(detail or tr("unknown error")), ""
     logging.getLogger("hestia_telegram.oauth").warning("event=oauth_paste_failed provider=%s detail=%s", provider,
                                                          msg[:300])
-    reply = tr("🔴 <b>Collegamento {0} non riuscito</b>", name)
-    reply += f"\n{html.escape(hint[:300])}" if hint else tr("\nRiprova dall'inizio: il link vale pochi minuti.")
+    reply = tr("🔴 <b>Linking {0} failed</b>", name)
+    reply += f"\n{html.escape(hint[:300])}" if hint else tr("\nStart again from the beginning: the link lasts a few minutes.")
     return reply

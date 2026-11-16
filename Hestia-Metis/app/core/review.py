@@ -75,7 +75,7 @@ _PATTERNS = [
     ("EMAIL", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
     ("IBAN", re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,3})?\b")),
     ("TEL", re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?(?:\d[\s.-]?){8,12}\d(?![\w])")),
-    ("INDIRIZZO", re.compile(r"\b(?:via|viale|piazza|piazzale|corso|vicolo|largo|strada|località)\s+"
+    ("ADDRESS", re.compile(r"\b(?:via|viale|piazza|piazzale|corso|vicolo|largo|strada|località)\s+"
                              r"[A-ZÀ-Ü][\wÀ-ü'.]*(?:\s+[A-ZÀ-Ü][\wÀ-ü'.]*){0,3}(?:,?\s*\d+[a-zA-Z]?)?", re.IGNORECASE)),
 ]
 
@@ -303,12 +303,12 @@ class Review:
             raise Invalid("decision: accept | reject | edit")
         rows = self._rows(kind="review", ids=tid, limit=1)
         if not rows:
-            raise Invalid(tr("revisione non trovata"))
+            raise Invalid(tr("review not found"))
         row = rows[0]
         data = dict(row.get("data") or {})
         if decision == "edit":
             if not str(answer or "").strip():
-                raise Invalid(tr("answer: la risposta giusta"))
+                raise Invalid(tr("answer: the right answer"))
             data.update(answer=str(answer).strip()[:8000], verdict="fix", status="edited")
         else:
             data["status"] = "accepted" if decision == "accept" else "rejected"

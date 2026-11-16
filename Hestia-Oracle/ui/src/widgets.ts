@@ -24,18 +24,18 @@ export class OracleUsageWidget extends HestiaElement {
   }
   render() {
     if (this.data === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
-    if (this.data === null) return html`<hxk-state kind="offline" text=${tr("Assistente non raggiungibile")} @retry=${() => this.load()}></hxk-state>`;
+    if (this.data === null) return html`<hxk-state kind="offline" text=${tr("Assistant not reachable")} @retry=${() => this.load()}></hxk-state>`;
     const t = this.data.today || {};
     const rows: any[] = this.data.today_by_model || [];
     const size = this.ctx?.size || 'm';
     return html`<div class="w" @click=${() => this.host.navigate('cervello')}>
-      <span class="small muted">${tr("Uso modelli oggi")}</span>
-      <div class="big">${num(t.calls)} <span class="small muted" style="font-weight:400">${tr("chiamate")}</span></div>
+      <span class="small muted">${tr("Model usage today")}</span>
+      <div class="big">${num(t.calls)} <span class="small muted" style="font-weight:400">${tr("calls")}</span></div>
       <div class="small muted">${num(t.input_tokens)} / ${num(t.output_tokens)} ${tr("token")}${t.cost_usd ? ` · ${cost(t.cost_usd)}` : ''}</div>
       ${size === 's' ? nothing : rows.length
         ? rows.slice(0, size === 'm' ? 2 : 6).map(r => html`<div class="r"><span class="truncate">${r.label || r.use_case} · ${r.model}</span>
             <span>${num(r.calls)}</span></div>`)
-        : html`<div class="small muted">${tr("Nessuna chiamata oggi.")}</div>`}
+        : html`<div class="small muted">${tr("No calls today.")}</div>`}
     </div>`;
   }
 }

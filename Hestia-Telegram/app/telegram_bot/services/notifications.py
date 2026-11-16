@@ -42,7 +42,7 @@ _voices: dict[str, tuple[str, int]] = {}
 
 
 def _client_label(name: str) -> str:
-    return _CLIENT_LABELS.get(str(name or ""), str(name or tr("un altro client")))
+    return _CLIENT_LABELS.get(str(name or ""), str(name or tr("another client")))
 
 
 def _hermes(path: str, body: dict | None = None, method: str = "POST", timeout: float = 20) -> tuple[int, Any]:
@@ -154,17 +154,17 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
             html += f"\n{ui.note(hint)}"
     if link.get("module") and link.get("page"):
         from telegram_bot import webapp
-        button = webapp.open_button(tr("Apri"), f"/p/{link['module']}/{link['page']}")
+        button = webapp.open_button(tr("Open"), f"/p/{link['module']}/{link['page']}")
         if button:
             rows.append([button])
     if isinstance(body.get("secret"), dict):
         # Secret form (Cindy 4): never typed in the chat — the WebUI form (Mini App) sends it to Hermes.
         from telegram_bot import webapp
-        button = webapp.open_button(tr("Inserisci"), f"/p/hermes/notifiche?secret={notification_id}")
+        button = webapp.open_button(tr("Insert"), f"/p/hermes/notifiche?secret={notification_id}")
         if button:
             rows.append([button])
         else:
-            html += tr("\n<i>Per inserirlo apri la WebUI, pagina Notifiche: qui in chat non scriverlo.</i>")
+            html += tr("\n<i>To enter it open the WebUI, Notifications page: don't write it here in the chat.</i>")
     markup = ui.keyboard(rows)
     try:
         sent = core.send_user_message(chat_id, html, parse_mode="HTML", reply_markup=markup)
@@ -200,20 +200,20 @@ def _apply_update(body: dict[str, Any]) -> dict[str, Any]:
         # A newer occurrence of the same reminder was sent: never two in the chat.
         if _retract(body).get("deleted"):
             return {"status": "ok", "deleted": True}
-        text = tr("Sostituito")
+        text = tr("Replaced")
     elif state in ("answered", "expired"):
         answer = body.get("answer") or {}
         if state == "expired" or answer.get("status") == "expired":
-            text = tr("Scaduta")
+            text = tr("Expired")
         else:
-            label = answer.get("label") or answer.get("outcome_text") or tr("Gestita")
+            label = answer.get("label") or answer.get("outcome_text") or tr("Handled")
             by = answer.get("by")
-            text = ui.strip_emoji(label) + (tr(" · da {0}", _client_label(by)) if by and by != CLIENT_NAME else "")
+            text = ui.strip_emoji(label) + (tr(" · from {0}", _client_label(by)) if by and by != CLIENT_NAME else "")
     elif state == "seen":
         seen_by = (body.get("seen") or {}).get("by")
         if not seen_by or seen_by == CLIENT_NAME or body.get("pending"):
             return {"status": "ok", "edited": False}
-        text = tr("Vista su {0}", _client_label(seen_by))
+        text = tr("Seen on {0}", _client_label(seen_by))
     if not text:
         return {"status": "ok", "edited": False}
     try:
@@ -297,7 +297,7 @@ def handle_callback(call) -> None:
         parts = data.split(":", 2)
         notification_id, action_id = (parts[1], parts[2]) if len(parts) == 3 else ("", "")
     if not notification_id or not action_id:
-        core.bot.answer_callback_query(call.id, tr("Questa notifica è vecchia"))
+        core.bot.answer_callback_query(call.id, tr("This notification is old"))
         return
     chat_id = call.message.chat.id
     with _unseen_lock:
@@ -309,10 +309,10 @@ def handle_callback(call) -> None:
 
     if status == 409:
         by = answer.get("by")
-        note = tr("Già gestita da {0}", _client_label(by)) if by and by != CLIENT_NAME else tr("Già gestita")
+        note = tr("Already handled by {0}", _client_label(by)) if by and by != CLIENT_NAME else tr("Already handled")
         status_line = ui.strip_emoji(answer.get("label") or note)
         if payload.get("state") == "superseded":
-            note, status_line = tr("Sostituita da un promemoria più recente"), tr("Sostituito")
+            note, status_line = tr("Replaced by a newer reminder"), tr("Replaced")
         core.bot.answer_callback_query(call.id, note)
         try:
             core.bot.edit_message_reply_markup(chat_id=chat_id, message_id=call.message.message_id,
@@ -330,14 +330,14 @@ def handle_callback(call) -> None:
             ok = False
             logger.warning("event=notification_command_failed notification_id=%s error=%s", notification_id, exc)
         _hermes(f"api/notifications/{notification_id}/answer/outcome",
-                {"client": CLIENT_NAME, "ok": ok, "text": "" if ok else tr("Non riuscito")})
-        core.bot.answer_callback_query(call.id, tr("Fatto") if ok else tr("Non riuscito"))
+                {"client": CLIENT_NAME, "ok": ok, "text": "" if ok else tr("alt::Failed")})
+        core.bot.answer_callback_query(call.id, tr("Done") if ok else tr("alt::Failed"))
         return
     if status == 200:
-        core.bot.answer_callback_query(call.id, ui.strip_emoji(answer.get("outcome_text") or tr("Fatto"))[:190])
+        core.bot.answer_callback_query(call.id, ui.strip_emoji(answer.get("outcome_text") or tr("Done"))[:190])
         return
     logger.warning("event=notification_answer_failed notification_id=%s status=%s", notification_id, status)
-    core.bot.answer_callback_query(call.id, tr("Non riuscito, riprova tra poco"), show_alert=True)
+    core.bot.answer_callback_query(call.id, tr("Failed, try again shortly"), show_alert=True)
 
 
 def mark_seen_on_activity(message) -> None:

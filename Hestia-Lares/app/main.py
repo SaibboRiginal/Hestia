@@ -31,14 +31,14 @@ from .core.ha import HomeAssistant
 from .core.service import COMMANDS, DOMAINS, LABELS, Home
 
 API = "/api/home"
-kit = ModuleKit("lares", port=19024, api=API, domain="home", title="Casa", store="home-store",
+kit = ModuleKit("lares", port=19024, api=API, domain="home", title="Home", store="home-store",
                 when_to_use="home: lights, plugs, blinds, climate, sensors, scenes, who is home",
                 manual="The home (casa_stato): lights on, temperatures, open doors. casa_comando turns on/off/opens a device by name; casa_scena runs a scene; casa_dispositivi lists by type; casa_preferito saves a quick action.")
 app = kit.app
 kit.settings.declare([
-    setting("lares.persona", "Tu in Home Assistant", "enum", "", group="Casa", order=0,
+    setting("lares.persona", "You in Home Assistant", "enum", "", group="Home", order=0,
             options_source=f"{API}/persons/options",
-            help="La persona di Home Assistant che sei tu: quando esci o rientri, l'assistente sa se sei a casa."),
+            help="The Home Assistant person that is you: when you leave or come back, the assistant knows if you are home."),
 ])
 ha = HomeAssistant(os.getenv("LARES_HA_URL", ""), os.getenv("LARES_HA_TOKEN", ""))
 home = Home(kit.store, ha, kit.settings.get, presence=PresenceClient("lares", kit.hub_url))
@@ -62,7 +62,7 @@ def persons_options():
         rows = home.list("person")
     except Exception:
         rows = []
-    return {"options": [{"value": "", "label": tr("Nessuna")}] + [{"value": e["id"], "label": e["name"]} for e in rows]}
+    return {"options": [{"value": "", "label": tr("f::None")}] + [{"value": e["id"], "label": e["name"]} for e in rows]}
 
 
 @app.get(f"{API}/entities")
@@ -110,23 +110,23 @@ def delete_favorite(fid: str):
 def _status() -> dict:
     s = home.status()
     if not s["configured"]:
-        return {**s, "display": display(tr("Casa"), lines=[tr("La casa non è ancora collegata.")])}
+        return {**s, "display": display(tr("Home"), lines=[tr("The home is not linked yet.")])}
     if not s.get("connected") and s.get("error"):
-        return {**s, "display": display(tr("Casa"), lines=[s["error"]])}
-    lines = [(tr("Luci accese: ") + ", ".join(s["lights_on"][:8])) if s["lights_on"] else tr("Tutte le luci spente")]
+        return {**s, "display": display(tr("Home"), lines=[s["error"]])}
+    lines = [(tr("Lights on: ") + ", ".join(s["lights_on"][:8])) if s["lights_on"] else tr("All lights off")]
     if s["temperatures"]:
-        lines.append(tr("Temperature: ") + "; ".join(s["temperatures"]))
+        lines.append(tr("Temperatures: ") + "; ".join(s["temperatures"]))
     if s["open"]:
-        lines.append(tr("Aperte: ") + ", ".join(s["open"]))
-    return {**s, "display": display(tr("Casa"), lines=lines, actions=[
+        lines.append(tr("Open: ") + ", ".join(s["open"]))
+    return {**s, "display": display(tr("Home"), lines=lines, actions=[
         action(f["label"], "casa_preferito_esegui", {"favorite": f["id"]}) for f in s["favorites"][:6]])}
 
 
 def _devices(domain: str = "", query: str = "") -> dict:
     rows = home.list(domain, query)
     return {"count": len(rows), "items": rows[:80], "display": display(
-        LABELS.get(domain, "Dispositivi"), items=[item(e["name"], [home.say(e)]) for e in rows[:30]],
-        lines=[] if rows else [tr("Nessun dispositivo.")])}
+        LABELS.get(domain, "Devices"), items=[item(e["name"], [home.say(e)]) for e in rows[:30]],
+        lines=[] if rows else [tr("No devices.")])}
 
 
 def _command(device: str, command: str = "toggle", value: float | None = None) -> dict:
@@ -137,25 +137,25 @@ def _command(device: str, command: str = "toggle", value: float | None = None) -
 
 
 S, N = {"type": "string"}, {"type": "number"}
-DEV = {"type": "string", "description": "nome o entity_id del dispositivo"}
+DEV = {"type": "string", "description": "device name or entity_id"}
 G = "casa"
 kit.tools([
-    MCPTool(name="casa_stato", description="How the house is now: lights on, temperatures, open doors/windows, quick actions.", parameters={"type": "object", "properties": {}}, handler=_status, title="Casa adesso",
-            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Casa", "primary": 1}),
-    MCPTool(name="casa_dispositivi", description="Dispositivi di un tipo (domain: " + ", ".join(DOMAINS) + ").",
+    MCPTool(name="casa_stato", description="How the house is now: lights on, temperatures, open doors/windows, quick actions.", parameters={"type": "object", "properties": {}}, handler=_status, title="Home now",
+            clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Home", "primary": 1}),
+    MCPTool(name="casa_dispositivi", description="Devices of one type (domain: " + ", ".join(DOMAINS) + ").",
             parameters={"type": "object", "properties": {"domain": {"type": "string", "enum": list(DOMAINS)},
                                                          "query": S}},
-            handler=_devices, title="Dispositivi", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Casa", "primary": 2}),
+            handler=_devices, title="Devices", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Home", "primary": 2}),
     MCPTool(name="casa_comando", description=("Command a device: command on|off|toggle|open|close|lock|unlock; value = brightness % for lights "
                                               "or degrees for climate."),
             parameters={"type": "object", "properties": {"device": DEV, "command": {"type": "string", "enum": list(
                 COMMANDS)}, "value": N}, "required": ["device"]},
-            handler=_command, title="Comanda", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Casa", "primary": 3}),
+            handler=_command, title="f::Command", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            telegram={"section": "Home", "primary": 3}),
     MCPTool(name="casa_scena", description="Run a Home Assistant scene or action (by name).",
             parameters={"type": "object", "properties": {"scene": S}, "required": ["scene"]},
-            handler=lambda scene: home.scene(scene), title="Scena", method="POST", clients=["telegram", "ui"],
+            handler=lambda scene: home.scene(scene), title="Scene", method="POST", clients=["telegram", "ui"],
             telegram_group=G, telegram={"section": "Scene", "primary": 4}),
     MCPTool(name="casa_preferito", description="Save a quick action: device, label, room, command (default toggle).",
             parameters={"type": "object", "properties": {"device": DEV, "label": S, "room": S, "command": {
@@ -163,30 +163,30 @@ kit.tools([
             handler=lambda device, label="", room="", command="toggle": (lambda f: {
                 "saved": True, **f, "undo": undo("casa_preferito_elimina", favorite=f["id"])})(
                 home.add_favorite(device, label, room, command)),
-            title="Azione rapida", method="POST", clients=["telegram", "ui"], telegram_group=G,
+            title="Quick action", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Scene"}),
     MCPTool(name="casa_preferito_esegui", description="Run a saved quick action.",
             parameters={"type": "object", "properties": {"favorite": S}, "required": ["favorite"]},
-            handler=lambda favorite: home.run_favorite(favorite), title="Esegui azione rapida", method="POST",
+            handler=lambda favorite: home.run_favorite(favorite), title="Run quick action", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Scene"}),
     MCPTool(name="casa_preferito_elimina", description="Delete a quick action.",
             parameters={"type": "object", "properties": {"favorite": S}, "required": ["favorite"]},
-            handler=lambda favorite: home.delete_favorite(favorite), title="Elimina azione rapida", method="POST",
+            handler=lambda favorite: home.delete_favorite(favorite), title="Delete quick action", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Scene"}),
 ], prefix="casa_")
 
 transfer = Transfer("lares", kit.hub, sections=[
-    StoreSection("preferiti", "Azioni rapide", kit.store, ["favorite"], icon="zap",
+    StoreSection("preferiti", "Quick actions", kit.store, ["favorite"], icon="zap",
                  title=lambda r: r["data"].get("label", "")),
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
 kit.on_warm(lambda: threading.Thread(target=_listen, daemon=True, name="lares-ha-ws").start())
-kit.webui(icon="home", color="teal", description="La casa su Home Assistant: luci, tapparelle, clima, scene, azioni rapide.",
-          pages=[page("casa", "Casa", element="lares-home", icon="home", order=230,
-                      help="La casa adesso, le azioni rapide e tutti i dispositivi di Home Assistant per tipo.")],
-          widgets=[widget("casa", "Casa", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
+kit.webui(icon="home", color="teal", description="The house on Home Assistant: lights, shutters, climate, scenes, quick actions.",
+          pages=[page("casa", "Home", element="lares-home", icon="home", order=230,
+                      help="The house now, the quick actions and all Home Assistant devices by type.")],
+          widgets=[widget("casa", "Home", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
                           open_page="casa", icon="home")],
-          quick_actions=[quick_action("azione", "Casa", "POST", f"{API}/favorites/{{id}}/run", icon="home",
-                                      group="Casa", source=f"{API}/quick", order=230)])
+          quick_actions=[quick_action("azione", "Home", "POST", f"{API}/favorites/{{id}}/run", icon="home",
+                                      group="Home", source=f"{API}/quick", order=230)])
 kit.finish()

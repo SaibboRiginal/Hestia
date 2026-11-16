@@ -14,7 +14,7 @@ from hestia_common.signals_client import iso_week, last_weeks, metric, signal
 
 from . import progression, records
 from .records import local_date
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 if TYPE_CHECKING:
     from .service import Hercules
@@ -24,11 +24,10 @@ STALL_RECENT_DAYS = 30  # a stall on an exercise not trained for a month is hist
 LOW_ENERGY = 2          # same threshold as summary(): energy ≤ 2 on the 1–5 scale
 DELOAD_CHECKINS = 3     # low check-ins in 7 days before suggesting a deload
 PR_DAYS = 3
-WEEKDAYS_SHORT = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
 
 
 def _name(data: records.Data, ex_id: str) -> str:
-    return (data.exercises.get(ex_id) or {}).get("name") or tr("Esercizio")
+    return (data.exercises.get(ex_id) or {}).get("name") or tr("Exercise")
 
 
 def _stalls(h: "Hercules", data: records.Data, today: date) -> list[dict]:
@@ -73,7 +72,7 @@ def missed_streak(h: "Hercules", today: date, lookback: int = 28) -> list[date]:
 
 
 def _fmt_day(d: date) -> str:
-    return f"{WEEKDAYS_SHORT[d.weekday()]} {d.day}"
+    return f"{weekday_name(d.weekday())[:3]} {d.day}"
 
 
 def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list[dict]]:
@@ -83,18 +82,18 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
     data = h.data()
     out: list[dict] = []
     for s in _stalls(h, data, today):
-        what = "massimale stimato" if s["metric"] == "best_e1rm" else "ripetizioni"
+        what = tr("estimated max") if s["metric"] == "best_e1rm" else tr("reps")
         best = progression.fmt_kg(s["best"]) + (" kg" if s["metric"] == "best_e1rm" else "")
-        out.append(signal(f"stall:{s['exercise_id']}", tr("{0} fermo da {1} sedute: {2} non supera {3}", s['exercise'], s['exposures'], what, best), kind="trend", severity="attenzione",
+        out.append(signal(f"stall:{s['exercise_id']}", tr("{0} stuck for {1} sessions: {2} does not go past {3}", s['exercise'], s['exposures'], what, best), kind="trend", severity="attenzione",
                           metrics={"exposures": s["exposures"], "best": s["best"], "recent": s["recent"]},
                           page=f"esercizi/{s['exercise_id']}"))
     low = low_checkins(h, today)
     if len(low) >= DELOAD_CHECKINS:
-        out.append(signal("deload", tr("Energia bassa {0} volte in 7 giorni: valuta settimana di scarico", len(low)),
+        out.append(signal("deload", tr("Low energy {0} times in 7 days: consider a deload week", len(low)),
                           kind="trend", severity="attenzione", metrics={"low_checkins": len(low)}, page="allenamento"))
     missed = missed_streak(h, today)
     if len(missed) >= 2:
-        out.append(signal("missed_streak", tr("{0} allenamenti in programma saltati di fila (ultimo {1})", len(missed), _fmt_day(missed[0])), kind="streak",
+        out.append(signal("missed_streak", tr("{0} scheduled workouts skipped in a row (last {1})", len(missed), _fmt_day(missed[0])), kind="streak",
                           severity="alta" if len(missed) >= 4 else "attenzione", metrics={"missed": len(missed)},
                           page="allenamento"))
     seen = set()
@@ -102,14 +101,14 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
         if pr["exercise_id"] in seen:
             continue
         seen.add(pr["exercise_id"])
-        out.append(signal(f"pr:{pr['exercise_id']}", tr("Nuovo record {0}: {1} {2}", pr['exercise'], pr['label'], progression.fmt_kg(pr['value'])), kind="milestone", severity="info", ttl_days=PR_DAYS,
+        out.append(signal(f"pr:{pr['exercise_id']}", tr("New record {0}: {1} {2}", pr['exercise'], pr['label'], progression.fmt_kg(pr['value'])), kind="milestone", severity="info", ttl_days=PR_DAYS,
                           metrics={"value": pr["value"], "previous": pr.get("previous") or 0},
                           period=(local_date(pr.get("date"), h.tz) or today).isoformat(),
                           page=f"esercizi/{pr['exercise_id']}"))
     for g in h.goals():
         p = g["progress"]
         if p["per"] == "week" and p["behind"] and p["days_left"] <= 2:
-            out.append(signal("week_goal", tr("Obiettivo settimana indietro: {0}/{1}, {2} {3} {4}", p['done'], p['times'], 'resta' if p['days_left'] == 1 else 'restano', p['days_left'], 'giorno' if p['days_left'] == 1 else 'giorni'), kind="goal", severity="attenzione",
+            out.append(signal("week_goal", (tr("Week goal behind: {0}/{1}, 1 day left", p['done'], p['times']) if p['days_left'] == 1 else tr("Week goal behind: {0}/{1}, {2} days left", p['done'], p['times'], p['days_left'])), kind="goal", severity="attenzione",
                               metrics={"done": p["done"], "times": p["times"], "days_left": p["days_left"]},
                               period=iso_week(today), page="progressi"))
             break
@@ -141,10 +140,10 @@ def weekly_metrics(h: "Hercules", data: records.Data, today: date) -> list[dict]
     for w in weeks:
         if w < first:
             continue
-        out.append(metric("fitness.sessions", w, sessions.get(w, 0), tr("Allenamenti")))
+        out.append(metric("fitness.sessions", w, sessions.get(w, 0), tr("Workouts")))
         out.append(metric("fitness.volume", w, round(volume.get(w, 0.0)), tr("Volume (kg)")))
         if energy.get(w):
-            out.append(metric("fitness.energy", w, round(sum(energy[w]) / len(energy[w]), 2), tr("Energia media")))
+            out.append(metric("fitness.energy", w, round(sum(energy[w]) / len(energy[w]), 2), tr("Average energy")))
     return out
 
 
@@ -160,34 +159,33 @@ def detail(h: "Hercules", topic: str, today: date | None = None) -> str | None:
         for e in reversed(hist):
             d = local_date(e["date"], h.tz)
             top = f"{progression.fmt_kg(e['top_weight'])}×{e['top_reps']}" if e["top_weight"] is not None \
-                else f"{e['max_reps']} rip"
+                else tr("{0} reps", e['max_reps'])
             e1 = f" e1RM {progression.fmt_kg(e['best_e1rm'])}" if e["best_e1rm"] else ""
             bits.append(f"{d.strftime('%d/%m') if d else '?'} {top}{e1}")
-        return tr("Allenamento · {0}, ultime sedute: ", _name(data, ref)) + "; ".join(bits) if bits else None
+        return tr("Workout · {0}, last sessions: ", _name(data, ref)) + "; ".join(bits) if bits else None
     if kind == "pr" and ref in data.exercises:
         prs = [p for p in records.recent_prs(data, 14, h.formula(), limit=50) if p["exercise_id"] == ref]
         if not prs:
             return None
-        return tr("Allenamento · {0}, record recenti: ", _name(data, ref)) + "; ".join(
-            f"{p['label']} {progression.fmt_kg(p['value'])} (prima {progression.fmt_kg(p.get('previous'))})" for p in prs)
+        return tr("Workout · {0}, recent records: ", _name(data, ref)) + "; ".join(
+            tr("{0} {1} (before {2})", p['label'], progression.fmt_kg(p['value']), progression.fmt_kg(p.get('previous'))) for p in prs)
     if topic == "missed_streak":
         missed = missed_streak(h, today)
         if not missed:
             return None
-        return tr("Allenamento · giorni in programma saltati di fila: {0}", ', '.join(_fmt_day(d) for d in missed))
+        return tr("Workout · scheduled days skipped in a row: {0}", ', '.join(_fmt_day(d) for d in missed))
     if topic == "deload":
         low = low_checkins(h, today)
         if not low:
             return None
-        return "Allenamento · check-in energia bassa: " + "; ".join(
-            f"{(local_date(c.get('at'), h.tz) or today).strftime('%d/%m')} energia {c.get('energy')}"
-            + (f", sonno {c['sleep']}" if c.get("sleep") else "") for c in low)
+        return tr("Workout · low energy check-in: ") + "; ".join(
+            tr("{0} energy {1}", (local_date(c.get('at'), h.tz) or today).strftime('%d/%m'), c.get('energy'))
+            + (tr(", sleep {0}", c['sleep']) if c.get("sleep") else "") for c in low)
     if topic == "week_goal":
         goals = [g["progress"] for g in h.goals() if g["progress"]["per"] == "week"]
         if not goals:
             return None
         week = records.periods(data, "week", 1, h.tz, h.week_start(), today)[-1]
-        return tr("Allenamento · ") + "; ".join(f"{g['label']}: {g['hint']}, mancano {g['remaining']}, "
-                                             f"{g['days_left']} giorni alla fine" for g in goals) \
-            + f" · settimana: {week['sessions']} allenamenti, {week['volume']} kg"
+        return tr("Workout · ") + "; ".join(tr("{0}: {1}, {2} missing, {3} days to the end", g['label'], g['hint'], g['remaining'], g['days_left']) for g in goals) \
+            + tr(" · week: {0} workouts, {1} kg", week['sessions'], week['volume'])
     return None

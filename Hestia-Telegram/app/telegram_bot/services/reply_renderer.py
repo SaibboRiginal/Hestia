@@ -91,10 +91,10 @@ class ReplyRenderer:
             self.steps.append("• " + str(evt["content"]).strip().split("\n")[0][:180])
         elif action == "tool_call" and tool:
             self.tool_calls += 1
-            self.steps.append(f"• Uso: {_tool_label(tool)}")
+            self.steps.append(tr("• Using: {0}", _tool_label(tool)))
         elif action == "tool_result" and tool:
             n = meta.get("result_count")
-            self.steps.append((tr("  fatto") if meta.get("ok") else tr("  non riuscito")) + (f" · {n} risultati" if n else ""))
+            self.steps.append((tr("  done") if meta.get("ok") else tr("  failed")) + (tr(" · {0} results", n) if n else ""))
         if self.thinking_mode == "live" and not self.tokens:
             self._live_edit()
 
@@ -124,7 +124,7 @@ class ReplyRenderer:
         if isinstance(origin, dict) and origin.get("level") not in (None, "", "utente"):
             self.origin_label = str(origin.get("label") or "")
         if not answer:
-            answer = tr("Nessuna risposta: riprova tra poco.")
+            answer = tr("No answer: try again shortly.")
         else:
             self.answer_text = answer
         html = message_format.render_answer_html(answer)
@@ -190,13 +190,13 @@ class ReplyRenderer:
         more = len(self.steps) - len(steps)
         # The title says what is inside: «Ragionamento» only when the model really reasoned, otherwise the block
         # is the list of the tools used (same rule as the WebUI's chat-thinking).
-        tools = f"{self.tool_calls} {'strumento' if self.tool_calls == 1 else 'strumenti'}"
+        tools = tr("1 tool") if self.tool_calls == 1 else tr("{0} tools", self.tool_calls)
         if self.reasoning:
-            title = tr("Ragionamento")
-            summary = f"{self.reasoning} {'passo' if self.reasoning == 1 else 'passi'}" + (
+            title = tr("Reasoning")
+            summary = (tr("1 step") if self.reasoning == 1 else tr("{0} steps", self.reasoning)) + (
                 f" · {tools}" if self.tool_calls else "")
         else:
-            title, summary = tr("Strumenti usati"), str(self.tool_calls)
+            title, summary = tr("Tools used"), str(self.tool_calls)
         body = "\n".join(escape(s) for s in steps)
         if more:
             body = f"… (+{more})\n" + body
@@ -204,7 +204,7 @@ class ReplyRenderer:
         return f"{tag}<b>{title}</b> · {summary}\n{body}</blockquote>"
 
     def _live_edit(self) -> None:
-        text = f"<i>{escape(_strip_emoji(self.status_text) or tr('Sto lavorando…'))}</i>"
+        text = f"<i>{escape(_strip_emoji(self.status_text) or tr('Working on it…'))}</i>"
         if self.thinking_mode == "live" and self.steps:
             text += "\n" + "\n".join(escape(s) for s in self.steps[-4:])
         self._edit(text, parse_mode="HTML", throttle=True)

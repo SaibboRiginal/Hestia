@@ -102,7 +102,7 @@ const THEMES_SEMANTIC: Record<ThemeMode, Record<string, string>> = {
 export const THEMES: ThemeDef[] = [
   {
     id: 'claude-light',
-    label: tr('Claude chiaro'),
+    label: tr('Claude light'),
     mode: 'light',
     pair: 'claude-dark',
     tokens: {
@@ -141,7 +141,7 @@ export const THEMES: ThemeDef[] = [
   },
   {
     id: 'claude-dark',
-    label: tr('Claude scuro'),
+    label: tr('Claude dark'),
     mode: 'dark',
     pair: 'claude-light',
     tokens: {
@@ -180,7 +180,7 @@ export const THEMES: ThemeDef[] = [
   },
   {
     id: 'slate-dark',
-    label: tr('Ardesia'),
+    label: tr('Slate'),
     mode: 'dark',
     tokens: {
       '--bg': '#14171c',
@@ -215,17 +215,17 @@ export const THEMES: ThemeDef[] = [
   },
   // Coloured families (2026-10-29): derived from 4 seeds each, see makeTheme() below.
   ...[
-    makeTheme('oceano-light', tr('Oceano'), 'light', 'oceano-dark', { bg: '#f4f8fb', surface: '#ffffff', text: '#0f1c27', accent: '#1f7a9e' }),
-    makeTheme('oceano-dark', tr('Oceano notte'), 'dark', 'oceano-light', { bg: '#0f1a22', surface: '#16242e', text: '#e4eef4', accent: '#4fb3d9' }),
-    makeTheme('foresta-light', tr('Foresta'), 'light', 'foresta-dark', { bg: '#f5f8f3', surface: '#ffffff', text: '#14201a', accent: '#2f7d4f' }),
-    makeTheme('foresta-dark', tr('Bosco'), 'dark', 'foresta-light', { bg: '#121a15', surface: '#19241d', text: '#e3ede6', accent: '#5fbf86' }),
-    makeTheme('lavanda-light', tr('Lavanda'), 'light', 'lavanda-dark', { bg: '#f8f6fc', surface: '#ffffff', text: '#1c1726', accent: '#7a55c7' }),
-    makeTheme('lavanda-dark', tr('Ametista'), 'dark', 'lavanda-light', { bg: '#17131f', surface: '#201a2b', text: '#ece6f6', accent: '#a98bf0' }),
-    makeTheme('rosa-light', tr('Cipria'), 'light', 'rosa-dark', { bg: '#fcf6f6', surface: '#ffffff', text: '#261517', accent: '#c0466b' }),
-    makeTheme('rosa-dark', tr('Vino'), 'dark', 'rosa-light', { bg: '#1d1316', surface: '#281a1f', text: '#f5e8eb', accent: '#e57c9c' }),
-    makeTheme('sabbia-light', tr('Sabbia'), 'light', 'brace-dark', { bg: '#fbf7ef', surface: '#fffdf8', text: '#231c10', accent: '#b7791f' }),
-    makeTheme('brace-dark', tr('Brace'), 'dark', 'sabbia-light', { bg: '#1c1612', surface: '#261e18', text: '#f3ebe2', accent: '#f08a4b' }),
-    makeTheme('mezzanotte', tr('Mezzanotte'), 'dark', undefined, { bg: '#0c0f1a', surface: '#141a2a', text: '#e6e9f2', accent: '#e3b04b', chatSans: true }),
+    makeTheme('oceano-light', tr('Ocean'), 'light', 'oceano-dark', { bg: '#f4f8fb', surface: '#ffffff', text: '#0f1c27', accent: '#1f7a9e' }),
+    makeTheme('oceano-dark', tr('Ocean night'), 'dark', 'oceano-light', { bg: '#0f1a22', surface: '#16242e', text: '#e4eef4', accent: '#4fb3d9' }),
+    makeTheme('foresta-light', tr('alt::Forest'), 'light', 'foresta-dark', { bg: '#f5f8f3', surface: '#ffffff', text: '#14201a', accent: '#2f7d4f' }),
+    makeTheme('foresta-dark', tr('Forest'), 'dark', 'foresta-light', { bg: '#121a15', surface: '#19241d', text: '#e3ede6', accent: '#5fbf86' }),
+    makeTheme('lavanda-light', tr('Lavender'), 'light', 'lavanda-dark', { bg: '#f8f6fc', surface: '#ffffff', text: '#1c1726', accent: '#7a55c7' }),
+    makeTheme('lavanda-dark', tr('Amethyst'), 'dark', 'lavanda-light', { bg: '#17131f', surface: '#201a2b', text: '#ece6f6', accent: '#a98bf0' }),
+    makeTheme('rosa-light', tr('Powder'), 'light', 'rosa-dark', { bg: '#fcf6f6', surface: '#ffffff', text: '#261517', accent: '#c0466b' }),
+    makeTheme('rosa-dark', tr('Wine'), 'dark', 'rosa-light', { bg: '#1d1316', surface: '#281a1f', text: '#f5e8eb', accent: '#e57c9c' }),
+    makeTheme('sabbia-light', tr('Sand'), 'light', 'brace-dark', { bg: '#fbf7ef', surface: '#fffdf8', text: '#231c10', accent: '#b7791f' }),
+    makeTheme('brace-dark', tr('Ember'), 'dark', 'sabbia-light', { bg: '#1c1612', surface: '#261e18', text: '#f3ebe2', accent: '#f08a4b' }),
+    makeTheme('mezzanotte', tr('Midnight'), 'dark', undefined, { bg: '#0c0f1a', surface: '#141a2a', text: '#e6e9f2', accent: '#e3b04b', chatSans: true }),
   ],
 ];
 

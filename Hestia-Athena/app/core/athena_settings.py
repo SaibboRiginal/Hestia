@@ -79,19 +79,19 @@ RECAP_STYLE = "athena.recap.style"
 RECAP_MAX_CHARS = "athena.recap.max_chars"
 RECAP_PIECE_TIMEOUT = "athena.recap.piece_timeout_seconds"
 
-_G_LOOP = "Pensiero proattivo"
-_G_RETRO = "Retrospettiva"
-_G_HINTS = "Suggerimenti a Oracle"
-_G_RECORDS = "Registro dei pensieri"
-_G_STRATEGY = "Osservazione e strategia"
-_G_FORGE = "Miglioramenti (Forge)"
-_G_MEMORY = "Consolidamento memoria"
-_G_SKILLS = "Cura delle skill"
-_G_AUDIT = "Audit conversazioni"
-_G_RECAP = "Recap della giornata"
-_G_REFLECTION = "Riflessione sulla tua vita"
-_G_TALK = "Ti scrive per prima"
-_G_EVIDENCE = "Prima osserva, poi propone"
+_G_LOOP = "Proactive thinking"
+_G_RETRO = "Retrospective"
+_G_HINTS = "Suggestions to Oracle"
+_G_RECORDS = "Thought log"
+_G_STRATEGY = "Observation and strategy"
+_G_FORGE = "Improvements (Forge)"
+_G_MEMORY = "Memory consolidation"
+_G_SKILLS = "Skill care"
+_G_AUDIT = "Conversation audit"
+_G_RECAP = "Daily recap"
+_G_REFLECTION = "Reflection on your life"
+_G_TALK = "Writes to you first"
+_G_EVIDENCE = "First observe, then propose"
 
 _ON_LOOP = {"key": LOOP_ENABLED, "equals": True}
 _ON_HINTS = {"key": HINTS_ENABLED, "equals": True}
@@ -100,169 +100,157 @@ _ON_STRATEGIST = {"key": STRATEGIST_ENABLED, "equals": True}
 
 settings = SettingsClient("athena")
 settings.declare([
-    setting(PROPOSALS_PER_DAY, "Proposte di impostazioni al giorno", "int", 2, group="Proposte", min=0, max=10,
-            help="Quante modifiche alle impostazioni Athena può proporti al giorno (0 = nessuna). "
-                 "Ogni proposta aspetta sempre la tua conferma."),
+    setting(PROPOSALS_PER_DAY, "Settings proposals per day", "int", 2, group="Proposals", min=0, max=10,
+            help="How many settings changes Athena can propose to you per day (0 = none). Each proposal always waits for your confirmation."),
 
     # ── Loop ────────────────────────────────────────────────────────────────
-    setting(LOOP_ENABLED, "Athena attiva", "bool", True, group=_G_LOOP, order=0,
-            help="Se spenta, Athena non osserva, non pensa e non ti propone nulla da sola."),
-    setting(LOOP_INTERVAL, "Intervallo tra i cicli", "int", 300, group=_G_LOOP, min=30, max=86400, unit="s",
+    setting(LOOP_ENABLED, "Athena on", "bool", True, group=_G_LOOP, order=0,
+            help="If off, Athena does not observe, think or propose anything on her own."),
+    setting(LOOP_INTERVAL, "Interval between cycles", "int", 300, group=_G_LOOP, min=30, max=86400, unit="s",
             order=1, depends_on=_ON_LOOP,
-            help="Ogni quanto Athena fa un giro di osservazione e riflessione. Più corto = più reattiva ma "
-                 "usa di più il modello."),
-    setting(LOOP_IDLE_SECONDS, "Pausa dalla chat richiesta", "int", 300, group=_G_LOOP, min=0, max=7200, unit="s",
+            help="How often Athena does a round of observation and reflection. Shorter = more reactive but uses the model more."),
+    setting(LOOP_IDLE_SECONDS, "Requested pause from chat", "int", 300, group=_G_LOOP, min=0, max=7200, unit="s",
             order=2, depends_on=_ON_LOOP,
-            help="Riserva: usata solo se lo stato dell'assistente (Chronos) non risponde. Athena pensa "
-                 "solo se non chatti da almeno questo tempo (0 = pensa anche mentre chatti). Di norma decide "
-                 "lo stato: pensa quando non sei «Sveglio»."),
-    setting(GATE_THRESHOLD, "Soglia di rilevanza", "float", 0.55, group=_G_LOOP, min=0.0, max=1.0, order=3,
+            help="Fallback: used only if the assistant's state (Chronos) does not answer. Athena thinks only if you haven't chatted for at least this long (0 = thinks even while you chat). Normally the state decides: it thinks when you are not «Awake»."),
+    setting(GATE_THRESHOLD, "Relevance threshold", "float", 0.55, group=_G_LOOP, min=0.0, max=1.0, order=3,
             depends_on=_ON_LOOP,
-            help="Quanto deve essere rilevante un'idea perché Athena te la mandi. Più alta = meno messaggi, "
-                 "solo i più utili."),
+            help="How relevant an idea must be for Athena to send it to you. Higher = fewer messages, only the most useful."),
 
     # ── Retrospective (expert) ──────────────────────────────────────────────
-    setting(RETRO_WINDOW, "Esiti ricordati", "int", 24, group=_G_RETRO, min=1, max=500, advanced=True,
-            help="Quanti esiti recenti Athena considera per capire cosa sta andando male."),
-    setting(RETRO_FAILURE_URGENCY_BOOST, "Spinta urgenza per fallimenti", "float", 0.07, group=_G_RETRO,
+    setting(RETRO_WINDOW, "Outcomes remembered", "int", 24, group=_G_RETRO, min=1, max=500, advanced=True,
+            help="How many recent outcomes Athena considers to understand what is going wrong."),
+    setting(RETRO_FAILURE_URGENCY_BOOST, "Urgency boost for failures", "float", 0.07, group=_G_RETRO,
             min=0.0, max=0.5, advanced=True,
-            help="Quanto ogni fallimento consecutivo aumenta l'urgenza delle nuove idee."),
-    setting(RETRO_UNRESOLVED_URGENCY_BOOST, "Spinta urgenza per impegni aperti", "float", 0.04, group=_G_RETRO,
+            help="How much each consecutive failure raises the urgency of new ideas."),
+    setting(RETRO_UNRESOLVED_URGENCY_BOOST, "Urgency boost for open commitments", "float", 0.04, group=_G_RETRO,
             min=0.0, max=0.5, advanced=True,
-            help="Quanto ogni impegno non risolto aumenta l'urgenza delle nuove idee."),
-    setting(RETRO_UNRESOLVED_USEFULNESS_BOOST, "Spinta utilità per impegni aperti", "float", 0.03,
+            help="How much each unresolved commitment raises the urgency of new ideas."),
+    setting(RETRO_UNRESOLVED_USEFULNESS_BOOST, "Usefulness boost for open commitments", "float", 0.03,
             group=_G_RETRO, min=0.0, max=0.5, advanced=True,
-            help="Quanto ogni impegno non risolto aumenta l'utilità stimata delle nuove idee."),
-    setting(COMMITMENT_TTL, "Durata di un impegno", "int", 86400, group=_G_RETRO, min=60, max=2592000, unit="s",
+            help="How much each unresolved commitment raises the estimated usefulness of new ideas."),
+    setting(COMMITMENT_TTL, "Duration of a commitment", "int", 86400, group=_G_RETRO, min=60, max=2592000, unit="s",
             advanced=True,
-            help="Dopo quanto un suggerimento non risolto scade (vale anche per i suggerimenti dati a Oracle)."),
+            help="After how long an unresolved suggestion expires (also for suggestions given to Oracle)."),
 
     # ── Oracle hints ────────────────────────────────────────────────────────
-    setting(HINTS_ENABLED, "Suggerimenti all'assistente", "bool", True, group=_G_HINTS,
-            help="Athena passa a Oracle le sue idee, così l'assistente ne tiene conto quando parli con lui."),
-    setting(HINTS_TIMEOUT, "Attesa invio suggerimento", "int", 8, group=_G_HINTS, min=1, max=120, unit="s",
+    setting(HINTS_ENABLED, "Suggestions to the assistant", "bool", True, group=_G_HINTS,
+            help="Athena passes her ideas to Oracle, so the assistant takes them into account when you talk to it."),
+    setting(HINTS_TIMEOUT, "Wait to send a suggestion", "int", 8, group=_G_HINTS, min=1, max=120, unit="s",
             advanced=True, depends_on=_ON_HINTS,
-            help="Quanto aspettare Oracle quando Athena gli passa un suggerimento."),
+            help="How long to wait for Oracle when Athena passes it a suggestion."),
 
     # ── Thinking records ────────────────────────────────────────────────────
-    setting(THINKING_ARCHIVE_ENABLED, "Salva i pensieri in archivio", "bool", True, group=_G_RECORDS,
-            help="Conserva in Archive ogni ciclo di pensiero (cosa ha visto, considerato e deciso)."),
-    setting(THINKING_STORE_MAX, "Pensieri tenuti in memoria", "int", 100, group=_G_RECORDS, min=5, max=1000,
-            advanced=True, help="Quanti cicli di pensiero recenti Athena tiene pronti da mostrarti."),
-    setting(TASK_STORE_MAX, "Attività tenute in memoria", "int", 500, group=_G_RECORDS, min=50, max=5000,
+    setting(THINKING_ARCHIVE_ENABLED, "Save thoughts in the archive", "bool", True, group=_G_RECORDS,
+            help="Keeps in Archive every thought cycle (what it saw, considered and decided)."),
+    setting(THINKING_STORE_MAX, "Thoughts kept in memory", "int", 100, group=_G_RECORDS, min=5, max=1000,
+            advanced=True, help="How many recent thought cycles Athena keeps ready to show you."),
+    setting(TASK_STORE_MAX, "Tasks kept in memory", "int", 500, group=_G_RECORDS, min=50, max=5000,
             apply="restart", advanced=True,
-            help="Quante attività recenti Athena ricorda (vale dal prossimo riavvio)."),
+            help="How many recent tasks Athena remembers (from the next restart)."),
 
     # ── Observer + strategist ───────────────────────────────────────────────
-    setting(OBSERVE_TIMEOUT, "Attesa osservazione moduli", "float", 8.0, group=_G_STRATEGY, min=1, max=60,
+    setting(OBSERVE_TIMEOUT, "Module observation wait", "float", 8.0, group=_G_STRATEGY, min=1, max=60,
             unit="s", advanced=True,
-            help="Quanto aspettare ogni modulo quando Athena raccoglie lo stato del sistema."),
-    setting(OBSERVE_ENTITY_WINDOW_HOURS, "Novità considerate", "int", 24, group=_G_STRATEGY, min=1, max=720,
-            unit="h", help="Quanto indietro guardare per i dati nuovi dei moduli (es. annunci, eventi)."),
-    setting(STRATEGIST_ENABLED, "Idee con il modello", "bool", True, group=_G_STRATEGY,
-            help="Athena usa il modello per trasformare ciò che osserva in idee e proposte."),
-    setting(STRATEGIST_TIMEOUT, "Attesa idee dal modello", "float", 20.0, group=_G_STRATEGY, min=5, max=300,
+            help="How long to wait for each module when Athena collects the system state."),
+    setting(OBSERVE_ENTITY_WINDOW_HOURS, "News considered", "int", 24, group=_G_STRATEGY, min=1, max=720,
+            unit="h", help="How far back to look for new module data (e.g. listings, events)."),
+    setting(STRATEGIST_ENABLED, "Ideas with the model", "bool", True, group=_G_STRATEGY,
+            help="Athena uses the model to turn what she observes into ideas and proposals."),
+    setting(STRATEGIST_TIMEOUT, "Wait for ideas from the model", "float", 20.0, group=_G_STRATEGY, min=5, max=300,
             unit="s", advanced=True, depends_on=_ON_STRATEGIST,
-            help="Quanto aspettare il modello per ogni giro di idee."),
-    setting(STRATEGIST_MAX_CANDIDATES, "Idee per ciclo", "int", 3, group=_G_STRATEGY, min=1, max=10,
+            help="How long to wait for the model for each round of ideas."),
+    setting(STRATEGIST_MAX_CANDIDATES, "Ideas per cycle", "int", 3, group=_G_STRATEGY, min=1, max=10,
             depends_on=_ON_STRATEGIST,
-            help="Quante idee al massimo Athena valuta in ogni ciclo."),
+            help="How many ideas at most Athena evaluates in each cycle."),
 
     # ── Forge hand-off (acts without the user: assistant may only read it) ─
-    setting(FORGE_ENABLED, "Proponi miglioramenti a Forge", "bool", True, group=_G_FORGE, oracle="read",
-            help="Athena manda a Forge le idee di miglioramento del codice. Forge segue i permessi che hai "
-                 "scelto; il merge chiede sempre a te."),
-    setting(FORGE_MAX_PER_DAY, "Miglioramenti al giorno", "int", 2, group=_G_FORGE, min=0, max=20,
+    setting(FORGE_ENABLED, "Propose improvements to Forge", "bool", True, group=_G_FORGE, oracle="read",
+            help="Athena sends code improvement ideas to Forge. Forge follows the permissions you chose; the merge always asks you."),
+    setting(FORGE_MAX_PER_DAY, "Improvements per day", "int", 2, group=_G_FORGE, min=0, max=20,
             depends_on=_ON_FORGE, oracle="read",
-            help="Quante richieste di miglioramento Athena può mandare a Forge ogni giorno."),
+            help="How many improvement requests Athena can send to Forge each day."),
 
     # ── Memory consolidation ────────────────────────────────────────────────
-    setting(MEMORY_ACTIVE_DAYS, "Sessioni recenti considerate", "int", 7, group=_G_MEMORY, min=1, max=90,
-            unit="giorni", help="Consolida la memoria delle conversazioni attive negli ultimi N giorni."),
-    setting(MEMORY_LOOKBACK_HOURS, "Intervallo minimo per sessione", "int", 24, group=_G_MEMORY, min=1, max=720,
+    setting(MEMORY_ACTIVE_DAYS, "Recent sessions considered", "int", 7, group=_G_MEMORY, min=1, max=90,
+            unit="days", help="Consolidates the memory of the conversations active in the last N days."),
+    setting(MEMORY_LOOKBACK_HOURS, "Shortest interval per session", "int", 24, group=_G_MEMORY, min=1, max=720,
             unit="h", advanced=True,
-            help="Una stessa conversazione non viene riconsolidata prima di questo tempo."),
-    setting(MEMORY_ORACLE_TIMEOUT, "Attesa analisi memoria", "int", 30, group=_G_MEMORY, min=5, max=600,
-            unit="s", advanced=True, help="Quanto aspettare il modello che estrae i fatti da ricordare."),
-    setting(MEMORY_PREFERENCE_DECAY_DAYS, "Oblio preferenze", "int", 90, group=_G_MEMORY, min=7, max=3650,
-            unit="giorni",
-            help="Le preferenze non più confermate da questo tempo perdono importanza."),
-    setting(MEMORY_REINFORCE_THRESHOLD, "Conferme per rafforzare", "int", 3, group=_G_MEMORY, min=1, max=50,
-            advanced=True, help="Quante volte uno schema deve ripetersi prima di diventare una preferenza forte."),
+            help="The same conversation is not consolidated again before this time."),
+    setting(MEMORY_ORACLE_TIMEOUT, "Memory analysis wait", "int", 30, group=_G_MEMORY, min=5, max=600,
+            unit="s", advanced=True, help="How long to wait for the model that extracts the facts to remember."),
+    setting(MEMORY_PREFERENCE_DECAY_DAYS, "Preference forgetting", "int", 90, group=_G_MEMORY, min=7, max=3650,
+            unit="days",
+            help="Preferences no longer confirmed for this long lose importance."),
+    setting(MEMORY_REINFORCE_THRESHOLD, "Confirmations to reinforce", "int", 3, group=_G_MEMORY, min=1, max=50,
+            advanced=True, help="How many times a pattern must repeat before becoming a strong preference."),
 
     # ── Skill curation ──────────────────────────────────────────────────────
-    setting(SKILLS_MIN_SESSIONS, "Sessioni per creare una skill", "int", 3, group=_G_SKILLS, min=1, max=50,
-            help="Quante conversazioni simili servono perché Athena ne ricavi una skill."),
-    setting(SKILLS_SIM_THRESHOLD, "Somiglianza tra conversazioni", "float", 0.90, group=_G_SKILLS,
+    setting(SKILLS_MIN_SESSIONS, "Sessions to create a skill", "int", 3, group=_G_SKILLS, min=1, max=50,
+            help="How many similar conversations are needed for Athena to draw a skill from them."),
+    setting(SKILLS_SIM_THRESHOLD, "Similarity between conversations", "float", 0.90, group=_G_SKILLS,
             min=0.5, max=1.0, advanced=True,
-            help="Quanto devono somigliarsi due conversazioni per essere raggruppate."),
-    setting(SKILLS_DEDUP_THRESHOLD, "Somiglianza per skill doppie", "float", 0.95, group=_G_SKILLS,
+            help="How similar two conversations must be to be grouped."),
+    setting(SKILLS_DEDUP_THRESHOLD, "Similarity for duplicate skills", "float", 0.95, group=_G_SKILLS,
             min=0.5, max=1.0, advanced=True,
-            help="Oltre questa somiglianza due skill sono considerate la stessa e vengono unite."),
-    setting(SKILLS_STALE_DAYS, "Skill inutilizzate da deprecare", "int", 30, group=_G_SKILLS, min=1, max=3650,
-            unit="giorni", help="Una skill non usata da questo tempo viene deprecata."),
-    setting(SKILLS_HARD_DELETE_DAYS, "Skill inutilizzate da eliminare", "int", 90, group=_G_SKILLS, min=1,
-            max=3650, unit="giorni",
-            help="Una skill poco usata e ferma da questo tempo viene eliminata."),
-    setting(SKILLS_CORE_USE_COUNT, "Usi per skill fondamentale", "int", 50, group=_G_SKILLS, min=1, max=10000,
+            help="Beyond this similarity two skills are considered the same and are merged."),
+    setting(SKILLS_STALE_DAYS, "Unused skills to deprecate", "int", 30, group=_G_SKILLS, min=1, max=3650,
+            unit="days", help="A skill not used for this long is deprecated."),
+    setting(SKILLS_HARD_DELETE_DAYS, "Unused skills to delete", "int", 90, group=_G_SKILLS, min=1,
+            max=3650, unit="days",
+            help="A rarely used skill idle for this long is deleted."),
+    setting(SKILLS_CORE_USE_COUNT, "Uses for a core skill", "int", 50, group=_G_SKILLS, min=1, max=10000,
             advanced=True,
-            help="Una skill usata più di così con successo diventa fondamentale."),
+            help="A skill used successfully more than this becomes core."),
 
     # ── Life reflection (signals of the modules → links between domains → the evening recap) ─
-    setting(REFLECTION_MAX_PER_DAY, "Osservazioni al giorno", "int", 2, group=_G_REFLECTION, min=1, max=5,
-            help="Quante osservazioni sulla tua vita entrano al massimo nel recap della sera."),
-    setting(REFLECTION_MAX_TOPICS, "Temi per riflessione", "int", 4, group=_G_REFLECTION, min=1, max=10,
-            help="Quanti segnali o collegamenti approfondisce ogni riflessione."),
-    setting(REFLECTION_MIN_WEEKS, "Settimane per un collegamento", "int", 6, group=_G_REFLECTION, min=3, max=52,
-            unit="settimane", help="Quante settimane con dati servono prima di collegare due abitudini."),
-    setting(REFLECTION_MIN_CORRELATION, "Forza minima del collegamento", "float", 0.6, group=_G_REFLECTION,
+    setting(REFLECTION_MAX_PER_DAY, "Observations per day", "int", 2, group=_G_REFLECTION, min=1, max=5,
+            help="How many observations about your life go into the evening recap at most."),
+    setting(REFLECTION_MAX_TOPICS, "Topics per reflection", "int", 4, group=_G_REFLECTION, min=1, max=10,
+            help="How many signals or links each reflection looks into."),
+    setting(REFLECTION_MIN_WEEKS, "Weeks for a link", "int", 6, group=_G_REFLECTION, min=3, max=52,
+            unit="weeks", help="How many weeks with data are needed before linking two habits."),
+    setting(REFLECTION_MIN_CORRELATION, "Weakest link strength", "float", 0.6, group=_G_REFLECTION,
             min=0.3, max=0.95, advanced=True,
-            help="Quanto due andamenti devono muoversi insieme (correlazione) per contare."),
-    setting(REFLECTION_REPEAT_DAYS, "Non ripetere prima di", "int", 14, group=_G_REFLECTION, min=1, max=180,
-            unit="giorni", advanced=True, help="La stessa osservazione non torna prima di così."),
-    setting(REFLECTION_DETAIL_BUDGET, "Dettagli chiesti a ogni area", "int", 600, group=_G_REFLECTION, min=100,
-            max=3000, unit="caratteri", advanced=True,
-            help="Quanto testo chiedere a un'area quando un segnale merita un approfondimento."),
+            help="How much two trends must move together (correlation) to count."),
+    setting(REFLECTION_REPEAT_DAYS, "Don't repeat before", "int", 14, group=_G_REFLECTION, min=1, max=180,
+            unit="days", advanced=True, help="The same observation does not come back before this."),
+    setting(REFLECTION_DETAIL_BUDGET, "Details asked of each area", "int", 600, group=_G_REFLECTION, min=100,
+            max=3000, unit="characters", advanced=True,
+            help="How much text to ask an area when a signal deserves a closer look."),
 
     # ── She writes first (docs/work/2026-11-12-identita-e-proattivita). WHEN = agenda window athena.talk ──
-    setting(TALK_MAX_PER_DAY, "Quante volte al giorno", "int", 2, group=_G_TALK, min=0, max=6,
-            help="Quante volte al giorno può scriverti per prima, per chiederti qualcosa o fare due chiacchiere. "
-                 "Lo fa solo se ha un motivo vero. 0 = mai. Gli orari li sposti nel calendario."),
-    setting(TALK_MIN_GAP_HOURS, "Pausa tra due messaggi", "int", 4, group=_G_TALK, min=1, max=24, unit="ore",
-            advanced=True, help="Quanto aspetta almeno tra un suo messaggio e il successivo."),
-    setting(TALK_EAGERNESS, "Quanto è loquace", "int", 3, group=_G_TALK, min=1, max=5,
-            help="Quanta voglia ha di scriverti per prima. La voglia cresce se non vi sentite da un po' e se ha "
-                 "qualcosa di vero da dirti, cala se non le rispondi. 1 = solo quando ha molto da dire, "
-                 "5 = spesso. Nei primi giorni, sapendo poco di te, scrive comunque poco."),
+    setting(TALK_MAX_PER_DAY, "How many times a day", "int", 2, group=_G_TALK, min=0, max=6,
+            help="How many times a day it can write to you first, to ask you something or have a chat. It does so only with a real reason. 0 = never. You move the hours in the calendar."),
+    setting(TALK_MIN_GAP_HOURS, "Pause between two messages", "int", 4, group=_G_TALK, min=1, max=24, unit="hours",
+            advanced=True, help="How long it waits at least between one of its messages and the next."),
+    setting(TALK_EAGERNESS, "How talkative", "int", 3, group=_G_TALK, min=1, max=5,
+            help="How much it wants to write to you first. The wish grows if you haven't talked for a while and if it has something real to say, and drops if you don't answer. 1 = only when it has a lot to say, 5 = often. In the first days, knowing little about you, it writes little anyway."),
 
     # ── First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone) ──
-    setting(EVIDENCE_MIN_DAYS, "Giorni di osservazione prima di proporre", "int", 5, group=_G_EVIDENCE, min=0,
-            max=30, unit="giorni", order=0,
-            help="Dopo il primo avvio osserva e basta per questi giorni: nessuna proposta di miglioramento o di "
-                 "modifica alle impostazioni. I guasti veri te li segnala subito, e «Pensa ora» non aspetta."),
-    setting(EVIDENCE_SEEN_DAYS, "In quanti giorni diversi deve rivederlo", "int", 3, group=_G_EVIDENCE, min=1,
-            max=14, unit="giorni", order=1,
-            help="Propone un miglioramento o una modifica solo se la stessa cosa è emersa in almeno questi "
-                 "giorni diversi. Una volta sola non basta per giudicare."),
-    setting(EVIDENCE_WINDOW_DAYS, "Entro quanti giorni", "int", 14, group=_G_EVIDENCE, min=1, max=90,
-            unit="giorni", order=2, advanced=True,
-            help="Le prove più vecchie di così non contano più."),
+    setting(EVIDENCE_MIN_DAYS, "Days of observation before proposing", "int", 5, group=_G_EVIDENCE, min=0,
+            max=30, unit="days", order=0,
+            help="After the first start it only observes for these days: no improvement or settings proposals. Real faults are reported at once, and «Pensa ora» does not wait."),
+    setting(EVIDENCE_SEEN_DAYS, "On how many different days it must see it again", "int", 3, group=_G_EVIDENCE, min=1,
+            max=14, unit="days", order=1,
+            help="Proposes an improvement or a change only if the same thing came up on at least these different days. Once is not enough to judge."),
+    setting(EVIDENCE_WINDOW_DAYS, "Within how many days", "int", 14, group=_G_EVIDENCE, min=1, max=90,
+            unit="days", order=2, advanced=True,
+            help="Evidence older than this no longer counts."),
 
     # ── Conversation audit ──────────────────────────────────────────────────
-    setting(AUDIT_TIMEOUT, "Attesa audit", "float", 40.0, group=_G_AUDIT, min=5, max=600, unit="s",
-            advanced=True, help="Quanto aspettare il modello che valuta le risposte."),
-    setting(AUDIT_MAX_TURNS, "Risposte per audit", "int", 20, group=_G_AUDIT, min=1, max=100,
-            help="Quante risposte recenti valuta un audit se non indichi altro."),
+    setting(AUDIT_TIMEOUT, "Audit wait", "float", 40.0, group=_G_AUDIT, min=5, max=600, unit="s",
+            advanced=True, help="How long to wait for the model that rates the answers."),
+    setting(AUDIT_MAX_TURNS, "Answers per audit", "int", 20, group=_G_AUDIT, min=1, max=100,
+            help="How many recent answers an audit evaluates if you don't say otherwise."),
 
     # ── Daily recap (docs/work/2026-10-20-recap-giornaliero). WHEN = agenda job, not a setting ──
-    setting(RECAP_STYLE, "Tono del recap", "enum", "amichevole", group=_G_RECAP,
+    setting(RECAP_STYLE, "Recap tone", "enum", "amichevole", group=_G_RECAP,
             options=["amichevole", "asciutto"],
-            help="Come ti scrive il recap della giornata: amichevole (qualche parola in più) o asciutto (solo i "
-                 "fatti). L'orario lo sposti nel calendario."),
-    setting(RECAP_MAX_CHARS, "Lunghezza massima del recap", "int", 900, group=_G_RECAP, min=200, max=4000,
-            unit="caratteri", help="Il recap resta sotto questa lunghezza."),
-    setting(RECAP_PIECE_TIMEOUT, "Attesa per ogni area", "float", 5.0, group=_G_RECAP, min=1, max=30, unit="s",
-            advanced=True, help="Quanto aspettare ogni area (allenamento, spese…) prima di fare il recap senza."),
+            help="How the daily recap is written to you: friendly (a few more words) or dry (just the facts). You move the time in the calendar."),
+    setting(RECAP_MAX_CHARS, "Longest recap", "int", 900, group=_G_RECAP, min=200, max=4000,
+            unit="characters", help="The recap stays under this length."),
+    setting(RECAP_PIECE_TIMEOUT, "Wait for each area", "float", 5.0, group=_G_RECAP, min=1, max=30, unit="s",
+            advanced=True, help="How long to wait for each area (training, expenses…) before making the recap without it."),
 ]).declare_log_level()
 settings.follow_personal()      # the owner's language: texts for people written by the model
 

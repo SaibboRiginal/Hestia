@@ -114,9 +114,9 @@ export class SetupApi {
 
 /** Plain words for an HTTP error of these endpoints. */
 export function setupError(e: any): string {
-  if (e?.status === 0) return tr('Hestia non risponde: controlla che sia accesa.');
+  if (e?.status === 0) return tr('Hestia doesn\'t answer: check that it\'s on.');
   const d = e?.error?.detail;
-  if (typeof d === 'string' && d) return d.replace(/^\d+$/, 'Qualcosa non ha funzionato.');
-  if (Array.isArray(d)) return tr('Controlla il valore inserito.');
-  return tr('Qualcosa non ha funzionato, riprova tra poco.');
+  if (typeof d === 'string' && d) return d.replace(/^\d+$/, tr('Something did not work.'));
+  if (Array.isArray(d)) return tr('Check the value entered.');
+  return tr('Something didn\'t work, try again shortly.');
 }

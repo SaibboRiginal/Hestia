@@ -47,7 +47,7 @@ class TestCorrelate:
         assert ("fitness.sessions", "fitness.volume") not in pairs     # same domain
         best = next(l for l in links if {l["a"], l["b"]} == {"fitness.sessions", "selfcare.adherence"})
         assert best["r"] == pytest.approx(1.0) and best["weeks"] >= 6 and best["key"].startswith("link:")
-        assert "settimane" in link_text(best)
+        assert "weeks" in link_text(best)
         assert correlate(series, min_weeks=20, min_r=0.6) == []
 
     def test_current_week_is_left_out(self):

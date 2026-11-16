@@ -60,37 +60,37 @@ TZ = os.getenv("TZ") or "Europe/Rome"
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("hercules")
 settings.declare([
-    setting("hercules.units", "Unità di peso", "enum", "kg", group="Generale", options=[("kg", "kg"), ("lb", "lb")],
-            help="Come vedo i pesi. Nel database sono sempre in kg."),
-    setting("hercules.rest.default_seconds", "Recupero predefinito", "int", 90, group="Allenamento", min=15, max=600,
-            unit="s", help="Timer di recupero quando l'esercizio non ne ha uno suo."),
-    setting("hercules.bar_weight", "Peso del bilanciere", "float", 20, group="Allenamento", min=0, max=50, unit="kg"),
-    setting("hercules.plates", "Dischi disponibili", "list", [25, 20, 15, 10, 5, 2.5, 1.25], group="Allenamento",
-            help="Per il calcolatore dei dischi (kg per disco)."),
-    setting("hercules.warmup.scheme", "Riscaldamento", "string", "40x8,60x5,80x3", group="Allenamento",
-            help="Percentuale × ripetizioni del peso di lavoro, separati da virgola."),
-    setting("hercules.increment.barbell", "Incremento bilanciere", "float", 2.5, group="Progressione", min=0, max=20, unit="kg"),
-    setting("hercules.increment.dumbbell", "Incremento manubri", "float", 2.0, group="Progressione", min=0, max=20, unit="kg"),
-    setting("hercules.increment.machine", "Incremento macchine", "float", 5.0, group="Progressione", min=0, max=20, unit="kg"),
-    setting("hercules.increment.cable", "Incremento cavi", "float", 2.5, group="Progressione", min=0, max=20, unit="kg"),
-    setting("hercules.e1rm_formula", "Formula massimale stimato", "enum", "epley", group="Progressione",
+    setting("hercules.units", "Weight unit", "enum", "kg", group="General", options=[("kg", "kg"), ("lb", "lb")],
+            help="How I show weights. In the database they are always in kg."),
+    setting("hercules.rest.default_seconds", "Default recovery", "int", 90, group="Training", min=15, max=600,
+            unit="s", help="Rest timer when the exercise has none of its own."),
+    setting("hercules.bar_weight", "Barbell weight", "float", 20, group="Training", min=0, max=50, unit="kg"),
+    setting("hercules.plates", "Available disks", "list", [25, 20, 15, 10, 5, 2.5, 1.25], group="Training",
+            help="For the plate calculator (kg per plate)."),
+    setting("hercules.warmup.scheme", "Warm-up", "string", "40x8,60x5,80x3", group="Training",
+            help="Percentage × repetitions of the working weight, separated by commas."),
+    setting("hercules.increment.barbell", "Barbell increment", "float", 2.5, group="Progression", min=0, max=20, unit="kg"),
+    setting("hercules.increment.dumbbell", "Dumbbell increment", "float", 2.0, group="Progression", min=0, max=20, unit="kg"),
+    setting("hercules.increment.machine", "Machine increment", "float", 5.0, group="Progression", min=0, max=20, unit="kg"),
+    setting("hercules.increment.cable", "Cable increment", "float", 2.5, group="Progression", min=0, max=20, unit="kg"),
+    setting("hercules.e1rm_formula", "Estimated max formula", "enum", "epley", group="Progression",
             options=[("epley", "Epley"), ("brzycki", "Brzycki")]),
-    setting("hercules.stall.exposures", "Sedute per lo stallo", "int", 3, group="Progressione", min=2, max=10,
-            help="Dopo quante sedute senza miglioramenti segnalo uno stallo."),
-    setting("hercules.adapt.low_energy", "Soglia energia bassa", "int", 2, group="Adattamento", min=1, max=4,
-            help="Energia (1–5) a cui alleggerisco l'allenamento."),
-    setting("hercules.adapt.weight_cut_pct", "Riduzione carico", "int", 10, group="Adattamento", min=0, max=40, unit="%"),
-    setting("hercules.skip_mode", "Giorno saltato", "enum", "shift", group="Programma",
-            options=[("shift", "La rotazione slitta"), ("keep", "Si passa alla scheda successiva")],
-            help="Vale per i programmi a rotazione; quelli settimanali seguono il calendario."),
-    setting("hercules.coach.time_of_day", "Quando allenarmi nel piano", "enum", "evening", group="Piano della settimana",
-            options=[("morning", "Mattina"), ("midday", "Pausa pranzo"), ("afternoon", "Pomeriggio"),
-                     ("evening", "Sera"), ("any", "Quando c'è tempo")],
-            help="Parte del giorno in cui il piano della settimana mette gli allenamenti."),
-    setting("hercules.coach.min_minutes", "Allenamento più corto accettabile", "int", 30, group="Piano della settimana",
+    setting("hercules.stall.exposures", "Sessions for a plateau", "int", 3, group="Progression", min=2, max=10,
+            help="After how many sessions without improvement I report a plateau."),
+    setting("hercules.adapt.low_energy", "Low energy threshold", "int", 2, group="Adaptation", min=1, max=4,
+            help="Energy (1–5) at which I lighten the workout."),
+    setting("hercules.adapt.weight_cut_pct", "Load reduction", "int", 10, group="Adaptation", min=0, max=40, unit="%"),
+    setting("hercules.skip_mode", "Skipped day", "enum", "shift", group="Program",
+            options=[("shift", "The rotation slips"), ("keep", "Move to the next plan")],
+            help="Applies to rotating programs; weekly ones follow the calendar."),
+    setting("hercules.coach.time_of_day", "When to train in the plan", "enum", "evening", group="Weekly plan",
+            options=[("morning", "Morning"), ("midday", "Lunch break"), ("afternoon", "Afternoon"),
+                     ("evening", "Evening"), ("any", "When there is time")],
+            help="Part of the day in which the weekly plan puts the workouts."),
+    setting("hercules.coach.min_minutes", "Shortest acceptable workout", "int", 30, group="Weekly plan",
             min=10, max=120, unit="min",
-            help="Se un giorno ha poco tempo libero il piano usa una versione corta, ma non sotto questi minuti."),
-    *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo e oggi non ti sei allenato. Uno alla volta."),
+            help="If a day has little free time the plan uses a short version, but not below these minutes."),
+    *reminder_settings("hercules", help="Only if you are behind your goal and haven't trained today. One at a time."),
     voice_setting("hercules", True),
 ]).follow_personal()                                       # week start: personal setting shared by every module
 
@@ -141,7 +141,7 @@ def _activity_event(event: str, need_id: str, at: str | None) -> None:
 
 
 activities.on_event = _activity_event
-app.include_router(CoachRouter("hercules", "fitness", "Allenamento", needs=_needs, fit=coach.fit,
+app.include_router(CoachRouter("hercules", "fitness", "Training", needs=_needs, fit=coach.fit,
                                placed=coach.on_placed, review=coach.review).router)
 
 
@@ -162,7 +162,7 @@ async def _conflict(_: Request, exc: Conflict):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova (i dati offline restano sul telefono)")})
+    return JSONResponse(status_code=503, content={"detail": tr("archive not reachable, try again (offline data stays on the phone)")})
 
 
 @app.get("/health")
@@ -333,9 +333,9 @@ def session_start_next(body: dict = Body(default={})):
     nxt = hercules.next_workout()
     act = hercules.active_session()
     if act:
-        return {"session_id": act["id"], "resumed": True, "label": tr("Ripreso {0}", act.get('name'))}
+        return {"session_id": act["id"], "resumed": True, "label": tr("Resumed {0}", act.get('name'))}
     sess = hercules.start_session((nxt.get("template") or {}).get("id"))
-    return {"session_id": sess["id"], "label": tr("Iniziato {0}", sess.get('name'))}
+    return {"session_id": sess["id"], "label": tr("Started {0}", sess.get('name'))}
 
 
 @app.post(f"{API}/sessions/log-text")
@@ -411,7 +411,7 @@ def plans(days: int = 21):
 @app.post(f"{API}/days/skip")
 def day_skip(body: dict = Body(default={})):
     hercules.skip_day(body.get("date"), body.get("note") or "")
-    return {"label": tr("Oggi saltato"), "date": body.get("date") or hercules.today().isoformat()}
+    return {"label": tr("Skipped today"), "date": body.get("date") or hercules.today().isoformat()}
 
 
 @app.delete(f"{API}/days/skip")
@@ -514,7 +514,7 @@ def _summary_with_plan() -> dict:
     planned = coach.next_planned()
     if planned:
         s["planned"] = planned
-        s["text"] = tr("{0} · Nel piano: {1}", s['text'], planned['label'])
+        s["text"] = tr("{0} · In the plan: {1}", s['text'], planned['label'])
     return s
 
 
@@ -543,7 +543,7 @@ def _recap_piece(day, nxt) -> dict:
             facts[k] = [*facts.get(k, []), *outdoor[k]]
     except Exception as exc:
         logger.warning("[🔄] event=hercules_activity_recap_failed error=%s fallback=gym_only", exc)
-    return recap.piece("hercules", tr("Allenamento"), icon="dumbbell", emoji="🏋️", order=30, **facts)
+    return recap.piece("hercules", tr("Training"), icon="dumbbell", emoji="🏋️", order=30, **facts)
 
 
 app.include_router(recap.recap_router("hercules", _recap_piece, today=lambda: hercules.today()))
@@ -558,10 +558,10 @@ def module_context(budget: int = 400, topic: str = ""):
         if len(detail) > budget:
             detail = detail[: max(40, budget - 1)].rsplit("; ", 1)[0] + "…"
         return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": detail}
-    text = tr("Allenamento: ") + _summary_with_plan()["text"]
+    text = tr("Workout: ") + _summary_with_plan()["text"]
     hints = [a["hint"] for a in _activity_hints()]
     if hints:
-        text += " · All'aperto: " + ", ".join(hints)
+        text += tr(" · Outdoors: ") + ", ".join(hints)
     if len(text) > budget:
         text = text[: max(40, budget - 1)].rsplit(" · ", 1)[0] + "…"
     return {"module": "hercules", "domain": "fitness", "updated_at": now_iso(), "text": text}
@@ -578,10 +578,10 @@ def quick_done(id: str, body: dict = Body(default={})):
     if id.startswith("resume:"):        # chip of the live session: nothing to log, the WebUI opens the page
         act = hercules.active_session()
         return {"session_id": act["id"] if act else None, "resumed": bool(act),
-                "label": tr("Ripreso {0}", act.get('name')) if act else tr("Nessun allenamento in corso")}
+                "label": tr("Resumed {0}", act.get('name')) if act else tr("No workout in progress")}
     out = hercules.quick_done(id, day=body.get("date"))
     signals.changed()
-    return {**out, "label": tr("{0} segnato fatto", out['name'])}
+    return {**out, "label": tr("{0} marked done", out['name'])}
 
 
 @app.delete(f"{API}/quick/{{id}}")
@@ -592,7 +592,7 @@ def quick_undo(id: str, date: str = ""):
     rows = [s for s in hercules.store.items("session") if s.get("template_id") == id and s.get("source") == "quick"
             and str(rec.local_date(s.get("started_at"), hercules.tz)) == day]
     if not rows:
-        raise NotFound(tr("niente da annullare"))
+        raise NotFound(tr("nothing to undo"))
     rows.sort(key=lambda s: s.get("started_at") or "")
     out = hercules.delete("session", rows[-1]["id"])
     signals.changed()
@@ -604,7 +604,7 @@ def quick_bodyweight(body: dict = Body(...)):
     value = body.get("peso", body.get("weight"))
     taken = f"{body['date']}T08:00:00+00:00" if body.get("date") else None
     m = hercules.log_measurement("bodyweight", float(str(value).replace(",", ".")), taken)
-    return {**m, "label": tr("Peso {0} kg", m['value'])}
+    return {**m, "label": tr("Weight {0} kg", m['value'])}
 
 
 # ── import / export ──────────────────────────────────────────────────────────
@@ -637,22 +637,22 @@ def reminder_check():
     goal, nxt = decision["goal"], decision.get("next") or {}
     tpl = nxt.get("template") or {}
     planned = coach.next_planned()
-    text = tr("🏋️ Oggi: {0}", tpl.get('name', 'allenamento'))
+    text = tr("🏋️ Today: {0}", tr(tpl.get('name') or "workout"))
     if planned and planned["label"].startswith("oggi"):
-        text += tr(" alle {0}", planned['label'].split()[-1])
+        text += tr(" at {0}", planned['label'].split()[-1])
     if nxt.get("estimated_minutes"):
         text += f" · {nxt['estimated_minutes']} min"
     text += f" · {goal['hint']}"
     actions = []
     if tpl:
-        actions.append({"id": "done", "label": tr("Segna fatto"), "text": tr("✅ Segna fatto"), "style": "primary",
+        actions.append({"id": "done", "label": tr("Mark done"), "text": tr("✅ Mark done"), "style": "primary",
                         "service": "hercules", "method": "POST", "path": f"{API}/quick/{tpl['id']}", "body": {},
                         "resolves": True})
-    actions.append({"id": "skip", "label": tr("Salta oggi"), "text": tr("⏭ Salta oggi"), "service": "hercules",
+    actions.append({"id": "skip", "label": tr("Skip today"), "text": tr("⏭ Skip today"), "service": "hercules",
                     "method": "POST", "path": f"{API}/days/skip", "body": {}})
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
-            module="hercules", domain="fitness", key="hercules.reminder", title=tr("Allenamento"), text=text,
+            module="hercules", domain="fitness", key="hercules.reminder", title=tr("Training"), text=text,
             actions=actions, page="allenamento", voice=bool(settings.get("hercules.notifiche.voce", True))),
             timeout=8)
         hercules.mark_reminder_sent()
@@ -718,7 +718,7 @@ def activities_morning():
     msg = activities.morning()
     if not msg or msg.get("skip"):
         return {"send": False, "why": (msg or {}).get("skip") or "nothing_to_say"}
-    if not _notify(msg, tr("Allenamento all'aperto")):
+    if not _notify(msg, tr("Outdoor workout")):
         return {"send": False, "why": "hermes_unreachable"}
     activities.mark_nudge()
     logger.info("event=hercules_activity_morning_sent key=%s", msg["key"])
@@ -773,7 +773,7 @@ def activities_slot_ask(plan_id: str, slot_id: str):
     msg = activities.ask(plan_id, slot_id)
     if not msg:
         return {"send": False, "why": "already_answered"}
-    return {"send": _notify(msg, tr("Allenamento all'aperto"))}
+    return {"send": _notify(msg, tr("Outdoor workout"))}
 
 
 # ── reflection signals (agenda job hercules.signals) ─────────────────────────
@@ -784,65 +784,63 @@ def signals_run():
 
 
 def _agenda_rules() -> list[dict]:
-    return [signals_rule("hercules", tr("Allenamento"), path=f"{API}/signals/run", tz=TZ),
-            job_rule("hercules.reminder", tr("Promemoria allenamento (Hercules)"), service="hercules",
+    return [signals_rule("hercules", "Training", path=f"{API}/signals/run", tz=TZ),
+            job_rule("hercules.reminder", "Workout reminder (Hercules)", service="hercules",
                      path=f"{API}/reminder/check", recurrence="FREQ=DAILY", start_at="2026-01-01T18:30:00",
-                     description="Controlla se sei indietro con l'obiettivo di allenamento. Non invia nulla se il "
-                                 "promemoria è spento nelle impostazioni (default) o se oggi ti sei già allenato.",
+                     description="Checks whether you are behind your training goal. It sends nothing if the reminder is off in the settings (default) or if you already trained today.",
                      tz=TZ),
-            job_rule("hercules.activity_morning", tr("Coach attività all'aperto (Hercules)"), service="hercules",
+            job_rule("hercules.activity_morning", "Outdoor activity coach (Hercules)", service="hercules",
                      path=f"{API}/activities/morning", recurrence="FREQ=DAILY", start_at="2026-01-01T07:30:00",
-                     description="Solo mentre hai un'intenzione aperta (es. correre 2 volte questa settimana): "
-                                 "«Ottimo giorno per…» quando il meteo è buono, o propone di spostare se piove.",
+                     description="Only while you have an open intention (e.g. run twice this week): «Great day for…» when the weather is good, or it proposes to move if it rains.",
                      tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
-ui = PluginClient("hercules", title="Allenamento", icon="dumbbell", color="red",
-                  description="Schede, allenamento live anche offline, record e progressi.", dist=UI_DIST,
+ui = PluginClient("hercules", title="Training", icon="dumbbell", color="red",
+                  description="Programs, live workout even offline, records and progress.", dist=UI_DIST,
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hercules.js", api_prefix=f"{API}/",
-    pages=[page("allenamento", "Allenamento", element="hercules-today", icon="dumbbell", order=30,
-                help="L'allenamento di oggi: check-in, inizia, registra serie con il timer."),
-           page("schede", "Schede", element="hercules-templates", icon="list", order=31, parent="allenamento"),
-           page("schede/:id", "Scheda", element="hercules-template", detail=True, parent="allenamento"),
-           page("esercizi", "Esercizi", element="hercules-exercises", icon="search", order=32, parent="allenamento"),
-           page("esercizi/:id", "Esercizio", element="hercules-exercise", detail=True, parent="allenamento"),
-           page("storico", "Storico", element="hercules-history", icon="history", order=33, parent="allenamento"),
-           page("storico/:id", "Allenamento", element="hercules-session", detail=True, parent="allenamento"),
-           page("progressi", "Progressi", element="hercules-progress", icon="chart", order=34, parent="allenamento"),
-           page("corpo", "Corpo", element="hercules-body", icon="scale", order=35, parent="allenamento")],
-    widgets=[widget("prossimo", "Prossimo allenamento", element="hercules-next-widget", sizes=["m", "l"], auto=True,
+    pages=[page("allenamento", "Training", element="hercules-today", icon="dumbbell", order=30,
+                help="Today's workout: check-in, start, log sets with the timer."),
+           page("schede", "Workout plans", element="hercules-templates", icon="list", order=31, parent="allenamento"),
+           page("schede/:id", "Workout plan", element="hercules-template", detail=True, parent="allenamento"),
+           page("esercizi", "Exercises", element="hercules-exercises", icon="search", order=32, parent="allenamento"),
+           page("esercizi/:id", "Exercise", element="hercules-exercise", detail=True, parent="allenamento"),
+           page("storico", "History", element="hercules-history", icon="history", order=33, parent="allenamento"),
+           page("storico/:id", "Training", element="hercules-session", detail=True, parent="allenamento"),
+           page("progressi", "Progress", element="hercules-progress", icon="chart", order=34, parent="allenamento"),
+           page("corpo", "Body", element="hercules-body", icon="scale", order=35, parent="allenamento")],
+    widgets=[widget("prossimo", "Next workout", element="hercules-next-widget", sizes=["m", "l"], auto=True,
                     open_page="allenamento", icon="dumbbell"),
-             widget("settimana", "Settimana di allenamento", element="hercules-week-widget", sizes=["s", "m", "l"],
+             widget("settimana", "Training week", element="hercules-week-widget", sizes=["s", "m", "l"],
                     auto=True, open_page="progressi", icon="calendar"),
-             widget("fatto", "Fatto oggi", element="hercules-quick-widget", sizes=["m", "l"], open_page="schede",
+             widget("fatto", "Done today", element="hercules-quick-widget", sizes=["m", "l"], open_page="schede",
                     icon="check"),
-             widget("record", "Record recenti", element="hercules-prs-widget", sizes=["m", "l"], open_page="progressi",
+             widget("record", "Recent records", element="hercules-prs-widget", sizes=["m", "l"], open_page="progressi",
                     icon="trophy"),
-             widget("esercizio", "Progresso esercizio", element="hercules-exercise-widget", sizes=["m", "l", "xl"],
-                    params={"exercise": {"type": "string", "label": "Esercizio (nome)"}}, open_page="esercizi",
+             widget("esercizio", "Exercise progress", element="hercules-exercise-widget", sizes=["m", "l", "xl"],
+                    params={"exercise": {"type": "string", "label": "Exercise (name)"}}, open_page="esercizi",
                     icon="chart"),
-             widget("muscoli", "Volume per muscolo", element="hercules-volume-widget", sizes=["m", "l"],
-                    params={"weeks": {"type": "int", "label": "Settimane", "default": 4}}, open_page="progressi",
+             widget("muscoli", "Volume per muscle", element="hercules-volume-widget", sizes=["m", "l"],
+                    params={"weeks": {"type": "int", "label": "Weeks", "default": 4}}, open_page="progressi",
                     icon="chart"),
-             widget("peso", "Peso corporeo", element="hercules-weight-widget", sizes=["s", "m", "l"], open_page="corpo",
+             widget("peso", "Body weight", element="hercules-weight-widget", sizes=["s", "m", "l"], open_page="corpo",
                     icon="scale"),
-             widget("live", "Allenamento in corso", element="hercules-live-widget", sizes=["m", "l"],
+             widget("live", "Workout in progress", element="hercules-live-widget", sizes=["m", "l"],
                     open_page="allenamento", icon="timer")],
     quick_actions=[
-        quick_action("fatto", "Segna fatto", "POST", f"{API}/quick/{{id}}", icon="check", group="Allenamento",
+        quick_action("fatto", "Mark done", "POST", f"{API}/quick/{{id}}", icon="check", group="Training",
                      source=f"{API}/quick/templates", undo={"method": "DELETE", "path": f"{API}/quick/{{id}}"},
                      favorite=True, order=30),
-        quick_action("inizia", "Inizia allenamento di oggi", "POST", f"{API}/sessions/start-next", icon="play",
-                     group="Allenamento", order=31),
-        quick_action("peso", "Registra peso corporeo", "POST", f"{API}/quick-bodyweight", icon="scale",
-                     group="Allenamento", params={"peso": {"type": "float", "label": "Peso (kg)"}}, order=32),
-        quick_action("corsa", "Ho corso", "POST", f"{API}/activities/quick-run", icon="run", group="Allenamento",
-                     params={"km": {"type": "float", "label": "Km (facoltativo)"}},
+        quick_action("inizia", "Start today's workout", "POST", f"{API}/sessions/start-next", icon="play",
+                     group="Training", order=31),
+        quick_action("peso", "Log body weight", "POST", f"{API}/quick-bodyweight", icon="scale",
+                     group="Training", params={"peso": {"type": "float", "label": "Weight (kg)"}}, order=32),
+        quick_action("corsa", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
+                     params={"km": {"type": "float", "label": "Km (optional)"}},
                      undo={"method": "DELETE", "path": f"{API}/activities/quick-run"}, order=34),
-        quick_action("salta", "Salta oggi", "POST", f"{API}/days/skip", icon="skip", group="Allenamento",
+        quick_action("salta", "Skip today", "POST", f"{API}/days/skip", icon="skip", group="Training",
                      undo={"method": "DELETE", "path": f"{API}/days/skip"}, order=33),
     ],
 )
@@ -851,16 +849,16 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder and adaptation rows are runtime state) ────────────────
 transfer = Transfer("hercules", hub, sections=[
-    StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
-    StoreSection("schede", "Schede e programmi", store, ["template", "program"], icon="list",
+    StoreSection("esercizi", "Exercises", store, ["exercise"], icon="dumbbell"),
+    StoreSection("schede", "Workouts and programs", store, ["template", "program"], icon="list",
                  depends_on=["esercizi"]),
-    StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"], icon="history",
-                 title=lambda r: r["data"].get("name") or tr("Sessione"),
+    StoreSection("sessioni", "Sessions", store, ["session", "set"], item_kinds=["session"], icon="history",
+                 title=lambda r: r["data"].get("name") or tr("Session"),
                  subtitle=lambda r: str(r["data"].get("started_at") or r.get("at") or "")[:10],
                  depends_on=["esercizi", "schede"]),
-    StoreSection("misure", "Misure", store, ["measurement"], icon="scale",
+    StoreSection("misure", "Measurements", store, ["measurement"], icon="scale",
                  title=lambda r: f"{r['data'].get('kind')}: {r['data'].get('value')} {r['data'].get('unit') or ''}"),
-    StoreSection("obiettivi", "Obiettivi e piani", store, ["goal", "plan"], icon="target",
+    StoreSection("obiettivi", "Goals and plans", store, ["goal", "plan"], icon="target",
                  title=lambda r: r["data"].get("label") or r["data"].get("note") or r["data"].get("date") or r["id"],
                  depends_on=["esercizi", "schede"]),
     StoreSection("feedback", "Check-in e note", store, ["checkin", "feedback"], icon="note",
@@ -873,32 +871,32 @@ app.include_router(transfer.router())
 # ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
 def _summary_display(s: dict) -> dict:
     act = s.get("active_session")
-    acts = ([action(tr("Registra serie"), "fitness_log_sets", style="primary"), action(tr("Concludi"), "fitness_finish_session")]
-            if act else [action(tr("Inizia"), "fitness_start_session", style="primary"), action(tr("Come mi sento"), "fitness_checkin")])
+    acts = ([action(tr("Log set"), "fitness_log_sets", style="primary"), action(tr("Finish"), "fitness_finish_session")]
+            if act else [action(tr("f::Start"), "fitness_start_session", style="primary"), action(tr("How I feel"), "fitness_checkin")])
     lines = s.get("lines") or [x for x in str(s.get("text") or "").split(" · ") if x]
-    return display(tr("Allenamento"), subtitle=tr("In corso: {0}", act['name']) if act else "",
-                   lines=[x for x in lines if not (act and x.startswith("In corso:"))],
-                   actions=acts + [action(tr("Storico"), "fitness_history")],
+    return display(tr("Training"), subtitle=tr("In progress: {0}", act['name']) if act else "",
+                   lines=[x for x in lines if not (act and x.startswith(tr("In progress: {0}").split("{0}")[0]))],
+                   actions=acts + [action(tr("History"), "fitness_history")],
                    tone="warning" if "deload_suggested" in (s.get("flags") or []) else "")
 
 
 def _next_display(n: dict) -> dict:
     t = n.get("template")
     if not t:
-        return display(tr("Allenamento di oggi"), lines=[n.get("reason") or tr("Nessun allenamento in programma.")],
-                       actions=[action(tr("Le mie schede"), "fitness_templates")])
+        return display(tr("Today's workout"), lines=[n.get("reason") or tr("No workout scheduled.")],
+                       actions=[action(tr("My plans"), "fitness_templates")])
     def _target(pairs: list) -> str:
         kg = [w for w, _ in pairs if w]
         reps = [r for _, r in pairs if r]
-        return " · ".join(x for x in (f"{_kg(max(kg))}" if kg else "", f"{reps[0]} rip" if reps else "") if x)
-    items = [item(p["exercise"] or tr("Esercizio"), [f"{p['sets']} serie", _target(p.get("target") or [])])
+        return " · ".join(x for x in (f"{_kg(max(kg))}" if kg else "", tr("{0} reps", reps[0]) if reps else "") if x)
+    items = [item(p["exercise"] or tr("Exercise"), [tr("{0} sets", p['sets']), _target(p.get("target") or [])])
              for p in n.get("plan") or []]
     minutes = n.get("estimated_minutes")
     subtitle = " · ".join(x for x in (n.get("reason") or "", f"{minutes} min" if minutes else "") if x)
-    acts = [] if n.get("rest_day") else [action(tr("Inizia"), "fitness_start_session", {"template": t["name"]}, style="primary"),
-                                         action(tr("Adatta a come sto"), "fitness_adapt_today")]
+    acts = [] if n.get("rest_day") else [action(tr("f::Start"), "fitness_start_session", {"template": t["name"]}, style="primary"),
+                                         action(tr("Adapt to how I am"), "fitness_adapt_today")]
     return display(t["name"], subtitle=subtitle, items=items,
-                   actions=acts + [action(tr("Sposta"), "fitness_postpone"), action(tr("Salta oggi"), "fitness_skip_day")])
+                   actions=acts + [action(tr("Move"), "fitness_postpone"), action(tr("Skip today"), "fitness_skip_day")])
 
 
 def _kg(value) -> str:
@@ -940,7 +938,7 @@ try:
     def _exercise_stats(exercise: str = "") -> dict:
         ex = hercules._find_exercise(exercise, hercules.store.items("exercise"))
         if not ex:
-            return {"error": tr("esercizio '{0}' non trovato", exercise)}
+            return {"error": tr("exercise '{0}' not found", exercise)}
         d = hercules.exercise_detail(ex["id"])
         return {"exercise": ex["name"], "records": d["records"], "stall": d["stall"],
                 "last_sessions": [{k: h[k] for k in ("date", "top_weight", "top_reps", "best_e1rm", "sets", "volume")}
@@ -959,7 +957,7 @@ try:
         if template:
             match = [t for t in hercules.templates() if template.lower() in t["name"].lower() or t["id"] == template]
             if not match:
-                return {"error": tr("scheda '{0}' non trovata", template)}
+                return {"error": tr("plan '{0}' not found", template)}
             tid = match[0]["id"]
         else:
             tid = (hercules.next_workout().get("template") or {}).get("id")
@@ -973,7 +971,7 @@ try:
     def _finish(notes: str = "", effort: int | None = None) -> dict:
         act = hercules.active_session()
         if not act:
-            return {"error": tr("nessun allenamento in corso")}
+            return {"error": tr("no workout in progress")}
         d = hercules.finish_session(act["id"], notes=notes or None, perceived_effort=effort)
         signals.changed()
         return {"summary": d.get("summary"), "prs": d.get("prs")}
@@ -1021,7 +1019,7 @@ try:
                        reps_max: int | None = None) -> dict:
         match = [t for t in hercules.store.items("template") if template.lower() in t["name"].lower() or t["id"] == template]
         if not match:
-            return {"error": tr("scheda '{0}' non trovata", template)}
+            return {"error": tr("plan '{0}' not found", template)}
         t = dict(match[0])
         exs = hercules.store.items("exercise")
         items = list(t.get("items") or [])
@@ -1031,7 +1029,7 @@ try:
         if add_exercise:
             ex = hercules._find_exercise(add_exercise, exs)
             if not ex:
-                return {"error": tr("esercizio '{0}' non trovato", add_exercise)}
+                return {"error": tr("exercise '{0}' not found", add_exercise)}
             n = sets or 3
             items.append({"exercise_id": ex["id"], "sets": [{"reps_min": reps_min or 8, "reps_max": reps_max or 12}
                                                             for _ in range(n)]})
@@ -1046,7 +1044,7 @@ try:
     def _undo_template(template: str = "") -> dict:
         match = [t for t in hercules.store.items("template") if template.lower() in t["name"].lower() or t["id"] == template]
         if not match:
-            return {"error": tr("scheda '{0}' non trovata", template)}
+            return {"error": tr("plan '{0}' not found", template)}
         return {"restored": hercules.undo_template(match[0]["id"])["name"]}
 
     def _measure(value: float = 0, kind: str = "bodyweight") -> dict:
@@ -1092,54 +1090,53 @@ try:
     _tools = [
         MCPTool(name="fitness_summary", description=("Training at a glance: next workout, goal (e.g. 2/3 this week), recent records, plateaus, "
                                                      "skipped days, low-energy signals. Use it first for any question about gym/training."), parameters={"type": "object", "properties": {}},
-                handler=_t(_summary), title="Riepilogo allenamento", path=f"{API}/summary", clients=["telegram", "ui"],
+                handler=_t(_summary), title="Workout summary", path=f"{API}/summary", clients=["telegram", "ui"],
                 telegram_group="allenamento",
-                telegram={"section": "Oggi", "summary": True}),
+                telegram={"section": "Today", "summary": True}),
         MCPTool(name="fitness_next_workout", description="The next workout with exercises and suggested weights (automatic progression) and the reason.", parameters={"type": "object", "properties": {}},
-                handler=_t(_next), title="Allenamento di oggi", path=f"{API}/next", clients=["telegram", "ui"],
+                handler=_t(_next), title="Today's workout", path=f"{API}/next", clients=["telegram", "ui"],
                 telegram_group="allenamento",
-                telegram={"section": "Oggi", "primary": 2}),
+                telegram={"section": "Today", "primary": 2}),
         MCPTool(name="fitness_history", description="Past workouts (days back, exercise filter).",
                 parameters={"type": "object", "properties": {"days": I, "exercise": S, "limit": I}},
-                handler=_t(_history), title="Storico allenamenti", path=f"{API}/sessions", clients=["ui"],
+                handler=_t(_history), title="Workout history", path=f"{API}/sessions", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Storico e statistiche", "label": "Storico"}),
+                telegram={"section": "History and statistics", "label": "History"}),
         MCPTool(name="fitness_exercise_stats", description="Records and trend of an exercise (estimated max, top weight, last sessions, plateau).", parameters={"type": "object", "properties": {"exercise": S},
                                                                        "required": ["exercise"]},
-                handler=_t(_exercise_stats), title="Statistiche esercizio", path=f"{API}/records", clients=["ui"],
+                handler=_t(_exercise_stats), title="Exercise statistics", path=f"{API}/records", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Storico e statistiche"}),
-        MCPTool(name="fitness_search_exercises", description="Search exercises in the catalogue (name or muscle: petto, spalle, braccia, schiena, core, gambe).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
-                handler=_t(_search), title="Cerca esercizi", path=f"{API}/exercises", clients=["ui"],
+                telegram={"section": "History and statistics"}),
+        MCPTool(name="fitness_search_exercises", description="Search exercises in the catalogue (name or muscle: chest, shoulders, arms, back, core, legs).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
+                handler=_t(_search), title="Search exercises", path=f"{API}/exercises", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Schede"}),
+                telegram={"section": "Workout plans"}),
         MCPTool(name="fitness_templates", description="The user's workout templates with exercises and duration.",
-                parameters={"type": "object", "properties": {}}, handler=_t(_templates), title="Schede",
+                parameters={"type": "object", "properties": {}}, handler=_t(_templates), title="Workout plans",
                 path=f"{API}/templates", clients=["telegram", "ui"], telegram_group="allenamento",
-                telegram={"section": "Schede", "primary": 5}),
+                telegram={"section": "Workout plans", "primary": 5}),
         MCPTool(name="fitness_start_session", description="Start a workout (template by name, empty = today's).",
                 parameters={"type": "object", "properties": {"template": S}}, handler=_t(_start),
-                title="Inizia allenamento", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
+                title="Start workout", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
                 telegram_group="allenamento",
-                telegram={"section": "Oggi", "primary": 1}),
+                telegram={"section": "Today", "primary": 1}),
         MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. "
                                                       "Weight x reps (x sets), optional @RPE."),
                 parameters={"type": "object", "properties": {"text": S}, "required": ["text"]}, handler=_t(_log),
-                title="Registra serie", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
+                title="Log set", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
                 telegram_group="allenamento",
-                telegram={"section": "Oggi"}),
+                telegram={"section": "Today"}),
         MCPTool(name="fitness_finish_session", description="Finish the workout in progress: summary and new records.",
                 parameters={"type": "object", "properties": {"notes": S, "effort": I}}, handler=_t(_finish),
-                title="Fine allenamento", method="POST", path=f"{API}/sessions/{{id}}/finish",
+                title="End workout", method="POST", path=f"{API}/sessions/{{id}}/finish",
                 clients=["telegram", "ui"], telegram_group="allenamento",
-                telegram={"section": "Oggi"}),
-        MCPTool(name="fitness_checkin", description=("Save how the user feels today: energy 1-5, sleep 1-5, soreness, pain (spalla, ginocchio, "
-                                                     "schiena…), minutes available."),
+                telegram={"section": "Today"}),
+        MCPTool(name="fitness_checkin", description=("Save how the user feels today: energy 1-5, sleep 1-5, soreness, pain (shoulder, knee, back…), minutes available."),
                 parameters={"type": "object", "properties": {"energy": I, "sleep": I, "soreness": L, "pain_areas": L,
                                                              "time_minutes": I, "free_text": S}},
-                handler=_t(_checkin), title="Come stai oggi", method="POST", path=f"{API}/checkin", clients=["ui"],
+                handler=_t(_checkin), title="How are you today", method="POST", path=f"{API}/checkin", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Oggi", "label": "Check-in"}),
+                telegram={"section": "Today", "label": "Check-in"}),
         MCPTool(name="fitness_adapt_today", description=("Propose today's workout adapted to how the user feels (energy 1-5, minutes, pain, soreness, "
                                                          "missing equipment, intent lighter|shorter|harder). It does NOT apply it: show the user 'trace' "
                                                          "and ask if it is fine; on yes call fitness_apply_adaptation. Never advise training through "
@@ -1147,102 +1144,101 @@ try:
                 parameters={"type": "object", "properties": {"energy": I, "time_minutes": I, "pain_areas": L,
                                                              "soreness": L, "equipment_missing": L, "intent": S,
                                                              "free_text": S}},
-                handler=_t(_adapt), title="Adatta allenamento", method="POST", path=f"{API}/adapt", clients=["ui"],
+                handler=_t(_adapt), title="Adapt workout", method="POST", path=f"{API}/adapt", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Oggi"}),
+                telegram={"section": "Today"}),
         MCPTool(name="fitness_apply_adaptation", description="Apply the proposed adaptation (only after the user's yes).",
                 parameters={"type": "object", "properties": {"adaptation_id": S}, "required": ["adaptation_id"]},
-                handler=_t(_apply), title="Applica adattamento", method="POST", path=f"{API}/adapt/{{adaptation_id}}/apply",
+                handler=_t(_apply), title="Apply adaptation", method="POST", path=f"{API}/adapt/{{adaptation_id}}/apply",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Oggi"}),
+                telegram={"section": "Today"}),
         MCPTool(name="fitness_restore_today", description="Restore today's original workout template (undo the adaptation).",
-                parameters={"type": "object", "properties": {}}, handler=_t(_restore), title="Ripristina scheda di oggi",
+                parameters={"type": "object", "properties": {}}, handler=_t(_restore), title="Restore today's plan",
                 method="POST", path=f"{API}/restore", clients=["ui"], telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Oggi"}),
+                telegram={"section": "Today"}),
         MCPTool(name="fitness_skip_day", description="Mark a day's workout as skipped (default today).",
                 parameters={"type": "object", "properties": {"date": S, "note": S}}, handler=_t(_skip),
-                title="Salta allenamento", method="POST", path=f"{API}/days/skip", clients=["telegram", "ui"],
+                title="Skip workout", method="POST", path=f"{API}/days/skip", clients=["telegram", "ui"],
                 telegram_group="allenamento",
-                telegram={"section": "Oggi", "primary": 6, "label": "Salta oggi"}),
+                telegram={"section": "Today", "primary": 6, "label": "Skip today"}),
         MCPTool(name="fitness_postpone", description="Move today's workout (or date_from's) to the day 'to' (YYYY-MM-DD).",
                 parameters={"type": "object", "properties": {"to": S, "date_from": S}, "required": ["to"]},
-                handler=_t(_postpone), title="Sposta allenamento", method="POST", path=f"{API}/days/postpone",
+                handler=_t(_postpone), title="Move workout", method="POST", path=f"{API}/days/postpone",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Oggi"}),
+                telegram={"section": "Today"}),
         MCPTool(name="fitness_feedback", description=("Save feedback on the workout or an exercise. tags: too_heavy, too_light, pain, great, tired, "
                                                       "bored, short_time, technique. The rules use it next time."),
                 parameters={"type": "object", "properties": {"text": S, "tags": L, "exercise": S}}, handler=_t(_feedback),
-                title="Com'è andato l'allenamento", method="POST", path=f"{API}/feedback", clients=["ui"],
+                title="How the workout went", method="POST", path=f"{API}/feedback", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Oggi", "label": "Feedback"}),
+                telegram={"section": "Today", "label": "Feedback"}),
         MCPTool(name="fitness_edit_template", description=("Edit a workout template: remove/add an exercise, sets and reps. Only after the user said yes in "
                                                            "chat. Undoable with fitness_undo_template."),
                 parameters={"type": "object", "properties": {"template": S, "remove_exercise": S, "add_exercise": S,
                                                              "sets": I, "reps_min": I, "reps_max": I,
                                                              "changes": {"type": "object"}}, "required": ["template"]},
-                handler=_t(_edit_template), title="Modifica scheda", method="PUT", path=f"{API}/templates/{{id}}",
+                handler=_t(_edit_template), title="Edit plan", method="PUT", path=f"{API}/templates/{{id}}",
                 clients=["ui"], telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Schede"}),
+                telegram={"section": "Workout plans"}),
         MCPTool(name="fitness_undo_template", description="Undo the last change to a workout template.",
                 parameters={"type": "object", "properties": {"template": S}, "required": ["template"]},
-                handler=_t(_undo_template), title="Annulla modifica scheda", method="POST",
+                handler=_t(_undo_template), title="Undo plan change", method="POST",
                 path=f"{API}/templates/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Schede"}),
+                telegram={"section": "Workout plans"}),
         MCPTool(name="fitness_log_measurement", description="Log body weight (kg) or a measurement (kind: waist, chest, arm, thigh, body_fat…).", parameters={"type": "object", "properties": {
                     "value": {"type": "number"}, "kind": S}, "required": ["value"]},
-                handler=_t(_measure), title="Registra peso", method="POST", path=f"{API}/measurements",
+                handler=_t(_measure), title="Log weight", method="POST", path=f"{API}/measurements",
                 clients=["telegram", "ui"], telegram_group="allenamento",
-                telegram={"section": "Obiettivi e corpo", "primary": 3}),
+                telegram={"section": "Goals and body", "primary": 3}),
         MCPTool(name="fitness_set_goal", description=("Set a training goal: times per day|week|month; scope any, template (target = template name) or "
                                                       "muscle (petto, spalle, braccia, schiena, core, gambe)."),
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
-                handler=_t(_goal), title="Obiettivo allenamento", method="POST", path=f"{API}/goals", clients=["ui"],
+                handler=_t(_goal), title="Workout goal", method="POST", path=f"{API}/goals", clients=["ui"],
                 telegram_visible=False, telegram_group="allenamento",
-                telegram={"section": "Obiettivi e corpo"}),
+                telegram={"section": "Goals and body"}),
         MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («ho voglia di correre 2 volte questa settimana»): kind "
                                                            "corsa|bici|camminata|nuoto|altro, times, place (name of a saved place or a city; empty = Casa), "
                                                            "minutes, week (empty = this one, 'next' = next). Proposes the best moments from weather and "
                                                            "commitments; does NOT write the calendar: show the moments and ask for confirmation."),
                 parameters={"type": "object", "properties": {"kind": S, "times": I, "place": S, "minutes": I, "week": S}},
-                handler=_t(_plan_activity), title="Pianifica attività", method="POST",
+                handler=_t(_plan_activity), title="Schedule task", method="POST",
                 path=f"{API}/activities/propose", clients=["telegram", "ui"], telegram_group="allenamento",
-                telegram={"section": "Attività"}),
+                telegram={"section": "Activity"}),
         MCPTool(name="fitness_confirm_activity", description=("Confirm the proposed intention (after the user's yes): slots = numbers of the moments to keep "
                                                               "or ISO times the user chose (empty = all). Creates the events in the «Allenamenti» calendar and "
                                                               "asks after each outing whether it was done."),
                 parameters={"type": "object", "properties": {"plan_id": S, "slots": L}, "required": ["plan_id"]},
-                handler=_t(_confirm_activity), title="Conferma attività", method="POST",
+                handler=_t(_confirm_activity), title="Confirm task", method="POST",
                 path=f"{API}/activities/{{plan_id}}/confirm", clients=["ui"], telegram_visible=False,
                 telegram_group="allenamento",
-                telegram={"section": "Attività"}),
-        MCPTool(name="fitness_log_activity", description=("Log an activity done («ho corso 5 km»): kind, date (empty = today), minutes, km, note. Closes "
-                                                          "the planned moment of that day if there is one."),
+                telegram={"section": "Activity"}),
+        MCPTool(name="fitness_log_activity", description=("Log an activity done («I ran 5 km»): kind, date (empty = today), minutes, km, note. Closes the planned moment of that day if there is one."),
                 parameters={"type": "object", "properties": {"kind": S, "date": S, "minutes": I,
                                                              "km": {"type": "number"}, "note": S}},
-                handler=_t(_log_activity), title="Registra attività", method="POST", path=f"{API}/activities/log",
+                handler=_t(_log_activity), title="Log activity", method="POST", path=f"{API}/activities/log",
                 clients=["telegram", "ui"], telegram_group="allenamento",
-                telegram={"section": "Attività", "primary": 4}),
+                telegram={"section": "Activity", "primary": 4}),
         MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Corsa 1/2), planned moments and "
                                                         "activities done."),
                 parameters={"type": "object", "properties": {}}, handler=_t(_activities_week),
-                title="Attività della settimana", path=f"{API}/activities", clients=["telegram", "ui"],
+                title="This week's tasks", path=f"{API}/activities", clients=["telegram", "ui"],
                 telegram_group="allenamento",
-                telegram={"section": "Attività"}),
+                telegram={"section": "Activity"}),
         MCPTool(name="fitness_activity_outcome", description=("Outcome of a planned moment: outcome done|missed|moved (to = new ISO time; empty = the best one "
                                                               "left in the week)."),
                 parameters={"type": "object", "properties": {"plan_id": S, "slot_id": S, "outcome": S, "to": S},
                             "required": ["plan_id", "slot_id"]},
-                handler=_t(_activity_outcome), title="Esito attività", method="POST",
+                handler=_t(_activity_outcome), title="Task outcome", method="POST",
                 path=f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/done", clients=["ui"], telegram_visible=False,
                 telegram_group="allenamento",
-                telegram={"section": "Attività"}),
+                telegram={"section": "Activity"}),
         MCPTool(name="fitness_cancel_activity", description="Cancel an intention (removes its future events from the calendar).",
                 parameters={"type": "object", "properties": {"plan_id": S}, "required": ["plan_id"]},
-                handler=_t(_cancel_activity), title="Annulla attività", method="DELETE",
+                handler=_t(_cancel_activity), title="Cancel task", method="DELETE",
                 path=f"{API}/activities/{{plan_id}}", clients=["ui"], telegram_visible=False,
                 telegram_group="allenamento",
-                telegram={"section": "Attività"}),
+                telegram={"section": "Activity"}),
     ]
     def _coerced(t: MCPTool):
         """REST callers (Telegram, gateway) send strings: coerce by the tool's schema before the handler."""

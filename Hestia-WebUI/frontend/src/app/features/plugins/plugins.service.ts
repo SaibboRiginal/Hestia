@@ -29,7 +29,7 @@ type HostEvent = 'refresh' | 'theme' | 'visible' | 'hidden' | 'online' | 'offlin
 const BASE = '/api/webui/plugins';
 /** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A6). */
 /** Titled «Stato del sistema» (2026-10-29): «Sistema» is the sidebar page of the system modules, only one of each name. */
-const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: tr('Stato del sistema'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
+const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
 
 /**
  * Client plugins runtime (SPEC docs/work/2026-10-17-client-plugins §4): Hub catalog for client=webui, this client's
@@ -84,7 +84,7 @@ export class PluginsService {
    *  the ready-made «Sistema» built from the core modules' `auto` widgets until the user deletes it. */
   readonly dashboards = computed<Dashboard[]>(() => {
     const saved = this.dashboardsCfg() ?? [];
-    const list: Dashboard[] = saved.length ? saved : [{ id: 'home', title: tr('Home'), icon: 'home', auto: true, created_by: 'user', items: [] }];
+    const list: Dashboard[] = saved.length ? saved : [{ id: 'home', title: tr('alt::Home'), icon: 'home', auto: true, created_by: 'user', items: [] }];
     const savedSystem = list.some(d => d.id === SYSTEM_DASHBOARD.id);
     return [...list, ...(savedSystem ? [] : [SYSTEM_DASHBOARD])]
       .filter(d => !d.removed)
@@ -161,7 +161,7 @@ export class PluginsService {
       await this.settingsApi.set(key, value, 'client');
       return true;
     } catch (e) {
-      this.toasts.error(apiError(e, 'Impostazione non salvata'));
+      this.toasts.error(apiError(e, tr('Setting not saved')));
       return false;
     }
   }
@@ -341,7 +341,7 @@ export class PluginsService {
       openSetting: (key?: string) =>
         void svc.router.navigate(['/settings'], { queryParams: key ? { key } : { tab: 'system', module } }),
       toast: (text: string, t?: string, action?: { label: string; run: () => void }) => svc.toasts.show(text, tone(t), action, action ? 6000 : 4500),
-      confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? tr('Conferma'), !!o?.danger),
+      confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? tr('Confirm'), !!o?.danger),
       assistant: (o: { label: string; hints?: Record<string, string | number>; prompt?: string; suggestions?: string[] }) =>
         svc.assistant.open({ page: `plugin:${module}`, intent: 'ask', label: o.label, hints: { module, ...(o.hints ?? {}) }, prompt: o.prompt, suggestions: o.suggestions }),
       notify: (title: string, body?: string, o?: { tag?: string }) => notify(title, body, o?.tag),

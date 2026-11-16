@@ -16,7 +16,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 DEFAULTS = {"low_energy": 2, "weight_cut_pct": 10, "very_low_weight_cut_pct": 15, "work_seconds": 40,
             "setup_seconds": 90, "default_rest": 90, "min_sets_main": 2}
 
-_LABELS = {**{v.lower(): k for k, v in JOINTS.items()}, **{v.lower(): k for k, v in MUSCLES.items()},
+# Words the owner may use: the English labels, their Italian translations and a few plural/colloquial forms.
+_LABELS = {**{tr(v, lang=lang).lower(): k for lang in ("en", "it") for names in (JOINTS, MUSCLES) for k, v in names.items()},
            "spalle": "shoulder", "ginocchia": "knee", "schiena": "lower_back", "lombare": "lower_back",
            "polsi": "wrist", "gomiti": "elbow", "anche": "hip", "caviglie": "ankle", "gambe": "quads",
            "petto": "chest", "dorso": "lats", "braccia": "biceps"}
@@ -140,11 +141,11 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 for s in ex.get("planned") or []:
                     if alt.get("kind") != m.get("kind"):
                         s["weight_kg"] = None
-                trace.append(tr("Dolore ({0}): {1} → {2}, carico più leggero.", ', '.join(JOINTS.get(h, MUSCLES.get(h, h)) for h in hits), name, alt['name']))
+                trace.append(tr("Pain ({0}): {1} → {2}, lighter load.", ', '.join(tr(JOINTS.get(h, MUSCLES.get(h, h))) for h in hits), name, alt['name']))
             else:
                 ex["skipped"] = True
-                trace.append(tr("Dolore: tolgo {0}, nessuna alternativa che non lo carichi.", name))
-        warnings.append(tr("Se il dolore torna spesso, meglio sentire un fisioterapista o un medico."))
+                trace.append(tr("Pain: I remove {0}, no alternative that doesn't load it.", name))
+        warnings.append(tr("If the pain comes back often, better see a physiotherapist or a doctor."))
 
     # 2. equipment missing → same muscle, other equipment
     missing = set(equipment_missing or readiness.get("equipment_missing") or [])
@@ -159,10 +160,10 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 used.add(alt["id"])
                 for s in ex.get("planned") or []:
                     s["weight_kg"] = None
-                trace.append(tr("Senza {0}: {1} → {2} (scegli tu il peso).", m.get('equipment'), m.get('name'), alt['name']))
+                trace.append(tr("Without {0}: {1} → {2} (you choose the weight).", m.get('equipment'), m.get('name'), alt['name']))
             else:
                 ex["skipped"] = True
-                trace.append(tr("Senza {0}: tolgo {1}.", m.get('equipment'), m.get('name')))
+                trace.append(tr("Without {0}: I remove {1}.", m.get('equipment'), m.get('name')))
 
     # 3. soreness → less volume for that muscle
     _, sore = resolve_areas(readiness.get("soreness"))
@@ -173,7 +174,7 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 continue
             n = _drop_sets(ex, 1)
             _scale(ex, cfg["weight_cut_pct"], inc(ex))
-            trace.append(tr("Indolenzimento: {0} -{1} serie e -{2}% di carico.", m.get('name'), n, int(cfg['weight_cut_pct'])))
+            trace.append(tr("Soreness: {0} -{1} sets and -{2}% load.", m.get('name'), n, int(cfg['weight_cut_pct'])))
 
     # 4. energy
     if energy is not None and energy <= cfg["low_energy"]:
@@ -189,23 +190,23 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 n = _drop_sets(ex, 1, keep_min=cfg["min_sets_main"])
                 _scale(ex, cut, inc(ex), rpe_drop=1)
                 if n:
-                    trace.append(tr("Energia bassa: {0} -{1} serie, -{2}% di carico.", m.get('name'), n, cut))
+                    trace.append(tr("Low energy: {0} -{1} sets, -{2}% load.", m.get('name'), n, cut))
                 else:
-                    trace.append(tr("Energia bassa: {0} -{1}% di carico.", m.get('name'), cut))
+                    trace.append(tr("Low energy: {0} -{1}% load.", m.get('name'), cut))
             elif energy <= 1 or (ex.get("priority") or 2) >= 3:
                 ex["skipped"] = True
-                trace.append(tr("Energia bassa: salto {0}.", m.get('name')))
+                trace.append(tr("Low energy: I skip {0}.", m.get('name')))
             else:
                 _drop_sets(ex, 1)
                 _scale(ex, cut, inc(ex), rpe_drop=1)
-                trace.append(tr("Energia bassa: {0} una serie in meno.", m.get('name')))
+                trace.append(tr("Low energy: {0} one set less.", m.get('name')))
     elif energy is not None and energy >= 4 and intent == "harder":
         for ex in out:
             if not ex.get("skipped") and _compound(meta(ex)):
                 work = [s for s in ex.get("planned") or [] if s.get("type") != "warmup"]
                 if work:
                     ex["planned"].append(dict(work[-1]))
-                    trace.append(f"Giornata buona: +1 serie su {meta(ex).get('name')}.")
+                    trace.append(tr("Good day: +1 set on {0}.", meta(ex).get('name')))
                 break
 
     # 5. time limit → drop least important first, then trim sets
@@ -220,7 +221,7 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
             if (ex.get("priority") or 2) == 1 or len([e for e in out if not e.get("skipped")]) <= 2:
                 continue
             ex["skipped"] = True
-            trace.append(tr("Hai {0} minuti: salto {1}.", limit, meta(ex).get('name')))
+            trace.append(tr("You have {0} minutes: I skip {1}.", limit, meta(ex).get('name')))
         guard = 0
         while estimate_minutes(out, cfg) > limit and guard < 50:
             guard += 1
@@ -232,14 +233,14 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
             if not trimmed:
                 break
         if guard:
-            trace.append(tr("Hai {0} minuti: tolgo qualche serie in fondo.", limit))
+            trace.append(tr("You have {0} minutes: I remove a few sets at the end.", limit))
         for ex in out:
             if not ex.get("skipped") and ex.get("rest_seconds") and ex["rest_seconds"] > 120:
                 ex["rest_seconds"] = 120
         if estimate_minutes(out, cfg) > limit:
-            warnings.append(tr("Anche così servono circa {0} minuti.", estimate_minutes(out, cfg)))
+            warnings.append(tr("Even so it takes about {0} minutes.", estimate_minutes(out, cfg)))
 
     if not trace:
-        trace.append(tr("Nessun cambiamento: la scheda va bene così."))
+        trace.append(tr("No change: the plan is fine as it is."))
     return {"exercises": out, "trace": trace, "warnings": warnings, "minutes_before": before,
             "minutes_after": estimate_minutes(out, cfg), "energy": energy, "intent": intent or None}

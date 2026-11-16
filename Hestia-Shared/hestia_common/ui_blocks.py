@@ -23,11 +23,7 @@ MAX_ROWS = 50
 
 # Added to the prompt only for the WebUI and only when the answering model is a capable one (locals stay caveman).
 PROMPT = (
-    "COMPONENTI (solo se aiutano, es. numeri, tabelle, elenchi, scelte): blocco ```hestia-ui con un oggetto JSON per "
-    "riga. c = card{title,text,tone} | stat{label,value,hint,tone} | table{cols,rows} | list{items:[{title,meta}]} | "
-    "chart{kind:bar|line,labels,values,unit} | checklist{items:[{label,done}]} | button{label,send}. tone solo: "
-    "primary, success, warning, danger, info. Niente emoji, niente colori. button manda in chat il testo send. "
-    "Il testo normale resta fuori dal blocco.")
+    "COMPONENTS (only if they help, e.g. numbers, tables, lists, choices): a ```hestia-ui block with one JSON object per line. c = card{title,text,tone} | stat{label,value,hint,tone} | table{cols,rows} | list{items:[{title,meta}]} | chart{kind:bar|line,labels,values,unit} | checklist{items:[{label,done}]} | button{label,send}. tone only: primary, success, warning, danger, info. No emoji, no colours. button sends the send text to the chat. Normal text stays outside the block.")
 
 
 def _clean(comp: Any) -> dict | None:

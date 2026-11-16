@@ -15,17 +15,17 @@ import { TrPipe } from '../../core/i18n';
   imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'Sistema' | tr"  [subtitle]="'Come sta Hestia e come lavora: salute, modelli, notifiche, agenda, impostazioni, sviluppo' | tr">
-      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">{{ "Aggiornamenti" | tr }}</a>
-      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">{{ "Macchine" | tr }}</a>
-      <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">{{ "Download" | tr }}</a>
+    <hx-page-header  [title]="'System' | tr"  [subtitle]="'How Hestia is and how it works: health, models, notifications, agenda, settings, development' | tr">
+      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">{{ "Updates" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">{{ "Machines" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">{{ "alt::Download" | tr }}</a>
       @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/sistema">{{ "Dashboard" | tr }}</a> }
     </hx-page-header>
     <div class="body">
       @for (g of groups(); track g.module) {
         <section class="mod">
           <h2><hx-icon [name]="g.icon" [size]="16" />{{ g.title }}
-            @if (!g.online) { <hx-badge tone="warning">{{ "non raggiungibile" | tr }}</hx-badge> }</h2>
+            @if (!g.online) { <hx-badge tone="warning">{{ "unreachable" | tr }}</hx-badge> }</h2>
           @if (g.description) { <p class="d">{{ g.description }}</p> }
           <div class="pages">
             @for (p of g.pages; track p.id) {
@@ -35,14 +35,14 @@ import { TrPipe } from '../../core/i18n';
                   @if (badge(p); as n) { <b class="count">{{ n > 99 ? '99+' : n }}</b> }
                 </a>
                 <button class="pin" [class.on]="pinned(p)" (click)="plugins.toggleNavPin(p.id)"
-                        [attr.aria-label]="pinned(p) ? ('Togli da Fissati' | tr) : ('Fissa nella barra laterale' | tr)" [attr.title]="pinned(p) ? ('In Fissati' | tr) : ('Fissa nella barra laterale' | tr)">
+                        [attr.aria-label]="pinned(p) ? ('Remove from Pinned' | tr) : ('Pin in the sidebar' | tr)" [attr.title]="pinned(p) ? ('In Pinned' | tr) : ('Pin in the sidebar' | tr)">
                   <hx-icon name="pin" [size]="14" /></button>
               </div>
             }
           </div>
         </section>
       } @empty {
-        <hx-empty icon="host"  [title]="'Nessun modulo di sistema' | tr">{{ "I moduli compaiono qui quando si registrano." | tr }}</hx-empty>
+        <hx-empty icon="host"  [title]="'No system module' | tr">{{ "Modules appear here when they register." | tr }}</hx-empty>
       }
     </div>`,
   styles: [`

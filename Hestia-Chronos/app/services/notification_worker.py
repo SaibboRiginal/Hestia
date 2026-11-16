@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 
 from core import archive_client, hermes_client
 from core import chronos_settings as CS
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import month_name, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.notification_worker")
 
@@ -57,10 +57,10 @@ def _look_ahead_hours() -> float:
 _BUCKET_30M_MAX_MINUTES = 35.0
 _BUCKET_2H_MAX_MINUTES = 130.0     # 2h 10m
 
-_BUCKET_LABELS = {
-    "30m": "30 minuti",
-    "2h": "2 ore",
-    "1d": "domani",
+_BUCKET_TITLES = {
+    "30m": "Reminder — in 30 minutes",
+    "2h": "Reminder — in 2 hours",
+    "1d": "Reminder — tomorrow",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,24 +81,20 @@ def _determine_bucket(minutes_until: float) -> str | None:
     return None
 
 
-_IT_MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
-              "agosto", "settembre", "ottobre", "novembre", "dicembre"]
-
-
 def _format_datetime(iso_str: str) -> str:
-    """Italian date/time in the user's timezone (container ``TZ``, default
+    """Date/time in the owner's language and timezone (container ``TZ``, default
     Europe/Rome).  Stored values are often UTC: showing them raw was 1-2h off."""
     try:
         from zoneinfo import ZoneInfo
 
         dt = datetime.fromisoformat(str(iso_str).replace("Z", "+00:00"))
         if len(str(iso_str)) == 10:            # all-day: date only
-            return tr("{0} {1} {2} (tutto il giorno)", dt.day, _IT_MONTHS[dt.month - 1], dt.year)
+            return tr("{0} {1} {2} (all day)", dt.day, month_name(dt.month), dt.year)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         tz_name = os.getenv("TZ") or "Europe/Rome"
         local = dt.astimezone(ZoneInfo(tz_name))
-        return f"{local.day} {_IT_MONTHS[local.month - 1]} {local.year}, {local:%H:%M}"
+        return f"{local.day} {month_name(local.month)} {local.year}, {local:%H:%M}"
     except Exception:
         return str(iso_str)
 
@@ -107,8 +103,8 @@ def _build_notification(item: dict, bucket: str) -> str:
     """Build an HTML notification message for a calendar event."""
     from html import escape   # user content in Telegram HTML must be escaped
 
-    label = _BUCKET_LABELS.get(bucket, bucket)
-    title = escape(str(item.get("title") or tr("Evento")))
+    heading = tr(_BUCKET_TITLES[bucket]) if bucket in _BUCKET_TITLES else bucket
+    title = escape(str(item.get("title") or tr("Event")))
     start = item.get("start_at", "")
     location = escape(str(item.get("location") or ""))
     description = escape(str(item.get("description") or ""))
@@ -116,7 +112,7 @@ def _build_notification(item: dict, bucket: str) -> str:
     icon = kind_icons.get(item.get("kind", "event"), "🗓️")
 
     lines = [
-        f"{icon} <b>Promemoria — tra {label}</b>",
+        f"{icon} <b>{escape(heading)}</b>",
         f"<b>{title}</b>",
     ]
     if start:

@@ -34,18 +34,17 @@ from .core.service import CAUSES, LABELS, MOOD_WORDS, Psyche, mood_word
 API = "/api/mood"
 DOMAIN = "mood"
 
-kit = ModuleKit("psyche", port=19029, api=API, domain=DOMAIN, title="Umore", store="mood-store",
+kit = ModuleKit("psyche", port=19029, api=API, domain=DOMAIN, title="Mood", store="mood-store",
                 tags=("context",),
                 when_to_use="mood: how the user feels, energy, stress, good and bad days, trend",
                 manual="Mood (mood_today, mood_history, mood_insights): how the user is over time. mood_log when they ask to record how they feel (mood 1-5, energy, stress, labels, causes). Chat phrases like «I'm tired today» are already recorded by themselves after the answer: don't call mood_log for those and don't say you recorded them. mood_delete to remove an entry.")
 app = kit.app
 kit.settings.declare([
-    setting("psyche.capture.merge_minutes", "Unisci frasi vicine", "int", 120, group="Umore", min=0, max=720, order=0,
-            unit="minuti", help="Se in chat dici come ti senti più volte a poca distanza, resta una voce sola."),
-    setting("psyche.insights.min_days", "Giorni per l'andamento", "int", 7, group="Umore", min=3, max=60, order=1,
-            unit="giorni", help="Quanti giorni con l'umore segnato servono prima di mostrare l'andamento."),
-    *reminder_settings("psyche", help="La sera, solo se oggi non hai ancora detto come stai: una domanda, tre "
-                                      "tasti.", max_per_week=7, order=10),
+    setting("psyche.capture.merge_minutes", "Merge nearby phrases", "int", 120, group="Mood", min=0, max=720, order=0,
+            unit="minutes", help="If in chat you say how you feel several times close together, only one entry stays."),
+    setting("psyche.insights.min_days", "Days for the trend", "int", 7, group="Mood", min=3, max=60, order=1,
+            unit="days", help="How many days with mood recorded are needed before showing the trend."),
+    *reminder_settings("psyche", help="In the evening, only if you haven't said how you are today: one question, three buttons.", max_per_week=7, order=10),
 ])
 psyche = Psyche(kit.store, kit.settings.get, tz_name=kit.tz)
 signals = Signals("psyche", DOMAIN, evaluate=psyche.signals, hub_api_url=kit.hub_url)
@@ -120,7 +119,7 @@ def checkin():
     ask = psyche.checkin()
     if not ask:
         return {"sent": False, "reason": "already_logged"}
-    sent = kit.hub.notify(reminder_event(module="psyche", domain=DOMAIN, key=ask["key"], title=tr("Umore"),
+    sent = kit.hub.notify(reminder_event(module="psyche", domain=DOMAIN, key=ask["key"], title=tr("Mood"),
                                          text=ask["text"], actions=ask["actions"], page="umore"))
     return {"sent": sent}
 
@@ -145,7 +144,7 @@ def delete_mood(mid: str):
     return _changed(psyche.delete(mid))
 
 
-app.include_router(recap.recap_router("psyche", lambda d, n: recap.piece("psyche", tr("Umore"), icon="smile", order=28,
+app.include_router(recap.recap_router("psyche", lambda d, n: recap.piece("psyche", tr("Mood"), icon="smile", order=28,
                                                                          **psyche.recap(d, n)),
                                       today=psyche.today))
 
@@ -154,7 +153,7 @@ app.include_router(recap.recap_router("psyche", lambda d, n: recap.piece("psyche
 def _line(r: dict) -> list[str]:
     meta = [f"{r['mood']}/5 {r['mood_word']}"]
     if r.get("energy"):
-        meta.append(f"energia {r['energy']}/5")
+        meta.append(tr("energy {0}/5", r['energy']))
     if r.get("labels"):
         meta.append(", ".join(r["labels"][:3]))
     return meta
@@ -169,44 +168,44 @@ def _log(mood: int, energy: int | None = None, stress: int | None = None, labels
     r = _changed(psyche.log({"mood": mood, "energy": energy, "stress": stress, "labels": labels or [],
                              "causes": causes or [], "note": note, "date": date, "source": source or "telegram"}))
     return {"saved": True, "id": r["id"], "mood": r["mood"], "undo": undo("mood_delete", id=r["id"]),
-            "display": display(tr("Umore segnato"), lines=[" · ".join(_line(r))],
-                               actions=[action(tr("Andamento"), "mood_insights")])}
+            "display": display(tr("Mood noted"), lines=[" · ".join(_line(r))],
+                               actions=[action(tr("Trend"), "mood_insights")])}
 
 
 def _today() -> dict:
     t = psyche.today_view()
     s = t["summary"]
-    return {**t, "display": display(tr("Umore di oggi"),
+    return {**t, "display": display(tr("Today's mood"),
                                     subtitle=f"{s['mood']}/5 · {s['mood_word']}" if s else "",
                                     items=[item(str(r.get("at", ""))[11:16] or r["date"], _line(r),
                                                 tone=_tone(r["mood"])) for r in t["items"][:10]],
-                                    lines=[] if s else [tr("Oggi non hai ancora detto come stai.")],
-                                    actions=[action(tr("Come stai?"), "mood_log", style="primary")])}
+                                    lines=[] if s else [tr("Today you haven't said how you are yet.")],
+                                    actions=[action(tr("How are you?"), "mood_log", style="primary")])}
 
 
 def _history(days: int = 30) -> dict:
     h = psyche.history(days)
     st = h["stats"]
-    sub = (f"media {st['mood_avg']:.1f}/5 · {st['good_days']} giorni buoni · {st['bad_days']} no"
+    sub = (tr("average {0:.1f}/5 · {1} good days · {2} bad", st['mood_avg'], st['good_days'], st['bad_days'])
            if st["mood_avg"] is not None else "")
     return {"days": h["days"], "stats": st,
-            "display": display(tr("Umore, ultimi {0} giorni", days), subtitle=sub,
+            "display": display(tr("Mood, last {0} days", days), subtitle=sub,
                                items=[item(f"{d['date'][8:10]}/{d['date'][5:7]}", [f"{d['mood']}/5 {d['mood_word']}",
                                                                                  ", ".join(d["labels"][:3])],
                                            tone=_tone(d["mood"])) for d in reversed(h["days"][-20:])],
-                               lines=[] if h["days"] else [tr("Nessun dato in questo periodo.")])}
+                               lines=[] if h["days"] else [tr("No data in this period.")])}
 
 
 def _insights() -> dict:
     out = psyche.insights()
-    return {**out, "display": display(tr("Andamento dell'umore"), lines=out["sentences"])}
+    return {**out, "display": display(tr("Mood trend"), lines=out["sentences"])}
 
 
 def _delete(id: str = "", last: bool = False) -> dict:
     if not id and last:
         rows = psyche.entries(psyche.today(), psyche.today())
         if not rows:
-            return {"deleted": False, "error": tr("oggi non c'è niente da togliere")}
+            return {"deleted": False, "error": tr("today there is nothing to remove")}
         id = rows[-1]["id"]
     return _changed(psyche.delete(id))
 
@@ -217,52 +216,51 @@ G = "umore"
 kit.tools([
     MCPTool(name="mood_log", description=("Log how the user feels: mood 1-5 (1 very low, 3 so-so, 5 great), energy and stress 1-5, labels, "
                                           "causes, note, date (YYYY-MM-DD or ieri). Only if they ask."),
-            summary="Segna come stai.",
+            summary="Record how you are.",
             parameters={"type": "object", "properties": {
                 "mood": LV, "energy": LV, "stress": LV,
                 "labels": {"type": "array", "items": {"type": "string", "enum": list(LABELS)}},
                 "causes": {"type": "array", "items": {"type": "string", "enum": list(CAUSES)}},
                 "note": S, "date": S}, "required": ["mood"]},
-            handler=_log, title="Come stai?", method="POST", clients=["telegram", "ui", "external"], telegram_group=G,
-            telegram={"section": "Umore", "primary": 1, "label": "Come stai?"}),
-    MCPTool(name="mood_today", description="Today's mood: the entries and the summary.", summary="L'umore di oggi.",
-            parameters={"type": "object", "properties": {}}, handler=_today, title="Umore di oggi",
-            clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Umore", "primary": 2}),
-    MCPTool(name="mood_history", description="Mood of the last days (days, default 30): a summary per day, averages, good and bad days.", summary="Com'è andato l'umore negli ultimi giorni.",
-            parameters={"type": "object", "properties": {"days": I}}, handler=_history, title="Storico umore",
-            clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Umore", "primary": 3}),
+            handler=_log, title="How are you?", method="POST", clients=["telegram", "ui", "external"], telegram_group=G,
+            telegram={"section": "Mood", "primary": 1, "label": "How are you?"}),
+    MCPTool(name="mood_today", description="Today's mood: the entries and the summary.", summary="Today's mood.",
+            parameters={"type": "object", "properties": {}}, handler=_today, title="Today's mood",
+            clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Mood", "primary": 2}),
+    MCPTool(name="mood_history", description="Mood of the last days (days, default 30): a summary per day, averages, good and bad days.", summary="How your mood went in the last days.",
+            parameters={"type": "object", "properties": {"days": I}}, handler=_history, title="Mood history",
+            clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Mood", "primary": 3}),
     MCPTool(name="mood_insights", description=("Mood trend in plain sentences: average, compared with the month before, weekday, most frequent "
-                                               "words and causes."), summary="L'andamento in poche frasi.",
-            parameters={"type": "object", "properties": {}}, handler=_insights, title="Andamento",
-            clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Umore", "primary": 4}),
+                                               "words and causes."), summary="The trend in a few sentences.",
+            parameters={"type": "object", "properties": {}}, handler=_insights, title="Trend",
+            clients=["telegram", "ui", "external"], telegram_group=G, telegram={"section": "Mood", "primary": 4}),
     MCPTool(name="mood_delete", description="Remove a mood entry (id) or today's last one (last=true).",
-            summary="Togli una voce dell'umore.",
+            summary="Remove a mood entry.",
             parameters={"type": "object", "properties": {"id": S, "last": B}}, handler=_delete,
-            title="Togli voce", method="POST", clients=["telegram", "ui", "external"], telegram_group=G,
-            telegram={"section": "Umore"}),
+            title="Remove entry", method="POST", clients=["telegram", "ui", "external"], telegram_group=G,
+            telegram={"section": "Mood"}),
 ], prefix="mood_")
 
 transfer = Transfer("psyche", kit.hub, sections=[
-    StoreSection("umore", "Umore", kit.store, ["mood"], icon="smile",
+    StoreSection("umore", "Mood", kit.store, ["mood"], icon="smile",
                  title=lambda r: f"{r['data'].get('date', '')} · {mood_word(r['data'].get('mood'))}"),
 ])
 app.include_router(transfer.router())
 kit.caps.update({"mood_capture_endpoint": f"{API}/capture", **recap.capabilities()})
 kit.capabilities(transfer.capabilities)
 kit.agenda_rules(lambda: [
-    job_rule("psyche.checkin", tr("Umore: com'è andata oggi"), service="psyche", path=f"{API}/checkin",
+    job_rule("psyche.checkin", tr("Mood: how today went"), service="psyche", path=f"{API}/checkin",
              recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=kit.tz,
-             description="La sera, se oggi non hai detto come stai e i promemoria dell'umore sono accesi."),
-    signals_rule("psyche", tr("Umore"), path=f"{API}/signals/run", tz=kit.tz),
+             description="In the evening, if you haven't said how you are today and the mood reminders are on."),
+    signals_rule("psyche", tr("Mood"), path=f"{API}/signals/run", tz=kit.tz),
 ])
 kit.on_warm(signals.changed)
-kit.webui(icon="smile", color="yellow", description="Come stai nel tempo: giornate, energia, andamento.",
-          pages=[page("umore", "Umore", element="psyche-mood", icon="smile", order=240,
-                      help="Come ti senti giorno per giorno. Quando in chat dici come stai («oggi sono stanco») "
-                           "l'assistente lo segna da solo; qui lo vedi, lo correggi o lo togli.")],
-          widgets=[widget("umore", "Umore", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
+kit.webui(icon="smile", color="yellow", description="How you are over time: days, energy, trend.",
+          pages=[page("umore", "Mood", element="psyche-mood", icon="smile", order=240,
+                      help="How you feel day by day. When you say how you are in chat («today I'm tired») the assistant records it by itself; here you see it, fix it or remove it.")],
+          widgets=[widget("umore", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
                           open_page="umore", icon="smile")],
-          quick_actions=[quick_action("come-stai", "Come stai?", "POST", f"{API}/tap", icon="smile", group="Umore",
-                                      params={"mood": {"type": "int", "label": "Umore 1-5", "min": 1, "max": 5}},
+          quick_actions=[quick_action("come-stai", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
+                                      params={"mood": {"type": "int", "label": "Mood 1-5", "min": 1, "max": 5}},
                                       order=240)])
 kit.finish()

@@ -159,9 +159,12 @@ Details: `Hestia-Themis/hestia-themis.md`.
 
 ## 5b2. Texts and languages — one catalog
 
-Model text is English in the code; texts a person reads are Italian in the code wrapped in `tr` (Python
-`hestia_common.i18n.t`, Angular `tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`) with the English text in
-`Hestia-Shared/hestia_common/locales/en/messages.json`. Languages: Italian and English («Lingua»). Full standard,
+All the code is English. Texts a person reads are English in the code wrapped in `tr` (Python
+`hestia_common.i18n.t`, Angular `tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`) with the Italian text in
+`Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared once (manifests, capabilities, agenda rules,
+settings) are plain English keys translated at the edge (`i18n.localize`, `settings_client.translated`), never `tr`
+at import. Every module follows «Lingua» (`follow_personal()`); dates via `locale()` / `month_name`, money via
+`display.money`. Languages: English (source) and Italian («Lingua»). Full standard,
 examples and how to add a language: `docs/LANGUAGES.md`; gate `python tools/governance/check_i18n.py`.
 
 ## 5c. Export and import — every module moves its own data

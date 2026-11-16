@@ -55,7 +55,7 @@ class HerculesCoach:
         plans = self._plans()
         tod, min_minutes = self._tod(), self._min_minutes()
         out: list[dict] = []
-        reason_extra = tr(" · settimana di scarico consigliata") if "deload_suggested" in flags else ""
+        reason_extra = tr(" · deload week recommended") if "deload_suggested" in flags else ""
         prog = h.active_program()
         if prog and prog.get("mode") == "weekly" and prog.get("days"):
             d = start
@@ -71,7 +71,7 @@ class HerculesCoach:
                     out.append({"id": f"workout.{d.weekday()}", "title": t["name"], "kind": "block", "count": 1,
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "days": [d.weekday()],
                                 "time_of_day": tod, "tags": ["workout", effort, *self._muscle_tags(t)],
-                                "priority": "should", "reason": f"in programma {h_weekday(d)}{reason_extra}",
+                                "priority": "should", "reason": tr("planned {0}", h_weekday(d)) + reason_extra,
                                 "link": "oggi"})
                 d += timedelta(days=1)
         else:
@@ -88,12 +88,12 @@ class HerculesCoach:
                 nxt = (summary.get("next") or {}).get("template")
                 if remaining > 0:
                     minutes = self._minutes(nxt) if nxt else 60
-                    out.append({"id": "workout", "title": tr("Allenamento"), "kind": "block", "count": remaining,
+                    out.append({"id": "workout", "title": tr("Training"), "kind": "block", "count": remaining,
                                 "per": "day" if prog_.get("per") == "day" else "week",
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "time_of_day": tod,
                                 "min_gap_days": 2 if remaining <= 3 else 1,
                                 "tags": ["workout", effort], "priority": "should",
-                                "reason": f"{prog_.get('hint')}" + (f" · prossima: {nxt['name']}" if nxt else "")
+                                "reason": f"{prog_.get('hint')}" + (tr(" · next: {0}", nxt['name']) if nxt else "")
                                           + reason_extra, "link": "oggi"})
         state = " · ".join((summary.get("lines") or [])[:2])
         return {"state": state, "needs": out}
@@ -123,8 +123,8 @@ class HerculesCoach:
         after = int(res.get("minutes_after") or 0)
         if not after or after > minutes:
             return {"ok": False}
-        return {"ok": True, "minutes": after, "title": f"{t['name']} (corto)",
-                "note": tr("versione corta {0}' invece di {1}'", after, res.get('minutes_before'))}
+        return {"ok": True, "minutes": after, "title": tr("{0} (short)", t['name']),
+                "note": tr("short version {0}' instead of {1}'", after, res.get('minutes_before'))}
 
     def on_placed(self, week: str, items: list[dict]) -> None:
         self.placed = {"week": week, "items": [i for i in items if i.get("status") == "planned"]}
@@ -155,22 +155,22 @@ class HerculesCoach:
                      and (g.get("per") or "week") == "week"), None)
         notes = []
         if goal:
-            notes.append(f"obiettivo {goal.get('times')} a settimana: {len(done)} fatti")
+            notes.append(f"goal {goal.get('times')} per week: {len(done)} done")
         flags = set(h.summary().get("flags") or [])
         if "deload_suggested" in flags:
-            notes.append("energia bassa spesso: scarico consigliato")
+            notes.append(tr("low energy often: deload advised"))
         if "stall" in flags:
-            notes.append("qualche esercizio fermo")
+            notes.append(tr("some exercises stalled"))
         target = goal.get("times") if goal else None
         return {"done": len(done), "missed": len(skipped), "notes": notes,
                 "adherence": round(len(done) / target, 2) if target else None}
 
 
 def h_weekday(d: date, today: date | None = None) -> str:
-    from .service import WEEKDAYS
+    from hestia_common.i18n import weekday_name
     today = today or date.today()
     if d == today:
-        return "oggi"
+        return tr("today")
     if d == today + timedelta(days=1):
-        return "domani"
-    return WEEKDAYS[d.weekday()]
+        return tr("tomorrow")
+    return weekday_name(d.weekday())
