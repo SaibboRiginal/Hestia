@@ -21,11 +21,11 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_psyche.service")
 
 KIND = "mood"
-LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "down",
+LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "giù",
           "arrabbiato", "malato")
 CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
-MOOD_WORDS = {1: "very low", 2: "down", 3: "so-so", 4: "bene", 5: "benissimo"}
+MOOD_WORDS = {1: "mood::very low", 2: "mood::low", 3: "mood::so-so", 4: "mood::good", 5: "mood::great"}   # shown through tr
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 QUOTE_MAX = 200
 NOTE_MAX = 1000
@@ -59,7 +59,7 @@ def _vocab(values: Any, allowed: tuple[str, ...]) -> list[str]:
 
 
 def mood_word(level: int | float | None) -> str:
-    return MOOD_WORDS.get(int(round(level)), "") if level else ""
+    return tr(MOOD_WORDS.get(int(round(level)), "")) if level else ""
 
 
 class Psyche:

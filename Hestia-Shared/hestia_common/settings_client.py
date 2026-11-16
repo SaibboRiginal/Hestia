@@ -8,12 +8,12 @@ the assistant change values from any client, Archive stores them.
 
     settings = SettingsClient("argus")
     settings.declare([
-        setting("argus.poll.interval", "Intervallo controlli", "int", 30, group="Controlli",
-                help="Ogni quanti secondi controllo la salute dei moduli.", min=5, max=600, unit="s"),
-        setting("argus.remediate.enabled", "Rimedio automatico", "bool", False, group="Rimedio"),
-        setting("argus.remediate.dry_run", "Solo simulazione", "bool", True, group="Rimedio",
+        setting("argus.poll.interval", "Check interval", "int", 30, group="Checks",
+                help="How often (seconds) module health is checked.", min=5, max=600, unit="s"),
+        setting("argus.remediate.enabled", "Automatic remedy", "bool", False, group="Remedy"),
+        setting("argus.remediate.dry_run", "Simulation only", "bool", True, group="Remedy",
                 depends_on={"key": "argus.remediate.enabled", "equals": True}),
-    ], presets=[preset("calmo", "Tranquillo", group="Controlli", values={"argus.poll.interval": 120})])
+    ], presets=[preset("calmo", "Calm", group="Checks", values={"argus.poll.interval": 120})])
     app.include_router(settings.router())          # GET /api/settings/effective, POST /api/settings/reload
     settings.start()                               # on startup: background load + hourly re-assert
     settings.get("argus.poll.interval")            # effective value (stored → default)
@@ -106,7 +106,7 @@ def translated(definition: dict, lang: str) -> dict:
 
 
 def preset(id: str, label: str, *, group: str, values: dict, help: str = "") -> dict:
-    """A named bundle of values for one group (e.g. Economico / Qualità)."""
+    """A named bundle of values for one group (e.g. Cheap / Quality)."""
     return {"id": id, "label": label, "group": group, "values": dict(values), "help": help}
 
 

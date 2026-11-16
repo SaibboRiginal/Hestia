@@ -19,29 +19,32 @@ def english():
 def test_italian_by_default():
     from telegram_bot import ui
     assert ui.button(ui.CANCEL, "x").text == "Annulla"
-    assert i18n.t("Oggi — {0}", "lunedì") == "Oggi — lunedì"
+    assert i18n.t("Today — {0}", "lunedì") == "Oggi — lunedì"
+    assert ui.card("All actions", [ui.note("Nothing new.")]) == "<b>Tutte le azioni</b>\n<i>Niente di nuovo.</i>"
 
 
 @pytest.mark.unit
 def test_buttons_cards_and_notes_follow_english(english):
     from telegram_bot import ui
     assert ui.button(ui.CANCEL, "x").text == "Cancel"
-    assert ui.card("Tutte le azioni", [ui.note("Niente di nuovo.")]) == "<b>All actions</b>\n<i>Nothing new.</i>"
-    assert i18n.t("Oggi — {0}", "monday") == "Today — monday"
+    assert ui.card("All actions", [ui.note("Nothing new.")]) == "<b>All actions</b>\n<i>Nothing new.</i>"
+    assert i18n.t("Today — {0}", "monday") == "Today — monday"
 
 
 @pytest.mark.unit
 def test_bottom_keyboard_matches_both_languages(english):
     from telegram_bot.menu import model as menu_model
     menu = menu_model.Menu.__new__(menu_model.Menu)
-    menu.doors = {"oggi": "Oggi"}
-    assert menu.door_for_text("Today") == "oggi" and menu.door_for_text("oggi") == "oggi"
+    menu.doors = {"oggi": "Today"}
+    assert menu.door_for_text("Today") == "oggi" and menu.door_for_text("today") == "oggi"
+    i18n.use(None)
+    assert menu.door_for_text("Oggi") == "oggi"
 
 
 @pytest.mark.unit
-def test_every_english_text_keeps_its_placeholders():
+def test_every_translation_keeps_its_placeholders():
     import re
-    for source, text in i18n.catalog("messages", "en").items():
+    for source, text in i18n.catalog("messages", "it").items():
         if source.startswith("• {0} notific"):
             continue
         fields = r"\{\d+[^{}]*\}|\{[a-z_]+\}"     # str.format fields, not JSON examples in help texts
@@ -74,19 +77,19 @@ def _check_i18n():
 
 
 @pytest.mark.unit
-def test_every_module_text_has_an_english_translation():
-    """Every ``tr("…")`` literal in the Python modules is in the English catalog."""
+def test_every_module_text_has_an_italian_translation():
+    """Every ``tr("…")`` literal (English source) in the Python modules is in the Italian catalog."""
     gate = _check_i18n()
-    en = i18n.catalog("messages", "en")
-    missing = [f"{p.name}: {t[:60]}" for p, t in gate.python_texts() if t not in en]
+    it = i18n.catalog("messages", "it")
+    missing = [f"{p.name}: {t[:60]}" for p, t in gate.python_texts() if t not in it]
     assert not missing, missing[:20]
 
 
 @pytest.mark.unit
-def test_every_webui_and_plugin_text_has_an_english_translation():
-    """Every ``tr('…')`` / ``'…' | tr`` literal of the WebUI shell, the plugins and the SDK kit is in the English catalog."""
+def test_every_webui_and_plugin_text_has_an_italian_translation():
+    """Every ``tr('…')`` / ``'…' | tr`` literal (English source) of the WebUI shell, the plugins and the SDK kit is in the Italian catalog."""
     gate = _check_i18n()
-    en = i18n.catalog("messages", "en")
+    en = i18n.catalog("messages", "it")
     texts = list(gate.web_texts())
     assert len(texts) > 1000, len(texts)
     missing = [f"{p.name}: {t[:60]}" for p, t in texts if t not in en]

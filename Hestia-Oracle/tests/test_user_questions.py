@@ -49,7 +49,7 @@ class TestBuildQuestion:
 class TestResumeMessage:
     def test_confirm_answer_readable(self):
         msg = user_questions.resume_message({"prompt": "Procedo?", "kind": "confirm"}, "si")
-        assert msg == "Answer to your question «Procedo?»: Sì"
+        assert msg == "Answer to your question «Procedo?»: Yes"
 
     def test_multi_choice_joined(self):
         msg = user_questions.resume_message({"prompt": "Quali?", "kind": "multi_choice"}, "A\nC")

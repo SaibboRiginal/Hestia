@@ -296,6 +296,7 @@ def today_display(plan: dict) -> dict:
         if p.get("state") in ("off", "rest", "paused") and not p.get("log_id"):
             continue
         label, tone = _STATE.get(p.get("state"), ("", ""))
+        label = tr(label) if label else ""
         steps = [x["label"] for x in p.get("steps") or [] if x.get("include")]
         rows.append(item(p.get("name") or tr("Routine"), [label, p.get("reason") or p.get("hint"),
                                                       ", ".join(steps[:4]) + ("…" if len(steps) > 4 else "")], tone=tone))
@@ -311,7 +312,7 @@ def overview_display(o: dict) -> dict:
         lines.append(tr("In use: ") + ", ".join(o["in_use"][:6]) + ("…" if len(o["in_use"]) > 6 else ""))
     rows = [item(r["name"], [r.get("slot"), r.get("cadence"), "paused" if r.get("status") == "paused" else ""])
             for r in o.get("routines") or []]
-    return display(tr("alt::Self care"), subtitle=o.get("text") or "", lines=lines, items=rows,
+    return display(tr("Self care"), subtitle=o.get("text") or "", lines=lines, items=rows,
                    tone="warning" if o.get("alerts") else "",
                    actions=[action(tr("Today"), "selfcare_today", style="primary"), action(tr("Products"), "selfcare_products"),
                             action(tr("Statistics"), "selfcare_stats")])
@@ -436,7 +437,7 @@ def export():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("hygieia", tr("alt::Self care"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
+    return recap.piece("hygieia", tr("Self care"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("hygieia", _recap_piece, today=lambda: hygieia.today()))
@@ -564,7 +565,7 @@ def signals_run():
 
 def _agenda_rules() -> list[dict]:
     return [
-        signals_rule("hygieia", "alt::Self care", path=f"{API}/signals/run", tz=TZ),
+        signals_rule("hygieia", "Self care", path=f"{API}/signals/run", tz=TZ),
         job_rule("hygieia.planner", "Self care reminders (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=TZ,
                  description="Checks the routines with the reminder on that are behind their goal. At most 2 a week per routine, only one visible at a time."),

@@ -62,7 +62,7 @@ export function tokens(n: number | undefined | null): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <button class="gauge" [class.warn]="pct() >= 70" [class.full]="pct() >= 90" (click)="toggle($event)"
-            [title]="stats() ? 'Contesto: ' + pct() + ('% of ' | tr) + fmt(stats()!.context_window) + ' token' : ('Count the actions in the WebUI' | tr)"
+            [title]="stats() ? ('Context: ' | tr) + pct() + ('% of ' | tr) + fmt(stats()!.context_window) + (' tokens' | tr) : ('Count the actions in the WebUI' | tr)"
              [attr.aria-label]="'Context and usage' | tr">
       <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
         <circle cx="10" cy="10" r="8" class="bg" />

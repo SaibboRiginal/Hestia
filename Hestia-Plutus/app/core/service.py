@@ -125,7 +125,7 @@ class Plutus:
             return 0
         rows = []
         for i, (cid, label, icon, color, kind) in enumerate(catalog.CATEGORIES):
-            rows.append({"kind": "category", "id": cid, "data": {"label": label, "icon": icon, "color": color,
+            rows.append({"kind": "category", "id": cid, "data": {"label": tr(label), "icon": icon, "color": color,
                                                                  "kind": kind, "order": i, "seed": True}})
         for cid, patterns in catalog.DEFAULT_RULES.items():
             for p in patterns:

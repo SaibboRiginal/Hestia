@@ -103,7 +103,8 @@ class Wardrobe:
         if values is None:
             return values
         items = re.split(r"[,;]", values) if isinstance(values, str) else list(values)
-        by_label = {domain.slug(v.get("label")): v["key"] for v in self.vocab(name)}
+        by_label = {domain.slug(lab): v["key"] for v in self.vocab(name)        # English label, owner's language, Italian
+                    for lab in (v.get("label"), tr(v.get("label")), tr(v.get("label"), lang="it")) if lab}
         keys = {v["key"] for v in self.vocab(name)}
         out = []
         for v in items:
@@ -883,8 +884,8 @@ class Wardrobe:
         colors = self.vocab_map("color")
         color_names = [(colors.get(c.get("key") if isinstance(c, dict) else c) or {}).get("label") or ""
                        for c in created.get("colors") or []]
-        bits = [b for b in (created.get("subcategory_label") or created.get("category_label"),
-                            ", ".join(n.lower() for n in color_names if n)) if b]
+        kind = created.get("subcategory_label") or created.get("category_label")
+        bits = [b for b in (tr(kind) if kind else "", ", ".join(tr(n).lower() for n in color_names if n)) if b]
         logger.info("event=wardrobe_piece_from_chat_photo id=%s category=%s", created["id"], created.get("category"))
         return {"handled": True, "piece_id": created["id"],
                 "text": tr("Added to the wardrobe: {0}", created['name']) + (f" ({'; '.join(bits)})" if bits else "")

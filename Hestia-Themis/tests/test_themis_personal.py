@@ -138,7 +138,7 @@ def test_language_is_personal_and_fills_owner_language():
     from hestia_common import identity
     from hestia_common.settings_client import PERSONAL
     spec = PERSONAL[identity.LANGUAGE]
-    assert spec["default"] == "it" and spec["group"] == "Tu e l'assistente"
+    assert spec["default"] == "it" and spec["group"] == "You and the assistant"
     assert [o["value"] for o in spec["options"]] == list(identity.LANGUAGES)
     assert identity.render("Write in {owner_language}.", identity.default()) == "Write in Italian."
     values = {identity.LANGUAGE: "EN"}

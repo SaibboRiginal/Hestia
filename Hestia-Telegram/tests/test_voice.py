@@ -119,7 +119,8 @@ def test_listen_button_speaks_the_reply(env, fake_callback):
     assert bot.send_voice.called
     voice.spoken = None
     voice_service.handle_listen_callback(call)
-    assert voice_service.CANT_SPEAK in bot.send_message.call_args[0][1]
+    from hestia_common.i18n import t as tr
+    assert tr(voice_service.CANT_SPEAK) in bot.send_message.call_args[0][1]
 
 
 @pytest.mark.unit

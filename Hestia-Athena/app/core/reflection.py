@@ -37,7 +37,7 @@ logger = logging.getLogger("hestia_athena.reflection")
 
 USE_CASE = "athena.riflessione"
 SEVERITY_RANK = {"alta": 0, "attenzione": 1, "info": 2}
-DOMAIN_WORDS = {"fitness": "Training", "selfcare": "alt::Self care", "finance": "Expenses", "wardrobe": "Wardrobe",
+DOMAIN_WORDS = {"fitness": "Training", "selfcare": "Self care", "finance": "Expenses", "wardrobe": "Wardrobe",
                 "real_estate": "Houses", "cognition": "Hestia"}
 
 
@@ -100,7 +100,7 @@ def correlate(series: dict[str, dict], *, min_weeks: int, min_r: float, current_
 
 def link_text(link: dict) -> str:
     """Caveman line for the prompt and the page: «Workouts ↔ Routines kept %: r=0.72 over 9 weeks»."""
-    when = "same week" if not link["lag"] else tr("the week after")
+    when = "same week" if not link["lag"] else "the week after"
     return (f"{link['a_label']} → {link['b_label']} ({when}): r={link['r']:+.2f} over {link['weeks']} weeks, {'they rise together' if link['r'] > 0 else 'one rises, the other falls'}")
 
 

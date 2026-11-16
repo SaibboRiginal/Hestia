@@ -466,7 +466,7 @@ def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
     assert groq["needs_key"] and not groq["key"] and groq["models"] == []      # no key: nothing to list yet
     speak = cat["voce"]["providers"]
     assert speak[0]["type"] == "kokoro" and speak[0]["voices"]
-    assert "naturale" in speak[0]["note"] and any("sintetizzatore" in p["note"] for p in speak)   # Kokoro vs Piper
+    assert "natural" in speak[0]["note"] and any("synthesi" in p["note"] for p in speak)   # Kokoro vs Piper
     assert cat["ascolto"]["current"]["provider"] == "whisper-locale"
 
 

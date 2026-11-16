@@ -140,7 +140,7 @@ def weekly_metrics(h: "Hygieia", weeks: list[str], adherence: dict[str, dict]) -
         label = labels.get((area, k)) or labels.get(("*", k)) or k.replace("_", " ").capitalize()
         for w, vals in sorted(by_week.items()):
             out.append(metric(f"selfcare.journal.{area}.{k}", w, round(sum(vals) / len(vals), 2),
-                              tr("Diary {0} · {1}", areas.get(area, area), label)))
+                              tr("Diary {0} · {1}", tr(areas.get(area, area)), tr(label))))
     return out
 
 

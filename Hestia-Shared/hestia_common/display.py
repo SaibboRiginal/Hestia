@@ -83,10 +83,13 @@ def strip(payload: Any) -> Any:
     return payload
 
 
-def money(value: Any) -> str:
-    """``1234.5`` → «1.234,50 €»."""
+def money(value: Any, lang: str | None = None) -> str:
+    """``1234.5`` → «1.234,50 €» (Italian) · «€1,234.50» (English): the owner's language."""
+    from . import i18n
     try:
         n = float(value)
     except (TypeError, ValueError):
         return ""
+    if str(lang or i18n.current())[:2] == "en":
+        return f"-€{abs(n):,.2f}" if n < 0 else f"€{n:,.2f}"
     return f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") + " €"

@@ -68,7 +68,7 @@ export const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, Number(v
 
 /** Life areas in user words (never module names). */
 export const AREAS: Record<string, string> = {
-  fitness: tr('Training'), selfcare: tr('alt::Self care'), finance: tr('Expenses'), wardrobe: tr('Wardrobe'), real_estate: tr('Houses'),
+  fitness: tr('Training'), selfcare: tr('Self care'), finance: tr('Expenses'), wardrobe: tr('Wardrobe'), real_estate: tr('Houses'),
   cognition: 'Hestia',
 };
 export const area = (d?: string) => (d && AREAS[d]) || d || '';

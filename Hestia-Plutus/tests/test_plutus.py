@@ -400,7 +400,7 @@ def test_manifest_pages_widgets_quick_action(api):
     m = c.get("/api/ui/manifest").json()
     web = m["clients"]["webui"] if "clients" in m else m
     text = str(web)
-    for el in ("plutus-overview", "plutus-transactions", "plutus-import", "plutus-month-widget", "Spesa veloce"):
+    for el in ("plutus-overview", "plutus-transactions", "plutus-import", "plutus-month-widget", "Quick expense"):
         assert el in text
 
 

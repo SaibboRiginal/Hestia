@@ -41,10 +41,10 @@ LABELS = {
 }
 
 PLACEHOLDERS = {
-    "amount": "12,50", "title": "Dinner with Luca", "q": "bolletta luce", "query": "giacca blu",
+    "amount": "12,50", "title": "Dinner with Luca", "q": "electricity bill", "query": "blue jacket",
     "start_datetime": "tomorrow 18:30", "start_at": "tomorrow 18:30", "date": "tomorrow or 25/10", "value": "78,4",
-    "text": "panca 4x8 62,5", "place": "Home", "request": "add the weather to the recap", "url": "https://…",
-    "to": "nome@esempio.it", "facts": "I have the dentist on Tuesdays", "fact": "I prefer the morning",
+    "text": "bench 4x8 62.5", "place": "Home", "request": "add the weather to the recap", "url": "https://…",
+    "to": "name@example.com", "facts": "I have the dentist on Tuesdays", "fact": "I prefer the morning",
 }
 
 WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
@@ -130,7 +130,7 @@ def fields(tool) -> list[Field]:
         examples = spec.get("examples") if isinstance(spec.get("examples"), list) else []
         out.append(Field(name=name, label=label[:40], kind=kind, required=name in required,
                          help=_short_help(desc) if _short_help(desc).lower() != label.lower() else "",
-                         placeholder=str(examples[0]) if examples else PLACEHOLDERS.get(name, ""),
+                         placeholder=str(examples[0]) if examples else tr(PLACEHOLDERS.get(name, "")),
                          options=options, minimum=spec.get("minimum"), maximum=spec.get("maximum"),
                          default=spec.get("default"), media=str(spec.get("contentMediaType") or "")))
     out.sort(key=lambda f: not f.required)
@@ -256,7 +256,7 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
         num = float(m[0].replace(",", "."))
         if f.minimum is not None and num < f.minimum or f.maximum is not None and num > f.maximum:
             return False, None, tr("A number between {0:g} and {1:g}.", f.minimum, f.maximum) if f.minimum is not None \
-                and f.maximum is not None else "Numero fuori dai limiti."
+                and f.maximum is not None else tr("Number out of range.")
         return True, (int(num) if f.kind == "int" else num), ""
     if f.kind == "date":
         d = parse_date(s)
@@ -300,7 +300,7 @@ def shown_value(f: Field, value: Any) -> str:
     if f.kind == "number" and isinstance(value, float):
         return f"{value:.2f}".replace(".", ",").rstrip("0").rstrip(",")
     if f.kind == "file":
-        return "file ricevuto"
+        return tr("file received")
     return str(value)
 
 

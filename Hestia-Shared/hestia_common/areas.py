@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import re
 
+from .i18n import bare, t
+
 # Areas in order. `aliases`: older or module group names that mean the same area.
 AREAS = [
     {"key": "giornata", "label": "alt::Day", "emoji": "📅", "icon": "calendar", "order": 10,
@@ -26,7 +28,7 @@ AREAS = [
      "aliases": ["fitness", "palestra"]},
     {"key": "alimentazione", "label": "Nutrition", "emoji": "🥗", "icon": "leaf", "order": 25,
      "aliases": ["cibo", "food", "dieta", "demeter"]},
-    {"key": "selfcare", "label": "alt::Self care", "emoji": "✨", "icon": "sparkle", "order": 30,
+    {"key": "selfcare", "label": "Self care", "emoji": "✨", "icon": "sparkle", "order": 30,
      "aliases": ["self care", "hygieia"]},
     {"key": "umore", "label": "Mood", "emoji": "😊", "icon": "smile", "order": 33,
      "aliases": ["mood", "psyche", "come sto"]},
@@ -79,7 +81,9 @@ def module_label(name: str) -> str:
 
 
 _BY_KEY = {a["key"]: a for a in AREAS}
-_ALIAS = {alias.lower(): a["key"] for a in AREAS for alias in [a["key"], a["label"], *a["aliases"]]}
+# People type an area by its key, its English name, its Italian name or an alias.
+_ALIAS = {alias.lower(): a["key"] for a in AREAS
+          for alias in [a["key"], bare(a["label"]), t(a["label"], lang="it"), *a["aliases"]]}
 
 
 def area(key: str) -> dict:

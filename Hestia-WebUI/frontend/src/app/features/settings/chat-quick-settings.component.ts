@@ -92,12 +92,12 @@ export class ChatQuickSettingsComponent {
       await this.api.set(it.key, value, 'session');
       await this.load();
       this.toast.success(tr("{0}: applies to this conversation", it.label));
-    } catch (e) { this.toast.error(apiError(e, 'Salvataggio non riuscito')); }
+    } catch (e) { this.toast.error(apiError(e, tr('Saving failed'))); }
   }
 
   async setThinking(v: string) {
     try { await this.prefs.update({ thinkingDisplay: v }); }
-    catch (e) { this.toast.error(apiError(e, 'Salvataggio non riuscito')); }
+    catch (e) { this.toast.error(apiError(e, tr('Saving failed'))); }
   }
 
   async followDefault(it: SettingItem) {

@@ -32,7 +32,7 @@ from .traces import STORE
 logger = logging.getLogger("hestia_metis.export")
 
 EVAL_SHARE = 10          # % of sessions held out
-_QUICK_TAIL = "MESSAGGIO UTENTE:"
+_QUICK_TAIL = "USER MESSAGE:"
 
 
 def _eval_session(session_id: str) -> bool:

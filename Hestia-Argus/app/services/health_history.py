@@ -237,5 +237,5 @@ def recheck_targets() -> list[dict]:
     from hestia_common.areas import module_label
     # people read «Ricontrolla Self care · non risponde», never a module name or a raw error
     words = {"down": tr("does not answer"), "degraded": tr("answers slowly"), "unknown": tr("unknown state")}
-    return [{"id": n, "label": tr("Recheck {0}", module_label(n)), "icon": "refresh", "state": "late",
+    return [{"id": n, "label": tr("Recheck {0}", tr(module_label(n))), "icon": "refresh", "state": "late",
              "hint": words.get(str(last[n].get("status") or "down"), tr("does not answer"))} for n in sorted(names)]

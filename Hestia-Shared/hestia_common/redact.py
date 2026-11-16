@@ -17,7 +17,7 @@ from typing import Any
 # Order matters: the most specific shapes first (a JWT also looks like a long token).
 _RULES: list[tuple[str, re.Pattern, str]] = [
     ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.S),
-     "[chiave privata]"),
+     "[private key]"),
     ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"), "[token]"),
     ("bearer", re.compile(r"(?i)\b(bearer|token|basic)\s+[A-Za-z0-9._~+/=-]{12,}"), r"\1 [token]"),
     ("url_password", re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s:/@]+:[^\s@/]+@"), r"\1[credenziali]@"),

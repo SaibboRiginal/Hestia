@@ -34,7 +34,7 @@ import { TrPipe } from '../../core/i18n';
       @if (freeField()) {
         <div class="qf">
           <input class="hx-input" [(ngModel)]="text" (keydown.enter)="submit()"
-                 [placeholder]="q.options.length ? ('Other…' | tr) : 'Rispondi…'" />
+                 [placeholder]="q.options.length ? ('Other…' | tr) : ('Answer…' | tr)" />
           @if (!multi()) { <button hx-btn variant="primary" size="sm" (click)="submit()" [disabled]="!text.trim()">{{ "Send" | tr }}</button> }
         </div>
       }

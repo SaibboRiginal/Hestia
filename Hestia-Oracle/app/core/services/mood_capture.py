@@ -22,7 +22,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "down",
+LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "giù",
           "arrabbiato", "malato")
 CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
 
@@ -41,8 +41,8 @@ _LEXICON: list[tuple[str, tuple[str | None, int, int | None, int | None]]] = [
     (r"nervos[oa]|irritat[oa]|agitat[oa]|teso|tesa|sotto pressione", ("nervoso", 2, None, 4)),
     (r"ansios[oa]|in ansia|preoccupat[oa]|stressat[oa]|stressatissim[oa]|in panico", ("ansioso", 2, None, 5)),
     (r"triste|depress[oa]|abbattut[oa]|malinconic[oa]|giù di morale", ("triste", 2, None, None)),
-    (r"malissimo|uno schifo|di merda|a terra|uno straccio", ("down", 1, None, None)),
-    (r"giù|giu|demoralizzat[oa]|di cattivo umore|scoraggiat[oa]|male", ("down", 2, None, None)),
+    (r"malissimo|uno schifo|di merda|a terra|uno straccio", ("giù", 1, None, None)),
+    (r"giù|giu|demoralizzat[oa]|di cattivo umore|scoraggiat[oa]|male", ("giù", 2, None, None)),
     (r"arrabbiat[oa]|incazzat[oa]|furios[oa]|furibond[oa]", ("arrabbiato", 2, None, 4)),
     (r"malat[oa]|influenzat[oa]|raffreddat[oa]|con la febbre|ho la febbre|ho mal di testa|ho l'influenza",
      ("malato", 2, 2, None)),

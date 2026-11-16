@@ -22,7 +22,7 @@ const KINDS: { value: Place['kind']; label: string; icon: string }[] = [
   template: `
     @for (p of rows(); track $index; let i = $index) {
       <div class="row">
-        <select class="hx-select kind" [disabled]="disabled()" [attr.aria-label]="('Type of ' | tr) + (p.name || 'luogo')"
+        <select class="hx-select kind" [disabled]="disabled()" [attr.aria-label]="('Type of ' | tr) + (p.name || ('place' | tr))"
                 (change)="set(i, 'kind', $any($event.target).value)">
           @for (k of kinds; track k.value) { <option [value]="k.value" [selected]="k.value === p.kind">{{ k.label }}</option> }
         </select>

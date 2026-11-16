@@ -59,7 +59,7 @@ export class HubMap extends HestiaElement {
   private groups(list: any[]): Array<[string, any[]]> {
     const out = new Map<string, any[]>();
     for (const s of list) {
-      const k = this.group === 'node' ? s.node || 'nodo sconosciuto' : this.group === 'type' ? s.service_type || 'altro'
+      const k = this.group === 'node' ? s.node || tr('unknown node') : this.group === 'type' ? s.service_type || tr('other')
         : s.topology?.layer || tr('no layer');
       if (!out.has(k)) out.set(k, []);
       out.get(k)!.push(s);

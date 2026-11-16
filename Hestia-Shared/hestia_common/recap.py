@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 from typing import Any, Callable, Iterable
+from hestia_common.i18n import t as tr
 
 logger = logging.getLogger("hestia_common.recap")
 
@@ -68,7 +69,7 @@ def piece(module: str, title: str, *, icon: str = "", emoji: str = "", order: in
     acts = _actions(actions)
     if not any(lists.values()) and not note:
         return {**empty(module), **({"actions": acts} if acts else {})}
-    out: dict[str, Any] = {"module": module, "title": title, "icon": icon, "emoji": emoji, "order": int(order)}
+    out: dict[str, Any] = {"module": module, "title": tr(title), "icon": icon, "emoji": emoji, "order": int(order)}
     out.update({k: v for k, v in lists.items() if v})
     if note:
         out["note"] = note

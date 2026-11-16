@@ -470,7 +470,7 @@ class Activities:
 
     # ── calendar «Allenamenti» + agenda ─────────────────────────────────────
     def _calendar(self) -> str | None:
-        r = self._hecate("POST", "api/gateway/calendar/calendars", body={"name": CALENDAR_NAME, "provider": "google"})
+        r = self._hecate("POST", "api/gateway/calendar/calendars", body={"name": tr(CALENDAR_NAME), "provider": "google"})
         return r.get("calendar_id") if r.get("status") == "ok" else None
 
     def _create_event(self, link_id: str, title: str, start: str, end: str, *, location: str = "",

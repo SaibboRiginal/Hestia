@@ -559,14 +559,14 @@ class AthenaRuntime:
         values = {k: _normalize_01(getattr(signals, k)) for k in GATE_WEIGHTS}
         good = {k: (1.0 - v if k == "interruption_cost" else v) for k, v in values.items()}
         cmp = "≥" if accepted else "<"
-        head = f"score {score:.2f} {cmp} threshold {self.emit_threshold:.2f}"
+        head = tr("score {0:.2f} {1} threshold {2:.2f}", score, cmp, self.emit_threshold)
         if accepted:
             strong = sorted((k for k in good if good[k] >= 0.7), key=lambda k: -GATE_WEIGHTS[k][0] * good[k])[:2]
-            words = [f"{GATE_WEIGHTS[k][1]} high" if k != "interruption_cost" else "low disturbance" for k in strong]
+            words = [tr("{0} high", tr(GATE_WEIGHTS[k][1])) if k != "interruption_cost" else tr("low disturbance") for k in strong]
         else:
             # the factors that cost the most points (weight × what is missing)
             weak = sorted((k for k in good if good[k] < 0.5), key=lambda k: -GATE_WEIGHTS[k][0] * (1 - good[k]))[:2]
-            words = [f"{GATE_WEIGHTS[k][1]} low" if k != "interruption_cost" else "high disturbance" for k in weak]
+            words = [tr("{0} low", tr(GATE_WEIGHTS[k][1])) if k != "interruption_cost" else tr("high disturbance") for k in weak]
         return f"{head} ({', '.join(words)})" if words else head
 
     def _gate(self, candidate: ActionCandidate) -> ActionCandidate:

@@ -50,11 +50,11 @@ def test_to_messages_applies_the_fix():
     d = {"system": "SYS", "history": "Tu: ciao", "user": "Mia mamma?", "answer": "Laura, salvata.", "steps": STEPS,
          "route": "agent"}
     msgs, final, original = to_messages(d, {"verdict": "fix", "answer": "Laura.", "remove_steps": [1]})
-    assert msgs[0]["role"] == "system" and "CONTESTO CONVERSAZIONE" in msgs[0]["content"]
+    assert msgs[0]["role"] == "system" and "CONVERSATION CONTEXT" in msgs[0]["content"]
     assert [m["role"] for m in msgs] == ["system", "user", "assistant", "tool"]
     assert msgs[2]["tool_calls"][0]["function"]["name"] == "people_save"
     assert (final, original) == ("Laura.", "Laura, salvata.")
-    quick = to_messages({"system": "SYS\nMESSAGGIO UTENTE: ciao", "user": "ciao", "answer": "Ciao!", "route": "quick"},
+    quick = to_messages({"system": "SYS\nUSER MESSAGE: ciao", "user": "ciao", "answer": "Ciao!", "route": "quick"},
                         None)[0]
     assert quick[0]["content"] == "SYS"
 

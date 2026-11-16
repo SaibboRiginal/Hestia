@@ -26,6 +26,7 @@ import requests
 
 from .athena_settings import RECAP_MAX_CHARS, RECAP_PIECE_TIMEOUT, RECAP_STYLE, get_float, get_int, settings
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import month_name, weekday_name
 
 logger = logging.getLogger("hestia_athena")
 
@@ -38,13 +39,12 @@ MOMENTS = ("sera", "mattina")
 EVENING_AT = "21:30"
 EVENING_FLEX = {"earliest": "20:00", "latest": "23:30"}
 
-_WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "sabato", "domenica")
-_MONTHS = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
 _TAG = re.compile(r"</?(?!b>|/b>|i>|/i>)[a-zA-Z][^>]*>")
 
 
-def day_label(d: date) -> str:
-    return f"{_WEEKDAYS[d.weekday()]} {d.day} {_MONTHS[d.month - 1]}"
+def day_label(d: date, lang: str | None = None) -> str:
+    """«mercoledì 21 ott» in the owner's language (``lang="en"`` for the hidden prompt)."""
+    return f"{weekday_name(d.weekday(), lang)} {d.day} {month_name(d.month, lang)[:3].lower()}"
 
 
 def moment_days(momento: str, day: date | None = None, *, today: date | None = None) -> tuple[date, date]:
@@ -107,8 +107,8 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
                 facts.append(f"[{title}|{tag}] {t}")
         if p.get("note"):
             facts.append(f"[{title}|note] {p['note']}")
-    when = (tr("today={0} tomorrow={1}", day_label(day), day_label(nxt)) if momento == "sera"
-            else tr("yesterday={0} today={1}", day_label(day), day_label(nxt)))
+    when = (f"today={day_label(day, 'en')} tomorrow={day_label(nxt, 'en')}" if momento == "sera"
+            else f"yesterday={day_label(day, 'en')} today={day_label(nxt, 'en')}")
     tone = ("friendly, warm, one short opening sentence" if style == "amichevole"
             else "dry, facts only, no courtesy phrases")
     return (

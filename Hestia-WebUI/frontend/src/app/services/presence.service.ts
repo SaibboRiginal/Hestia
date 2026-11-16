@@ -66,11 +66,11 @@ export function reasonLabel(r?: string): string {
     case 'activity_stop': return tr('finished a job');
     case 'dnd_on': return tr('Do not disturb turned on');
     case 'dnd_off': return tr('Do not disturb off');
-    case 'tick': case 'read': return 'tempo trascorso';
-    case 'settings': return 'impostazioni cambiate';
-    case 'boot': return 'riavvio';
+    case 'tick': case 'read': return tr('time passed');
+    case 'settings': return tr('settings changed');
+    case 'boot': return tr('restart');
     case 'signal': case 'clear':
-      if (a?.startsWith('resource.claude')) return 'quota Claude';
+      if (a?.startsWith('resource.claude')) return tr('Claude quota');
       if (a?.startsWith('health.')) return tr('modules with errors');
       if (a?.startsWith('oracle.offline')) return tr('not available or available again');
       if (a?.startsWith('manual.dnd')) return tr('Do not disturb expired');

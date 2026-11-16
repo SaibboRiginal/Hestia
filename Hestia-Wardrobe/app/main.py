@@ -598,7 +598,7 @@ def summary_display(s: dict) -> dict:
         lines.append(tr("In the laundry: ") + ", ".join(s["laundry"][:5]))
     if s.get("forgotten"):
         lines.append(tr("To pick up: ") + ", ".join(s["forgotten"][:4]))
-    return display(tr("Wardrobe"), lines=[x for x in lines if not x.startswith("in lavanderia ")],
+    return display(tr("Wardrobe"), lines=[x for x in lines if not x.startswith(tr("in the laundry {0}", "").strip() + " ")],
                    actions=[action(tr("What should I wear"), "wardrobe_suggest", style="primary"), action(tr("Search"), "wardrobe_search"),
                             action(tr("Add item"), "wardrobe_add")])
 
