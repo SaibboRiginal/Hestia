@@ -630,7 +630,7 @@ class Hercules:
                 raise Conflict(tr("no plan to adapt: create a plan or a programme"))
             plan = self._plan_from_template(t)
             base = {"session_id": None, "template_id": t["id"], "name": t["name"]}
-        catalog_map = {e["id"]: e for e in self.store.items("exercise")}
+        catalog_map = {e["id"]: {**e, "name": tr(e["name"])} if e.get("name") else e for e in self.store.items("exercise")}
         cfg = {"low_energy": int(self.cfg("adapt.low_energy", 2)), "weight_cut_pct": float(self.cfg("adapt.weight_cut_pct", 10)),
                "default_rest": int(self.cfg("rest.default_seconds", 90))}
         result = adapt_engine.adapt(plan, catalog_map, readiness, intent=intent, cfg=cfg, increments=self.increments(),

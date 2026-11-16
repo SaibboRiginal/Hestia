@@ -16,7 +16,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 DEFAULTS = {"low_energy": 2, "weight_cut_pct": 10, "very_low_weight_cut_pct": 15, "work_seconds": 40,
             "setup_seconds": 90, "default_rest": 90, "min_sets_main": 2}
 
-_LABELS = {**{v.lower(): k for k, v in JOINTS.items()}, **{v.lower(): k for k, v in MUSCLES.items()},
+# Words the owner may use: the English labels, their Italian translations and a few plural/colloquial forms.
+_LABELS = {**{tr(v, lang=lang).lower(): k for lang in ("en", "it") for names in (JOINTS, MUSCLES) for k, v in names.items()},
            "spalle": "shoulder", "ginocchia": "knee", "schiena": "lower_back", "lombare": "lower_back",
            "polsi": "wrist", "gomiti": "elbow", "anche": "hip", "caviglie": "ankle", "gambe": "quads",
            "petto": "chest", "dorso": "lats", "braccia": "biceps"}
@@ -140,7 +141,7 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 for s in ex.get("planned") or []:
                     if alt.get("kind") != m.get("kind"):
                         s["weight_kg"] = None
-                trace.append(tr("Pain ({0}): {1} → {2}, lighter load.", ', '.join(JOINTS.get(h, MUSCLES.get(h, h)) for h in hits), name, alt['name']))
+                trace.append(tr("Pain ({0}): {1} → {2}, lighter load.", ', '.join(tr(JOINTS.get(h, MUSCLES.get(h, h))) for h in hits), name, alt['name']))
             else:
                 ex["skipped"] = True
                 trace.append(tr("Pain: I remove {0}, no alternative that doesn't load it.", name))

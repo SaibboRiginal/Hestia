@@ -9,62 +9,62 @@ import re
 import unicodedata
 
 AREAS: list[dict] = [
-    {"value": "viso", "label": "Viso", "icon": "face"},
-    {"value": "occhi", "label": "Occhi", "icon": "eye"},
-    {"value": "labbra", "label": "Labbra", "icon": "lips"},
-    {"value": "capelli", "label": "Capelli", "icon": "hair"},
-    {"value": "cuoio_capelluto", "label": "Cuoio capelluto", "icon": "hair"},
-    {"value": "barba", "label": "Barba", "icon": "beard"},
+    {"value": "viso", "label": "Face", "icon": "face"},
+    {"value": "occhi", "label": "Eyes", "icon": "eye"},
+    {"value": "labbra", "label": "Lips", "icon": "lips"},
+    {"value": "capelli", "label": "Hair", "icon": "hair"},
+    {"value": "cuoio_capelluto", "label": "Scalp", "icon": "hair"},
+    {"value": "barba", "label": "Beard", "icon": "beard"},
     {"value": "corpo", "label": "Body", "icon": "body"},
-    {"value": "mani", "label": "Mani", "icon": "hand"},
-    {"value": "piedi", "label": "Piedi", "icon": "foot"},
-    {"value": "unghie", "label": "Unghie", "icon": "hand"},
-    {"value": "denti", "label": "Denti e bocca", "icon": "tooth"},
-    {"value": "profumo", "label": "Profumo", "icon": "drop"},
+    {"value": "mani", "label": "Hands", "icon": "hand"},
+    {"value": "piedi", "label": "Feet", "icon": "foot"},
+    {"value": "unghie", "label": "Nails", "icon": "hand"},
+    {"value": "denti", "label": "Teeth and mouth", "icon": "tooth"},
+    {"value": "profumo", "label": "Perfume", "icon": "drop"},
 ]
 
 CATEGORIES: list[dict] = [{"value": slug, "label": label, "area": area} for slug, label, area in [
-    ("detergente", "Detergente", "viso"), ("struccante", "Struccante", "viso"), ("tonico", "Tonico", "viso"),
-    ("esfoliante", "Esfoliante", "viso"), ("siero", "Siero", "viso"), ("trattamento", "Trattamento", "viso"),
-    ("crema", "Crema idratante", "viso"), ("contorno_occhi", "Contorno occhi", "occhi"), ("spf", "Protezione solare", "viso"),
-    ("maschera", "Maschera", "viso"), ("olio", "Olio", ""), ("balsamo_labbra", "Balsamo labbra", "labbra"),
-    ("shampoo", "Shampoo", "capelli"), ("balsamo", "Balsamo", "capelli"), ("maschera_capelli", "Maschera capelli", "capelli"),
-    ("styling", "Styling", "capelli"), ("bagnoschiuma", "Bagnoschiuma", "corpo"), ("crema_corpo", "Crema corpo", "corpo"),
-    ("deodorante", "Deodorante", "corpo"), ("scrub", "Scrub", "corpo"), ("rasatura", "Rasatura", "barba"),
-    ("dopobarba", "Dopobarba", "barba"), ("olio_barba", "Olio barba", "barba"), ("dentifricio", "Dentifricio", "denti"),
-    ("collutorio", "Collutorio", "denti"), ("filo", "Filo / scovolino", "denti"), ("profumo", "Profumo", "profumo"),
-    ("integratore", "Supplement", ""), ("strumento", "Strumento", ""), ("altro", "Other", ""),
+    ("detergente", "Cleanser", "viso"), ("struccante", "Make-up remover", "viso"), ("tonico", "Toner", "viso"),
+    ("esfoliante", "Exfoliant", "viso"), ("siero", "Serum", "viso"), ("trattamento", "Treatment", "viso"),
+    ("crema", "Moisturiser", "viso"), ("contorno_occhi", "Eye cream", "occhi"), ("spf", "Sunscreen", "viso"),
+    ("maschera", "Mask", "viso"), ("olio", "Oil", ""), ("balsamo_labbra", "Lip balm", "labbra"),
+    ("shampoo", "Shampoo", "capelli"), ("balsamo", "Conditioner", "capelli"), ("maschera_capelli", "Hair mask", "capelli"),
+    ("styling", "Styling", "capelli"), ("bagnoschiuma", "Shower gel", "corpo"), ("crema_corpo", "Body cream", "corpo"),
+    ("deodorante", "Deodorant", "corpo"), ("scrub", "Scrub", "corpo"), ("rasatura", "Shaving", "barba"),
+    ("dopobarba", "Aftershave", "barba"), ("olio_barba", "Beard oil", "barba"), ("dentifricio", "Toothpaste", "denti"),
+    ("collutorio", "Mouthwash", "denti"), ("filo", "Floss / interdental brush", "denti"), ("profumo", "Perfume", "profumo"),
+    ("integratore", "Supplement", ""), ("strumento", "Tool", ""), ("altro", "Other", ""),
 ]]
 
 ACTIVES: list[dict] = [{"value": slug, "label": label, "family": family} for slug, label, family in [
-    ("retinolo", "Retinolo", "retinoid"), ("retinale", "Retinale", "retinoid"), ("tretinoina", "Tretinoina", "retinoid"),
+    ("retinolo", "Retinol", "retinoid"), ("retinale", "Retinal", "retinoid"), ("tretinoina", "Tretinoin", "retinoid"),
     ("adapalene", "Adapalene", "retinoid"), ("bakuchiol", "Bakuchiol", ""),
-    ("aha_glicolico", "Acido glicolico (AHA)", "aha"), ("aha_lattico", "Acido lattico (AHA)", "aha"),
-    ("aha_mandelico", "Acido mandelico (AHA)", "aha"), ("bha_salicilico", "Acido salicilico (BHA)", "bha"),
-    ("pha", "PHA (gluconolattone)", "pha"), ("acido_azelaico", "Acido azelaico", ""),
-    ("vitamina_c", "Vitamina C (acido ascorbico)", "vitc"), ("benzoile", "Benzoyl peroxide", "bpo"),
-    ("niacinamide", "Niacinamide", ""), ("acido_ialuronico", "Acido ialuronico", ""), ("ceramidi", "Ceramidi", ""),
-    ("peptidi", "Peptidi", ""), ("pantenolo", "Pantenolo", ""), ("centella", "Centella asiatica", ""),
-    ("urea", "Urea", ""), ("zinco", "Zinco", ""), ("spf_filtri", "Filtri solari", "spf"), ("caffeina", "Caffeina", ""),
-    ("minoxidil", "Minoxidil", ""), ("ketoconazolo", "Ketoconazolo", ""), ("fluoro", "Fluoro", ""),
+    ("aha_glicolico", "Glycolic acid (AHA)", "aha"), ("aha_lattico", "Lactic acid (AHA)", "aha"),
+    ("aha_mandelico", "Mandelic acid (AHA)", "aha"), ("bha_salicilico", "Salicylic acid (BHA)", "bha"),
+    ("pha", "PHA (gluconolactone)", "pha"), ("acido_azelaico", "Azelaic acid", ""),
+    ("vitamina_c", "Vitamin C (ascorbic acid)", "vitc"), ("benzoile", "Benzoyl peroxide", "bpo"),
+    ("niacinamide", "Niacinamide", ""), ("acido_ialuronico", "Hyaluronic acid", ""), ("ceramidi", "Ceramides", ""),
+    ("peptidi", "Peptides", ""), ("pantenolo", "Panthenol", ""), ("centella", "Centella asiatica", ""),
+    ("urea", "Urea", ""), ("zinco", "Zinc", ""), ("spf_filtri", "Sunscreen filters", "spf"), ("caffeina", "Caffeine", ""),
+    ("minoxidil", "Minoxidil", ""), ("ketoconazolo", "Ketoconazole", ""), ("fluoro", "Fluoride", ""),
 ]]
 
 # Metrics of the optional journal (1–5 each), per area; "*" applies to any area without its own list.
 METRICS: dict[str, list[dict]] = {
-    "viso": [{"value": "idratazione", "label": "Idratazione"}, {"value": "brufoli", "label": "Brufoli", "lower_better": True},
-             {"value": "rossori", "label": "Rossori", "lower_better": True},
+    "viso": [{"value": "idratazione", "label": "Hydration"}, {"value": "brufoli", "label": "Spots", "lower_better": True},
+             {"value": "rossori", "label": "Redness", "lower_better": True},
              {"value": "oleosita", "label": "Oiliness", "lower_better": True},
              {"value": "sensibilita", "label": "Sensitivity", "lower_better": True}],
-    "capelli": [{"value": "caduta", "label": "Caduta", "lower_better": True},
-                {"value": "lucentezza", "label": "Lucentezza"}, {"value": "crespo", "label": "Crespo", "lower_better": True}],
-    "cuoio_capelluto": [{"value": "forfora", "label": "Forfora", "lower_better": True},
-                        {"value": "prurito", "label": "Prurito", "lower_better": True},
+    "capelli": [{"value": "caduta", "label": "Hair loss", "lower_better": True},
+                {"value": "lucentezza", "label": "Shine"}, {"value": "crespo", "label": "Frizz", "lower_better": True}],
+    "cuoio_capelluto": [{"value": "forfora", "label": "Dandruff", "lower_better": True},
+                        {"value": "prurito", "label": "Itching", "lower_better": True},
                         {"value": "untuosita", "label": "Greasiness", "lower_better": True}],
-    "barba": [{"value": "irritazione", "label": "Irritazione", "lower_better": True},
-              {"value": "peli_incarniti", "label": "Peli incarniti", "lower_better": True}],
-    "corpo": [{"value": "secchezza", "label": "Secchezza", "lower_better": True},
-              {"value": "irritazione", "label": "Irritazione", "lower_better": True}],
-    "*": [{"value": "stato", "label": "Stato generale"}],
+    "barba": [{"value": "irritazione", "label": "Irritation", "lower_better": True},
+              {"value": "peli_incarniti", "label": "Ingrown hairs", "lower_better": True}],
+    "corpo": [{"value": "secchezza", "label": "Dryness", "lower_better": True},
+              {"value": "irritazione", "label": "Irritation", "lower_better": True}],
+    "*": [{"value": "stato", "label": "General state"}],
 }
 
 JOURNAL_TAGS = ["ciclo", "stress", "sole", "viaggio", "sport", "dormito poco", "new product", "alimentazione", "malattia"]
@@ -75,21 +75,21 @@ CONFLICTS: list[dict] = [
     {"a": "retinoid", "b": "bha", "note": "Retinoids and BHA on the same day irritate: alternate them."},
     {"a": "retinoid", "b": "bpo", "note": "Benzoyl peroxide deactivates retinol: use them on different days."},
     {"a": "retinoid", "b": "vitc", "note": "Vitamin C in the morning, retinoid in the evening, not together."},
-    {"a": "vitc", "b": "aha", "note": "Vitamina C e AHA insieme possono irritare."},
+    {"a": "vitc", "b": "aha", "note": "Vitamin C and AHA together can irritate."},
     {"a": "vitc", "b": "bpo", "note": "Benzoyl peroxide oxidises vitamin C."},
     {"a": "aha", "b": "bha", "note": "AHA and BHA together: strong exfoliation, better on different days."},
 ]
 
 SLOTS = {"morning": "Morning", "evening": "Evening", "anytime": "When it happens"}
-STATUSES = {"wishlist": "Wish", "stock": "In scorta", "in_use": "In use", "paused": "Paused",
+STATUSES = {"wishlist": "Wish", "stock": "In stock", "in_use": "In use", "paused": "Paused",
             "finished": "Finished", "discarded": "Thrown away"}
-LEVELS = {"full": "Pieno", "3/4": "Tre quarti", "half": "Half", "1/4": "A quarter", "almost_empty": "Quasi finito"}
+LEVELS = {"full": "Full", "3/4": "Three quarters", "half": "Half", "1/4": "A quarter", "almost_empty": "Almost empty"}
 LEVEL_VALUE = {"full": 1.0, "3/4": 0.75, "half": 0.5, "1/4": 0.25, "almost_empty": 0.08}
-VERDICTS = {"repurchase": "I'd buy it again", "maybe": "Forse", "never": "Never again"}
-UNITS = ["ml", "g", "pz", "applicazioni"]
+VERDICTS = {"repurchase": "I'd buy it again", "maybe": "Maybe", "never": "Never again"}
+UNITS = ["ml", "g", "pcs", "applications"]
 CADENCE_MODES = {"daily": "Every day", "fixed_days": "Fixed days", "target": "At least N times",
                  "as_needed": "When it happens"}
-PERIODS = {"week": "settimana", "month": "mese"}
+PERIODS = {"week": "week", "month": "month"}
 EVENT_TYPES = ("bought", "opened", "level_changed", "finished", "discarded", "rated", "replaced", "note", "status")
 LISTS = ("areas", "categories", "actives", "metrics", "conflicts", "tags")
 

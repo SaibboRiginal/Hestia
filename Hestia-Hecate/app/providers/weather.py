@@ -29,18 +29,18 @@ GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 MAX_DAYS = 16
 _TIMEOUT = 8
 
-# WMO weather interpretation codes → Italian text + a generic icon name (clients map it to their own icons).
+# WMO weather interpretation codes → English text (shown through tr) + a generic icon name (clients map it to their own icons).
 WMO: dict[int, tuple[str, str]] = {
-    0: ("sereno", "sun"), 1: ("poco nuvoloso", "sun"), 2: ("parzialmente nuvoloso", "cloud-sun"),
-    3: ("coperto", "cloud"), 45: ("nebbia", "fog"), 48: ("fog with frost", "fog"),
-    51: ("pioviggine leggera", "drizzle"), 53: ("pioviggine", "drizzle"), 55: ("pioviggine intensa", "drizzle"),
-    56: ("pioviggine gelata", "drizzle"), 57: ("pioviggine gelata intensa", "drizzle"),
-    61: ("pioggia debole", "rain"), 63: ("pioggia", "rain"), 65: ("pioggia forte", "rain"),
-    66: ("pioggia gelata", "rain"), 67: ("pioggia gelata forte", "rain"),
-    71: ("neve debole", "snow"), 73: ("neve", "snow"), 75: ("neve forte", "snow"), 77: ("nevischio", "snow"),
-    80: ("rovesci deboli", "rain"), 81: ("rovesci", "rain"), 82: ("rovesci violenti", "rain"),
+    0: ("clear sky", "sun"), 1: ("mostly clear", "sun"), 2: ("partly cloudy", "cloud-sun"),
+    3: ("overcast", "cloud"), 45: ("fog", "fog"), 48: ("fog with frost", "fog"),
+    51: ("light drizzle", "drizzle"), 53: ("drizzle", "drizzle"), 55: ("heavy drizzle", "drizzle"),
+    56: ("freezing drizzle", "drizzle"), 57: ("heavy freezing drizzle", "drizzle"),
+    61: ("light rain", "rain"), 63: ("rain", "rain"), 65: ("heavy rain", "rain"),
+    66: ("freezing rain", "rain"), 67: ("heavy freezing rain", "rain"),
+    71: ("light snow", "snow"), 73: ("snow", "snow"), 75: ("heavy snow", "snow"), 77: ("snow grains", "snow"),
+    80: ("light showers", "rain"), 81: ("showers", "rain"), 82: ("violent showers", "rain"),
     85: ("snow showers", "snow"), 86: ("heavy snow showers", "snow"),
-    95: ("temporale", "storm"), 96: ("thunderstorm with hail", "storm"), 99: ("thunderstorm with heavy hail", "storm"),
+    95: ("thunderstorm", "storm"), 96: ("thunderstorm with hail", "storm"), 99: ("thunderstorm with heavy hail", "storm"),
 }
 RAINY_ICONS = {"drizzle", "rain", "snow", "storm"}
 
@@ -66,7 +66,8 @@ class WeatherError(Exception):
 
 def condition(code: Any) -> tuple[str, str]:
     try:
-        return WMO.get(int(code), ("—", "cloud"))
+        text, icon = WMO.get(int(code), ("—", "cloud"))
+        return tr(text), icon
     except (TypeError, ValueError):
         return ("—", "cloud")
 
