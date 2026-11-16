@@ -23,7 +23,7 @@ export async function loadI18n(): Promise<void> {
       const d = await r.json();
       (globalThis as any).__hestiaI18n = { language: String(d?.language || 'it'), messages: d?.messages || {} };
     }
-  } catch { /* settings unreachable: Italian source texts */ }
+  } catch { /* settings unreachable: the English source texts */ }
 }
 
 export function currentLanguage(): string { return catalog().language || 'it'; }

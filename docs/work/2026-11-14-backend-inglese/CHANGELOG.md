@@ -11,3 +11,6 @@
   translated too and plugins need no host call — ext-chat
 - v1.4 — 2026-11-16 — only Italian and English; German/French/Spanish dropped; one written standard and a gate —
   Marko: «mi serve solo italiano ed inglese… lasciare una guida… un solido standard per i moduli» — ext-chat
+- v2.0 — 2026-11-16 — English source everywhere, Italian only in `locales/it/messages.json`; registration labels as
+  plain English keys; Iris and Atlas follow «Lingua»; `locale()`, money and date words by language — Marko: «togli
+  tutto l'italiano!! e devono usare tutti la lingua!!» — ext-chat

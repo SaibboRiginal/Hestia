@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-16
+- No Italian left in the code: everything is written in English and the Italian lives only in its translation file; every module, email and web search included, follows «Lingua», and dates and amounts are written the way your language writes them → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 - «Lingua» offers Italian and English only; one written rule for texts in every module (`docs/LANGUAGES.md`) and a check that finds any text still without its English translation, run before every push → `docs/work/2026-11-14-backend-inglese/` [ext-chat]
 
 ## 2026-11-15

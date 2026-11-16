@@ -60,10 +60,11 @@ event retry) · `hxk-list` (.items, event item-click) · `hxk-chart` (line|bar|d
 event change) · `hxk-image-picker` (.host, photos) · `hxk-quicklog` (one-tap chips, Annulla, ⋯ other day, progress
 hint). Utility classes in every `HestiaElement`: `.page .card .grid .row .col .grow .muted .small .truncate`.
 
-Texts in the owner's language: write the Italian text and wrap it, `tr('Salva')`, `tr('{0} capi', n)` (`tr` and
-`language()` from `@hestia/webui-sdk`). The WebUI loads the catalog (`globalThis.__hestiaI18n`) before any plugin, so a
-module-level constant can be wrapped too; add the English text to `Hestia-Shared/hestia_common/locales/en/messages.json`
-(the test `test_every_webui_and_plugin_text_has_an_english_translation` checks it). Never wrap SVG paths or CSS.
+Texts in the owner's language: write the English text and wrap it, `tr('Save')`, `tr('{0} items', n)` (`tr`,
+`language()` and `locale()` from `@hestia/webui-sdk`). The WebUI loads the catalog (`globalThis.__hestiaI18n`) before any
+plugin, so a module-level constant can be wrapped too; add the Italian text to
+`Hestia-Shared/hestia_common/locales/it/messages.json` (the test `test_every_webui_and_plugin_text_has_an_italian_translation`
+checks it). Dates and numbers: `toLocaleDateString(locale(), …)`, never a literal `'it-IT'`. Never wrap SVG paths or CSS.
 
 Helpers: `plural(n, one, many)` for counts («1 capo», «2 capi»); `this.markEmpty(bool)` in a widget with nothing to
 show (the dashboard shrinks the cell). Touch targets follow `--tap`, scrollbars are thin and themed, and every

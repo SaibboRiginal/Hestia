@@ -6,7 +6,7 @@ using Hestia.WebUI.Services;
 
 /// <summary>
 /// Fixed texts of the shell and the plugins in the owner's language (dossier docs/work/2026-11-14-backend-inglese):
-/// browser → WebUI → Hub → Themis /api/settings/i18n → {language, messages (Italian source → translation)}.
+/// browser → WebUI → Hub → Themis /api/settings/i18n → {language, messages (English source → translation)}.
 /// Public like /auth/access: the login page needs it too and it carries no personal data.
 /// </summary>
 [ApiController]
@@ -41,8 +41,8 @@ public class I18nController : ControllerBase
         var (status, payload) = await _hub.RouteRawAsync("themis", "/api/settings/i18n", HttpMethod.Get, timeoutSeconds: 3);
         if (status < 400 && payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("messages", out _))
             return payload;
-        // Unreachable settings: Italian source texts (empty map), never an error page.
+        // Unreachable settings: the English source texts (empty map), never an error page.
         _logger.LogWarning("[🔄] event=webui_i18n_unavailable status={Status}", status);
-        return new { language = "it", messages = new Dictionary<string, string>() };
+        return new { language = "en", messages = new Dictionary<string, string>() };
     }
 }

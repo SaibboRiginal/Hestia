@@ -20,3 +20,5 @@ This service exists to provide a safe, deterministic target that can run in Dock
 ## Documentation Synchronization (Required)
 1. Any endpoint or schema change must update Hestia-Swagger/swagger.yml in the same change.
 2. Any capability metadata change must remain consistent with Hub discovery payloads.
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

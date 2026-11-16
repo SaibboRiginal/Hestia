@@ -283,3 +283,5 @@ English (for the model); the help under each form field comes from the field `ti
 outcomes and errors; the bottom keyboard is shown translated and `Menu.door_for_text` matches both the Italian and
 the translated label; bot commands and description, form field labels, result field labels and dates too.
 A file sent without a caption asks the model in English and to answer in the owner's language.
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

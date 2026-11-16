@@ -462,9 +462,10 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 2. Look: Impostazioni → Aspetto → ThemeService (theme × style × knobs, localStorage) → tokens and
    `data-style/glass/motion` on `<html>` → Angular pages and plugin shadow roots (tokens inherit).
 3. Language (dossier `docs/work/2026-11-14-backend-inglese`): Themis `themis.personal.language` → every module's
-   `SettingsClient.follow_personal()` → `hestia_common.i18n` (process reader) → `tr("Testo")` looks up
-   `locales/<lang>/messages.json` (fallback English, then the Italian source) → Telegram buttons, cards, keyboard,
+   `SettingsClient.follow_personal()` → `hestia_common.i18n` (process reader) → `tr("Text")` (English source) looks
+   up `locales/it/messages.json` (missing → the English source) → Telegram buttons, cards, keyboard,
    commands, and every module's notices, error details and cards; Themis serves setting texts translated. Model
    text stays English in code; tool people texts come from `locales/<lang>/tools.json`. WebUI: `index.html` →
    `/api/webui/i18n.js` → Hub → Themis `/api/settings/i18n` → `globalThis.__hestiaI18n` → Angular `tr`/`| tr`
-   and the SDK `tr` in every plugin; saving «Lingua» reloads the page.
+   and the SDK `tr` in every plugin; labels declared in English by the modules (manifests, capabilities, settings) are
+   translated at the edge (`i18n.localize`, WebUI HTTP interceptor, Telegram); saving «Lingua» reloads the page.

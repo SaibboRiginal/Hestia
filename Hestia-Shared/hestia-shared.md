@@ -362,9 +362,13 @@ then the catalog, then the first sentence of the description. A new tool adds it
 a model text that a person will read (a proposal, a name) asks the model to write in
 `identity.LANGUAGES[i18n.language(settings.get)]`.
 
-Fixed texts: `from hestia_common.i18n import t as tr` and `tr("Testo italiano")` / `tr("Oggi — {0}", day)`. The
-Italian source is the key of `locales/<lang>/messages.json`; a missing language or text falls back to English,
-then to the source. `SettingsClient.follow_personal()` registers the language reader of the process
+Fixed texts: `from hestia_common.i18n import t as tr` and `tr("English text")` / `tr("Today — {0}", day)`. The
+English source is the key of `locales/<lang>/messages.json` (today only `it`); a missing language or text shows the
+English source. Context tags (`pl::`, `f::`, `abbr::`…) split one English word into two Italian ones and are
+stripped by `i18n.bare`. `i18n.localize(payload)` translates every catalog key in a JSON payload (not under
+`KEEP_KEYS`): labels declared at import (manifests, capabilities, agenda rules, areas) are plain English and are
+translated there, at the edge. `i18n.month_name` / `weekday_name` give date words; `display.money` follows the
+language. `SettingsClient.follow_personal()` registers the language reader of the process
 (`i18n.use`); `i18n.current()` is the code. A module-level constant is translated where it is used
 (`tr(CONST)`), never at import.
 
@@ -521,4 +525,6 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
 - `hestia_common.mcp_helpers.undo(tool, label="Annulla", **args)` (Cindy 13): what a write tool puts in its result as
   `"undo"`, so clients can show «Annulla» under «Ho fatto».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. `display.money` and the SDK `locale()` / `plural` follow the language; `areas` accepts English and Italian area names.
