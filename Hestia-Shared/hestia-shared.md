@@ -522,3 +522,5 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
   `"undo"`, so clients can show «Annulla» under «Ho fatto».
 
 **2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+
+**2026-11-16 (LLM bus, dossier `docs/work/2026-11-16-bus-llm`)**: English text of the new Oracle setting `oracle.bus.locali_insieme` added to `locales/en/messages.json`. No library change: modules keep calling `/api/llm/generate`; Oracle queues local model calls and an `X-Hestia-Origin` of level `utente` gives the call the owner's priority.

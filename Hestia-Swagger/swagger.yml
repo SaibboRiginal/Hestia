@@ -3930,7 +3930,7 @@ paths:
       servers:
         - url: http://localhost:19004
       parameters:
-        - {name: X-Hestia-Origin, in: header, required: false, schema: {type: string}, description: "who started the turn, set by the caller's code (hestia_common.origin): utente | esterno:<access> | routine:<rule> | autonomo:<module>. Missing = utente for a user client (telegram, webui), else autonomo. routine cannot delete, autonomo can only propose/notify/ask."}
+        - {name: X-Hestia-Origin, in: header, required: false, schema: {type: string}, description: "who started the turn, set by the caller's code (hestia_common.origin): utente | esterno:<access> | routine:<rule> | autonomo:<module>. Missing = utente for a user client (telegram, webui), else autonomo. routine cannot delete, autonomo can only propose/notify/ask. Level utente also puts the turn's local model calls ahead of background work in the LLM bus."}
         - {name: X-Hestia-Origin-Label, in: header, required: false, schema: {type: string}, description: "label clients show above the answer (e.g. Da una tua routine)"}
       requestBody:
         required: true
@@ -4298,6 +4298,7 @@ paths:
     post:
       tags: [Oracle]
       summary: Plain generation for services along a use case's chain (no classifier, no tools)
+      description: "A local chain step waits in Oracle's LLM bus (oracle.bus.locali_insieme workers). Priority from X-Hestia-Origin: level utente = chat, else sottofondo; promoted to chat while an owner turn waits for its tools. Cloud steps never wait."
       servers:
         - url: http://localhost:19004
       requestBody:
