@@ -81,7 +81,7 @@ export class ChronosCalWizard extends LitElement {
   private next() {
     const t = this.tpl!, s = fromLocalInput(this.start), e = fromLocalInput(this.end);
     const missing = (t.required ?? []).filter(k => this.values[k] === undefined || this.values[k] === '');
-    if (missing.length) { this.error = `Compila: ${missing.join(', ')}`; return; }
+    if (missing.length) { this.error = tr('Fill in: {0}', missing.join(', ')); return; }
     if (!s) { this.error = tr('Say when'); return; }
     if (this.type === 'window' && (!e || e <= s)) { this.error = tr('The window end must be after the start'); return; }
     this.error = ''; this.step = 2;
@@ -107,7 +107,7 @@ export class ChronosCalWizard extends LitElement {
   private input(f: { name: string; spec: AgendaTemplate['fields'][string] }) {
     const v = this.values[f.name];
     if (f.spec.enum?.length) return html`<select @change=${(e: any) => this.setValue(f.name, e.target.value)}>
-      ${f.spec.enum.map(o => html`<option value=${o} ?selected=${o === (v ?? '')}>${o || '(predefinito)'}</option>`)}</select>`;
+      ${f.spec.enum.map(o => html`<option value=${o} ?selected=${o === (v ?? '')}>${o || tr('(default)')}</option>`)}</select>`;
     if (f.spec.type === 'integer' || f.spec.type === 'number')
       return html`<input type="number" .value=${v === undefined ? '' : String(v)} @change=${(e: any) => this.setValue(f.name, +e.target.value)}>`;
     if (f.spec.type === 'boolean')

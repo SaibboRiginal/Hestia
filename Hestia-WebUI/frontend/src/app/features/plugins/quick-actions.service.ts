@@ -77,9 +77,9 @@ export class QuickActionsService {
     const r = await this.plugins.call(a.module, a.method, fill(a.path, chip.chipId), { body: body ?? (a.method === 'GET' ? undefined : {}) });
     this.busy.set('');
     if (!r.ok) {
-      this.toasts.error(r.error === 'offline' ? 'Sei offline: riprova quando torni in linea'
-        : r.error === 'unreachable' ? `${this.plugins.modules().get(a.module)?.title ?? a.module} non raggiungibile`
-        : (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : 'Non sono riuscito a farlo');
+      this.toasts.error(r.error === 'offline' ? tr('You are offline: try again when you are back online')
+        : r.error === 'unreachable' ? tr('{0} not reachable', this.plugins.modules().get(a.module)?.title ?? a.module)
+        : (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : tr('I could not do it'));
       return false;
     }
     const msg = (r.data as { message?: string } | null)?.message || chip.label;

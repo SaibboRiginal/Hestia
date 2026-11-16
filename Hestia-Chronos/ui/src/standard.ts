@@ -75,8 +75,8 @@ export class ChronosStandard extends HestiaElement {
   private when(a: any): string {
     const rule = a.recurrence ? describeRRule(a.recurrence) : '';
     const at = hhmm(a.start_at);
-    const flex = a.flex?.earliest && a.flex?.latest ? ` · flessibile ${a.flex.earliest}–${a.flex.latest}` : '';
-    return [rule, at && a.type !== 'window' ? `alle ${at}` : '', ].filter(Boolean).join(' ') + flex;
+    const flex = a.flex?.earliest && a.flex?.latest ? tr(' · flexible {0}–{1}', a.flex.earliest, a.flex.latest) : '';
+    return [rule, at && a.type !== 'window' ? tr('at {0}', at) : '', ].filter(Boolean).join(' ') + flex;
   }
 
   private row(a: any) {

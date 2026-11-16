@@ -74,7 +74,7 @@ export class HephaestusForgeWidget extends HestiaElement {
         </div>
         ${ph ? html`<div class="small"><span class="muted">Claude:</span> <hxk-badge tone=${ph.tone}>${ph.label}</hxk-badge>
           ${size === 'l' ? html`<div class="small muted">${b.reason} · reset ${when(b.next_reset)}</div>` : nothing}</div>` : nothing}
-        ${size === 'l' ? html`<div class="small muted">Motore: ${s.engine_default || '–'}${s.repo_ok ? '' : tr(' · repo not mounted')}</div>` : nothing}
+        ${size === 'l' ? html`<div class="small muted">${tr("Engine:")} ${s.engine_default || '–'}${s.repo_ok ? '' : tr(' · repo not mounted')}</div>` : nothing}
         ${s.enabled ? html`<div><hxk-button size="sm" variant="ghost" icon=${s.paused ? 'play' : 'pause'} ?loading=${this.busy}
           @click=${() => this.togglePause()}>${s.paused ? tr('Resume') : tr('Pause')}</hxk-button></div>` : nothing}`}
     </div>`;

@@ -125,7 +125,7 @@ export class NotificationsService {
       this.hasMore.set(items.length >= 40);
       if (res?.counts) this.counts.set(res.counts);
     } catch {
-      this.toast.error('Notifiche non disponibili: Hermes non risponde');
+      this.toast.error(tr('Notifications not available right now'));
     } finally {
       this.loading.set(false);
     }
@@ -145,7 +145,7 @@ export class NotificationsService {
       await this.loadCounts();
       if (this.filter() === 'unread') await this.refresh();
     } catch {
-      this.toast.error('Non riuscito, riprova');
+      this.toast.error(tr('Did not work, try again'));
     }
   }
 
@@ -163,7 +163,7 @@ export class NotificationsService {
         this.applyAnswer(n.id, answer);
         this.toast.show(answer.by && answer.by !== CLIENT ? tr("Already handled by {0}", clientLabel(answer.by)) : tr('Already handled'), 'info');
       } else {
-        this.toast.error(`Non riuscito: ${e.error?.detail || 'riprova più tardi'}`);
+        this.toast.error(tr('Did not work: {0}', e.error?.detail || tr('try again later')));
       }
     } finally {
       this.busy.set(null);

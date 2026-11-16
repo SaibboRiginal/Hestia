@@ -20,7 +20,7 @@ export function savedWidth(key: string, def: number): number {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     role: 'separator', 'aria-orientation': 'vertical', 'aria-label': 'Ridimensiona', tabindex: '0',
-    title: 'Trascina per ridimensionare · doppio clic per la larghezza predefinita',
+    title: tr('Drag to resize · double click for the default width'),
     '[class]': 'edge()', '[class.inline]': 'inline()', '[class.dragging]': 'dragging()',
     '[attr.aria-valuenow]': 'width()', '[attr.aria-valuemin]': 'min()', '[attr.aria-valuemax]': 'max()',
   },

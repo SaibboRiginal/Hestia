@@ -120,7 +120,7 @@ export class HygieiaToday extends HestiaElement {
   }
   private async skip(r: any) {
     const res = await call(this.host, 'POST', `${API}/routines/${r.routine_id}/skip`, { body: { date: this.date } });
-    if (res.ok) this.host.toast(`${r.name} saltata`, 'neutral', { label: tr('Cancel'), run: () => this.undoSkip(res.data.id) });
+    if (res.ok) this.host.toast(tr('{0} skipped', r.name), 'neutral', { label: tr('Cancel'), run: () => this.undoSkip(res.data.id) });
     this.open = '';
     this.load();
   }
@@ -133,7 +133,7 @@ export class HygieiaToday extends HestiaElement {
       if (!timers[stepKey]) return;
       delete timers[stepKey];
       this.host.notify(tr('Self care'), tr('You can move to the next step'), { tag: 'hygieia-timer' });
-      this.host.toast('Attesa finita: passo successivo', 'info');
+      this.host.toast(tr('Wait over: next step'), 'info');
       this.tick = Date.now();
     }, seconds * 1000);
   }
@@ -147,7 +147,7 @@ export class HygieiaToday extends HestiaElement {
   }
   private async useProduct(p: any) {
     const r = await call(this.host, 'POST', `${API}/products/${p.id}/use`, { body: { date: this.date } });
-    if (r.ok) this.host.toast(`${p.name} usato`, 'success', {
+    if (r.ok) this.host.toast(tr('{0} used', p.name), 'success', {
       label: tr('Cancel'), run: async () => { await call(this.host, 'DELETE', `${API}/products/${p.id}/use`, { query: { date: this.date } }); this.load(); } });
     this.adhoc = false; this.q = '';
     this.load();
@@ -163,7 +163,7 @@ export class HygieiaToday extends HestiaElement {
         : html`<span class="num">${s.done ? icon('check', 12, 'success') : i + 1}</span>`}
       <div class="grow">
         <div class="truncate">${s.product ? html`<span class="click" @click=${() => this.host.navigate('prodotti/' + s.product.id)}>${s.label}</span>` : s.label}
-          ${s.amount ? html`<span class="small muted"> · ${s.amount}</span>` : nothing}${s.optional ? html`<span class="small muted"> · facoltativo</span>` : nothing}</div>
+          ${s.amount ? html`<span class="small muted"> · ${s.amount}</span>` : nothing}${s.optional ? html`<span class="small muted">${tr(' · optional')}</span>` : nothing}</div>
         ${why || s.hint ? html`<div class="why ${s.state === 'blocked' ? 'blocked' : ''}">${why}${why && s.hint ? ' · ' : ''}${s.hint}</div>` : nothing}
         ${s.note ? html`<div class="why">${s.note}</div>` : nothing}
       </div>

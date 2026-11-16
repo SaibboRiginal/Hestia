@@ -34,7 +34,7 @@ export class PlutusBudgets extends HestiaElement {
     const spent: Record<string, any> = Object.fromEntries(b.categories.map((c: any) => [c.id, c]));
     const sumCats = Object.entries(b.budgets).filter(([k]) => k !== 'total').reduce((a, [, v]) => a + Number(v), 0);
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Budget")}</h1>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Budget")}</h1>
         <hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => { this.month = addMonths(this.month, -1); this.load(); }}></hxk-button>
         <b>${b.label}</b><hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => { this.month = addMonths(this.month, 1); this.load(); }}></hxk-button></div>
       <div class="note">${tr("The budget applies to every month. I'll let you know when a category reaches the threshold and when it goes over it (Settings › Expenses).")}</div>
@@ -63,7 +63,7 @@ export class PlutusRecurring extends HestiaElement {
   }
   private async set(r: any, status: string) {
     const res = await call(this.host, 'POST', `${API}/recurring/${r.id}`, { body: { status } });
-    if (res.ok) this.host.toast(status === 'dismissed' ? tr("{0}: not recurring", r.merchant) : `${r.merchant} confermato`, 'success',
+    if (res.ok) this.host.toast(status === 'dismissed' ? tr("{0}: not recurring", r.merchant) : tr('{0} confirmed', r.merchant), 'success',
       status === 'dismissed' ? { label: tr('Cancel'), run: async () => { await call(this.host, 'POST', `${API}/recurring/${r.id}`, { body: { status: 'suggested' } }); this.load(); } } : undefined);
     this.load();
   }
@@ -78,9 +78,9 @@ export class PlutusRecurring extends HestiaElement {
       ${r.status === 'suggested' ? html`<hxk-button size="sm" icon="check" @click=${() => this.set(r, 'confirmed')}>${tr("Yes")}</hxk-button>` : nothing}
       <hxk-button size="sm" variant="ghost" icon="x" title=${tr("It's not recurring")} @click=${() => this.set(r, 'dismissed')}></hxk-button></div>`;
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Subscriptions")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Subscriptions")}</h1></div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
-        ${confirmed.length ? html`<hxk-stat .items=${[{ label: tr('Per month'), value: money(monthly, this.cur) }, { label: "All'anno", value: money(monthly * 12, this.cur) },
+        ${confirmed.length ? html`<hxk-stat .items=${[{ label: tr('Per month'), value: money(monthly, this.cur) }, { label: tr('Per year'), value: money(monthly * 12, this.cur) },
           { label: tr('pl::Active'), value: confirmed.length }]}></hxk-stat>` : nothing}
         ${items.filter(r => r.status === 'suggested').length ? html`<div class="card col"><h2>${tr("They look recurring to me")}</h2>
           <div class="small muted">${tr("Same merchant, similar amount, at regular intervals. Confirm?")}</div>

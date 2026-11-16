@@ -83,7 +83,7 @@ export class HephaestusTaskPanel extends LitElement {
       <dl class="kv">
         <dt>${tr("Status")}</dt><dd><hxk-badge tone=${m.tone}>${m.label}</hxk-badge></dd>
         <dt>${tr("Engine")}</dt><dd>${ENGINE_LABEL[t.engine ?? ''] ?? t.engine ?? '—'}${t.engine_requested && t.engine_requested !== 'auto' && t.engine_requested !== t.engine
-          ? html`<span class="muted"> (richiesto ${t.engine_requested})</span>` : nothing}</dd>
+          ? html`<span class="muted">${tr(" (requested {0})", t.engine_requested)}</span>` : nothing}</dd>
         <dt>${tr("Origin")}</dt><dd>${t.requested_by || 'utente'} ${tr("street")} ${t.source || 'hestia'}</dd>
         ${t.services?.length ? html`<dt>${tr("Services")}</dt><dd>${t.services.join(', ')}</dd>` : nothing}
         ${t.workdoc ? html`<dt>${tr("Dossier")}</dt><dd><button class="lnk mono" @click=${() => s.setPanel('dossier')}>${t.workdoc}</button></dd>` : nothing}
@@ -101,7 +101,7 @@ export class HephaestusTaskPanel extends LitElement {
       ${t.error ? html`<div class="err">${icon('alert', 14)} ${t.error}</div>` : nothing}
       ${this.review(t)}
       ${t.deploy_plan ? html`<h4>${tr("Deploy plan")}</h4><p class="small">
-        ${t.deploy_plan.restart.length ? html`Riavvio: <b>${t.deploy_plan.restart.join(', ')}</b>. ` : nothing}
+        ${t.deploy_plan.restart.length ? html`${tr("Restart:")} <b>${t.deploy_plan.restart.join(', ')}</b>. ` : nothing}
         ${t.deploy_plan.rebuild.length ? html`${tr("To rebuild by hand:")} <code>${"up-all.bat --build"} ${t.deploy_plan.rebuild.join(' ')}</code>. ` : nothing}
         ${t.deploy_plan.restart_self ? tr('Hephaestus restarts itself last. ') : nothing}
         ${!t.deploy_plan.restart.length && !t.deploy_plan.rebuild.length && !t.deploy_plan.restart_self ? tr('No service to restart.') : nothing}</p>` : nothing}
@@ -126,13 +126,13 @@ export class HephaestusTaskPanel extends LitElement {
     if (!r) return nothing;
     const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'non_disponibile' ? 'neutral' : r.blocking ? 'danger' : 'warning';
     const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'non_disponibile' ? tr('Not available now')
-      : `${r.issues.length} ${r.issues.length === 1 ? 'punto' : 'punti'}${r.blocking ? `, ${r.blocking} importanti` : ''}`;
+      : `${r.issues.length === 1 ? tr('1 point') : tr('{0} points', r.issues.length)}${r.blocking ? tr(', {0} important', r.blocking) : ''}`;
     const ptone: Record<string, string> = { alta: 'danger', media: 'warning', bassa: 'neutral' };
     return html`<h4>${tr("Automatic review")}</h4>
       <div class="review"><div class="tsum"><hxk-badge tone=${tone}>${head}</hxk-badge>
         ${r.rounds ? html`<span class="small muted">${tr("after a round of fixes (")}${r.first?.length ?? 0} ${tr("points found the first time)")}</span>` : nothing}</div>
       ${r.issues.map(i => html`<div class="issue"><hxk-badge tone=${ptone[i.priority] || 'neutral'}>${i.priority}</hxk-badge>
-        <div><span class="mono">${i.file || '—'}</span> ${i.problem}${i.evidence ? html`<div class="small muted">Prova: ${i.evidence}</div>` : nothing}</div></div>`)}</div>`;
+        <div><span class="mono">${i.file || '—'}</span> ${i.problem}${i.evidence ? html`<div class="small muted">${tr("Evidence:")} ${i.evidence}</div>` : nothing}</div></div>`)}</div>`;
   }
 
   private files() {
@@ -174,7 +174,7 @@ export class HephaestusTaskPanel extends LitElement {
     const l = this.store.logs;
     if (!l) return html`<hxk-state kind="loading"></hxk-state>`;
     return html`${l.error ? html`<h4>${tr("Error")}</h4><pre class="log err-log">${l.error}</pre>` : nothing}
-      <h4>${tr("Engine")}</h4><pre class="log">${l.engine || '(vuoto)'}</pre>
+      <h4>${tr("Engine")}</h4><pre class="log">${l.engine || tr('(empty)')}</pre>
       ${l.deploy ? html`<h4>${tr("Deploy")}</h4><pre class="log">${l.deploy}</pre>` : nothing}
       <p class="small muted">${l.hint}</p>`;
   }

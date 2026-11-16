@@ -131,7 +131,7 @@ export class McpCommands extends HestiaElement {
   private async run(c: Cmd) {
     const props = c.arguments_schema?.properties ?? {};
     const missing = (c.arguments_schema?.required ?? []).filter(a => a in props && !String(this.args[a] ?? '').trim());
-    if (missing.length) { this.host.toast(`Manca: ${missing.join(', ')}`, 'warning'); return; }
+    if (missing.length) { this.host.toast(tr('Missing: {0}', missing.join(', ')), 'warning'); return; }
     if (c.writes && !(await this.host.confirm(tr('Run the command?'), tr("{0} changes something in Hestia.", c.title || c.command),
       { label: tr('Run') }))) return;
     this.running = true; this.result = null;
@@ -158,7 +158,7 @@ export class McpCommands extends HestiaElement {
     const c = this.sel;
     this.host.assistant(c ? {
       label: tr("Command · {0}", c.title || c.command),
-      hints: { comando: c.command, servizio: c.service, metodo: c.method, path: c.path },
+      hints: { command: c.command, service: c.service, method: c.method, path: c.path },
       suggestions: [tr('Run it for me'), tr('Explain to me when to use it'), tr('I need a variant that…')],
     } : { label: tr('Commands & MCP'), suggestions: [tr('I need a tool that…'), tr('Which command do I use for…?')] });
   }

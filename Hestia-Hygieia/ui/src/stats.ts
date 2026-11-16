@@ -3,7 +3,7 @@
  *                      the history of changes, and "what was I using on…" for any past day.
  * <hygieia-shopping> — what to buy: wishlist, running out, finished and worth buying again.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, STATUS_TONE, WEEKDAYS, addDays, call, dayLabel, eventIcon, hygieiaStyles, icon, meta, money, productName, relDays, today } from './util';
 
 export class HygieiaStats extends HestiaElement {
@@ -93,7 +93,7 @@ export class HygieiaStats extends HestiaElement {
     if (!items.length) return html`<div class="card muted">${tr("No change recorded yet.")}</div>`;
     const months: Record<string, any[]> = {};
     for (const t of items) (months[t.date.slice(0, 7)] ||= []).push(t);
-    return html`${Object.entries(months).map(([mo, list]) => html`<h3 class="month">${new Date(mo + '-15').toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}</h3>
+    return html`${Object.entries(months).map(([mo, list]) => html`<h3 class="month">${new Date(mo + '-15').toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}</h3>
       <div class="card list">${list.map(t => html`<div class="tl ${t.product_id || t.routine_id ? 'click' : ''}"
         @click=${() => t.product_id ? this.host.navigate('prodotti/' + t.product_id) : t.routine_id ? this.host.navigate('routine/' + t.routine_id) : null}>
         <span>${eventIcon(t.type)}</span><span class="muted tnum" style="min-width:60px">${dayLabel(t.date, false)}</span>
@@ -110,7 +110,7 @@ export class HygieiaStats extends HestiaElement {
           : html`<div class="empty">${tr("No routine on that date.")}</div>`}
         <h3>${tr("Opened products")}</h3>
         ${p.products.length ? html`<div class="chips">${p.products.map((x: any) => html`<span class="pill click" @click=${() => this.host.navigate('prodotti/' + x.id)}>${productName(x)}</span>`)}</div>`
-          : html`<div class="empty">Nessuno.</div>`}
+          : html`<div class="empty">${tr("None.")}</div>`}
         ${p.journal.length ? html`<h3>${tr("Diary (± 7 days)")}</h3>${p.journal.map((j: any) => html`<div class="small"><span class="muted">${dayLabel(j.date, false)}</span> · ${j.area}: ${Object.entries(j.scores || {}).map(([k, v]) => `${k} ${v}`).join(', ')}${j.note ? ' — ' + j.note : ''}</div>`)}` : nothing}`}
     </div>`;
   }
@@ -135,7 +135,7 @@ export class HygieiaShopping extends HestiaElement {
   private async bought(p: any, how: 'stock' | 'repurchase') {
     const r = how === 'repurchase' ? await call(this.host, 'POST', `${API}/products/${p.id}/repurchase`, { body: {} })
       : await call(this.host, 'POST', `${API}/products/${p.id}/status`, { body: { status: 'stock' } });
-    if (r.ok) this.host.toast(`${p.name}: comprato`, 'success');
+    if (r.ok) this.host.toast(tr('{0}: bought', p.name), 'success');
     this.load();
   }
   private section(title: string, items: any[], how: 'stock' | 'repurchase', empty: string) {
@@ -149,7 +149,7 @@ export class HygieiaShopping extends HestiaElement {
   render() {
     const d = this.data;
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('prodotti')}>‹ Prodotti</button><h1>${tr("Shopping list")}</h1></div>
+      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('prodotti')}>${tr('‹ Products')}</button><h1>${tr("Shopping list")}</h1></div>
         <hxk-button icon="plus" @click=${() => (this.form = true)}>${tr("Wish")}</hxk-button></div>
       ${d === undefined ? html`<hxk-state kind="loading"></hxk-state>` : d === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${this.section(tr('Running out'), d.restock, 'repurchase', tr('Nothing running out.'))}

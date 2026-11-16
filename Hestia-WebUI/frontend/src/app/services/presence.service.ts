@@ -147,7 +147,7 @@ export class PresenceService {
       this.state.set(res);
       this.toast.success(on ? tr('Do not disturb active') : tr('Do not disturb off'));
     } catch {
-      this.toast.error('Stato non raggiungibile (Chronos)');
+      this.toast.error(tr('Status not available'));
     } finally {
       this.busy.set(false);
     }

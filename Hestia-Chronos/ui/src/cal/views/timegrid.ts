@@ -307,7 +307,7 @@ export class ChronosCalGrid extends LitElement {
         ${this.days.map((_, i) => html`<div class="sum-c">${this.segs.groups[i].map(g => {
           const l = g.group ?? [g];
           return html`<button class="schip ${g.occ.status === 'paused' ? 'paused' : ''}" style="--c:${g.color}" @click=${(e: Event) => this.sel(g, e.currentTarget as HTMLElement)}
-            title=${`${g.occ.title} · ${l.length} volte: ${fmt.time(l[0].start)}–${fmt.time(l[l.length - 1].start)}`}>
+            title=${tr('{0} · {1} times: {2}–{3}', g.occ.title, l.length, fmt.time(l[0].start), fmt.time(l[l.length - 1].start))}>
             <span class="dot"></span><span class="tr">${g.occ.title}</span><span class="x">×${l.length}</span></button>`; })}</div>`)}
       </div>` : nothing}
       <div class="scroll" @scroll=${(e: Event) => (this.scrollY = (e.target as HTMLElement).scrollTop)}>

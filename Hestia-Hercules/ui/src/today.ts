@@ -3,7 +3,7 @@
  * workout (sets, rest timer, warm-ups, plates). The live workout reads/writes only the local mirror, so it works
  * offline in the gym and syncs later (data.ts).
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, Local, local, nowIso, uuid } from './data';
 import {
   FEEDBACK_TAGS, PAIN_AREAS, SET_TYPES, SET_TYPE_LABEL, dur, e1rm, herculesStyles, kg, minutes, muscleText,
@@ -409,7 +409,7 @@ export class HerculesToday extends HestiaElement {
     const L = this.L;
     if (this.host.online && !L.pending) return nothing;
     return html`<div class="offline"><hxk-icon name="offline" size="14"></hxk-icon>
-      ${this.host.online ? tr("{0} changes to sync…", L.pending) : tr("Offline · {0}", L.pending ? L.pending + ' modifiche salvate sul dispositivo' : 'i dati restano sul dispositivo')}</div>`;
+      ${this.host.online ? tr("{0} changes to sync…", L.pending) : tr("Offline · {0}", L.pending ? tr('{0} changes saved on the device', L.pending) : tr('the data stays on the device'))}</div>`;
   }
 
   private renderPlan() {
@@ -420,11 +420,11 @@ export class HerculesToday extends HestiaElement {
     const exs = L.exercises();
     const doneToday = (n?.done_today || []).length > 0 || L.doneSessions().some(s => s.started_at && new Date(s.started_at).toDateString() === new Date().toDateString());
     return html`
-      <div class="head"><h1>${tr("Training")}</h1><span class="sub">${new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+      <div class="head"><h1>${tr("Training")}</h1><span class="sub">${new Date().toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })}</span>
         <span class="grow"></span>
         <hxk-button variant="ghost" icon="heart" @click=${() => this.talk()}>${tr("Talk with the assistant")}</hxk-button></div>
 
-      ${t ? html`<hxk-card heading=${t.name} subtitle=${[n?.reason, n?.estimated_minutes ? `circa ${minutes(n.estimated_minutes)}` : ''].filter(Boolean).join(' · ')}>
+      ${t ? html`<hxk-card heading=${t.name} subtitle=${[n?.reason, n?.estimated_minutes ? tr('about {0}', minutes(n.estimated_minutes)) : ''].filter(Boolean).join(' · ')}>
         ${doneToday ? html`<div class="pill" style="margin-bottom:8px"><hxk-icon name="check" size="12"></hxk-icon> ${tr("Already done today")}</div>` : nothing}
         <div class="plan">${(t.items || []).map((it: any) => {
           const ex = exs.get(it.exercise_id); const sug = L.suggestions[it.id];
@@ -588,7 +588,7 @@ export class HerculesToday extends HestiaElement {
       ${this.platesFor && ex?.equipment === 'barbell' ? this.renderPlates(this.platesFor) : nothing}
       <div class="row">
         <hxk-button size="sm" variant="ghost" icon="plus" @click=${() => this.addSet(sess, b)}>${tr("Streak")}</hxk-button>
-        ${(b.planned || []).length ? html`<hxk-button size="sm" variant="ghost" @click=${() => this.removeLastSet(sess, b)}>− Serie</hxk-button>` : nothing}
+        ${(b.planned || []).length ? html`<hxk-button size="sm" variant="ghost" @click=${() => this.removeLastSet(sess, b)}>${tr("− Set")}</hxk-button>` : nothing}
         <span class="grow"></span>
         ${b.replaced_from ? html`<span class="small muted">${tr("replaced")}</span>` : nothing}
       </div>
@@ -599,7 +599,7 @@ export class HerculesToday extends HestiaElement {
     const s = this.L.settings;
     const p = plates(w, s.bar_weight, s.plates);
     if (!p.perSide.length) return nothing;
-    return html`<div class="plates small"><span class="muted">${tr("Per side (")}${kg(s.bar_weight)} kg bilanciere):</span>
+    return html`<div class="plates small"><span class="muted">${tr("Per side (")}${kg(s.bar_weight)} ${tr("kg bar):")}</span>
       ${p.perSide.map(x => html`<span class="plate">${kg(x)}</span>`)}${p.rest ? html`<span class="muted">+${kg(p.rest)} ${tr("cannot be loaded")}</span>` : nothing}</div>`;
   }
 

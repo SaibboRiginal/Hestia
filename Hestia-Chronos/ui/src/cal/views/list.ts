@@ -136,7 +136,7 @@ export class ChronosCalList extends LitElement {
     const w = this.weather.events[ev.id];
     if (!w?.hour) return nothing;
     const wet = ['rain', 'drizzle', 'storm', 'snow'].includes(w.hour.icon);
-    return html`<span class="wx"><hxk-icon name=${w.hour.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${w.place ? w.place + ': ' : ''}${w.hour.temp_c}°, ${w.hour.condition}${w.hour.rain_prob ? ` (pioggia ${w.hour.rain_prob}%)` : ''}</span>`;
+    return html`<span class="wx"><hxk-icon name=${w.hour.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${w.place ? w.place + ': ' : ''}${w.hour.temp_c}°, ${w.hour.condition}${w.hour.rain_prob ? tr(' (rain {0}%)', w.hour.rain_prob) : ''}</span>`;
   }
 
   render() {

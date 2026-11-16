@@ -172,15 +172,15 @@ export class ChronosAgenda extends HestiaElement {
     const d = at ?? this.store.anchor;
     this.sel = null;
     this.host.assistant({ label: tr("Agenda · {0}{1}", fmt.dayLong(d), at ? ', ' + fmt.time(at) : ''), prompt,
-      hints: this.hints({ giorno: dayKey(d), ora: at ? fmt.time(at) : undefined, vista: this.store.view,
-                          agenda: tr('Hestia\'s agenda (agenda_assistente_* tools)') }) });
+      hints: this.hints({ day: dayKey(d), time: at ? fmt.time(at) : undefined, view: this.store.view,
+                          agenda: "the assistant's agenda (agenda_assistente_* tools)" }) });
   }
   private askAbout(ev: CalEvent) {
     const it = ev.item;
     this.host.assistant({ label: `“${ev.occ.title}” · ${fmt.dayLong(ev.start)} ${fmt.time(ev.start)}`,
-      hints: this.hints({ voce: ev.occ.key, titolo: ev.occ.title, modulo: ev.occ.owner, tipo: ev.occ.type, occorrenza: ev.occ.occurrence,
-        regola: it?.recurrence, stato: ev.occ.status,
-        ultimo_esito: it?.last_result ? (it.last_result.ok ? 'ok' : 'fallito: ' + (it.last_result.detail || '')) : undefined }),
+      hints: this.hints({ entry: ev.occ.key, title: ev.occ.title, module: ev.occ.owner, type: ev.occ.type, occurrence: ev.occ.occurrence,
+        rule: it?.recurrence, state: ev.occ.status,
+        last_result: it?.last_result ? (it.last_result.ok ? 'ok' : 'failed: ' + (it.last_result.detail || '')) : undefined }),
       suggestions: ev.occ.recurring
         ? [tr('Explain to me what this rule does'), tr('Move only this occurrence by one hour'), tr('Change the frequency…'), tr('Why did it fail?')]
         : [tr('Explain to me what it does'), tr('Move it to tomorrow at the same time'), tr('Why did it fail?')] });
@@ -353,7 +353,7 @@ export class ChronosAgenda extends HestiaElement {
           ${segmented([{ value: 'compact', label: tr('f.pl::Compact') }, { value: 'full', label: tr('Complete') }, { value: 'hidden', label: tr('f.pl::Hidden') }],
             vp.frequentMode, v => s.setVp({ frequentMode: v }))}</div>
         <label class="num">${tr("Frequent since")} ${n('frequentPerDay', 2, 96)} ${tr("times a day")}</label>
-        ${toggle('Vista focalizzata (meno affollata)', vp.focused, v => s.setVp({ focused: v }))}
+        ${toggle(tr('Focused view (less crowded)'), vp.focused, v => s.setVp({ focused: v }))}
         ${vp.focused ? html`<div class="rules">
           <p>${tr("The items you created and the selected day are always shown.")}</p>
           <label class="num">${tr("Frequent recurrences: next")} ${n('frequentDays', 1, 60)} ${tr("days")}</label>
@@ -387,7 +387,7 @@ export class ChronosAgenda extends HestiaElement {
   private renderIcs() {
     return html`<chronos-dialog .open=${this.icsOpen} heading=${tr("Agenda on the phone")} @close=${() => (this.icsOpen = false)}>
       <p class="ics-p">${tr("Read-only iCalendar feed of Hestia's agenda (events, tasks and windows; the periodic jobs stay here).")}</p>
-      <p class="ics-p small">${tr("For the subscription from the phone set")} <code>WEBUI_ICS_KEY</code> ${tr("(at least 16 characters) in the WebUI service and add it as a calendar \"from URL\" (Google Calendar, Apple Calendar)")} <code>${location.origin}/api/webui/agenda/feed.ics?key=&lt;la tua chiave&gt;</code>${tr(". Whoever has the link sees the agenda: don't share it. Meanwhile you can download the file.")}</p>
+      <p class="ics-p small">${tr("For the subscription from the phone set")} <code>WEBUI_ICS_KEY</code> ${tr("(at least 16 characters) in the WebUI service and add it as a calendar \"from URL\" (Google Calendar, Apple Calendar)")} <code>${location.origin}/api/webui/agenda/feed.ics?key=&lt;${tr("your key")}&gt;</code>${tr(". Whoever has the link sees the agenda: don't share it. Meanwhile you can download the file.")}</p>
       <div slot="footer"><hxk-button variant="primary" icon="external" @click=${() => void this.downloadIcs()}>${tr("Download .ics")}</hxk-button></div>
     </chronos-dialog>`;
   }
@@ -414,7 +414,7 @@ export class ChronosAgenda extends HestiaElement {
         </header>
         ${s.error ? html`<div class="err">${ic('alert', 16)} ${s.error}<hxk-button size="sm" variant="ghost" @click=${() => void s.load()}>${tr("Try again")}</hxk-button></div>` : nothing}
         ${s.vp.focused && s.hiddenByPolicy() > 0 ? html`<div class="hint-bar">${ic('filter', 14)}
-          <span>${s.hiddenByPolicy()} ${tr("next module entries hidden from the")} <b>${tr("focused view")}</b> (oltre l'orizzonte impostato).</span>
+          <span>${s.hiddenByPolicy()} ${tr("next module entries hidden from the")} <b>${tr("focused view")}</b> ${tr('(beyond the set horizon).')}</span>
           <button class="lnk" @click=${() => s.setVp({ focused: false })}>${tr("Show everything")}</button>
           <button class="lnk" @click=${(e: Event) => (this.vistaRect = (e.currentTarget as HTMLElement).getBoundingClientRect())}>${tr("Rules…")}</button></div>` : nothing}
         <div class="view">${this.renderView()}</div>

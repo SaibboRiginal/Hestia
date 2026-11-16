@@ -8,8 +8,8 @@
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, bytes, money, playB64, secs, when } from './util';
 
-const TABS = [{ id: 'prova', label: tr('alt::Test') }, { id: 'tua', label: tr('Your voice') }, { id: 'motori', label: tr('Engines') },
-              { id: 'uso', label: tr('Usage') }, { id: 'audio', label: tr('Audio kept') }];
+const TABS = [{ id: 'test', label: tr('alt::Test') }, { id: 'yours', label: tr('Your voice') }, { id: 'engines', label: tr('Engines') },
+              { id: 'usage', label: tr('Usage') }, { id: 'audio', label: tr('Audio kept') }];
 const CLASSES: Record<string, string> = { recording: tr('Your recordings'), file: tr('Audio sent in chat'),
                                           generated: tr('Read answers'), notification: tr('Voice notifications') };
 
@@ -50,7 +50,7 @@ export class EchoVoice extends HestiaElement {
   `];
 
   constructor() {
-    super(); this.tab = 'prova'; this.recording = false; this.busy = ''; this.heard = null; this.text = tr('Hi, I\'m Hestia. I hear you loud and clear.');
+    super(); this.tab = 'test'; this.recording = false; this.busy = ''; this.heard = null; this.text = tr('Hi, I\'m Hestia. I hear you loud and clear.');
     this.said = null; this.usage = null; this.kept = null; this.days = 30; this.error = ''; this.fix = null;
   }
 
@@ -63,7 +63,7 @@ export class EchoVoice extends HestiaElement {
   private select(id: string) { this.tab = id; this.loadTab(); }
 
   private async loadTab() {
-    if (this.tab === 'uso') {
+    if (this.tab === 'usage') {
       const r = await this.host.api('GET', `${API}/usage`, { query: { days: this.days } });
       this.usage = r.ok ? r.data : null; this.error = r.ok ? '' : r.error || tr('Not reachable');
     } else if (this.tab === 'audio') {
@@ -101,7 +101,7 @@ export class EchoVoice extends HestiaElement {
     this.heard = { ...this.heard, text: corrected };
     this.fix = null;
     const n = (r.data?.confirmed || []).length;
-    this.host.toast(n ? `Imparato: ${(r.data.confirmed || []).join(', ')}` : tr('Thanks, I\'ll note it'), 'success');
+    this.host.toast(n ? tr('Learned: {0}', (r.data.confirmed || []).join(', ')) : tr('Thanks, I\'ll note it'), 'success');
   }
 
   private async speak() {
@@ -130,7 +130,7 @@ export class EchoVoice extends HestiaElement {
     </div>`;
   }
 
-  private prova() {
+  private testTab() {
     return html`<div class="cols">
       <hxk-card heading=${tr("Listening")} subtitle=${tr("Speak and see what I understand")}>
         <div class="mic">
@@ -172,7 +172,7 @@ export class EchoVoice extends HestiaElement {
   }
 
   // ── Uso ────────────────────────────────────────────────────────────────
-  private uso() {
+  private usageTab() {
     if (this.error) return html`<hxk-state kind="error" text=${this.error} @retry=${() => this.loadTab()}></hxk-state>`;
     const u = this.usage;
     if (!u) return html`<hxk-state kind="loading"></hxk-state>`;
@@ -255,7 +255,7 @@ export class EchoVoice extends HestiaElement {
     return html`
       <div class="tabs" role="tablist">${TABS.map(t => html`<button role="tab" aria-selected=${this.tab === t.id}
         @click=${() => this.select(t.id)}>${t.label}</button>`)}</div>
-      ${this.tab === 'prova' ? this.prova() : this.tab === 'tua' ? html`<echo-your-voice .host=${this.host}></echo-your-voice>` : this.tab === 'motori' ? html`<echo-blocks .host=${this.host}></echo-blocks>`
-        : this.tab === 'uso' ? this.uso() : this.audio()}`;
+      ${this.tab === 'test' ? this.testTab() : this.tab === 'yours' ? html`<echo-your-voice .host=${this.host}></echo-your-voice>` : this.tab === 'engines' ? html`<echo-blocks .host=${this.host}></echo-blocks>`
+        : this.tab === 'usage' ? this.usageTab() : this.audio()}`;
   }
 }

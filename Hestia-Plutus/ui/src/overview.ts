@@ -48,9 +48,9 @@ export class PlutusOverview extends HestiaElement {
         <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Expense")}</hxk-button>
           <hxk-button icon="upload" @click=${() => this.host.navigate('importa')}>${tr("Bank statement")}</hxk-button></div></div>
       ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('movimenti', { rivedere: '1' })}>
-        <span>${plural(s.to_review, 'movimento', 'movimenti')} ${tr("with the category to check")}</span><span class="link">${tr("Review ›")}</span></div>` : nothing}
+        <span>${plural(s.to_review, 'transaction', 'transactions')} ${tr("with the category to check")}</span><span class="link">${tr("Review ›")}</span></div>` : nothing}
       <hxk-stat .items=${[
-        { label: tr('Spent'), value: money(s.spent, cur), hint: s.linked ? tr("{0} linked, counted once", plural(s.linked, 'movimento', 'movimenti')) : '' },
+        { label: tr('Spent'), value: money(s.spent, cur), hint: s.linked ? tr("{0} linked, counted once", plural(s.linked, 'transaction', 'transactions')) : '' },
         { label: tr('f.pl::Income'), value: money(s.income, cur) },
         s.budget ? { label: tr('Left'), value: money(s.left, cur), tone: s.left < 0 ? 'danger' : 'success', delta: tr("{0}% of the budget", pct) }
           : { label: tr('Budget'), value: '–', hint: tr('Set a budget in the Budget page') },

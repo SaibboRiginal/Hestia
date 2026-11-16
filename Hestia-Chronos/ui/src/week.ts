@@ -4,7 +4,7 @@
  * «Non entra», last week's review. Drag a block to another day (or «Sposta») = the user's move, never undone.
  * SPEC docs/work/2026-10-20-coach-di-ogni-tipo §6. Endpoints: /api/agenda/coach/*.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 const C = `${API}/coach`;
@@ -16,8 +16,8 @@ const STATUS: Record<string, { text: string; tone: string }> = {
 };
 
 export const hhmm = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
-const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric' });
+  iso ? new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : '';
+const dayLabel = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric' });
 const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const addDays = (iso: string, n: number) => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + n); return isoDay(d); };
 /** Local wall time `YYYY-MM-DDTHH:MM` → ISO with the browser's offset (Chronos reads any offset). */
@@ -126,11 +126,11 @@ export class ChronosWeek extends HestiaElement {
     const mins = Number(i.minutes) || 0;
     const end = mins ? new Date(new Date(startAt).getTime() + mins * 60000).toISOString() : undefined;
     return this.act(i.key, 'POST', `${C}/items/${encodeURIComponent(i.key)}/move`, { start_at: startAt, end_at: end },
-                    `${i.title}: spostato`);
+                    tr('{0}: moved', i.title));
   }
 
   private skip(i: any) {
-    return this.act(i.key, 'POST', `${C}/items/${encodeURIComponent(i.key)}/skip`, {}, `${i.title}: saltato`);
+    return this.act(i.key, 'POST', `${C}/items/${encodeURIComponent(i.key)}/skip`, {}, tr('{0}: skipped', i.title));
   }
 
   private onDrop(e: DragEvent, date: string) {
@@ -148,7 +148,7 @@ export class ChronosWeek extends HestiaElement {
     const date = String(f.get('date') || ''), from = String(f.get('from') || ''), to = String(f.get('to') || '');
     if (!date || !from || !to || to <= from) { this.host.toast(tr('Give day, start and end'), 'warning'); return; }
     const ok = await this.act('busy', 'POST', `${C}/busy`, { start_at: localIso(`${date}T${from}`), end_at: localIso(`${date}T${to}`),
-                                                            title: String(f.get('title') || '') }, 'Impegno aggiunto: piano rifatto');
+                                                            title: String(f.get('title') || '') }, tr('Commitment added: plan redone'));
     if (ok) this.adding = false;
   }
 
@@ -225,7 +225,7 @@ export class ChronosWeek extends HestiaElement {
     if (!rows.length) return nothing;
     return html`<hxk-card heading=${tr("How the week before went")}>
       ${rows.map(r => html`<div class="r"><hxk-icon name=${areaIcon(r.domain)} size="16"></hxk-icon><div class="grow">
-        <b>${r.label}</b> <span class="small muted">${r.done} ${tr("pl::done")}${r.missed ? ` · ${r.missed} saltati` : ''}</span>
+        <b>${r.label}</b> <span class="small muted">${r.done} ${tr("pl::done")}${r.missed ? tr(' · {0} skipped', r.missed) : ''}</span>
         ${(r.notes || []).map((n: string) => html`<div class="small muted">${n}</div>`)}</div></div>`)}
     </hxk-card>`;
   }
@@ -258,7 +258,7 @@ export class ChronosWeek extends HestiaElement {
       <div class="row wrap">
         <hxk-button icon="refresh" ?loading=${this.busy === 'replan'} @click=${() => this.replan()}>${tr("Redo the plan")}</hxk-button>
         <hxk-button variant="ghost" icon="plus" @click=${() => (this.adding = !this.adding)}>${tr("Add appointment")}</hxk-button>
-        <span class="sub grow">${c.planned || 0} ${tr("to do ·")} ${c.done || 0} ${tr("pl::done")}${c.skipped ? ` · ${c.skipped} saltati` : ''}</span>
+        <span class="sub grow">${c.planned || 0} ${tr("to do ·")} ${c.done || 0} ${tr("pl::done")}${c.skipped ? tr(' · {0} skipped', c.skipped) : ''}</span>
       </div>
       ${this.renderAdd()}
       ${d.text ? html`<div class="text">${d.text}</div>` : nothing}

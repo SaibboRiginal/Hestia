@@ -101,7 +101,7 @@ export class WardrobeForgottenWidget extends Widget {
     if (items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!items.length) return html`<div class="w"><span class="muted">${tr("No forgotten item.")}</span></div>`;
     return html`<div class="w">
-      <span class="small muted">${plural(items.length, 'capo', 'capi')} ${tr("not worn for a long time: wear them again or consider giving them away.")}</span>
+      <span class="small muted">${plural(items.length, 'garment', 'garments')} ${tr("not worn for a long time: wear them again or consider giving them away.")}</span>
       <div class="list">${items.slice(0, this.size === 'l' ? 6 : 3).map(f => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
         <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span><span class="small muted">${f.last_worn ? relDays(f.last_worn) : 'mai'}</span></div>`)}</div>
     </div>`;
@@ -125,7 +125,7 @@ export class WardrobeKpiWidget extends Widget {
       <span class="small muted">${tr("Wardrobe")}</span><div class="big">${t.pieces}</div><span class="small muted">${t.outfits} ${"outfit"}${s.laundry?.length ? tr(" · {0} in the laundry", s.laundry.length) : ''}</span></div>`;
     return html`<div class="w click" @click=${() => this.host.navigate('statistiche')}>
       <hxk-stat .items=${[{ label: tr('Items'), value: t.garments }, { label: tr('Shoes'), value: t.shoes }, { label: tr('Accessories'), value: t.accessories }, { label: tr('Outfit'), value: t.outfits }]}></hxk-stat>
-      ${s.gaps?.length ? html`<span class="small muted truncate">Manca: ${s.gaps[0].toLowerCase()}</span>` : nothing}</div>`;
+      ${s.gaps?.length ? html`<span class="small muted truncate">${tr("Missing: {0}", s.gaps[0].toLowerCase())}</span>` : nothing}</div>`;
   }
 }
 

@@ -1,4 +1,4 @@
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 /** Shared helpers of the Hephaestus plugin. Every path stays under the manifest api_prefix /api/hephaestus/. */
 export const API = '/api/hephaestus';
 export const FORGE = `${API}/forge`;
@@ -14,7 +14,7 @@ export const STATE: Record<string, { label: string; tone: string }> = {
 };
 
 export const CONSENT: Record<string, string> = {
-  none: 'nessuno', low: 'basso (sola lettura)', medium: 'medio', high: tr('high (needs your ok)'),
+  none: tr('f::none'), low: tr('low (read only)'), medium: tr('medium'), high: tr('high (needs your ok)'),
 };
 
 /** Claude budget phases (Forge claude_budget). */
@@ -29,7 +29,7 @@ export function when(iso?: string | null): string {
   if (!iso) return '–';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '–';
-  return d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export const short = (id?: string | null) => String(id || '').slice(0, 8);

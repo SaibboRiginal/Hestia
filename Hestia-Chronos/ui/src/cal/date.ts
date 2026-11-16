@@ -1,8 +1,7 @@
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 /** Date helpers (local time, Monday-first weeks, Italian labels). Ported from the WebUI calendar. */
 
 export const DAY_MS = 86_400_000;
-const LOCALE = 'it-IT';
 
 export function startOfDay(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 export function addDays(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
@@ -26,19 +25,19 @@ export function monthGrid(anchor: Date): Date[] {
 }
 
 export const fmt = {
-  monthYear: (d: Date) => cap(d.toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' })),
-  dayLong: (d: Date) => cap(d.toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })),
-  dayShort: (d: Date) => cap(d.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric' })),
-  weekdayShort: (d: Date) => cap(d.toLocaleDateString(LOCALE, { weekday: 'short' })),
-  dayMonth: (d: Date) => d.toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }),
+  monthYear: (d: Date) => cap(d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })),
+  dayLong: (d: Date) => cap(d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })),
+  dayShort: (d: Date) => cap(d.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric' })),
+  weekdayShort: (d: Date) => cap(d.toLocaleDateString(locale(), { weekday: 'short' })),
+  dayMonth: (d: Date) => d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }),
   /** Always 24h HH:mm, whatever the browser/OS locale (user rule). */
   time: (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`,
-  dateTime: (d: Date) => `${d.toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' })} ${fmt.time(d)}`,
+  dateTime: (d: Date) => `${d.toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' })} ${fmt.time(d)}`,
   relative: (d: Date) => {
     const diff = Math.round((d.getTime() - Date.now()) / 60_000);
     const abs = Math.abs(diff);
     const s = abs < 60 ? `${abs} min` : abs < 1440 ? `${Math.round(abs / 60)} h` : `${Math.round(abs / 1440)} g`;
-    return diff >= 0 ? `tra ${s}` : `${s} fa`;
+    return diff >= 0 ? tr('in {0}', s) : tr('{0} ago', s);
   },
 };
 

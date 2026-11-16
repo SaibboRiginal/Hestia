@@ -79,7 +79,7 @@ export class ChronosCalEditor extends LitElement {
     const end = it && !dup ? (it.end_at ? new Date(it.end_at) : null)
       : (s.end ?? (it?.end_at ? new Date(s.start.getTime() + (new Date(it.end_at).getTime() - new Date(it.start_at).getTime())) : addMinutes(s.start, 60)));
     this.f = {
-      title: it ? (dup ? `${it.title} (copia)` : it.title) : (s.prefill?.title ?? ''),
+      title: it ? (dup ? tr('{0} (copy)', it.title) : it.title) : (s.prefill?.title ?? ''),
       description: it?.description ?? s.prefill?.description ?? '',
       start: toLocalInput(start), end: end ? toLocalInput(end) : '', type: it?.type ?? s.type ?? 'event',
       svc: it?.action?.service ?? '', method: it?.action?.method ?? 'POST', path: it?.action?.path ?? '',

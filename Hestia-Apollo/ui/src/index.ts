@@ -98,7 +98,7 @@ export class ApolloJob extends HestiaElement {
       <div class="between"><h1>${tr("Image")}</h1><hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge></div>
       <div class="small muted">${j.prompt}</div>
       ${j.status === 'failed' ? html`<div class="card small">${WHY[j.error] || j.error}</div>` : nothing}
-      <div class="col big">${(j.blob_ids || []).map((_: string, n: number) => html`<a href=${this.host.image(`${API}/jobs/${j.id}/image/${n}`)} download=${`immagine-${n + 1}.png`}>
+      <div class="col big">${(j.blob_ids || []).map((_: string, n: number) => html`<a href=${this.host.image(`${API}/jobs/${j.id}/image/${n}`)} download=${`image-${n + 1}.png`}>
         <img src=${this.host.image(`${API}/jobs/${j.id}/image/${n}`)} alt=""></a>`)}</div>
     </div>`;
   }

@@ -1,4 +1,4 @@
-import { css, tr } from '@hestia/webui-sdk';
+import { css, locale, tr } from '@hestia/webui-sdk';
 
 export const API = '/api/argus';
 
@@ -22,7 +22,7 @@ export function ago(epoch?: number | null): string {
 
 export function when(epoch?: number | null): string {
   if (!epoch) return '–';
-  return new Date(epoch * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(epoch * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function duration(sec?: number | null): string {

@@ -1,6 +1,6 @@
 /** Shared helpers of the Chronos plugin (Italian labels, it-IT dates). */
 import type { HestiaHost } from '@hestia/webui-sdk';
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 
 export const API = '/api/agenda';
 
@@ -8,8 +8,8 @@ export function when(iso?: string | null): string {
   if (!iso) return '–';
   const d = new Date(iso);
   return d.toDateString() === new Date().toDateString()
-    ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function ms(v?: number | null): string {
@@ -28,7 +28,7 @@ export async function retry(host: HestiaHost, key: string, title: string): Promi
   const r = await host.api('POST', `${API}/items/${encodeURIComponent(key)}/run`);
   if (!r.ok) { host.toast(r.error || tr("{0}: not started", title), 'danger'); return false; }
   const ok = !!r.data?.ok;
-  const back = ok && r.data?.reactivated ? ' · regola riattivata' : '';
-  host.toast(ok ? `${title}: eseguito${back}` : tr("{0}: failed again", title), ok ? 'success' : 'danger');
+  const back = ok && r.data?.reactivated ? tr(' · rule reactivated') : '';
+  host.toast(ok ? tr('run::{0}: done', title) + back : tr("{0}: failed again", title), ok ? 'success' : 'danger');
   return ok;
 }

@@ -1,4 +1,4 @@
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 /** Labels and helpers shared by the Athena page and widget. */
 export const API = '/api/athena';
 
@@ -32,8 +32,8 @@ export function when(iso?: string | number | null): string {
   if (!iso) return '–';
   const d = typeof iso === 'number' ? new Date(iso * 1000) : new Date(iso);
   const today = new Date().toDateString() === d.toDateString();
-  return today ? `oggi ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return today ? tr('today {0}', d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }))
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function ago(iso?: string | null): string {
@@ -48,7 +48,7 @@ export function ago(iso?: string | null): string {
 /** «12 nov» from an ISO day. */
 export function day(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
 /** «3 ore fa» / «2 giorni fa» from seconds. */
@@ -74,7 +74,7 @@ export const AREAS: Record<string, string> = {
 export const area = (d?: string) => (d && AREAS[d]) || d || '';
 
 export const SEVERITY: Record<string, { label: string; tone: string; icon: string }> = {
-  alta: { label: 'importante', tone: 'danger', icon: 'alert' },
+  alta: { label: tr('important'), tone: 'danger', icon: 'alert' },
   attenzione: { label: tr('to watch'), tone: 'warning', icon: 'eye' },
   info: { label: 'informazione', tone: 'neutral', icon: 'info' },
 };

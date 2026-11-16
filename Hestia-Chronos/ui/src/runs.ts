@@ -73,8 +73,8 @@ export class ChronosRuns extends HestiaElement {
         <div class="small muted tnum">${when(row.at)} · ${row.owner}${row.duration_ms !== null && row.duration_ms !== undefined ? ` · ${ms(row.duration_ms)}` : ''}
           ${row.manual ? html` ${tr("· by hand")}${row.by && row.by !== 'user' ? ` (${row.by})` : ''}` : row.by && row.by !== 'agenda' ? html` · ${row.by}` : nothing}</div>
         ${row.status === 'failed' && row.detail ? html`<div class="det">${row.detail}</div>` : nothing}
-        ${this.open === id ? html`<div class="small muted">${tr("Key")} <code>${row.key}</code>${row.occurrence && !row.manual ? html` · occorrenza ${when(row.occurrence)}` : nothing}
-          ${row.status === 'ok' && row.detail ? html` · risposta <code>${row.detail}</code>` : nothing}</div>` : nothing}
+        ${this.open === id ? html`<div class="small muted">${tr("Key")} <code>${row.key}</code>${row.occurrence && !row.manual ? html` · ${tr("occurrence")} ${when(row.occurrence)}` : nothing}
+          ${row.status === 'ok' && row.detail ? html` · ${tr("response")} <code>${row.detail}</code>` : nothing}</div>` : nothing}
       </div>
       <div class="row">
         ${row.can_run && row.status === 'failed' ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === id} @click=${() => this.run(row)}>${tr("Try again")}</hxk-button>` : nothing}

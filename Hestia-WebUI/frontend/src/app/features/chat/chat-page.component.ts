@@ -24,7 +24,7 @@ import { MicRecorder, VoiceService } from '../../services/voice.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
 import { REACTION_EMOJI } from './reaction-emoji';
 import { IdentityService } from '../../services/identity.service';
-import { tr, TrPipe } from '../../core/i18n';
+import { locale, tr, TrPipe } from '../../core/i18n';
 
 const LIVE_LABELS: Record<string, string> = {
   starting: tr('Turning the microphone on…'), listening: tr('I\'m listening'), hearing: tr('I hear you…'), thinking: tr('Thinking…'), speaking: tr('Speaking'),
@@ -40,7 +40,7 @@ export function dayLabel(d: Date, now = new Date()): string {
   const diff = Math.round((start(now) - start(d)) / 86400000);
   if (diff === 0) return tr('Today');
   if (diff === 1) return tr('Yesterday');
-  return new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short',
+  return new Intl.DateTimeFormat(locale(), { weekday: 'short', day: 'numeric', month: 'short',
     ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) }).format(d);
 }
 
@@ -430,7 +430,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   /** Dictation (brainstorm C12): speak, the text lands in the box to read again; nothing is sent or kept. */
   async toggleDictation() {
     if (!this.dictating()) {
-      try { await this.dict.start(); } catch { this.toast.error('Il browser non mi dà il microfono'); return; }
+      try { await this.dict.start(); } catch { this.toast.error(tr('The browser does not give me the microphone')); return; }
       this.dictating.set(true);
       return;
     }
@@ -445,7 +445,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
       this.text = this.text.trim() ? `${this.text.trim()} ${t}` : t;
       queueMicrotask(() => { this.grow(); this.ta()?.nativeElement.focus(); });
     } catch {
-      this.toast.error('Dettatura non disponibile ora');
+      this.toast.error(tr('Dictation not available now'));
     } finally {
       this.dictBusy.set(false);
     }
@@ -499,7 +499,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   private async startVoice() {
     this.released = null;
     try { await this.mic.start(); }
-    catch { this.toast.error('Il browser non mi dà il microfono'); return; }
+    catch { this.toast.error(tr('The browser does not give me the microphone')); return; }
     this.voice.stop();
     this.recording.set(true);
     this.recSeconds.set(0);

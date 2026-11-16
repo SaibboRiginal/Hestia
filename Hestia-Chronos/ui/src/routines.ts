@@ -103,7 +103,7 @@ export class ChronosRoutines extends HestiaElement {
       : await this.host.api('PATCH', `${API}/items/${ref}`, { body: { status: kind === 'pause' ? 'paused' : 'confirmed' } });
     this.busy = '';
     if (!res.ok) { this.host.toast(res.error || tr('Failed, try again'), 'danger'); return; }
-    const msg = { run: res.data?.ok === false ? tr("{0}: failed", r.title) : `${r.title}: avviata`,
+    const msg = { run: res.data?.ok === false ? tr("{0}: failed", r.title) : tr('{0}: started', r.title),
                   pause: tr("{0}: paused", r.title), resume: tr("{0}: active again", r.title), delete: tr("{0}: deleted", r.title) }[kind];
     this.host.toast(msg, kind === 'run' && res.data?.ok === false ? 'warning' : 'success');
     this.load();
@@ -136,7 +136,7 @@ export class ChronosRoutines extends HestiaElement {
     const r = await this.host.api('POST', `${API}/routines`, { body });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('Routine not created'), 'danger'); return; }
-    this.host.toast(`${body.title}: creata`, 'success');
+    this.host.toast(tr('{0}: created', body.title), 'success');
     this.form = null;
     this.load();
   }
@@ -144,13 +144,13 @@ export class ChronosRoutines extends HestiaElement {
   private async fromTemplate() {
     const t = this.tpl;
     for (const [name, spec] of Object.entries<any>(t.fields || {})) {
-      if (spec.required && !(this.values[name] || '').trim()) { this.host.toast(`Serve: ${spec.label}`, 'warning'); return; }
+      if (spec.required && !(this.values[name] || '').trim()) { this.host.toast(tr('Needed: {0}', spec.label), 'warning'); return; }
     }
     this.busy = 'tpl';
     const r = await this.host.api('POST', `${API}/routines/from-template/${encodeURIComponent(t.id)}`, { body: { values: this.values } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('Routine not created'), 'danger'); return; }
-    this.host.toast(`${t.label}: creata`, 'success');
+    this.host.toast(tr('{0}: created', t.label), 'success');
     this.tpl = null;
     this.load();
   }
@@ -203,7 +203,7 @@ export class ChronosRoutines extends HestiaElement {
     const fields = Object.entries<any>(t.fields || {});
     return html`<div class="card col">
       <h2>${t.label}</h2><div class="small muted">${t.help}</div>
-      ${fields.map(([name, spec]) => html`<hxk-field label=${spec.label + (spec.required ? '' : ' (facoltativo)')} .value=${this.values[name] || ''}
+      ${fields.map(([name, spec]) => html`<hxk-field label=${spec.label + (spec.required ? '' : tr(' (optional)'))} .value=${this.values[name] || ''}
         @change=${(e: CustomEvent) => (this.values = { ...this.values, [name]: String(e.detail ?? '') })}></hxk-field>`)}
       <div class="small muted">${describeRoutine(t)} · ${t.deliver === 'recap' ? tr('in the evening recap') : tr('as a notification')}</div>
       <div class="row"><hxk-button variant="primary" icon="check" ?loading=${this.busy === 'tpl'} @click=${() => this.fromTemplate()}>${tr("Create")}</hxk-button>

@@ -78,9 +78,9 @@ export class LaresHome extends HestiaElement {
     return html`<div class="page">
       <div class="between"><h1>${tr("Home")}</h1>${s.person ? html`<hxk-badge tone=${s.person === 'home' ? 'success' : 'neutral'}>${STATE[s.person] || s.person}</hxk-badge>` : nothing}</div>
       <div class="grid" style="--min: 220px">
-        <div class="card col"><h3>${tr("Lights")}</h3><div class="small">${s.lights_on.length ? html`<span class="lit">Accese:</span> ${s.lights_on.join(', ')}` : tr('All off')}</div></div>
+        <div class="card col"><h3>${tr("Lights")}</h3><div class="small">${s.lights_on.length ? html`<span class="lit">${tr("On:")}</span> ${s.lights_on.join(', ')}` : tr('All off')}</div></div>
         ${s.temperatures.length ? html`<div class="card col"><h3>${tr("Temperatures")}</h3>${s.temperatures.map((t: string) => html`<div class="small">${t}</div>`)}</div>` : nothing}
-        <div class="card col"><h3>${tr("Doors and windows")}</h3><div class="small">${s.open.length ? `Aperte: ${s.open.join(', ')}` : tr('All closed')}</div></div>
+        <div class="card col"><h3>${tr("Doors and windows")}</h3><div class="small">${s.open.length ? tr('Open: {0}', s.open.join(', ')) : tr('All closed')}</div></div>
       </div>
       ${s.favorites.length ? html`<div class="col"><h3>${tr("Quick actions")}</h3><div class="row wrap">${s.favorites.map((f: any) => html`<div class="fav" @click=${async () => { const r = await call(this.host, 'POST', `/favorites/${f.id}/run`); if (r.ok) { this.host.toast(tr("{0}: done", f.label), 'success'); this.load(); } }}>
         <b>${f.label}</b><span class="small muted">${f.room || ''}</span>
@@ -109,7 +109,7 @@ export class LaresWidget extends HestiaElement {
     if (s === null || !s.configured || !s.connected) return html`<div class="small muted click" @click=${() => this.host.navigate('casa')}>${s && !s.configured ? tr('Home not linked') : tr('Home not reachable')}</div>`;
     const favs = this.ctx?.size === 's' ? [] : s.favorites.slice(0, this.ctx?.size === 'l' ? 6 : 3);
     return html`<div class="col" style="gap:6px">
-      <div class="between click" @click=${() => this.host.navigate('casa')}><span></span><span class="small">${s.lights_on.length ? `${s.lights_on.length} luci accese` : 'luci spente'}</span></div>
+      <div class="between click" @click=${() => this.host.navigate('casa')}><span></span><span class="small">${s.lights_on.length ? tr('{0} lights on', s.lights_on.length) : tr('lights off')}</span></div>
       ${s.temperatures.length ? html`<div class="small">${s.temperatures[0]}</div>` : nothing}
       ${favs.length ? html`<div class="row wrap">${favs.map((f: any) => html`<hxk-button size="sm" @click=${async () => { const r = await call(this.host, 'POST', `/favorites/${f.id}/run`); if (r.ok) this.load(); }}>${f.label}</hxk-button>`)}</div>` : nothing}
     </div>`;

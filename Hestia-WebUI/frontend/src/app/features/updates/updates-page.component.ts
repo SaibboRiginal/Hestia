@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { UI, DialogService, ToastService } from '../../ui';
 import { setupError } from '../setup/setup.api';
-import { tr, TrPipe } from '../../core/i18n';
+import { locale, tr, TrPipe } from '../../core/i18n';
 
 interface Version { version: string; tag: string; commit: string; label: string; }
 interface Available { ref: string; label: string; notes?: string[]; major?: boolean; commits?: number; }
@@ -40,7 +40,7 @@ export interface UpdateStatus {
             <div><b>Hestia {{ st()!.installed.label }}</b>
               <small>{{ st()!.channel === 'novita' ? ('Get every news as soon as it\\'s ready' | tr) : ('Get the published versions' | tr) }} ·
                 <a routerLink="/settings" [queryParams]="{ module: 'hephaestus' }">{{ "change" | tr }}</a>
-                @if (st()!.checked_at) { · controllato {{ ago(st()!.checked_at!) }} }</small></div>
+                @if (st()!.checked_at) { · {{ 'checked' | tr }} {{ ago(st()!.checked_at!) }} }</small></div>
           </div>
         </section>
 
@@ -165,7 +165,7 @@ export class UpdatesPageComponent {
 
   async apply() {
     const a = this.st()?.available;
-    if (!a || !await this.dialogs.confirm(tr("Install {0}?", a.ref === 'origin/main' ? 'le novità' : 'Hestia ' + a.label),
+    if (!a || !await this.dialogs.confirm(tr("Install {0}?", a.ref === 'origin/main' ? tr('the news') : 'Hestia ' + a.label),
       tr('Some parts restart for a few seconds. If something doesn\'t answer, I go back to the previous version by myself.'), tr('Install'))) return;
     await this.post('apply', 'apply');
   }
@@ -184,6 +184,6 @@ export class UpdatesPageComponent {
   }
 
   date(t: number): string {
-    return new Date(t * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return new Date(t * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   }
 }

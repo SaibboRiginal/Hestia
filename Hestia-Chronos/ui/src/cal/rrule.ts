@@ -1,6 +1,6 @@
 /** Minimal RRULE helpers for the editor: parse ↔ simple form model, human description, BYDAY shift. */
 import { WEEKDAYS, WEEKDAY_LABELS } from './date';
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 
 export type Freq = 'none' | 'MINUTELY' | 'HOURLY' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'custom';
 
@@ -63,13 +63,13 @@ const UNIT: Record<string, [string, string]> = {
 export function describeRRule(rule?: string | null): string {
   if (!rule) return tr('Doesn\'t repeat');
   const m = parseRRule(rule);
-  if (m.freq === 'custom') return `Regola: ${m.raw}`;
+  if (m.freq === 'custom') return tr('Rule: {0}', m.raw);
   const [one, many] = UNIT[m.freq] ?? ['', ''];
   let s = m.interval === 1 ? tr("Every {0}", one) : tr("Every {0} {1}", m.interval, many);
   if (m.freq === 'DAILY' && m.interval === 1) s = tr('Every day');
   if (m.freq === 'WEEKLY' && m.byday.length) s += `: ${m.byday.map(d => WEEKDAY_LABELS[d]).join(', ')}`;
-  if (m.count) s += `, ${m.count} volte`;
-  else if (m.until) s += tr(", until {0}", new Date(m.until).toLocaleDateString('it-IT'));
+  if (m.count) s += tr(', {0} times', m.count);
+  else if (m.until) s += tr(", until {0}", new Date(m.until).toLocaleDateString(locale()));
   return s;
 }
 

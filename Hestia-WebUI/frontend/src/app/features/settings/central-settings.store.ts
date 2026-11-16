@@ -261,7 +261,7 @@ export class CentralSettingsStore {
       await this.api.decide(p.proposal_id, approve);
       this.toast.success(approve ? tr('Proposal approved') : tr('Proposal rejected'));
     } catch (e) {
-      this.toast.error(apiError(e, 'Proposta già decisa altrove'));
+      this.toast.error(apiError(e, tr('Proposal already decided elsewhere')));
     }
     await this.refresh();
   }

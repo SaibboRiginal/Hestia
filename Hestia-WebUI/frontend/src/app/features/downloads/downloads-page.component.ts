@@ -154,7 +154,7 @@ export class DownloadsPageComponent {
     try {
       await firstValueFrom(this.http.post(`/api/webui/downloads/${encodeURIComponent(d.module)}/${op}`, { id: d.id }));
     } catch (e: any) {
-      this.toasts.error(e?.error?.detail || 'Non è riuscito, riprova tra poco.');
+      this.toasts.error(e?.error?.detail || tr('It did not work, try again shortly.'));
     }
     await this.load();
   }

@@ -3,14 +3,14 @@
  * search (same as the chat), add a file (archived like a chat attachment), keep for good, delete.
  * Reads/acts on /api/ui/documents… (Oracle → Archive through Hub). Ported from the built-in WebUI page (§A4).
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 const ACCEPT = 'image/*,audio/*,video/*,text/*,application/pdf,application/json,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp,.md,.csv,.yaml,.yml';
 
 function day(iso?: string | null): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function size(n?: number | null): string {
@@ -113,13 +113,13 @@ export class OracleDocuments extends HestiaElement {
   }
 
   private ask(d: any) {
-    this.host.assistant({ label: tr("Document · {0}", d.title || d.filename || 'file'), hints: { documento: d.document_id },
+    this.host.assistant({ label: tr("Document · {0}", d.title || d.filename || 'file'), hints: { document: d.document_id },
       suggestions: [tr('Summarise it'), tr('What does it say about…?'), tr('Which deadlines does it contain?')] });
   }
 
   private renderHits() {
     if (this.hits === null) return nothing;
-    return html`<hxk-card heading="Risultati per «${this.q.trim()}»" subtitle=${tr("Passages closest to the question, as the chat sees them")}>
+    return html`<hxk-card heading=${tr("Results for «{0}»", this.q.trim())} subtitle=${tr("Passages closest to the question, as the chat sees them")}>
       ${this.hits.length ? this.hits.map(h => html`<div class="hit">
           <div class="row"><b class="grow truncate">${h.title || tr('Document')}</b>
             <span class="small muted">${tr("distance")} ${Number(h.distance ?? 0).toFixed(2).replace('.', ',')}</span></div>
@@ -130,13 +130,13 @@ export class OracleDocuments extends HestiaElement {
   }
 
   private renderDoc(d: any) {
-    const meta = [day(d.created_at), d.mime_type, size(d.file_size_bytes), d.chunk_count ? `${d.chunk_count} passaggi` : '']
+    const meta = [day(d.created_at), d.mime_type, size(d.file_size_bytes), d.chunk_count ? tr('{0} passages', d.chunk_count) : '']
       .filter(Boolean).join(' · ');
     return html`<div class="card doc">
       <hxk-icon name="file" size="22"></hxk-icon>
       <div class="grow">
         <div class="name truncate" title=${d.filename || ''}>${d.title || d.filename || d.document_id}</div>
-        <div class="meta">${meta}${d.access_count ? ` · usato ${d.access_count}×` : ''}</div>
+        <div class="meta">${meta}${d.access_count ? tr(' · used {0}×', d.access_count) : ''}</div>
         ${d.summary ? html`<div class="sum">${d.summary}</div>` : nothing}
         <div class="tags">${d.is_permanent ? html`<hxk-badge tone="accent">${tr("forever")}</hxk-badge>` : nothing}
           <hxk-badge>${d.domain}</hxk-badge>${(d.tags || []).slice(0, 4).map((t: string) => html`<hxk-badge tone="info">${t}</hxk-badge>`)}</div>

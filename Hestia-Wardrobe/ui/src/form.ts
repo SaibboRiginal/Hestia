@@ -114,7 +114,7 @@ export class WardrobePieceForm extends HestiaElement {
           <label class="f">${tr("Category")}<select class="in" @change=${(e: any) => this.set('category', e.target.value)}>
             <option value="" ?selected=${!d.category}>${tr("Choose…")}</option>
             ${this.categories().map(({ p, subs }) => html`<optgroup label=${p.label}>
-              <option value=${p.key} ?selected=${d.category === p.key}>${p.label} (generico)</option>
+              <option value=${p.key} ?selected=${d.category === p.key}>${tr("{0} (generic)", p.label)}</option>
               ${subs.map(s => html`<option value=${s.key} ?selected=${d.category === s.key}>${s.label}</option>`)}</optgroup>`)}
           </select></label>
           <div class="col" style="gap:4px"><span class="small muted">${tr("Colours (the first is the main one)")}</span>

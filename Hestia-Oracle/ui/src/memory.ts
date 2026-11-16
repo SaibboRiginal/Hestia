@@ -3,12 +3,12 @@
  * or noted by an external AI through memory_note). Search, filter by origin, forget.
  * Reads/acts on /api/ui/memory… (Oracle → Archive through Hub). SPEC docs/work/2026-10-20-memory-note.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 function day(iso?: string | null): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function origin(m: any): string {

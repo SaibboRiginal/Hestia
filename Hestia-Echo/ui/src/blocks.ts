@@ -122,7 +122,7 @@ export class EchoBlocks extends HestiaElement {
   }
 
   private addProvider() {
-    const raw = window.prompt('Nome del nuovo fornitore (es. deepgram). La chiave andrà in .env come ECHO_KEY_<NOME>.');
+    const raw = window.prompt(tr('Name of the new provider (e.g. deepgram). The key goes in .env as ECHO_KEY_<NAME>.'));
     const name = slug(raw || '');
     if (!name || this.providers[name]) return;
     this.providers = { ...this.providers, [name]: { type: 'openai', label: raw!.trim(), url: '', options: {} } };
@@ -191,10 +191,10 @@ export class EchoBlocks extends HestiaElement {
   }
 
   private addChain() {
-    const raw = window.prompt('Nome della nuova catena (es. voce-calda)');
+    const raw = window.prompt(tr('Name of the new chain (e.g. warm-voice)'));
     const name = slug(raw || '');
     if (!name || this.chains[name]) return;
-    const voice = window.confirm('È una catena di voce (testo → voce)? Annulla = di ascolto.');
+    const voice = window.confirm(tr('Is it a voice chain (text → voice)? Cancel = listening.'));
     this.chains = { ...this.chains, [name]: { label: raw!.trim(), direction: voice ? 'voce' : 'ascolto', steps: [] } };
     this.touch('chains');
   }

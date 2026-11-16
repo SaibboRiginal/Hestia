@@ -41,7 +41,7 @@ const TIMES = Array.from({ length: 96 }, (_, i) => `${pad(Math.floor(i / 4))}:${
   imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <input #txt class="hx-input" [class.bad]="bad" [value]="shown()" placeholder="gg/mm/aaaa" [disabled]="disabled()"
+    <input #txt class="hx-input" [class.bad]="bad" [value]="shown()" [placeholder]="'dd/mm/yyyy' | tr" [disabled]="disabled()"
            (change)="commit(txt.value)" (keydown.enter)="commit(txt.value)" [attr.aria-label]="label() || ('Date' | tr)" />
     <button type="button" class="pick" (click)="openPicker()" [disabled]="disabled()"  [attr.aria-label]="'Choose date' | tr"><hx-icon name="calendar" [size]="15" /></button>
     <input #native type="date" class="native" tabindex="-1" aria-hidden="true" [value]="value()" (change)="value.set(native.value)" />`,

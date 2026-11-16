@@ -7,7 +7,7 @@
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
  */
-import { HestiaElement, html, css, nothing, svg, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, svg, locale, tr } from '@hestia/webui-sdk';
 import { API, hermesStyles } from './util';
 
 type Filter = 'unread' | 'pending' | 'all';
@@ -44,7 +44,7 @@ const LEVEL_ICON: Record<string, string> = { info: 'bell', success: 'check', war
 const icon = (name: string, size = 16) => html`<svg width=${size} height=${size} viewBox="0 0 24 24" fill="none"
   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${svg`<path d=${ICON_PATHS[name] || ICON_PATHS.bell}></path>`}</svg>`;
 
-const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
+const time = (iso?: string) => (iso ? new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit', hour12: false }) : '');
 
 function dayLabel(iso: string): string {
   const d = new Date(iso);
@@ -52,7 +52,7 @@ function dayLabel(iso: string): string {
   const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
   if (d.toDateString() === today.toDateString()) return tr('Today');
   if (d.toDateString() === yesterday.toDateString()) return tr('Yesterday');
-  return d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  return d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 /** Hermes messages are Telegram-style HTML: keep the few formatting tags, drop everything else (no scripts,
@@ -310,7 +310,7 @@ export class HermesInbox extends HestiaElement {
       this.applyAnswer(n.id, answer);
       this.host.toast(answer.by && answer.by !== 'webui' ? tr("Already handled by {0}", clientLabel(answer.by)) : tr('Already handled'), 'info');
     } else {
-      this.host.toast(tr("Failed: {0}", r.data?.detail || (r.error && r.error !== 'offline' ? r.error : '') || 'riprova più tardi'), 'danger');
+      this.host.toast(tr("Failed: {0}", r.data?.detail || (r.error && r.error !== 'offline' ? r.error : '') || tr('try again later')), 'danger');
     }
     void this.loadCounts();
   }
@@ -318,7 +318,7 @@ export class HermesInbox extends HestiaElement {
   private async sendSecret(n: any) {
     const values = this.secrets[n.id] || {};
     const missing = (n.secret?.fields || []).filter((f: any) => !String(values[f.name] ?? '').trim());
-    if (missing.length) { this.host.toast(`Manca: ${missing.map((f: any) => f.label || f.name).join(', ')}`, 'warning'); return; }
+    if (missing.length) { this.host.toast(tr('Missing: {0}', missing.map((f: any) => f.label || f.name).join(', ')), 'warning'); return; }
     this.busy = n.id;
     const r = await this.host.api('POST', `${API}/inbox/${encodeURIComponent(n.id)}/secret`, { body: { values } });
     this.busy = '';
@@ -352,7 +352,7 @@ export class HermesInbox extends HestiaElement {
       this.applyAnswer(n.id, a);
       this.host.toast(a.by && a.by !== 'webui' ? tr("Already handled by {0}", clientLabel(a.by)) : tr('Already handled'), 'info');
     } else {
-      this.host.toast(tr("Failed: {0}", r.data?.detail || 'riprova più tardi'), 'danger');
+      this.host.toast(tr("Failed: {0}", r.data?.detail || tr('try again later')), 'danger');
     }
     void this.loadCounts();
   }

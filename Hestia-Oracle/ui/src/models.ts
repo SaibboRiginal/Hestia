@@ -118,7 +118,7 @@ export class OracleModels extends HestiaElement {
   }
 
   private async addProvider() {
-    const raw = window.prompt('Nome del nuovo fornitore (es. openrouter). La chiave andrà in .env come ORACLE_KEY_<NOME>.');
+    const raw = window.prompt(tr('Name of the new provider (e.g. openrouter). The key goes in .env as ORACLE_KEY_<NAME>.'));
     const name = slug(raw || '');
     if (!name || this.providers[name]) return;
     this.providers = { ...this.providers, [name]: { type: 'openai', label: raw!.trim(), url: '' } };
@@ -159,7 +159,7 @@ export class OracleModels extends HestiaElement {
       ${live && (!live.available || live.exhausted_until) ? html`<div class="state">
         ${live.exhausted_until ? html`<hxk-badge tone="warning">${tr("no quota until")} ${live.exhausted_until.slice(11, 16)}</hxk-badge>
           <hxk-button variant="ghost" @click=${() => this.retry(step.provider, step.model)}>${tr("Try again now")}</hxk-button>` : nothing}
-        ${!live.available ? html`<span class="muted">saltato: ${live.detail}</span>` : nothing}</div>` : nothing}
+        ${!live.available ? html`<span class="muted">${tr("skipped: {0}", live.detail)}</span>` : nothing}</div>` : nothing}
     </div>`;
   }
 
@@ -183,7 +183,7 @@ export class OracleModels extends HestiaElement {
   }
 
   private addChain() {
-    const raw = window.prompt('Nome della nuova catena (es. economica)');
+    const raw = window.prompt(tr('Name of the new chain (e.g. cheap)'));
     const name = slug(raw || '');
     if (!name || this.chains[name]) return;
     this.chains = { ...this.chains, [name]: { label: raw!.trim(), steps: [] } };

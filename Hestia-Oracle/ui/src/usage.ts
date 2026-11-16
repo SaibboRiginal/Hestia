@@ -3,7 +3,7 @@
  * Cards per module (calls, calls/hour, tokens, cache, cost, fallbacks), calls per day, sessions (tap → their calls),
  * which chain step answered. Reads GET /api/ui/usage?group=…&days=… and /api/ui/usage/calls.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, cost, dayLabel, ms, num } from './util';
 
 const PERIODS = [{ value: '1', label: tr('Today') }, { value: '7', label: tr('7 days') }, { value: '30', label: tr('30 days') }];
@@ -15,7 +15,7 @@ function pct(part: number, whole: number): string {
 function at(iso: string | null | undefined): string {
   if (!iso) return '–';
   const d = new Date(iso);
-  return d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export class OracleUsage extends HestiaElement {
@@ -111,7 +111,7 @@ export class OracleUsage extends HestiaElement {
     return html`<hxk-card heading=${tr("Calls of the conversation")} subtitle=${this.session}>
       <hxk-button slot="actions" variant="ghost" icon="x" @click=${() => { this.session = ''; this.calls = null; }}>${tr("Close")}</hxk-button>
       ${this.calls === null ? html`<hxk-state kind="loading"></hxk-state>` : this.calls.map(c => html`<div class="row2">
-          <div class="grow"><div class="truncate"><b>${c.use_case}</b> <span class="small muted">${c.chain || ''}${c.step ? ` · passo ${c.step + 1}` : ''}</span></div>
+          <div class="grow"><div class="truncate"><b>${c.use_case}</b> <span class="small muted">${c.chain || ''}${c.step ? tr(' · step {0}', c.step + 1) : ''}</span></div>
             <div class="small muted truncate">${at(c.at)} · ${c.provider} · ${c.model}</div></div>
           <div class="num small"><div>${c.outcome === 'ok' ? `${num(c.input_tokens)} / ${num(c.output_tokens)} token` : html`<hxk-badge tone="danger">${c.outcome}</hxk-badge>`}</div>
             <div class="muted">${ms(c.duration_ms)}${c.cost_usd ? ` · ${cost(c.cost_usd)}` : ''}${c.cost_kind === 'abbonamento' ? ' abbonamento' : ''}</div></div></div>`)}
@@ -123,10 +123,10 @@ export class OracleUsage extends HestiaElement {
     if (!rows.length) return nothing;
     return html`<hxk-card heading=${tr("Who answered")} subtitle=${tr("By use: which step of the chain and how many times")}>
       ${rows.slice(0, 40).map(r => html`<div class="row2"><div class="grow">
-          <div class="truncate"><b>${r.use_case}</b> <span class="small muted">${r.chain || ''} · passo ${(r.step || 0) + 1}</span></div>
+          <div class="truncate"><b>${r.use_case}</b> <span class="small muted">${r.chain || ''}${tr(' · step {0}', (r.step || 0) + 1)}</span></div>
           <div class="small muted truncate">${r.provider} · ${r.model}</div></div>
         <div class="num small"><div>${num(r.ok)} ${tr("answers")}</div>
-          <div class="muted">${r.quota ? `${num(r.quota)} senza quota · ` : ''}${r.errors - r.quota > 0 ? `${num(r.errors - r.quota)} errori` : ''}</div></div></div>`)}
+          <div class="muted">${r.quota ? tr('{0} out of quota · ', num(r.quota)) : ''}${r.errors - r.quota > 0 ? tr('{0} errors', num(r.errors - r.quota)) : ''}</div></div></div>`)}
     </hxk-card>`;
   }
 

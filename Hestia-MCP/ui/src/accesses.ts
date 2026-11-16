@@ -6,7 +6,7 @@
  * nothing is granted without it. Second list: Servizi esterni (third-party MCP servers, credentials in Hecate).
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3, §B6.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 // The «hestia» mod in this repo's Claude Code marketplace (claude-plugins/hestia, dossier 2026-10-30-hestia-in-claude).
 const PLUGIN_INSTALL = '/plugin install hestia --marketplace SaibboRiginal/Hestia';
@@ -16,7 +16,7 @@ const EXPIRY = [{ value: '30', label: tr('30 days') }, { value: '90', label: tr(
 
 function when(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export class McpAccesses extends HestiaElement {
@@ -53,7 +53,7 @@ export class McpAccesses extends HestiaElement {
   /** OAuth: the request parked by /oauth/authorize (who asks, which tools there are). */
   private async loadConsent(id: string) {
     const r = await this.host.api('GET', `${API}/oauth/requests/${encodeURIComponent(id)}`);
-    if (!r.ok) { this.consent = { id, error: r.error || 'Richiesta scaduta: ricollega dall\'app' }; return; }
+    if (!r.ok) { this.consent = { id, error: r.error || tr('Request expired: link again from the app') }; return; }
     this.consent = { id, req: r.data, scope: r.data.scope || 'read', days: '90', all: true, tools: [], name: r.data.client_name };
   }
 
@@ -65,7 +65,7 @@ export class McpAccesses extends HestiaElement {
       : await this.host.api('POST', `${API}/oauth/requests/${encodeURIComponent(c.id)}/deny`);
     this.busy = false;
     if (!r.ok || !r.data?.redirect) { this.host.toast(r.error || tr('alt::Failed'), 'danger'); return; }
-    this.host.toast(allow ? `${c.name} collegato: torno all'app` : tr('Link refused'), allow ? 'success' : 'neutral');
+    this.host.toast(allow ? tr('{0} linked: back to the app', c.name) : tr('Link refused'), allow ? 'success' : 'neutral');
     window.location.assign(r.data.redirect);   // back to the AI (its registered redirect_uri, checked by Hestia-MCP)
   }
 
@@ -94,13 +94,13 @@ export class McpAccesses extends HestiaElement {
     const asks = { revoke: [tr('Revoke the access?'), tr("{0} stops working right away. You can renew it later.", a.name)],
                    renew: a.kind === 'oauth' ? ['Riattivare?', tr("{0} works again for another 90 days.", a.name)]
                      : [tr('New token?'), tr("The current token of {0} stops working right away.", a.name)],
-                   delete: [tr('Delete the access?'), `${a.name} sparisce dall'elenco.`] }[what];
+                   delete: [tr('Delete the access?'), tr('{0} disappears from the list.', a.name)] }[what];
     if (!(await this.host.confirm(asks[0], asks[1], { label: tr('Confirm'), danger: what !== 'renew' }))) return;
     const r = what === 'delete' ? await this.host.api('DELETE', `${API}/accesses/${a.access_id}`)
       : await this.host.api('POST', `${API}/accesses/${a.access_id}/${what}`, { query: what === 'renew' ? { base_url: this.base() } : undefined });
     if (!r.ok) { this.host.toast(r.error || tr('alt::Failed'), 'danger'); return; }
     if (what === 'renew' && r.data?.token) this.created = r.data;
-    else if (what === 'renew') this.host.toast(`${a.name} riattivato`, 'success');
+    else if (what === 'renew') this.host.toast(tr('{0} reactivated', a.name), 'success');
     this.load();
   }
 
@@ -118,9 +118,9 @@ export class McpAccesses extends HestiaElement {
     const c = this.created; if (!c) return nothing;
     return html`<hxk-card heading="Token per ${c.access.name}" subtitle=${tr("You see it only now: copy it now.")}>
       ${this.copyRow(tr('Claude Code (terminal)'), c.setup.claude_code)}
-      ${this.copyRow('Claude Desktop, Cursor, VS Code, Gemini CLI… (configurazione JSON)', c.setup.json)}
+      ${this.copyRow(tr('Claude Desktop, Cursor, VS Code, Gemini CLI… (JSON configuration)'), c.setup.json)}
       ${this.copyRow(tr('Only the token'), c.token)}
-      <p class="note">Indirizzo: ${c.setup.url}${tr(". Outside home you need the address of the named tunnel (see README, \"Linking an external AI\").")}</p>
+      <p class="note">${tr("Address:")} ${c.setup.url}${tr(". Outside home you need the address of the named tunnel (see README, \"Linking an external AI\").")}</p>
       <hxk-button variant="primary" @click=${() => (this.created = null)}>${tr("Done")}</hxk-button>
     </hxk-card>`;
   }
@@ -157,7 +157,7 @@ export class McpAccesses extends HestiaElement {
       this.consent = { ...this.consent, tools: [...tools] };
     };
     const visible = (c.req.tools || []).filter((t: any) => c.scope === 'write' || !t.writes);
-    return html`<hxk-card heading="Collegare ${c.req.client_name}?" subtitle="Chiede di usare Hestia via MCP · torna a ${c.req.redirect_host}"><div class="form">
+    return html`<hxk-card heading=${tr("Link {0}?", c.req.client_name)} subtitle=${tr("Asks to use the assistant via MCP · back to {0}", c.req.redirect_host)}><div class="form">
       <hxk-field label=${tr("Name in the list")} .value=${c.name} @change=${set('name')}></hxk-field>
       <hxk-field label=${tr("What it can do")} type="enum" .options=${SCOPES} .value=${c.scope} @change=${set('scope')}></hxk-field>
       <hxk-field label=${tr("Expires after")} type="enum" .options=${EXPIRY} .value=${c.days} @change=${set('days')}></hxk-field>
@@ -202,15 +202,15 @@ export class McpAccesses extends HestiaElement {
       ${this.renderConsent()}${this.renderCreated()}${this.renderForm()}
       ${list.length ? html`<div class="card">${list.map(a => html`<div class="acc"><div class="grow">
           <div><b>${a.name}</b> ${this.status(a)}${this.kind(a)}</div>
-          <div class="small muted">${a.tools?.length ? `${a.tools.length} strumenti` : tr('all tools open')}
-            · scade ${a.expires_at ? when(a.expires_at) : 'mai'} ${tr("· last use")} ${when(a.last_used_at)} ${tr("· today")} ${a.calls_today} ${tr("calls")}</div></div>
+          <div class="small muted">${a.tools?.length ? tr('{0} tools', a.tools.length) : tr('all tools open')}
+            · ${tr('expires')} ${a.expires_at ? when(a.expires_at) : tr('never')} ${tr("· last use")} ${when(a.last_used_at)} ${tr("· today")} ${a.calls_today} ${tr("calls")}</div></div>
           <div class="acts">${a.revoked_at ? nothing : html`<hxk-button size="sm" variant="ghost" @click=${() => this.act(a, 'revoke')}>${tr("Revoke")}</hxk-button>`}
             <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.act(a, 'renew')}>${a.kind === 'oauth' ? tr('Turn back on') : tr('Renew')}</hxk-button>
             <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.act(a, 'delete')}>${tr("Delete")}</hxk-button></div>
         </div>`)}</div>`
         : this.form || this.created ? nothing : html`<hxk-state kind="empty" text=${tr("No access: create a token to link Claude Code or another AI.")}></hxk-state>`}
       <p class="note">${tr("claude.ai (web and phone) and ChatGPT: add a custom connector with the public address")}
-        ${this.base()}/mcp; Hestia ti chiede qui il consenso.</p>
+        ${this.base()}/mcp${tr('; the assistant asks for your consent here.')}</p>
       <hxk-card heading=${tr("Hestia inside Claude Code")} subtitle=${tr("A bar above the prompt: turn it on only when you want")}>
         ${this.copyRow(tr('Install (Claude Code terminal)'), PLUGIN_INSTALL)}
         ${this.copyRow(tr('Address to give to the installation'), this.base())}

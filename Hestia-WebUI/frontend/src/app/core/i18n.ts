@@ -28,6 +28,9 @@ export async function loadI18n(): Promise<void> {
 
 export function currentLanguage(): string { return catalog().language || 'it'; }
 
+/** The date/number locale of the owner's language (`toLocaleDateString(locale(), …)`), never a hardcoded 'it-IT'. */
+export function locale(): string { return currentLanguage() === 'en' ? 'en-GB' : 'it-IT'; }
+
 /** The key of «Lingua»: saving it reloads the page so shell and plugins come back in the new language. */
 export const LANGUAGE_KEY = 'themis.personal.language';
 let reloading = false;

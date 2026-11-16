@@ -59,7 +59,7 @@ const ACTORS: Record<string, string> = {
     <hx-popover [open]="historyOpen()" [anchor]="anchor()" [width]="330" (closed)="historyOpen.set(false)">
       <div class="pop">
         <div class="ph">{{ it.label }}</div>
-        <div class="pk">{{ it.key }} · predefinito: {{ show(it.default) }}</div>
+        <div class="pk">{{ it.key }} · {{ 'default:' | tr }} {{ show(it.default) }}</div>
         @if (loadingHistory()) { <div class="row-c"><hx-spinner [size]="16" /></div> }
         @else if (!history().length) { <div class="empty">{{ "alt::No change recorded." | tr }}</div> }
         @else {

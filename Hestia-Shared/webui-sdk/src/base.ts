@@ -1,6 +1,7 @@
 import { LitElement } from 'lit';
 import type { HestiaHost, HostEvent, PluginContext } from './types';
 import { kitStyles, tokens } from './styles';
+import { tr } from './i18n';
 
 /**
  * Base class for plugin pages and widgets: receives `host` and `ctx` from the WebUI, shares the kit styles,
@@ -52,8 +53,9 @@ export function fillPath(path: string, values: Record<string, string | number>):
   return path.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(String(values[k] ?? '')));
 }
 
-/** «1 esercizio» / «3 esercizi»: count plus the right form (Italian: only 1 is singular). */
+/** `plural(3, 'exercise', 'exercises')` → «3 esercizi»: count plus the right form, both written in English and
+ * translated (it and en: only 1 is singular). */
 export function plural(n: number | null | undefined, one: string, many: string): string {
   const v = Number(n ?? 0);
-  return `${v} ${v === 1 ? one : many}`;
+  return `${v} ${tr(v === 1 ? one : many)}`;
 }

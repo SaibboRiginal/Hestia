@@ -46,7 +46,7 @@ export class HerculesNextWidget extends Widget {
     return html`<div class="w">
       <span class="small muted">${done ? html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("Done today · next")}` : n.reason || tr('Next workout')}</span>
       <div class="big truncate click" @click=${() => this.host.navigate('schede/' + t.id)}>${t.name}</div>
-      <div class="small muted">${plural((t.items || []).length, 'esercizio', 'esercizi')}${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
+      <div class="small muted">${plural((t.items || []).length, 'exercise', 'exercises')}${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
       ${this.size === 'l' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
       <div class="row"><hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('allenamento', { scheda: t.id })}>${tr("f::Start")}</hxk-button></div>
     </div>`;
@@ -140,7 +140,7 @@ export class HerculesVolumeWidget extends Widget {
     for (const p of st.periods || []) for (const [g, v] of Object.entries(p.groups || {})) tot[g] = (tot[g] || 0) + Number(v);
     const keys = Object.keys(GROUP_LABEL);
     return html`<div class="w click" @click=${() => this.host.navigate('progressi')}>
-      <span class="small muted">${tr("Sets per group ·")} ${this.weeks === 1 ? tr('this week') : `media ${this.weeks} settimane`}</span>
+      <span class="small muted">${tr("Sets per group ·")} ${this.weeks === 1 ? tr('this week') : tr('average {0} weeks', this.weeks)}</span>
       <hxk-chart type="bar" height="140" .labels=${keys.map(k => GROUP_LABEL[k])} .series=${[{ name: tr('Sets per week'), values: keys.map(k => Math.round(((tot[k] || 0) / this.weeks) * 10) / 10) }]}></hxk-chart>
     </div>`;
   }
@@ -191,7 +191,7 @@ export class HerculesLiveWidget extends Widget {
     const left = rest.until ? (rest.until - Date.now()) / 1000 : 0;
     return html`<div class="w click" @click=${() => this.host.navigate('allenamento')}>
       <div class="between"><b class="truncate">${act.name}</b><span class="small muted tnum">${dur((Date.now() - Date.parse(act.started_at)) / 1000)}</span></div>
-      <div class="small muted">${sets.length}/${total} ${tr("sets ·")} ${doneBlocks.size}/${plural((act.exercises || []).length, 'esercizio', 'esercizi')}</div>
+      <div class="small muted">${sets.length}/${total} ${tr("sets ·")} ${doneBlocks.size}/${plural((act.exercises || []).length, 'exercise', 'exercises')}</div>
       ${current ? html`<div class="truncate">Ora: <b>${exs.get(current.exercise_id)?.name || '?'}</b></div>` : nothing}
       ${rest.until ? html`<div class="pill tnum" style="font-size:15px"><hxk-icon name="timer" size=${14}></hxk-icon> ${left > 0 ? dur(left) : 'recupero finito'}</div>` : nothing}
     </div>`;

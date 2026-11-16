@@ -2,7 +2,7 @@
  * Calliope («Documenti») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Page declared in Hestia-Calliope/app/main.py.
  */
-import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, css, definePlugin, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/office';
@@ -13,7 +13,7 @@ async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string,
   if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Not reachable, try again') : r.error || tr('Error'), 'warning');
   return r;
 }
-const when = (iso: string) => new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const when = (iso: string) => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 const styles = css`
   .between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -53,7 +53,7 @@ export class CalliopeDocs extends HestiaElement {
     if (!r.ok) return;
     if (!r.data.created) { this.host.toast(tr("The check didn't pass: {0} is missing", (r.data.check?.missing || []).join(', ')), 'warning'); return; }
     this.draft = null;
-    this.host.toast(`${r.data.title} pronto`, 'success');
+    this.host.toast(tr('{0} ready', r.data.title), 'success');
     this.load();
   }
   private async deleteDoc(d: any) {

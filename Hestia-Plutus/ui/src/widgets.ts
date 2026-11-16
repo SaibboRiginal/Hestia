@@ -33,7 +33,7 @@ export class PlutusMonthWidget extends Widget {
       <div class="between"><span class="small muted">${tr("Expenses of")} ${s.label}</span>${s.to_review ? html`<span class="pill warn">${s.to_review} ${tr("to review")}</span>` : nothing}</div>
       <div class="big">${money(s.spent, s.currency)}</div>
       ${s.budget ? html`${budgetBar(pct)}<div class="small muted">${s.left >= 0 ? `rimangono ${money(s.left, s.currency)}` : tr("{0} over budget", money(-s.left, s.currency))} · ${pct}%</div>`
-        : html`<div class="small muted">${s.days_gone < s.days_total && s.spent ? tr("at this pace {0}", money(s.pace, s.currency)) : `entrate ${money(s.income, s.currency)}`}</div>`}
+        : html`<div class="small muted">${s.days_gone < s.days_total && s.spent ? tr("at this pace {0}", money(s.pace, s.currency)) : tr('income {0}', money(s.income, s.currency))}</div>`}
       ${this.size !== 's' ? html`<div class="col" style="gap:5px">${s.categories.slice(0, big ? 6 : 2).map((c: any) => html`<div class="col" style="gap:2px">
         <div class="between small"><span class="truncate">${c.label}</span><span class="tnum">${money(c.spent, s.currency)}</span></div>
         ${c.budget ? budgetBar(c.pct) : nothing}</div>`)}</div>` : nothing}

@@ -92,7 +92,7 @@ export class HerculesTemplates extends LocalPage {
         const muscles = new Set<string>();
         (t.items || []).forEach((i: any) => (exs.get(i.exercise_id)?.primary_muscles || []).forEach((m: string) => muscles.add(m)));
         const groups = Object.entries(GROUP_LABEL).filter(([g]) => GROUPS[g].some(m => muscles.has(m))).map(([, l]) => l);
-        return html`<hxk-card clickable heading=${t.name} subtitle=${tr("{0} · last {1}", plural((t.items || []).length, 'esercizio', 'esercizi'), relDays(last?.started_at))}
+        return html`<hxk-card clickable heading=${t.name} subtitle=${tr("{0} · last {1}", plural((t.items || []).length, 'exercise', 'exercises'), relDays(last?.started_at))}
             @click=${() => this.host.navigate('schede/' + t.id)}>
           ${t.favorite ? html`<hxk-icon slot="actions" name="star" size=${14} tone="warning" title=${tr("f::Favourite")}></hxk-icon>` : nothing}
           <div class="tpl"><div class="small muted truncate">${(t.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ') || tr('Empty')}</div>
@@ -228,13 +228,13 @@ export class HerculesTemplate extends LocalPage {
     const est = estimate(t, this.L.settings.rest_default);
     const sugs = this.L.suggestions;
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('schede')}>‹ Schede</hxk-button></div>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('schede')}>${tr('‹ Plans')}</hxk-button></div>
       <div class="row wrap">
         <input class="in grow" style="font-size:20px;font-weight:600" .value=${t.name} @change=${(e: any) => this.save({ name: e.target.value || tr('Workout plan') })}>
         <button class="chip" aria-pressed=${!!t.favorite} title=${tr("Favourite: appears in Home for «Mark done»")} @click=${() => this.save({ favorite: !t.favorite })}><hxk-icon name="star" size=${14}></hxk-icon> ${tr("f::Favourite")}</button>
       </div>
-      <div class="row wrap small muted">${plural((t.items || []).length, 'esercizio', 'esercizi')} · circa ${minutes(est)}
-        ${t.changed_by === 'assistant' ? html`· modificata dall'assistente <button class="link" @click=${() => this.undo()}>${tr("Undo change")}</button>` : nothing}</div>
+      <div class="row wrap small muted">${plural((t.items || []).length, 'exercise', 'exercises')} · ${tr('about {0}', minutes(est))}
+        ${t.changed_by === 'assistant' ? html`· ${tr('changed by the assistant')} <button class="link" @click=${() => this.undo()}>${tr("Undo change")}</button>` : nothing}</div>
       <div class="row wrap">
         <hxk-button variant="primary" icon="play" ?disabled=${!(t.items || []).length || !!this.L.activeSession()} @click=${() => this.startNow(t)}>${tr("alt::Start now")}</hxk-button>
         <hxk-button variant="ghost" icon="heart" @click=${() => this.host.assistant({ label: tr("Plan {0}", t.name), hints: { template_id: t.id }, prompt: tr("Let's review the plan {0}.", t.name), suggestions: [tr('It\'s too long'), tr('Add an exercise for the lats'), tr('It bores me, let\'s change something')] })}>${tr("Review with the assistant")}</hxk-button>
@@ -274,13 +274,13 @@ export class HerculesTemplate extends LocalPage {
                   ${Object.entries(PROGRESSION).map(([k, v]) => html`<option value=${k} ?selected=${it.progression === k}>${v}</option>`)}</select></label>
               <label class="small row">${tr("alt::Rest")}
                 <select class="in" .value=${String(it.rest_seconds ?? '')} @change=${(e: any) => this.item(it.id, { rest_seconds: parseNum(e.target.value) })}>
-                  <option value="">predefinito (${dur(this.L.settings.rest_default)})</option>
+                  <option value="">${tr("default ({0})", dur(this.L.settings.rest_default))}</option>
                   ${[45, 60, 90, 120, 150, 180, 240, 300].map(v => html`<option value=${v} ?selected=${it.rest_seconds === v}>${dur(v)}</option>`)}</select></label>
               <label class="small row">${tr("Priority")}
                 <select class="in" .value=${String(it.priority || 2)} @change=${(e: any) => this.item(it.id, { priority: Number(e.target.value) })}>
                   <option value="1">${tr("High (not cut)")}</option><option value="2">${tr("Normal")}</option><option value="3">${tr("Low (cut first)")}</option></select></label>
             </div>
-            <input class="in" placeholder="Note (es. presa stretta, sedile 4)" .value=${it.notes || ''} @change=${(e: any) => this.item(it.id, { notes: e.target.value })}>
+            <input class="in" placeholder=${tr("Notes (e.g. narrow grip, seat 4)")} .value=${it.notes || ''} @change=${(e: any) => this.item(it.id, { notes: e.target.value })}>
             <div class="row">
               ${sug?.last ? html`<span class="small muted grow">${tr("Last time:")} ${(sug.last.sets || []).map((x: any) => `${kg(x.weight_kg)}×${x.reps}`).join(', ')}</span>` : html`<span class="grow"></span>`}
               <hxk-button size="sm" variant="danger" icon="trash" @click=${() => this.save({ items: t.items.filter((x: any) => x.id !== it.id) })}>${tr("Remove")}</hxk-button></div>` : nothing}

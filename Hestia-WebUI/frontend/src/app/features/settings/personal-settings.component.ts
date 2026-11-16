@@ -228,7 +228,7 @@ export class PersonalSettingsComponent implements OnInit {
 
   async enablePush() {
     if (await this.push.enable()) this.toast.success(tr('Notifications active on this device'));
-    else if (this.push.state() === 'off') this.toast.error('Non riuscito, riprova');
+    else if (this.push.state() === 'off') this.toast.error(tr('Did not work, try again'));
   }
 
   setGroup(id: NoticeGroup, on: boolean) {

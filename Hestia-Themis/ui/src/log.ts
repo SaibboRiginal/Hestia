@@ -4,7 +4,7 @@
  * key (the same as «Annulla ultima» in Impostazioni); proposals still wait for your Approva / Rifiuta.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/settings';
 const WHO_FILTERS = [
@@ -21,14 +21,14 @@ const SCOPE: Record<string, string> = { client: 'client', profile: 'profilo', se
 export function who(actor?: string | null): string {
   const a = String(actor || '');
   if (!a) return '–';
-  if (a.startsWith('external:')) return `${a.slice(9)} (AI esterna)`;
+  if (a.startsWith('external:')) return tr('{0} (external AI)', a.slice(9));
   return ({ user: 'Tu', webui: tr('You (WebUI)'), telegram: tr('You (Telegram)'), oracle: tr('Oracle (chat)'), athena: 'Athena',
             themis: 'Themis', cascade: 'automatico' } as Record<string, string>)[a] || a;
 }
 
 function when(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function val(v: unknown): string {
@@ -113,7 +113,7 @@ export class ThemisLog extends HestiaElement {
       { body: { scope: row.scope, scope_id: row.scope_id, actor: 'user' } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('f::Not cancelled'), 'danger'); return; }
-    this.host.toast(`«${row.label}» annullata`, 'success');
+    this.host.toast(tr('«{0}» undone', row.label), 'success');
     this.load();
   }
 

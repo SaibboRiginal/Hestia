@@ -103,7 +103,7 @@ export class AthenaLearning extends HestiaElement {
       <div class="grow col" style="gap:4px">
         <div class="row wrap"><hxk-badge tone="info">${PROPOSAL[p.kind] || tr('Maybe old')}</hxk-badge><span class="small muted">${p.why || ''}</span></div>
         ${(p.facts || []).slice(0, 4).map((f: string) => html`<div class="fact small">${f}</div>`)}
-        ${p.merged ? html`<div class="small">Diventa: <i>${p.merged}</i></div>` : nothing}
+        ${p.merged ? html`<div class="small">${tr("Becomes:")} <i>${p.merged}</i></div>` : nothing}
       </div>
       <div class="col" style="gap:6px">
         <hxk-button size="sm" variant="primary" icon="check" ?loading=${this.busy === `apply:${p.id}`} @click=${() => this.decide(p, 'apply')}>${tr("Apply")}</hxk-button>

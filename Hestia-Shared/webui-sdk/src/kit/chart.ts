@@ -1,10 +1,11 @@
 import { LitElement, css, html, nothing, svg } from 'lit';
 import { tokens } from '../styles';
+import { locale } from '../i18n';
 
 export interface ChartSeries { name: string; values: number[]; color?: string }
 
 const PALETTE = ['var(--cal-1)', 'var(--cal-2)', 'var(--cal-3)', 'var(--cal-4)', 'var(--cal-5)', 'var(--cal-6)', 'var(--cal-7)', 'var(--cal-8)'];
-const fmt = (n: number) => Math.abs(n) >= 1000 ? new Intl.NumberFormat('it-IT', { notation: 'compact', maximumFractionDigits: 1 }).format(n) : String(Math.round(n * 10) / 10);
+const fmt = (n: number) => Math.abs(n) >= 1000 ? new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n) : String(Math.round(n * 10) / 10);
 
 /**
  * Small dependency-free SVG chart: `type` line | bar | donut, `labels` (x), `series` [{name, values}], `unit`.

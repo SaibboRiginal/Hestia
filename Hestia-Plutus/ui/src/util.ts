@@ -1,5 +1,5 @@
 /** Plutus UI helpers: API calls, money and dates, category chips, shared styles of pages and widgets. */
-import { css, html, nothing, tr } from '@hestia/webui-sdk';
+import { css, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 export const API = '/api/finance';
@@ -27,7 +27,7 @@ export const dropMeta = () => { metaCache = null; };
 
 export function money(x: number | null | undefined, currency = 'EUR', sign = false): string {
   if (x === null || x === undefined) return '–';
-  const s = Number(x).toLocaleString('it-IT', { style: 'currency', currency });
+  const s = Number(x).toLocaleString(locale(), { style: 'currency', currency });
   return sign && x > 0 ? '+' + s : s;
 }
 export function localDay(d: Date = new Date()): string {
@@ -50,7 +50,7 @@ export function dayLabel(iso: string | null | undefined): string {
   if (!iso) return '';
   if (iso === today()) return tr('Today');
   if (iso === addDays(today(), -1)) return tr('Yesterday');
-  return new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+  return new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 export const SOURCE: Record<string, string> = { manual: tr('by hand'), quick: 'veloce', chat: 'chat', email: 'email', statement: 'estratto' };
 export const PERIOD: Record<string, string> = { weekly: tr('every week'), monthly: tr('every month'), yearly: tr("every year") };

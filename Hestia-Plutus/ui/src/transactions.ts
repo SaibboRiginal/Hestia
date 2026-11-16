@@ -32,7 +32,7 @@ export class PlutusTxForm extends HestiaElement {
     const r = this.tx?.id ? await call(this.host, 'PUT', `${API}/transactions/${this.tx.id}`, { body: { ...body, learn: f.learn } })
       : await call(this.host, 'POST', `${API}/transactions`, { body: { ...body, source: 'manual' } });
     this.busy = false;
-    if (r.ok) { this.host.toast(this.tx?.id ? tr('Saved') : `Registrato: ${money(r.data.amount, r.data.currency, true)}`, 'success'); this.close(r.data); }
+    if (r.ok) { this.host.toast(this.tx?.id ? tr('Saved') : tr('Recorded: {0}', money(r.data.amount, r.data.currency, true)), 'success'); this.close(r.data); }
   }
   private close(saved: any = null) { this.dispatchEvent(new CustomEvent('close', { detail: saved, bubbles: true, composed: true })); }
   render() {
@@ -103,7 +103,7 @@ export class PlutusTransactions extends HestiaElement {
     const days: Record<string, any[]> = {};
     for (const t of items || []) (days[t.date] ||= []).push(t);
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Transactions")}</h1></div>
+      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Transactions")}</h1></div>
         <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div>
       <div class="row wrap">
         ${this.review ? html`<span class="pill warn">${tr("Only to review")}</span>` : html`<hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
@@ -120,7 +120,7 @@ export class PlutusTransactions extends HestiaElement {
       </div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : items === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`
         : !items.length ? html`<div class="card"><hxk-state kind="empty" text=${this.review ? tr('Nothing to review') : tr('No transactions.')}></hxk-state></div>` : html`
-        <div class="small muted">${plural(items.length, 'movimento', 'movimenti')} · saldo ${money(total, cur, true)}</div>
+        <div class="small muted">${plural(items.length, 'transaction', 'transactions')} · ${tr('balance')} ${money(total, cur, true)}</div>
         ${Object.entries(days).map(([d, list]) => html`<h3 style="margin-top:6px">${dayLabel(d)}</h3>
           <div class="card list">${list.map(t => txRow(this.host, t, cur))}</div>`)}`}
       ${this.form ? html`<plutus-tx-form .host=${this.host} @close=${() => { this.form = false; this.load(); }}></plutus-tx-form>` : nothing}
@@ -163,7 +163,7 @@ export class PlutusTransaction extends HestiaElement {
     const cats = (this.m?.categories || []).filter((c: any) => t.amount > 0 ? c.kind !== 'expense' : c.kind !== 'income');
     const accounts: Record<string, string> = Object.fromEntries((this.m?.accounts || []).map((a: any) => [a.id, a.name]));
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('movimenti')}>‹ Movimenti</button></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('movimenti')}>${tr('‹ Transactions')}</button></div>
       <div class="card col">
         <div class="between"><div><h1>${t.merchant || tr('Transaction')}</h1><div class="muted small">${dayLabel(t.date)} · ${accounts[t.account] || t.account} · ${SOURCE[t.source] || t.source}</div></div>
           <div class="big amt ${t.amount > 0 ? 'in' : ''}">${money(t.amount, cur, true)}</div></div>

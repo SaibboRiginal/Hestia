@@ -4,7 +4,7 @@
  * <hub-online-widget> — "Servizi online": n / total, the offline ones by name.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/ui';
 const HEALTH: Record<string, [string, string]> = {
@@ -17,7 +17,7 @@ function ago(epoch?: number | null): string {
   if (s < 60) return `${s} s fa`;
   if (s < 3600) return `${Math.round(s / 60)} min fa`;
   if (s < 86400) return `${Math.round(s / 3600)} h fa`;
-  return new Date(epoch * 1000).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(epoch * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export class HubMap extends HestiaElement {
@@ -92,11 +92,11 @@ export class HubMap extends HestiaElement {
       .some((v: string) => String(v || '').toLowerCase().includes(q)));
     const groups: Array<[string, string]> = [['layer', tr('By layer')], ['node', tr('By node')], ['type', tr('By type')]];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Map")}</h1><span class="sub">${tr("Log review")} ${d.revision} · aggiornata ${ago(d.updated_at)}</span>
+      <div class="head"><h1>${tr("Map")}</h1><span class="sub">${tr("Log review")} ${d.revision} · ${tr("updated {0}", ago(d.updated_at))}</span>
         <span class="grow"></span>
         <hxk-button icon="check" ?loading=${this.busy} @click=${() => this.load(true)}>${tr("Health check")}</hxk-button>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
-      ${this.error ? html`<hxk-state kind="error" text="${this.error}: mostro l'ultima mappa" @retry=${() => this.load()}></hxk-state>` : nothing}
+      ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last map", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Services'), value: d.services_count },
         { label: tr('Online'), value: d.online_count, tone: 'success' },

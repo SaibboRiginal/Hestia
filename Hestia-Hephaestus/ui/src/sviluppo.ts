@@ -224,10 +224,10 @@ export class HephaestusSviluppo extends HestiaElement {
     const t = this.store.task;
     this.host.assistant(t ? {
       label: tr("Development · {0}", t.request.slice(0, 60)),
-      hints: { pagina: 'forge', task: t.id, stato: t.state, workdoc: t.workdoc || '', servizi: (t.services ?? []).join(','), richiesta: t.request.slice(0, 300) },
+      hints: { page: 'forge', task: t.id, state: t.state, workdoc: t.workdoc || '', services: (t.services ?? []).join(','), request: t.request.slice(0, 300) },
       suggestions: [tr('Explain to me what this task changed'), tr('Why did it fail and what do I propose?'), tr('Create a follow-up development that…')],
     } : {
-      label: tr('Development'), hints: { pagina: 'forge' },
+      label: tr('Development'), hints: { page: 'forge' },
       suggestions: [tr('Add to Hestia a command that…'), tr('Fix this problem: …'), tr('What is Forge developing now?')],
     });
   }
@@ -338,7 +338,7 @@ export class HephaestusSviluppo extends HestiaElement {
       </div>
       ${s.status?.paused ? html`<div class="paused">${icon('pause', 14)}<div><b>${tr("Development paused")}</b> ${tr("No task starts by itself: the proposed ones stay here until you press Start.")}</div></div>` : nothing}
       ${this.picking ? html`<div class="pickbar">
-        <span class="grow">${this.picked.size ? `${this.picked.size} scelti` : tr('Choose the tasks to copy')}</span>
+        <span class="grow">${this.picked.size ? tr('{0} chosen', this.picked.size) : tr('Choose the tasks to copy')}</span>
         <button class="plain" @click=${() => { this.picked = new Set(visible.map(t => t.id)); }}>${tr("pl::All")}</button>
         <hxk-button size="sm" variant="primary" ?disabled=${!this.picked.size} ?loading=${this.exporting} @click=${() => this.exportAi([...this.picked])}>${icon('copy', 14)} ${tr("Copy")}</hxk-button>
         <hxk-button size="sm" variant="ghost" ?disabled=${!this.picked.size || this.exporting} title=${tr("Download as .md file")} @click=${() => this.exportAi([...this.picked], true)}>${icon('download', 14)}</hxk-button>

@@ -3,7 +3,7 @@
  * what Argus did (alert, repair request, recheck in the agenda, recovery), closed incidents, log viewer with
  * filters, «Ricontrolla» per service. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, ago, duration, statusOf, stripStyles, when } from './util';
 
 const WINDOWS = [{ value: 60, label: tr('1 hour') }, { value: 360, label: tr('6 hours') }, { value: 1440, label: tr('24 hours') }];
@@ -111,7 +111,7 @@ export class ArgusHealth extends HestiaElement {
     const [tone, label] = statusOf(i.status);
     return html`<div class="card incident">
       <div class="row wrap"><b>${i.service}</b><hxk-badge tone=${open ? tone : 'success'}>${open ? label : 'risolto'}</hxk-badge>
-        <span class="small muted grow">${open ? `da ${duration(i.duration_seconds)}` : `durato ${duration(i.duration_seconds)} · ${when(i.closed_at)}`}</span>
+        <span class="small muted grow">${open ? tr("for {0}", duration(i.duration_seconds)) : tr("lasted {0} · {1}", duration(i.duration_seconds), when(i.closed_at))}</span>
         ${open ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === i.service} @click=${() => this.recheck(i.service, true)}>${tr("Recheck")}</hxk-button>` : nothing}</div>
       ${open && i.error ? html`<div class="small muted">${i.error}</div>` : nothing}
       <ul class="acts">${(i.actions || []).map((a: any) => html`<li><span class="t tnum">${when(a.at)}</span>
@@ -159,7 +159,7 @@ export class ArgusHealth extends HestiaElement {
         : !rows.length ? html`<hxk-state kind="empty" text=${tr("No event with these filters.")}></hxk-state>`
         : html`<div class="card">${rows.slice(0, 300).map(e => html`<div class="log">
             <hxk-badge tone=${LEVEL_TONE[e.level] || 'neutral'}>${e.level}</hxk-badge>
-            <div class="grow"><div class="row wrap"><b>${e.service}</b><span class="t tnum">${new Date(e.timestamp).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
+            <div class="grow"><div class="row wrap"><b>${e.service}</b><span class="t tnum">${new Date(e.timestamp).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
               <div class="msg">${e.message}</div></div></div>`)}
             ${rows.length > 300 ? html`<div class="small muted">${tr("I show the 300 most recent of")} ${rows.length}.</div>` : nothing}</div>`}
     </section>`;
@@ -173,7 +173,7 @@ export class ArgusHealth extends HestiaElement {
       <div class="head"><h1>${tr("Health")}</h1>
         <span class="sub">${ov.last_cycle_at ? tr("last check {0}{1}", ago(ov.last_cycle_at), ov.last_cycle_ms != null ? ` · ${ov.last_cycle_ms} ms` : '') : tr('first check in progress…')}</span>
         <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => { this.load(); this.loadLogs(); }}>${tr("Refresh")}</hxk-button></div>
-      ${this.error ? html`<hxk-state kind="error" text="${this.error}: mostro gli ultimi dati" @retry=${() => this.load()}></hxk-state>` : nothing}
+      ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last data", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Healthy services'), value: `${ov.healthy}/${ov.total}`, tone: ov.unhealthy ? 'warning' : 'success' },
         { label: tr('Unhealthy'), value: ov.unhealthy, tone: ov.unhealthy ? 'danger' : 'neutral' },

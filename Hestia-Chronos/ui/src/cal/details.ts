@@ -89,7 +89,7 @@ export class ChronosCalDetails extends LitElement {
       ${e.group?.length ? html`<div class="grp">
         <div class="grp-h">${e.group.length} ${tr("runs on")} ${fmt.dayLong(e.start)} · ${rule}</div>
         <div class="grp-l">${e.group.map(g => html`<button class="gi ${g.occ.run?.ok === false ? 'ko' : g.occ.run?.ok ? 'ok' : ''} ${g.occ.skipped ? 'sk' : ''}"
-          title=${g.occ.run ? (g.occ.run.ok ? 'ok' : `fallita: ${g.occ.run.detail || ''}`) : tr('not run yet')}
+          title=${g.occ.run ? (g.occ.run.ok ? 'ok' : tr('failed: {0}', g.occ.run.detail || '')) : tr('not run yet')}
           @click=${() => fire(this, 'cal-pick-occ', g)}>${t(g.start)}</button>`)}</div>
         <div class="grp-n">${tr("Click on a time to open that single run.")}</div></div>` : nothing}
       ${e.occ.type === 'window' ? html`<p class="explain" style="--c:${e.color}">${ic('window', 14)}<span><b>${tr("Window")} ${t(e.start)}–${e.end ? t(e.end) : ''}.</b>

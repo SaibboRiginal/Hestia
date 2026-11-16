@@ -155,7 +155,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
         @if (presence.state(); as p) {
           <div class="presence-wrap">
             <button class="item presence" [attr.data-tone]="online() ? presence.tone() : 'off'" (click)="togglePresence($event)"
-                    [attr.title]="'Stato: ' + p.label + ' · ' + connLabel() + (' · last interaction ' | tr) + ago(p.idle_minutes)"
+                    [attr.title]="('Status:' | tr) + ' ' + p.label + ' · ' + connLabel() + (' · last interaction ' | tr) + ago(p.idle_minutes)"
                     [attr.aria-expanded]="presenceOpen()">
               <span class="pdot"></span><span class="plabel">{{ online() ? p.label : connLabel() }}</span>
             </button>
@@ -165,7 +165,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
                    [style.max-height.px]="presencePos().maxHeight">
                 <div class="ptitle"><hx-icon [name]="presence.icon().name" [tone]="presence.icon().tone" [size]="15" />{{ p.label }}</div>
                 @if (p.help) { <div class="pline">{{ p.help }}</div> }
-                <div class="pline dim">Sito: {{ connLabel() }}</div>
+                <div class="pline dim">{{ 'Site:' | tr }} {{ connLabel() }}</div>
                 <div class="pline dim">{{ "Last interaction:" | tr }} {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
                 @if (p.dnd_until) { <div class="pline">{{ "Do not disturb until" | tr }} {{ p.dnd_until | date:'HH:mm' }}</div> }
                 @for (a of p.activities; track a.key) { <div class="pline">• {{ a.label || a.key }}</div> }
@@ -562,7 +562,7 @@ export class ShellComponent {
   navWidth = signal(savedWidth('nav', 248));
   mobileOpen = signal(false);
   online = computed(() => this.signalR.connectionState() === 'connected');
-  connLabel = computed(() => ({ connected: tr('Connected'), connecting: 'Connessione…', disconnected: tr('Disconnected') })[this.signalR.connectionState()]);
+  connLabel = computed(() => ({ connected: tr('Connected'), connecting: tr('Connecting…'), disconnected: tr('Disconnected') })[this.signalR.connectionState()]);
   private bootstrapped = false;
 
   constructor() {

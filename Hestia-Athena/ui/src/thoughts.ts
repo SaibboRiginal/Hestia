@@ -149,7 +149,7 @@ export class AthenaThoughts extends HestiaElement {
     const s = c.signals || {};
     const w = this.data?.weights || {};
     return html`<div class="factors">${FACTORS.map(f => html`
-      <span title=${`peso ${Math.round((w[f.key] || 0) * 100)}%${f.inverse ? tr(' (counts backwards: less trouble = better)') : ''}`}>${f.label}</span>
+      <span title=${`${tr("weight")} ${Math.round((w[f.key] || 0) * 100)}%${f.inverse ? tr(' (counts backwards: less trouble = better)') : ''}`}>${f.label}</span>
       <span class=${f.inverse ? 'bar inv' : 'bar'}><i style="width:${pct(s[f.key])}"></i></span>
       <span class="num muted">${pct(s[f.key])}</span>`)}</div>`;
   }
@@ -237,7 +237,7 @@ export class AthenaThoughts extends HestiaElement {
       <hxk-card heading=${tr("What she wrote you")} subtitle=${tr("Last 14 days")}>
         ${items.length ? items.map(x => html`<div class="comm"><div class="grow">
             <div>${x.text}</div>
-            <div class="small muted">${when(x.at)}${x.trigger === 'manual' ? tr(' · asked by you') : ''}${x.drive != null ? ` · voglia ${Number(x.drive).toFixed(2)}` : ''}</div>
+            <div class="small muted">${when(x.at)}${x.trigger === 'manual' ? tr(' · asked by you') : ''}${x.drive != null ? ` · ${tr('drive')} ${Number(x.drive).toFixed(2)}` : ''}</div>
             ${(x.reasons || []).length ? html`<div class="small muted">${tr("Why:")} ${x.reasons.join(' · ')}</div>` : nothing}</div>
           <hxk-badge tone=${answer(x.answered).tone}>${answer(x.answered).label}</hxk-badge></div>`)
           : html`<div class="small muted">${tr("She hasn't written to you first yet.")}</div>`}
@@ -257,11 +257,11 @@ export class AthenaThoughts extends HestiaElement {
       <div class="step"><b>${tr("1 · Reads the signals")}</b>${sig.length} ${sig.length === 1 ? 'segnale' : 'segnali'} ${tr("of the areas")}${strong ? tr(", {0} to look at", strong) : ''}
         · ${l.series || 0} ${tr("weekly trends")}
         ${sig.length ? html`<ul class="items small muted">${sig.slice(0, 4).map(s => html`<li>${area(s.domain)}: ${s.text}</li>`)}</ul>` : nothing}</div>
-      <div class="step"><b>2 · Collega</b>${links.length ? tr("{0} {1} across different areas", links.length, links.length === 1 ? 'collegamento' : 'collegamenti') : tr('No link strong enough')}
+      <div class="step"><b>${tr('2 · Links')}</b>${links.length ? tr("{0} {1} across different areas", links.length, links.length === 1 ? tr('link') : tr('links')) : tr('No link strong enough')}
         ${links.length ? html`<ul class="items small muted">${links.slice(0, 3).map(x => html`<li>${linkText(x)}</li>`)}</ul>` : nothing}</div>
-      <div class="step"><b>3 · Approfondisce</b>${topics.length ? tr("{0} {1}, details asked to the areas", topics.length, topics.length === 1 ? 'tema' : 'temi') : tr('Nothing new to look into')}
+      <div class="step"><b>${tr('3 · Looks deeper')}</b>${topics.length ? tr("{0} {1}, details asked to the areas", topics.length, topics.length === 1 ? tr('topic') : tr('topics')) : tr('Nothing new to look into')}
         ${topics.length ? html`<ul class="items small muted">${topics.map(t => html`<li>${t.text}</li>`)}</ul>` : nothing}</div>
-      <div class="step"><b>${tr("4 · Thinks and filters")}</b>${cands.length ? `${cands.length} ${cands.length === 1 ? 'idea' : 'idee'}, soglia ${threshold.toFixed(2)}` : tr('No observations')}
+      <div class="step"><b>${tr("4 · Thinks and filters")}</b>${cands.length ? (cands.length === 1 ? tr('1 idea, threshold {0}', threshold.toFixed(2)) : tr('{0} ideas, threshold {1}', cands.length, threshold.toFixed(2))) : tr('No observations')}
         <div class="small muted">${verdict} · ${secs(r.duration_ms)}</div></div>
       <div class="step"><b>${tr("5 · For the recap")}</b>${r.emitted_count ? tr("{0} in the evening recap", r.emitted_count) : tr('nothing for the recap')}
         ${r.error ? html`<div class="small" style="color:var(--danger)">${r.error}</div>` : nothing}</div>
@@ -286,17 +286,17 @@ export class AthenaThoughts extends HestiaElement {
           ${cands.map(c => this.candidate(c, threshold))}` : nothing}
         ${isOpen && r.track !== 'vita' ? html`
           <div class="steps">
-            <div class="step"><b>1 · Osserva</b>${o.services} ${tr("services")}${o.unhealthy_services?.length
+            <div class="step"><b>${tr("1 · Observes")}</b>${o.services} ${tr("services")}${o.unhealthy_services?.length
               ? html`, <span style="color:var(--danger)">${o.unhealthy_services.length} ${tr("down (")}${o.unhealthy_services.join(', ')})</span>` : tr(', all ok')}
-              · ${o.recent_errors} ${tr("errors in the last hour")}${o.active_commitments ? ` · ${o.active_commitments} impegni aperti` : ''}
+              · ${o.recent_errors} ${tr("errors in the last hour")}${o.active_commitments ? tr(" · {0} open commitments", o.active_commitments) : ''}
               ${(o.domains || []).length ? html`<div class="small muted">${o.domains.map((d: any) => tr("{0}: {1} new, {2} pending", d.domain, d.recent, d.pending)).join(' · ')}</div>` : nothing}
               ${(o.quality_issues || []).length ? html`<div class="small muted">${tr("Weak points:")} ${o.quality_issues.join(' · ')}</div>` : nothing}
               ${o.presence ? html`<div class="small muted">${o.presence}</div>` : nothing}</div>
             <div class="step"><b>2 · Pensa</b>${cands.length ? tr("{0} {1} from the model", cands.length, cands.length === 1 ? 'idea' : 'idee') : tr('No useful action found')}
               <div class="small muted">${secs(r.duration_ms)}</div></div>
-            <div class="step"><b>3 · Filtra</b>${tr("score on 5 factors, threshold")} ${threshold.toFixed(2)}
+            <div class="step"><b>${tr("3 · Filters")}</b>${tr("score on 5 factors, threshold")} ${threshold.toFixed(2)}
               <div class="small muted">${verdict}</div></div>
-            <div class="step"><b>4 · Agisce</b>${r.emitted_count ? `${r.emitted_count} inviate` : tr('nothing sent')}
+            <div class="step"><b>${tr("4 · Acts")}</b>${r.emitted_count ? tr("{0} sent", r.emitted_count) : tr('nothing sent')}
               ${r.error ? html`<div class="small" style="color:var(--danger)">${r.error}</div>` : nothing}</div>
           </div>
           ${cands.map(c => this.candidate(c, threshold))}` : nothing}
@@ -310,7 +310,7 @@ export class AthenaThoughts extends HestiaElement {
       ${list.length ? list.map(c => html`<div class="comm"><div class="grow">
           <div><b>${c.title}</b> <span class="chip">${KINDS[c.kind] || c.kind}</span></div>
           ${c.summary ? html`<div class="small muted">${c.summary}</div>` : nothing}
-          <div class="small muted">${tr("score")} ${Number(c.score || 0).toFixed(2)} · scade ${when(c.expires_at)}</div></div>
+          <div class="small muted">${tr("score")} ${Number(c.score || 0).toFixed(2)} · ${tr("expires {0}", when(c.expires_at))}</div></div>
         <div class="line"><hxk-button size="sm" variant="ghost" icon="check" @click=${() => this.resolve(c, 'resolved')}>${tr("Done")}</hxk-button>
           <hxk-button size="sm" variant="ghost" icon="x" @click=${() => this.resolve(c, 'dismissed')}>${tr("Ignore")}</hxk-button></div></div>`)
         : html`<div class="small muted">${tr("No open appointment.")}</div>`}
@@ -331,7 +331,7 @@ export class AthenaThoughts extends HestiaElement {
         <hxk-button variant="primary" icon="play" ?loading=${this.thinking} @click=${() => this.thinkNow()}>${this.thinking ? tr('alt::Thinking…') : tr('Think now')}</hxk-button></div>
       <div class="line">
         ${this.track === 'vita' ? html`<hxk-badge tone="neutral">${tr("once a day, before the recap (time in Agenda)")}</hxk-badge>`
-          : html`<hxk-badge tone=${d.loop_enabled ? 'success' : 'warning'}>${d.loop_enabled ? tr("thinks on its own every {0} min", Math.round(d.interval_seconds / 60)) : 'pensiero automatico spento'}</hxk-badge>`}
+          : html`<hxk-badge tone=${d.loop_enabled ? 'success' : 'warning'}>${d.loop_enabled ? tr("thinks on its own every {0} min", Math.round(d.interval_seconds / 60)) : tr('automatic thinking off')}</hxk-badge>`}
         ${d.strategist_enabled ? nothing : html`<hxk-badge tone="warning">${tr("reasoning off: no idea")}</hxk-badge>`}
         <span class="chip">${tr("threshold")} ${Number(d.threshold).toFixed(2)}</span>
         ${last ? html`<span class="small muted">${tr("last cycle")} ${ago(last.cycle_at)}</span>` : nothing}</div>

@@ -99,12 +99,12 @@ export class HermesDeliveries extends HestiaElement {
 
   private flags(n: any) {
     const f = n.flags || {};
-    return html`${f.held ? html`<hxk-badge tone="warning" title=${tr("Held back: notification level «{0}»{1}", f.held, f.held_released ? ' · rilasciata nel riepilogo' : '')}>${tr("held back")}${f.held_released ? ' · rilasciata' : ''}</hxk-badge>` : nothing}
+    return html`${f.held ? html`<hxk-badge tone="warning" title=${tr("Held back: notification level «{0}»{1}", f.held, f.held_released ? tr(' · released in the summary') : '')}>${tr("held back")}${f.held_released ? tr(' · released') : ''}</hxk-badge>` : nothing}
       ${f.quiet ? html`<hxk-badge tone="neutral" title=${tr("Copy in the list without a notice (the question was in chat)")}>${tr("silent")}</hxk-badge>` : nothing}
       ${f.retracted ? html`<hxk-badge tone="neutral" title=${tr("Removed from the chat after it was seen or handled")}>${tr("withdrawn")}</hxk-badge>` : nothing}
       ${f.superseded ? html`<hxk-badge tone="neutral" title=${tr("Replaced by a new occurrence of the same reminder")}>${tr("f::replaced")}</hxk-badge>` : nothing}
       ${f.pending ? html`<hxk-badge tone="accent">${tr("waiting")}</hxk-badge>` : nothing}
-      ${n.repeat?.count > 1 ? html`<hxk-badge tone="info">${n.repeat.count}ª volta</hxk-badge>` : nothing}`;
+      ${n.repeat?.count > 1 ? html`<hxk-badge tone="info">${tr("time {0}", n.repeat.count)}</hxk-badge>` : nothing}`;
   }
 
   private renderItem(n: any) {
@@ -118,17 +118,17 @@ export class HermesDeliveries extends HestiaElement {
       <div class="cl">
         ${clients.length ? clients.map(([name, c]) => {
           const st = CLIENT_STATE[c.state] || { text: c.state || '–', tone: 'neutral' };
-          return html`<hxk-badge tone=${st.tone} title=${[when(c.at), c.attempts > 1 ? `${c.attempts} tentativi` : '', c.detail || ''].filter(Boolean).join(' · ')}>${name}: ${st.text}${c.retracted ? ' · ritirata' : ''}</hxk-badge>`;
+          return html`<hxk-badge tone=${st.tone} title=${[when(c.at), c.attempts > 1 ? tr('{0} attempts', c.attempts) : '', c.detail || ''].filter(Boolean).join(' · ')}>${name}: ${st.text}${c.retracted ? tr(' · withdrawn') : ''}</hxk-badge>`;
         }) : html`<span class="small muted">${tr("no client reached")}</span>`}
         ${n.audience === 'origin' && n.origin_client ? html`<span class="pill">${tr("only")} ${n.origin_client}</span>` : nothing}
         ${this.flags(n)}
       </div>
-      ${n.answer ? html`<div class="small">Risposta: <b>${n.answer.label || n.answer.action_id || '–'}</b>
+      ${n.answer ? html`<div class="small">${tr("Answer:")} <b>${n.answer.label || n.answer.action_id || '–'}</b>
           ${n.answer.by ? html` da ${n.answer.by}` : nothing} · ${when(n.answer.at)}
           ${n.answer.outcome_text ? html` · <span class="muted">${n.answer.outcome_text}</span>` : nothing}</div>`
-        : n.actions?.length ? html`<div class="small muted">Azioni: ${n.actions.join(' · ')}</div>` : nothing}
+        : n.actions?.length ? html`<div class="small muted">${tr("Actions:")} ${n.actions.join(' · ')}</div>` : nothing}
       ${isOpen ? html`<div class="small muted">${tr("Type")} <code>${n.event_type}</code> · stato <code>${n.state}</code>
-          ${n.seen?.at ? html` · vista ${when(n.seen.at)}${n.seen.by ? ` su ${n.seen.by}` : ''}` : nothing} · id <code>${n.id}</code></div>` : nothing}
+          ${n.seen?.at ? html` · ${tr('seen {0}', when(n.seen.at))}${n.seen.by ? tr('dev:: on {0}', n.seen.by) : ''}` : nothing} · id <code>${n.id}</code></div>` : nothing}
       <div><hxk-button size="sm" variant="ghost" @click=${() => (this.open = isOpen ? '' : n.id)}>${isOpen ? tr('Less') : tr('Details')}</hxk-button></div>
     </div>`;
   }
@@ -138,8 +138,8 @@ export class HermesDeliveries extends HestiaElement {
     return html`<hxk-card heading=${tr("Active subscriptions")} subtitle=${tr("Which events become notifications and for whom")}>
       ${this.subs.length ? this.subs.map(s => html`<div class="subrow">
           <b>${s.domain || '*'}</b> · <code>${s.event_type || '*'}</code>
-          → ${(s.channels || []).map((c: any) => c.type === 'client' ? `solo ${c.client}` : tr('all clients')).join(', ') || tr('all clients')}
-          ${Object.keys(s.filters || {}).length ? html`<div class="small muted">Filtri: ${Object.entries(s.filters).map(([k, v]) => `${k} = ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ')}</div>` : nothing}
+          → ${(s.channels || []).map((c: any) => c.type === 'client' ? tr('only {0}', c.client) : tr('all clients')).join(', ') || tr('all clients')}
+          ${Object.keys(s.filters || {}).length ? html`<div class="small muted">${tr("Filters:")} ${Object.entries(s.filters).map(([k, v]) => `${k} = ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ')}</div>` : nothing}
         </div>`) : html`<hxk-state kind="empty" text=${tr("No active subscription")}></hxk-state>`}
     </hxk-card>`;
   }

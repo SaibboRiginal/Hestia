@@ -362,7 +362,7 @@ export class DashboardPageComponent {
     this.assistant.open({
       page: 'dashboard', intent: 'create', label: cur ? `Dashboard · ${cur.title}` : 'Dashboard',
       hints: { dashboard: cur?.id ?? 'home', widgets: this.plugins.widgets().length },
-      suggestions: ['Creami una dashboard con le case a Milano', 'Aggiungi alla Home le statistiche delle case'],
+      suggestions: [tr('Make me a dashboard with the houses in Milan'), tr('Add the house statistics to Home')],
     });
   }
 }

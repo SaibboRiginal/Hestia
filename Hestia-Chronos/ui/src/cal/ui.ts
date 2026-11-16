@@ -36,7 +36,7 @@ export function ic(name: string, size = 16): TemplateResult {
 export function wxChip(day: { min_c: number | null; max_c: number | null; condition: string; icon: string; rain_hours?: string[] } | undefined,
                        extra: string[] = []): TemplateResult | typeof nothing {
   if (!day) return nothing;
-  const rain = day.rain_hours?.length ? `, pioggia ${day.rain_hours[0]}${day.rain_hours.length > 1 ? '–' + day.rain_hours[day.rain_hours.length - 1] : ''}` : '';
+  const rain = day.rain_hours?.length ? tr(', rain {0}', `${day.rain_hours[0]}${day.rain_hours.length > 1 ? '–' + day.rain_hours[day.rain_hours.length - 1] : ''}`) : '';
   const title = [`${day.condition}${rain}`, ...extra].join('\n');
   const wet = ['rain', 'drizzle', 'storm', 'snow'].includes(day.icon);
   return html`<span class="wx" title=${title}><hxk-icon name=${day.icon || 'cloud'} size=${13} tone=${wet ? 'info' : 'warning'}></hxk-icon>${day.min_c ?? ''}–${day.max_c ?? ''}°</span>`;

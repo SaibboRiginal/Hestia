@@ -10,7 +10,7 @@ import { NO_WEATHER, colorFor } from './models';
 import { DAY_MS, addDays, addMonths, dayKey, monthGrid, startOfDay, startOfWeek } from './date';
 import { type CalendarPrefs, DEFAULT_PREFS, type SavedPrefs, perDayFromRRule, savePrefs } from './prefs';
 import { shiftByDay } from './rrule';
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 
 export class CalStore {
   readonly api: AgendaApi;
@@ -178,15 +178,15 @@ export class CalStore {
   title(): string {
     const a = this.anchor, r = this.range();
     switch (this.view) {
-      case 'month': return cap(a.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }));
-      case 'day': return cap(a.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+      case 'month': return cap(a.toLocaleDateString(locale(), { month: 'long', year: 'numeric' }));
+      case 'day': return cap(a.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
       case 'week': {
         const e = addDays(r.end, -1);
         return r.start.getMonth() === e.getMonth()
-          ? `${r.start.getDate()}–${e.getDate()} ${e.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}`
-          : `${r.start.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+          ? `${r.start.getDate()}–${e.getDate()} ${e.toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}`
+          : `${r.start.toLocaleDateString(locale(), { day: 'numeric', month: 'short' })} – ${e.toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' })}`;
       }
-      default: return tr("From {0}", a.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }));
+      default: return tr("From {0}", a.toLocaleDateString(locale(), { day: 'numeric', month: 'long' }));
     }
   }
 

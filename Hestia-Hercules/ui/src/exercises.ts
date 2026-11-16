@@ -116,24 +116,24 @@ export class HerculesExercise extends LocalPage {
     const metric = metrics[this.metric] ? this.metric : Object.keys(metrics)[0];
     const pts = hist.filter(h => h[metric] !== null && h[metric] !== undefined);
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('esercizi')}>‹ Esercizi</hxk-button></div>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('esercizi')}>${tr('‹ Exercises')}</hxk-button></div>
       <div class="between"><div><h1>${e.name}</h1><div class="small muted">${muscleText(e)}${(e.secondary_muscles || []).length ? tr(' · also ') + e.secondary_muscles.map((m: string) => MUSCLES[m] || m).join(', ') : ''} · ${EQUIPMENT[e.equipment] || e.equipment}</div></div>
         <button class="chip" aria-pressed=${!!e.favorite} title=${tr("Favourite")} @click=${() => this.save({ favorite: !e.favorite })}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
       ${d === undefined ? html`<hxk-state kind="loading"></hxk-state>` : d === null ? html`<div class="offline">${tr("Statistics available when you are online.")}</div>` : nothing}
-      ${d?.stall ? html`<div class="card" style="border-color:var(--warning)"><b>${tr("Plateau")}</b> ${tr("· no progress in the last")} ${d.stall.exposures} sessioni.
+      ${d?.stall ? html`<div class="card" style="border-color:var(--warning)"><b>${tr("Plateau")}</b> ${tr("· no progress in the last")} ${d.stall.exposures} ${tr("sessions.")}
         <button class="link" @click=${() => this.host.assistant({ label: tr("Plateau on {0}", e.name), hints: { exercise_id: e.id }, prompt: tr("I'm stuck on {0}: what do I change?", e.name) })}>${tr("Ask the coach")}</button></div>` : nothing}
       ${stats.length > 1 ? html`<hxk-stat .items=${stats}></hxk-stat>` : nothing}
       ${pts.length > 1 ? html`<div class="card col"><div class="tabs">${Object.entries(metrics).map(([k, v]) => html`<button class="tab" aria-pressed=${metric === k} @click=${() => (this.metric = k)}>${v}</button>`)}</div>
         <hxk-chart type="line" .labels=${pts.map(h => dayLabel(h.date, false))} .series=${[{ name: metrics[metric], values: pts.map(h => Number(h[metric])) }]} unit=${metric === 'max_reps' || metric === 'reps' ? '' : 'kg'} height="200"></hxk-chart></div>` : nothing}
       ${weight && rec.rep_max && Object.keys(rec.rep_max).length ? html`<div class="card col"><h3>${tr("Best weight per reps")}</h3><div class="row wrap" style="gap:16px">
-        ${Object.entries(rec.rep_max).map(([r, v]: [string, any]) => html`<div><div class="small muted">${r}+ rip</div><div class="tnum"><b>${kg(v.value)}</b> kg</div></div>`)}</div></div>` : nothing}
+        ${Object.entries(rec.rep_max).map(([r, v]: [string, any]) => html`<div><div class="small muted">${r}+ ${tr("abbr::reps")}</div><div class="tnum"><b>${kg(v.value)}</b> kg</div></div>`)}</div></div>` : nothing}
       ${hist.length ? html`<div class="card col hist"><h3>${tr("History")}</h3><div class="list">${[...hist].reverse().slice(0, 30).map(h => html`<div class="li" @click=${() => this.host.navigate('storico/' + h.session_id)}>
           <div style="min-width:76px" class="small muted">${dayLabel(h.date)}</div>
           <div class="grow small tnum">${(h.detail || []).map((s: any) => setLabel(s, e.kind)).join(' · ')}</div>
           ${weight && h.best_e1rm ? html`<div class="small muted tnum">${kg(h.best_e1rm)}</div>` : nothing}</div>`)}</div></div>` : nothing}
       ${d?.alternatives?.length ? html`<div class="card col"><h3>${tr("Alternatives")}</h3><div class="chips">${d.alternatives.map((a: any) => html`<button class="chip" @click=${() => this.host.navigate('esercizi/' + a.id)}>${a.name}</button>`)}</div></div>` : nothing}
       <div class="card col"><h3>${tr("Notes and settings")}</h3>
-        <textarea class="in" rows="2" placeholder="Note (regolazioni, presa, sensazioni)" .value=${e.notes || ''} @change=${(ev: any) => this.save({ notes: ev.target.value })}></textarea>
+        <textarea class="in" rows="2" placeholder=${tr("Notes (adjustments, grip, feelings)")} .value=${e.notes || ''} @change=${(ev: any) => this.save({ notes: ev.target.value })}></textarea>
         <div class="row wrap"><label class="small row">${tr("Increment kg")} <input class="in num" inputmode="decimal" placeholder=${String(d?.increment ?? '')} .value=${e.increment_kg == null ? '' : String(e.increment_kg)} @change=${(ev: any) => this.save({ increment_kg: parseNum(ev.target.value) })}></label>
           ${e.is_custom ? html`<label class="small row">${tr("Name")} <input class="in" .value=${e.name} @change=${(ev: any) => this.save({ name: ev.target.value || e.name })}></label>` : nothing}
           <span class="grow"></span>

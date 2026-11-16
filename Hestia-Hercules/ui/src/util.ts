@@ -1,5 +1,5 @@
 /** Hercules UI helpers: formatting, labels, small calculations shared by pages and widgets. */
-import { css, tr } from '@hestia/webui-sdk';
+import { css, locale, tr } from '@hestia/webui-sdk';
 
 export const MUSCLES: Record<string, string> = {
   chest: tr('Chest'), front_delts: tr('Front delt'), side_delts: tr('Side delt'), rear_delts: tr('Rear delt'),
@@ -47,7 +47,7 @@ export function kg(x: number | null | undefined): string {
 }
 export function num(x: number | null | undefined, digits = 0): string {
   if (x === null || x === undefined || isNaN(x as number)) return '–';
-  return Number(x).toLocaleString('it-IT', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
+  return Number(x).toLocaleString(locale(), { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 }
 export function parseNum(v: string | number | null | undefined): number | null {
   if (v === null || v === undefined || v === '') return null;
@@ -76,15 +76,15 @@ export function dayLabel(iso: string, withWeekday = true): string {
   const y = localDay(new Date(Date.now() - 86400000));
   if (ld === t) return tr('Today');
   if (ld === y) return tr('Yesterday');
-  return d.toLocaleDateString('it-IT', withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
+  return d.toLocaleDateString(locale(), withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
 }
 export function timeLabel(iso: string): string {
-  return iso ? new Date(iso).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) : '';
+  return iso ? new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) : '';
 }
 export function relDays(iso: string | null | undefined): string {
   if (!iso) return 'mai';
   const days = Math.floor((Date.parse(today() + 'T12:00:00') - Date.parse(localDay(iso) + 'T12:00:00')) / 86400000);
-  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} days ago", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
+  return days <= 0 ? tr('today') : days === 1 ? tr('yesterday') : days < 14 ? tr("{0} days ago", days) : days < 60 ? tr('{0} weeks ago', Math.round(days / 7)) : tr('{0} months ago', Math.round(days / 30));
 }
 
 export function e1rm(weight: number | null | undefined, reps: number | null | undefined, formula = 'epley'): number | null {
@@ -122,7 +122,7 @@ export function warmups(work: number | null | undefined, scheme: Array<{ pct: nu
 
 export function setLabel(s: any, kind?: string): string {
   if (usesTime(kind)) return `${s.duration_s ? dur(s.duration_s) : '–'}${s.distance_m ? ` · ${num(s.distance_m)} m` : ''}`;
-  if (!usesWeight(kind)) return `${s.reps ?? '–'} rip`;
+  if (!usesWeight(kind)) return `${s.reps ?? '–'} ${tr('abbr::reps')}`;
   const w = s.weight_kg === null || s.weight_kg === undefined ? '' : `${kg(s.weight_kg)} kg × `;
   return `${w}${s.reps ?? '–'}`;
 }
@@ -130,7 +130,7 @@ export function setLabel(s: any, kind?: string): string {
 export function plannedLabel(p: any, kind?: string): string {
   if (usesTime(kind)) return p.duration_s ? dur(p.duration_s) : '–';
   const reps = p.reps ?? p.reps_target ?? (p.reps_min && p.reps_max && p.reps_min !== p.reps_max ? `${p.reps_min}–${p.reps_max}` : p.reps_max ?? p.reps_min ?? '–');
-  if (!usesWeight(kind)) return `${reps} rip`;
+  if (!usesWeight(kind)) return `${reps} ${tr('abbr::reps')}`;
   return `${p.weight_kg ? kg(p.weight_kg) + ' kg × ' : ''}${reps}`;
 }
 

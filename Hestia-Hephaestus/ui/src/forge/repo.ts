@@ -311,7 +311,7 @@ export class HephaestusRepo extends LitElement {
           <div class="min0"><div class="bname truncate">${d.title || d.name}</div><div class="meta truncate">${d.name}${d.source ? ` · ${d.source}` : ''}</div></div>
           ${d.version ? html`<hxk-badge>v${d.version}</hxk-badge>` : nothing}
           ${d.status ? html`<hxk-badge tone="info">${d.status}</hxk-badge>` : nothing}
-          ${d.progress ? html`<span class="prog" title="${d.progress.done} su ${d.progress.total} punti fatti"><span style="width:${d.progress.total ? 100 * d.progress.done / d.progress.total : 0}%"></span></span>
+          ${d.progress ? html`<span class="prog" title="${tr("{0} of {1} points done", d.progress.done, d.progress.total)}"><span style="width:${d.progress.total ? 100 * d.progress.done / d.progress.total : 0}%"></span></span>
             <span class="meta">${d.progress.done}/${d.progress.total}</span>` : nothing}</button>`)
         : html`<hxk-state kind="empty" text=${tr("No dossier")}></hxk-state>`}`;
   }

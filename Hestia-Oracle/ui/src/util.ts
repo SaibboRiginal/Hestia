@@ -1,4 +1,4 @@
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 /** Small formatting helpers shared by the Oracle page and widget. */
 export const API = '/api/ui';
 
@@ -10,8 +10,8 @@ export const ROUTES: Record<string, { label: string; tone: string }> = {
 
 export function num(n: number | null | undefined): string {
   const v = Number(n || 0);
-  return Math.abs(v) >= 10000 ? new Intl.NumberFormat('it-IT', { notation: 'compact', maximumFractionDigits: 1 }).format(v)
-    : new Intl.NumberFormat('it-IT').format(Math.round(v));
+  return Math.abs(v) >= 10000 ? new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(v)
+    : new Intl.NumberFormat(locale()).format(Math.round(v));
 }
 
 export function cost(usd: number | null | undefined): string {
@@ -32,8 +32,8 @@ export function when(ts: number | null | undefined): string {
   if (!ts) return '–';
   const d = new Date(ts * 1000);
   const today = new Date().toDateString() === d.toDateString();
-  return today ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return today ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function ago(seconds: number | null | undefined): string {
@@ -46,5 +46,5 @@ export function ago(seconds: number | null | undefined): string {
 
 export function dayLabel(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'numeric' });
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'numeric' });
 }

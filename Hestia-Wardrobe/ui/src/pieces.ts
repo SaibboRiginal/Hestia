@@ -44,7 +44,7 @@ export class WardrobePieces extends WardrobeElement {
     if (this.fixedKind && !data.kind) data.kind = this.fixedKind;
     const r = await call(this.host, 'POST', '/pieces', { ...data, ...(up ? { photo: up } : {}) });
     if (!r.ok) return;
-    this.host.toast(`«${r.data.name}» aggiunto`, 'success', { label: tr('Open'), run: () => this.host.navigate('capi/' + r.data.id) });
+    this.host.toast(tr('«{0}» added', r.data.name), 'success', { label: tr('Open'), run: () => this.host.navigate('capi/' + r.data.id) });
     if (again) (this.renderRoot.querySelector('wardrobe-piece-form') as any)?.reset();
     else this.adding = false;
     this.load();

@@ -25,7 +25,7 @@ export class PlutusStats extends HestiaElement {
     const s = this.s;
     const unit = s?.currency === 'EUR' ? '€' : s?.currency || '';
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Statistics")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Statistics")}</h1></div>
       <div class="tabs">${[3, 6, 12, 24].map(n => html`<button class="tab" aria-pressed=${this.months === n} @click=${() => { this.months = n; this.s = undefined; this.load(); }}>${n} ${tr("months")}</button>`)}</div>
       ${s === undefined ? html`<hxk-state kind="loading"></hxk-state>` : s === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         <hxk-stat .items=${[{ label: tr('Average spending per month'), value: money(s.avg_spent, s.currency) },
@@ -82,7 +82,7 @@ export class PlutusCategories extends HestiaElement {
     const cats = this.cats;
     const rules = this.rules.filter(r => !this.q || `${r.pattern} ${this.label(r.category)}`.toLowerCase().includes(this.q.toLowerCase()));
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>‹ Spese</button><h1>${tr("Categories and rules")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Categories and rules")}</h1></div>
       ${cats === undefined ? html`<hxk-state kind="loading"></hxk-state>` : cats === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         <div class="card col"><h2>${tr("Categories")}</h2>
           <div class="list">${cats.map(c => html`<div class="li" style="cursor:default;${c.archived ? 'opacity:.55' : ''}">${catDot(c)}
@@ -97,7 +97,7 @@ export class PlutusCategories extends HestiaElement {
             <select class="in" @change=${(e: any) => (this.newRule = { ...this.newRule, category: e.target.value })}>
               <option value="">${tr("Category…")}</option>${cats.filter(c => !c.archived).map(c => html`<option value=${c.id} ?selected=${c.id === this.newRule.category}>${c.label}</option>`)}</select>
             <hxk-button icon="plus" ?disabled=${!this.newRule.pattern || !this.newRule.category} @click=${() => this.addRule()}>${tr("Add")}</hxk-button></div>
-          <input class="in" type="search" placeholder="Cerca tra ${this.rules.length} regole" .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
+          <input class="in" type="search" placeholder=${tr("Search among {0} rules", this.rules.length)} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
           <div class="list">${rules.map(r => html`<div class="li" style="cursor:default"><span class="grow truncate">«${r.pattern}»</span>
             <span class="small">${this.label(r.category)}</span>${r.source === 'user' ? html`<span class="pill good">${tr("f::yours")}</span>` : nothing}
             <hxk-button size="sm" variant="ghost" icon="trash" @click=${() => this.delRule(r)}></hxk-button></div>`)}</div></div>`}

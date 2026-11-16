@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { ChatService } from '../../services/chat.service';
 import { SessionService } from '../../services/session.service';
 import { ButtonComponent, IconComponent, PopoverComponent, SettingLinkComponent, ToastService } from '../../ui';
-import { tr, TrPipe } from '../../core/i18n';
+import { locale, tr, TrPipe } from '../../core/i18n';
 
 interface ModelUsage {
   provider: string; model: string; calls: number; input_tokens: number; cached_tokens: number; output_tokens: number;
@@ -46,8 +46,8 @@ const WINDOW_SOURCE: Record<string, string> = {
 /** 12345 → "12,3k" · 1048576 → "1,05M" */
 export function tokens(n: number | undefined | null): string {
   const v = Number(n || 0);
-  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString('it-IT', { maximumFractionDigits: 2 })}M`;
-  if (v >= 1000) return `${(v / 1000).toLocaleString('it-IT', { maximumFractionDigits: 1 })}k`;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toLocaleString(locale(), { maximumFractionDigits: 2 })}M`;
+  if (v >= 1000) return `${(v / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 })}k`;
   return String(v);
 }
 
@@ -87,7 +87,7 @@ export function tokens(n: number | undefined | null): string {
               @for (p of parts(); track p.id) { <i [attr.data-part]="p.id" [style.width.%]="p.share" [title]="p.label + ': ' + fmt(p.tokens)"></i> }
             </div>
             <div class="note win">
-              <span>Finestra: {{ windowSource() }}</span>
+              <span>{{ 'Window:' | tr }} {{ windowSource() }}</span>
               @if (s.window_setting_key) { <hx-setting-link [key]="s.window_setting_key"  [title]="'Change the context window' | tr" (go)="open.set(false)" /> }
             </div>
             @if (s.over_window) {

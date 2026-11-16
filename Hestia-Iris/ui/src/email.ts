@@ -2,7 +2,7 @@
  * <iris-email> — «Email»: one look at the mailbox for all of Hestia (Hecate), Iris hands each module the mails it
  * subscribed to. Shows the watcher (last check, Gmail push), the subscriptions per module and the last deliveries.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/email';
 
@@ -10,8 +10,8 @@ function when(iso?: string | null): string {
   if (!iso) return '–';
   const d = new Date(iso);
   return d.toDateString() === new Date().toDateString()
-    ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function every(seconds?: number): string {
@@ -23,8 +23,8 @@ function rule(s: any): string {
   const parts: string[] = [];
   if (s.senders?.length) parts.push(`da ${s.senders.join(', ')}`);
   if (s.subject_contains?.length) parts.push(tr("subject with {0}", s.subject_contains.join(' / ')));
-  if (s.labels?.length) parts.push(`etichetta ${s.labels.join(', ')}`);
-  if (s.queries?.length) parts.push(`ricerche: ${s.queries.join(' · ')}`);
+  if (s.labels?.length) parts.push(tr('label {0}', s.labels.join(', ')));
+  if (s.queries?.length) parts.push(tr('searches: {0}', s.queries.join(' · ')));
   return parts.join(' · ') || tr('no rule');
 }
 
@@ -92,7 +92,7 @@ export class IrisEmail extends HestiaElement {
           <hxk-badge tone="info">${every(w.interval_seconds)}</hxk-badge>
           ${auth ? html`<hxk-badge tone="danger">${tr("Link Google again")}</hxk-badge>` : st.last_error ? html`<hxk-badge tone="danger" title=${st.last_error}>${tr("error")}</hxk-badge>` : nothing}
         </div>
-        <div class="small muted tnum">${tr("Last check")} ${when(st.last_check)} · riuscito ${when(st.last_ok)} · ${st.last_new ?? 0} ${tr("new ·")} ${st.pushed_total ?? 0} ${tr("in total")}</div>
+        <div class="small muted tnum">${tr("Last check")} ${when(st.last_check)} · ${tr("succeeded")} ${when(st.last_ok)} · ${st.last_new ?? 0} ${tr("new ·")} ${st.pushed_total ?? 0} ${tr("in total")}</div>
         ${st.last_error && !auth ? html`<div class="det">${st.last_error}</div>` : nothing}
       </div>
     </hxk-card>`;

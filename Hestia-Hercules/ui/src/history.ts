@@ -2,7 +2,7 @@
  * <hercules-history> — "Storico": every workout by month (from the local mirror, works offline).
  * <hercules-session> — one workout: sets by exercise (editable), records, feedback, repeat, delete.
  */
-import { HestiaElement, html, css, nothing, plural, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, plural, locale, tr } from '@hestia/webui-sdk';
 import { API, nowIso, uuid } from './data';
 import { LocalPage } from './templates';
 import { FEEDBACK_TAGS, SET_TYPE_LABEL, dayLabel, herculesStyles, kg, minutes, num, parseNum, setLabel, timeLabel, usesWeight } from './util';
@@ -35,7 +35,7 @@ export class HerculesHistory extends LocalPage {
     if (!r.ok) { this.host.toast(r.error || tr('Import failed'), 'danger'); return; }
     this.importing = null;
     await this.L.reset();
-    this.host.toast(tr("Imported {0}", plural(r.data.sessions, 'allenamento', 'allenamenti')), 'success');
+    this.host.toast(tr("Imported {0}", plural(r.data.sessions, 'workout', 'workouts')), 'success');
   }
   private async download(fmt: string) {
     const r = await this.host.api('GET', `${API}/export`, { query: { format: fmt } });
@@ -55,17 +55,17 @@ export class HerculesHistory extends LocalPage {
     let month = '';
     const im = this.importing;
     return html`<div class="page">
-      <div class="head"><h1>${tr("History")}</h1><span class="sub">${plural(sessions.length, 'allenamento', 'allenamenti')}</span><span class="grow"></span>
+      <div class="head"><h1>${tr("History")}</h1><span class="sub">${plural(sessions.length, 'workout', 'workouts')}</span><span class="grow"></span>
         <select class="in" .value=${this.tpl} @change=${(e: any) => (this.tpl = e.target.value)}><option value="">${tr("All tabs")}</option>${tpls.map(t => html`<option value=${t.id}>${t.name}</option>`)}</select></div>
       ${sessions.length ? html`<div class="card list">${sessions.slice(0, this.limit).map(s => {
           const d = new Date(s.started_at);
-          const m = d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+          const m = d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
           const head = m !== month ? (month = m, html`<div class="month">${m}</div>`) : nothing;
           const sm = summary(L, s);
           return html`${head}<div class="li" @click=${() => this.host.navigate('storico/' + s.id)}>
-            <div class="d small muted"><b>${d.getDate()}</b>${d.toLocaleDateString('it-IT', { weekday: 'short' })}</div>
+            <div class="d small muted"><b>${d.getDate()}</b>${d.toLocaleDateString(locale(), { weekday: 'short' })}</div>
             <div class="grow"><div class="truncate">${s.name}${s.source === 'quick' ? html` <span class="pill">${tr("recorded")}</span>` : s.source === 'import' ? html` <span class="pill">${tr("imported")}</span>` : nothing}</div>
-              <div class="small muted">${plural(sm.exercises, 'esercizio', 'esercizi')} · ${sm.sets} ${tr("sets")}${sm.volume ? ` · ${num(sm.volume)} kg` : ''}${sm.minutes ? ` · ${minutes(sm.minutes)}` : ''}</div></div>
+              <div class="small muted">${plural(sm.exercises, 'exercise', 'exercises')} · ${sm.sets} ${tr("sets")}${sm.volume ? ` · ${num(sm.volume)} kg` : ''}${sm.minutes ? ` · ${minutes(sm.minutes)}` : ''}</div></div>
             ${s.perceived_effort ? html`<span class="pill">${tr("RPE")} ${s.perceived_effort}</span>` : nothing}</div>`;
         })}
         ${sessions.length > this.limit ? html`<div class="li" @click=${() => (this.limit += 60)}><span class="link">${tr("pl::Show more")}</span></div>` : nothing}
@@ -78,10 +78,10 @@ export class HerculesHistory extends LocalPage {
           <hxk-button size="sm" variant="ghost" @click=${() => this.download('json')}>${tr("Export JSON")}</hxk-button>
         </div>
         ${im ? html`<div class="col">
-          <div><b>${im.preview.format === 'hevy' ? 'Hevy' : 'Strong'}</b>: ${plural(im.preview.workouts, 'allenamento', 'allenamenti')}, ${im.preview.sets} ${tr("sets")}
+          <div><b>${im.preview.format === 'hevy' ? 'Hevy' : 'Strong'}</b>: ${plural(im.preview.workouts, 'workout', 'workouts')}, ${im.preview.sets} ${tr("sets")}
             ${im.preview.from ? tr(" from {0} to {1}", dayLabel(im.preview.from, false), dayLabel(im.preview.to, false)) : ''}</div>
           ${(im.preview.unknown || []).length ? html`<div class="small muted">${tr("Check the matching of the exercises (the ones without a match become your own exercises):")}</div>` : nothing}
-          ${(im.preview.mapping || []).map((m: any) => html`<div class="row"><span class="grow truncate">${m.name} <span class="small muted">(${m.sets} serie)</span></span>
+          ${(im.preview.mapping || []).map((m: any) => html`<div class="row"><span class="grow truncate">${m.name} <span class="small muted">(${m.sets} ${tr("sets")})</span></span>
             <select class="in" @change=${(e: any) => (this.importing = { ...im, mapping: { ...im.mapping, [m.name]: e.target.value } })}>
               <option value="">${tr("Create «")}${m.name}»</option>${L.list('exercise').sort((a: any, b: any) => a.name.localeCompare(b.name)).map((x: any) => html`<option value=${x.id} ?selected=${im.mapping[m.name] === x.id}>${x.name}</option>`)}</select></div>`)}
           <div class="row"><hxk-button variant="primary" @click=${() => this.commit()}>${tr("Import")}</hxk-button><hxk-button variant="ghost" @click=${() => (this.importing = null)}>${tr("Cancel")}</hxk-button></div>
@@ -130,7 +130,7 @@ export class HerculesSession extends LocalPage {
   }
   private feedback(tag: string) {
     this.L.put('feedback', uuid(), { session_id: this.s.id, tags: [tag], at: nowIso(), text: '' });
-    this.host.toast(`Annotato: ${FEEDBACK_TAGS[tag]}`, 'success');
+    this.host.toast(tr('Noted: {0}', FEEDBACK_TAGS[tag]), 'success');
   }
 
   render() {
@@ -144,7 +144,7 @@ export class HerculesSession extends LocalPage {
     const prs = ((this.detail?.prs || []) as any[]).filter(p => !p.first);
     const fb = L.list('feedback').filter(f => f.session_id === s.id);
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('storico')}>‹ Storico</hxk-button><span class="grow"></span>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('storico')}>${tr('‹ History')}</hxk-button><span class="grow"></span>
         ${s.status === 'active' ? html`<hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('allenamento')}>${tr("Resume")}</hxk-button>` : nothing}
         <hxk-button variant="ghost" icon="edit" @click=${() => (this.editing = !this.editing)}>${this.editing ? tr('End') : tr('Edit')}</hxk-button></div>
       <div><h1>${s.name}</h1><div class="small muted">${dayLabel(s.started_at)} · ${timeLabel(s.started_at)}${s.ended_at ? '–' + timeLabel(s.ended_at) : ''}</div></div>

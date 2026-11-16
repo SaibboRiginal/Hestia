@@ -197,7 +197,7 @@ export class HygieiaRoutine extends HestiaElement {
       note: s.note || '', paused_until: s.paused_until || null, not_same_day_as: s.not_same_day_as || [] }));
     const r = await call(this.host, 'PUT', `${API}/routines/${this.rid}`, { body: { steps, reason: this.reason } });
     this.saving = false;
-    if (r.ok) { this.host.toast(tr("Saved{0}", r.data.version ? ' · versione ' + r.data.version : ''), 'success'); this.load(); }
+    if (r.ok) { this.host.toast(tr("Saved{0}", r.data.version ? tr(' · version {0}', r.data.version) : ''), 'success'); this.load(); }
   }
   private async undoVersion() {
     if (!await this.host.confirm(tr('alt::Back to the previous version'), tr('The steps go back to how they were before the last change (it stays in the history).'))) return;
@@ -219,7 +219,7 @@ export class HygieiaRoutine extends HestiaElement {
         <div class="ord"><button @click=${() => this.move(i, -1)} aria-label="Su">▲</button><button @click=${() => this.move(i, 1)} aria-label=${tr("Down")}>▼</button></div>
         <span class="num">${i + 1}</span>
         <div class="grow click" @click=${() => (this.edit = open ? '' : (s.id || `new${i}`))}>
-          <div class="truncate">${name}${s.optional ? html`<span class="small muted"> · facoltativo</span>` : nothing}</div>
+          <div class="truncate">${name}${s.optional ? html`<span class="small muted">${tr(' · optional')}</span>` : nothing}</div>
           <div class="small muted truncate">${[s.amount, s.wait_seconds ? `attendi ${s.wait_seconds}s` : '', s.cadence ? cadenceText(s.cadence) : '',
             paused ? tr("paused until {0}", dayLabel(s.paused_until, false)) : ''].filter(Boolean).join(' · ') || tr('every time')}</div>
         </div>
@@ -326,7 +326,7 @@ export class HygieiaRoutine extends HestiaElement {
         ${(st.history || []).length ? html`<div class="hist" title="Per ${st.per === 'month' ? 'mese' : 'settimana'}">
           ${st.history.map((h: any) => html`<div class="bar ${h.met ? 'met' : ''}" title="${dayLabel(h.start, false)}: ${h.done}${h.need ? '/' + h.need : ''}"
             style="height:${Math.max(6, Math.min(100, (h.done / Math.max(1, h.need || h.done || 1)) * 100))}%"></div>`)}</div>
-          <div class="small muted">${tr("Latest")} ${st.history.length} ${st.per === 'month' ? 'mesi' : 'settimane'}; verde = obiettivo raggiunto${st.skipped ? ` · saltata ${st.skipped} volte` : ''}</div>` : nothing}
+          <div class="small muted">${tr("Latest")} ${st.history.length} ${st.per === 'month' ? tr('months') : tr('weeks')}${tr('; green = goal reached')}${st.skipped ? tr(' · skipped {0} times', st.skipped) : ''}</div>` : nothing}
       </div>
 
       <div class="card sec">

@@ -2,13 +2,13 @@
  * <hercules-progress> — "Progressi": workouts and volume per week/month, sets per muscle group, year heatmap,
  * recent records and goals. <hercules-body> — "Corpo": bodyweight trend and body measurements (offline logging).
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, nowIso, uuid } from './data';
 import { LocalPage } from './templates';
 import { GROUP_LABEL, MEASURES, MEASURE_UNIT, dayLabel, herculesStyles, kg, minutes, num, parseNum } from './util';
 
 function periodLabel(start: string, per: string): string {
-  return per === 'month' ? new Date(start + 'T12:00:00').toLocaleDateString('it-IT', { month: 'short' }) : dayLabel(start, false);
+  return per === 'month' ? new Date(start + 'T12:00:00').toLocaleDateString(locale(), { month: 'short' }) : dayLabel(start, false);
 }
 
 export class HerculesProgress extends LocalPage {
@@ -78,7 +78,7 @@ export class HerculesProgress extends LocalPage {
       </div>
 
       <div class="card col"><div class="between"><h3>${tr("Sets per group ·")} ${this.per === 'week' ? tr('this week') : tr('this month')}</h3>
-        <span class="small muted">serie allenanti (secondari ½)</span></div>
+        <span class="small muted">${tr("working sets (secondary ½)")}</span></div>
         <div class="bars">${Object.entries(GROUP_LABEL).map(([g, l]) => {
           const v = Number(groups[g] || 0);
           return html`<div class="bar"><span>${l}</span><span class="t"><i class=${v < target / 2 ? 'low' : ''} style="width:${Math.min(100, (v / maxG) * 100)}%"></i></span><span class="tnum muted">${num(v, 1)}</span></div>`;

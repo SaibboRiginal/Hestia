@@ -2,7 +2,7 @@
  * Demeter («Alimentazione») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages and widget declared in Hestia-Demeter/app/main.py.
  */
-import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, css, definePlugin, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/food';
@@ -18,7 +18,7 @@ async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string,
 const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const shift = (iso: string, n: number) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return localDay(d); };
 const dayTitle = (iso: string) => iso === localDay() ? tr('Today') : iso === shift(localDay(), -1) ? tr('Yesterday')
-  : new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+  : new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
 
 const styles = css`
   .between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

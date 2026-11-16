@@ -17,7 +17,7 @@ function richText(text: string) {
     part.startsWith('<b>') ? html`<b>${part.slice(3, -4)}</b>` : part);
 }
 
-const MOMENTS: Record<string, string> = { sera: 'sera', mattina: 'mattina' };
+const MOMENTS: Record<string, string> = { sera: tr('evening'), mattina: tr('morning') };
 const TRIGGERS: Record<string, string> = { agenda: tr('from the calendar'), quick: tr('on request'), manual: tr('on request') };
 
 export class AthenaRecaps extends HestiaElement {

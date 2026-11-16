@@ -3,7 +3,7 @@
  * Drive, «Ripristina» on each one, «Annulla ripristino», «Esegui backup ora», «Verifica ora».
  * SPEC docs/work/2026-10-20-backup-drive §2. The texts name no module.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/backup';
 
@@ -16,7 +16,7 @@ const JOB: Record<string, string> = { backup: tr('Backup'), verify: tr('Check'),
 
 function when(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function size(n?: number): string {
@@ -134,7 +134,7 @@ export class ArchiveBackupPanel extends HestiaElement {
           <div class="t">${last ? html`${tr("Last backup")} ${when(last.created_at)}` : tr('No backup yet')}</div>
           <div class="small muted">
             ${last ? html`${size(last.size)} · ${last.uploaded ? tr('on Google Drive') : tr('waiting for Drive')}` : nothing}
-            ${ver ? html` · verifica ${ver.ok ? html`${tr("succeeded on")} ${when(ver.verified_at)}` : html`${tr("failed on")} ${when(ver.verified_at)}`}` : nothing}
+            ${ver ? html` · ${tr("check")} ${ver.ok ? html`${tr("succeeded on")} ${when(ver.verified_at)}` : html`${tr("failed on")} ${when(ver.verified_at)}`}` : nothing}
           </div>
         </div>
         <hxk-button icon="upload" ?loading=${this.busy === 'run'} ?disabled=${!!job || !st.passphrase_set}
@@ -156,7 +156,7 @@ export class ArchiveBackupPanel extends HestiaElement {
             tone=${it.verify === 'ok' ? 'success' : it.verify === 'fail' ? 'danger' : 'neutral'}></hxk-icon>
           <div class="grow"><div class="tnum">${when(it.created_at)}</div>
             <div class="small muted">${size(it.size)}${it.monthly ? ' · mensile' : ''}${it.verify === 'ok' ? html` ${tr("· verified on")} ${when(it.verified_at)}`
-              : it.verify === 'fail' ? ' · verifica fallita' : ''}</div></div>
+              : it.verify === 'fail' ? tr(' · check failed') : ''}</div></div>
           <hxk-button size="sm" variant="ghost" icon="undo" ?disabled=${!!job || !st.passphrase_set} @click=${() => this.restore(it)}>${tr("f::Restore")}</hxk-button>
         </div>`)}
       </div>

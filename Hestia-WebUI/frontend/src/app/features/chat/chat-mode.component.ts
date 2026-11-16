@@ -95,6 +95,6 @@ export class ChatModeComponent {
     if (v === this.mode()) return;
     this.mode.set(v);   // sent with the next message even if saving fails
     try { await this.api.set(MODE_KEY, v, 'session'); }
-    catch (e) { this.toast.error(apiError(e, 'Modalità non salvata per questa conversazione')); }
+    catch (e) { this.toast.error(apiError(e, tr('Mode not saved for this conversation'))); }
   }
 }

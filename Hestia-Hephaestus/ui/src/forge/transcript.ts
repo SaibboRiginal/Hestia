@@ -51,7 +51,7 @@ function brief(ev: TranscriptEvent): string {
 function stats(ev: TranscriptEvent): string {
   const m = ev.meta ?? {};
   const parts: string[] = [];
-  if (m['turns']) parts.push(`${m['turns']} turni`);
+  if (m['turns']) parts.push(tr('{0} turns', m['turns']));
   if (typeof m['cost_usd'] === 'number') parts.push(`$${(m['cost_usd'] as number).toFixed(3)}`);
   if (m['duration_ms']) parts.push(`${Math.round((m['duration_ms'] as number) / 1000)} s`);
   return parts.length ? ` · ${parts.join(' · ')}` : '';
@@ -117,7 +117,7 @@ export class HephaestusTranscript extends LitElement {
           : shape === 'write' ? html`<div class="lbl">${tr("Content")}</div><pre class="pre">${str(i['content'])}</pre>`
           : shape === 'bash' ? html`<div class="lbl">${tr("Command")}</div><pre class="pre">$ ${str(i['command'])}</pre>`
           : html`<div class="lbl">${tr("Input")}</div><pre class="pre">${json(ev.input)}</pre>`}
-        ${r.result ? html`<div class="lbl">${r.result.is_error ? tr('Error') : tr('Result')}</div><pre class="pre">${r.result.text || '(vuoto)'}</pre>` : nothing}
+        ${r.result ? html`<div class="lbl">${r.result.is_error ? tr('Error') : tr('Result')}</div><pre class="pre">${r.result.text || tr('(empty)')}</pre>` : nothing}
       </div></details>`;
   }
 

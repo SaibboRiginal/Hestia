@@ -56,7 +56,7 @@ export class WardrobeSuggest extends WardrobeElement {
     const m = this.m, res = this.res, w = res?.weather;
     const manual = this.temp !== '' || this.rain !== null;
     return html`<div class="page">
-      <div class="head"><h1>${tr("What should I wear")}</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'capo', 'capi')} ${tr("available")}</span>` : nothing}
+      <div class="head"><h1>${tr("What should I wear")}</h1>${res ? html`<span class="sub">${seasonIcon(res.season)} ${m?.seasons[res.season] || ''} · ${plural(res.available_pieces, 'garment', 'garments')} ${tr("available")}</span>` : nothing}
         <span class="grow"></span><hxk-button variant="ghost" icon="refresh" ?loading=${this.busy} @click=${() => this.load()}>${tr("More ideas")}</hxk-button></div>
       <div class="chips">${vocabOptions(m, 'occasion').map(o => html`<button class="chip" aria-pressed=${this.occasion === o.key} @click=${() => this.setOcc(o.key)}>${o.label}</button>`)}</div>
       <div class="opts">

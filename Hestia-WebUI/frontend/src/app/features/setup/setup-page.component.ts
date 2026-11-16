@@ -161,14 +161,14 @@ function store(key: string, value: string): void {
               </div>
               @if (modeTab() === 'generale') {
                 <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
-                                 homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo»."
+                                 [homeEmpty]="'No program for the models found. Install one (they are free), open it and press «Search again».' | tr"
                                  [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                  [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" [(rank)]="cloudRank">
                   <div home-extra>
                     @if (hasOllama()) {
                       @if (otherOpen() || otherModel()) {
                         <hx-field  [label]="'Another Ollama model' | tr"  [hint]="'The name as on ollama.com/library, for example qwen3:32b: Ollama downloads it.' | tr">
-                          <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
+                          <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" [placeholder]="'name:version' | tr" />
                         </hx-field>
                       } @else { <button type="button" class="link" (click)="otherOpen.set(true)">{{ "Another Ollama model" | tr }}</button> }
                     }
@@ -183,7 +183,7 @@ function store(key: string, value: string): void {
                     </label>
                     @if (modeOwn()[m.id]; as own) {
                       <app-setup-chain [homeItems]="localItems()" [home]="own.home" (homeChange)="setMode(m.id, 'home', $event)" [programs]="programs()"
-                                       homeEmpty="Nessun programma per i modelli trovato."
+                                       [homeEmpty]="'No program for the models found.' | tr"
                                        [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                        [services]="cloudRows()" [tester]="chatTester" [(ready)]="cloudReady" [(tokens)]="cloudTokens"
                                        [order]="own.order" (orderChange)="setMode(m.id, 'order', $event)"
@@ -199,9 +199,9 @@ function store(key: string, value: string): void {
               <h1>{{ "With which model does it remember?" | tr }}</h1>
               <p class="lead">{{ "It's used to find memories and documents again. Only one: if you change it later, Hestia rereads the memory." | tr }}</p>
               <app-setup-chain [single]="true" [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
-                               homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis) e premi «Cerca di nuovo», oppure scegli un servizio cloud."
+                               [homeEmpty]="'No program for the models found. Install one (they are free) and press «Search again», or choose a cloud service.' | tr"
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
-                               [services]="embedRows()" [tester]="embedTester" cloudEmpty="Nessun servizio cloud con modelli per la memoria."
+                               [services]="embedRows()" [tester]="embedTester" [cloudEmpty]="'No cloud service with models for the memory.' | tr"
                                [(order)]="embedOrder" [(picks)]="embedPicks" [(ready)]="embedReady" [(tokens)]="embedTokens" />
             }
 
@@ -328,7 +328,7 @@ function store(key: string, value: string): void {
             } @else {
               <app-setup-chain [homeItems]="voiceLocalItems(dir.id)" [home]="voiceLocalPick()[dir.id]" (homeChange)="setVoice(voiceLocalPick, dir.id, $event)"
                                [programs]="voiceCat()?.[dir.id]?.programs || []"
-                               homeEmpty="Nessun programma per la voce trovato."
+                               [homeEmpty]="'No program for the voice found.' | tr"
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)"
                                [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"

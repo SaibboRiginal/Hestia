@@ -65,7 +65,7 @@ export class ScoutListing extends HestiaElement {
   private ask() {
     const l = this.l!;
     this.host.assistant({
-      label: l.title, hints: { annuncio: l.url, prezzo: l.price ?? '', citta: l.city, mq: l.surface_m2 ?? '' },
+      label: l.title, hints: { listing: l.url, price: l.price ?? '', city: l.city, m2: l.surface_m2 ?? '' },
       suggestions: [tr('Is it worth the price compared with others in the area?'), tr('Write a message to the agency for a visit'), tr('What\'s missing in the listing?')],
     });
   }
@@ -81,7 +81,7 @@ export class ScoutListing extends HestiaElement {
       [tr('alt::Area'), l.surface_m2 ? `${num(l.surface_m2)} m²` : ''], [tr('pl::Local'), l.rooms ? String(l.rooms) : ''],
       [tr('Bedrooms'), l.bedrooms ? String(l.bedrooms) : ''], [tr('Bathrooms'), l.bathrooms ? String(l.bathrooms) : ''],
       [tr('Plan'), l.floor || ''], [tr('Year'), l.year_built ? String(l.year_built) : ''],
-      [tr('Condominium fees'), l.condo_fees ? (typeof l.condo_fees === 'number' ? `${euro(l.condo_fees)}/mese` : String(l.condo_fees)) : ''],
+      [tr('Condominium fees'), l.condo_fees ? (typeof l.condo_fees === 'number' ? tr('{0}/month', euro(l.condo_fees)) : String(l.condo_fees)) : ''],
       [tr('Warm-up'), l.heating || ''], [tr('Property state'), l.property_state || ''],
     ] as [string, string][]).filter(([, v]) => v);
     const extras = [l.elevator && tr('Lift'), l.balcony && tr('Balcony or terrace'), l.parking && tr('Garage or parking space'), ...l.features].filter(Boolean) as string[];
@@ -92,7 +92,7 @@ export class ScoutListing extends HestiaElement {
       <div class="top">
         <div class="gal">
           ${imgs.length ? html`<img class="main" src=${imgs[this.shot] ?? imgs[0]} alt="" referrerpolicy="no-referrer">
-            ${imgs.length > 1 ? html`<div class="thumbs">${imgs.map((src, i) => html`<img src=${src} alt="Foto ${i + 1}" loading="lazy"
+            ${imgs.length > 1 ? html`<div class="thumbs">${imgs.map((src, i) => html`<img src=${src} alt=${tr("Photo {0}", i + 1)} loading="lazy"
                 referrerpolicy="no-referrer" class=${i === this.shot ? 'on' : ''} @click=${() => this.shot = i}>`)}</div>` : nothing}`
             : html`<div class="noimg"><hxk-icon name="home" size="40"></hxk-icon></div>`}
         </div>

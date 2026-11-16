@@ -1,5 +1,5 @@
 /** Hygieia UI helpers: API calls, labels, formatting and shared styles of pages and widgets. */
-import { css, html, tr } from '@hestia/webui-sdk';
+import { css, html, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod, Tone } from '@hestia/webui-sdk';
 
 export const API = '/api/selfcare';
@@ -72,12 +72,12 @@ export function dayLabel(iso: string | null | undefined, withWeekday = true): st
   if (ld === today()) return tr('Today');
   if (ld === addDays(today(), -1)) return tr('Yesterday');
   if (ld === addDays(today(), 1)) return tr('Tomorrow');
-  return d.toLocaleDateString('it-IT', withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
+  return d.toLocaleDateString(locale(), withWeekday ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
 }
 export function relDays(iso: string | null | undefined): string {
   if (!iso) return 'mai';
   const days = Math.round((Date.parse(today() + 'T12:00:00') - Date.parse(iso.slice(0, 10) + 'T12:00:00')) / 86400000);
-  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} days ago", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
+  return days <= 0 ? tr('today') : days === 1 ? tr('yesterday') : days < 14 ? tr("{0} days ago", days) : days < 60 ? tr('{0} weeks ago', Math.round(days / 7)) : tr('{0} months ago', Math.round(days / 30));
 }
 export function inDays(n: number | null | undefined): string {
   if (n === null || n === undefined) return '';
@@ -87,7 +87,7 @@ export function inDays(n: number | null | undefined): string {
 }
 export function money(x: number | null | undefined, currency = 'EUR'): string {
   if (x === null || x === undefined) return '–';
-  return Number(x).toLocaleString('it-IT', { style: 'currency', currency });
+  return Number(x).toLocaleString(locale(), { style: 'currency', currency });
 }
 export function secs(s: number): string {
   const v = Math.max(0, Math.round(s));
@@ -101,7 +101,8 @@ export function cadenceText(c: any): string {
   if (c.mode === 'as_needed') return tr('When it happens');
   if (c.mode === 'fixed_days') return (c.days || []).length ? tr('Every ') + c.days.map((d: number) => WEEKDAYS[d].toLowerCase()).join(', ') : tr('Fixed days');
   const t = c.times || 1;
-  return tr("At least {0} {1} a{2}", t, t === 1 ? 'volta' : 'volte', c.per === 'month' ? 'l mese' : ' settimana');
+  if (c.per === 'month') return t === 1 ? tr('At least once a month') : tr('At least {0} times a month', t);
+  return t === 1 ? tr('At least once a week') : tr('At least {0} times a week', t);
 }
 
 export function search(items: any[], q: string, fields: (it: any) => string): any[] {

@@ -39,7 +39,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
         <div class="proposal">
           <hx-icon name="sparkle" [size]="16" />
           <div class="hx-grow">
-            <div class="pt">{{ proposer(p) }} propone: <b>{{ labelOf(p) }}</b> → <b>{{ proposedValue(p) }}</b></div>
+            <div class="pt">{{ '{0} proposes:' | tr: proposer(p) }} <b>{{ labelOf(p) }}</b> → <b>{{ proposedValue(p) }}</b></div>
             @if (p.reason) { <div class="pd">{{ p.reason }}</div> }
           </div>
           <button hx-btn size="sm" variant="primary" icon="check" (click)="store.decide(p, true)">{{ "Approve" | tr }}</button>
@@ -89,7 +89,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
         @if (store.restartNeeded().length) {
           <div class="hx-notices"><div class="hx-notice" data-level="warning"><hx-icon name="refresh" [size]="15" />
             <span class="nt">{{ "Restart needed" | tr }}</span>
-            <span class="nd">{{ store.restartNeeded().length === 1 ? ('1 saved value applies' | tr) : store.restartNeeded().length + ' valori salvati valgono' }} {{ "from the next module restart." | tr }}</span></div></div>
+            <span class="nd">{{ store.restartNeeded().length === 1 ? ('1 saved value applies' | tr) : ('{0} saved values apply' | tr: store.restartNeeded().length) }} {{ "from the next module restart." | tr }}</span></div></div>
         }
 
         @if (store.loading() && !store.items().length) { <div class="center"><hx-spinner /></div> }

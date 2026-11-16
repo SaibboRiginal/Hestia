@@ -559,7 +559,7 @@ export class TransferSettingsComponent implements OnInit {
       this.reportDone.set(true);
       this.toast.success(tr('Import completed'));
     } catch (e) {
-      this.toast.error(apiError(e, 'Importazione non riuscita: puoi tornare indietro da «Ripristino»'));
+      this.toast.error(apiError(e, tr('Import failed: you can go back from «Restore»')));
     } finally { this.busy.set(''); }
   }
 

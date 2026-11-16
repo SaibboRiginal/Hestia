@@ -51,7 +51,7 @@ export class AthenaSignals extends HestiaElement {
     return html`<div class="sig">
       <hxk-icon name=${sev.icon} style=${`color:var(--${sev.tone === 'neutral' ? 'text-3' : sev.tone})`}></hxk-icon>
       <div class="grow"><div>${s.text}</div>
-        <div class="small muted">${area(s.domain)} · ${sev.label} · aggiornato ${ago(s.updated_at)}</div></div>
+        <div class="small muted">${area(s.domain)} · ${sev.label} · ${tr("updated {0}", ago(s.updated_at))}</div></div>
       ${s.page ? html`<hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.open(s)}>${tr("Open")}</hxk-button>` : nothing}
     </div>`;
   }

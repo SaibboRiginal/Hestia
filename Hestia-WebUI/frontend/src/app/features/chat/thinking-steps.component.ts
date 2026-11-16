@@ -90,7 +90,7 @@ export class ThinkingStepsComponent {
     if (s.type === 'tool_call') return tr("Usage {0}", s.tool);
     if (s.type === 'tool_result') {
       const n = s.metadata?.result_count, ms = s.metadata?.duration_ms;
-      return `${s.tool}: ${s.metadata?.ok ? 'ok' : 'errore'}${n ? ` · ${n} risultati` : ''}${ms ? ` · ${ms} ms` : ''}`;
+      return `${s.tool}: ${s.metadata?.ok ? 'ok' : tr('error')}${n ? tr(' · {0} results', n) : ''}${ms ? ` · ${ms} ms` : ''}`;
     }
     const text = s.content || '';
     return this.full() ? text : text.split('\n')[0].slice(0, 300);

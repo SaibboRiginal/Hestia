@@ -5,7 +5,7 @@
  * Reads GET /api/argus/performance and /api/argus/performance/history. Dossier 2026-10-24-tutto-brainstorm-cindy
  * D16 + Cindy 25 (W3) + W7.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/argus';
 const METRICS = [{ id: 'mem_mb', label: tr('Memory'), unit: 'MB' }, { id: 'cpu', label: tr('Processor'), unit: '%' },
@@ -16,7 +16,7 @@ function bytes(n?: number | null): string {
   const u = ['B', 'KB', 'MB', 'GB', 'TB'];
   let i = 0, v = Number(n);
   while (Math.abs(v) >= 1024 && i < u.length - 1) { v /= 1024; i++; }
-  return `${v.toLocaleString('it-IT', { maximumFractionDigits: i >= 2 ? 1 : 0 })} ${u[i]}`;
+  return `${v.toLocaleString(locale(), { maximumFractionDigits: i >= 2 ? 1 : 0 })} ${u[i]}`;
 }
 
 function uptime(s?: number | null): string {
@@ -26,7 +26,7 @@ function uptime(s?: number | null): string {
   return `${Math.round(s / 86400)} g`;
 }
 
-const num = (v: any, d = 0) => (v === null || v === undefined ? '–' : Number(v).toLocaleString('it-IT', { maximumFractionDigits: d }));
+const num = (v: any, d = 0) => (v === null || v === undefined ? '–' : Number(v).toLocaleString(locale(), { maximumFractionDigits: d }));
 
 export class ArgusPerformance extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, error: { state: true },
@@ -84,7 +84,7 @@ export class ArgusPerformance extends HestiaElement {
     const m = METRICS.find(x => x.id === this.metric) || METRICS[0];
     const step = Math.max(1, Math.ceil(rows.length / 48));
     const pts = rows.filter((_, i) => i % step === 0);
-    const labels = pts.map(p => new Date(p.at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }));
+    const labels = pts.map(p => new Date(p.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }));
     return html`<hxk-chart type="line" .labels=${labels} unit=${m.unit}
       .series=${[{ name: m.label, values: pts.map(p => Number(p[m.id]) || 0) }]}></hxk-chart>`;
   }
@@ -99,7 +99,7 @@ export class ArgusPerformance extends HestiaElement {
     const dbOver = st && t.database_gb && st.database_bytes > t.database_gb * 1024 ** 3;
     const growOver = st && t.growth_mb_day && (st.growth_day_bytes || 0) > t.growth_mb_day * 1024 ** 2;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Performance")}</h1><span class="sub">${d.at ? tr("Last check {0}", new Date(d.at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })) : tr('No check yet')}</span></div>
+      <div class="head"><h1>${tr("Performance")}</h1><span class="sub">${d.at ? tr("Last check {0}", new Date(d.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })) : tr('No check yet')}</span></div>
       <div class="stats">
         <div class="stat"><span class="small muted">${tr("Round trip through the hub")}</span><b>${num(d.hub_ms)} ms</b></div>
         <div class="stat"><span class="small muted">${tr("Database")}</span><b style=${dbOver ? 'color:var(--danger)' : ''}>${bytes(st?.database_bytes)}</b>
@@ -116,7 +116,7 @@ export class ArgusPerformance extends HestiaElement {
           <td class=${t.cpu_percent && m.cpu > t.cpu_percent ? 'over' : ''}>${num(m.cpu, 1)}%</td>
           <td class=${t.response_ms && m.ms > t.response_ms ? 'over' : ''}>${num(m.ms)} ms</td>
           <td>${uptime(m.uptime_s)}</td><td>${num(m.restarts)}</td></tr>`)}</tbody></table>
-        <div class="small muted" style="margin-top:6px">${tr("Limits: memory")} ${num(t.memory_mb)} ${tr("MB, processor")} ${num(t.cpu_percent)}%, risposta ${num(t.response_ms)} ${tr("ms. Beyond the limit a notice arrives.")}</div>
+        <div class="small muted" style="margin-top:6px">${tr("Limits: memory")} ${num(t.memory_mb)} ${tr("MB, processor")} ${num(t.cpu_percent)}%, ${tr("response")} ${num(t.response_ms)} ${tr("ms. Beyond the limit a notice arrives.")}</div>
       </div>` : html`<hxk-state kind="empty" text=${tr("No data: memory and processor need read access to Docker.")}></hxk-state>`}
       ${this.pick ? html`<div class="card col">
         <div class="row wrap"><b>${this.pick.replace(/^hestia[-_]/, '')}</b><span class="small muted">${tr("last 24 hours")}</span><span class="grow"></span>

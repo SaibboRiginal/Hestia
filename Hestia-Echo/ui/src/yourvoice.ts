@@ -125,12 +125,12 @@ export class EchoYourVoice extends HestiaElement {
         <div class="mic">
           <button class=${this.recording ? 'on' : ''} @click=${() => this.toggle()} aria-label=${this.recording ? tr('Stop and save') : tr('f::Log')}>
             <hxk-icon name=${this.recording ? 'stop' : 'mic'} size=${26}></hxk-icon></button>
-          <span class="small muted">${this.recording ? tr("I'm listening… {0} s{1}", Math.floor(this.elapsed), this.elapsed < MIN_SECONDS ? ` (almeno ${MIN_SECONDS})` : ', tocca per salvare')
+          <span class="small muted">${this.recording ? tr("I'm listening… {0} s{1}", Math.floor(this.elapsed), this.elapsed < MIN_SECONDS ? tr(' (at least {0})', MIN_SECONDS) : tr(', tap to save'))
             : this.busy === 'enroll' ? tr('Saving the voice print…') : p.enrolled ? tr('Tap to record it again') : tr('Tap and read the sentence')}</span>
         </div>
         ${p.enrolled ? html`<hxk-button variant="ghost" icon="trash" ?loading=${this.busy === 'forget'} @click=${() => this.forget()}>${tr("Remove the voiceprint")}</hxk-button>` : nothing}
       </hxk-card>
-      <hxk-card heading=${tr("Your dictionary")} subtitle=${`${this.words?.confirmed ?? 0} parole sicure`}>
+      <hxk-card heading=${tr("Your dictionary")} subtitle=${tr('{0} sure words', this.words?.confirmed ?? 0)}>
         <div class="small muted">${tr("Names and words the listening engines must expect. When you fix a transcription I learn the new words: after")} ${needed} ${tr("times they become safe.")}</div>
         <div style="margin-top:8px">${items.length ? items.map(d => html`<div class="w">
           <span class="grow">${d.word}</span>

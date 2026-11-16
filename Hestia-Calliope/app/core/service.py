@@ -22,7 +22,7 @@ MAX_HTML = 200_000
 
 
 def filename(title: str, ext: str) -> str:
-    slug = re.sub(r"[^\w\- ]+", "", title, flags=re.U).strip().replace(" ", "-")[:60] or "documento"
+    slug = re.sub(r"[^\w\- ]+", "", title, flags=re.U).strip().replace(" ", "-")[:60] or "document"
     return f"{slug}.{ext}"
 
 

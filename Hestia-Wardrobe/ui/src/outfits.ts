@@ -132,7 +132,7 @@ export class WardrobeOutfits extends WardrobeElement {
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, occasion: e.target.value }; this.load(); }}>
           <option value="">${tr("Any occasion")}</option>${vocabOptions(m, 'occasion').map(o => html`<option value=${o.key} ?selected=${this.f.occasion === o.key}>${o.label}</option>`)}</select>
         <select class="in" @change=${(e: any) => { this.f = { ...this.f, sort: e.target.value }; this.load(); }}>
-          ${Object.entries({ favorites: 'Preferiti prima', recent: 'Creati di recente', least_recent: 'Messi meno di recente', worn: 'Più messi', rating: 'Voto', name: 'Nome' })
+          ${Object.entries({ favorites: tr('Favourites first'), recent: tr('Recently created'), least_recent: tr('Least recently worn'), worn: tr('Most worn'), rating: tr('Rating'), name: tr('Name') })
             .map(([k, v]) => html`<option value=${k} ?selected=${this.f.sort === k}>${v}</option>`)}</select>
       </div>
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty"
@@ -143,7 +143,7 @@ export class WardrobeOutfits extends WardrobeElement {
           ${!o.complete ? html`<hxk-badge class="badge" tone="warning">${tr("to review")}</hxk-badge>` : !o.available ? html`<hxk-badge class="badge" tone="info">${tr("not available")}</hxk-badge>` : nothing}
           <hxk-button class="today" size="sm" variant=${o.last_worn === today ? 'primary' : 'default'} icon="check" title=${tr("Worn today")}
             @click=${(e: Event) => { e.stopPropagation(); markWorn(this.host, o, '', () => this.load()); }}>${o.last_worn === today ? tr('Today') : ''}</hxk-button>
-          <div class="tx"><span class="nm">${o.name}</span><span class="small muted truncate">${plural(o.pieces.length, 'capo', 'capi')}${o.last_worn ? ' · ' + relDays(o.last_worn) : ''}</span></div>
+          <div class="tx"><span class="nm">${o.name}</span><span class="small muted truncate">${plural(o.pieces.length, 'garment', 'garments')}${o.last_worn ? ' · ' + relDays(o.last_worn) : ''}</span></div>
         </div>`)}</div>`}
     </div>`;
   }
@@ -205,8 +205,8 @@ export class WardrobeOutfit extends WardrobeElement {
       <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('outfit')}>‹ Outfit</hxk-button></div>
       <div class="between"><div class="grow"><input class="in" style="font-size:20px;font-weight:650;width:100%;background:transparent;border-color:transparent"
           .value=${o.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })}>
-          <div class="small muted" style="padding-left:10px">${o.wear_count ? tr("recorded {0} times · last {1}", o.wear_count, relDays(o.last_worn)) : tr('never recorded')}${o.source === 'assistant' ? ' · proposto dall\'assistente' : ''}</div></div>
-        <button class="chip" aria-pressed=${!!o.favorite} title=${tr("Favourite (appears in Home)")} @click=${() => this.patch({ favorite: !o.favorite }, o.favorite ? '' : 'Tra i preferiti: lo trovi nella Home')}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
+          <div class="small muted" style="padding-left:10px">${o.wear_count ? tr("recorded {0} times · last {1}", o.wear_count, relDays(o.last_worn)) : tr('never recorded')}${o.source === 'assistant' ? tr(' · proposed by the assistant') : ''}</div></div>
+        <button class="chip" aria-pressed=${!!o.favorite} title=${tr("Favourite (appears in Home)")} @click=${() => this.patch({ favorite: !o.favorite }, o.favorite ? '' : tr('In the favourites: you find it in Home'))}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
       ${!o.complete ? html`<div class="card" style="border-color:var(--warning)">${tr("Some items are no longer there or were given away: edit the items of the outfit.")}</div>` : nothing}
       <div class="row wrap">
         <hxk-button variant=${wornToday ? 'default' : 'primary'} icon="check" @click=${() => markWorn(this.host, o, '', () => this.load())}>${tr("Worn today")}</hxk-button>

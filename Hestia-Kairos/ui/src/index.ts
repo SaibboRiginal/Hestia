@@ -2,7 +2,7 @@
  * Kairos («Scadenze») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages and widget declared in Hestia-Kairos/app/main.py.
  */
-import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, css, definePlugin, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/deadlines';
@@ -14,8 +14,8 @@ async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string,
   if (!r.ok && method !== 'GET') host.toast(r.status === 0 ? tr('Not reachable, try again') : r.error || tr('Error'), 'warning');
   return r;
 }
-const money = (x: number | null | undefined) => x === null || x === undefined ? '' : Number(x).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
-const dayLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+const money = (x: number | null | undefined) => x === null || x === undefined ? '' : Number(x).toLocaleString(locale(), { style: 'currency', currency: 'EUR' });
+const dayLabel = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 const when = (n: number) => n < 0 ? tr("expired {0} d ago", -n) : n === 0 ? 'oggi' : n === 1 ? 'domani' : tr("in {0} days", n);
 const tone = (n: number, lead: number) => n < 0 ? 'danger' : n <= Math.min(lead, 7) ? 'warning' : 'neutral';
 

@@ -104,9 +104,9 @@ export class AphroditeLook extends HestiaElement {
           <hxk-field type="bool" label=${tr("Automatic themes")} .value=${n.auto} @change=${(e: any) => this.choose({ auto: e.detail })}></hxk-field></div>
         <div class="row">${p.palette.accent ? html`<span class="sw" style="background:${p.palette.accent}"></span>` : nothing}
           ${p.palette.accent2 ? html`<span class="sw" style="background:${p.palette.accent2}"></span>` : nothing}
-          <span class="small muted">Effetto: ${EFFECT[p.effect] || p.effect}</span></div>
+          <span class="small muted">${tr("Effect:")} ${EFFECT[p.effect] || p.effect}</span></div>
         ${p.background ? html`<img class="bg" src=${this.host.image(`${API}/image/${p.background}`)} alt="">` : nothing}
-        ${this.soon.length ? html`<div class="small muted">Prossimi: ${this.soon.map(s => `${ddmm(s.date)} ${s.why}`).join(' · ')}</div>` : nothing}
+        ${this.soon.length ? html`<div class="small muted">${tr("Next:")} ${this.soon.map(s => `${ddmm(s.date)} ${s.why}`).join(' · ')}</div>` : nothing}
       </div>
       <div class="card col">
         <div class="between"><h3>${tr("Pet")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.petDraft = { species: 'gatto' }; }}>${tr("New")}</hxk-button></div>
@@ -118,7 +118,7 @@ export class AphroditeLook extends HestiaElement {
             <hxk-field label=${tr("What it's like")} placeholder=${tr("E.g. orange, green eyes")} .value=${this.petDraft.look || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, look: e.detail }; }}></hxk-field></div>
           <div class="row"><hxk-button variant="primary" @click=${() => this.savePet()}>${tr("Create")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.petDraft = null; }}>${tr("Cancel")}</hxk-button></div>` : nothing}
         ${this.pets.map(x => html`<div class="pet"><div class="grow"><div>${x.name}</div><div class="small muted">${x.species}${x.look ? ` · ${x.look}` : ''}</div></div>
-          ${Object.keys(POSE).map(pose => html`<div class="pose" title="${POSE[pose]}: tocca per caricare una tua immagine" @click=${() => this.uploadPose(x, pose)}>
+          ${Object.keys(POSE).map(pose => html`<div class="pose" title="${tr("{0}: tap to upload a picture of you", POSE[pose])}" @click=${() => this.uploadPose(x, pose)}>
             ${x.images?.[pose] ? html`<img src=${this.host.image(`${API}/image/${x.images[pose]}`)} alt=${POSE[pose]}>` : POSE[pose]}</div>`)}
           <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.regenerate('pet', x.id)}></hxk-button>
           <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete the pet?'), x.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/pets/${x.id}`); this.load(); } }}></hxk-button></div>`)}

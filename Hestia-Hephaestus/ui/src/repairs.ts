@@ -72,10 +72,10 @@ export class HephaestusRepairs extends HestiaElement {
       <div class="kv">
         <span>${tr("Runbook")}</span><span>${rb ? html`<b>${rb.title}</b> · ${rb.summary}` : t.runbook_id || '–'}</span>
         <span>${tr("Consent required")}</span><span>${rb ? CONSENT[rb.consent_tier] || rb.consent_tier : '–'}</span>
-        <span>${tr("Try (dry-run)")}</span><span>${t.dry_run ? tr('yes, no real change') : 'no, esecuzione reale'}</span>
+        <span>${tr("Try (dry-run)")}</span><span>${t.dry_run ? tr('yes, no real change') : tr('no, real run')}</span>
         <span>${tr("Environment")}</span><span>${t.environment || '–'}</span>
         <span>${tr("Severity")}</span><span>${t.severity || '–'}</span>
-        <span>${tr("Origin")}</span><span>${t.source || '–'}${t.auto_approve ? ' · auto-approvazione richiesta' : ''}</span>
+        <span>${tr("Origin")}</span><span>${t.source || '–'}${t.auto_approve ? tr(' · auto-approval requested') : ''}</span>
         <span>${tr("Attempts")}</span><span>${t.attempts ?? 1}</span>
         <span>${tr("It can be undone")}</span><span>${t.undoable ? tr('yes, changed data is restored') : tr('no, it did not change data to restore')}</span>
         ${t.rollback_result ? html`<span>${tr("Undo")}</span><span>${UNDO[t.rollback_result.status] || t.rollback_result.status}</span>` : nothing}

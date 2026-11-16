@@ -4,7 +4,7 @@
  * personal settings. Reads GET /api/agenda/special; POST /api/agenda/special; DELETE /api/agenda/special/{key}.
  * Dossier 2026-10-24-tutto-brainstorm-cindy B6 (W2) + W7.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 const KINDS = [{ value: 'birthday', label: tr('Birthday') }, { value: 'anniversary', label: tr('Anniversary') },
@@ -15,7 +15,7 @@ const SOURCE: Record<string, string> = { utente: '', persone: tr('from People'),
 
 function dayLabel(iso?: string | null): string {
   if (!iso) return '';
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'long' });
+  return new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'long' });
 }
 
 function inDays(n: number | null): string {
@@ -76,7 +76,7 @@ export class ChronosSpecial extends HestiaElement {
     const r = await this.host.api('DELETE', `${API}/special/${encodeURIComponent(s.key)}`);
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('Not removed'), 'danger'); return; }
-    this.host.toast(`${s.title}: tolto`, 'success');
+    this.host.toast(tr('{0}: removed', s.title), 'success');
     this.load();
   }
 

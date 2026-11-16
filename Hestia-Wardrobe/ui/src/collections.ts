@@ -43,11 +43,11 @@ export class WardrobeCollections extends WardrobeElement {
           <label class="row small">${tr("From")} <input class="in" type="date" .value=${t.from} @change=${(e: any) => (this.trip = { ...t, from: e.target.value })}></label>
           <label class="row small">Al <input class="in" type="date" .value=${t.to} min=${t.from} @change=${(e: any) => (this.trip = { ...t, to: e.target.value })}></label>
           <select class="in" @change=${(e: any) => (this.trip = { ...t, occasion: e.target.value })}><option value="">${tr("Occasion…")}</option>${vocabOptions(m, 'occasion').map(o => html`<option value=${o.key}>${o.label}</option>`)}</select>
-          <input class="in" inputmode="decimal" placeholder="Temperatura °C (vuoto = previsione)" .value=${t.temp_c} @input=${(e: any) => (this.trip = { ...t, temp_c: e.target.value })}>
+          <input class="in" inputmode="decimal" placeholder=${tr("Temperature °C (empty = forecast)")} .value=${t.temp_c} @input=${(e: any) => (this.trip = { ...t, temp_c: e.target.value })}>
           <label class="row small"><input type="checkbox" .checked=${!!t.rain} .indeterminate=${t.rain === null} @change=${(e: any) => (this.trip = { ...t, rain: e.target.checked })}> ${tr("rain")}${t.rain === null ? tr(' (from the forecast)') : ''}</label>
         </div><div class="row"><hxk-button variant="primary" icon="sparkle" ?loading=${this.busy} @click=${() => this.pack()}>${tr("Suggest what to bring")}</hxk-button>
           <span class="small muted">${tr("One outfit a day from the available items; then you edit it.")}</span></div></div>` : nothing}
-      ${c ? html`<div class="card row wrap"><input class="in grow" placeholder="Nome (es. Capsule estate)" .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}>
+      ${c ? html`<div class="card row wrap"><input class="in grow" placeholder=${tr("Name (e.g. Summer capsule)")} .value=${c.name} @input=${(e: any) => (this.creating = { ...c, name: e.target.value })}>
           <select class="in" @change=${(e: any) => (this.creating = { ...c, type: e.target.value })}>${Object.entries(m?.collection_types || {}).filter(([k]) => k !== 'packing').map(([k, v]) => html`<option value=${k} ?selected=${c.type === k}>${v}</option>`)}</select>
           <hxk-button variant="primary" @click=${() => this.create()}>${tr("Create")}</hxk-button></div>` : nothing}
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty" text=${tr("No list. Pack a suitcase or create a capsule.")}></hxk-state>` : html`
@@ -113,7 +113,7 @@ export class WardrobeCollection extends WardrobeElement {
     let pcs = this.pieces || [];
     if (this.q) { const w = norm(this.q); pcs = pcs.filter(p => norm(p.name).includes(w)); }
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('liste')}>‹ Liste</hxk-button><span class="grow"></span>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('liste')}>${tr('‹ Lists')}</hxk-button><span class="grow"></span>
         <hxk-badge>${c.type_label}</hxk-badge><span class="small muted">${c.progress.checked}/${c.progress.total} ${tr("ready")}</span></div>
       <input class="in" style="font-size:20px;font-weight:650;background:transparent;border-color:transparent" .value=${c.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })}>
       ${c.outfits.length ? html`<div class="card col"><h3>${tr("Outfit")}</h3><div class="list">${c.outfits.map((o: any) => html`<div class="li ${checked.has(o.id) ? 'done' : ''}">

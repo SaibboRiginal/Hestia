@@ -1,5 +1,5 @@
 /** Wardrobe UI helpers: API calls, meta cache, labels, photo URLs and shared styles. */
-import { HestiaElement, css, html, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, css, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 export const API = '/api/wardrobe';
@@ -50,15 +50,15 @@ export function dayLabel(iso?: string | null): string {
   const t = localDay(), y = localDay(new Date(Date.now() - 86400000));
   if (iso.slice(0, 10) === t) return tr('Today');
   if (iso.slice(0, 10) === y) return tr('Yesterday');
-  return new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+  return new Date(iso.slice(0, 10) + 'T12:00:00').toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' });
 }
 export function relDays(iso?: string | null): string {
   if (!iso) return tr('never recorded');
   const days = Math.round((Date.parse(localDay() + 'T12:00:00') - Date.parse(iso.slice(0, 10) + 'T12:00:00')) / 86400000);
-  return days <= 0 ? 'oggi' : days === 1 ? 'ieri' : days < 14 ? tr("{0} days ago", days) : days < 60 ? `${Math.round(days / 7)} settimane fa` : `${Math.round(days / 30)} mesi fa`;
+  return days <= 0 ? tr('today') : days === 1 ? tr('yesterday') : days < 14 ? tr("{0} days ago", days) : days < 60 ? tr('{0} weeks ago', Math.round(days / 7)) : tr('{0} months ago', Math.round(days / 30));
 }
 export const money = (v: number | null | undefined, cur = 'EUR') =>
-  v === null || v === undefined ? '–' : new Intl.NumberFormat('it-IT', { style: 'currency', currency: cur || 'EUR', maximumFractionDigits: v % 1 ? 2 : 0 }).format(v);
+  v === null || v === undefined ? '–' : new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || 'EUR', maximumFractionDigits: v % 1 ? 2 : 0 }).format(v);
 
 export const norm = (s: string) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 

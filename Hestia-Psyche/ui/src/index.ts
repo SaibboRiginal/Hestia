@@ -145,7 +145,7 @@ export class PsycheMood extends HestiaElement {
       <div class="card col"><h3>${tr("alt::Items")}</h3>
         ${(this.hist?.items || []).length ? this.hist.items.slice(0, 40).map((r: any) => html`<div class="entry">
             <hxk-icon name=${level(r.mood).icon} tone=${level(r.mood).tone} size="20"></hxk-icon>
-            <div class="grow"><div>${r.mood}/5 · ${r.mood_word}${r.energy ? html` <span class="muted small">· energia ${r.energy}/5</span>` : nothing}${r.labels?.length ? html` <span class="muted small">· ${r.labels.join(', ')}</span>` : nothing}</div>
+            <div class="grow"><div>${r.mood}/5 · ${r.mood_word}${r.energy ? html` <span class="muted small">· ${tr("energy")} ${r.energy}/5</span>` : nothing}${r.labels?.length ? html` <span class="muted small">· ${r.labels.join(', ')}</span>` : nothing}</div>
               ${r.quote ? html`<div class="small quote">«${r.quote}»</div>` : nothing}
               ${r.note ? html`<div class="small">${r.note}</div>` : nothing}
               <div class="small muted"><hxk-icon name=${(SOURCES[r.source] || SOURCES.webui).icon} size="12"></hxk-icon> ${ddmm(r.date)} ${hhmm(r.at)} · ${(SOURCES[r.source] || SOURCES.webui).label}</div></div>

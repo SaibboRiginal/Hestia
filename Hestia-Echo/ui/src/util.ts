@@ -1,4 +1,4 @@
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 /** Helpers shared by the Voce page: API prefix, labels, audio in the browser (play base64, record the mic). */
 export const API = '/api/voice';
 
@@ -37,8 +37,8 @@ export function when(iso: string | null | undefined): string {
   if (!iso) return '–';
   const d = new Date(iso);
   const today = new Date().toDateString() === d.toDateString();
-  return today ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return today ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function money(eur: number | null | undefined): string {

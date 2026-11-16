@@ -116,7 +116,7 @@ export class SetupApi {
 export function setupError(e: any): string {
   if (e?.status === 0) return tr('Hestia doesn\'t answer: check that it\'s on.');
   const d = e?.error?.detail;
-  if (typeof d === 'string' && d) return d.replace(/^\d+$/, 'Qualcosa non ha funzionato.');
+  if (typeof d === 'string' && d) return d.replace(/^\d+$/, tr('Something did not work.'));
   if (Array.isArray(d)) return tr('Check the value entered.');
   return tr('Something didn\'t work, try again shortly.');
 }

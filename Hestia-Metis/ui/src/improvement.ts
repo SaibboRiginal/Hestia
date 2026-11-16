@@ -7,7 +7,7 @@
  * to download, with names and contacts hidden (default) or in clear: the owner picks at each export.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Every path is under the api_prefix /api/metis/.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/metis';
 
@@ -23,7 +23,7 @@ function when(iso?: string | null): string {
   if (!iso) return '–';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '–';
-  return d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+  return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 const pct = (x: number) => `${Math.round((Number(x) || 0) * 100)}%`;
@@ -97,7 +97,7 @@ export class MetisImprovement extends HestiaElement {
           ${(w.samples || []).map((s: any) => html`<div class="sample">
             ${s.user ? html`<div><span class="muted">Tu:</span> ${s.user}</div>` : nothing}
             ${s.assistant ? html`<div><span class="muted">Hestia:</span> ${s.assistant}</div>` : nothing}
-            ${s.note ? html`<div class="muted">Nota: ${s.note}</div>` : nothing}</div>`)}
+            ${s.note ? html`<div class="muted">${tr("Note:")} ${s.note}</div>` : nothing}</div>`)}
         </div>`)
         : html`<hxk-state kind="empty" text=${tr("No weak point: no negative rating.")}></hxk-state>`}
       <p class="note">${tr("Athena uses these weak points to propose improvements (Forge).")}</p>
@@ -161,7 +161,7 @@ export class MetisImprovement extends HestiaElement {
         { label: tr('Last 7 days'), value: t.traces_7d ?? 0 },
         { label: tr('Signals'), value: t.signals ?? 0 },
       ]}></hxk-stat>
-      <p class="note">${tr("Last")} ${when(t.last_at)} · tenuti ${t.keep_days} ${tr("days. A conversation excluded from history («Don't use for training») or deleted does not stay here.")}</p>
+      <p class="note">${tr("Last")} ${when(t.last_at)} · ${tr("kept")} ${t.keep_days} ${tr("days. A conversation excluded from history («Don't use for training») or deleted does not stay here.")}</p>
     </hxk-card>`;
   }
 
@@ -171,11 +171,11 @@ export class MetisImprovement extends HestiaElement {
     const items = r.items || [];
     return html`<hxk-card heading=${tr("To review")} subtitle=${tr("Night corrections the reviewer is not sure about")}>
       ${items.length ? items.map((x: any) => html`<div class="item">
-        <div class="top"><div class="grow small muted">${when(x.at)}${x.reasons?.length ? ` · regole ${x.reasons.join(', ')}` : ''}</div>
+        <div class="top"><div class="grow small muted">${when(x.at)}${x.reasons?.length ? tr(' · rules {0}', x.reasons.join(', ')) : ''}</div>
           <hxk-badge tone=${x.needs_owner ? 'warning' : 'info'}>${x.needs_owner ? tr('needs you') : pct(x.confidence)}</hxk-badge></div>
         <div class="sample"><div><span class="muted">Tu:</span> ${x.user}</div>
           <div class=${x.fixed ? 'was' : ''}><span class="muted">Hestia:</span> ${x.answer}</div>
-          ${x.fixed ? html`<div><span class="muted">Corretta:</span> ${x.fixed}</div>` : nothing}
+          ${x.fixed ? html`<div><span class="muted">${tr("Fixed:")}</span> ${x.fixed}</div>` : nothing}
           ${x.remove?.length ? html`<div class="muted">${tr("To remove:")} ${x.remove.join(', ')}</div>` : nothing}</div>
         ${this.editing === x.trace_id ? html`<textarea placeholder=${tr("The right answer")} .value=${this.draft}
             @input=${(e: Event) => { this.draft = (e.target as HTMLTextAreaElement).value; }}></textarea>
@@ -213,8 +213,8 @@ export class MetisImprovement extends HestiaElement {
         return html`<div class="item">
           <div class="top"><div class="grow"><b>${x.adapter_name || x.dataset_name || x.job_id}</b></div><hxk-badge tone=${st.tone}>${st.label}</hxk-badge></div>
           <div class="small muted">${"dataset"} ${x.dataset_name || '–'}${x.base_model ? ` · base ${x.base_model}` : ''}
-            ${tr("· asked by")} ${x.requested_by || '–'}${x.status === 'scheduled' && x.start_at ? ` · parte ${when(x.start_at)}` : ''}
-            · aggiornato ${when(x.updated_at)}</div>
+            ${tr("· asked by")} ${x.requested_by || '–'}${x.status === 'scheduled' && x.start_at ? tr(' · starts {0}', when(x.start_at)) : ''}
+            · ${tr('updated {0}', when(x.updated_at))}</div>
         </div>`;
       }) : html`<hxk-state kind="empty" text=${tr("No training yet.")}></hxk-state>`}
       <p class="note">${tr("Move or cancel a scheduled training: from Hestia's agenda (window «")}${j.window || 'metis.training'}»).</p>

@@ -53,7 +53,7 @@ export class HeraPeople extends HestiaElement {
   private async save() {
     if (!String(this.draft.name || '').trim()) { this.host.toast(tr('The name is needed'), 'warning'); return; }
     const r = await call(this.host, 'POST', '', this.draft);
-    if (r.ok) { this.adding = false; this.draft = { relation: 'amico' }; this.host.toast(`${r.data.name} salvata`, 'success'); this.load(); }
+    if (r.ok) { this.adding = false; this.draft = { relation: 'amico' }; this.host.toast(tr('{0} saved', r.data.name), 'success'); this.load(); }
   }
   render() {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
@@ -117,12 +117,12 @@ export class HeraPerson extends HestiaElement {
           <hxk-button icon="chat" variant="ghost" @click=${() => this.host.assistant({ label: p.name, hints: { persona: p.id }, suggestions: [tr('Gift ideas for her'), tr('What does she like?')] })}>${tr("Ask")}</hxk-button></div></div>
       <div class="grid" style="--min: 280px">
         <div class="card col"><h3>${tr("Dates")}</h3>
-          ${p.dates.length ? p.dates.map((d: any) => html`<div class="between small"><span>${d.label}</span><span class="muted">${ddmm(d.next)} · ${inDays(d.in_days)} · avviso ${d.lead_days} ${tr("d before")}</span></div>`)
+          ${p.dates.length ? p.dates.map((d: any) => html`<div class="between small"><span>${d.label}</span><span class="muted">${ddmm(d.next)} · ${inDays(d.in_days)} · ${tr("notice")} ${d.lead_days} ${tr("d before")}</span></div>`)
             : html`<div class="small muted">${tr("No dates.")}</div>`}
           <div class="row wrap">
             <input placeholder=${tr("E.g. Anniversary")} style="flex:1" .value=${this.newDate.label || ''} @input=${(e: any) => { this.newDate = { ...this.newDate, label: e.target.value }; }}>
             <input placeholder="GG/MM" style="width:90px" .value=${this.newDate.day || ''} @input=${(e: any) => { this.newDate = { ...this.newDate, day: e.target.value }; }}>
-            <hxk-button icon="plus" @click=${async () => { if (this.newDate.label && this.newDate.day) { await this.patch({ dates: [{ ...this.newDate, kind: /anniversario/i.test(this.newDate.label) ? 'anniversary' : 'custom' }] }); this.newDate = {}; } }}>${tr("Add")}</hxk-button></div>
+            <hxk-button icon="plus" @click=${async () => { if (this.newDate.label && this.newDate.day) { await this.patch({ dates: [{ ...this.newDate, kind: /anniversar|anniversary/i.test(this.newDate.label) ? 'anniversary' : 'custom' }] }); this.newDate = {}; } }}>${tr("Add")}</hxk-button></div>
           <div class="small muted">${tr("The dates go in the calendar with the advance notice.")}</div>
         </div>
         <div class="card col"><h3>${tr("Gift ideas")}</h3>
