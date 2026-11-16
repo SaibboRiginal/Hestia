@@ -436,7 +436,7 @@ if _HAS_MCP:
 
     def stats_display(total: int, by_status: dict, newest) -> dict:
         from hestia_common.display import action, display, item
-        names = {"available": "disponibili", "sold": "vendute", "rented": "affittate", "removed": "tolte",
+        names = {"available": tr("available"), "sold": tr("sold"), "rented": tr("rented"), "removed": tr("removed"),
                  "unknown": "without a state"}
         when = str(newest or "")[:10]
         return display(tr("Houses"), subtitle=tr("{0} listings", total), footer=tr("Latest arrived on {0}/{1}", when[8:10], when[5:7]) if when else "",

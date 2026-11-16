@@ -23,7 +23,7 @@ from .catalog import CONFLICTS, families
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 DONE_STATUSES = ("done", "partial")
-PER_LABEL = {"day": "oggi", "week": "sett.", "month": "mese"}
+PER_LABEL = {"day": "today", "week": "wk.", "month": "f::month"}   # shown through tr
 ACTIVE_STATES = ("due", "suggested")
 
 
@@ -114,7 +114,7 @@ def goal_state(cadence: dict | None, done_days: list[date], today: date, week_st
         st = "suggested"
     else:
         st = "wait"
-    hint = f"{done}/{times} {PER_LABEL[per]}"
+    hint = f"{done}/{times} {tr(PER_LABEL[per])}"
     return {**base, "state": st, "done": done, "times": times, "per": per, "remaining": remaining,
             "days_left": days_left, "behind": behind, "hint": hint}
 

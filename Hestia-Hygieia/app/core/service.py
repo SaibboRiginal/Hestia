@@ -463,7 +463,7 @@ class Hygieia:
             r["version"] = version
             rows.append({"kind": "version", "id": f"{rid}:{version}", "parent_id": rid, "ref_id": str(version),
                          "at": now_iso(), "data": {"routine_id": rid, "version": version, "steps": r["steps"],
-                                                   "reason": reason or ("creata" if not old else ""),
+                                                   "reason": reason or (tr("created") if not old else ""),
                                                    "valid_from": self.today().isoformat(), "by": source,
                                                    "diff": self._diff(old.get("steps") if old else [], r["steps"])}})
         r.pop("id", None)
@@ -1014,7 +1014,7 @@ class Hygieia:
         parts = []
         today_bits = []
         for p in plan["routines"]:
-            mark = {"done": "✓", "due": "to do", "suggested": "consigliata", "blocked": "not today", "wait": tr("alt::done recently"),
+            mark = {"done": "✓", "due": tr("to do"), "suggested": tr("suggested"), "blocked": tr("not today"), "wait": tr("alt::done recently"),
                     "ok": tr("goal ok"), "off": "", "rest": ""}.get(p["state"], p["state"])
             if p["state"] in ("off", "rest"):
                 continue

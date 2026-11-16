@@ -82,8 +82,8 @@ def _create(title: str, html: str, format: str = "pdf", theme: str = "", must_co
         return out
     return {**{k: out[k] for k in ("id", "title", "format", "name", "pages", "size")}, "created": True,
             "display": display(out["title"], subtitle=f"{out['format'].upper()} · {THEMES[out['theme']]['label']}",
-                               lines=[f"{out['pages']} {'pagine' if out['format'] == 'pdf' else 'parti'}, "
-                                      f"{max(1, out['size'] // 1024)} KB · controllato"],
+                               lines=[tr("{0} pages, {1} KB · checked", out['pages'], max(1, out['size'] // 1024)) if out['format'] == 'pdf'
+                                     else tr("{0} parts, {1} KB · checked", out['pages'], max(1, out['size'] // 1024))],
                                files=[file(out["blob_id"], out["name"], out["mime"])],
                                actions=[action(tr("Delete"), "documento_creato_elimina", {"document": out["id"]})])}
 

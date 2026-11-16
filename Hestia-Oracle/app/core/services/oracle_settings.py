@@ -359,9 +359,9 @@ for _i, (_surface, (_prefix, _label)) in enumerate(AB_SURFACES.items()):
     ]
 
 def _advanced_except_models(defs: list[dict]) -> list[dict]:
-    """Only Modelli (and the personal Chat settings) stay in view; Oracle's other tunables go under *avanzate*."""
+    """Only Models (and the personal Chat settings) stay in view; Oracle's other tunables are advanced."""
     for d in defs:
-        if d.get("group") not in ("Modelli", "Chat"):
+        if d.get("group") not in ("Models", "Chat"):
             d["advanced"] = True
     return defs
 

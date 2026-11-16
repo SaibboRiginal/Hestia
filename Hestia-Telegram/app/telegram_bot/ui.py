@@ -22,7 +22,7 @@ LABEL_MAX = 24          # longest button text (cut on a word with «…»)
 PAIR_MAX = 18           # longer than this: the button gets its own row
 LIST_PAGE = 8           # items per page in lists of actions / results
 
-BACK = "‹ Indietro"
+BACK = "‹ Back"   # a source text: show it with tr(ui.BACK)
 HOME = "alt::Home"
 CANCEL = "Cancel"
 CONFIRM = "Confirm"

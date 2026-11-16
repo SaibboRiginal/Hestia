@@ -212,7 +212,7 @@ def _short(p: dict) -> dict:
 
 transfer = Transfer("hera", kit.hub, sections=[
     StoreSection("persone", "People", kit.store, ["person"], icon="user", title=lambda r: r["data"].get("name", "")),
-    StoreSection("contatti", "Contatti", kit.store, ["interaction"], icon="list", depends_on=["persone"]),
+    StoreSection("contatti", "Contacts", kit.store, ["interaction"], icon="list", depends_on=["persone"]),
 ])
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment", **recap.capabilities()})

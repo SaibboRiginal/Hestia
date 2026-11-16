@@ -100,7 +100,7 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
             continue
         st = h.routine_stats(r)
         if st["streak"] in STREAK_MILESTONES:
-            unit = {"week": "settimane", "month": "mesi", "day": "giorni"}.get(st["per"], "periodi")
+            unit = {"week": tr("weeks"), "month": tr("months"), "day": tr("days")}.get(st["per"], tr("periods"))
             out.append(signal(f"streak:{r['id']}", tr("{0}: goal kept {1} {2} in a row", r.get('name'), st['streak'], unit),
                               kind="milestone", severity="info", metrics={"streak": st["streak"]},
                               page=f"routine/{r['id']}"))

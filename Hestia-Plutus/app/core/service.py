@@ -114,10 +114,9 @@ class Plutus:
         return start, _month_add(start, 1).replace(day=start_day)
 
     def month_label(self, start: date) -> str:
-        names = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre",
-                 "ottobre", "novembre", "dicembre"]
+        from hestia_common.i18n import month_name
         ref = start if start.day <= 15 else _month_add(start, 1)
-        return f"{names[ref.month - 1]} {ref.year}"
+        return f"{month_name(ref.month)} {ref.year}"
 
     # ── seed (categories + default rules), once ──────────────────────────────
     def ensure_seed(self) -> int:
@@ -755,7 +754,7 @@ class Plutus:
         since = (self.today() - timedelta(days=self.NEW_RECURRING_DAYS)).isoformat()
         for r in self.detect_recurring():
             if r.get("status") != "dismissed" and (r.get("found_at") or "") >= since:
-                period = {"weekly": "settimanale", "monthly": "mensile", "yearly": "annuale"}.get(r["period"], "")
+                period = {"weekly": tr("weekly"), "monthly": tr("monthly"), "yearly": tr("yearly")}.get(r["period"], "")
                 sigs.append(signal(f"new_subscription:{r['id']}", tr("New recurring payment: {0} {1:.2f}{2} {3}.", r['merchant'], r['amount'], sym, period), kind="trend", severity="info",
                                    metrics={"amount": r["amount"], "count": r["count"]}, page="abbonamenti"))
         # rows waiting for a category

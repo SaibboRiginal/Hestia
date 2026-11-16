@@ -23,7 +23,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.chat_service")
 
-WORKING = "<i>Sto pensando…</i>"
+WORKING = "<i>Thinking…</i>"   # shown through tr
 
 
 def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questions: list) -> None:
@@ -199,9 +199,9 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
     session_id = core.get_session(chat_id)
     if status_msg is None:
         if message is not None:
-            status_msg = core.bot.reply_to(message, WORKING, parse_mode="HTML")
+            status_msg = core.bot.reply_to(message, tr(WORKING), parse_mode="HTML")
         else:
-            status_msg = core.bot.send_message(chat_id, WORKING, parse_mode="HTML")
+            status_msg = core.bot.send_message(chat_id, tr(WORKING), parse_mode="HTML")
     stop_typing = _typing(chat_id)
     try:
         # A voice note answered by voice too (spoken replies on): Oracle answers as speech.

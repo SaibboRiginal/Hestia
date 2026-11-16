@@ -262,7 +262,7 @@ class Deadlines:
             stage = "today" if d["in_days"] <= 0 else ("lead" if d["in_days"] <= d["lead_days"] else "")
             if not stage or (d.get("notified") or {}).get(stage) == d["due"]:
                 continue
-            when = "oggi" if d["in_days"] == 0 else ("scaduta" if d["in_days"] < 0 else tr("in {0} days", d['in_days']))
+            when = tr("today") if d["in_days"] == 0 else (tr("f::expired") if d["in_days"] < 0 else tr("in {0} days", d['in_days']))
             if self.hub:
                 self.hub.notify({"event_type": "service.action_required", "domain": "deadlines",
                                  "entity_id": f"kairos-{d['id']}",
@@ -285,6 +285,6 @@ class Deadlines:
 
     def recap(self, day: date, nxt: date) -> dict:
         soon = [d for d in self.list("open", days=7)]
-        return {"next": [{"text": f"{d['title']} " + ("scaduta" if d["in_days"] < 0 else "oggi" if d["in_days"] == 0
+        return {"next": [{"text": f"{d['title']} " + (tr("f::expired") if d["in_days"] < 0 else tr("today") if d["in_days"] == 0
                                                       else tr("in {0} days", d['in_days'])),
                           "tone": "warning" if d["in_days"] <= 1 else ""} for d in soon[:4]]}

@@ -25,8 +25,8 @@ COMMANDS = {"on": "turn_on", "off": "turn_off", "toggle": "toggle", "open": "ope
 LABELS = {"light": "Lights", "switch": "Prese", "cover": "Shutters", "climate": "Climate", "fan": "Ventilatori",
           "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Actions", "sensor": "Sensori",
           "binary_sensor": "Sensori", "person": "People"}
-STATE_IT = {"on": "acceso", "off": "spento", "open": "aperta", "closed": "chiusa", "locked": "chiusa",
-            "unlocked": "aperta", "home": "at home", "not_home": "fuori", "unavailable": "unreachable"}
+STATE_WORDS = {"on": "on", "off": "off", "open": "f::open", "closed": "f::closed", "locked": "f::closed",
+               "unlocked": "f::open", "home": "at home", "not_home": "away", "unavailable": "unreachable"}   # through tr
 
 
 def slim(s: dict) -> dict:
@@ -176,4 +176,4 @@ class Home:
     def say(e: dict) -> str:
         if e["domain"] == "sensor":
             return f"{e['state']}{e['unit']}"
-        return STATE_IT.get(str(e["state"]), str(e["state"]))
+        return tr(STATE_WORDS.get(str(e["state"]), str(e["state"])))

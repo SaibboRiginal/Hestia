@@ -6,11 +6,12 @@ instead of an Italian voice reading English (or the other way round). Short or u
 from __future__ import annotations
 
 import logging
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("echo.lang")
 
-NAMES = {"it": "italiano", "en": "inglese", "es": "spagnolo", "fr": "francese", "de": "tedesco", "pt": "portoghese",
-         "ja": "giapponese", "zh": "cinese", "hi": "hindi", "nl": "olandese", "pl": "polacco", "ru": "russo"}
+NAMES = {"it": "lang::Italian", "en": "lang::English", "es": "lang::Spanish", "fr": "lang::French", "de": "lang::German", "pt": "lang::Portuguese",
+         "ja": "lang::Japanese", "zh": "lang::Chinese", "hi": "lang::Hindi", "nl": "lang::Dutch", "pl": "lang::Polish", "ru": "lang::Russian"}
 # What the setup's «Ascolta» says, in the language of the voice tried.
 SAMPLE = {"it": "Ciao, sono Hestia. Questa è la mia voce.", "en": "Hi, I'm Hestia. This is my voice.",
           "es": "Hola, soy Hestia. Esta es mi voz.", "fr": "Bonjour, je suis Hestia. Voici ma voix.",
@@ -39,4 +40,4 @@ def detect(text: str, fallback: str) -> str:
 
 
 def name(code: str) -> str:
-    return NAMES.get((code or "")[:2], code or "")
+    return tr(NAMES[(code or "")[:2]]) if (code or "")[:2] in NAMES else (code or "")

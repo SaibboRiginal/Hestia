@@ -194,7 +194,7 @@ def _ask(chat_id, flow: dict, tool: catalog.Tool, f: inputs.Field, problem: str 
     flow["choices"] = [v for _, v in choices]
     per_row = 3 if all(len(lbl) <= 10 for lbl, _ in choices) else 2
     rows = ui.grid(buttons, per_row=per_row)
-    nav_row = [ui.button(ui.BACK, "f:back")]
+    nav_row = [ui.button(tr(ui.BACK), "f:back")]
     if not f.required:
         nav_row.append(ui.button(ui.SKIP, "f:skip"))
     nav_row.append(ui.button(ui.CANCEL, "f:cancel"))
@@ -256,7 +256,7 @@ def _confirm(chat_id, flow: dict, tool: catalog.Tool, fields: dict[str, inputs.F
     if optional and not flow.get("extra"):
         rows.append([ui.button(tr("More details"), "f:more")])
     if flow["queue"]:
-        rows.append([ui.button(ui.BACK, "f:back")])
+        rows.append([ui.button(tr(ui.BACK), "f:back")])
     html = ui.card(title, lines, subtitle=tr("Confirm?"), marker=area.emoji if area else "",
                    crumbs=[area.label] if area else [])
     from telegram_bot import nav

@@ -102,7 +102,7 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
     facts: list[str] = []
     for p in pieces:
         title = str(p.get("title") or p.get("module") or "")
-        for key, tag in (("done", "fatto"), ("missed", "saltato"), ("next", "prossimo")):
+        for key, tag in (("done", "done"), ("missed", "skipped"), ("next", "next")):
             for t in _lines(p.get(key)):
                 facts.append(f"[{title}|{tag}] {t}")
         if p.get("note"):

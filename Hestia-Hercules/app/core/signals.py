@@ -82,7 +82,7 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
     data = h.data()
     out: list[dict] = []
     for s in _stalls(h, data, today):
-        what = tr("estimated max") if s["metric"] == "best_e1rm" else "ripetizioni"
+        what = tr("estimated max") if s["metric"] == "best_e1rm" else tr("reps")
         best = progression.fmt_kg(s["best"]) + (" kg" if s["metric"] == "best_e1rm" else "")
         out.append(signal(f"stall:{s['exercise_id']}", tr("{0} stuck for {1} sessions: {2} does not go past {3}", s['exercise'], s['exposures'], what, best), kind="trend", severity="attenzione",
                           metrics={"exposures": s["exposures"], "best": s["best"], "recent": s["recent"]},

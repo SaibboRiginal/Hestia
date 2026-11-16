@@ -51,7 +51,7 @@ def _place(chat_id, html: str, rows, message_id) -> None:
 
 
 def _failed(chat_id, message_id, back: str) -> None:
-    _place(chat_id, ui.error(tr("I couldn't save the menu")), [[ui.button(ui.BACK, back)]], message_id)
+    _place(chat_id, ui.error(tr("I couldn't save the menu")), [[ui.button(tr(ui.BACK), back)]], message_id)
 
 
 # ── cards ────────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ def _paged(names: list[str], page: int, make, more: str, back: str) -> list:
         nav_row.append(ui.button(ui.MORE, more.format(page + 1)))
     if nav_row:
         rows.append(nav_row)
-    rows.append([ui.button(ui.BACK, back)])
+    rows.append([ui.button(tr(ui.BACK), back)])
     return rows
 
 
@@ -145,7 +145,7 @@ def move_target(chat_id, short: str, message_id=None) -> None:
         return root(chat_id, message_id)
     rows = ui.grid([ui.button(a.button_text, f"m:mto:{short}:{a.key}") for a in menu.all_areas
                     if a.key not in (current.key, "altro")])
-    rows.append([ui.button(ui.BACK, f"m:mv:{current.key}:0")])
+    rows.append([ui.button(tr(ui.BACK), f"m:mv:{current.key}:0")])
     _place(chat_id, ui.card(tr("Where do I move «{0}»?", menu.label(name)), []), rows, message_id)
 
 

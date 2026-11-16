@@ -39,7 +39,7 @@ from services import coach as weekly_coach
 from services import notification_worker, sync_worker
 from services import presence as assistant_presence
 from core import presence_settings
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import month_name, t as tr, weekday_name  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -895,8 +895,6 @@ def get_agenda_today() -> dict:
     return get_agenda(days=1, source=None, kind=None)
 
 
-_WD = ("lun", "mar", "mer", "gio", "ven", "sab", "dom")
-_MO = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
 
 
 def agenda_display(items: list[dict], days: int, start: datetime) -> dict:
@@ -911,7 +909,7 @@ def agenda_display(items: list[dict], days: int, start: datetime) -> dict:
         day = at.date()
         when = tr("all day") if it.get("all_day") else at.strftime("%H:%M")
         if days > 1 and day != last_day:
-            rows.append(item(f"{_WD[day.weekday()]} {day.day} {_MO[day.month - 1]}".capitalize(), [when, it.get("title")]))
+            rows.append(item(f"{weekday_name(day.weekday())[:3]} {day.day} {month_name(day.month)[:3]}".capitalize(), [when, it.get("title")]))
             last_day = day
         else:
             rows.append(item(it.get("title") or tr("Event"), [when, it.get("location")]))

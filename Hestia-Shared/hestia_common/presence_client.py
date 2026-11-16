@@ -49,7 +49,7 @@ def _hub_default() -> str:
 def ago(minutes: float | None) -> str:
     """Italian, short: "adesso", "12 min fa", "3 h fa", "2 giorni fa"."""
     if minutes is None:
-        return "mai"
+        return tr("never")
     if minutes < 1:
         return "adesso"
     if minutes < 60:

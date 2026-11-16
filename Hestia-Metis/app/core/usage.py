@@ -36,7 +36,7 @@ KINDS = ("tool", "page", "action")
 CLIENT_KEY = {"webui": "ui", "telegram": "telegram", "mcp": "mcp"}      # MCPTool.clients names
 IDEAS_USE = "metis.adesso"
 KEEP_DAYS = 180
-WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "sabato", "domenica")
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 _SKIP = re.compile(r"(_delete|_elimina|_remove|_rimuovi|_annulla|_conferma|_off|_on)$")
 
 

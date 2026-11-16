@@ -111,7 +111,7 @@ class Themis:
     def register(self, owner: str, definitions: list[dict], presets: list[dict] | None,
                  effective: dict | None, follows: list | None = None) -> dict:
         if not owner or not isinstance(definitions, list):
-            raise ThemisError("owner e definitions obbligatori")
+            raise ThemisError(tr("owner and definitions are required"))
         if self.registry.register(owner, definitions, presets, effective, follows):
             self._bump(f"schema:{owner}")
         try:
@@ -355,7 +355,7 @@ class Themis:
                 continue
             reason = str(r.get("reason") or "")
             kind = ("undo" if reason == "annulla" else "reset" if r.get("new_value") is None
-                    else "approved" if reason.startswith("proposta approvata") else
+                    else "approved" if reason.startswith(("proposal approved", "proposta approvata")) else
                     "preset" if reason.startswith("preset ") else "change")
             out.append({**r, "label": d.get("label") or r.get("key"), "module": row_module, "type": d.get("type"),
                         "kind": kind, "latest": latest,

@@ -19,7 +19,7 @@ from typing import Any, Callable
 
 from . import domain
 from .store import now_iso
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hercules.activities")
 
@@ -161,8 +161,7 @@ def pick_slots(candidates: list[dict], times: int) -> list[dict]:
 def slot_text(slot: dict) -> str:
     s = datetime.fromisoformat(slot["start"])
     w = slot.get("weather") or {}
-    days = [tr("monday"), tr("tuesday"), tr("wednesday"), tr("thursday"), tr("friday"), "sabato", "domenica"]
-    out = tr("{0} {1} at {2:%H:%M}", days[s.weekday()], s.day, s)
+    out = tr("{0} {1} at {2:%H:%M}", weekday_name(s.weekday()), s.day, s)
     if w.get("temp_c") is not None:
         out += f", {w['temp_c']}°"
     if w.get("condition"):

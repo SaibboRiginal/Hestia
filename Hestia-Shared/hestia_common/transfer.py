@@ -375,7 +375,7 @@ class Transfer:
     def file_put(self, body: dict) -> dict:
         old = str(body.get("id") or "")
         if not old or not body.get("data_b64"):
-            raise TransferError("id e data_b64 obbligatori")
+            raise TransferError(tr("id and data_b64 are required"))
         r = self.hub.ok("archive", "POST", "api/blobs", body={
             "owner_module": self.module, "content_type": body.get("mime") or "application/octet-stream",
             "data_base64": body["data_b64"], "meta": body.get("meta") or {}}, timeout=60) or {}

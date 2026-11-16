@@ -243,7 +243,7 @@ def section(chat_id, key: str, index: int, page: int = 0, message_id: int | None
     if nav_row:
         rows.append(nav_row)
     back = f"n:all:{a.key}:0" if len(a.sections) > 1 else f"n:a:{a.key}"
-    rows.append([ui.button(ui.BACK, back)])
+    rows.append([ui.button(tr(ui.BACK), back)])
     crumbs = [a.label] + ([tr("All actions")] if len(a.sections) == 1 else [])
     place(chat_id, ui.card(title if len(a.sections) > 1 else tr("All actions"), [], marker=a.emoji,
                            crumbs=crumbs if len(a.sections) == 1 else [a.label]), ui.keyboard(rows), message_id)
@@ -293,13 +293,13 @@ def notification_detail(chat_id, short: str, message_id: int | None = None) -> N
         if ok and isinstance(payload, dict) else None
     if not item:
         place(chat_id, ui.card(tr("Notifications"), [ui.note(tr("This notification no longer waits for an answer."))]),
-              ui.keyboard([[ui.button(ui.BACK, "n:ntf")]]), message_id)
+              ui.keyboard([[ui.button(tr(ui.BACK), "n:ntf")]]), message_id)
         return
     from telegram_bot.services.notifications import action_buttons
     html = ui.card(item.get("title") or tr("Notification"), [ui.esc(item.get("message") or "")],
                    tone=ui.LEVEL_TONE.get(str(item.get("level") or "info")))
     rows = action_buttons(str(item.get("id")), item.get("actions") or [])
-    rows.append([ui.button(ui.BACK, "n:ntf")])
+    rows.append([ui.button(tr(ui.BACK), "n:ntf")])
     place(chat_id, html, ui.keyboard(rows), message_id)
 
 

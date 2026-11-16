@@ -93,7 +93,7 @@ def panel(chat_id, message_id=None) -> None:
     lines.append(tr("Spoken answers: <b>{0}</b>", tr('yes') if voice_service.is_live(chat_id) else 'no'))
     custom = str(st.get("custom_prompt") or "").strip()
     lines.append(tr("Personal instructions: ") + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
-                                            if custom else "<i>nessuna</i>"))
+                                            if custom else tr("<i>none</i>")))
     buttons = [ui.button(s.label, f"set:param:{s.key}") for s in SETTINGS]
     buttons += [ui.button(tr("Voice replies"), "set:voce"), ui.button(tr("Personal instructions"), "set:param:custom_prompt")]
     rows = ui.grid(buttons)
@@ -107,7 +107,7 @@ def option_view(chat_id, key: str, message_id=None) -> None:
     s = BY_KEY[key]
     current = value(core.get_session_settings(str(chat_id)), key)
     rows = [[ui.button(("• " if v == current else "") + tr(lbl), f"set:v:{key}:{v}", limit=40)] for v, lbl in s.options]
-    rows.append([ui.button(ui.BACK, "set:menu")])
+    rows.append([ui.button(tr(ui.BACK), "set:menu")])
     nav.place(chat_id, ui.card(s.label, [ui.note(s.help)] if s.help else [], crumbs=[tr("Settings"), tr("Chat")]),
               ui.keyboard(rows), message_id)
 
