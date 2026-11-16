@@ -164,7 +164,7 @@ class WhisperLocal(Standard):
         opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Più alto = più preciso e più lento."),
         opt("vad", "Salta i silenzi", "bool", True),
         opt("initial_prompt", "Parole da riconoscere", "string", "",
-            help="Nomi e parole tue (es. Hestia, Hercules), separati da virgola: le scrive giuste."),
+            help="Nomi e parole tue (es. Hercules, Roma), separati da virgola: le scrive giuste. «{assistant}» e il tuo nome ci sono già."),
         opt("device", "Dove gira", "enum", "auto", options=[{"value": "auto", "label": "Automatico"},
                                                             {"value": "cpu", "label": "CPU"},
                                                             {"value": "cuda", "label": "Scheda video"}]),

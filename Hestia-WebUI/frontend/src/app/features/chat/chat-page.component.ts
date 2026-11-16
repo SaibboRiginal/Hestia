@@ -351,7 +351,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   private lastCount = 0;
   private lastLen = 0;
 
-  readonly suggestions = [tr('Cosa ho in agenda questa settimana?'), tr('Riassumi le ultime email importanti'), tr('Cosa ha pianificato Hestia per stanotte?'), tr('Ci sono nuove case interessanti?')];
+  readonly suggestions = [tr('Cosa ho in agenda questa settimana?'), tr('Riassumi le ultime email importanti'), tr('Cosa hai pianificato per stanotte?'), tr('Ci sono nuove case interessanti?')];
   readonly menu: MenuItem[] = [
     { id: 'new', label: tr('Nuova conversazione'), icon: 'plus' },
     { id: 'clear', label: tr('Pulisci schermo'), icon: 'trash' },
@@ -571,7 +571,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
 
   async onMenu(id: string) {
     if (id === 'clear') this.chat.clearMessages();
-    if (id === 'new' && await this.dialogs.confirm(tr('Nuova conversazione?'), tr('Hestia dimentica il contesto di questa chat (le memorie restano).'))) {
+    if (id === 'new' && await this.dialogs.confirm(tr('Nuova conversazione?'), tr('{assistant} dimentica il contesto di questa chat (le memorie restano).'))) {
       await this.session.clear();
       this.chat.clearMessages();
     }

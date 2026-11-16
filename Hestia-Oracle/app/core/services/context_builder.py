@@ -109,9 +109,10 @@ class ContextBuilder:
         trimmed = (self.stable_window(history_data, session_id) if session_id
                    else history_data[-self.max_history_messages:])
         lines = []
+        her = prompt_config.assistant_label()
         for message in trimmed:
             is_user = message.get("role") == "user"
-            role = "User" if is_user else "Hestia"
+            role = "User" if is_user else her
             content = self.truncate(message.get(
                 "content", ""), self.max_history_chars)
             # Each message of the owner carries when it was written: «yesterday», «this morning», a gap of days
@@ -268,8 +269,9 @@ class ContextBuilder:
     def build_compaction_prompt(self, history_to_compact: list) -> str:
         """Build the scribe prompt for summarising old history segments."""
         lines = []
+        her = prompt_config.assistant_label()
         for msg in history_to_compact:
-            role = "User" if msg.get("role") == "user" else "Hestia"
+            role = "User" if msg.get("role") == "user" else her
             lines.append(f"{role}: {msg.get('content', '')}")
         history_text = "\n".join(lines)
 

@@ -22,7 +22,7 @@ from . import lang
 from .blocks import Blocks, ChainExhausted
 from .keep import Keep
 from .standards import STANDARDS
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import identity_now, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_echo.service")
 
@@ -113,10 +113,11 @@ class Echo:
 
     def _hint(self) -> str:
         try:
-            return self.dictionary.hint() if self.dictionary is not None else ""
+            words = self.dictionary.hint() if self.dictionary is not None else ""
         except Exception as exc:  # noqa: BLE001 — the archive being down never stops listening
             logger.debug("event=voice_dictionary_unavailable error=%s", exc)
-            return ""
+            words = ""
+        return _with_names(words, identity_now())
 
     def _heard(self, raw: bytes, mime: str, uc: str, language: str, *, record: bool = True,
                vcache: dict | None = None) -> tuple[dict, dict, bytes]:
@@ -214,7 +215,7 @@ class Echo:
         step = {"provider": p["name"], "model": str(body.get("model") or ""), "voice": str(body.get("voice") or "")}
         own = std.voice_language(step["voice"] or step["model"])     # a voice tried speaks its own language
         speech = own or self.speak_language(str(body.get("text") or ""))
-        text = str(body.get("text") or lang.SAMPLE.get(speech) or lang.SAMPLE["it"])[:200]
+        text = str(body.get("text") or lang.sample(speech, identity_now()))[:200]
         try:
             data, mime = std.speak(p, step["model"], step["voice"], text, speech, _opts(std, p, step, "voce"))
             pcm = audio.to_pcm16k(data, mime)
@@ -426,3 +427,17 @@ class Echo:
     def streams(self) -> int:
         self._sweep()
         return len(self._streams)
+
+
+def _with_names(words: str, ident: dict[str, str]) -> str:
+    """The recognition hint with the assistant's name and the owner's name first, so a renamed assistant is
+    written right from the first word (docs/work/2026-11-16-nome-ovunque)."""
+    known = {w.strip().lower() for w in words.rstrip(".").split(",") if w.strip()}
+    names = []
+    for name in (ident.get("assistant"), ident.get("owner")):
+        if name and name.lower() not in known and name not in names:
+            names.append(name)
+    if not names:
+        return words
+    rest = words.rstrip(".")
+    return ", ".join([*names, *([rest] if rest else [])]) + "."

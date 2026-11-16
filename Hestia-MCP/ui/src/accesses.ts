@@ -211,7 +211,7 @@ export class McpAccesses extends HestiaElement {
         : this.form || this.created ? nothing : html`<hxk-state kind="empty" text=${tr("Nessun accesso: crea un token per collegare Claude Code o un'altra AI.")}></hxk-state>`}
       <p class="note">${tr("claude.ai (web e telefono) e ChatGPT: aggiungi un connettore personalizzato con l'indirizzo pubblico")}
         ${this.base()}/mcp; Hestia ti chiede qui il consenso.</p>
-      <hxk-card heading=${tr("Hestia dentro Claude Code")} subtitle=${tr("Una barra sopra il prompt: la accendi solo quando vuoi")}>
+      <hxk-card heading=${tr("{assistant} dentro Claude Code")} subtitle=${tr("Una barra sopra il prompt: la accendi solo quando vuoi")}>
         ${this.copyRow(tr('Installa (terminale di Claude Code)'), PLUGIN_INSTALL)}
         ${this.copyRow(tr('Indirizzo da dare all\'installazione'), this.base())}
         <p class="note">${tr("Alla prima accensione Claude apre questa pagina per il consenso. Personalità, istruzioni e ricordi arrivano da Hestia; quello che Claude impara di te torna nella pagina Memoria.")}</p>

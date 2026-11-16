@@ -219,8 +219,9 @@ class MemoryService:
         )
         history_text = ""
         if history_data:
+            her = prompt_config.assistant_label()
             history_text = "\n".join(
-                f"{'User' if m['role'] == 'user' else 'Hestia'}: "
+                f"{'User' if m['role'] == 'user' else her}: "
                 f"{self.context_builder.truncate(m['content'], self.context_builder.max_history_chars)}"
                 for m in reversed(history_data)
             )

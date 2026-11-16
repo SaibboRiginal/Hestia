@@ -91,8 +91,8 @@ class RemediationService:
                                     "path": f"/api/hephaestus/remediate/{snapshot['task_id']}/retry",
                                     "method": "POST", "body": {"requested_by": "agenda"},
                                     "timeout_seconds": 60},
-                            description="Riparazione fallita: nuovo tentativo programmato. "
-                                        "Sposta/annulla dall'agenda di Hestia.",
+                            description=tr("Riparazione fallita: nuovo tentativo programmato. "
+                                           "Sposta/annulla dall'agenda di {assistant}."),
                             params={"task_id": snapshot["task_id"], "attempt": attempts + 1})
                     else:
                         self.agenda.done(key)

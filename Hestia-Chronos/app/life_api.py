@@ -213,10 +213,10 @@ for _path, _fn, _method in [("/api/agenda/routines", routines_list, "GET"), ("/a
 def boot_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
     return [
-        job_rule("chronos.special.daily", tr("Hestia: eventi speciali"), service="chronos", path="/api/special/run",
+        job_rule("chronos.special.daily", tr("{assistant}: eventi speciali"), service="chronos", path="/api/special/run",
                  recurrence="FREQ=DAILY;BYHOUR=8;BYMINUTE=0",
                  description="Ogni mattina ti ricordo compleanni e date importanti (prima e il giorno stesso)."),
-        job_rule("chronos.smart_calendar", tr("Hestia: controllo sovrapposizioni"), service="chronos",
+        job_rule("chronos.smart_calendar", tr("{assistant}: controllo sovrapposizioni"), service="chronos",
                  path="/api/calendar/smart/check", recurrence="FREQ=DAILY;BYHOUR=7;BYMINUTE=0",
                  description="Ogni mattina guardo i prossimi giorni: se due impegni si sovrappongono ti propongo "
                              "dove spostarne uno. Non sposto niente da solo."),

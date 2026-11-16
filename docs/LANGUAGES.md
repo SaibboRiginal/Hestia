@@ -67,9 +67,15 @@ python tools/governance/check_i18n.py --merge todo.json   # after filling it in:
 
 Placeholders must match between source and translation (`Hestia-Telegram/tests/test_language.py` checks it).
 
+**The assistant's name** (`docs/work/2026-11-16-nome-ovunque`): where a text speaks of the assistant as a person,
+write `{assistant}` and, for gendered words, `{g:lei|lui}` («Chiedi a {assistant}», «Cosa pensa da {g:sola|solo}»),
+in the source and in the translation. `tr` / `t` fill them with the name and she/he the owner chose. Where «Hestia»
+is the app (version, updates, files, installation, the whole system) write «Hestia».
+
 ## Don't
 
 - Don't write a language name or «Sei Hestia…» in a prompt: use `{owner_language}` and the identity tokens.
+- Don't write «Hestia» in a text that means the assistant as a person (`{assistant}`).
 - Don't translate with the model at runtime, and don't keep a second catalog in a module: one catalog for all.
 - Don't put an English sentence in the code for a person (it would never be Italian), and don't wrap technical
   strings in `tr`.

@@ -88,8 +88,8 @@ export class HephaestusRepairs extends HestiaElement {
       ${(t.notifications || []).length ? html`<div><div class="small muted">${tr("Cronologia")}</div><div class="notes">
         ${t.notifications.map((n: any) => html`<div><span class="muted">${when(n.ts)}</span> · ${n.note}</div>`)}</div></div>` : nothing}
       ${res ? html`<div><div class="small muted">${tr("Esito")}</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
-      ${t.state === 'pending_approval' ? html`<p class="note">${tr("Per approvarla scrivi a Hestia «approva la riparazione")} ${t.task_id}${tr("» (chat o Telegram).")}</p>`
-        : t.state === 'succeeded' && t.undoable ? html`<p class="note">${tr("Per annullarla scrivi a Hestia «annulla la riparazione")} ${t.task_id}».</p>` : nothing}
+      ${t.state === 'pending_approval' ? html`<p class="note">${tr("Per approvarla scrivi a {assistant} «approva la riparazione")} ${t.task_id}${tr("» (chat o Telegram).")}</p>`
+        : t.state === 'succeeded' && t.undoable ? html`<p class="note">${tr("Per annullarla scrivi a {assistant} «annulla la riparazione")} ${t.task_id}».</p>` : nothing}
     </div>`;
   }
 

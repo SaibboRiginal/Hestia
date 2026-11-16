@@ -8,7 +8,7 @@ export const MODE_KEY = 'oracle.chat.mode';
 
 /** Conversation modes (Oracle owns them: setting oracle.chat.mode). */
 export const CHAT_MODES = [
-  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('Hestia decide: risposta rapida o ragionata con gli strumenti.') },
+  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('{assistant} decide: risposta rapida o ragionata con gli strumenti.') },
   { value: 'quick', label: tr('Rapida'), icon: 'zap', help: tr('Una sola risposta, niente strumenti. La più veloce.') },
   { value: 'thinking', label: tr('Pensata'), icon: 'brain', help: tr('Ragiona sempre e usa gli strumenti prima di rispondere.') },
   { value: 'cot', label: 'CoT', icon: 'list', help: tr('Ragionamento profondo passo passo, con i passi in fondo. Più lenta.') },

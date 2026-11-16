@@ -70,6 +70,9 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
   while, less if you do not answer, little in the first days. And she **observes before proposing**: no
   improvement or setting proposal on a new install, only after days of data and the same thing seen on several
   days (faults are reported at once; on demand always works).
+- (2026-11-16) The name you chose is everywhere it speaks of her as a person (buttons, pages, Telegram, voice);
+  «Hestia» stays only for the app. What she wrote first stays in the conversation where you answer. Something
+  clearly wrong is fixed, not asked about.
 
 ## R9 — Backend English, the owner reads his language (2026-11-14, 2026-11-16)
 - Everything the model reads is English; every fixed text a person reads comes from the catalog in the owner's

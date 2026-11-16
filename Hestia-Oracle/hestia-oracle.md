@@ -106,6 +106,13 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - **She writes first** (`core/services/opener.py`, `POST /api/chat/opener {reasons[], avoid[], past[]}`): Athena brings the
   reasons and the last days (`past`: how the owner was, what she wrote and whether they answered), Oracle writes one or two plain-text sentences in the persona with the memory digest and the awareness
   lines; `NIENTE` → `{text: ""}` (no message). Oracle only writes: Athena decides when, Hermes delivers.
+- **Her first message stays in the conversation** (`core/services/opener_history.py`, dossier
+  `docs/work/2026-11-16-nome-ovunque`): at an owner's chat turn that saves history, the newest Hermes item
+  `kind: athena.talk` of the last 3 days is saved in that conversation (Archive `/chat/history`, role assistant,
+  `timestamp` = when she wrote it) before his message, once: skipped when any conversation was written after it,
+  when the conversation list cannot be read, or when it is already there (`[🔄] event=opener_history_*`).
+  Transcripts the model reads (history, compaction) mark her turns with her chosen name
+  (`prompt_config.assistant_label()`).
 - **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
   `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
 - **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today

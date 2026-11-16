@@ -96,7 +96,7 @@ export class MetisImprovement extends HestiaElement {
           <div class="tags">${pairs(w.labels).map(([k, v]) => html`<hxk-badge>${k} · ${v}</hxk-badge>`)}</div>
           ${(w.samples || []).map((s: any) => html`<div class="sample">
             ${s.user ? html`<div><span class="muted">Tu:</span> ${s.user}</div>` : nothing}
-            ${s.assistant ? html`<div><span class="muted">Hestia:</span> ${s.assistant}</div>` : nothing}
+            ${s.assistant ? html`<div><span class="muted">${tr('{assistant}:')}</span> ${s.assistant}</div>` : nothing}
             ${s.note ? html`<div class="muted">Nota: ${s.note}</div>` : nothing}</div>`)}
         </div>`)
         : html`<hxk-state kind="empty" text=${tr("Nessun punto debole: nessun voto negativo.")}></hxk-state>`}
@@ -174,7 +174,7 @@ export class MetisImprovement extends HestiaElement {
         <div class="top"><div class="grow small muted">${when(x.at)}${x.reasons?.length ? ` · regole ${x.reasons.join(', ')}` : ''}</div>
           <hxk-badge tone=${x.needs_owner ? 'warning' : 'info'}>${x.needs_owner ? tr('serve te') : pct(x.confidence)}</hxk-badge></div>
         <div class="sample"><div><span class="muted">Tu:</span> ${x.user}</div>
-          <div class=${x.fixed ? 'was' : ''}><span class="muted">Hestia:</span> ${x.answer}</div>
+          <div class=${x.fixed ? 'was' : ''}><span class="muted">${tr('{assistant}:')}</span> ${x.answer}</div>
           ${x.fixed ? html`<div><span class="muted">Corretta:</span> ${x.fixed}</div>` : nothing}
           ${x.remove?.length ? html`<div class="muted">${tr("Da togliere:")} ${x.remove.join(', ')}</div>` : nothing}</div>
         ${this.editing === x.trace_id ? html`<textarea placeholder=${tr("La risposta giusta")} .value=${this.draft}
@@ -217,7 +217,7 @@ export class MetisImprovement extends HestiaElement {
             · aggiornato ${when(x.updated_at)}</div>
         </div>`;
       }) : html`<hxk-state kind="empty" text=${tr("Nessun training ancora.")}></hxk-state>`}
-      <p class="note">${tr("Spostare o annullare un training pianificato: dall'agenda di Hestia (finestra «")}${j.window || 'metis.training'}»).</p>
+      <p class="note">${tr("Spostare o annullare un training pianificato: dall'agenda di {assistant} (finestra «")}${j.window || 'metis.training'}»).</p>
     </hxk-card>`;
   }
 
@@ -225,7 +225,7 @@ export class MetisImprovement extends HestiaElement {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     if (!this.loaded) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Miglioramento")}</h1><span class="sub">${tr("Come Hestia impara dai tuoi voti")}</span><span class="grow"></span>
+      <div class="head"><h1>${tr("Miglioramento")}</h1><span class="sub">${tr("Come {assistant} impara dai tuoi voti")}</span><span class="grow"></span>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Aggiorna")}</hxk-button></div>
       ${this.renderTraces()}${this.renderReview()}${this.renderExport()}${this.renderInsights()}${this.renderDatasets()}${this.renderJobs()}
     </div>`;

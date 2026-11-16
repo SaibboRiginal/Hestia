@@ -57,7 +57,7 @@ export class ChronosCalDetails extends LitElement {
     return [
       { id: 'edit', label: tr('Modifica'), icon: 'edit' },
       { id: 'duplicate', label: tr('Duplica'), icon: 'copy' },
-      { id: 'ask', label: tr('Chiedi a Hestia…'), icon: 'sparkle' },
+      { id: 'ask', label: tr('Chiedi a {assistant}…'), icon: 'sparkle' },
       ...(e.item?.action || e.occ.run ? [{ id: 'logs', label: tr('Log del modulo'), icon: 'terminal' }] : []),
       ...(e.occ.moved ? [{ id: 'reset-move', label: tr('Ripristina orario originale'), icon: 'undo' }] : []),
       ...(active && e.occ.status !== 'paused' && e.occ.recurring ? [{ id: 'pause', label: tr('Metti in pausa la regola'), icon: 'pause' }] : []),
@@ -126,7 +126,7 @@ export class ChronosCalDetails extends LitElement {
         ${e.occ.status === 'paused' ? html`<hxk-button size="sm" variant="primary" icon="play" @click=${() => this.act('resume')}>${tr("Riattiva")}</hxk-button>` : nothing}
         ${e.occ.status === 'cancelled' ? html`<hxk-button size="sm" variant="primary" icon="undo" @click=${() => this.act('restore')}>${tr("Ripristina regola")}</hxk-button>` : nothing}
         ${forge ? html`<hxk-button size="sm" @click=${() => this.host.navigate('sviluppo', { task: forge }, 'hephaestus')}>${tr("Apri in Sviluppo")}</hxk-button>` : nothing}
-        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Modifica o spiega questa voce a parole")} @click=${() => this.act('ask')}>${tr("Chiedi a Hestia")}</hxk-button>
+        <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Modifica o spiega questa voce a parole")} @click=${() => this.act('ask')}>${tr("Chiedi a {assistant}")}</hxk-button>
       </div>`;
   }
 }

@@ -184,13 +184,13 @@ export class McpCommands extends HestiaElement {
     if (!r.ok) return html`<div class="result err"><pre>${r.json}</pre></div>`;
     if (r.text) return html`<div class="result"><p class="text">${r.text}</p>
       <details><summary>${tr("Risposta grezza")}</summary><pre>${r.json}</pre></details></div>`;
-    return html`<div class="result">${r.formatting ? html`<div class="small muted" style="margin-bottom:8px">${tr("Hestia sta scrivendo la risposta…")}</div>` : nothing}
+    return html`<div class="result">${r.formatting ? html`<div class="small muted" style="margin-bottom:8px">${tr("{assistant} sta scrivendo la risposta…")}</div>` : nothing}
       <pre>${r.json}</pre></div>`;
   }
 
   private renderDetail() {
     const c = this.sel;
-    if (!c) return html`<div class="card"><hxk-state kind="empty" text=${tr("Seleziona un comando: vedi descrizione e parametri ed eseguilo come farebbe Hestia.")}></hxk-state></div>`;
+    if (!c) return html`<div class="card"><hxk-state kind="empty" text=${tr("Seleziona un comando: vedi descrizione e parametri ed eseguilo come farebbe {assistant}.")}></hxk-state></div>`;
     const names = Object.keys(c.arguments_schema?.properties ?? {});
     return html`<div class="card detail">
       <h2>${c.title || c.command}</h2>
@@ -217,7 +217,7 @@ export class McpCommands extends HestiaElement {
         <input class="search" type="search" placeholder=${tr("Cerca comando…")} .value=${this.q} @input=${(e: any) => (this.q = e.target.value)}>
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()} title=${tr("Aggiorna")}></hxk-button>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.askHestia()}
-          title=${tr("Usa un comando a parole, o fatti proporre uno strumento nuovo")}>${tr("Chiedi a Hestia")}</hxk-button></div>
+          title=${tr("Usa un comando a parole, o fatti proporre uno strumento nuovo")}>${tr("Chiedi a {assistant}")}</hxk-button></div>
       <div class="body">
         <div class="card list">
           ${groups.length ? groups.map(g => html`<h4>${g.service} <span>${g.items.length}</span></h4>

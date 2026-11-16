@@ -283,3 +283,7 @@ English (for the model); the help under each form field comes from the field `ti
 outcomes and errors; the bottom keyboard is shown translated and `Menu.door_for_text` matches both the Italian and
 the translated label; bot commands and description, form field labels, result field labels and dates too.
 A file sent without a caption asks the model in English and to answer in the owner's language.
+
+**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): fixed texts that speak of the assistant as a person
+use the chosen name (`{assistant}` through `hestia_common.i18n.t`, e.g. the setup link «parlare con …»); «Apri
+Hestia» and other texts about the app keep «Hestia».

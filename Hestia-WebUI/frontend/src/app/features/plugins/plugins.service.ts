@@ -10,7 +10,7 @@ import { CentralSettingsApi, apiError } from '../settings/central-settings.api';
 import {
   Dashboard, DashboardItem, PluginBundle, PluginCatalog, PluginModule, PluginPage, PluginWidget, QuickActionDef, WidgetSize,
 } from './plugins.types';
-import { tr } from '../../core/i18n';
+import { tr, named } from '../../core/i18n';
 
 /** WebUI settings that hold this client's plugin configuration (Themis, user scope, client layer "webui"). */
 export const CFG = {
@@ -120,7 +120,7 @@ export class PluginsService {
 
   async refreshCatalog(fresh = false): Promise<void> {
     try {
-      const cat = await firstValueFrom(this.http.get<PluginCatalog>(`${BASE}/catalog`, { params: fresh ? { fresh: 'true' } : {} }));
+      const cat = namedCatalog(await firstValueFrom(this.http.get<PluginCatalog>(`${BASE}/catalog`, { params: fresh ? { fresh: 'true' } : {} })));
       const prev = this.catalog();
       this.catalog.set(cat);
       this.catalogError.set(false);
@@ -471,5 +471,26 @@ function kvStore(dbName: string) {
       const [keys, values] = await Promise.all([run('readonly', s => s.getAllKeys()), run('readonly', s => s.getAll())]);
       return keys.map((k, i) => [String(k), values[i]] as [string, unknown]);
     },
+  };
+}
+
+
+/** Module texts written with `{assistant}` («Agenda di {assistant}», «Quello che {assistant} ricorda di te») show the
+ * chosen name; nothing else changes (docs/work/2026-11-16-nome-ovunque). */
+function namedCatalog(cat: PluginCatalog): PluginCatalog {
+  if (!cat) return cat;
+  const fix = <T extends Record<string, any>>(x: T): T => {
+    const out: Record<string, any> = { ...x };
+    for (const k of ['title', 'description', 'label', 'help', 'confirm']) if (typeof out[k] === 'string') out[k] = named(out[k]);
+    return out as T;
+  };
+  const w = cat.contributions?.webui;
+  return {
+    ...cat,
+    modules: (cat.modules ?? []).map(fix),
+    contributions: { ...cat.contributions, webui: w ? {
+      ...w, page: w.page?.map(fix), widget: w.widget?.map(fix), quick_action: w.quick_action?.map(fix),
+      settings_panel: w.settings_panel?.map(fix),
+    } : w },
   };
 }

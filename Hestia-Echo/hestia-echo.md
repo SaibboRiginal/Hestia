@@ -89,6 +89,9 @@ never changes.
   a hint (Whisper `initial_prompt`, OpenAI `prompt`, ≤ 80 words). Words added by hand are confirmed at once; a
   correction of a transcript (`POST /dictionary/learn`, tool `voce_correzione`) makes the new words candidates,
   confirmed after `echo.dizionario.conferme` (2) corrections. Rows `kind=word` (id = normalised word).
+  The hint always starts with the assistant's chosen name and the owner's name (personal settings), so a new
+  name is written right from the first word; the setup «Ascolta» says «Ciao, sono <name>» in the voice's language
+  (`lang.sample`, dossier `docs/work/2026-11-16-nome-ovunque`).
 
 ## Clients
 

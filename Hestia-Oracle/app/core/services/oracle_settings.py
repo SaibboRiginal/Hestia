@@ -93,11 +93,11 @@ _MODE_ALIASES = {"fast": "quick", "rapida": "quick", "pensata": "thinking", "dee
 # a client or a single conversation can override (session → client → profile → default).
 _CHAT = [
     setting(TONE, "Tono delle risposte", "enum", "warm", group="Chat", scope="user", options=TONES, order=0,
-            help="Come ti risponde Hestia, su ogni client."),
+            help="Come ti risponde {assistant}, su ogni client."),
     setting(INSTRUCTIONS, "Istruzioni personali", "text", "", group="Chat", scope="user", order=1,
             help="Aggiunte a ogni conversazione (es. «rispondi sempre in breve»)."),
     setting(MODE, "Modalità di conversazione", "enum", "auto", group="Chat", scope="user", options=MODES, order=2,
-            help="Rapida: una risposta senza strumenti. Auto: decide Hestia. Pensata: ragiona e usa gli "
+            help="Rapida: una risposta senza strumenti. Auto: decide {assistant}. Pensata: ragiona e usa gli "
                  "strumenti. CoT: ragionamento profondo passo passo (più lento)."),
 ]
 
@@ -114,11 +114,11 @@ AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
 _CONTEXT = [
     setting(AWARENESS_ITEMS, "Consapevolezza · cose recenti per riga", "int", 3, group="Contesto", order=21,
             min=0, max=6, unit="elementi",
-            help="Nelle tue conversazioni Hestia sa il tuo umore di oggi, le ultime notifiche che ti ha mandato e "
+            help="Nelle tue conversazioni {assistant} sa il tuo umore di oggi, le ultime notifiche che ti ha mandato e "
                  "le ultime cose che hai aperto: quante di ciascuna (0 = nessuna)."),
-    setting(PROFILE_MAX_TOKENS, "Hestia in altre AI · spazio massimo", "int", 1500, group="Contesto", order=20,
+    setting(PROFILE_MAX_TOKENS, "{assistant} in altre AI · spazio massimo", "int", 1500, group="Contesto", order=20,
             min=300, max=8000, unit="token",
-            help="Quanto pesa al massimo la personalità di Hestia (con istruzioni e ricordi) quando la attivi "
+            help="Quanto pesa al massimo la personalità di {assistant} (con istruzioni e ricordi) quando la attivi "
                  "dentro un'altra AI, per esempio Claude."),
     setting(NUM_CTX, "Modello locale · finestra di contesto", "int", 0, group="Contesto", min=0, max=262144,
             unit="token", order=0,

@@ -642,3 +642,7 @@ unreachable → Italian texts, never an error page. Saving «Lingua» (`CentralS
 page once. «Lingua» offers Italian and English (`LANGUAGES` in `identity.service.ts`, names never translated); the
 standard for texts is `docs/LANGUAGES.md`. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
 them; no personal data).
+The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-nome-ovunque`): `tr` fills
+`{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
+manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
+she/he reloads the page (`followIdentity`), except during the setup.

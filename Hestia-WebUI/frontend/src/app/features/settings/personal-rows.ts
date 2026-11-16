@@ -39,7 +39,7 @@ export const PERSONAL_ROWS: PersonalRow[] = [
     keywords: 'avvisi memoria azioni notifiche documenti agenda sviluppo',
     help: tr('Gli errori vengono mostrati comunque, tranne con «Nascosti».') },
   { id: 'new_session', section: 'sessione', label: tr('Nuova sessione'), keywords: 'conversazione contesto reset',
-    help: tr('Hestia dimentica il contesto della conversazione (le memorie restano).') },
+    help: tr('{assistant} dimentica il contesto della conversazione (le memorie restano).') },
   { id: 'reset', section: 'sessione', label: tr('Ripristina impostazioni personali'), keywords: 'predefiniti reset',
     help: tr('Tono, ragionamento, istruzioni e messaggi di sistema tornano ai predefiniti.') },
 ];
