@@ -31,7 +31,7 @@ from core import chronos_settings as CS
 from core import hermes_client
 from services import agenda
 from services import coach_planner as planner
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.coach")
 
@@ -43,7 +43,6 @@ NOTICE_WEEK = "coach.week"
 NOTICE_CHANGE = "coach.change"
 _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 _DEBOUNCE_SECONDS = 5.0
-WEEKDAYS = planner.WEEKDAYS
 _lock = threading.RLock()
 _pending: dict[str, Any] = {"timer": None, "reasons": []}
 
@@ -113,10 +112,10 @@ def _local(iso: str | None) -> datetime | None:
 def day_label(d: date, today: date | None = None) -> str:
     today = today or now().date()
     if d == today:
-        return "oggi"
+        return tr("today")
     if d == today + timedelta(days=1):
-        return "domani"
-    return WEEKDAYS[d.weekday()]
+        return tr("tomorrow")
+    return weekday_name(d.weekday())
 
 
 # ── Hub ─────────────────────────────────────────────────────────────────────
@@ -462,7 +461,7 @@ def view(day: date | None = None, *, week_start: date | None = None) -> dict:
     days = []
     for n in range((end - start).days):
         d = start + timedelta(days=n)
-        days.append({"date": d.isoformat(), "weekday": WEEKDAYS[d.weekday()],
+        days.append({"date": d.isoformat(), "weekday": weekday_name(d.weekday()),
                      "items": [i for i in items if i["date"] == d.isoformat()]})
     busy_blocks = [{"key": i["key"], "title": i.get("title"), "start_at": i.get("start_at"), "end_at": i.get("end_at")}
                    for i in agenda.list_items(owner=OWNER) if (i.get("params") or {}).get("coach_busy")
@@ -508,28 +507,28 @@ def fixed_text(plan: dict, past: list[dict]) -> str:
         text += tr(" Does not fit: ") + "; ".join(f"{u['title']} ({u['reason']})" for u in plan["unplaced"][:3]) + "."
     done = [r for r in past if r.get("done") or r.get("missed")]
     if done:
-        text += " Settimana passata: " + ", ".join(f"{r.get('label')} {r.get('done')} fatti" for r in done[:3]) + "."
+        text += tr(" Last week: ") + ", ".join(tr("{0} {1} done", r.get('label'), r.get('done')) for r in done[:3]) + "."
     return text
 
 
 def _prompt(plan: dict, past: list[dict]) -> str:
     lines = ["Write the owner the message with the plan of the week, 6 lines at most, practical.",
-             "No emoji, no names of modules or systems. Format: plain text. (NON ENTRA = does not fit.)",
-             "PIANO:"]
+             "No emoji, no names of modules or systems. Format: plain text. (DOES NOT FIT = no room this week.)",
+             "PLAN:"]
     for d in plan["days"]:
         for i in d["items"]:
             when = _local(i["start_at"])
             lines.append(f"- {d['weekday']} {when:%H:%M} {i['title']} ({i['label']})"
-                         + (f" versione corta {i['minutes']}'" if i.get("variant") else ""))
+                         + (f" short version {i['minutes']}'" if i.get("variant") else ""))
     for u in plan["unplaced"]:
-        lines.append(f"NON ENTRA: {u['title']} — {u['reason']}")
+        lines.append(f"DOES NOT FIT: {u['title']} — {u['reason']}")
     for t in plan["targets"]:
-        lines.append(f"OBIETTIVO: {t['title']} {t.get('reason') or ''}")
+        lines.append(f"GOAL: {t['title']} {t.get('reason') or ''}")
     for s in plan["states"]:
         if s.get("state"):
-            lines.append(f"STATO {s['label']}: {s['state']}")
+            lines.append(f"STATE {s['label']}: {s['state']}")
     for r in past:
-        lines.append(f"SETTIMANA PASSATA {r.get('label')}: fatti {r.get('done')}, saltati {r.get('missed')}"
+        lines.append(f"LAST WEEK {r.get('label')}: done {r.get('done')}, skipped {r.get('missed')}"
                      + (f", {'; '.join(r.get('notes') or [])}" if r.get("notes") else ""))
     return "\n".join(lines)
 

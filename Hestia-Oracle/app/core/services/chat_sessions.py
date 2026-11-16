@@ -137,7 +137,7 @@ def tool_tag(route: Route, tags: Any = "", remove: Any = "", title: str = "", pi
     if training_off not in (None, ""):
         body["training_off"] = str(training_off).lower() in ("1", "true", "sì", "si", "yes")
     out = set_meta(route, sid, body)
-    names = ", ".join(t["name"] for t in out.get("tags") or []) or "nessuna"
+    names = ", ".join(t["name"] for t in out.get("tags") or []) or tr("f::none")
     logger.info("event=chat_tagged session_id=%s tags=%d", sid, len(out.get("tags") or []))
     before = out.get("before") or {}
     text = tr("Conversation labels: {0}.", names)

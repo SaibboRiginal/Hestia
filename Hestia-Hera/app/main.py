@@ -104,7 +104,7 @@ app.include_router(recap.recap_router("hera", lambda d, n: recap.piece("hera", t
 
 # ── tools ────────────────────────────────────────────────────────────────────
 def _card(p: dict) -> dict:
-    lines = [f"{d['label']}: {d['day'][-5:][3:]}/{d['day'][-5:][:2]} (tra {d['in_days']} giorni)" for d in p["dates"]]
+    lines = [tr("{0}: {1}/{2} (in {3} days)", d['label'], d['day'][-5:][3:], d['day'][-5:][:2], d['in_days']) for d in p["dates"]]
     if p.get("likes"):
         lines.append(tr("Likes: ") + ", ".join(p["likes"][:8]))
     if p.get("dislikes"):

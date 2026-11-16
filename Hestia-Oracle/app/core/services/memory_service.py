@@ -664,7 +664,7 @@ class MemoryService:
         }
         pref_context = (
             "\n".join(f"ID: {p['id']} | Fact: {p['fact']}" for p in prefs)
-            if prefs else "Nessuna."
+            if prefs else "None."
         )
 
         if should_extract_prefs:
@@ -675,7 +675,7 @@ class MemoryService:
                 domains=", ".join(domains),
                 user_message=user_message,
                 history_text=history_text,
-                done_actions=", ".join(done_actions or []) or "nessuna",
+                done_actions=", ".join(done_actions or []) or "none",
             )
             raw_pref = self._ask(pref_prompt)
             pref_actions = parse_preference_actions(

@@ -241,7 +241,7 @@ class People:
 
     def recap(self, day: date, nxt: date) -> dict:
         soon = [u for u in self.upcoming(7) if u["in_days"] <= (nxt - self.today()).days + 6]
-        return {"next": [{"text": tr("{0} of {1} ", u['label'], u['person']) + ("domani" if u["in_days"] == 1 else
-                                                                       f"tra {u['in_days']} giorni"
-                                                                       if u["in_days"] else "oggi")}
+        return {"next": [{"text": tr("{0} of {1} ", u['label'], u['person']) + (tr("tomorrow") if u["in_days"] == 1 else
+                                                                       tr("in {0} days", u['in_days'])
+                                                                       if u["in_days"] else tr("today"))}
                          for u in soon[:4]]}

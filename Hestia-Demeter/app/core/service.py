@@ -22,7 +22,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_demeter.service")
 
 SLOTS = {"colazione": "Breakfast", "pranzo": "Lunch", "cena": "Dinner", "spuntino": "Snack"}
-TIMES = {"morning": "mattina", "midday": "pranzo", "afternoon": "pomeriggio", "evening": "sera", "any": "quando vuoi"}
+TIMES = {"morning": "in the morning", "midday": "at lunch", "afternoon": "in the afternoon", "evening": "in the evening",
+         "any": "whenever you like"}
 ESTIMATE_USE = "demeter.stima"
 
 
@@ -245,7 +246,7 @@ class Nutrition:
             logged = [x for x in logged if x["meals"] and not x["unknown"]]
             if logged:
                 avg = sum(x["kcal"] for x in logged) / len(logged)
-                notes.append(f"media {avg:.0f} kcal su {len(logged)} giorni (obiettivo {diet['kcal']})")
+                notes.append(f"average {avg:.0f} kcal over {len(logged)} days (goal {diet['kcal']})")
         return {"done": done, "missed": max(0, due - done), "adherence": round(done / due, 2) if due else None,
                 "notes": notes}
 

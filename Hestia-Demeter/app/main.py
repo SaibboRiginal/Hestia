@@ -137,13 +137,13 @@ app.include_router(recap.recap_router(
 # ── tools ────────────────────────────────────────────────────────────────────
 def _today_display(t: dict) -> dict:
     lines = [f"{t['kcal']}" + (f" / {t['kcal_target']}" if t["kcal_target"] else "") + " kcal"
-             + (f" · proteine {t['protein']}" + (f"/{t['protein_target']}" if t["protein_target"] else "") + " g")]
+             + (tr(" · protein {0}", t['protein']) + (f"/{t['protein_target']}" if t["protein_target"] else "") + " g")]
     if t["unknown"]:
-        lines.append(f"{t['unknown']} pasti ancora senza numeri")
-    items = [item(f"{SLOTS.get(m['slot'], m['slot'])}: {m['text']}",
+        lines.append(tr("{0} meals still without numbers", t['unknown']))
+    items = [item(f"{tr(SLOTS.get(m['slot'], m['slot']))}: {m['text']}",
                   [f"{'~' if m.get('estimated') else ''}{m['kcal']} kcal" if m["kcal"] is not None else "—"])
              for m in t["meals"]]
-    items += [item((tr("Taken: ") if s["taken"] else tr("To take: ")) + s["name"], [TIMES[s["time_of_day"]]])
+    items += [item((tr("Taken: ") if s["taken"] else tr("To take: ")) + s["name"], [tr(TIMES[s["time_of_day"]])])
               for s in t["supplements"]]
     return display(tr("At the table today"), lines=lines, items=items,
                    actions=[action(tr("Log meal"), "cibo_pasto", style="primary")] +
@@ -171,7 +171,7 @@ def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", 
 def _supplements() -> dict:
     items = food.supplements(True)
     return {"items": items, "display": display(tr("Supplements"), items=[
-        item(s["name"], [s.get("dose") or "", TIMES[s["time_of_day"]], "paused" if s["status"] == "paused" else ""])
+        item(s["name"], [s.get("dose") or "", tr(TIMES[s["time_of_day"]]), tr("paused") if s["status"] == "paused" else ""])
         for s in items], lines=[] if items else [tr("No supplements.")],
         actions=[action(tr("Add"), "cibo_integratore", style="primary")])}
 

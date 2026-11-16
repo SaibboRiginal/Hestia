@@ -33,7 +33,7 @@ TIME_OF_DAY = {"morning": (time(6, 0), time(12, 0)), "midday": (time(11, 30), ti
                "any": (time(0, 0), time(23, 59))}
 SLOT_TIME = {"morning": time(8, 0), "midday": time(13, 0), "afternoon": time(16, 0), "evening": time(21, 0),
              "any": time(12, 0)}
-WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
 @dataclass
@@ -290,6 +290,6 @@ def _why(n: dict, candidates: list[date], grid: dict[date, _Day], cfg: PlannerCo
         if all(grid[d].block_count >= cfg.max_blocks_per_day for d in candidates if d in grid):
             return tr("days already full")
         if "outdoor" in (n.get("tags") or []) and any(grid[d].wet for d in candidates if d in grid):
-            return "pioggia o buio nei momenti liberi"
-        return f"mancano {n['min_minutes']}' liberi nei giorni possibili"
+            return tr("rain or dark in the free moments")
+        return tr("{0}' of free time missing on the possible days", n['min_minutes'])
     return tr("constraints with other things of the same day")

@@ -112,29 +112,48 @@ def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
             return plain
 
 
-# Keys whose string value a person reads: a client localizes them when a payload crosses to the owner.
-LABEL_KEYS = frozenset({"title", "label", "subtitle", "summary", "description", "help", "group", "hint",
-                        "placeholder", "unit", "section", "caption", "empty", "tooltip", "action_label",
-                        "button", "heading", "badge", "note"})
+MONTHS = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December")
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+
+
+def month_name(month: int, lang: str | None = None) -> str:
+    """Name of ``month`` (1-12) in the owner's language («gennaio» in Italian)."""
+    return t(MONTHS[(int(month) - 1) % 12], lang=lang)
+
+
+def weekday_name(weekday: int, lang: str | None = None) -> str:
+    """Name of ``weekday`` (0 = Monday, as ``date.weekday()``) in the owner's language, lower case."""
+    return t(WEEKDAYS[int(weekday) % 7], lang=lang)
+
+
+# Keys whose string value is never a people text (ids, codes, states): ``localize`` leaves them alone.
+KEEP_KEYS = frozenset({"id", "key", "value", "status", "state", "type", "kind", "slug", "path", "url", "href",
+                       "code", "icon", "color", "tone", "module", "service", "method", "tool", "command",
+                       "domain", "source", "role", "lang", "language", "page", "link", "view", "tab", "event",
+                       "event_type", "use_case", "provider", "model", "format", "mime", "unit_code", "action",
+                       "name_id", "entity_id", "dedupe_key", "replaces", "query", "q", "args", "params"})
 
 
 def localize(payload: Any, lang: str | None = None) -> Any:
-    """A copy of a JSON payload whose people texts (values of ``LABEL_KEYS`` that are catalog keys) are in the
-    owner's language. Ids, statuses and user data stay as they are; English needs no work."""
+    """A copy of a JSON payload whose people texts are in the owner's language: every string value that is a
+    catalog key (an English source text) is translated, except under ``KEEP_KEYS``. Module-level labels (manifests,
+    pages, widgets, cards, choices) are written in English and translated here, at the edge to the owner."""
     code = str(lang or current())[:2]
-    if code == SOURCE:
-        return payload
-    table = catalog("messages", code)
-    if not table:
-        return payload
+    table = catalog("messages", code) if code != SOURCE else {}
+
+    def text(node: str) -> str:
+        hit = table.get(node)
+        if isinstance(hit, str) and hit:
+            return hit
+        return bare(node) if _CTX.match(node) else node
 
     def walk(node: Any, key: str = "") -> Any:
         if isinstance(node, dict):
-            return {k: walk(v, k) for k, v in node.items()}
+            return {k: (v if k in KEEP_KEYS else walk(v, k)) for k, v in node.items()}
         if isinstance(node, list):
             return [walk(v, key) for v in node]
-        if isinstance(node, str) and key in LABEL_KEYS:
-            hit = table.get(node)
-            return hit if isinstance(hit, str) and hit else node
+        if isinstance(node, str):
+            return text(node)
         return node
     return walk(payload)

@@ -40,25 +40,31 @@ export function followLanguage(value: unknown): void {
   setTimeout(() => location.reload(), 400);
 }
 
-/** Keys whose string value a person reads (same list as `hestia_common.i18n.LABEL_KEYS`). */
-const LABEL_KEYS = new Set(['title', 'label', 'subtitle', 'summary', 'description', 'help', 'group', 'hint',
-  'placeholder', 'unit', 'section', 'caption', 'empty', 'tooltip', 'action_label', 'button', 'heading', 'badge', 'note']);
+/** Keys whose string value is never a people text (same list as `hestia_common.i18n.KEEP_KEYS`). */
+const KEEP_KEYS = new Set(['id', 'key', 'value', 'status', 'state', 'type', 'kind', 'slug', 'path', 'url', 'href',
+  'code', 'icon', 'color', 'tone', 'module', 'service', 'method', 'tool', 'command', 'domain', 'source', 'role', 'lang',
+  'language', 'page', 'link', 'view', 'tab', 'event', 'event_type', 'use_case', 'provider', 'model', 'format', 'mime',
+  'unit_code', 'action', 'name_id', 'entity_id', 'dedupe_key', 'replaces', 'query', 'q', 'args', 'params']);
+const TAG = /^[a-z][a-z0-9.]*::/;
 
-/** A copy of an API payload whose people texts (values of LABEL_KEYS that are catalog keys) are in the owner's
- * language: module manifests, pages, widgets, cards. Ids, statuses and user data stay as they are. */
+/** A copy of an API payload whose people texts are in the owner's language: every string value that is a catalog
+ * key (an English source text) is translated, except under KEEP_KEYS. Module labels (manifests, pages, widgets,
+ * cards, choices) are written in English and translated here. */
 export function localize<T>(payload: T): T {
   const c = catalog();
-  if (c.language === 'en' || !payload || typeof payload !== 'object') return payload;
-  const walk = (node: any, key: string): any => {
-    if (Array.isArray(node)) return node.map(v => walk(v, key));
+  if (!payload || typeof payload !== 'object') return payload;
+  const messages = c.language === 'en' ? {} as Record<string, string> : c.messages;
+  const text = (s: string): string => messages[s] || (TAG.test(s) ? s.replace(TAG, '') : s);
+  const walk = (node: any): any => {
+    if (Array.isArray(node)) return node.map(walk);
     if (node && typeof node === 'object') {
       const out: any = {};
-      for (const [k, v] of Object.entries(node)) out[k] = walk(v, k);
+      for (const [k, v] of Object.entries(node)) out[k] = KEEP_KEYS.has(k) ? v : walk(v);
       return out;
     }
-    return typeof node === 'string' && LABEL_KEYS.has(key) && c.messages[node] ? c.messages[node] : node;
+    return typeof node === 'string' ? text(node) : node;
   };
-  return walk(payload, '');
+  return walk(payload);
 }
 
 function format(text: string, args: unknown[]): string | null {

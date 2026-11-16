@@ -229,7 +229,7 @@ def run_daily(today: date | None = None) -> dict:
             lead.append(s)
             hermes_client.publish_event("assistant", "special.soon", s["key"], {
                 "_title": tr("In {0} days", s['in_days']), "_source": tr("Calendar"), "_level": "info",
-                "_message": f"Tra {s['in_days']} giorni: <b>{s['title']}</b>{who} ({s['next'][8:10]}/{s['next'][5:7]}).",
+                "_message": tr("In {0} days: <b>{1}</b>{2} ({3}/{4}).", s['in_days'], s['title'], who, s['next'][8:10], s['next'][5:7]),
                 "dedupe_key": f"special.soon:{s['key']}:{s['next']}", "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
     logger.info("event=special_daily today=%d soon=%d", len(now), len(lead))
     return {"today": [s["key"] for s in now], "soon": [s["key"] for s in lead]}

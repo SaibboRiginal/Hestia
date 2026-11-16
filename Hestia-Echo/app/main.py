@@ -275,7 +275,7 @@ def blocks_write(part: str, body: dict = Body(...)):
     if part == "providers":
         bad = [n for n, p in value.items() if p.get("type") not in STANDARDS]
         if bad or not value:
-            raise Invalid(tr("unknown standard for: {0}", ', '.join(bad) or 'nessun fornitore'))
+            raise Invalid(tr("unknown standard for: {0}", ', '.join(bad) or tr('no provider')))
     elif part == "chains":
         if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
                             for c in value.values()):

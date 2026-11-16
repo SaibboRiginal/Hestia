@@ -191,7 +191,7 @@ class Forge:
         """User switch (Sviluppo page, Telegram): persisted as a central setting. Resuming
         restarts nothing: tasks held during the pause stay proposed until the user starts them."""
         saved = forge_settings.settings.put(forge_settings.PAUSED, bool(paused), actor="user",
-                                            reason=f"Sviluppo {'paused' if paused else 'ripreso'} da {by}")
+                                            reason=tr("Development paused by {0}", by) if paused else tr("Development resumed by {0}", by))
         if not saved:
             raise ForgeError(tr("Themis did not save the setting: try again shortly"), 503)
         # Apply now (Themis also pushes it back): no autonomous start slips in meanwhile.
@@ -982,7 +982,7 @@ class Forge:
             if fix is None:
                 return                          # Claude limit: the task waits and resumes later
             review["rounds"] = 1
-            new_sha = git_ops.commit_all(worktree, f"forge({task['id']}): correzioni della revisione\n\n{fix.summary[:1000]}", self.cfg.git_author_name, self.cfg.git_author_email)
+            new_sha = git_ops.commit_all(worktree, f"forge({task['id']}): fixes after the review\n\n{fix.summary[:1000]}", self.cfg.git_author_name, self.cfg.git_author_email)
             if new_sha:
                 sha, summary = new_sha, tr("{0}\n\nFixes after the review: {1}", summary, fix.summary[:600])
                 engine_ok = engine_ok and fix.ok

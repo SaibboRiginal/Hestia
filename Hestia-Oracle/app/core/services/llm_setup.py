@@ -595,7 +595,7 @@ def use_machine(address: str, name: str = "") -> dict[str, Any]:
     entry["label"] = f"Ollama ({name or address})" if address else tr("Ollama (local)")
     provs["ollama"] = entry
     if not oracle_settings.settings.put(oracle_settings.PROVIDERS_KEY, provs, actor="user",
-                                        reason=f"Macchine: modelli locali su {name or address or 'questa macchina'}"):
+                                        reason=tr("Machines: local models on {0}", name or address or tr("this machine"))):
         return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     logger.info("event=llm_setup_machine address=%s", address or "local")
     return {"ok": True, "detail": tr("Local models now run on {0}.", name or address) if address

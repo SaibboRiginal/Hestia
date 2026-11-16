@@ -12,7 +12,7 @@ A routine is **an agenda rule with a written instruction**, not a new timer:
 Run = optional **pre-check** first (Cindy 27: a module tool, e.g. «ci sono annunci nuovi?»; empty answer → the run
 stops, «niente di nuovo», no model call), then the assistant runs the instruction as a turn with origin
 ``routine:<key>`` (it may write, never delete: ``hestia_common.origin``), then the answer is delivered through
-Hermes only if there is something (the model answers ``NIENTE`` otherwise) or kept for the evening recap.
+Hermes only if there is something (the model answers ``NOTHING`` otherwise) or kept for the evening recap.
 Automatic **and** manual: «Esegui adesso» = the agenda's run now. The owner's edits win and pausing is the owner's call (agenda).
 
 A **question** of the turn (the assistant's ``ask_user``, or a module confirmation such as a setting proposal) cannot
@@ -43,7 +43,8 @@ logger = logging.getLogger("hestia_chronos.routines")
 _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 OWNER = "chronos"
 PREFIX = "routine."
-NOTHING = "NIENTE"
+NOTHING = "NOTHING"
+_OLD_NOTHING = "NIENTE"    # answer of the old Italian prompt, still accepted
 _RUN_TIMEOUT = 300
 _lock = threading.Lock()
 _results: list[dict] = []          # today's results kept for the recap (in memory, last 50)
@@ -265,7 +266,7 @@ def _deliver(key: str, item: dict, r: dict, out: dict, by: str) -> dict:
         asked = asked or str(question["question_id"]).startswith("ask_")
     if asked:   # the reply is the question itself: the routine goes on with the answer
         return {"ok": True, "ran": True, "delivered": True, "deliver": "question", "text": reply}
-    if not reply or reply.strip().strip(".").upper() == NOTHING:
+    if not reply or reply.strip().strip(".").upper() in (NOTHING, _OLD_NOTHING):
         logger.info("event=routine_quiet key=%s", key)
         return {"ok": True, "ran": True, "delivered": False, "reason": tr("nothing to say")}
     result = {"key": key, "title": item["title"], "text": reply, "at": _now().isoformat(),
