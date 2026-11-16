@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 2.1 |
+| **Version** | 3.0 |
 | **Source** | user via project chat (Marko, 2026-11-06: «non sarebbe più giusto che ogni modulo fosse un agente collegato ad Oracle?») |
 | **Status** | Draft — waiting for Marko's approval |
 
@@ -40,26 +40,32 @@ One Themis setting `oracle.funzionamento` (live, scope profile → client → se
 turn works. It is not an on/off switch: it is a choice among ways of working, and more can be added later.
 - `classica` — today's flow, untouched (classifier + one loop with the domains' tools). **Default** until Marko's
   real run says otherwise; going back = choose it again.
-- `agenti` — Oracle orchestrates, agents in parallel (§3.2–3.4). Meant for cloud chains.
-- `agenti_in_serie` — same agents, one at a time: Oracle plans the list of jobs, agent 1 works until done, agent 2
-  starts and **also reads agent 1's result**, …, then Oracle joins and answers. Slower, but one model call at a time:
-  meant for the local model (one GPU). Max agents per turn = `oracle.agenti.max_per_turno` (default 4).
+- `agenti` — Oracle orchestrates the module agents (§3.2–3.4). **Serial or parallel is not a mode**: every local
+  model call goes through the LLM bus (dossier `docs/work/2026-11-16-bus-llm`, PR #111, `core/services/llm_bus.py`).
+  Agents always start in parallel threads; with `oracle.bus.locali_insieme = 1` (Marko's PC today) their local calls
+  queue one after the other, with more workers (or cloud steps, which skip the bus) they really run together. The
+  owner's chat keeps priority `chat` on the bus over background work. Max agents per turn =
+  `oracle.agenti.max_per_turno` (default 4).
+- **Bacheca del turno** (idea from the s³ multi-agent paper, `/mnt/project-files/valutazioni/paper-settimana-2026-11-09.md`):
+  each agent that finishes posts a one-line result on the turn's board; an agent that starts its next step later
+  reads the board in its prompt. With one worker this gives the serial advantage (agent 2 sees agent 1's result)
+  without a separate mode; the main brain joins from the board plus the agents' answers.
 The mode is chosen in WebUI Impostazioni (Cervello) and from Telegram settings like every Themis setting; Oracle
 or Athena may only propose a change, Marko confirms. Clients get the mode used in `final.funzionamento`.
 
 ### 3.0a How the modes fit the rest
-| Thing | classica | agenti / agenti_in_serie |
+| Thing | classica | agenti |
 |---|---|---|
 | Chat mode `quick` | one ask, no tools | the same (no agents) |
 | `auto` | classifier → quick or loop | main brain decides: answers or calls agents |
 | `thinking` / `cot` | think level on the loop | same think level on main **and** agents; `cot` keeps the «Passi:» recap on main |
-| Brain `esterna` (Claude CLI) | Claude gets the domains' tools | Claude gets the small manifest; agents run in Oracle on their chains (in series: one at a time) |
+| Brain `esterna` (Claude CLI) | Claude gets the domains' tools | Claude gets the small manifest; agents run in Oracle on their chains through the bus |
 | Chains, quota fallback | per use case | the same; each agent has use case `agente.<modulo>` |
 | Origin levels, turn guards, Annulla, `ask_user`, Themis proposals | today | the same, inside each agent |
 | Conversation goal rounds | loop with tools | rounds use the same small manifest |
 | Spoken turns (Verity thread) | voice contract | voice contract on whoever answers (agent on a direct answer) |
 | `oracle.agent.max_turns` | loop cap | main brain cap; each agent has `oracle.agenti.passi` |
-| `oracle.agent.max_parallel_tools` | parallel tools | parallel tools inside an agent; agents capped by `oracle.agenti.max_paralleli` (ignored in series) |
+| `oracle.agent.max_parallel_tools` | parallel tools | parallel tools inside an agent; real concurrency of local calls = `oracle.bus.locali_insieme` |
 
 ### 3.0b Chats and clients
 Agents live **inside one turn** of one conversation: they are not separate chats. Each client keeps its own
@@ -85,11 +91,11 @@ in its module's data and in Oracle's memory, so every client sees it next time.
 - Domain request: main (decides) → agent loop (its tools) → answer. **Direct answer**: when the step called exactly
   one agent and nothing else, the agent's text is the reply, already in Hestia's voice (persona in the agent's
   prompt) → no third call. Two or more agents → the main brain joins the results (one more call).
-- Parallel: two agents in the same step run together (existing parallel tool execution), capped by new setting
-  `oracle.agenti.max_paralleli` (default 2; a chain with only the local model is in practice limited by what Ollama
-  serves at once).
-- Modes `agenti`/`agenti_in_serie` only. Mode `quick` stays as it is (one ask, no tools). Modes `thinking`/`cot` keep their think level for main and agents.
-- In the agent modes there is no classifier call; `chat_classifier.py` and `_turn_tool_domains` stay for `classica`.
+- Parallel: agents of the same step start in threads (existing parallel tool execution); each thread copies the
+  turn's contextvars so the bus keeps priority `chat` and the owner-waiting promotion. How many really run at once is
+  decided by the bus (§3.0).
+- Mode `agenti` only. Mode `quick` stays as it is (one ask, no tools). Modes `thinking`/`cot` keep their think level for main and agents.
+- In `agenti` there is no classifier call; `chat_classifier.py` and `_turn_tool_domains` stay for `classica`.
   The action policy line goes in every agent prompt (short).
 
 ### 3.3 The agent loop
@@ -128,7 +134,7 @@ The Verity thread (branch `claude/project-thread-j7apmm`, dossier `docs/work/202
 ## 4. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 1. Real job for the owner: faster chit-chat, domain answers that fit a local model, parallel work, visible agents.
 2. Owner module (R1): Oracle (the brain, agents included). Modules only declare `when_to_use`/`manual`/tools.
-3. Configuration: Themis `oracle.funzionamento` (classica · agenti · agenti_in_serie), `oracle.agenti.max_per_turno`, `oracle.agenti.max_paralleli`, `oracle.agenti.storico`, `oracle.agenti.passi`; each
+3. Configuration: Themis `oracle.funzionamento` (classica · agenti), `oracle.agenti.max_per_turno`, `oracle.agenti.storico`, `oracle.agenti.passi`; each
    agent's chain on Modelli. No switches, no env.
 4. Push or poll: n/a (inside the chat turn).
 5. Who confirms: same gates as today (origin levels, turn guards, Themis proposals, Annulla).
@@ -143,8 +149,8 @@ The Verity thread (branch `claude/project-thread-j7apmm`, dossier `docs/work/202
 2. The main loop's manifest holds one tool per agent + Oracle tools only (no module tool), on every model.
 3. «quanto ho speso questo mese?» → `agente_plutus` → reply from the agent with no extra main call; frames
    `agent start/tool/end` arrive before `final`.
-4. «quanto ho speso e com'è andato l'allenamento?» → `agenti`: two agents in parallel; `agenti_in_serie`: one after
-   the other, the second gets the first's result; one joined answer.
+4. «quanto ho speso e com'è andato l'allenamento?» → two agents; with 1 bus worker their local calls queue and the
+   later one reads the first's line on the board; with 2 workers they overlap; one joined answer.
 5. A write by an agent appears in `changes` with Annulla and its notice; an agent's `ask_user` stops the turn.
 6. A question turned into a write job by the main brain is still refused by the turn guards (owner's words).
 7. Every agent appears on Modelli as `agente.<modulo>` and follows «Uso generale» until changed.
