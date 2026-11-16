@@ -64,7 +64,7 @@ API = "/api/selfcare"
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("hygieia")
 settings.declare([
-    setting("hygieia.default_pao_months", "Duration after opening", "int", 12, group="Products", min=1, max=60, unit="mesi",
+    setting("hygieia.default_pao_months", "Duration after opening", "int", 12, group="Products", min=1, max=60, unit="months",
             help="When the product does not show the PAO (the «12M» jar)."),
     *reminder_settings("hygieia", help="Then choose on each routine whether you want the reminder. At most N a week per routine; only one stays visible and says how many times you skipped it."),
     voice_setting("hygieia", True),
@@ -564,7 +564,7 @@ def signals_run():
 
 def _agenda_rules() -> list[dict]:
     return [
-        signals_rule("hygieia", tr("alt::Self care"), path=f"{API}/signals/run", tz=TZ),
+        signals_rule("hygieia", "alt::Self care", path=f"{API}/signals/run", tz=TZ),
         job_rule("hygieia.planner", "Self care reminders (Hygieia)", service="hygieia", path=f"{API}/reminders/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T20:30:00", tz=TZ,
                  description="Checks the routines with the reminder on that are behind their goal. At most 2 a week per routine, only one visible at a time."),

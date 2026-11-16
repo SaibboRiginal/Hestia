@@ -176,7 +176,7 @@ def garmin_sync(body: dict = Body(default={})):
 
 def agenda_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
-    return [job_rule(GARMIN_JOB, tr("Garmin: sleep and activity"), service="hecate", path="/api/gateway/garmin/sync",
+    return [job_rule(GARMIN_JOB, "Garmin: sleep and activity", service="hecate", path="/api/gateway/garmin/sync",
                      body={"days": 2}, recurrence="FREQ=DAILY", start_at="2026-01-01T09:30:00", tz=TZ,
                      description="Reads last night and yesterday's and today's activities from the watch and passes them to training and self care. Without Garmin linked it does nothing.",
                      timeout_seconds=120)]

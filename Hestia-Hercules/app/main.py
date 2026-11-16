@@ -784,12 +784,12 @@ def signals_run():
 
 
 def _agenda_rules() -> list[dict]:
-    return [signals_rule("hercules", tr("Training"), path=f"{API}/signals/run", tz=TZ),
-            job_rule("hercules.reminder", tr("Workout reminder (Hercules)"), service="hercules",
+    return [signals_rule("hercules", "Training", path=f"{API}/signals/run", tz=TZ),
+            job_rule("hercules.reminder", "Workout reminder (Hercules)", service="hercules",
                      path=f"{API}/reminder/check", recurrence="FREQ=DAILY", start_at="2026-01-01T18:30:00",
                      description="Checks whether you are behind your training goal. It sends nothing if the reminder is off in the settings (default) or if you already trained today.",
                      tz=TZ),
-            job_rule("hercules.activity_morning", tr("Outdoor activity coach (Hercules)"), service="hercules",
+            job_rule("hercules.activity_morning", "Outdoor activity coach (Hercules)", service="hercules",
                      path=f"{API}/activities/morning", recurrence="FREQ=DAILY", start_at="2026-01-01T07:30:00",
                      description="Only while you have an open intention (e.g. run twice this week): «Great day for…» when the weather is good, or it proposes to move if it rains.",
                      tz=TZ)]

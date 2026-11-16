@@ -1221,12 +1221,12 @@ def _mail_watch_seconds() -> int:
 def _mail_agenda_rules() -> list[dict]:
     minutes = max(1, _mail_watch_seconds() // 60)
     rules = [job_rule(
-        MAIL_WATCH_JOB, tr("Check new emails"), service="hecate", path="/api/gateway/mail/watch/run",
+        MAIL_WATCH_JOB, "Check new emails", service="hecate", path="/api/gateway/mail/watch/run",
         body={"trigger": "agenda"}, recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
         description="One light mailbox check for all of Hestia: new emails go to Iris, which passes them to the subscribed modules (Scout, Expenses…). With Gmail push on it is only a safety net.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
     if gmail_pubsub.configured():
         rules.append(job_rule(
-            MAIL_RENEW_JOB, tr("Renew the Gmail watch"), service="hecate",
+            MAIL_RENEW_JOB, "Renew the Gmail watch", service="hecate",
             path="/api/gateway/mail/watch/renew", body={}, recurrence="FREQ=DAILY",
             start_at="2026-01-01T04:10:00", description="Gmail push expires after 7 days: I renew it every day.",
             timeout_seconds=30))

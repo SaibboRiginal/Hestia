@@ -87,7 +87,7 @@ settings.declare([
             min=30, max=3600, unit="s", order=11, advanced=True,
             help="How often I check whether a task waiting for the Claude Pro window can start."),
     setting(TEAM_MIN_SERVICES, "Split into pieces the work that touches at least", "int", 3, group=_FORGE,
-            min=1, max=20, unit="moduli", order=12,
+            min=1, max=20, unit="modules", order=12,
             help="A big job is split into pieces done one after the other, each with the right engine (simple pieces with the local model, hard ones with Claude), then reviewed all together."),
     setting(REMEDIATE_TIMEOUT, "Longest wait for a repair", "float", 25.0, group=_REPAIR,
             min=5, max=600, unit="s", order=20, advanced=True,

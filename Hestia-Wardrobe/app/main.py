@@ -510,13 +510,13 @@ def review_run():
 
 
 def _agenda_rules() -> list[dict]:
-    return [job_rule("wardrobe.reminder", tr("Wardrobe reminder"), service="wardrobe", path=f"{API}/reminder/check",
+    return [job_rule("wardrobe.reminder", "Wardrobe reminder", service="wardrobe", path=f"{API}/reminder/check",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=TZ,
                      description="Asks what you are wearing only if you have a «Worn» goal, you are behind and you haven't recorded anything today. Off in the settings = it sends nothing (default)."),
-            job_rule("wardrobe.review", tr("Monthly wardrobe review"), service="wardrobe", path=f"{API}/review/run",
+            job_rule("wardrobe.review", "Monthly wardrobe review", service="wardrobe", path=f"{API}/review/run",
                      recurrence="FREQ=MONTHLY;BYDAY=1SU", start_at="2026-01-04T10:00:00", tz=TZ,
                      description="Forgotten items, to repair, in the laundry for long, outfits to review. Only if the monthly review is on in the settings."),
-            signals_rule("wardrobe", tr("Wardrobe"), path=f"{API}/signals/run", tz=TZ)]
+            signals_rule("wardrobe", "Wardrobe", path=f"{API}/signals/run", tz=TZ)]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────

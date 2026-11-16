@@ -90,7 +90,7 @@ def docs_check_run(propose: bool = True) -> dict[str, Any]:
 
 def agenda_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
-    return [job_rule(DOCS_JOB, tr("Documents aligned with the code"), service="athena", path="/api/athena/docs/check",
+    return [job_rule(DOCS_JOB, "Documents aligned with the code", service="athena", path="/api/athena/docs/check",
                      recurrence="FREQ=MONTHLY;BYMONTHDAY=1;BYHOUR=4;BYMINUTE=30", timeout_seconds=180,
                      description="Once a month I compare the documentation with what the modules really do and propose fixes to development (you approve them).")]
 

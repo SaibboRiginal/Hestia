@@ -103,7 +103,7 @@ AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
 
 _CONTEXT = [
     setting(AWARENESS_ITEMS, "Awareness · recent things per line", "int", 3, group="Count the actions in the WebUI", order=21,
-            min=0, max=6, unit="elementi",
+            min=0, max=6, unit="items",
             help="In your conversations Hestia knows your mood today, the last notifications it sent you and the last things you opened: how many of each (0 = none)."),
     setting(PROFILE_MAX_TOKENS, "Hestia in other AIs · most space", "int", 1500, group="Count the actions in the WebUI", order=20,
             min=300, max=8000, unit="token",
@@ -116,7 +116,7 @@ _CONTEXT = [
     setting(COMPACT_THRESHOLD, "Compact the context beyond", "float", 0.8, group="Count the actions in the WebUI", min=0.3, max=0.95,
             order=2, advanced=True, help="Fraction of the window beyond which the conversation is summarised."),
     setting(STUB_AFTER_TURNS, "Shorten tool results after", "int", 2, group="Count the actions in the WebUI", min=0,
-            max=20, unit="passi", order=3, advanced=True,
+            max=20, unit="steps", order=3, advanced=True,
             help="In long reasoning, results older than N steps become a summary line when the context fills up. 0 = never."),
     setting(OPENAI_CACHE_PROMPT, "OpenAI compatible server · reuse the prompt cache", "bool", True,
             group="Count the actions in the WebUI", order=4, advanced=True,
@@ -148,7 +148,7 @@ TIMEOUTS = {
     "action_selection": ("Choice of the action", 12),
     "action_service_route": ("Action on a module", 25),
     "memory_extraction": ("Memory extraction", 10),
-    "background_compaction": ("Compattazione in background", 8),
+    "background_compaction": ("Background compaction", 8),
     "notification_formatting": ("Notification text", 12),
 }
 GATEWAY_CHAT_TIMEOUT = "oracle.timeouts.gateway_chat"
@@ -205,17 +205,17 @@ _DEFAULT_VISION = ["gemma-3", "gemma4", "gemma3", "gemini", "gpt-4o", "gpt-4-vis
 _TOOL_MODES = [("auto", "Automatic"), ("native", "Native"), ("text", "Text")]
 
 _AGENT = [
-    setting(MAX_TURNS, "Most steps per answer", "int", 25, group="Agent", min=1, max=100, unit="passi",
+    setting(MAX_TURNS, "Most steps per answer", "int", 25, group="Agent", min=1, max=100, unit="steps",
             order=0, help="How many times at most the assistant uses tools before answering you (CoT mode uses at least 50)."),
     setting(ASK_TIMEOUT, "A question for you stays open for", "int", 24, group="Agent", min=1, max=720,
             unit="hours", order=3, help="When the assistant asks you something (choice, confirmation, free text), after this time without an answer the question closes."),
     setting(MAX_TOKENS, "Most tokens per answer", "int", 0, group="Agent", min=0, max=2_000_000,
             unit="token", order=1, advanced=True, help="Limit of tokens used in one reasoning. 0 = no limit."),
     setting(TOOL_RESULT_MAX_CHARS, "Longest tool result", "int", 2000,
-            group="Agent", min=200, max=50000, unit="caratteri", order=2, advanced=True,
+            group="Agent", min=200, max=50000, unit="characters", order=2, advanced=True,
             help="Beyond this length the result is shortened before giving it to the model."),
     setting(EARLY_EXIT_NO_TOOL_TURNS, "Close after steps without tools", "int", 2, group="Agent", min=1,
-            max=10, unit="passi", order=3, advanced=True,
+            max=10, unit="steps", order=3, advanced=True,
             help="If the model uses no tools for these steps in a row (and has already done something), it answers."),
     setting(MAX_PARALLEL_TOOLS, "Parallel tools", "int", 8, group="Agent", min=1, max=32, order=4,
             advanced=True, help="How many tools can run together in the same step."),
@@ -239,24 +239,24 @@ _AGENT = [
             min=1, max=10, order=9, advanced=True,
             help="After answering one of your messages, how many rounds it does on the goal before updating you."),
     setting(HISTORY_LIMIT, "Previous messages in the context", "int", 6, group="Count the actions in the WebUI", min=1, max=100,
-            unit="messaggi", order=10, help="How many conversation messages the assistant rereads at each answer."),
+            unit="messages", order=10, help="How many conversation messages the assistant rereads at each answer."),
     setting(HISTORY_CHAR_LIMIT, "Longest previous message", "int", 500, group="Count the actions in the WebUI",
-            min=50, max=20000, unit="caratteri", order=11, advanced=True,
+            min=50, max=20000, unit="characters", order=11, advanced=True,
             help="Longer old messages are shortened in the context."),
     setting(ENTITIES_LIMIT, "Module items in the context", "int", 12, group="Count the actions in the WebUI", min=1, max=100,
             order=12, advanced=True, help="How many items found in the modules (listings, events…) go into the analysis."),
     setting(FIELD_CHAR_LIMIT, "Longest field", "int", 280, group="Count the actions in the WebUI", min=50, max=5000,
-            unit="caratteri", order=13, advanced=True, help="Each field of an item is shortened to this length."),
+            unit="characters", order=13, advanced=True, help="Each field of an item is shortened to this length."),
     setting(COMPACT_TRIGGER, "Summarise the conversation beyond", "int", 20, group="Count the actions in the WebUI", min=6, max=500,
-            unit="messaggi", order=14, advanced=True,
+            unit="messages", order=14, advanced=True,
             help="Beyond this number of messages the old part of the conversation is summarised."),
     setting(COMPACT_KEEP, "Recent messages not to summarise", "int", 6, group="Count the actions in the WebUI", min=2, max=50,
-            unit="messaggi", order=15, advanced=True, help="The latest messages stay whole when summarising."),
+            unit="messages", order=15, advanced=True, help="The latest messages stay whole when summarising."),
     setting(TODAY_AGENDA, "Today's agenda in the context", "bool", True, group="Count the actions in the WebUI", order=16,
             help="At each answer the assistant reads today's commitments from the calendar (a few more tokens)."),
 ]
 _TIMEOUTS = [
-    setting(f"oracle.timeouts.{name}", tr("Maximum time · {0}", label.lower()), "int", default, group="Timings",
+    setting(f"oracle.timeouts.{name}", f"Maximum time · {label.lower()}", "int", default, group="Timings",
             min=1, max=600, unit="s", order=i, advanced=True,
             help="Beyond this time the step is skipped or the backup plan is used.")
     for i, (name, (label, default)) in enumerate(TIMEOUTS.items())
@@ -304,7 +304,7 @@ _APPROVAL = [
             depends_on={"key": APPROVAL_ENABLED, "equals": True},
             help="After this time a confirmation request with no answer expires."),
     setting(APPROVAL_BULK_MIN, "Confirm if the action touches at least", "int", 2, group="Confirmations", min=1, max=100,
-            unit="elementi", oracle="read", order=2, advanced=True,
+            unit="items", oracle="read", order=2, advanced=True,
             depends_on={"key": APPROVAL_ENABLED, "equals": True},
             help="An action repeated on at least these items asks for confirmation."),
     setting(APPROVAL_METHODS, "Request types to confirm", "list", ["DELETE", "PUT", "PATCH"],
@@ -345,15 +345,15 @@ _DOCUMENTS = [
 _AB = []
 for _i, (_surface, (_prefix, _label)) in enumerate(AB_SURFACES.items()):
     _AB += [
-        setting(f"{_prefix}.enabled", tr("Prompt experiment · {0}", _label), "bool", False, group="Experiments",
+        setting(f"{_prefix}.enabled", f"Prompt experiment · {_label}", "bool", False, group="Experiments",
                 order=_i * 10, advanced=True,
                 help="Splits requests between prompt variants to compare them."),
-        setting(f"{_prefix}.variants", tr("Prompt experiment · {0} · variants", _label), "list",
+        setting(f"{_prefix}.variants", f"Prompt experiment · {_label} · variants", "list",
                 ["control", "experimental"], group="Experiments", order=_i * 10 + 1, advanced=True),
-        setting(f"{_prefix}.default", tr("Prompt experiment · {0} · normal variant", _label), "string", "control",
+        setting(f"{_prefix}.default", f"Prompt experiment · {_label} · normal variant", "string", "control",
                 group="Experiments", order=_i * 10 + 2, advanced=True,
                 help="Used when the experiment is off."),
-        setting(f"{_prefix}.force", tr("Prompt experiment · {0} · force variant", _label), "string", "",
+        setting(f"{_prefix}.force", f"Prompt experiment · {_label} · force variant", "string", "",
                 group="Experiments", order=_i * 10 + 3, advanced=True,
                 help="If set, always used (even with the experiment off)."),
     ]

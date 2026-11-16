@@ -81,7 +81,7 @@ settings.declare([
     setting("plutus.mail.senders", "PayPal senders", "list", list(DEFAULT_PAYPAL_SENDERS), group="Email", order=0,
             help="Addresses or domains of payment emails: Iris passes them to Expenses as soon as they arrive."),
     setting("plutus.coach.review_threshold", "Transactions to check before proposing a review", "int", 10,
-            group="Weekly plan", min=1, max=100, unit="movimenti",
+            group="Weekly plan", min=1, max=100, unit="transactions",
             help="From this number of transactions to check I put 15 minutes in the weekly plan to review expenses."),
     setting("plutus.link.window_days", "Days to match PayPal and bank", "int", 3, group="Email", min=0, max=10,
             unit="days", advanced=True,
@@ -419,7 +419,7 @@ _mail_stats: dict[str, Any] = {"last_run": None, "processed": 0, "added": 0, "la
 
 def _mail_rules() -> list[dict]:
     senders = settings.get("plutus.mail.senders") or DEFAULT_PAYPAL_SENDERS
-    return [mail_rule(MAIL_KEY, tr("PayPal payments"), path=f"{API}/mail", domain=DOMAIN, senders=senders,
+    return [mail_rule(MAIL_KEY, "PayPal payments", path=f"{API}/mail", domain=DOMAIN, senders=senders,
                       description="Receipts, refunds and money received: Expenses records them by itself.")]
 
 
@@ -627,13 +627,13 @@ def _agenda_rules() -> list[dict]:
         job_rule("plutus.daily", "Expenses: budget and subscription alerts", service="plutus", path=f"{API}/alerts/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T21:00:00", tz=TZ,
                  description="Checks the month's budgets (notice at the threshold and when exceeded, one per category) and recognises recurring payments."),
-        job_rule("plutus.review", tr("Expenses: monthly summary"), service="plutus", path=f"{API}/review/run",
+        job_rule("plutus.review", "Expenses: monthly summary", service="plutus", path=f"{API}/review/run",
                  recurrence="FREQ=MONTHLY;BYMONTHDAY=1", start_at="2026-01-01T09:00:00", tz=TZ,
                  description="Only if the monthly summary is on: how last month went."),
         job_rule("plutus.statement_reminder", "Expenses: bank statement reminder", service="plutus",
                  path=f"{API}/reminders/run", recurrence="FREQ=MONTHLY;BYMONTHDAY=3,6,9", start_at="2026-01-01T10:00:00",
                  tz=TZ, description="Only if the reminder is on and last month's statement is missing."),
-        signals_rule("plutus", tr("Expenses"), path=f"{API}/signals/run", tz=TZ),
+        signals_rule("plutus", "Expenses", path=f"{API}/signals/run", tz=TZ),
     ]
 
 

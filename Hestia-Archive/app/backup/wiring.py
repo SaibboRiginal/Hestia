@@ -33,7 +33,7 @@ settings.declare([
     setting("archive.backup.keep_daily", "Recent backups to keep", "int", 3, group="Backup", min=1, max=60,
             unit="days", help="One backup a day: how many of the latest stay on Google Drive."),
     setting("archive.backup.keep_monthly", "Monthly backups to keep", "int", 3, group="Backup", min=0, max=36,
-            unit="mesi", help="Besides the recent ones, the first backup of each month for these months. 0 = none."),
+            unit="months", help="Besides the recent ones, the first backup of each month for these months. 0 = none."),
 ])
 
 agenda = AgendaClient("archive", HUB_API_URL)
@@ -41,10 +41,10 @@ agenda = AgendaClient("archive", HUB_API_URL)
 
 def agenda_rules() -> list[dict]:
     return [
-        job_rule("archive.backup", tr("Backup"), service="archive", path="/api/backup/run",
+        job_rule("archive.backup", "Backup", service="archive", path="/api/backup/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T03:30:00", tz=TZ,
                  description="Encrypted copy of all data on Google Drive (.hestia folder)."),
-        job_rule("archive.backup_verify", tr("Backup check"), service="archive", path="/api/backup/verify",
+        job_rule("archive.backup_verify", "Backup check", service="archive", path="/api/backup/verify",
                  recurrence="FREQ=MONTHLY;BYMONTHDAY=1", start_at="2026-01-01T04:00:00", tz=TZ,
                  description="Restores the latest backup into a test database and checks it is complete."),
     ]

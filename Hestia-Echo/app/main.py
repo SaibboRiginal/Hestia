@@ -86,7 +86,7 @@ settings.declare([
             options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
     setting("echo.language", "Language", "enum", "auto", group="Voice", order=7, options=LANGUAGES),
     setting("echo.voce.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
-            unit="caratteri", help="Beyond it, the voice reads the start and says the rest is in the text."),
+            unit="characters", help="Beyond it, the voice reads the start and says the rest is in the text."),
     setting("echo.ascolto.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
             max=7200, unit="s", advanced=True),
     setting("echo.live.silence_ms", "Pause that ends the live turn", "int", 1250, group="Voice", order=10,
@@ -107,7 +107,7 @@ settings.declare([
             group="Your voice", order=41,
             help="Voice uses where I filter other voices (e.g. webui.live.ascolto, telegram.vocale). Without a recorded voiceprint I filter nothing."),
     setting("echo.dizionario.conferme", "Corrections to learn a word", "int", 2, group="Your voice",
-            order=42, min=1, max=10, unit="volte",
+            order=42, min=1, max=10, unit="times",
             help="After how many of your corrections a word enters the dictionary I pass to recognition."),
     setting("echo.pricing", "Prices", "object", {}, group="Voice", order=30, advanced=True,
             help="«provider/model» → {minute: € per minute listened, mchars: € per million characters read}, for the Usage panel."),
@@ -442,7 +442,7 @@ def voiceprint_forget():
 
 
 def _agenda_rules() -> list[dict]:
-    return [job_rule("echo.audio_cleanup", tr("Voice: audio cleanup"), service="echo", path=f"{API}/audio/cleanup",
+    return [job_rule("echo.audio_cleanup", "Voice: audio cleanup", service="echo", path=f"{API}/audio/cleanup",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T04:30:00", tz=TZ,
                      description="Removes generated audio not listened to for a long time and keeps the space under the limit. Recordings are never touched.")]
 

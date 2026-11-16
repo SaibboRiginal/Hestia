@@ -191,7 +191,7 @@ class OAuthServer:
         responses = body.get("response_types") or ["code"]
         if responses != ["code"]:
             raise OAuthError("invalid_client_metadata", "response_types: code")
-        name = " ".join(str(body.get("client_name") or "").split())[:80] or urlsplit(uris[0]).hostname or tr("External AI")
+        name = " ".join(str(body.get("client_name") or "").split())[:80] or urlsplit(uris[0]).hostname or "External AI"
         client_id = CLIENT_PREFIX + secrets.token_urlsafe(18)
         secret = secrets.token_urlsafe(32) if method != "none" else None
         self._archive("POST", "oauth/clients", {

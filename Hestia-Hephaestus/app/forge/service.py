@@ -129,13 +129,13 @@ class Forge:
             from ..core.shared_imports import import_shared_symbol
             template = import_shared_symbol("hestia_common.agenda_client", "template")
             self.agenda.register_async([], templates=[template(
-                "develop", tr("Scheduled development"), service="hephaestus", path="/api/hephaestus/forge/tasks",
+                "develop", "Scheduled development", service="hephaestus", path="/api/hephaestus/forge/tasks",
                 type="task", types=["task"], icon="terminal",
-                fields={"request": {"type": "string", "label": tr("Request"), "format": "textarea", "description": tr("What to develop or fix")},
-                        "engine": {"type": "string", "label": tr("Engine"), "enum": ["", "oracle", "claude"], "default": "",
-                                   "description": tr("Engine (empty = default)")}},
+                fields={"request": {"type": "string", "label": "Request", "format": "textarea", "description": "What to develop or fix"},
+                        "engine": {"type": "string", "label": "Engine", "enum": ["", "oracle", "claude"], "default": "",
+                                   "description": "Engine (empty = default)"}},
                 required=["request"], body={"source": "agenda", "requested_by": "user"},
-                title=tr("Scheduled development"), timeout_seconds=30,
+                title="Scheduled development", timeout_seconds=30,
                 description="At the chosen time Forge starts the development task (diff to approve as always).")])
         except Exception as exc:  # never block Forge start on the agenda
             logger.warning("[🔄] event=forge_agenda_templates_failed error=%s", exc)

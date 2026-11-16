@@ -128,7 +128,7 @@ _cycle_state: dict[str, Any] = {"running": False, "last_started": None, "last_fi
 
 def _mail_rules() -> list[dict]:
     senders, queries = scout_settings.mail_rule_parts()
-    return [mail_rule(MAIL_KEY, tr("Real estate listings"), path="/api/scout/mail", domain=TARGET_DOMAIN,
+    return [mail_rule(MAIL_KEY, "Real estate listings", path="/api/scout/mail", domain=TARGET_DOMAIN,
                       senders=senders, queries=queries,
                       description="Emails from property portals: Scout extracts and updates the houses.")]
 

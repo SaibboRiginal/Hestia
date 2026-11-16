@@ -125,13 +125,13 @@ def _agenda_rules() -> list[dict]:
     # (Chronos owns scheduling; user edits win), so it is neither env nor a Themis setting.
     tz = os.getenv("TZ") or "Europe/Rome"
     return [daily_window(
-        WINDOW_TRAINING, tr("Window to train the models"), 1, 6,
+        WINDOW_TRAINING, "Window to train the models", 1, 6,
         description="Planned LoRA trainings (not requested by you) start here. Move/skip the window to postpone them.")] + [
-        job_rule(f"metis.adesso.{at.replace(':', '')}", tr("Ideas for «Now»"), service="metis",
+        job_rule(f"metis.adesso.{at.replace(':', '')}", "Ideas for «Now»", service="metis",
                  path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
                  description="The assistant thinks of three useful things for the next hours (and cleans old taps).")
         for at in IDEAS_AT] + [
-        job_rule("metis.dataset.review", tr("Review of the answers for training"), service="metis",
+        job_rule("metis.dataset.review", "Review of the answers for training", service="metis",
                  path="/api/metis/review/run", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{REVIEW_AT}:00", tz=tz,
                  description="A stronger model rereads the day's answers (with your data hidden) and fixes the wrong ones; doubtful cases wait for you in «To review».")]
 

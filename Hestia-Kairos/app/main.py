@@ -150,7 +150,7 @@ def process_pending_mail() -> dict:
 
 def _mail_rules() -> list[dict]:
     words = kit.settings.get("kairos.mail.words", DEFAULT_MAIL_WORDS) or DEFAULT_MAIL_WORDS
-    return [mail_rule(MAIL_KEY, tr("Emails with deadlines"), path=f"{API}/mail", domain=DOMAIN, subject_contains=words,
+    return [mail_rule(MAIL_KEY, "Emails with deadlines", path=f"{API}/mail", domain=DOMAIN, subject_contains=words,
                       description="Bills, renewals, notices: Deadlines proposes the deadline, you confirm.")]
 
 

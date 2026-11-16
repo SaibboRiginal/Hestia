@@ -29,8 +29,11 @@ except ModuleNotFoundError:
 
 from dispatch import Dispatcher
 from hestia_common.plugin_client import PluginClient, page, quick_action
+from hestia_common.settings_client import SettingsClient
 
 logger, log_buffer = setup_service_logging("hestia_iris")
+# «Lingua» (themis.personal.language): the fixed texts of this module follow the owner's language
+settings = SettingsClient("iris").follow_personal()
 
 app = FastAPI(title="Hestia-Iris", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=[
@@ -199,6 +202,7 @@ def _now_iso() -> str:
 
 @app.on_event("startup")
 def register_on_hub_startup() -> None:
+    settings.start()
     service_base_url = os.getenv(
         "IRIS_SERVICE_BASE_URL", "http://hestia_iris:19012")
     startup_wait_timeout = float(
@@ -412,7 +416,7 @@ def email_check_now() -> dict[str, Any]:
     status, payload = _hub_call("hecate", "POST", "api/gateway/mail/watch/run", body={"trigger": "webui"},
                                 timeout=100)
     if not status or status >= 400:
-        raise HTTPException(status_code=503, detail=tr("Hecate not reachable"))
+        raise HTTPException(status_code=503, detail=tr("Email not reachable right now"))
     return payload if isinstance(payload, dict) else {"status": "ok"}
 
 

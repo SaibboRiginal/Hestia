@@ -12,7 +12,6 @@ from .core.service_contract import HestiaServiceBase, ServiceDescriptor
 from . import recipes as site_recipes
 from .fetcher import fetch_html, run_in_edge
 from .schemas import FetchHtmlRequest, FetchHtmlResponse
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -36,9 +35,9 @@ class FetchService(HestiaServiceBase):
             "commands": [
                 {
                     "command": "fetch_page",
-                    "title": tr("Read a web page"),
+                    "title": "Read a web page",
                     "telegram_group": "memoria",
-                    "telegram": {"section": "Web", "label": tr("Read a page")},
+                    "telegram": {"section": "Web", "label": "Read a page"},
                     "description": "Fetches HTML by attaching to host Edge via CDP only",
                     "method": "POST",
                     "path": "/api/fetch/html",
@@ -48,7 +47,7 @@ class FetchService(HestiaServiceBase):
                 },
                 {
                     "command": "web_search",
-                    "title": tr("Search the web"),
+                    "title": "Search the web",
                     "telegram_group": "memoria",
                     "telegram": {"section": "Web"},
                     "description": "Search via DuckDuckGo Instant Answer API",

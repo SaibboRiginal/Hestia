@@ -208,14 +208,14 @@ settings.declare([
     setting(REFLECTION_MAX_TOPICS, "Topics per reflection", "int", 4, group=_G_REFLECTION, min=1, max=10,
             help="How many signals or links each reflection looks into."),
     setting(REFLECTION_MIN_WEEKS, "Weeks for a link", "int", 6, group=_G_REFLECTION, min=3, max=52,
-            unit="settimane", help="How many weeks with data are needed before linking two habits."),
+            unit="weeks", help="How many weeks with data are needed before linking two habits."),
     setting(REFLECTION_MIN_CORRELATION, "Weakest link strength", "float", 0.6, group=_G_REFLECTION,
             min=0.3, max=0.95, advanced=True,
             help="How much two trends must move together (correlation) to count."),
     setting(REFLECTION_REPEAT_DAYS, "Don't repeat before", "int", 14, group=_G_REFLECTION, min=1, max=180,
             unit="days", advanced=True, help="The same observation does not come back before this."),
     setting(REFLECTION_DETAIL_BUDGET, "Details asked of each area", "int", 600, group=_G_REFLECTION, min=100,
-            max=3000, unit="caratteri", advanced=True,
+            max=3000, unit="characters", advanced=True,
             help="How much text to ask an area when a signal deserves a closer look."),
 
     # ── She writes first (docs/work/2026-11-12-identita-e-proattivita). WHEN = agenda window athena.talk ──
@@ -248,7 +248,7 @@ settings.declare([
             options=["amichevole", "asciutto"],
             help="How the daily recap is written to you: friendly (a few more words) or dry (just the facts). You move the time in the calendar."),
     setting(RECAP_MAX_CHARS, "Longest recap", "int", 900, group=_G_RECAP, min=200, max=4000,
-            unit="caratteri", help="The recap stays under this length."),
+            unit="characters", help="The recap stays under this length."),
     setting(RECAP_PIECE_TIMEOUT, "Wait for each area", "float", 5.0, group=_G_RECAP, min=1, max=30, unit="s",
             advanced=True, help="How long to wait for each area (training, expenses…) before making the recap without it."),
 ]).declare_log_level()
