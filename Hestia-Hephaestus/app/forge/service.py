@@ -969,7 +969,7 @@ class Forge:
                                     tests=tests_out, summary=summary)
 
     def _review(self, task: dict, worktree: Path, base_sha: str, sha: str, summary: str, engine_ok: bool,
-                heading: str = "Forge: modifica pronta", engine=None, test_runner=None) -> None:
+                heading: str = "", engine=None, test_runner=None) -> None:
         """Forge's own tests, the automatic review (+ one round of fixes by the engine), then the owner's
         approval (or auto merge when allowed)."""
         changed, tests_ok, tests_out = self._run_tests(task, worktree, base_sha)
@@ -1006,7 +1006,8 @@ class Forge:
                 logger.warning("[🔄] event=forge_push_failed task_id=%s error=%s", task["id"], exc)
 
         self._set_state(task, "awaiting_review", f"engine_ok={engine_ok} tests_ok={tests_ok}")
-        tests_label = {True: "✅ test ok", False: "❌ tests failed", None: tr("➖ no tests")}[tests_ok]
+        tests_label = {True: tr("✅ tests ok"), False: tr("❌ tests failed"), None: tr("➖ no tests")}[tests_ok]
+        heading = heading or tr("Forge: change ready")
         short = task["id"][:6]
         self._notify(task, (
             tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nAnswer \"approva sviluppo {6}\" to apply it, \"rifiuta {7}\" to discard it.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))

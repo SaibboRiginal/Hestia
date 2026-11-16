@@ -91,7 +91,7 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
     for p in h.plan(today.isoformat())["routines"]:
         g = p["goal"]
         if g.get("mode") == "target" and g.get("behind") and p["state"] == "due":
-            out.append(signal(f"goal:{p['routine_id']}", tr("{0} behind: {1}, {2} {3} to the end", p['name'], g['hint'], g['days_left'], 'giorno' if g['days_left'] == 1 else 'giorni'),
+            out.append(signal(f"goal:{p['routine_id']}", (tr("{0} behind: {1}, 1 day to the end", p['name'], g['hint']) if g['days_left'] == 1 else tr("{0} behind: {1}, {2} days to the end", p['name'], g['hint'], g['days_left'])),
                               kind="goal", severity="attenzione",
                               metrics={"done": g["done"], "times": g["times"], "days_left": g["days_left"]},
                               page=f"routine/{p['routine_id']}"))
@@ -174,5 +174,5 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
         st = h.routine_stats({**r, "id": ref})
         g = p["goal"]
         hist = "; ".join(f"{x['start']} {x['done']}/{x['need']}" for x in st["history"][-4:])
-        return (tr("Self care · {0}: {1}, last {2}, streak {3}, kept {4}% · {5}", r.get('name'), g.get('hint', ''), g.get('last_done') or 'mai', st['streak'], st['adherence'] if st['adherence'] is not None else '?', hist))
+        return (tr("Self care · {0}: {1}, last {2}, streak {3}, kept {4}% · {5}", r.get('name'), g.get('hint', ''), g.get('last_done') or tr("never"), st['streak'], st['adherence'] if st['adherence'] is not None else '?', hist))
     return None

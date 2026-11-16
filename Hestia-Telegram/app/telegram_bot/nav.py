@@ -131,7 +131,7 @@ def home(chat_id) -> None:
     counts = _counts()
     waiting = int(counts.get("pending") or 0) or int(counts.get("unread") or 0)
     if waiting:
-        lines.append(tr("• Notifications to see: {0}", waiting, 'a' if waiting == 1 else 'he'))
+        lines.append((tr("• 1 notification to see") if waiting == 1 else tr("• {0} notifications to see", waiting)))
     lines.append(ui.note(tr("Write what you need, or use the buttons below.")))
     html = ui.card(tr("Hi"), lines, subtitle=_today_words())
     core.bot.send_message(chat_id, html, parse_mode="HTML", reply_markup=reply_keyboard(menu),

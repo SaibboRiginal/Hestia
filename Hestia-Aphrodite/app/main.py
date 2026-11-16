@@ -89,7 +89,7 @@ def image(bid: str):
 def upload_pet_image(pid: str, pose: str, body: dict = Body(...)):
     """A picture of the pet chosen by the owner (wins over a generated one)."""
     if pose not in POSES or not body.get("data_b64"):
-        raise Invalid("posa: " + ", ".join(POSES) + " e l'immagine")
+        raise Invalid(tr("pose: {0} and the image", ", ".join(POSES)))
     look.pet(pid)
     out = kit.hub.ok("archive", "POST", "api/blobs", body={"owner_module": "aphrodite", "content_type": body.get("mime") or
                                                            "image/png", "data_base64": body["data_b64"],

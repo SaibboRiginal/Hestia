@@ -660,7 +660,7 @@ class Plutus:
             done.append({"text": tr("Income {0}", money(income)), "tone": "success"})
         review = sum(1 for t in rows if t.get("status") == "to_review")
         if review:
-            done.append({"text": tr("{0} transaction{1} to review", review, 'o' if review == 1 else 'i'), "tone": "warning"})
+            done.append({"text": (tr("1 transaction to review") if review == 1 else tr("{0} transactions to review", review)), "tone": "warning"})
         for r in self.recurring():
             if r.get("status") == "confirmed" and r.get("next") == nxt.isoformat():
                 upcoming.append({"text": f"{r['merchant']} {money(float(r.get('amount') or 0))}"})

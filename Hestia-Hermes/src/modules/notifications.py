@@ -52,7 +52,7 @@ from .hermes_settings import (ACTIVE_CLIENT_MINUTES, DELIVERY_MAX_ATTEMPTS, PEND
 from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import usecase as voice_usecase
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import month_name, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hermes.notifications")
 
@@ -67,7 +67,6 @@ CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
 LISTED_STATES = UNREAD_STATES + ["seen", "answered", "dismissed", "expired", "dead"]
 # ``closes`` decisions that end a repeat chain (the next reminder starts from zero).
 RESOLVING_DECISIONS = {"done", "resolved"}
-_MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]
 # Messages already seen/handled are retracted from transient client surfaces
 # (Telegram chat) after the setting hermes.retract.after (hours); the inbox keeps
 # them. Telegram lets a bot delete its own messages only within 48 h, hence the window.
@@ -118,14 +117,14 @@ def public_link(raw: Any) -> dict[str, Any] | None:
 
 def public_repeat(repeat: Any) -> dict[str, Any] | None:
     """Client-facing counter of a repeat chain, only from the second occurrence on.
-    ``text`` is short Italian, ready to show or read aloud: «Saltato 3 volte · dal 12 ott»."""
+    ``text`` is short, in the owner's language, ready to show or read aloud: «Skipped 3 times · since 12 Oct»."""
     if not isinstance(repeat, dict) or int(repeat.get("count") or 1) <= 1:
         return None
     skipped = int(repeat.get("skipped") or 0)
-    text = f"Saltato {skipped} volt{'a' if skipped == 1 else 'e'}"
+    text = tr("Skipped once") if skipped == 1 else tr("Skipped {0} times", skipped)
     since = _parse_ts(repeat.get("since"))
     if since:
-        text += f" · dal {since.day} {_MONTHS[since.month - 1]}"
+        text += tr(" · since {0} {1}", since.day, month_name(since.month)[:3])
     return {"count": int(repeat["count"]), "skipped": skipped, "since": repeat.get("since"), "text": text}
 
 
@@ -872,7 +871,7 @@ class NotificationCenter:
         done, missed = [], []
         if todays:
             important = [v["title"] for v in todays if v["level"] in ("warning", "error") and v["title"]]
-            text = f"{len(todays)} notific{'a' if len(todays) == 1 else 'he'}"
+            text = tr("1 notification") if len(todays) == 1 else tr("{0} notifications", len(todays))
             if important:
                 text += tr(" · important: ") + ", ".join(dict.fromkeys(important[:3]))
             done.append({"text": text})
@@ -959,7 +958,8 @@ class NotificationCenter:
                 source = spec.get("source") or ""
                 lines.append(f"• {html.escape(str(title))}" + (f" <i>({html.escape(str(source))})</i>" if source else ""))
             more = len(unread) - len(lines)
-            message = (f"<b>{len(unread)} notific{'a' if len(unread) == 1 else 'he'}</b> mentre riposavo:\n"
+            message = ((tr("<b>1 notification</b> while I was resting:\n") if len(unread) == 1
+                        else tr("<b>{0} notifications</b> while I was resting:\n", len(unread)))
                        + "\n".join(lines) + (tr("\n…and {0} more in the inbox.", more) if more > 0 else ""))
             self.publish(message=message, event_type="assistant.digest", domain="assistant",
                          title=tr("While I was resting"), level="info", source="hermes",

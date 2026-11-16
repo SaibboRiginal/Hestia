@@ -357,7 +357,7 @@ def recap_facts(views: list[dict], day) -> dict:
         bits = [str(v.get("title") or tr("Listing"))[:48], v.get("city") or "",
                 f"€ {v['price']:,}".replace(",", ".") if v.get("price") else ""]
         names.append(", ".join(b for b in bits if b))
-    text = f"{len(new)} nuov{'o annuncio' if len(new) == 1 else 'i annunci'}: " + "; ".join(names)
+    text = (tr("1 new listing: ") if len(new) == 1 else tr("{0} new listings: ", len(new))) + "; ".join(names)
     if len(new) > 2:
         text += tr("alt:: and {0} more", len(new) - 2)
     return {"done": [{"text": text}]}

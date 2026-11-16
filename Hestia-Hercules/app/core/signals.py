@@ -14,7 +14,7 @@ from hestia_common.signals_client import iso_week, last_weeks, metric, signal
 
 from . import progression, records
 from .records import local_date
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 if TYPE_CHECKING:
     from .service import Hercules
@@ -24,7 +24,6 @@ STALL_RECENT_DAYS = 30  # a stall on an exercise not trained for a month is hist
 LOW_ENERGY = 2          # same threshold as summary(): energy ≤ 2 on the 1–5 scale
 DELOAD_CHECKINS = 3     # low check-ins in 7 days before suggesting a deload
 PR_DAYS = 3
-WEEKDAYS_SHORT = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
 
 
 def _name(data: records.Data, ex_id: str) -> str:
@@ -73,7 +72,7 @@ def missed_streak(h: "Hercules", today: date, lookback: int = 28) -> list[date]:
 
 
 def _fmt_day(d: date) -> str:
-    return f"{WEEKDAYS_SHORT[d.weekday()]} {d.day}"
+    return f"{weekday_name(d.weekday())[:3]} {d.day}"
 
 
 def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list[dict]]:
@@ -109,7 +108,7 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
     for g in h.goals():
         p = g["progress"]
         if p["per"] == "week" and p["behind"] and p["days_left"] <= 2:
-            out.append(signal("week_goal", tr("Week goal behind: {0}/{1}, {2} {3} {4}", p['done'], p['times'], 'resta' if p['days_left'] == 1 else 'restano', p['days_left'], 'giorno' if p['days_left'] == 1 else 'giorni'), kind="goal", severity="attenzione",
+            out.append(signal("week_goal", (tr("Week goal behind: {0}/{1}, 1 day left", p['done'], p['times']) if p['days_left'] == 1 else tr("Week goal behind: {0}/{1}, {2} days left", p['done'], p['times'], p['days_left'])), kind="goal", severity="attenzione",
                               metrics={"done": p["done"], "times": p["times"], "days_left": p["days_left"]},
                               period=iso_week(today), page="progressi"))
             break

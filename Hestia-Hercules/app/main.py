@@ -637,7 +637,7 @@ def reminder_check():
     goal, nxt = decision["goal"], decision.get("next") or {}
     tpl = nxt.get("template") or {}
     planned = coach.next_planned()
-    text = tr("🏋️ Today: {0}", tpl.get('name', 'allenamento'))
+    text = tr("🏋️ Today: {0}", tr(tpl.get('name') or "workout"))
     if planned and planned["label"].startswith("oggi"):
         text += tr(" at {0}", planned['label'].split()[-1])
     if nxt.get("estimated_minutes"):
@@ -875,7 +875,7 @@ def _summary_display(s: dict) -> dict:
             if act else [action(tr("f::Start"), "fitness_start_session", style="primary"), action(tr("How I feel"), "fitness_checkin")])
     lines = s.get("lines") or [x for x in str(s.get("text") or "").split(" · ") if x]
     return display(tr("Training"), subtitle=tr("In progress: {0}", act['name']) if act else "",
-                   lines=[x for x in lines if not (act and x.startswith("In corso:"))],
+                   lines=[x for x in lines if not (act and x.startswith(tr("In progress: {0}").split("{0}")[0]))],
                    actions=acts + [action(tr("History"), "fitness_history")],
                    tone="warning" if "deload_suggested" in (s.get("flags") or []) else "")
 

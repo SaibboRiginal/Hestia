@@ -90,10 +90,10 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
     lo, hi = (8, 20) if kind in ("corsa", "camminata") else (12, 24)
     if t is not None:
         if t < lo - 8 or t > hi + 10:
-            return 0, [f"{t}° troppo {'freddo' if t < lo else 'caldo'}"]
+            return 0, [tr("{0}° too cold", t) if t < lo else tr("{0}° too hot", t)]
         if t < lo:
             score -= int((lo - t) * 4)
-            why.append(f"fresco ({t}°)")
+            why.append(tr("cool ({0}°)", t))
         elif t > hi:
             score -= int((t - hi) * 4)
             why.append(tr("hot ({0}°)", t))
@@ -627,7 +627,8 @@ class Activities:
                 continue
             best = cands[0]
             w = best.get("weather") or {}
-            text = (tr("Great day for {0}: {1}–{2}", 'la ' + name if plan['kind'] != 'altro' else 'muoverti', best['start'][11:16], best['end'][11:16])
+            text = ((tr("Great day for {0}: {1}–{2}", name, best['start'][11:16], best['end'][11:16]) if plan['kind'] != 'altro'
+                    else tr("Great day to move: {0}–{1}", best['start'][11:16], best['end'][11:16]))
                     + (f", {w['temp_c']}°" if w.get("temp_c") is not None else "")
                     + (f", {w['condition']}" if w.get("condition") else "") + f" · {prog['hint']}")
             actions = [{"id": "plan", "label": tr("alt::Plan"), "style": "primary", "service": "hercules", "method": "POST",

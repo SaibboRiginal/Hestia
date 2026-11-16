@@ -26,7 +26,7 @@ LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "ner
 CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
 MOOD_WORDS = {1: "very low", 2: "down", 3: "so-so", 4: "bene", 5: "benissimo"}
-WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "sabato", "domenica")
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 QUOTE_MAX = 200
 NOTE_MAX = 1000
 
@@ -260,14 +260,14 @@ class Psyche:
                                "min_days": min_days}
         if len(recent) < min_days:
             missing = min_days - len(recent)
-            out["sentences"].append(tr("{0} more day{1} with the mood noted are needed to see a trend.", missing, 'o' if missing == 1 else 'i'))
+            out["sentences"].append((tr("1 more day with the mood noted is needed to see a trend.") if missing == 1 else tr("{0} more days with the mood noted are needed to see a trend.", missing)))
             return out
         s = out["sentences"]
         s.append(tr("Last 30 days: average mood {0:.1f} out of 5 ({1}), {2} good days and {3} bad days.", stats['mood_avg'], mood_word(stats['mood_avg']), stats['good_days'], stats['bad_days']))
         if prev["mood_avg"] is not None and prev["days"] >= min_days:
             delta = stats["mood_avg"] - prev["mood_avg"]
             if abs(delta) >= 0.3:
-                s.append(tr("Compared with the month before it goes {0} ({1:.1f} → {2:.1f}).", 'meglio' if delta > 0 else 'peggio', prev['mood_avg'], stats['mood_avg']))
+                s.append((tr("Compared with the month before it goes better ({0:.1f} → {1:.1f}).", prev['mood_avg'], stats['mood_avg']) if delta > 0 else tr("Compared with the month before it goes worse ({0:.1f} → {1:.1f}).", prev['mood_avg'], stats['mood_avg'])))
             else:
                 s.append(tr("Compared with the month before it is stable."))
         if stats["energy_avg"] is not None:
@@ -279,7 +279,7 @@ class Psyche:
         if len(wd) >= 3:
             best, worst = max(wd, key=wd.get), min(wd, key=wd.get)
             if wd[best] - wd[worst] >= 0.8:
-                s.append(tr("The day that usually goes best is {0}, the heaviest {1}.", WEEKDAYS[best], WEEKDAYS[worst]))
+                s.append(tr("The day that usually goes best is {0}, the heaviest {1}.", tr(WEEKDAYS[best]), tr(WEEKDAYS[worst])))
                 out["weekdays"] = {WEEKDAYS[k]: round(v, 2) for k, v in sorted(wd.items())}
         labels = Counter(l for d in recent for l in d["labels"])
         if labels:

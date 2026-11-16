@@ -233,9 +233,9 @@ class Hygieia:
         today = self.today().isoformat()
         if not old:
             ev = [{"type": "bought" if new["status"] != "wishlist" else "note", "date": new.get("purchased_at") or today,
-                   "text": "aggiunto" if new["status"] != "wishlist" else "in lista desideri"}]
+                   "text": tr("added") if new["status"] != "wishlist" else tr("in the wish list")}]
             if new["status"] == "in_use":
-                ev.append({"type": "opened", "date": new.get("opened_at") or today, "text": "aperto"})
+                ev.append({"type": "opened", "date": new.get("opened_at") or today, "text": tr("opened")})
             if new.get("replaces_id"):
                 ev.append({"type": "replaced", "date": today, "text": tr("replaces another product"),
                            "replaces_id": new["replaces_id"]})

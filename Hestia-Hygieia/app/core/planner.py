@@ -66,10 +66,12 @@ def cadence_label(c: dict | None) -> str:
     if m == "as_needed":
         return tr("When it happens")
     if m == "fixed_days":
-        names = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
-        return tr("Every ") + ", ".join(names[d] for d in c["days"]) if c["days"] else tr("Fixed days")
+        from hestia_common.i18n import weekday_name
+        return tr("Every ") + ", ".join(weekday_name(d)[:3] for d in c["days"]) if c["days"] else tr("Fixed days")
     t = c["times"]
-    return tr("At least {0} {1} a{2}", t, 'volta' if t == 1 else 'volte', 'l month' if c['per'] == 'month' else ' settimana')
+    if c['per'] == 'month':
+        return tr("At least once a month") if t == 1 else tr("At least {0} times a month", t)
+    return tr("At least once a week") if t == 1 else tr("At least {0} times a week", t)
 
 
 def goal_state(cadence: dict | None, done_days: list[date], today: date, week_start: int = 0,
@@ -92,7 +94,7 @@ def goal_state(cadence: dict | None, done_days: list[date], today: date, week_st
                 "hint": tr("done today") if done_today else ("oggi" if today_on else (tr("next {0}", nxt.strftime('%d/%m')) if nxt else ""))}
     if mode == "as_needed":
         return {**base, "state": "done" if done_today else "rest", "done": done_today, "times": 0, "per": "",
-                "hint": tr("done today") if done_today else (tr("last {0} d ago", since) if since is not None else "mai fatta"),
+                "hint": tr("done today") if done_today else (tr("last {0} d ago", since) if since is not None else tr("never done")),
                 "behind": False}
     per, times = c["per"], c["times"]
     start = period_start(today, per, week_start)
@@ -275,13 +277,13 @@ class Day:
                     include = False
                     names = [self._step_name(next((x for x in steps if x["id"] == p), None)) for p in chosen
                              if conflict_notes(fam, chosen[p], self.custom_conflicts)]
-                    reason = tr("not today: ") + (names[0] if names else (clash[0] if clash else "conflitto"))
+                    reason = tr("not today: ") + (names[0] if names else (clash[0] if clash else tr("conflict")))
             elif not include:
                 reason = {"ok": tr("goal reached"), "wait": tr("done recently"), "off": tr("not the day"),
                           "rest": tr("when needed")}.get(g["state"], "")
             if include:
                 chosen[s["id"]] = fam
-            evaluated[s["id"]] = {"include": include, "state": g["state"] if include or not reason.startswith("non oggi")
+            evaluated[s["id"]] = {"include": include, "state": g["state"] if include or not reason.startswith(tr("not today: "))
                                   else "blocked", "reason": reason, "goal": g}
         out = []
         for s in steps:

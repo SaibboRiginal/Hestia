@@ -26,6 +26,7 @@ from typing import Callable
 
 from .oracle_client import narrate
 from .hermes_settings import BATCH_MAX_ATTEMPTS, BATCH_WINDOW, settings
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language (path set up by hermes_settings)
 
 logger = logging.getLogger("hestia_hermes.entity_batch")
 
@@ -193,9 +194,9 @@ def _narrate_entities(entry: _BatchEntry) -> str:
         if specs.get("rooms"):
             parts.append(f"Rooms: {specs['rooms']}")
         if specs.get("balcony_or_terrace"):
-            parts.append("Balcone/terrazzo: sì")
+            parts.append("Balcony/terrace: yes")
         if specs.get("garage_or_parking"):
-            parts.append("Garage/parcheggio: sì")
+            parts.append("Garage/parking: yes")
         if summary:
             # Use a meaningful slice of the summary
             parts.append(f"Description: {summary[:400]}")
@@ -218,7 +219,6 @@ def _narrate_entities(entry: _BatchEntry) -> str:
             pass
     filters_desc = f" ({', '.join(filter_desc_parts)})" if filter_desc_parts else ""
 
-    noun = "annuncio immobiliare" if n == 1 else "annunci immobiliari"
     prompt = (
         f"You found {n} new real estate listing{'' if n == 1 else 's'}{filters_desc}. Tell the owner.\n"
         f"- Concise but informative: price, location and the most relevant features of each listing.\n"
@@ -230,7 +230,7 @@ def _narrate_entities(entry: _BatchEntry) -> str:
 
     narrated = narrate(prompt)
     if narrated and narrated.strip():
-        header = f"🏠 <b>Nuov{'o' if n == 1 else 'i'} {noun}</b>"
+        header = tr("🏠 <b>New real estate listing</b>") if n == 1 else tr("🏠 <b>New real estate listings</b>")
         return f"{header}\n\n{narrated.strip()}"
 
     # Fallback: compact HTML list (still better than one message per property)
@@ -253,7 +253,7 @@ def _narrate_entities(entry: _BatchEntry) -> str:
             line += f" — {', '.join(details)}"
         fallback_parts.append(line)
 
-    header = f"🏠 <b>Nuov{'o' if n == 1 else 'i'} {noun}</b>"
+    header = tr("🏠 <b>New real estate listing</b>") if n == 1 else tr("🏠 <b>New real estate listings</b>")
     return header + "\n\n" + "\n".join(fallback_parts)
 
 

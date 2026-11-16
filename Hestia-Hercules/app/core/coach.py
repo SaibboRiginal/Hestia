@@ -71,7 +71,7 @@ class HerculesCoach:
                     out.append({"id": f"workout.{d.weekday()}", "title": t["name"], "kind": "block", "count": 1,
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "days": [d.weekday()],
                                 "time_of_day": tod, "tags": ["workout", effort, *self._muscle_tags(t)],
-                                "priority": "should", "reason": f"in programma {h_weekday(d)}{reason_extra}",
+                                "priority": "should", "reason": tr("planned {0}", h_weekday(d)) + reason_extra,
                                 "link": "oggi"})
                 d += timedelta(days=1)
         else:
@@ -167,10 +167,10 @@ class HerculesCoach:
 
 
 def h_weekday(d: date, today: date | None = None) -> str:
-    from .service import WEEKDAYS
+    from hestia_common.i18n import weekday_name
     today = today or date.today()
     if d == today:
-        return "oggi"
+        return tr("today")
     if d == today + timedelta(days=1):
-        return "domani"
-    return WEEKDAYS[d.weekday()]
+        return tr("tomorrow")
+    return weekday_name(d.weekday())

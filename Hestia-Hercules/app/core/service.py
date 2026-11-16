@@ -14,11 +14,10 @@ from zoneinfo import ZoneInfo
 from . import adapt as adapt_engine
 from . import catalog, domain, goals as goals_engine, importer, progression, records
 from .store import Store, StoreUnavailable, now_iso, parse_dt
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hercules.service")
 
-WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
 WEEK_START_KEY = "themis.personal.week_start"   # personal setting shared by every module (owner Themis)
 
 
@@ -288,7 +287,7 @@ class Hercules:
                         continue
                     t = templates[todays[0]["template_id"]]
                     out.update(template=t, planned_date=d.isoformat(),
-                               reason=tr("Scheduled today.") if offset == 0 else tr("Next: {0}.", WEEKDAYS[d.weekday()]))
+                               reason=tr("Scheduled today.") if offset == 0 else tr("Next: {0}.", weekday_name(d.weekday())))
                     out["rest_day"] = offset > 0
                     return self._with_minutes(out)
             else:
@@ -850,7 +849,7 @@ class Hercules:
                                    "tone": "warning"})
         nw = self.next_workout(nxt)
         planned_for_next = nw.get("template") and (nw.get("planned_date") == nxt.isoformat()
-                                                   or nw.get("reason") == "Spostato a oggi.")
+                                                   or nw.get("reason") in (tr("Moved to today."), "Spostato a oggi."))
         if planned_for_next and not nw.get("skipped"):
             mins = nw.get("estimated_minutes")
             upcoming.append({"text": f"{nw['template']['name']}" + (tr(" · about {0} min", mins) if mins else "")})
@@ -883,7 +882,7 @@ class Hercules:
             d = self.today() - timedelta(days=i)
             if any(x.get("weekday") == d.weekday() for x in prog["days"]) and d not in done \
                     and (plans.get(d.isoformat()) or {}).get("status") not in ("skipped", "moved"):
-                out.append(f"{WEEKDAYS[d.weekday()]} {d.day}")
+                out.append(f"{weekday_name(d.weekday())} {d.day}")
         return out
 
     # ── sync (offline UI) ───────────────────────────────────────────────────

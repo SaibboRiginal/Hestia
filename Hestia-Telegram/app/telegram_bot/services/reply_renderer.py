@@ -190,10 +190,10 @@ class ReplyRenderer:
         more = len(self.steps) - len(steps)
         # The title says what is inside: «Ragionamento» only when the model really reasoned, otherwise the block
         # is the list of the tools used (same rule as the WebUI's chat-thinking).
-        tools = f"{self.tool_calls} {'strumento' if self.tool_calls == 1 else 'strumenti'}"
+        tools = tr("1 tool") if self.tool_calls == 1 else tr("{0} tools", self.tool_calls)
         if self.reasoning:
             title = tr("Reasoning")
-            summary = f"{self.reasoning} {'passo' if self.reasoning == 1 else 'passi'}" + (
+            summary = (tr("1 step") if self.reasoning == 1 else tr("{0} steps", self.reasoning)) + (
                 f" · {tools}" if self.tool_calls else "")
         else:
             title, summary = tr("Tools used"), str(self.tool_calls)

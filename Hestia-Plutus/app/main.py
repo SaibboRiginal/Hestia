@@ -405,9 +405,9 @@ def attachment(body: dict = Body(...)):
         text = tr("I read the statement ({0}): all transactions are already there ({1}), I add nothing.", period, dup)
     else:
         n = new + link
-        text = (tr("I read the statement ({0}): {1} {2} to add, new expenses {3}", period, n, 'movimento' if n == 1 else 'movimenti', _money(v['total_new_spent'], cur))
-                + (tr(", {0} {1} PayPal already {2} (counted once)", link, 'collegato a un pagamento' if link == 1 else 'collegati a pagamenti', 'registrato' if link == 1 else 'registrati') if link else "")
-                + (tr(", {0} already {1}", dup, 'presente' if dup == 1 else 'presenti') if dup else "")
+        text = ((tr("I read the statement ({0}): 1 transaction to add, new expenses {1}", period, _money(v['total_new_spent'], cur)) if n == 1 else tr("I read the statement ({0}): {1} transactions to add, new expenses {2}", period, n, _money(v['total_new_spent'], cur)))
+                + ((tr(", 1 linked to a PayPal payment already logged (counted once)") if link == 1 else tr(", {0} linked to PayPal payments already logged (counted once)", link)) if link else "")
+                + ((tr(", 1 already there") if dup == 1 else tr(", {0} already there", dup)) if dup else "")
                 + tr(". Shall I log them? Answer «yes» or check them in Expenses › Import. (import_id {0})", v['id']))
     return {"handled": True, "text": text, "import_id": v["id"], "counts": c}
 

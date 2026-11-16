@@ -248,7 +248,7 @@ class Usage:
                          "module": t.get("module"), "area": area["key"], "area_label": area["label"],
                          "area_icon": area["icon"], "area_order": area["order"], "uses": used[n],
                          "reason": tr("You have never used it") if not used[n]
-                         else tr("Used {0} time{1}", used[n], 'a' if used[n] == 1 else 'e')})
+                         else (tr("Used once") if used[n] == 1 else tr("Used {0} times", used[n]))})
         rows.sort(key=lambda r: (r["uses"], r["area_order"], r["title"]))
         # one per area first, so the page shows many different things
         first, rest, seen = [], [], set()

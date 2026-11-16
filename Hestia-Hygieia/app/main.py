@@ -286,8 +286,8 @@ def today(date: str = "", paused: bool = False):
 
 
 # ── display blocks: how Telegram shows a result without the model (hestia_common.display) ──
-_STATE = {"due": ("to do", "warning"), "suggested": ("consigliata", ""), "done": ("fatta", "success"),
-          "partial": ("in parte", ""), "blocked": ("non ora", ""), "wait": ("più avanti", ""), "ok": ("in pari", "")}
+_STATE = {"due": ("to do", "warning"), "suggested": ("suggested", ""), "done": ("f::done", "success"),
+          "partial": ("in part", ""), "blocked": ("not now", ""), "wait": ("later", ""), "ok": ("up to date", "")}
 
 
 def today_display(plan: dict) -> dict:

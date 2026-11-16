@@ -75,7 +75,7 @@ def label(goal: dict, data: Data | None = None, templates: dict | None = None) -
     times = goal.get("times") or 1
     scope = goal.get("scope") or "any"
     if scope == "any":
-        return tr("Workout {0} {1} {2}", times, 'volta' if times == 1 else 'volte', per)
+        return (tr("Workout once {0}", per) if times == 1 else tr("Workout {0} times {1}", times, per))
     if scope == "muscle":
         return f"{(goal.get('target_id') or '').capitalize()} {times} {per}"
     name = (templates or {}).get(goal.get("target_id"), {}).get("name") or tr("Workout plan")

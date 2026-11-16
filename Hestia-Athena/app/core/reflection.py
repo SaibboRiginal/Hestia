@@ -99,9 +99,9 @@ def correlate(series: dict[str, dict], *, min_weeks: int, min_r: float, current_
 
 
 def link_text(link: dict) -> str:
-    """Caveman line for the prompt and the page: «Allenamenti ↔ Routine rispettate %: r=0.72 su 9 settimane»."""
+    """Caveman line for the prompt and the page: «Workouts ↔ Routines kept %: r=0.72 over 9 weeks»."""
     when = "same week" if not link["lag"] else tr("the week after")
-    return (f"{link['a_label']} → {link['b_label']} ({when}): r={link['r']:+.2f} over {link['weeks']} weeks, {'salgono insieme' if link['r'] > 0 else 'uno sale, l altro scende'}")
+    return (f"{link['a_label']} → {link['b_label']} ({when}): r={link['r']:+.2f} over {link['weeks']} weeks, {'they rise together' if link['r'] > 0 else 'one rises, the other falls'}")
 
 
 def choose_topics(signals: list[dict], links: list[dict], told: set[str], max_topics: int) -> list[dict]:

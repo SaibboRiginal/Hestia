@@ -555,12 +555,12 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     chains = plan_chains(recipe, local_model if recipe != "cloud" else "", list(cloud or []), llm_chains.chains(),
                          local_provider=local_provider, cloud_models=cloud_models, embedding=embedding, modes=modes,
                          order=order)
-    if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason="Setup guidato"):
+    if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason=tr("Guided setup")):
         return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     if recipe == "claude":
         for key, value in ((oracle_settings.BRAIN_MODE, "esterna"), (oracle_settings.BRAIN_AGENT, "claude"),
                            (oracle_settings.BRAIN_FALLBACK, "interna")):
-            oracle_settings.settings.put(key, value, actor="user", reason="Setup guidato")
+            oracle_settings.settings.put(key, value, actor="user", reason=tr("Guided setup"))
     logger.info("event=llm_setup_applied recipe=%s local=%s/%s cloud=%s", recipe, local_provider, local_model or "-",
                 ",".join(cloud or []) or "-")
     text = summary(chains)

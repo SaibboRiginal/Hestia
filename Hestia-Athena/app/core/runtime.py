@@ -67,11 +67,11 @@ logger = logging.getLogger("hestia_athena.runtime")
 
 # Relevance gate: factor → (weight, Italian label). Score = Σ weight × value (interruption cost counts as 1 − value).
 GATE_WEIGHTS = {
-    "urgency": (0.30, "urgenza"),
-    "usefulness": (0.25, "utilità"),
-    "novelty": (0.20, "novità"),
-    "confidence": (0.15, "sicurezza"),
-    "interruption_cost": (0.10, "disturbo"),
+    "urgency": (0.30, "urgency"),
+    "usefulness": (0.25, "usefulness"),
+    "novelty": (0.20, "novelty"),
+    "confidence": (0.15, "confidence"),
+    "interruption_cost": (0.10, "disturbance"),
 }
 
 
@@ -562,11 +562,11 @@ class AthenaRuntime:
         head = f"score {score:.2f} {cmp} threshold {self.emit_threshold:.2f}"
         if accepted:
             strong = sorted((k for k in good if good[k] >= 0.7), key=lambda k: -GATE_WEIGHTS[k][0] * good[k])[:2]
-            words = [f"{GATE_WEIGHTS[k][1]} high" if k != "interruption_cost" else "disturbo basso" for k in strong]
+            words = [f"{GATE_WEIGHTS[k][1]} high" if k != "interruption_cost" else "low disturbance" for k in strong]
         else:
             # the factors that cost the most points (weight × what is missing)
             weak = sorted((k for k in good if good[k] < 0.5), key=lambda k: -GATE_WEIGHTS[k][0] * (1 - good[k]))[:2]
-            words = [f"{GATE_WEIGHTS[k][1]} low" if k != "interruption_cost" else "disturbo alto" for k in weak]
+            words = [f"{GATE_WEIGHTS[k][1]} low" if k != "interruption_cost" else "high disturbance" for k in weak]
         return f"{head} ({', '.join(words)})" if words else head
 
     def _gate(self, candidate: ActionCandidate) -> ActionCandidate:

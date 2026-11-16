@@ -585,7 +585,7 @@ class Wardrobe:
                 " + ".join((pieces.get(p) or {}).get("name", "?") for p in (w.get("piece_ids") or [])[:3])
             done.append({"text": tr("Worn: {0}", name)})
         laundry = sum(1 for p in pieces.values() if p.get("status") == "laundry")
-        note = tr("In the laundry: {0} item{1}", laundry, 'o' if laundry == 1 else 'i') if done and laundry else ""
+        note = (tr("In the laundry: 1 item") if laundry == 1 else tr("In the laundry: {0} items", laundry)) if done and laundry else ""
         return {"done": done, "note": note}
 
     def context(self, budget: int = 400, topic: str = "") -> dict:
