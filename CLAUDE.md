@@ -7,7 +7,7 @@ merge → container restart → health check → auto-rollback on failure.
 
 Detailed knowledge (architecture, every module, gotchas, history): **`docs/AI-GUIDE.md`**.
 Marko's product rules (dated decisions + new-feature checklist): **`docs/REGOLE-DI-MARKO.md`**.
-UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
+UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**. Texts and languages: **`docs/LANGUAGES.md`**.
 
 ## Work protocol — MANDATORY for every task (human or AI)
 
@@ -44,6 +44,8 @@ UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**.
   never hardcode hours/loops. User edits win; paused/cancelled = user decision (no fallback).
 - Never touch `.env`, tokens, `data/` folders; never commit secrets. Mail = Gmail via OAuth token only (no IMAP).
 - Logs: `event=<snake_case> key=value`; recovery/fallback paths prefixed `[🔄]`. No task is abandoned.
+- Texts: model text English in code; every text a person reads is Italian wrapped in `tr` with its English entry in
+  `hestia_common/locales/en/messages.json` (`docs/LANGUAGES.md`, gate `tools/governance/check_i18n.py`).
 - Prompts for local models: "caveman" style (short, dense) — every token is paid each turn. Hidden text is English;
   the answer follows the owner's language. A text for the owner = `/api/llm/generate` with `voice: true` (Oracle adds
   who speaks); never write «Sei Hestia…» in a module. Answer format belongs to the client, not to Oracle.

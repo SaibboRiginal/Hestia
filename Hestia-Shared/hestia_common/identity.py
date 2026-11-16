@@ -35,7 +35,8 @@ ASSISTANT_GENDER = "themis.personal.assistant_gender"
 LANGUAGE = "themis.personal.language"
 
 # Language code → its English name, as the hidden prompt text says it. Same codes as the setting's options.
-LANGUAGES = {"it": "Italian", "en": "English", "de": "German", "fr": "French", "es": "Spanish"}
+# Adding a language: docs/LANGUAGES.md («A new language»).
+LANGUAGES = {"it": "Italian", "en": "English"}
 DEFAULT_LANGUAGE = "it"
 
 DEFAULT_NAME = "Hestia"

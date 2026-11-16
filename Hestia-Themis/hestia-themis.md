@@ -35,7 +35,7 @@ Personal settings (owner Themis, group «Personali»): `themis.personal.week_sta
 `themis.personal.places` (list of `{id, name, address, kind home|work|other, lat?, lon?}`, editor «Luoghi», one
 Casa; options resolved by Hecate). Group «Tu e l'assistente» (dossier `docs/work/2026-11-12-identita-e-proattivita`):
 `themis.personal.owner_name`, `owner_call`, `assistant_name` (default Hestia), `assistant_gender` (lei/lui),
-`language` («Lingua», it/en/de/fr/es, default it: notifications, recaps and texts she writes on her own; dossier
+`language` («Lingua», it/en, default it: notifications, recaps and texts she writes on her own; dossier
 `docs/work/2026-11-14-lingua-personale`): read by
 Oracle, Hermes and the WebUI through `hestia_common.identity`. `options_source` may name another module: `"<module>:/path"` is fetched through
 Hub from that module (e.g. `hecate:/api/gateway/weather/places`).

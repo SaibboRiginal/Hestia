@@ -13,7 +13,7 @@ def test_i18n_catalog_follows_the_language(monkeypatch):
     it = c.get("/api/settings/i18n", params={"lang": "it"}).json()
     assert it == {"language": "it", "messages": {}, "assistant": "Hestia", "gender": "lei"}
     de = c.get("/api/settings/i18n", params={"lang": "de"}).json()
-    assert de["language"] == "de" and de["messages"]["Annulla"] == "Cancel"  # no German catalog yet → English
+    assert de["language"] == "de" and de["messages"]["Annulla"] == "Cancel"  # a language without a catalog → English
 
 
 @pytest.mark.api

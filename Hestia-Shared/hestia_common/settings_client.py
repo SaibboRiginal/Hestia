@@ -143,8 +143,7 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
             order=4, options=[("lei", "Una lei"), ("lui", "Un lui")],
             help="Cambia come parla di sé (amica o amico, pronta o pronto)."),
     setting("themis.personal.language", "Lingua", "enum", "it", group="Tu e l'assistente", order=5,
-            options=[("it", "Italiano"), ("en", "English"), ("de", "Deutsch"), ("fr", "Français"),
-                     ("es", "Español")],
+            options=[("it", "Italiano"), ("en", "English")],
             help="La lingua delle notifiche, dei recap e dei messaggi che l'assistente ti scrive di sua iniziativa. "
                  "In chat ti risponde nella lingua in cui scrivi tu."),
 )}

@@ -157,6 +157,13 @@ at runtime (`on_change`), `apply="restart"` ones are flagged until restart. Env 
 infrastructure (URLs, ports, paths). The assistant only *proposes* changes (Themis → Hermes → user).
 Details: `Hestia-Themis/hestia-themis.md`.
 
+## 5b2. Texts and languages — one catalog
+
+Model text is English in the code; texts a person reads are Italian in the code wrapped in `tr` (Python
+`hestia_common.i18n.t`, Angular `tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`) with the English text in
+`Hestia-Shared/hestia_common/locales/en/messages.json`. Languages: Italian and English («Lingua»). Full standard,
+examples and how to add a language: `docs/LANGUAGES.md`; gate `python tools/governance/check_i18n.py`.
+
 ## 5c. Export and import — every module moves its own data
 
 `hestia_common.transfer`: a module lists its **sections** (`StoreSection` over its Archive store, or a `Section`
