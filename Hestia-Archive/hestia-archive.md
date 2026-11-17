@@ -171,7 +171,7 @@ It stores and serves all persistent state through generic APIs.
 - **New PC:** install, set `HESTIA_BACKUP_PASSPHRASE`, start, connect Google once, open the Backup panel, «Ripristina».
 - **Terminal** (no WebUI yet, or a file downloaded by hand): `python tools/hestia_backup.py list | status | restore <name>
   | restore --file <path.enc> | undo | decrypt <path.enc>`. It runs `python -m app.backup.cli` in `hestia_archive`, which
-  calls this same API (gate and epoch as in the panel) and asks to type `RIPRISTINA`; `--file` copies the file to
+  calls this same API (gate and epoch as in the panel) and asks to type `RESTORE`; `--file` copies the file to
   `/code/backups/import/` and restores it with `{local: <name>}`; `decrypt` writes the plain `pg_dump` next to the file.
 - Logs: `event=backup_step kind=… step=…`, `backup_done`, `backup_failed`, `backup_verify ok=…`, `backup_restore ok=…`,
   `[🔄] backup_problem code=…`, `[🔄] backup_upload_retry`.

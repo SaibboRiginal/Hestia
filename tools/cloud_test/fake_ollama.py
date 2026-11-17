@@ -3,7 +3,7 @@
 
 Speaks the Ollama API Oracle uses (/api/chat, /api/generate, /api/tags, /api/show, /api/ps,
 /api/embed, /api/embeddings) and the OpenAI-compatible /v1 endpoints. Every answer is a fixed
-"[LLM finto]" text that echoes the last user message, so flows that need no real reasoning run end
+"[fake LLM]" text that echoes the last user message, so flows that need no real reasoning run end
 to end and the report can say plainly that the brain was fake. Stdlib only.
 
 Scripted tools: a user message with `#tool <name> {json args}` (one or more) makes the fake answer with that
@@ -80,15 +80,15 @@ def _scripted_answer(text: str) -> str | None:
     if not _DIRECTIVE.search(text):
         return None
     results = re.findall(r"\[TOOL\]: (\[[a-z0-9_]+\] → .*?)(?=\n\[[A-Z]+\]:|\nNow provide|\nAnswer:|\Z)", text, re.DOTALL)
-    last = " ".join(results[-1].split())[:600] if results else "nessun risultato"
-    return f"[LLM finto] Strumenti eseguiti. Ultimo risultato: {last}"
+    last = " ".join(results[-1].split())[:600] if results else "no result"
+    return f"[fake LLM] Tools run. Last result: {last}"
 
 
 def _answer(user_text: str, wants_json: bool) -> str:
     if wants_json:
         return "{}"
     snippet = " ".join(user_text.split())[:160]
-    return f"[LLM finto] Ho ricevuto: «{snippet}». Questo è il banco di prova: nessun modello reale."
+    return f"[fake LLM] I received: «{snippet}». This is the test bench: no real model."
 
 
 def _wants_json(body: dict, text: str) -> bool:

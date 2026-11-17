@@ -25,7 +25,7 @@ What it adapts, and only here (docker-compose.cloud-test.yml + this script; up-a
 - Test credentials (Codespaces secrets → environment, never files): GEMINI_API_KEY (or ORACLE_KEY_GEMINI), TELEGRAM_BOT_TOKEN +
   ALLOWED_USER_ID (test bot), GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (temporary "Desktop app" client; Google on).
 - LLM: GEMINI_API_KEY in the environment → every Oracle chain but embedding becomes Gemini (Themis); otherwise a
-  deterministic fake Ollama answers "[LLM finto] …" and the report says so.
+  deterministic fake Ollama answers "[fake LLM] …" and the report says so.
 Generated .env files hold no personal data and are git-ignored; existing ones are never overwritten.
 SPEC: docs/work/2026-10-19-banco-prova-cloud/SPEC.md
 """
@@ -45,6 +45,8 @@ from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+from _texts import tr  # noqa: E402  texts in the owner's language
 BASE_DIR = ROOT / "tools" / "cloud_test" / "base"
 OUT = ROOT / ".cloud-test"
 COMPOSE = ["docker", "compose", "-f", "docker-compose.global.yml", "-f", "docker-compose.cloud-test.yml"]
@@ -63,7 +65,7 @@ BASE_IMAGES = {
     "swaggerapi/swagger-ui": f"{MIRROR}/swaggerapi/swagger-ui",
 }
 NEEDS_CA = ("node:22-alpine", "mcr.microsoft.com/dotnet/sdk:9.0")  # build stages that download packages
-# Gemini steps of every bench chain (Oracle a blocchi; key ORACLE_KEY_GEMINI from GEMINI_API_KEY). The free tier
+# Gemini steps of every bench chain (Oracle blocks; key ORACLE_KEY_GEMINI from GEMINI_API_KEY). The free tier
 # gives each model about 20 requests a day: four models = four quotas, when one is out (or busy, 503) the chain
 # moves on. Flash-Lite first: seconds per answer, the bigger Flash thinks for a minute on Hestia's 240 tools.
 GEMINI_CHAIN = {"label": "Gemini (banco)", "steps": [
@@ -352,23 +354,23 @@ def smoke() -> list[tuple[str, bool, str]]:
     code, body = http("GET", f"http://localhost:{hub}/api/registry/services")
     items = body.get("services", body) if isinstance(body, dict) else body
     names = sorted({(s.get("name") or s.get("service_name") or "?") for s in items}) if isinstance(items, list) else []
-    checks.append(("Hub: servizi registrati", code == 200 and len(names) > 5, f"{len(names)}: {', '.join(names)}"))
+    checks.append(("Hub: registered services", code == 200 and len(names) > 5, f"{len(names)}: {', '.join(names)}"))
 
     code, body = http("GET", f"http://localhost:{hub}/api/ui/map?probe=true", timeout=30)
     if isinstance(body, dict):
-        checks.append(("Hub: mappa (online/offline)", code == 200,
+        checks.append(("Hub: map (online/offline)", code == 200,
                        f"online {body.get('online_count')} · offline {body.get('offline_count')}"))
 
-    code, body = http("POST", f"http://localhost:{oracle}/api/llm/generate", {"prompt": "Ciao Hestia, come stai?"},
+    code, body = http("POST", f"http://localhost:{oracle}/api/llm/generate", {"prompt": "Hi, how are you?"},
                       timeout=120)
     answer = body.get("response", "") if isinstance(body, dict) else str(body)
-    fake = "[LLM finto]" in str(answer)
-    checks.append(("Oracle: risposta LLM" + (" (finto)" if fake else ""), code == 200 and bool(answer),
+    fake = "[fake LLM]" in str(answer)
+    checks.append(("Oracle: LLM answer" + (" (fake)" if fake else ""), code == 200 and bool(answer),
                    f"{body.get('provider', '?') if isinstance(body, dict) else '?'}: {str(answer)[:160]}"))
 
     code, body = http("GET", f"http://localhost:{port_of.get('themis', 19016)}/api/settings/modules")
     count = len(body.get("modules", body)) if isinstance(body, (dict, list)) else 0
-    checks.append(("Themis: moduli con impostazioni", code == 200 and count > 0, str(count)))
+    checks.append(("Themis: modules with settings", code == 200 and count > 0, str(count)))
 
     code, body = http("GET", f"http://localhost:{port_of.get('mcp', 19013)}/health")
     checks.append(("Hestia-MCP: health", code == 200, str(body)[:120]))
@@ -384,7 +386,7 @@ def screenshots(shots: Path) -> list[str]:
         try:
             from playwright.sync_api import sync_playwright  # noqa: PLC0415
         except ImportError:
-            return ["playwright non installabile: screenshot saltati"]
+            return ["playwright cannot be installed: screenshots skipped"]
     shots.mkdir(parents=True, exist_ok=True)
     notes: list[str] = []
     exe = next(iter(sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux*/chrome"))), None)
@@ -392,7 +394,7 @@ def screenshots(shots: Path) -> list[str]:
         try:
             browser = pw.chromium.launch(executable_path=str(exe) if exe else None)
         except Exception as exc:  # noqa: BLE001 — Codespaces: install the browser once
-            notes.append(f"chromium: {exc.__class__.__name__}, provo `playwright install chromium`")
+            notes.append(f"chromium: {exc.__class__.__name__}, trying `playwright install chromium`")
             run([sys.executable, "-m", "playwright", "install", "--with-deps", "chromium"], check=False)
             browser = pw.chromium.launch()
         for label, viewport in (("desk", {"width": 1440, "height": 900}), ("phone", {"width": 390, "height": 844})):
@@ -403,7 +405,7 @@ def screenshots(shots: Path) -> list[str]:
             page.wait_for_timeout(1500)
             page.screenshot(path=str(shots / f"{label}-home.png"), full_page=True)
             if label == "phone":
-                notes.append(f"phone: home ok, errori JS {len(errors)}")
+                notes.append(f"phone: home ok, JS errors {len(errors)}")
                 page.close()
                 continue
             links = page.eval_on_selector_all("a[href^='/p/'], a[href^='/d/']", "els => els.map(e => e.getAttribute('href'))")
@@ -417,7 +419,7 @@ def screenshots(shots: Path) -> list[str]:
                 except Exception as exc:  # noqa: BLE001 — one broken page must not stop the tour
                     notes.append(f"{href}: {exc.__class__.__name__}")
             notes.extend(chat_roundtrip(page, shots))
-            notes.append(f"desk: {len(targets)} pagine, errori JS {len(errors)}" + (f" — {errors[:3]}" if errors else ""))
+            notes.append(f"desk: {len(targets)} pages, JS errors {len(errors)}" + (f" — {errors[:3]}" if errors else ""))
             page.close()
         browser.close()
     return notes
@@ -427,11 +429,11 @@ def chat_roundtrip(page, shots: Path) -> list[str]:
     try:
         page.goto(f"{WEBUI}/chat", wait_until="networkidle", timeout=45000)
         box = page.locator("textarea").first
-        box.fill("Ciao Hestia, questo è il banco di prova: rispondi in una riga.")
+        box.fill("Hi, this is the test bench: answer in one line.")
         box.press("Enter")
         page.wait_for_timeout(15000)
         page.screenshot(path=str(shots / "desk-chat-roundtrip.png"), full_page=True)
-        return ["chat: messaggio inviato, vedi desk-chat-roundtrip.png"]
+        return ["chat: message sent, see desk-chat-roundtrip.png"]
     except Exception as exc:  # noqa: BLE001
         return [f"chat: {exc.__class__.__name__}: {str(exc)[:120]}"]
 
@@ -443,10 +445,10 @@ def cmd_check(with_screens: bool = True) -> int:
     health = {n: http("GET", health_url(n, port_of[n]), timeout=8)[0]
               for n in sorted(states) if n in port_of and n not in NO_HTTP}
     checks = smoke()
-    notes = screenshots(OUT / "screens") if with_screens else ["screenshot saltati (--no-screens)"]
-    llm = "Gemini (GEMINI_API_KEY)" if os.getenv("GEMINI_API_KEY") else "LLM finto (fake Ollama, nessun modello reale)"
-    lines = [f"# Banco di prova — {stamp}", "", f"- Rete ristretta: {restricted_network()} · CA proxy: {bool(proxy_ca())}",
-             f"- Cervello: {llm}", "", "## Container", "", "| Servizio | Stato | Health |", "|---|---|---|"]
+    notes = screenshots(OUT / "screens") if with_screens else ["screenshots skipped (--no-screens)"]
+    llm = "Gemini (GEMINI_API_KEY)" if os.getenv("GEMINI_API_KEY") else "fake LLM (fake Ollama, no real model)"
+    lines = [f"# Test bench — {stamp}", "", f"- Restricted network: {restricted_network()} · proxy CA: {bool(proxy_ca())}",
+             f"- Brain: {llm}", "", "## Containers", "", "| Service | State | Health |", "|---|---|---|"]
     for name in sorted(states):
         code = health.get(name)
         lines.append(f"| {name} | {states[name]} | {code if code is not None else '-'} |")
@@ -490,21 +492,21 @@ def cmd_start() -> None:
     cmd_up()
     cmd_token()
     used = [k for k in ("GEMINI_API_KEY", "TELEGRAM_BOT_TOKEN", "GOOGLE_CLIENT_ID") if os.getenv(k)]
-    print(f"Hestia è pronto. Secret in uso: {', '.join(used) or 'nessuno (LLM finto, niente Telegram/Google)'}. "
-          f"Apri il link qui sopra (anche in .cloud-test/login.txt).")
+    print(tr("Hestia is ready. Secrets in use: {0}. Open the link above (also in .cloud-test/login.txt).",
+             ", ".join(used) or tr("none (fake LLM, no Telegram/Google)")))
 
 
 GUIDE = """
-Comandi utili (dalla cartella /workspaces/Hestia):
-  python tools/cloud_test.py           avvia Hestia se è spento e ti dà il link (questo)
-  python tools/cloud_test.py token     nuovo link di accesso alla WebUI
-  python tools/cloud_test.py check     controllo completo: servizi, risposte, schermate → .cloud-test/report.md
-  python tools/cloud_test.py flows     prove d'uso reali di ogni modulo → .cloud-test/flows.md
-  python tools/cloud_test.py logs webui  ultime righe di log di un servizio (webui, oracle, telegram…)
-  python tools/cloud_test.py up        ricostruisce e riavvia dopo un git pull
-  python tools/cloud_test.py down      spegne tutto (i dati restano)
-Secret di prova (facoltativi): github.com/settings/codespaces → GEMINI_API_KEY, TELEGRAM_BOT_TOKEN + ALLOWED_USER_ID,
-GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET; poi riavvia il Codespace. Guida completa: TESTING.md «Banco di prova cloud».
+Useful commands (from the folder /workspaces/Hestia):
+  python tools/cloud_test.py           starts Hestia if it is off and gives you the link (this)
+  python tools/cloud_test.py token     new access link to the WebUI
+  python tools/cloud_test.py check     full check: services, answers, screens → .cloud-test/report.md
+  python tools/cloud_test.py flows     real use runs of every module → .cloud-test/flows.md
+  python tools/cloud_test.py logs webui  last log lines of a service (webui, oracle, telegram…)
+  python tools/cloud_test.py up        rebuilds and restarts after a git pull
+  python tools/cloud_test.py down      turns everything off (the data stays)
+Test secrets (optional): github.com/settings/codespaces → GEMINI_API_KEY, TELEGRAM_BOT_TOKEN + ALLOWED_USER_ID,
+GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET; then restart the Codespace. Full guide: TESTING.md «Cloud test bench».
 """
 
 
@@ -516,7 +518,7 @@ def cmd_default() -> None:
         cmd_token()
     else:
         cmd_start()
-    print(GUIDE)
+    print(tr(GUIDE))
 
 
 def main(argv: list[str]) -> int:
@@ -548,9 +550,9 @@ def main(argv: list[str]) -> int:
     elif cmd == "down":
         run(COMPOSE + ["down"])
     elif cmd in ("help", "aiuto", "-h", "--help"):
-        print(GUIDE)
+        print(tr(GUIDE))
     else:
-        print(GUIDE)
+        print(tr(GUIDE))
         return 2
     return 0
 
