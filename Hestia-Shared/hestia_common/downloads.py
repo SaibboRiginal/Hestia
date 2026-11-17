@@ -4,16 +4,16 @@ Every module downloads its own things (Oracle its models, Echo its voices): this
 door, so the WebUI page «Download» can show them all through the Hub.
 
     downloads = Downloads("echo", state_path=DATA / "downloads.json", hub=Hub(HUB_API_URL))
-    downloads.file("piper:it_IT-paola-medium", "Voce Paola", url, dest, size_hint=63_000_000)
+    downloads.file("piper:it_IT-paola-medium", "Paola voice", url, dest, size_hint=63_000_000)
     downloads.source("ollama", lambda job: run_ollama_pull)      # a custom source: run(job) reports job.progress()
     app.include_router(downloads.router())                       # GET /api/downloads, POST /api/downloads/<id>/<op>
     caps.update(downloads.capabilities())                        # Hub registration → the WebUI finds it
 
 Job: ``{id, what, source, size, done, speed, eta_s, state, error, module, updated_at}``; states ``queued ·
-running · paused · fatto · errore``. Built-in source ``http``: resumes from the ``.part`` file (HTTP Range),
+running · paused · done · error``. Built-in source ``http``: resumes from the ``.part`` file (HTTP Range),
 checks the free disk **before** starting, verifies an optional sha256, retries 3 times (2/4/8 s). Jobs survive a
-restart (``state_path``): one that was running comes back paused («Riprendi»). Finished big downloads and every
-failure go to Notifiche through Hermes (the only one who writes to the user).
+restart (``state_path``): one that was running comes back paused («Resume»). Finished big downloads and every
+failure go to Notifications through Hermes (the only one who writes to the user).
 """
 from __future__ import annotations
 
@@ -184,7 +184,7 @@ class Downloads:
     retry = resume
 
     def remove(self, job_id: str) -> dict[str, Any]:
-        """Delete what a finished job downloaded, to free space («Elimina»)."""
+        """Delete what a finished job downloaded, to free space («Delete»)."""
         with self._lock:
             job = self._require(job_id)
             if job.data["state"] in ACTIVE:

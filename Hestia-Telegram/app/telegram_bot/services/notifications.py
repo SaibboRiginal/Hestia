@@ -6,13 +6,13 @@ this module renders those notifications as Telegram messages:
 - ``notification``: tone dot + bold title, message, buttons two per row ``na:<short id>``; ``silent``
   ones (pushed to another client) are skipped — Telegram has no inbox.
 - ``update``: seen elsewhere / answered → the buttons are replaced by one status line that does nothing
-  («Vista su WebUI», «Fatto · da WebUI»).
+  («Seen on WebUI», «Done · from WebUI»).
 - ``retract``: delete the message (Hermes asks after the cleanup delay).
 - ``update`` with ``voice``: the module wanted it also as audio → a voice message replying to the
   notification (deleted together with it).
-- repeat chains: a reminder sent again carries ``repeat.text`` («Saltato 2 volte»),
+- repeat chains: a reminder sent again carries ``repeat.text`` («Skipped 2 times»),
   shown in italics; the previous one arrives as ``update`` ``superseded`` and is
-  deleted (over 48 h Telegram refuses: its buttons become «Sostituito»).
+  deleted (over 48 h Telegram refuses: its buttons become «Replaced»).
 
 A button press goes to Hermes (first answer wins); any user message in the
 chat marks the notifications shown here as seen.
@@ -75,7 +75,7 @@ def action_buttons(notification_id: str, actions: list) -> list:
             continue
         style = str(a.get("style") or "")
         if not style:
-            style = "danger" if str(a.get("id")).lower() in ("delete", "elimina", "reject", "rifiuta") else ""
+            style = "danger" if str(a.get("id")).lower() in ("delete", "reject") else ""
         buttons.append(ui.button(str(a["label"]), f"na:{store.sid(f'{notification_id}|{a['id']}')}",
                                  style=style, limit=32))
     return ui.grid(buttons)
@@ -107,11 +107,11 @@ def is_chat_message(body: dict[str, Any]) -> bool:
 
 
 def render_notification(body: dict[str, Any]) -> str:
-    """🟠 <b>Title</b> / message / <i>Saltato 2 volte</i> — the tone dot from the level, no other emoji."""
+    """🟠 <b>Title</b> / message / <i>Skipped 2 times</i> — the tone dot from the level, no other emoji."""
     title = ui.strip_emoji(body.get("title") or "")
     message = str(body.get("message") or "").strip()
     if is_chat_message(body):
-        # The assistant wrote first («parla con te»): plain chat text, no card, no tone dot.
+        # The assistant wrote first («talks to you»): plain chat text, no card, no tone dot.
         from html import escape
         return escape(message, quote=False)
     if message[:1] and ui._is_emoji_char(message[0]):
@@ -176,7 +176,7 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     if last is not None and getattr(last, "message_id", None):
         from telegram_bot.services.chat_service import remember_notification_message
         remember_notification_message(chat_id, last.message_id, notification_id)
-        if is_chat_message(body):   # like an answer of hers: «Ascolta» and the owner's reactions work on it
+        if is_chat_message(body):   # like an answer of hers: «Listen» and the owner's reactions work on it
             from telegram_bot.services import voice_service
             voice_service.remember_answer(chat_id, last.message_id, str(body.get("message") or "").strip())
     with _unseen_lock:

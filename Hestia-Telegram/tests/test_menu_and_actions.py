@@ -69,7 +69,7 @@ def _call(data):
 def _walk(bot):
     """From «Aree», follow every navigation button; returns {tool name: taps from the keyboard}."""
     from telegram_bot import nav, store
-    nav.aree(12345)
+    nav.show_areas(12345)
     queue = deque([(cb, 2) for cb in _callbacks(_last_markup(bot))])
     seen, reached = set(), {}
     while queue:
@@ -233,7 +233,7 @@ class TestAdesso:
                            {"tool": "missing", "reason": "x"}]}
         monkeypatch.setattr(catalog, "route", lambda svc, path, *a, **kw: (True, items) if path ==
                             "api/metis/now" else (False, None))
-        nav.oggi(12345)
+        nav.show_today(12345)
         html = bot.send_message.call_args.args[1]
         assert "Adesso" in html and "Di solito a quest'ora" in html and "missing" not in html
         assert f"t:{store.sid('metis_discover')}" in _callbacks(_last_markup(bot))
@@ -241,7 +241,7 @@ class TestAdesso:
     def test_oggi_keeps_fixed_actions_when_metis_is_away(self, ui_env):
         bot, _, _ = ui_env
         from telegram_bot import nav, store
-        nav.oggi(12345)
+        nav.show_today(12345)
         assert f"t:{store.sid('agenda_today')}" not in _callbacks(_last_markup(bot))
         assert any(c.startswith("t:") for c in _callbacks(_last_markup(bot)))
 
@@ -262,7 +262,7 @@ class TestCallbacks:
         from telegram_bot import nav
         from telegram_bot.menu import editor
         drawn: set[str] = set()
-        for draw in (lambda: nav.aree(12345), lambda: nav.impostazioni(12345), lambda: nav.oggi(12345),
+        for draw in (lambda: nav.show_areas(12345), lambda: nav.show_settings(12345), lambda: nav.show_today(12345),
                      lambda: editor.root(12345), lambda: editor.area(12345, "expenses"),
                      lambda: editor.primary(12345, "expenses")):
             draw()

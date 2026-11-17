@@ -5,7 +5,7 @@ survive a restart (docs/work/2026-10-23-telegram-da-zero §5.8).
   never gets cut at 64 bytes and the same value always gives the same id.
 - ``flow`` per chat: the action being filled (tool, values, step), with a TTL.
 - ``card`` per chat: the live navigation message (the previous one is collapsed when a new one opens).
-- ``usage``: how often each action is run from Telegram (Aree shows the most used).
+- ``usage``: how often each action is run from Telegram (Areas shows the most used).
 - ``pending``: questions and approvals waiting for a tap, by token.
 """
 from __future__ import annotations

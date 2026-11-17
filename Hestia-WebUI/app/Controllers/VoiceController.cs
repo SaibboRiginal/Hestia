@@ -22,7 +22,7 @@ using Hestia.WebUI.Services;
 [Route("api/webui/voice")]
 public class VoiceController : ControllerBase
 {
-    public const string UseMessage = "webui.vocale";
+    public const string UseMessage = "webui.voice_note";
     public const string UseListen = "webui.listen";
     public const string UseLiveIn = "webui.live.listening";
     public const string UseLiveOut = "webui.live.voice";

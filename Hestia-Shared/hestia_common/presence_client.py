@@ -12,7 +12,7 @@ if presence.effect("work.heavy") == "allow": ...         # allow | local | defer
 with presence.activity("forge.task", label="Forge", load="heavy", resource="claude_quota"):
     run()                                                  # busy overlay while it runs
 presence.signal("resource.claude_quota_left", 12)          # a fact; the engine interprets it
-presence.context_line()                                    # "Stato: Sveglio · ultima interazione 2 h fa (telegram)"
+presence.context_line()                                    # "State: Awake · last interaction 2 h ago (telegram)"
 ```
 
 Chronos down → ``[🔄]`` log and safe defaults (``FALLBACK_EFFECTS``): light and heavy work

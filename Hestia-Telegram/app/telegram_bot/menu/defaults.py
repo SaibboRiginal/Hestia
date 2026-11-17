@@ -2,7 +2,7 @@
 
 Change the look of Telegram's menus here or, without touching code, in the Themis setting
 ``telegram.menu.layout`` (same shape, every part optional, later wins). Tools that nothing mentions still appear:
-their area comes from the module's ``telegram_group``, else from ``SERVICE_AREAS``, else «Altro».
+their area comes from the module's ``telegram_group``, else from ``SERVICE_AREAS``, else «Other».
 """
 
 # Bottom keyboard: door keys (see DOORS).
@@ -44,12 +44,12 @@ ALIASES = {
 # tool declares no area, its module's area: one list for every client (hestia_common.areas).
 from hestia_common.areas import AREAS, SERVICE_AREAS  # noqa: E402,F401
 
-# Section shown last inside «Tutte le azioni», and sections never shown (used by the client itself).
+# Section shown last inside «All actions», and sections never shown (used by the client itself).
 LAST_SECTION = "Advanced"
 HIDDEN_SECTIONS = ["interno"]
 
-# What the «Oggi» card shows (tools rendered one under the other) and its buttons.
+# What the «Today» card shows (tools rendered one under the other) and its buttons.
 TODAY = {"tools": ["agenda_today", "weather_now"], "actions": ["agenda", "create_event", "new_reminder"]}
 
-# How many primary actions an area card shows before «Tutte le azioni».
+# How many primary actions an area card shows before «All actions».
 PRIMARY_MAX = 6

@@ -403,8 +403,8 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 3. Token saved to `Hestia-Hecate/data/google_token.json`, provider registry reloaded.
 
 ### Voice flows (Echo)
-1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.vocale` /
-   `webui.vocale`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
+1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.voice_note` /
+   `webui.voice_note`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
 2. «Ascolta» under a reply → Echo `/api/voice/speak` (kept with the reply; asked again → the kept audio).
 3. Live («Parla», Telegram `/voice`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
    chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.

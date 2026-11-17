@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import re
 from typing import Any
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 _DURATION = re.compile(r"^\d+(\.\d+)?\s*(ms|s|m|h|d)?$")
-_TRUE = {"true", "1", "yes", "on", "si", "sì"}
+_TRUE = {"on"}          # plus is_yes(): 1, true and the yes words of every language
 _FALSE = {"false", "0", "no", "off"}
 
 
@@ -40,7 +40,7 @@ def validate(defn: dict, value: Any) -> Any:
         if isinstance(value, bool):
             return value
         text = str(value).strip().lower()
-        if text in _TRUE:
+        if text in _TRUE or is_yes(text):
             return True
         if text in _FALSE:
             return False

@@ -16,13 +16,13 @@ def label_is(key: str, text: str) -> bool:
 
 
 def none_value(value: str) -> bool:
-    """«no», «assente», «nessuno»… in any language."""
+    """«no», «none», «absent»… in any language."""
     v = value.strip().lower()
     return v == "no" or v in word_set("scout.value.none")
 
 
 def yes_value(value: str) -> bool:
-    """«Sì», «Sì, 2», «Yes»… in any language."""
+    """«Yes», «Yes, 2»… in any language."""
     return value.strip().lower().split(",")[0].strip() in word_set("common.yes_word")
 
 

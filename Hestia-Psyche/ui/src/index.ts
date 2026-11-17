@@ -1,5 +1,5 @@
 /**
- * Psyche («Umore») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * Psyche («Mood») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-30-diario-umore). Page, widget and quick action declared in Hestia-Psyche/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';

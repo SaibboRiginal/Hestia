@@ -22,7 +22,7 @@ the assistant change values from any client, Archive stores them.
 Semantics
 - ``apply="live"``: a new value is used at once (``get`` returns it, ``on_change`` fires).
 - ``apply="restart"``: the value loaded at startup stays effective until the module restarts;
-  Themis compares stored vs effective and shows "riavvio necessario" to every client.
+  Themis compares stored vs effective and shows "restart needed" to every client.
 - Themis unreachable → defaults, ``[🔄]`` log; registration retried in background, values applied
   when it answers (restart settings then wait for a restart, honestly reported).
 - Secrets and infrastructure (URLs, ports, paths, tokens) are NOT settings: they stay in env.
@@ -66,7 +66,7 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
     (e.g. models of a provider) as ``{"options": [{"value", "label"}]}``.
     ``fields``: for ``object`` the sub-fields (each a ``setting``-like dict without key).
     ``row``/``column``: optional table layout hint — settings of one group sharing rows and columns are
-    shown by clients as a grid (e.g. row "Codice", column "Modello"); ``label`` stays the full name.
+    shown by clients as a grid (e.g. row "Code", column "Model"); ``label`` stays the full name.
     ``editor``: optional name of a dedicated client editor for an ``object`` value (e.g. ``llm_chains``);
     clients without it show the generic JSON editor.
     ``oracle``: what the assistant may do — ``propose`` (default, always confirmed by the user),

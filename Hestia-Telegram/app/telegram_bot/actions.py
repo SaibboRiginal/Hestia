@@ -93,7 +93,7 @@ def start(chat_id, name: str, message_id: int | None = None, preset: dict | None
         from telegram_bot import nav
         nav.place(chat_id, ui.card(tr("Action not available"), [ui.note(tr("This action is gone. Here are the areas."))]),
                   None, message_id)
-        nav.aree(chat_id)
+        nav.show_areas(chat_id)
         return
     fields = _fields(tool)
     values = {k: v for k, v in (preset or {}).items() if v not in (None, "")}
@@ -430,14 +430,14 @@ def _file_of(message) -> tuple[str, str, str]:
     if message.content_type == "photo":
         return message.photo[-1].file_id, "image/jpeg", "foto.jpg"
     if message.content_type == "voice":
-        return message.voice.file_id, (message.voice.mime_type or "audio/ogg"), "vocale.ogg"
+        return message.voice.file_id, (message.voice.mime_type or "audio/ogg"), "voice_note.ogg"
     if message.content_type == "audio":
         return message.audio.file_id, (message.audio.mime_type or "audio/mpeg"), (message.audio.file_name or "audio")
     doc = message.document
     return doc.file_id, (doc.mime_type or "application/octet-stream"), (doc.file_name or "file")
 
 
-# ── typed commands: /finance_add 12,50 pranzo ────────────────────────────────
+# ── typed commands: /finance_add 12.50 lunch ────────────────────────────────
 
 def from_command(chat_id, name: str, args_text: str) -> bool:
     tool = catalog.get(name)
@@ -561,7 +561,7 @@ def handle_flow(call) -> None:
             store.clear_flow(chat_id)
             from telegram_bot import nav
             area = _area(_menu(), tool)
-            return nav.area(chat_id, area.key, mid) if area else nav.aree(chat_id, mid)
+            return nav.area(chat_id, area.key, mid) if area else nav.show_areas(chat_id, mid)
         flow["values"].pop(flow["queue"][flow["pos"]], None)
         flow["mode"] = "ask"
         _advance(chat_id, flow)

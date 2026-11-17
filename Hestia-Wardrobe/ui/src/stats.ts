@@ -1,6 +1,6 @@
 /**
  * <wardrobe-stats> — composition (category, colour, season, style), value, forgotten pieces, gaps; usage numbers only
- * as hints because «Indossato» is occasional (SPEC §4.3), with the optional goal on top.
+ * as hints because «Worn» is occasional (SPEC §4.3), with the optional goal on top.
  */
 import { css, html, nothing, plural, tr } from '@hestia/webui-sdk';
 import { API, WardrobeElement, img, money, relDays, wardrobeStyles } from './util';

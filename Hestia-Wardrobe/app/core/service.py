@@ -35,7 +35,7 @@ class NotFound(LookupError):
 
 def _norm(text: Any) -> str:
     s = str(text or "").lower()
-    for a, b in (("à", "a"), ("is", "e"), ("é", "e"), ("ì", "i"), ("ò", "o"), ("ù", "u")):
+    for a, b in (("à", "a"), ("è", "e"), ("é", "e"), ("ì", "i"), ("ò", "o"), ("ù", "u")):
         s = s.replace(a, b)
     return re.sub(r"\s+", " ", s)
 
@@ -98,7 +98,7 @@ class Wardrobe:
         return {v["key"]: v for v in self.vocab(name)}
 
     def vocab_keys(self, name: str, values: Any) -> list[str] | Any:
-        """Labels typed by people or the assistant ("Ufficio") → the vocabulary key ("office"); unknown words stay
+        """Labels typed by people or the assistant ("Office") → the vocabulary key ("office"); unknown words stay
         free tags. Without this a piece tagged in chat never matched one tagged from the UI, nor the suggester."""
         if values is None:
             return values
@@ -292,7 +292,7 @@ class Wardrobe:
         return {"updated": len(done), "ids": done}
 
     def find_piece(self, text: str) -> dict | None:
-        """Best match for a name the assistant or the user typed ("camicia azzurra")."""
+        """Best match for a name the assistant or the user typed ("light blue shirt")."""
         if not text:
             return None
         if self.store.get("piece", text):
@@ -414,7 +414,7 @@ class Wardrobe:
         exact = [o for o in found if _norm(o["name"]) == _norm(text)]
         return (exact or found or [None])[0]
 
-    # ── wears ("Indossato") ────────────────────────────────────────────────
+    # ── wears ("Worn") ────────────────────────────────────────────────────
     def wears(self, *, date_from: str = "", date_to: str = "", limit: int = 200) -> dict:
         pieces = {p["id"]: p for p in self.store.items("piece")}
         outfits = {o["id"]: o for o in self.store.items("outfit")}
@@ -501,7 +501,7 @@ class Wardrobe:
     def weather(self, d0: date, d1: date | None = None, place: str = "") -> dict | None:
         """Forecast for a day or a trip, read from Hecate through Hub: ``{source, place, temp_c, rain, …}``.
         Highest temperature of the period (daytime clothes) and rain if any day rains. None when unavailable
-        (no Casa among the places, beyond 16 days, Hecate away): callers go on as without weather."""
+        (no Home among the places, beyond 16 days, Hecate away): callers go on as without weather."""
         q = {"date_from": d0.isoformat(), "date_to": (d1 or d0).isoformat(), **({"place": place} if place else {})}
         try:
             status, payload = self.hub.call("hecate", "GET", "api/gateway/weather/forecast", query=q, timeout=6)
@@ -599,7 +599,7 @@ class Wardrobe:
         return {"module": "wardrobe", "domain": "wardrobe", "updated_at": now_iso(), "text": text}
 
     # ── reflection signals (hestia_common.signals_client; Athena reads them, never the rows) ──
-    FORGOTTEN_DAYS = 60        # SPEC riflessione-a-livelli: «nothing worn for 60 days»
+    FORGOTTEN_DAYS = 60        # reflection SPEC: «nothing worn for 60 days»
     LAUNDRY_DAYS = 7           # in laundry since a week or more…
     LAUNDRY_MIN = 3            # …at least this many pieces
 
@@ -619,7 +619,7 @@ class Wardrobe:
                            or (p.get("status") in domain.OWNED and p.get("condition") == "to_repair")]}
 
     def signals(self) -> tuple[list[dict], list[dict]]:
-        """Deterministic signals + weekly metric ``wardrobe.worn`` (12 ISO weeks). Texts say «Guardaroba»."""
+        """Deterministic signals + weekly metric ``wardrobe.worn`` (12 ISO weeks). Texts say «Wardrobe»."""
         f = self._signal_facts()
         sigs: list[dict] = []
         if f["forgotten"]:
@@ -867,9 +867,9 @@ class Wardrobe:
                 "message": tr("Check the proposed fields and save")}
 
     def from_chat_photo(self, blob_id: str) -> dict:
-        """A photo sent in chat with «aggiungi al guardaroba» (Telegram or WebUI): recognise it and save the piece
+        """A photo sent in chat with «add to the wardrobe» (Telegram or WebUI): recognise it and save the piece
         with the photo. Answer ``{handled, text}`` for Oracle's attachment hand-off; the text carries the piece id so
-        the next turn («no, è nera») reaches the edit tools."""
+        the next turn («no, it's black») reaches the edit tools."""
         blob = self.hub.ok("archive", "GET", f"api/blobs/{blob_id}/base64", timeout=30) or {}
         upload = {"name": "foto.jpg", "mime": blob.get("mime") or "image/jpeg",
                   "data_b64": blob.get("data_b64") or ""}
@@ -976,7 +976,7 @@ class Wardrobe:
     def export(self) -> dict:
         data = {k: self.store.items(k) for k in ("piece", "outfit", "wear", "collection", "photo")}
         data["taxonomy"] = self.vocabularies()
-        return {"filename": f"guardaroba-{self.today().isoformat()}.json", "mime": "application/json",
+        return {"filename": f"wardrobe-{self.today().isoformat()}.json", "mime": "application/json",
                 "text": json.dumps({"module": "wardrobe", "version": 1, "exported_at": now_iso(), "data": data},
                                    ensure_ascii=False, indent=1)}
 

@@ -1,4 +1,4 @@
-"""Chat settings — the six options of Impostazioni › Chat (docs/work/2026-10-23-telegram-da-zero §7), one message
+"""Chat settings — the six options of Settings › Chat (docs/work/2026-10-23-telegram-da-zero §7), one message
 edited in place.
 
 ``tone``, ``mode`` and ``custom_prompt`` are stored centrally (Themis ``oracle.chat.*``, shared with every client,

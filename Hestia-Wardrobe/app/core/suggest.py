@@ -1,4 +1,4 @@
-"""«Cosa mi metto» — deterministic outfit suggestions (SPEC §5): no LLM, every result explains itself.
+"""«What do I wear» — deterministic outfit suggestions (SPEC §5): no LLM, every result explains itself.
 
 Candidates = saved outfits + combinations generated from available pieces. Hard filters: piece available
 (status active), season, weather vs warmth/rain. Score: occasion/style, formality spread, colour harmony,
@@ -34,7 +34,7 @@ def warmth_band(temp_c: float | None, season: str) -> tuple[int, int]:
 
 
 class Suggester:
-    """Built per request from the current wardrobe (mirror) and the "Indossato" marks."""
+    """Built per request from the current wardrobe (mirror) and the "Worn" marks."""
 
     def __init__(self, pieces: list[dict], outfits: list[dict], wears: list[dict], *, today: date,
                  forgotten_days: int = 180):

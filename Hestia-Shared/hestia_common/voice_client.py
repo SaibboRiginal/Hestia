@@ -4,7 +4,7 @@ Callers (Telegram, Oracle, Hermes, the WebUI backend) never touch audio engines:
 or send text and get bytes. Failures return ``None`` so every caller keeps its own fallback (``[🔄]``).
 
     voice = VoiceClient(HUB_API_URL)
-    heard = voice.transcribe(ogg_bytes, "audio/ogg", use_case="telegram.vocale",
+    heard = voice.transcribe(ogg_bytes, "audio/ogg", use_case="telegram.voice_note",
                              keep={"kind": "recording", "session_id": sid, "message_id": mid, "client": "telegram"})
     spoken = voice.speak(text, use_case="telegram.answer", fmt="ogg_opus",
                          keep={"kind": "generated", "message_id": mid})

@@ -5,7 +5,7 @@ interface Filters { q: string; city: string; status: string; flag: string; price
 const EMPTY: Filters = { q: '', city: '', status: '', flag: '', price_max: '', rooms_min: '', sort: 'new' };
 const PAGE = 24;
 
-/** Mark/unmark a listing with optimistic update + Annulla. Shared by the list and the detail page. */
+/** Mark/unmark a listing with optimistic update + Undo. Shared by the list and the detail page. */
 export async function setFlag(el: HestiaElement, l: Listing, flag: Listing['flag'], done: (l: Listing) => void) {
   const before = l.flag;
   const next = l.flag === flag ? '' : flag;

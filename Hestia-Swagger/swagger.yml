@@ -13793,7 +13793,7 @@ paths:
   /api/webui/voice/transcribe:
     post:
       tags: [WebUI]
-      summary: "Voice message of the chat → Echo (use webui.vocale, recording kept with the message)"
+      summary: "Voice message of the chat → Echo (use webui.voice_note, recording kept with the message)"
       servers:
         - url: http://localhost:19015
       requestBody:

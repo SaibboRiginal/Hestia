@@ -2,7 +2,7 @@
 every time.
 
 1. The module's optional ``display`` block (``hestia_common.display``): title, subtitle, lines, items, actions.
-2. Otherwise a generic renderer: lists become items, scalar fields «Etichetta: valore», technical keys omitted,
+2. Otherwise a generic renderer: lists become items, scalar fields «Label: value», technical keys omitted,
    dates and numbers in Italian, empty values never shown («n/d» never appears).
 """
 from __future__ import annotations

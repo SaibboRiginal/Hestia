@@ -1,4 +1,4 @@
-/** Wardrobe widgets for Home and dashboards: one-tap «Indossato», today's idea, laundry, forgotten, numbers, recent. */
+/** Wardrobe widgets for Home and dashboards: one-tap «Worn», today's idea, laundry, forgotten, numbers, recent. */
 import { css, html, nothing, plural, tr } from '@hestia/webui-sdk';
 import type { QuickAction } from '@hestia/webui-sdk';
 import { API, WardrobeElement, call, dayLabel, img, relDays, wardrobeStyles } from './util';
@@ -15,7 +15,7 @@ abstract class Widget extends WardrobeElement {
   protected get size() { return this.ctx?.size || 'm'; }
 }
 
-/** «Oggi indosso»: favourite outfits + today's suggestion as chips (tap = Indossato, toast with Annulla). */
+/** «Today I wear»: favourite outfits + today's suggestion as chips (tap = Worn, toast with Undo). */
 export class WardrobeTodayWidget extends Widget {
   static properties = { ...WardrobeElement.properties, goal: { state: true } };
   declare goal: any;
@@ -28,7 +28,7 @@ export class WardrobeTodayWidget extends Widget {
       <hxk-quicklog .host=${this.host} ?compact=${this.size === 's'} source=${`${API}/quick/outfits`} .action=${action}
         @logged=${() => this.reload(true)}></hxk-quicklog>
       <div class="row small"><button class="link" @click=${() => this.host.navigate('outfit')}>${tr("All outfits")}</button><span class="grow"></span>
-        <button class="link" @click=${() => this.host.navigate('what-to-wear', this.ctx?.params?.occasion ? { occasione: this.ctx.params.occasion } : undefined)}>${tr("What do I wear?")}</button></div>
+        <button class="link" @click=${() => this.host.navigate('what-to-wear', this.ctx?.params?.occasion ? { occasion: this.ctx.params.occasion } : undefined)}>${tr("What do I wear?")}</button></div>
     </div>`;
   }
 }
@@ -52,7 +52,7 @@ export class WardrobeSuggestWidget extends Widget {
     if (res === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     const s = res?.items?.[0];
     if (!s) return html`<div class="w"><span class="muted small">${res?.hint || tr('No idea for now.')}</span>
-      <div><hxk-button size="sm" icon="plus" @click=${() => this.host.navigate('pieces', { nuovo: '1' })}>${tr("Add items")}</hxk-button></div></div>`;
+      <div><hxk-button size="sm" icon="plus" @click=${() => this.host.navigate('pieces', { new: '1' })}>${tr("Add items")}</hxk-button></div></div>`;
     return html`<div class="w">
       <div class="click" @click=${() => this.host.navigate('what-to-wear')}><b class="truncate">${s.saved ? s.name : tr('Idea for today')}</b>
         <div class="strip" style="margin-top:6px">${s.pieces.slice(0, this.size === 'l' ? 7 : 4).map((p: any) => html`<span class="thumb" title=${p.name}>${img(this.host, p.photo, p.name)}</span>`)}</div></div>
@@ -63,7 +63,7 @@ export class WardrobeSuggestWidget extends Widget {
   }
 }
 
-/** Pieces in the laundry: tap «Pulito» to put one back in the wardrobe. */
+/** Pieces in the laundry: tap «Clean» to put one back in the wardrobe. */
 export class WardrobeLaundryWidget extends Widget {
   static properties = { ...WardrobeElement.properties, items: { state: true } };
   declare items: any[] | undefined;

@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
-from hestia_common.i18n import month_name, t as tr, weekday_name, word_regex, word_set  # owner language
+from hestia_common.i18n import is_yes, month_name, t as tr, weekday_name, word_regex, word_set  # owner language
 
 LABELS = {
     "title": "Title", "name": "Name", "q": "What are you looking for", "query": "What are you looking for", "text": "Text",
@@ -218,7 +218,7 @@ def parse_datetime(text: str, today: date | None = None) -> tuple[str | None, bo
     m = re.fullmatch(r"(\d{4}-\d{2}-\d{2})[T ](\d{1,2}:\d{2})(?::\d{2})?.*", s)
     if m:
         return f"{m[1]}T{parse_time(m[2])}:00", True
-    parts = re.split(r"\s+(?:alle\s+|ore\s+)?(?=\d{1,2}(?:[:.]\d{2})?$)", s.lower(), maxsplit=1)
+    parts = word_regex(r"\s+(?:(?:{0})\s+)?(?=\d{{1,2}}(?:[:.]\d{{2}})?$)", "date.time_prefix").split(s.lower(), maxsplit=1)
     d = parse_date(parts[0], today)
     if d and len(parts) == 2:
         t = parse_time(parts[1])
@@ -244,9 +244,9 @@ def parse(f: Field, text: str) -> tuple[bool, Any, str]:
         return False, None, tr("Choose one of the options.")
     if f.kind == "bool":
         low = s.casefold()
-        if low in (tr("yes"), "si", "s", "yes", "true", "1", "vero"):
+        if low == tr("yes").casefold() or is_yes(low):
             return True, True, ""
-        if low in ("no", "n", "false", "0", "falso"):
+        if low in word_set("common.no_word"):
             return True, False, ""
         return False, None, tr("Answer yes or no.")
     if f.kind in ("int", "number"):

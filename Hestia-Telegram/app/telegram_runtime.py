@@ -2,7 +2,7 @@
 
 Messages, in order: the bottom keyboard (exact words) → `/` commands (doors, aliases, any tool by name) → an open
 flow (action, menu editor, chat setting, the assistant's question) → chat. Buttons go by prefix to one handler each;
-an unknown or old button never errors: «Questo menu è vecchio» and the current card.
+an unknown or old button never errors: «This menu is old» and the current card.
 """
 import logging
 import threading

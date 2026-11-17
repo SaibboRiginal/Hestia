@@ -129,7 +129,7 @@ def world(engine, monkeypatch):
     monkeypatch.delenv(key_env("chiuso"), raising=False)
     get = lambda k, d=None: values.get(k, d)  # noqa: E731
     registry = [{"name": "telegram", "capabilities": {"voice_usecases": [
-        {"id": "telegram.vocale", "label": "Vocali", "direction": "listen", "chain": "only-two"}]}}]
+        {"id": "telegram.voice_note", "label": "Vocali", "direction": "listen", "chain": "only-two"}]}}]
     arch = FakeArchive()
     notes = []
     blocks = Blocks(get, lambda: registry)
@@ -230,14 +230,14 @@ def test_chain_exhausted(world):
 
 def test_usecases_declared_by_callers_and_overrides(world):
     b = world["blocks"]
-    assert b.usecase_config("telegram.vocale", "listen")["chain"] == "only-two"
-    world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "listen"}}
-    assert b.usecase_config("telegram.vocale", "listen")["chain"] == "listen"
-    world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "voice"}}      # wrong direction → default
-    assert b.usecase_config("telegram.vocale", "listen")["chain"] == "listen"
+    assert b.usecase_config("telegram.voice_note", "listen")["chain"] == "only-two"
+    world["values"]["echo.usecases"] = {"telegram.voice_note": {"chain": "listen"}}
+    assert b.usecase_config("telegram.voice_note", "listen")["chain"] == "listen"
+    world["values"]["echo.usecases"] = {"telegram.voice_note": {"chain": "voice"}}      # wrong direction → default
+    assert b.usecase_config("telegram.voice_note", "listen")["chain"] == "listen"
     b.usecase_config("new.use", "voice")
     rows = {r["id"]: r for r in b.describe_usecases()}
-    assert rows["new.use"]["undeclared"] and rows["telegram.vocale"]["module"] == "telegram"
+    assert rows["new.use"]["undeclared"] and rows["telegram.voice_note"]["module"] == "telegram"
 
 
 def test_external_mode_proxies_and_falls_back(world):

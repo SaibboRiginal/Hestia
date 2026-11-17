@@ -1,6 +1,6 @@
 """Daily recap pieces — what each module says about a day (dossier ``docs/work/2026-10-20-recap-giornaliero``).
 
-The recap is one message a day («com'è andata, cosa c'è domani»). Every module that has something to say
+The recap is one message a day («how it went, what is on tomorrow»). Every module that has something to say
 exposes ``GET /api/module/recap?day=YYYY-MM-DD&next=YYYY-MM-DD`` and advertises it in its Hub registration
 (``capabilities.recap_endpoint``). The answer is a **piece**: deterministic facts, fast, never an LLM call.
 Athena collects the pieces, Oracle writes the text, Hermes delivers it. A new module joins the recap by
@@ -9,16 +9,16 @@ exposing the endpoint; nothing else changes.
     from hestia_common.recap import piece, item, recap_router, capabilities as recap_capabilities
 
     def _recap(day: date, nxt: date) -> dict:
-        return piece("hercules", "Allenamento", icon="dumbbell", emoji="🏋️", order=30,
-                     done=[item("Push A: 18 serie", tone="success")], next=[item("Pull B alle 18:30")])
+        return piece("hercules", "Training", icon="dumbbell", emoji="🏋️", order=30,
+                     done=[item("Push A: 18 sets", tone="success")], next=[item("Pull B at 18:30")])
 
     app.include_router(recap_router("hercules", _recap))
     caps.update(recap_capabilities())
 
-``title`` is a generic word for the area («Allenamento», «Spese»): user texts never name modules.
+``title`` is a generic word for the area («Training», «Expenses»): user texts never name modules.
 ``actions`` (optional, max 2): buttons the recap message carries for this module, Hermes action shape
 (``{label, command}`` = a tool the client opens, or ``{label, service, path, method?, body?}``). They ride even on an
-empty piece (e.g. «Racconta la giornata» after the evening recap, dossier ``2026-10-24-tutto-brainstorm-cindy`` B9).
+empty piece (e.g. «Tell me about your day» after the evening recap, dossier ``2026-10-24-tutto-brainstorm-cindy`` B9).
 """
 from __future__ import annotations
 

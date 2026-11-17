@@ -1,5 +1,5 @@
 """Taps → Metis usage log (docs/work/2026-10-24-tutto-brainstorm-cindy W6): each action started from a button or a
-command is pushed in the background, so «Adesso» learns what is used when. Never blocks or fails the action."""
+command is pushed in the background, so «Now» learns what is used when. Never blocks or fails the action."""
 from __future__ import annotations
 
 import logging
@@ -23,8 +23,8 @@ def tap(ref: str, kind: str = "tool", label: str = "") -> None:
     threading.Thread(target=_send, daemon=True, name="telegram-tap").start()
 
 
-def adesso(limit: int = 4) -> list[dict]:
-    """«Adesso» items for the Oggi card ([] when Metis is away: the card keeps its fixed buttons)."""
+def now_items(limit: int = 4) -> list[dict]:
+    """«Now» items for the Today card ([] when Metis is away: the card keeps its fixed buttons)."""
     ok, payload = catalog.route("metis", "api/metis/now", query={"client": "telegram", "limit": limit}, timeout=6)
     items = payload.get("items") if ok and isinstance(payload, dict) else None
     return [i for i in items or [] if isinstance(i, dict) and i.get("tool")]

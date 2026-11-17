@@ -1,4 +1,4 @@
-"""Psyche — how the owner feels over time («Umore», dossier docs/work/2026-10-30-diario-umore).
+"""Psyche — how the owner feels over time («Mood», dossier docs/work/2026-10-30-diario-umore).
 
 A check-in is one row ``mood``: mood 1–5 (required), energy and stress 1–5 (optional), labels and causes from a
 closed vocabulary, a note, and — when it came from chat — the owner's own words (``quote``). Rows come from a tap
@@ -16,7 +16,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso, parse_dt
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_psyche.service")
 
@@ -57,7 +57,7 @@ def _level(value: Any, field: str, required: bool = False) -> int | None:
 
 
 def _vocab(values: Any, allowed: tuple[str, ...]) -> list[str]:
-    """Keep only words of the vocabulary (case and «giu/giù» tolerant), in order, no duplicates."""
+    """Keep only words of the vocabulary (case and accent tolerant), in order, no duplicates."""
     if isinstance(values, str):
         values = [v for v in values.replace(";", ",").split(",")]
     out: list[str] = []
@@ -119,9 +119,9 @@ class Psyche:
         if not value:
             return self.today()
         text = str(value).strip().lower()
-        if text in ("today", "today"):
+        if text in word_set("date.today"):
             return self.today()
-        if text in ("ieri", "yesterday"):
+        if text in word_set("date.yesterday"):
             return self.today() - timedelta(days=1)
         try:
             d = date.fromisoformat(text[:10])

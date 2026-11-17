@@ -59,7 +59,7 @@ registry.register(SELF_OWNER, list(PERSONAL.values()))
 app = FastAPI(title="Hestia-Themis", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ── WebUI plugin (core module, Sistema section): Registro ────────────────────
+# ── WebUI plugin (core module, System section): Log ──────────────────────────
 UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 ui = PluginClient("themis", title="Settings log", icon="settings", color="gray", kind="core", dist=UI_DIST,
                   description="Who changed which setting, when and how: changes, proposals, undo.",
@@ -156,7 +156,7 @@ def settings_modules():
 def settings_i18n(lang: str = ""):
     """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
     ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
-    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:lei|lui}`` in those texts
+    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:her-form|his-form}`` in those texts
     (docs/work/2026-11-16-nome-ovunque). Public through the WebUI: only the assistant's name, never the owner's."""
     from hestia_common import identity
     ident = _i18n.identity_now()
@@ -217,7 +217,7 @@ def settings_history(key: str, scope: str = "system", scope_id: str = "", limit:
 def settings_history_all(limit: int = 50, offset: int = 0, module: str = "", actor: str = "", key: str = "",
                          sessions: bool = False):
     """Every setting change (all keys, newest first, paged): who, when, old → new, ``undoable``
-    (WebUI plugin page «Registro»). ``actor`` = comma list of user | oracle | athena | external (any external:<name>) | <client>…"""
+    (WebUI plugin page «Log»). ``actor`` = comma list of user | oracle | athena | external (any external:<name>) | <client>…"""
     return themis.history_all(limit=limit, offset=offset, module=module, actor=actor, key=key, sessions=sessions)
 
 

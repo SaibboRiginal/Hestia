@@ -1,15 +1,15 @@
-"""Esporta e importa from Telegram (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F; format and module contract:
+"""Export and import from Telegram (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F; format and module contract:
 docs/work/2026-10-20-import-export).
 
 Like the WebUI page, the client orchestrates: every module exports and imports only its own data through Hub
 ``/route/<svc>/api/transfer/*``; Telegram builds or reads the same ``.hestia`` file (gzip JSON).
 
-- «Esporta i dati»: every module that has export, without photos (Telegram file limits) → sent as a document.
-- «Importa dati»: asks for the ``.hestia`` file, shows the preview (dry run, always first), then «Importa»
-  (mode *unisci*: adds and updates, never deletes). Before writing, the current data of the same modules is sent
-  back as a document «prima dell'importazione»: importing that file restores the previous state.
+- «Export data»: every module that has export, without photos (Telegram file limits) → sent as a document.
+- «Import data»: asks for the ``.hestia`` file, shows the preview (dry run, always first), then «Import»
+  (mode *merge*: adds and updates, never deletes). Before writing, the current data of the same modules is sent
+  back as a document «before the import»: importing that file restores the previous state.
 The file waits in memory for 30 minutes at most (personal data: never written to disk here).
-- «Ripristina un backup» / «Annulla ripristino»: the owner's own restore of a Google Drive backup (Archive
+- «Restore a backup» / «Undo restore»: the owner's own restore of a Google Drive backup (Archive
   ``/api/backup/restore`` · ``/undo``); there is deliberately no assistant tool for it.
 """
 from __future__ import annotations
@@ -120,7 +120,7 @@ def _labels(available: dict) -> dict:
 
 
 # ── tools ───────────────────────────────────────────────────────────────────
-def esporta(chat_id, args):
+def export_data(chat_id, args):
     available = modules()
     if not available:
         raise TransferError(tr("No module has data to export right now."))
@@ -133,7 +133,7 @@ def esporta(chat_id, args):
         document=(name, encode(data)))
 
 
-def importa(chat_id, args):
+def import_data(chat_id, args):
     f = args.get("file") or {}
     raw = base64.b64decode(f.get("data_b64") or "") if isinstance(f, dict) else b""
     if not raw:
@@ -166,7 +166,7 @@ def import_confirm(chat_id, args):
     logger.info("event=telegram_transfer_import modules=%d", len(owners))
     return Rendered(ui.outcome(tr("Data imported")) + "\n" + "\n".join(_lines(reports, _labels(available))) + "\n"
                     + ui.note(tr("The file below is how it was before: import it to go back.")),
-                    document=(f"hestia-prima-{datetime.now().strftime('%Y-%m-%d-%H%M')}.hestia", encode(before)))
+                    document=(f"hestia-before-{datetime.now().strftime('%Y-%m-%d-%H%M')}.hestia", encode(before)))
 
 
 def import_cancel(chat_id, args):
@@ -175,7 +175,7 @@ def import_cancel(chat_id, args):
 
 
 # ── restore a Drive backup (owner only: no assistant tool restores) ───────────
-def ripristina(chat_id, args):
+def restore_backup(chat_id, args):
     ok, hist = catalog.route("archive", "api/backup/list", timeout=30)
     items = (hist or {}).get("items") or [] if ok and isinstance(hist, dict) else []
     if not ok:
@@ -220,12 +220,12 @@ def tools() -> list[catalog.Tool]:
     T = catalog.Tool
     return [
         T("export", "Export the data", "A file with your data and settings, to take to another Hestia",
-          group="system", hints={"section": "Data and backups"}, handler=esporta),
+          group="system", hints={"section": "Data and backups"}, handler=export_data),
         T("import", "Import data", "Brings data back from a .hestia file (you see a preview first)", group="system",
           hints={"section": "Data and backups"},
           schema={"type": "object", "required": ["file"], "properties": {"file": {
               "type": "string", "contentMediaType": "application/octet-stream", "title": "The .hestia file"}}},
-          handler=importa),
+          handler=import_data),
         T("import_confirm", "Confirm import", "", group="system", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           writes=True, handler=import_confirm),
@@ -233,7 +233,7 @@ def tools() -> list[catalog.Tool]:
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           handler=import_cancel),
         T("restore", "Restore a backup", "Brings all data back to a backup on Google Drive", group="system",
-          hints={"section": "Data and backups"}, handler=ripristina),
+          hints={"section": "Data and backups"}, handler=restore_backup),
         T("restore_confirm", "f::Restore", "", group="system", hints={"section": "interno"},
           schema={"type": "object", "properties": {"file_id": {"type": "string"}}, "required": ["file_id"]},
           writes=True, destructive=True, handler=restore_confirm),

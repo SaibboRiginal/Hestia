@@ -11,6 +11,13 @@
   "piazzale",
   "località"
  ],
+ "common.greeting": [
+  "ciao",
+  "ehi",
+  "buongiorno",
+  "buonasera",
+  "grazie"
+ ],
  "common.next_week": [
   "prossima",
   "prossima settimana"
@@ -19,6 +26,10 @@
   "annulla",
   "lascia stare",
   "lascia perdere"
+ ],
+ "common.no_word": [
+  "no",
+  "falso"
  ],
  "common.yes": [
   "s[iì]",
@@ -36,7 +47,9 @@
   "sì",
   "conferma",
   "vai",
-  "certo"
+  "certo",
+  "s",
+  "vero"
  ],
  "control.hint": [
   "avvis",
@@ -1475,5 +1488,10 @@
  "scout.value.none": [
   "assente",
   "nessuno"
+ ],
+ "wardrobe.attachment_hint": [
+  "guardaroba",
+  "armadio",
+  "nuovo capo"
  ]
 }

@@ -26,7 +26,7 @@ logger = logging.getLogger("hestia_themis.service")
 USER_SCOPES = ("session", "client", "profile")          # resolution order for scope=user definitions
 ACTORS_ASSISTANT = {"oracle", "athena"}
 HISTORY_KEEP = 10
-HISTORY_KEEP_SCAN = 500                                   # Registro page: newest changes read from Archive (max)
+HISTORY_KEEP_SCAN = 500                                   # Log page: newest changes read from Archive (max)
 PROPOSAL_TTL_HOURS = 24
 PROFILE_ID = "owner"
 SELF_OWNER = "themis"                                     # Themis' own settings (personal ones): nothing to reload
@@ -51,7 +51,7 @@ CLIENT_MODULES = {"webui", "telegram"}
 
 def _describe(value: Any, d: dict | None = None) -> str:
     """Readable preview for a confirmation card: lists of titled objects become «A» (3), «B» (5); a choice
-    shows its label («Diretto», not «direct»)."""
+    shows its label («Direct», not «direct»)."""
     for option in (d or {}).get("options") or []:
         if isinstance(option, dict) and option.get("value") == value and option.get("label"):
             return str(option["label"])
@@ -335,7 +335,7 @@ class Themis:
 
     def history_all(self, *, limit: int = 50, offset: int = 0, module: str = "", actor: str = "", key: str = "",
                     sessions: bool = False) -> dict:
-        """Every recorded change (all keys, newest first, paged) for the Registro page. Archive keeps the last
+        """Every recorded change (all keys, newest first, paged) for the Log page. Archive keeps the last
         ``HISTORY_KEEP`` changes per key; ``undoable`` marks the latest change of its key/scope (the one the
         existing ``undo`` restores). Session copies (new chat = profile values copied) are hidden by default."""
         limit, offset = max(1, min(int(limit), 200)), max(0, int(offset))
@@ -360,7 +360,7 @@ class Themis:
                 continue
             reason = str(r.get("reason") or "")
             kind = ("undo" if reason == "cancel" else "reset" if r.get("new_value") is None
-                    else "approved" if reason.startswith(("proposal approved", "proposta approvata")) else
+                    else "approved" if reason.startswith("proposal approved") else
                     "preset" if reason.startswith("preset ") else "change")
             out.append({**r, "label": d.get("label") or r.get("key"), "module": row_module, "type": d.get("type"),
                         "kind": kind, "latest": latest,

@@ -112,7 +112,7 @@ subscription compile), `rating_paused`.
 - Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
 
 ### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)
-- A voice note is transcribed by Echo (use `telegram.vocale`) and shown as «*testo*», then handled like the same
+- A voice note is transcribed by Echo (use `telegram.voice_note`) and shown as «*testo*», then handled like the same
   sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
   puoi scrivermelo?» (`[🔄]`).
 - «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.answer`), kept so a second tap does not regenerate.

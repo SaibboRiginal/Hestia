@@ -10,6 +10,16 @@
   "rd\\.",
   "ave\\."
  ],
+ "common.greeting": [
+  "hi",
+  "hello",
+  "hey",
+  "ok",
+  "thanks",
+  "thank you",
+  "good morning",
+  "good evening"
+ ],
  "common.next_week": [
   "next",
   "next week"
@@ -20,6 +30,12 @@
   "never mind",
   "forget it",
   "leave it"
+ ],
+ "common.no_word": [
+  "no",
+  "n",
+  "false",
+  "0"
  ],
  "common.yes": [
   "yes",
@@ -1492,5 +1508,10 @@
  "scout.value.none": [
   "none",
   "absent"
+ ],
+ "wardrobe.attachment_hint": [
+  "wardrobe",
+  "closet",
+  "new item"
  ]
 }

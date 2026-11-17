@@ -100,7 +100,7 @@ def test_filter_mutes_other_voices_only_on_chosen_uses(world):
     assert stats == {"applied": True, "kept": 2, "muted": 2}
     samples = np.frombuffer(audio.wav_frames(out)[0], dtype="<i2")
     assert np.abs(samples[: 3 * 16000]).max() > 1000 and np.abs(samples[3 * 16000:]).max() == 0
-    assert vp.filter(mixed, "telegram.vocale")[1] == {"applied": False}
+    assert vp.filter(mixed, "telegram.voice_note")[1] == {"applied": False}
 
 
 def test_cache_judges_each_window_once(world):

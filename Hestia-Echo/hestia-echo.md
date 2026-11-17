@@ -48,7 +48,7 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   `echo.external.fallback` = `internal` (back to the chains) or `none` (say it does not work). Each use may override.
 
 Declared uses today: `echo.prova.*` (page «Prova»), `oracle.documents` (audio in documents, chain `listening-precise`),
-`telegram.vocale`, `telegram.answer`, `webui.vocale`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
+`telegram.voice_note`, `telegram.answer`, `webui.voice_note`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
 `hermes.notification`.
 
 ## Keeping audio (Archive)

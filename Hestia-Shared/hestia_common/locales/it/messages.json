@@ -6663,7 +6663,7 @@
   "Voice replies: {0}": "Risposte a voce: {0}",
   "Voice style": "Stile della voce",
   "Voice uses": "Usi della voce",
-  "Voice uses where I filter other voices (e.g. webui.live.listening, telegram.vocale). Without a recorded voiceprint I filter nothing.": "Usi della voce dove filtro le altre voci (es. webui.live.listening, telegram.vocale). Senza impronta registrata non filtro nulla.",
+  "Voice uses where I filter other voices (e.g. webui.live.listening, telegram.voice_note). Without a recorded voiceprint I filter nothing.": "Usi della voce dove filtro le altre voci (es. webui.live.listening, telegram.voice_note). Senza impronta registrata non filtro nulla.",
   "Voice {0}": "Voce {0}",
   "Voice: audio cleanup": "Voce: pulizia degli audio",
   "Volume": "Volume",

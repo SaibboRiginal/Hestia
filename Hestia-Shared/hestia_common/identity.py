@@ -7,7 +7,7 @@ written once with tokens and rendered with :func:`render`:
 - ``{assistant}``         → the assistant's name
 - ``{owner}``             → how to call the owner (``the person writing to you`` while unknown)
 - ``{owner_rule}``        → one sentence: his name, or «ask him» while unknown
-- ``{g:amica|amico}``     → the first form for a she, the second for a he
+- ``{g:her-form|his-form}`` → the first form for a she, the second for a he
 - ``{owner_language}``    → the owner's language in English («Italian», «English»…): notifications, recaps and
   every text she writes on her own use it. In chat she answers in the language the owner just wrote in.
 
@@ -19,7 +19,7 @@ A module reads the values with its own ``SettingsClient`` after ``follow_persona
 The product, the modules and the repository keep the name Hestia: only the voice that talks to the owner changes.
 
 Texts people read (buttons, notices, help) use the same two tokens where they speak of the assistant as a person
-(«Chiedi a {assistant}», «Ciao, sono {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
+(«Ask {assistant}», «Hi, I'm {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
 ``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the
 app (version, files, installation, the system as a whole) it stays «Hestia».
 """
@@ -104,7 +104,7 @@ def render(text: str, ident: dict[str, str] | None = None) -> str:
 
 
 def named(text: str, ident: dict[str, str] | None = None) -> str:
-    """A text people read with the assistant's name and gender filled (``{assistant}``, ``{g:lei|lui}``); every
+    """A text people read with the assistant's name and gender filled (``{assistant}``, ``{g:her-form|his-form}``); every
     other brace stays for ``str.format``."""
     raw = str(text or "")
     if "{assistant}" not in raw and "{g:" not in raw:

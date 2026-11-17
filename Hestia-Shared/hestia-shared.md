@@ -207,10 +207,10 @@ keeps its own fallback.
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import usecase, capabilities as voice_capabilities
 
-VOICE_USECASES = [usecase("telegram.vocale", "Telegram · vocali", direction="listen")]
+VOICE_USECASES = [usecase("telegram.voice_note", "Telegram · vocali", direction="listen")]
 payload["capabilities"].update(voice_capabilities(VOICE_USECASES))   # Hub registration
 voice = VoiceClient(HUB_API_URL)
-heard = voice.transcribe(audio, "audio/ogg", use_case="telegram.vocale",
+heard = voice.transcribe(audio, "audio/ogg", use_case="telegram.voice_note",
                          keep={"kind": "recording", "message_id": "tg:1:2"})      # {text, ...} | None
 spoken = voice.speak("Ciao", use_case="telegram.answer", fmt="ogg_opus")      # {audio: bytes, ...} | None
 voice.forget(notification_id="…")                                              # drop regenerable audio
@@ -317,7 +317,7 @@ from hestia_common.plugin_client import PluginClient, page, widget, quick_action
 ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/ui/dist")
 ui.webui(entry="scout.js", api_prefix="/api/ui/",
          pages=[page("case", "Case", element="scout-listings", icon="home")],
-         widgets=[widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l"], auto=True)],
+         widgets=[widget("new", "New houses", element="scout-new-widget", sizes=["m", "l"], auto=True)],
          quick_actions=[quick_action("fetch", "Controlla email", "POST", "/api/ui/cycle", icon="refresh")])
 app.include_router(ui.router())                       # GET /api/ui/manifest · GET /ui/<client>/<file>
 registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest + ui_version

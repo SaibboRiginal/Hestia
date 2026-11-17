@@ -1,4 +1,4 @@
-"""Hestia-Wardrobe — the wardrobe: pieces, accessories, outfits, "Indossato" marks, suggestions (domain ``wardrobe``).
+"""Hestia-Wardrobe — the wardrobe: pieces, accessories, outfits, "Worn" marks, suggestions (domain ``wardrobe``).
 
 SPEC docs/work/2026-10-17-modulo-guardaroba. Data in Archive (``/api/wardrobe-store`` + photos in ``/api/blobs``),
 settings in Themis, reminders through the agenda (Chronos) and Hermes, UI as a plugin bundle (``ui/``),
@@ -15,7 +15,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr, words  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -268,7 +268,7 @@ def outfit_unworn(id: str, date: str = ""):
     return out
 
 
-# ── "Indossato" marks ────────────────────────────────────────────────────────
+# ── "Worn" marks ────────────────────────────────────────────────────────────
 @app.get(f"{API}/wears")
 def wears(date_from: str = "", date_to: str = "", limit: int = 200):
     _refresh()
@@ -393,7 +393,7 @@ def collection_delete(id: str):
 # ── AI help, export / import ─────────────────────────────────────────────────
 # A photo sent in chat with these words in its caption comes here (Oracle attachment hand-off, Telegram and WebUI).
 ATTACHMENT_HANDLERS = [{"mime": ["image/jpeg", "image/png", "image/webp"], "label": "Wardrobe item",
-                        "path": f"{API}/attachments", "match": ["wardrobe", "closet", "nuovo capo"]}]
+                        "path": f"{API}/attachments", "match": list(words("wardrobe.attachment_hint"))}]
 
 
 @app.post(f"{API}/attachments")
@@ -475,7 +475,7 @@ def reminder_check():
 
 @app.post(f"{API}/reminder/skip")
 def reminder_skip(body: dict = Body(default={})):
-    """«Non oggi» on the reminder, «Tieni» on a delete question: nothing to do, Hermes closes the card."""
+    """«Not today» on the reminder, «Keep» on a delete question: nothing to do, Hermes closes the card."""
     return {"ok": True, "message": str((body or {}).get("message") or tr("Ok, nothing for today"))[:120]}
 
 
@@ -816,7 +816,7 @@ try:
                                                              "temp_c": N, "rain": B}, "required": ["date_from"]},
                 handler=_t(_packing), title="Suitcase", method="POST", clients=["ui"], telegram_visible=False,
                 telegram_group="wardrobe",
-                telegram={"section": "Viaggi"}),
+                telegram={"section": "Travel"}),
         MCPTool(name="wardrobe_delete", description=("Delete a garment or an outfit: it does NOT delete at once, it sends the user a confirmation with the buttons Delete / Archive / Keep."),
                 parameters={"type": "object", "properties": {"piece": S, "outfit": S}},
                 handler=_t(_delete), title="Delete item or outfit", method="POST", clients=["ui"], telegram_visible=False,
@@ -864,7 +864,7 @@ except NameError:
 
 
 # ── Hub registration ─────────────────────────────────────────────────────────
-# LLM use cases: the chain (it must see images) is chosen in Oracle → Cervello → Modelli.
+# LLM use cases: the chain (it must see images) is chosen in Oracle → Brain → Models.
 LLM_USECASES = [llm_usecase("wardrobe.photo", "Wardrobe · item photos", chain="vision",
                             help="Describes the photo of a new item (name, category, colours, style).")]
 

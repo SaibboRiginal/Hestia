@@ -1,7 +1,7 @@
 /**
  * <wardrobe-pieces>      — every piece as photo tiles: search, filters, quick add, multi-select (laundry, outfit, archive).
  * <wardrobe-accessories> — the same page limited to accessories.
- * <wardrobe-piece>       — one piece: photos, details, status in one tap, outfits, «Indossato», edit, archive/delete.
+ * <wardrobe-piece>       — one piece: photos, details, status in one tap, outfits, «Worn», edit, archive/delete.
  */
 import { css, html, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATUS_TONE, seasonIcon, WardrobeElement, call, dayLabel, dots, img, label, money, photo, relDays, vocabOptions, wardrobeStyles } from './util';
@@ -23,7 +23,7 @@ export class WardrobePieces extends WardrobeElement {
   constructor() { super(); this.items = undefined; this.total = 0; this.q = ''; this.f = { sort: 'recent' }; this.adding = false; this.sel = []; this.selecting = false; }
 
   connectedCallback() {
-    if (this.ctx?.query?.nuovo !== undefined) this.adding = true;
+    if (this.ctx?.query?.new !== undefined) this.adding = true;
     if (this.ctx?.query?.status) this.f = { ...this.f, status: this.ctx.query.status };
     super.connectedCallback();
   }

@@ -298,7 +298,7 @@ def outfit(data: dict, pieces: dict[str, dict]) -> dict:
             "notes": _text(data.get("notes"), 2000)}
 
 
-# ── wears ("Indossato" marks) ───────────────────────────────────────────────
+# ── wears ("Worn" marks) ───────────────────────────────────────────────────
 def wear(data: dict, pieces: dict[str, dict], outfits: dict[str, dict], today: date) -> dict:
     oid = str(data.get("outfit_id") or "") or None
     if oid and oid not in outfits:

@@ -116,7 +116,7 @@ export class VoiceService {
   }
 
   /** Text of a voice message; the recording is kept with the message `messageId`. */
-  async transcribe(blob: Blob, mime: string, messageId: string, useCase = 'webui.vocale'): Promise<Heard> {
+  async transcribe(blob: Blob, mime: string, messageId: string, useCase = 'webui.voice_note'): Promise<Heard> {
     return this.post<Heard>('transcribe', {
       audio_b64: await blobToB64(blob), mime_type: mime, use_case: useCase,
       keep: { kind: 'recording', message_id: messageId },

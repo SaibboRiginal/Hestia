@@ -29,7 +29,7 @@ export interface Upload {
 export interface PluginContext {
   module: string;                    // 'scout'
   surface: 'page' | 'widget' | 'settings_panel';   // settings_panel: inside the module's own settings
-  id: string;                        // local surface id ('case', 'nuove')
+  id: string;                        // local surface id ('houses', 'new')
   params: Record<string, string>;    // route params (':id') for pages, configured params for widgets
   query: Record<string, string>;     // page query string
   size?: WidgetSize;                 // widgets only
@@ -68,7 +68,7 @@ export interface HestiaHost {
   /** Navigate inside the plugin ('case/123') or to another module's page ({module, page}). */
   navigate(page: string, params?: Record<string, string>, module?: string): void;
   link(page: string, params?: Record<string, string>, module?: string): string;
-  /** Opens Impostazioni on one central setting (its key, highlighted), or on this module's settings (no key):
+  /** Opens Settings on one central setting (its key, highlighted), or on this module's settings (no key):
    *  the shortcut to put next to a value the user can change there. */
   openSetting(key?: string): void;
   toast(text: string, tone?: Tone, action?: { label: string; run: () => void }): void;
@@ -90,6 +90,6 @@ export interface QuickChip {
   label: string;
   icon?: string;
   state?: 'todo' | 'done' | 'late';
-  hint?: string;            // "2/3 questa settimana"
+  hint?: string;            // "2/3 this week"
   favorite?: boolean;
 }

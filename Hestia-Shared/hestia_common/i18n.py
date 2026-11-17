@@ -95,7 +95,7 @@ def identity_now() -> dict:
 
 
 def _named(*texts: str) -> tuple[str, ...]:
-    """``{assistant}`` and ``{g:lei|lui}`` filled with the assistant's chosen name and gender (``identity.named``)."""
+    """``{assistant}`` and ``{g:her-form|his-form}`` filled with the assistant's chosen name and gender (``identity.named``)."""
     if not any("{assistant}" in x or "{g:" in x for x in texts):
         return texts
     from hestia_common import identity
@@ -111,7 +111,7 @@ def bare(text: str) -> str:
 def t(text: Any, *args: Any, lang: str | None = None, **kwargs: Any) -> str:
     """``text`` (English source) in the owner's language; with arguments it is then ``str.format``-ed.
 
-    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. ``{assistant}`` and ``{g:lei|lui}`` take the
+    ``t("Hello {name}", name=n)`` · ``t("{0} files", count)``. ``{assistant}`` and ``{g:her-form|his-form}`` take the
     assistant's chosen name and gender (``identity.named``) before formatting. Never raises: a broken translation
     falls back to the source text."""
     source = "" if text is None else str(text)
@@ -140,7 +140,7 @@ WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", 
 
 
 def month_name(month: int, lang: str | None = None) -> str:
-    """Name of ``month`` (1-12) in the owner's language («gennaio» in Italian)."""
+    """Name of ``month`` (1-12) in the owner's language («January» in English)."""
     return t(MONTHS[(int(month) - 1) % 12], lang=lang)
 
 
@@ -183,8 +183,8 @@ def localize(payload: Any, lang: str | None = None) -> Any:
 # ── words people write (catalog ``words``: ``{list key: [regex fragments]}``, one file per language) ───────────
 # Parsers of what the owner writes (yes/no, «delete», dates, moods, bank mails…) never hold a language in the code:
 # they name a list (``"oracle.delete_ask"``) and read it from every ``locales/<lang>/words.json``, so the owner is
-# understood in any language that has a file, whatever «Lingua» says. Entries are regex fragments (``"elimin"``,
-# ``"gi[àa]"``); a new language is one new file.
+# understood in any language that has a file, whatever «Language» says. Entries are regex fragments (``"delet"``,
+# ``"alread[y]"``); a new language is one new file.
 @lru_cache(maxsize=1)
 def _languages() -> tuple[str, ...]:
     return tuple(sorted(p.name for p in LOCALES.iterdir() if (p / "words.json").is_file()))

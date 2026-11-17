@@ -5,8 +5,8 @@ mirror, error handlers, MCP router with REST paths, Hub registration with keepal
 wave 5 (Apollo, Aphrodite, Lares, Hera, Demeter, Calliope, Kairos) take them from here, so each one is only its own
 domain code:
 
-    kit = ModuleKit("hera", port=19025, api="/api/people", domain="people", title="Persone",
-                    store="people-store", when_to_use="persone importanti: compleanni, gusti, idee regalo",
+    kit = ModuleKit("hera", port=19025, api="/api/people", domain="people", title="People",
+                    store="people-store", when_to_use="important people: birthdays, tastes, gift ideas",
                     manual="…")
     people = People(kit.store, kit.settings.get)
     kit.settings.declare([...])

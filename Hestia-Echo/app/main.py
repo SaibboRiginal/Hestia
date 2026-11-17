@@ -105,7 +105,7 @@ settings.declare([
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
     setting("echo.voiceprint.uses", "Where I recognise only your voice", "list", ["webui.live.listening"],
             group="Your voice", order=41,
-            help="Voice uses where I filter other voices (e.g. webui.live.listening, telegram.vocale). Without a recorded voiceprint I filter nothing."),
+            help="Voice uses where I filter other voices (e.g. webui.live.listening, telegram.voice_note). Without a recorded voiceprint I filter nothing."),
     setting("echo.dictionary.confirmations", "Corrections to learn a word", "int", 2, group="Your voice",
             order=42, min=1, max=10, unit="times",
             help="After how many of your corrections a word enters the dictionary I pass to recognition."),

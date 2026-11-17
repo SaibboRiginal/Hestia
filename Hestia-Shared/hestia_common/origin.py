@@ -3,15 +3,15 @@
 Every message the owner did not type by hand carries an origin set by the caller's code in the routed headers
 (``X-Hestia-Origin``), never by a model or a body field. Oracle maps it to the **level** of the turn:
 
-- ``utente``   — the owner wrote it (Telegram, WebUI, an external AI he connected): everything, with the usual
+- ``user``     — the owner wrote it (Telegram, WebUI, an external AI he connected): everything, with the usual
                  confirmation gate;
-- ``routine``  — a routine the owner wrote («Le mie routine» in the agenda): acts only inside its instruction,
+- ``routine``  — a routine the owner wrote («My routines» in the agenda): acts only inside its instruction,
                  nothing destructive;
 - ``autonomo`` — the assistant by itself (reflection, presence, mail doorbells, module jobs): only reads, proposes
-                 (Themis/Hermes) and notifies; a write comes back as «serve che lo chieda Marko».
+                 (Themis/Hermes) and notifies; a write comes back as «the owner must ask for it».
 
-Header value: ``<kind>:<ref>`` with kind ``utente`` · ``routine`` · ``autonomous`` · ``external`` (an external AI
-access, counts as the owner). ``X-Hestia-Origin-Label`` is an optional short human label («Routine del lunedì»).
+Header value: ``<kind>:<ref>`` with kind ``user`` · ``routine`` · ``autonomous`` · ``external`` (an external AI
+access, counts as the owner). ``X-Hestia-Origin-Label`` is an optional short human label («Monday routine»).
 No header: a client name (telegram, webui) means the owner, nothing means autonomous (fail closed).
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ USER_CLIENTS = {"telegram", "webui", "ui", "web", "mcp", "voice", "cli"}
 
 
 def headers(kind: str, ref: str = "", label: str = "") -> dict[str, str]:
-    """Headers a caller puts in the Hub envelope: ``headers("routine", "monday-listings", "Annunci del lunedì")``."""
+    """Headers a caller puts in the Hub envelope: ``headers("routine", "monday-listings", "Monday listings")``."""
     out = {HEADER: f"{kind}:{ref}" if ref else kind}
     if label:
         out[LABEL_HEADER] = label[:80]

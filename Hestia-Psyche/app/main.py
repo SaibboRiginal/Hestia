@@ -1,8 +1,8 @@
-"""Hestia-Psyche — how the owner feels over time («Umore», port 19029, dossier docs/work/2026-10-30-diario-umore).
+"""Hestia-Psyche — how the owner feels over time («Mood», port 19029, dossier docs/work/2026-10-30-diario-umore).
 
 Data in Archive (``/api/mood-store``), check-ins from a tap, a tool or Oracle's quiet capture from chat
 (capability ``mood_capture_endpoint``: no confirmation, merged within ``psyche.capture.merge_minutes``, undone by
-«non segnarlo»), trend and insights computed here, reflection signals and weekly metrics for Athena, a recap piece,
+«don't log it»), trend and insights computed here, reflection signals and weekly metrics for Athena, a recap piece,
 the evening check-in as an agenda job, tools for the assistant and Telegram, a WebUI plugin.
 """
 from __future__ import annotations
@@ -101,7 +101,7 @@ def capture(body: dict = Body(...)):
 
 @app.post(f"{API}/capture/undo")
 def capture_undo():
-    """«Non segnarlo»: today's last chat capture goes away."""
+    """«Don't log it»: today's last chat capture goes away."""
     return _changed(psyche.undo_capture())
 
 
@@ -215,7 +215,7 @@ LV = {"type": "integer", "minimum": 1, "maximum": 5}
 G = "mood"
 kit.tools([
     MCPTool(name="mood_log", description=("Log how the user feels: mood 1-5 (1 very low, 3 so-so, 5 great), energy and stress 1-5, labels, "
-                                          "causes, note, date (YYYY-MM-DD or ieri). Only if they ask."),
+                                          "causes, note, date (YYYY-MM-DD or yesterday). Only if they ask."),
             summary="Record how you are.",
             parameters={"type": "object", "properties": {
                 "mood": LV, "energy": LV, "stress": LV,
@@ -260,7 +260,7 @@ kit.webui(icon="smile", color="yellow", description="How you are over time: days
                       help="How you feel day by day. When you say how you are in chat («today I'm tired») the assistant records it by itself; here you see it, fix it or remove it.")],
           widgets=[widget("mood", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
                           open_page="mood", icon="smile")],
-          quick_actions=[quick_action("come-stai", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
+          quick_actions=[quick_action("how-are-you", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
                                       params={"mood": {"type": "int", "label": "Mood 1-5", "min": 1, "max": 5}},
                                       order=240)])
 kit.finish()

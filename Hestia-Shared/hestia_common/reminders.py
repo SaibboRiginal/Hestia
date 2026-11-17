@@ -7,11 +7,11 @@ to send.
 
     from hestia_common.reminders import reminder_settings, reminder_event, voice_setting
 
-    settings.declare([..., *reminder_settings("hercules", help="Solo se sei indietro con l'obiettivo."),
+    settings.declare([..., *reminder_settings("hercules", help="Only when you are behind the goal."),
                       voice_setting("hercules", True)])
     if settings.get("hercules.reminder.enabled"):
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
-            module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento",
+            module="hercules", domain="fitness", key="hercules.reminder", title="Training",
             text=text, actions=actions, page="training", voice=settings.get("hercules.notifications.voice")))
 """
 from __future__ import annotations

@@ -1,5 +1,5 @@
 /**
- * <wardrobe-collections> — packing lists, capsules, shopping lists: new list, «Prepara valigia» from trip dates.
+ * <wardrobe-collections> — packing lists, capsules, shopping lists: new list, «Pack a suitcase» from trip dates.
  * <wardrobe-collection>  — one list: tick items, add pieces / outfits / free lines, rename, delete.
  */
 import { css, html, nothing, tr } from '@hestia/webui-sdk';

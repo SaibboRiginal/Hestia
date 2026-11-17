@@ -1,5 +1,5 @@
-"""Navigation cards (docs/work/2026-10-23-telegram-da-zero §5.1–5.4): Home, Oggi, Aree, area card, all actions,
-Notifiche, Impostazioni. One live navigation message per chat, edited in place; opening a new one collapses the old.
+"""Navigation cards (docs/work/2026-10-23-telegram-da-zero §5.1–5.4): Home, Today, Areas, area card, all actions,
+Notifications, Settings. One live navigation message per chat, edited in place; opening a new one collapses the old.
 
 Callback data (≤ 64 bytes, short ids from ``store``):
 ``n:today`` · ``n:areas`` · ``n:a:<area>`` · ``n:all:<area>:<page>`` · ``n:s:<area>:<section>:<page>`` · ``n:ntf`` ·
@@ -138,9 +138,9 @@ def home(chat_id) -> None:
                           disable_web_page_preview=True)
 
 
-# ── Oggi ─────────────────────────────────────────────────────────────────────
+# ── Today ────────────────────────────────────────────────────────────────────
 
-def oggi(chat_id, message_id: int | None = None) -> None:
+def show_today(chat_id, message_id: int | None = None) -> None:
     menu = model.current()
     parts: list[str] = [ui.title_line(tr("Today — {0}", _today_words().lower()), marker=_emoji(menu, "day"))]
     for name in menu.today.get("tools") or []:
@@ -155,8 +155,8 @@ def oggi(chat_id, message_id: int | None = None) -> None:
             parts.append(body)
     if len(parts) == 1:
         parts.append(ui.note(tr("Nothing planned.")))
-    # «Adesso» (Metis: habits, agenda, ideas, each with its reason); the fixed Oggi actions when it has nothing.
-    now = [i for i in usage.adesso() if catalog.get(i["tool"])]
+    # «Now» (Metis: habits, agenda, ideas, each with its reason); the fixed Today actions when it has nothing.
+    now = [i for i in usage.now_items() if catalog.get(i["tool"])]
     if now:
         parts.append("\n".join([ui.note(tr("Now"))] + [f"• {ui.esc(menu.label(i['tool']))} — {ui.esc(i['reason'])}"
                                                        for i in now]))
@@ -173,9 +173,9 @@ def _emoji(menu: model.Menu, key: str) -> str:
     return area.emoji if area else ""
 
 
-# ── Aree ─────────────────────────────────────────────────────────────────────
+# ── Areas ────────────────────────────────────────────────────────────────────
 
-def aree(chat_id, message_id: int | None = None) -> None:
+def show_areas(chat_id, message_id: int | None = None) -> None:
     menu = model.current()
     rows: list = []
     frequent = store.most_used(4, set(menu.tool_area))
@@ -192,7 +192,7 @@ def area(chat_id, key: str, message_id: int | None = None) -> None:
     menu = model.current()
     a = menu.area(key)
     if not a:
-        return aree(chat_id, message_id)
+        return show_areas(chat_id, message_id)
     lines: list[str] = []
     if a.header and (tool := catalog.get(a.header)):
         ok, payload = catalog.run(tool, chat_id, {}, timeout=12)
@@ -213,7 +213,7 @@ def all_actions(chat_id, key: str, page: int = 0, message_id: int | None = None)
     menu = model.current()
     a = menu.area(key)
     if not a:
-        return aree(chat_id, message_id)
+        return show_areas(chat_id, message_id)
     sections = list(a.sections)
     if len(sections) > 1:
         rows = [[ui.button(f"{name} ({len(a.sections[name])})", f"n:s:{a.key}:{i}:0", limit=32)]
@@ -229,7 +229,7 @@ def section(chat_id, key: str, index: int, page: int = 0, message_id: int | None
     menu = model.current()
     a = menu.area(key)
     if not a or not a.sections:
-        return aree(chat_id, message_id)
+        return show_areas(chat_id, message_id)
     names = list(a.sections.values())[min(index, len(a.sections) - 1)]
     title = list(a.sections)[min(index, len(a.sections) - 1)]
     start = page * ui.LIST_PAGE
@@ -249,9 +249,9 @@ def section(chat_id, key: str, index: int, page: int = 0, message_id: int | None
                            crumbs=crumbs if len(a.sections) == 1 else [a.label]), ui.keyboard(rows), message_id)
 
 
-# ── Notifiche ────────────────────────────────────────────────────────────────
+# ── Notifications ───────────────────────────────────────────────────────────────
 
-def notifiche(chat_id, message_id: int | None = None) -> None:
+def show_notifications(chat_id, message_id: int | None = None) -> None:
     ok, payload = catalog.route("hermes", "api/notifications",
                                 query={"filter": "unread", "limit": 8, "client": "telegram"}, timeout=8)
     items = payload.get("items") if ok and isinstance(payload, dict) else []
@@ -303,9 +303,9 @@ def notification_detail(chat_id, short: str, message_id: int | None = None) -> N
     place(chat_id, html, ui.keyboard(rows), message_id)
 
 
-# ── Impostazioni ─────────────────────────────────────────────────────────────
+# ── Settings ─────────────────────────────────────────────────────────────
 
-def impostazioni(chat_id, message_id: int | None = None) -> None:
+def show_settings(chat_id, message_id: int | None = None) -> None:
     from telegram_bot.services import voice_service
     voice = tr("yes") if voice_service.is_live(chat_id) else "no"
     rows = [
@@ -321,7 +321,7 @@ def impostazioni(chat_id, message_id: int | None = None) -> None:
 def toggle_voice(chat_id, message_id: int | None = None) -> None:
     from telegram_bot.services import voice_service
     voice_service.set_live(chat_id, not voice_service.is_live(chat_id))
-    impostazioni(chat_id, message_id)
+    show_settings(chat_id, message_id)
 
 
 # ── callbacks ────────────────────────────────────────────────────────────────
@@ -336,9 +336,9 @@ def handle(call) -> None:
         pass
     what = parts[1] if len(parts) > 1 else ""
     if what == "today":
-        oggi(chat_id, mid)
+        show_today(chat_id, mid)
     elif what == "areas":
-        aree(chat_id, mid)
+        show_areas(chat_id, mid)
     elif what == "a" and len(parts) > 2:
         area(chat_id, parts[2], mid)
     elif what == "all" and len(parts) > 2:
@@ -346,15 +346,15 @@ def handle(call) -> None:
     elif what == "s" and len(parts) > 3:
         section(chat_id, parts[2], _int(parts, 3), _int(parts, 4), mid)
     elif what == "ntf":
-        notifiche(chat_id, mid)
+        show_notifications(chat_id, mid)
     elif what == "nd" and len(parts) > 2:
         notification_detail(chat_id, parts[2], mid)
     elif what == "imp":
-        impostazioni(chat_id, mid)
+        show_settings(chat_id, mid)
     elif what == "voice":
         toggle_voice(chat_id, mid)
     else:
-        aree(chat_id, mid)
+        show_areas(chat_id, mid)
 
 
 def _int(parts: list[str], i: int) -> int:
@@ -365,25 +365,25 @@ def _int(parts: list[str], i: int) -> int:
 
 
 def stale(chat_id, message_id: int | None = None) -> None:
-    """An old or unknown button: its menu loses the buttons, the current Aree card takes its place."""
+    """An old or unknown button: its menu loses the buttons, the current Areas card takes its place."""
     if message_id:
         try:
             core.bot.edit_message_reply_markup(chat_id, message_id, reply_markup=None)
         except Exception:  # noqa: BLE001
             pass
-    aree(chat_id)
+    show_areas(chat_id)
 
 
 def open_door(chat_id, door: str) -> bool:
     """A bottom keyboard button or its `/` command."""
     if door == "today":
-        oggi(chat_id)
+        show_today(chat_id)
     elif door == "areas":
-        aree(chat_id)
+        show_areas(chat_id)
     elif door == "notifications":
-        notifiche(chat_id)
+        show_notifications(chat_id)
     elif door == "settings":
-        impostazioni(chat_id)
+        show_settings(chat_id)
     else:
         return False
     return True

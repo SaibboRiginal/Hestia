@@ -1,5 +1,5 @@
 /**
- * <wardrobe-suggest> — «Cosa mi metto»: occasion, temperature, rain, day → outfits from what is available, each with its
+ * <wardrobe-suggest> — «What do I wear»: occasion, temperature, rain, day → outfits from what is available, each with its
  * reasons; save one, mark it worn, ask the assistant. Deterministic engine in the module (no LLM).
  * Temperature and rain left empty = the day's forecast (shown above the ideas); typing one overrides it.
  */
@@ -19,7 +19,7 @@ export class WardrobeSuggest extends WardrobeElement {
   `];
   constructor() { super(); this.res = undefined; this.occasion = ''; this.temp = ''; this.rain = null; this.day = ''; this.styleKey = ''; this.busy = false; }
   connectedCallback() {
-    this.occasion = this.ctx?.query?.occasione || this.host?.config.get('lastOccasion', '') || '';
+    this.occasion = this.ctx?.query?.occasion || this.host?.config.get('lastOccasion', '') || '';
     super.connectedCallback();
   }
   protected async load() {

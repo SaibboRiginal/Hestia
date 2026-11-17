@@ -85,7 +85,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | GET | `/api/webui/chat/context` | Context gauge of the current conversation → Oracle `/api/chat/context` (provider in use, window %, this conversation's tokens) |
 | POST | `/api/webui/chat/compact` | Compact the current conversation → Oracle `/api/chat/compact` |
 | POST | `/api/webui/chat/document` | Upload file (multipart) → base64 JSON via Hub → Oracle `/api/chat/document/json`, NDJSON streamed back (📎 in the chat bar) |
-| POST | `/api/webui/voice/transcribe` · `speak` | Voice → Echo (`VoiceController`): voice message of the chat (use `webui.vocale`, recording kept with the message `web:<session>:<msg>`) · «Ascolta» under a reply (`webui.listen`, mp3, kept with the reply) |
+| POST | `/api/webui/voice/transcribe` · `speak` | Voice → Echo (`VoiceController`): voice message of the chat (use `webui.voice_note`, recording kept with the message `web:<session>:<msg>`) · «Ascolta» under a reply (`webui.listen`, mp3, kept with the reply) |
 | POST | `/api/webui/voice/listen` · `say` · `{listen\|say}/{sid}/{chunk\|text\|end}` | Live mode **Parla**: mic stream (partials) and answer spoken sentence by sentence (`webui.live.*`) |
 | GET | `/api/webui/voice/live` · `audio-for?ref_id=` · `audio/{id}` | Live settings (`silence_ms`) · kept audio of a message · one kept audio |
 | GET | `/api/webui/agenda/feed.ics` · `feed-info` | Read-only ICS feed (→ Chronos `/api/agenda/ics`); auth = token **or** `?key=` = `WEBUI_ICS_KEY` (that path only). The rest of the agenda API moved with the page into Chronos's plugin (2026-10-19) |
@@ -211,7 +211,7 @@ in chat she answers in the language you write) → saved live. Later: Sistema �
   owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
   six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =
   taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons; the list lives in `features/chat/reaction-emoji.ts`, the one file the icon gate (`check_icons.py`) exempts.
-- Hub registration declares `voice_usecases` (`webui.vocale`, `webui.listen`, `webui.live.listening`, `webui.live.voice`).
+- Hub registration declares `voice_usecases` (`webui.voice_note`, `webui.listen`, `webui.live.listening`, `webui.live.voice`).
 - Icons `frown`, `meh`, `laugh` (with `smile`: the five mood faces of «Umore», 2026-10-30) in the shared icon set
   (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.
 - Icons `mic`, `mic-off`, `volume`, `waveform` in the shared icon set (`hx-icon` and the SDK's `hxk-icon`).

@@ -71,7 +71,7 @@ plugin.webui(
     widgets=[
         widget("numbers", "Houses in numbers", element="scout-kpi-widget", sizes=["m", "xl"], size="m", auto=True,
                open_page="houses", icon="home"),
-        widget("nuove", "alt::New houses", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
+        widget("new", "alt::New houses", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
                open_page="houses", icon="home",
                params={"city": {"type": "string", "label": "City (empty = all)"},
                        "days": {"type": "int", "label": "Last days", "default": NEW_DAYS}}),

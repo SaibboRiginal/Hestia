@@ -32,7 +32,7 @@ def _schema(props: dict | None = None, required: list | None = None) -> dict:
 
 # ── chat ─────────────────────────────────────────────────────────────────────
 
-def _nuova(chat_id, args):
+def _new_chat(chat_id, args):
     old = core.get_session(str(chat_id))
     ok, _ = catalog.route("oracle", f"api/chat/{old}", "DELETE", timeout=8)
     if not ok:
@@ -41,7 +41,7 @@ def _nuova(chat_id, args):
     return Rendered(ui.outcome(tr("New conversation")) + "\n" + ui.note(tr("Let's start from scratch: write to me.")))
 
 
-def _voce(chat_id, args, on: bool | None = None):
+def _voice(chat_id, args, on: bool | None = None):
     from telegram_bot.services import voice_service
     value = (not voice_service.is_live(chat_id)) if on is None else on
     voice_service.set_live(chat_id, value)
@@ -139,7 +139,7 @@ def _webui_status(chat_id, args):
 
 # ── documents saved in memory ────────────────────────────────────────────────
 
-def _documenti(chat_id, args):
+def _documents(chat_id, args):
     ok, docs = catalog.route("archive", "api/documents", query={"chat_id": str(chat_id), "limit": 20}, timeout=10)
     if not ok:
         raise ActionError(tr("I can't read the documents right now."))
@@ -159,7 +159,7 @@ def _documenti(chat_id, args):
     return Rendered(ui.card(tr("Saved documents"), lines, subtitle=tr("{0} in memory", len(docs))), actions=actions[:12])
 
 
-def _documento_fissa(chat_id, args):
+def _document_pin(chat_id, args):
     doc_id = str(args.get("document_id") or "")
     ok, _ = catalog.route("archive", f"api/documents/{doc_id}/permanent", "PATCH", body={"is_permanent": True})
     if not ok:
@@ -167,7 +167,7 @@ def _documento_fissa(chat_id, args):
     return Rendered(ui.outcome(tr("I keep it forever")), actions=[Action(tr("Documents"), "documents")])
 
 
-def _documento_elimina(chat_id, args):
+def _document_delete(chat_id, args):
     doc_id = str(args.get("document_id") or "")
     ok, _ = catalog.route("archive", f"api/documents/{doc_id}", "DELETE")
     if not ok:
@@ -192,19 +192,19 @@ def _calendar_item(kind: str, args: dict) -> dict:
     return result if isinstance(result, dict) else {}
 
 
-def _nuovo_promemoria(chat_id, args):
+def _new_reminder(chat_id, args):
     _calendar_item("reminder", args)
     from telegram_bot.inputs import human_datetime
     return Rendered(ui.outcome(tr("Reminder saved")) + "\n" + ui.item(
         str(args.get("title") or ""), [human_datetime(str(args.get("start_at") or ""))]))
 
 
-def _nuova_attivita(chat_id, args):
+def _new_task(chat_id, args):
     _calendar_item("task", args)
     return Rendered(ui.outcome(tr("Task saved")) + "\n" + ui.item(str(args.get("title") or "")))
 
 
-def _nuovo_avviso(chat_id, args):
+def _new_alert(chat_id, args):
     ok, payload = catalog.route("oracle", "api/subscriptions/compile", "POST", body={
         "message": str(args.get("request") or ""), "session_id": core.get_session(str(chat_id)),
         "notify_target": str(chat_id)}, timeout=30)
@@ -215,7 +215,7 @@ def _nuovo_avviso(chat_id, args):
                     actions=[Action(tr("Active alerts"), "notifications_active")])
 
 
-def _pausa_voto(chat_id, args):
+def _pause_vote(chat_id, args):
     until = core.snooze_feedback(str(chat_id))
     if not until:
         raise ActionError(tr("I couldn't, try again shortly."))
@@ -227,13 +227,13 @@ def tools() -> list[catalog.Tool]:
     dt = {"type": "string", "format": "date-time", "title": "When"}
     return [
         T("new", "New conversation", "Starts from scratch: the previous chat is forgotten", group="system",
-          hints={"section": "Chat"}, writes=True, handler=_nuova),
+          hints={"section": "Chat"}, writes=True, handler=_new_chat),
         T("voice", "Voice replies", "Turns voice replies to voice messages on or off", group="system",
-          hints={"section": "Chat"}, handler=_voce),
+          hints={"section": "Chat"}, handler=_voice),
         T("voice_on", "Turn on voice replies", "", group="system", hints={"section": "interno"},
-          handler=lambda c, a: _voce(c, a, on=True)),
+          handler=lambda c, a: _voice(c, a, on=True)),
         T("voice_off", "Turn off voice replies", "", group="system", hints={"section": "interno"},
-          handler=lambda c, a: _voce(c, a, on=False)),
+          handler=lambda c, a: _voice(c, a, on=False)),
         T("aiuto", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
           handler=_aiuto),
         T("webui_token", "Access to the web page", "A code to enter the web page", group="system",
@@ -244,31 +244,31 @@ def tools() -> list[catalog.Tool]:
         T("webui_revoke", "Revoke web access", "Closes access to the web page", group="system",
           hints={"section": "Web page"}, writes=True, destructive=True, handler=_webui_revoke),
         T("documents", "Saved documents", "The files you sent me that I remember", group="memory",
-          hints={"section": "Documents", "primary": 4}, handler=_documenti),
+          hints={"section": "Documents", "primary": 4}, handler=_documents),
         T("document_pin", "Keep a document", "", group="memory", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
-          handler=_documento_fissa),
+          handler=_document_pin),
         T("document_delete", "Delete a document", "", group="memory", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
-          destructive=True, handler=_documento_elimina),
+          destructive=True, handler=_document_delete),
         T("new_reminder", "New reminder", "I'll remind you at the right time", group="day",
           hints={"section": "Reminders and tasks", "primary": 5},
           schema=_schema({"title": {**S, "title": "About what"}, "start_at": dt,
                           "note": {**S, "title": "Note"}}, ["title", "start_at"]),
-          writes=True, handler=_nuovo_promemoria),
+          writes=True, handler=_new_reminder),
         T("new_activity", "New task", "Something to do, with or without a deadline", group="day",
           hints={"section": "Reminders and tasks"},
           schema=_schema({"title": {**S, "title": "What"}, "due": {"type": "string", "format": "date",
                                                                    "title": "By when"},
                           "note": {**S, "title": "Note"}}, ["title"]),
-          writes=True, handler=_nuova_attivita),
+          writes=True, handler=_new_task),
         T("new_alert", "New automatic alert", "Tell me what to keep an eye on and when to alert you",
           group="notifications", hints={"section": "Automatic alerts", "primary": 1},
           schema=_schema({"request": {**S, "title": "What should I keep an eye on?",
                                       "examples": ["houses in Udine under €150,000"]}}, ["request"]),
-          writes=True, handler=_nuovo_avviso),
+          writes=True, handler=_new_alert),
         T("rating_paused", "No more rating requests", "For a few days I won't ask you to rate answers",
-          group="system", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
+          group="system", hints={"section": "Chat"}, writes=True, handler=_pause_vote),
         *transfer_tools(),
     ]
 

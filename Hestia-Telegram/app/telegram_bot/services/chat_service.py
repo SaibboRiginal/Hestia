@@ -1,7 +1,7 @@
 """Chat with the assistant (docs/work/2026-10-23-telegram-da-zero §7, §5.10).
 
 A message (typed, voice note, file) is one chat turn: Oracle streams the answer into one message (``ReplyRenderer``),
-notices go under it in italics, «Ascolta» and the vote share one row. A reply to a message — or a quote of part of
+notices go under it in italics, «Listen» and the vote share one row. A reply to a message — or a quote of part of
 it — goes to the assistant as context (``quoted``). Confirm cards Oracle asks for (approvals, module questions,
 the assistant's own questions) are buttons whose state is persisted (``store``), so they survive a restart.
 """
@@ -50,7 +50,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
         elif kind == "final":
             renderer.trace_id = str(data.get("trace_id") or "")[:40]
             if data.get("reaction_only"):
-                # The reaction is the whole answer: no text bubble, the «Sto pensando…» message goes away.
+                # The reaction is the whole answer: no text bubble, the «Thinking…» message goes away.
                 renderer.reaction = renderer.reaction or str(data.get("reaction") or "")[:16]
                 renderer.finalized = True
                 try:
@@ -407,7 +407,7 @@ def handle_file_message(message) -> None:
 
 
 def handle_voice_note(message) -> bool:
-    """A voice note is a chat message (SPEC modulo-voce §7.1): transcribe, show what was understood, then the
+    """A voice note is a chat message (voice SPEC §7.1): transcribe, show what was understood, then the
     normal chat turn. False = could not listen: the caller falls back to the document path ``[🔄]``."""
     chat_id = message.chat.id
     if message.content_type == "voice":
@@ -415,7 +415,7 @@ def handle_voice_note(message) -> bool:
         mime_type = (message.voice.mime_type or "audio/ogg").split(";")[0].strip().lower()
     else:
         file_id, mime_type = message.video_note.file_id, "video/mp4"
-    status_msg = core.bot.reply_to(message, "<i>Ascolto…</i>", parse_mode="HTML")
+    status_msg = core.bot.reply_to(message, "<i>" + tr("Listening…") + "</i>", parse_mode="HTML")
     try:
         core.bot.send_chat_action(chat_id, "typing")
         audio = _download_telegram_file(file_id)
@@ -507,7 +507,7 @@ def handle_file_as_document(message) -> None:
 # ── vote ─────────────────────────────────────────────────────────────────────
 
 def handle_feedback_callback(call) -> None:
-    """👍/👎 on the answer row: saved, then the two vote buttons go away («Ascolta» stays)."""
+    """👍/👎 on the answer row: saved, then the two vote buttons go away («Listen» stays)."""
     parts = str(call.data or "").split(":", 2)
     label = parts[1] if len(parts) > 1 else ""
     if label not in ("good", "bad"):

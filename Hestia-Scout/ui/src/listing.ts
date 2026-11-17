@@ -7,7 +7,7 @@ const STATUSES: [string, string][] = [
   ['sold', tr('Sold')], ['unknown', tr('To check')],
 ];
 
-/** Page «Annuncio» (case/:id): photos, facts, features, summary, the user's mark and status. */
+/** Page «Listing» (houses/:id): photos, facts, features, summary, the user's mark and status. */
 export class ScoutListing extends HestiaElement {
   static properties = { ...HestiaElement.properties, l: { state: true }, error: { state: true }, shot: { state: true } };
   declare l: ListingDetail | null; declare error: string; declare shot: number;
