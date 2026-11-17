@@ -57,7 +57,7 @@ const DEFAULT_SUGGESTIONS: Record<string, string[]> = {
         <div class="scroll" #scroller>
           @if (!chat.messages().length) {
             <div class="empty">
-              <p>{{ "Tell me what to create or change: I do it with Hestia's tools. If a tool is missing, I propose a development." | tr }}</p>
+              <p>{{ "Tell me what to create or change: I do it with my tools. If a tool is missing, I propose a development." | tr }}</p>
               <div class="chips">
                 @for (s of suggestions(); track s) { <button (click)="use(s)">{{ s }}</button> }
               </div>

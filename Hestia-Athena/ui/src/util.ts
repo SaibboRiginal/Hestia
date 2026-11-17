@@ -1,4 +1,4 @@
-import { locale, tr } from '@hestia/webui-sdk';
+import { assistantName, locale, tr } from '@hestia/webui-sdk';
 /** Labels and helpers shared by the Athena page and widget. */
 export const API = '/api/athena';
 
@@ -69,14 +69,14 @@ export const pct = (v: number) => `${Math.round(Math.max(0, Math.min(1, Number(v
 /** Life areas in user words (never module names). */
 export const AREAS: Record<string, string> = {
   fitness: tr('Training'), selfcare: tr('Self care'), finance: tr('Expenses'), wardrobe: tr('Wardrobe'), real_estate: tr('Houses'),
-  cognition: 'Hestia',
+  cognition: assistantName(),
 };
 export const area = (d?: string) => (d && AREAS[d]) || d || '';
 
 export const SEVERITY: Record<string, { label: string; tone: string; icon: string }> = {
   alta: { label: tr('important'), tone: 'danger', icon: 'alert' },
   attenzione: { label: tr('to watch'), tone: 'warning', icon: 'eye' },
-  info: { label: 'informazione', tone: 'neutral', icon: 'info' },
+  info: { label: tr('information'), tone: 'neutral', icon: 'info' },
 };
 
 /** «Allenamenti → Routine rispettate % (stessa settimana): salgono insieme, r +0,72 su 9 settimane». */

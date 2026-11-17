@@ -234,7 +234,7 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
                 page("documenti", "Documents", element="oracle-documents", icon="file", order=121,
                      help="The files you shared with {assistant} (in chat or from here): search them like the chat does, add new ones, keep them forever or delete them."),
                 page("memoria", "Memory", element="oracle-memory", icon="bookmark", order=122,
-                     help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to Hestia. Search, filter by origin, forget.")],
+                     help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to {assistant}. Search, filter by origin, forget.")],
          widgets=[widget("uso-oggi", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="cervello", icon="chart",
                          help="Today's calls, tokens and cost, per model.")])

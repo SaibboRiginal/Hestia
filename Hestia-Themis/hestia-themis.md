@@ -157,3 +157,5 @@ Themis's own fixed texts read the personal settings with `Themis.personal(key)` 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+
+**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): a proposal with no proposer is shown as the assistant's chosen name.

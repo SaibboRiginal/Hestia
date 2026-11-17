@@ -23,7 +23,7 @@ import { ChatHistoryComponent } from '../features/chat/chat-history.component';
 import { ChatSummary, ChatsService, TAG_CSS } from '../services/chats.service';
 import { ChatService } from '../services/chat.service';
 import { LiveVoiceService } from '../services/live-voice.service';
-import { tr, TrPipe } from '../core/i18n';
+import { assistantName, tr, TrPipe } from '../core/i18n';
 
 interface NavEntry { id: string; label: string; icon: string; link: string; online: boolean; child: boolean; parent: string; badge: number;
   /** Set by the view: has sub-pages · they are shown · the page on screen is one of them. */
@@ -58,7 +58,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             <path d="M12 2.5 21.5 12 12 21.5 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
             <path d="M12 7.2 16.8 12 12 16.8 7.2 12Z" fill="currentColor" />
           </svg>
-          <span class="name">Hestia</span>
+          <span class="name">{{ name }}</span>
           @if (!plugins.online()) { <span class="offline"  [title]="'You are offline: the modules show the last saved data' | tr"><hx-icon name="offline" [size]="14" />{{ "offline" | tr }}</span> }
           <a class="icon-btn bell" routerLink="/notifications" (click)="mobileOpen.set(false)" [attr.aria-label]="bellLabel()" [attr.title]="bellLabel()">
             <hx-icon name="bell" [size]="17" />
@@ -357,6 +357,8 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
   `],
 })
 export class ShellComponent {
+  /** The site calls itself with the name the owner chose (docs/work/2026-11-17-nome-dei-client). */
+  readonly name = assistantName();
   /** Chat has its own place on top of the sidebar. */
   readonly top = APP_MODULES.filter(m => !m.bottom && m.path !== 'chat');
   readonly bottom = APP_MODULES.filter(m => m.bottom);

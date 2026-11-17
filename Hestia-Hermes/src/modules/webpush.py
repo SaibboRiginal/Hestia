@@ -65,9 +65,15 @@ def subscriptions(archive) -> list[dict]:
     return [r for r in rows or [] if isinstance(r, dict) and (r.get("data") or {}).get("endpoint")]
 
 
+def _assistant() -> str:
+    """The name the owner gave the assistant: a push with no title is signed with it (docs/work/2026-11-17-nome-dei-client)."""
+    from hestia_common.i18n import identity_now
+    return identity_now().get("assistant") or "Hestia"
+
+
 def payload_of(body: dict[str, Any]) -> dict[str, Any]:
     text = _TAGS.sub("", str(body.get("message") or ""))
-    return {"id": body.get("notification_id"), "title": str(body.get("title") or "Hestia")[:120],
+    return {"id": body.get("notification_id"), "title": str(body.get("title") or _assistant())[:120],
             "body": text[:300], "level": body.get("level") or "info", "link": body.get("link"),
             "pending": bool(body.get("actions") or body.get("secret"))}
 

@@ -132,7 +132,7 @@ export class McpCommands extends HestiaElement {
     const props = c.arguments_schema?.properties ?? {};
     const missing = (c.arguments_schema?.required ?? []).filter(a => a in props && !String(this.args[a] ?? '').trim());
     if (missing.length) { this.host.toast(tr('Missing: {0}', missing.join(', ')), 'warning'); return; }
-    if (c.writes && !(await this.host.confirm(tr('Run the command?'), tr("{0} changes something in Hestia.", c.title || c.command),
+    if (c.writes && !(await this.host.confirm(tr('Run the command?'), tr("{0} changes something in {assistant}.", c.title || c.command),
       { label: tr('Run') }))) return;
     this.running = true; this.result = null;
     const r = await this.host.api('POST', `${API}/tools/call`, { body: { command: c.command, args: coerceArgs(c, this.args) } });

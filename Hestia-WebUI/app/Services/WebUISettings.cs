@@ -55,7 +55,7 @@ public class WebUISettings
             ["min"] = 1,
             ["max"] = 20,
             ["group"] = "Esporta e importa",
-            ["help"] = "Prima di ogni importazione Hestia salva una copia di ciò che verrà cambiato. Tiene le più " +
+            ["help"] = "Prima di ogni importazione {assistant} salva una copia di ciò che verrà cambiato. Tiene le più " +
                        "recenti, le altre vengono eliminate.",
             ["apply"] = "live",
             ["scope"] = "system",

@@ -37,7 +37,7 @@ export function bytes(n: number): string {
   imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'alt::Download' | tr"  [subtitle]="'Models and voices Hestia downloads: progress, pause, retry, space' | tr">
+    <hx-page-header  [title]="'alt::Download' | tr"  [subtitle]="'Models and voices {assistant} downloads: progress, pause, retry, space' | tr">
       <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voce"  [title]="'Prepare the voice: it\\'s done from the Voice page' | tr"><span class="lbl">{{ "Voice" | tr }}</span></a>
       <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup"  [title]="'Choose the brain' | tr"><span class="lbl">{{ "Choose the brain" | tr }}</span></a>
     </hx-page-header>
@@ -79,7 +79,7 @@ export function bytes(n: number): string {
         </ul>
       }
       @if (offline().length) {
-        <p class="note"><hx-icon name="offline" [size]="14" tone="warning" /> {{ "A part of Hestia is not answering right now: its downloads come back when it returns." | tr }}</p>
+        <p class="note"><hx-icon name="offline" [size]="14" tone="warning" /> {{ "A part of {assistant} is not answering right now: its downloads come back when it returns." | tr }}</p>
       }
     </div>`,
   styles: [`
@@ -132,7 +132,7 @@ export class DownloadsPageComponent {
       this.offline.set(r.offline || []);
       this.error.set('');
     } catch (e: any) {
-      if (this.rows() === null) this.error.set(e?.error?.detail || tr('Hestia doesn\'t answer: I\'ll retry shortly.'));
+      if (this.rows() === null) this.error.set(e?.error?.detail || tr('{assistant} doesn\'t answer: I\'ll retry shortly.'));
     }
   }
 

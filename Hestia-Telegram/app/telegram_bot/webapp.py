@@ -49,7 +49,7 @@ def set_menu_button() -> None:
         return
     try:
         from telebot.types import MenuButtonWebApp, WebAppInfo
-        core.bot.set_chat_menu_button(menu_button=MenuButtonWebApp("web_app", tr("Open Hestia"),
+        core.bot.set_chat_menu_button(menu_button=MenuButtonWebApp("web_app", tr("Open {assistant}"),
                                                                     WebAppInfo(f"{url}?tg=1")))
         logger.info("event=telegram_menu_button_set")
     except Exception as exc:  # noqa: BLE001

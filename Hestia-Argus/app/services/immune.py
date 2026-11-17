@@ -111,7 +111,7 @@ def _give_up(service: str, attempts: int) -> None:
     health_history.note_action(service, "gave_up", tr("I stop after {0} restarts: a hand is needed", attempts))
     hermes_client.publish_event(
         domain="system", event_type=NOTICE_EVENT, entity_id=notice_key(service),
-        payload={"_message": tr("🩺 <b>A part of Hestia does not restart by itself</b>: I tried {0} times. The rest works; the details are in the log of the Health page.", attempts),
+        payload={"_message": tr("🩺 <b>A part of {assistant} does not restart by itself</b>: I tried {0} times. The rest works; the details are in the log of the Health page.", attempts),
                  "_title": tr("Does not restart by itself"), "_level": "warning", "_source": "argus",
                  "replaces": notice_key(service), "service": service, "status": "repair_gave_up"})
 

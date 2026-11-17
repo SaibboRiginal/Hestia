@@ -278,7 +278,7 @@ person it writes `{assistant}` and `{g:lei|lui}` («Chiedi a {assistant}», «Pi
 `identity.named(text, ident)` fills only those two (every other brace stays for `str.format`);
 `hestia_common.i18n.t` applies it to every text with the identity of `i18n.identity_now()` (the reader registered by
 `follow_personal()`; no reader → Hestia, she), and `settings_client.translated` renders labels and help that carry
-a token in Italian too. Where «Hestia» is the app (version, files, installation, the whole system) it stays.
+a token in Italian too. The clients call themselves with the name as well (`docs/work/2026-11-17-nome-dei-client`); «Hestia» stays only for releases, installer, file format and technical module names.
 
 ## Reminders (`hestia_common.reminders`)
 

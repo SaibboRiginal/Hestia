@@ -15,7 +15,7 @@ import { TrPipe } from '../../core/i18n';
   imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <hx-page-header  [title]="'System' | tr"  [subtitle]="'How Hestia is and how it works: health, models, notifications, agenda, settings, development' | tr">
+    <hx-page-header  [title]="'System' | tr"  [subtitle]="'How {assistant} is and how it works: health, models, notifications, agenda, settings, development' | tr">
       <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">{{ "Updates" | tr }}</a>
       <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">{{ "Machines" | tr }}</a>
       <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">{{ "alt::Download" | tr }}</a>

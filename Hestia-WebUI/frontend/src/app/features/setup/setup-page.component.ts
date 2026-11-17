@@ -60,7 +60,7 @@ function store(key: string, value: string): void {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="bar">
-      <span class="brand"><hx-icon name="sparkle" [size]="18" tone="accent" /> Hestia</span>
+      <span class="brand"><hx-icon name="sparkle" [size]="18" tone="accent" /> {{ identity.assistant() }}</span>
       @if (state()) {
         <button type="button" class="pill" [class.on]="panel()" (click)="panel.set(!panel())" [attr.aria-expanded]="panel()"  [attr.aria-label]="'Steps and downloads' | tr">
           <span class="pn">{{ index() + 1 }}/{{ screens().length }}</span> {{ title(screen()) }}
@@ -197,7 +197,7 @@ function store(key: string, value: string): void {
 
             @case ('memoria') {
               <h1>{{ "With which model does it remember?" | tr }}</h1>
-              <p class="lead">{{ "It's used to find memories and documents again. Only one: if you change it later, Hestia rereads the memory." | tr }}</p>
+              <p class="lead">{{ "It's used to find memories and documents again. Only one: if you change it later, {assistant} rereads the memory." | tr }}</p>
               <app-setup-chain [single]="true" [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
                                [homeEmpty]="'No program for the models found. Install one (they are free) and press «Search again», or choose a cloud service.' | tr"
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
@@ -276,7 +276,7 @@ function store(key: string, value: string): void {
                   <a hx-btn variant="primary" icon="external" [href]="tunnel()!.url" target="_blank" rel="noopener">{{ "Open" | tr }}</a>
                   <button hx-btn variant="ghost" icon="copy" (click)="copyUrl()">{{ copied() ? ('Copied' | tr) : ('Copy' | tr) }}</button>
                 </div>
-                <p class="note">{{ "It asks for access, like here. It changes when Hestia restarts: the bot on Telegram always gives you the right one." | tr }}</p>
+                <p class="note">{{ "It asks for access, like here. It changes when {assistant} restarts: the bot on Telegram always gives you the right one." | tr }}</p>
                 <div class="row start"><button hx-btn variant="ghost" size="sm" icon="x" [loading]="busy()" (click)="switchTunnel(false)">{{ "Turn off" | tr }}</button></div>
               } @else if (busy() || tunnel()?.on || tunnel()?.phase === 'error') {
                 @if (tunnel()?.phase === 'error' || tunnelLate()) {
@@ -299,8 +299,8 @@ function store(key: string, value: string): void {
                   <p class="note">{{ "You can go on: it finishes by itself." | tr }}</p>
                 }
               } @else {
-                <p class="lead">{{ "To open Hestia from the phone even outside the home Wi-Fi. Without it, you use it at home and from Telegram." | tr }}</p>
-                <p class="note">{{ "Create a secure address with Cloudflare, free and without an account. From there Hestia always asks for access. Turn it off when you want." | tr }}</p>
+                <p class="lead">{{ "To open {assistant} from the phone even outside the home Wi-Fi. Without it, you use it at home and from Telegram." | tr }}</p>
+                <p class="note">{{ "Create a secure address with Cloudflare, free and without an account. From there {assistant} always asks for access. Turn it off when you want." | tr }}</p>
                 <div class="row start"><button hx-btn variant="primary" icon="cloud" [loading]="busy()" (click)="switchTunnel(true)">{{ "f::Active" | tr }}</button></div>
               }
             }
@@ -1008,7 +1008,7 @@ export class SetupPageComponent {
     return [[what, size].filter(Boolean).join(', '), warn].filter(Boolean).join(' ');
   }
   runtimeText(r: Runtime): string {
-    return r.name === 'ollama' ? tr('The simplest: Hestia downloads by itself the models suited to your graphics card.')
+    return r.name === 'ollama' ? tr('The simplest: {assistant} downloads by {g:herself|himself} the models suited to your graphics card.')
       : r.name === 'lmstudio' ? tr('With a window to search and download the models. Then turn on the local server.')
       : tr('The models are downloaded from there.');
   }

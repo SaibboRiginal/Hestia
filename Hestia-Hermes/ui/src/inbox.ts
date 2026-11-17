@@ -7,7 +7,7 @@
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
  */
-import { HestiaElement, html, css, nothing, svg, locale, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, svg, locale, tr, assistantName } from '@hestia/webui-sdk';
 import { API, hermesStyles } from './util';
 
 type Filter = 'unread' | 'pending' | 'all';
@@ -27,7 +27,7 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 const CLIENT_LABELS: Record<string, string> = { telegram: 'Telegram', webui: 'WebUI' };
 const clientLabel = (name?: string | null) => (name && CLIENT_LABELS[name]) || name || '';
-const sourceLabel = (s: string) => SOURCE_LABELS[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Hestia');
+const sourceLabel = (s: string) => SOURCE_LABELS[s] || (s ? s.charAt(0).toUpperCase() + s.slice(1) : assistantName());
 const TOAST_OPTIONS: Array<{ id: ToastMode; label: string }> = [
   { id: 'all', label: tr('Pop-up notices for all') },
   { id: 'important', label: tr('Only important ones and to answer') },

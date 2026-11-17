@@ -19,8 +19,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram")
 
-BOT_DESCRIPTION = ("Your personal assistant. Write to me like to a person, send me voice messages, photos and files, or use the buttons: Today, Areas, Notifications, Settings.")
-BOT_SHORT_DESCRIPTION = "Your personal assistant: agenda, training, expenses, home and much more."
+BOT_DESCRIPTION = ("I'm {assistant}, your personal assistant. Write to me like to a person, send me voice messages, photos and files, or use the buttons: Today, Areas, Notifications, Settings.")
+BOT_SHORT_DESCRIPTION = "{assistant}, your personal assistant: agenda, training, expenses, home and much more."
 
 # Old prefixes from messages already in the chat.
 _OLD_PREFIXES = ("grp:", "run:", "pickarg:", "cal_", "doc_", "cancel_flow")
@@ -176,7 +176,8 @@ def register_handlers() -> None:
 
 
 def setup_bot_profile() -> None:
-    """`/` menu (8 entries, owner's chat only, set once at boot), bot description in Italian, menu button."""
+    """`/` menu (8 entries, owner's chat only), name and description of the bot, menu button: at boot and when the
+    assistant's name, she/he or «Lingua» change."""
     from telebot.types import BotCommand, BotCommandScopeChat
     menu = model.current()
     commands = [BotCommand(name, tr(desc)) for name, desc in menu.commands]
@@ -187,20 +188,45 @@ def setup_bot_profile() -> None:
             core.bot.set_my_commands(commands, scope=BotCommandScopeChat(int(owner)))
     except Exception as exc:  # noqa: BLE001
         logger.warning("event=telegram_set_commands_failed error=%s", exc)
+    set_bot_identity()
+
+
+def set_bot_identity() -> None:
+    """The bot is called with the name the owner gave the assistant, and describes itself in «Lingua»
+    (docs/work/2026-11-17-nome-dei-client). The name is sent only when it differs (Telegram limits renames)."""
+    from hestia_common.i18n import identity_now
+    name = (identity_now().get("assistant") or "Hestia")[:64]
+    try:
+        current = getattr(core.bot.get_my_name(), "name", "")
+        if current != name:
+            core.bot.set_my_name(name)
+            logger.info("event=telegram_bot_renamed chars=%d", len(name))
+    except Exception as exc:  # noqa: BLE001 - the old name stays, the bot works the same
+        logger.info("[🔄] event=telegram_bot_rename_skipped error=%s fallback=old_name", exc)
     for call, value in ((core.bot.set_my_description, tr(BOT_DESCRIPTION)),
                         (core.bot.set_my_short_description, tr(BOT_SHORT_DESCRIPTION))):
         try:
-            call(value, language_code="it")
+            call(value)
         except Exception as exc:  # noqa: BLE001
             logger.info("event=telegram_profile_skipped error=%s", exc)
     from telegram_bot import webapp
     webapp.set_menu_button()
 
 
+IDENTITY_KEYS = ("themis.personal.assistant_name", "themis.personal.assistant_gender", "themis.personal.language")
+
+
+def on_personal_change(changed: dict) -> None:
+    """A new name, she/he or language: the bot's name, description, commands and menu button follow at once."""
+    if any(k in changed for k in IDENTITY_KEYS):
+        threading.Thread(target=setup_bot_profile, daemon=True).start()
+
+
 def run():
     register_handlers()
     threading.Thread(target=run_control_api, daemon=True).start()
     from telegram_settings import settings as telegram_settings
+    telegram_settings.on_change(on_personal_change)   # the bot follows the assistant's name and «Lingua»
     telegram_settings.start()   # Themis: declare + load values (background, hourly re-assert)
 
     if catalog.register_with_hub():

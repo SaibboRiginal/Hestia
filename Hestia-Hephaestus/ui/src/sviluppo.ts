@@ -228,7 +228,7 @@ export class HephaestusSviluppo extends HestiaElement {
       suggestions: [tr('Explain to me what this task changed'), tr('Why did it fail and what do I propose?'), tr('Create a follow-up development that…')],
     } : {
       label: tr('Development'), hints: { page: 'forge' },
-      suggestions: [tr('Add to Hestia a command that…'), tr('Fix this problem: …'), tr('What is Forge developing now?')],
+      suggestions: [tr('Add to {assistant} a command that…'), tr('Fix this problem: …'), tr('What is Forge developing now?')],
     });
   }
 
@@ -307,7 +307,7 @@ export class HephaestusSviluppo extends HestiaElement {
   // ── render ─────────────────────────────────────────────────────────────
   private header() {
     const s = this.store, st = s.status, c = s.counts;
-    const sub = c.review ? tr("{0} to review · Forge develops Hestia on separate branches", c.review) : tr('Forge develops Hestia on separate branches: nothing changes until you approve');
+    const sub = c.review ? tr("{0} to review · Forge develops {assistant} on separate branches", c.review) : tr('Forge develops {assistant} on separate branches: nothing changes until you approve');
     return html`<div class="phead">
       <div class="ptitle"><h1>${tr("Development")}</h1><div class="sub">${sub}</div></div>
       <div class="seg" role="tablist">

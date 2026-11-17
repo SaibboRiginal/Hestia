@@ -37,7 +37,7 @@ interface ContextStats {
 
 const WINDOW_SOURCE: Record<string, string> = {
   runtime: tr('read from the program that runs the model'),
-  setting: tr('set in Hestia\'s settings'),
+  setting: tr('set in the settings'),
   floor: tr('the local program set one too small: I use the minimum'),
   default: tr('not read by the local program yet: starting value'),
   provider: tr('the service\'s own'),

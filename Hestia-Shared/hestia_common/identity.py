@@ -16,12 +16,12 @@ A module reads the values with its own ``SettingsClient`` after ``follow_persona
     ident = identity.read(settings.get)
     text = identity.render(TEMPLATE, ident)
 
-The product, the modules and the repository keep the name Hestia: only the voice that talks to the owner changes.
+The repository, the modules and the releases keep the name Hestia; the voice and the clients take the chosen name.
 
 Texts people read (buttons, notices, help) use the same two tokens where they speak of the assistant as a person
 («Chiedi a {assistant}», «Ciao, sono {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
-``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the
-app (version, files, installation, the system as a whole) it stays «Hestia».
+``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-nome-ovunque). The clients call
+themselves with it too (docs/work/2026-11-17-nome-dei-client); «Hestia» stays for releases, installer, file format.
 """
 from __future__ import annotations
 

@@ -562,7 +562,7 @@ class Activities:
                 continue
             end = s.get("ended_at") or s.get("started_at")
             self._create_event(f"session:{s['id']}", s.get("name") or tr("Gym"), s["started_at"], end,
-                               description=tr("Workout logged in Hestia"))
+                               description=tr("Workout logged in {assistant}"))
             n += 1
         return n
 

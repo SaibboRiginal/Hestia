@@ -318,7 +318,7 @@ try:
                 "required": ["request"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "forge_develop", "params": kw},
-            title="Develop Hestia", method="POST", path="/api/hephaestus/forge/tasks",
+            title="Develop {assistant}", method="POST", path="/api/hephaestus/forge/tasks",
             clients=["telegram", "ui", "external"], response_mode="oracle_natural",
             response_prompt="Confirm in 1-2 lines: task created (short id), engine, you will tell when ready.",
             telegram_visible=True, telegram_group="sviluppo",

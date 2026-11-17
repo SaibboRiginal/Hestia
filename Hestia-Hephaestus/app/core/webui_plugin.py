@@ -29,13 +29,13 @@ API_PREFIX = "/api/hephaestus/"
 UI_DIST = os.getenv("HEPHAESTUS_UI_DIST", "/ui/dist")   # infra: where the image put the built bundle
 
 ui = PluginClient("hephaestus", title="Development", icon="code", color="amber", kind="core", dist=UI_DIST,
-                  description="Hestia developing herself, with your ok, and the automatic repairs of the services.",
+                  description="{assistant} developing {g:herself|himself}, with your ok, and the automatic repairs of the services.",
                   version=os.getenv("SERVICE_VERSION", "1.0.0"))
 ui.webui(
     entry="hephaestus.js", api_prefix=API_PREFIX,
     pages=[page("sviluppo", "Development", element="hephaestus-sviluppo", icon="code", order=170,
                 badge={"source": f"{API_PREFIX}forge/counts", "field": "review"},
-                help="Forge develops Hestia on separate branches: here you see the tasks, the engine's conversation, the diff, the dossier and the tests, and you decide whether to apply. «Copy for AI» prepares the chosen tasks for another AI (it delivers the fix via MCP)."),
+                help="Forge develops {assistant} on separate branches: here you see the tasks, the engine's conversation, the diff, the dossier and the tests, and you decide whether to apply. «Copy for AI» prepares the chosen tasks for another AI (it delivers the fix via MCP)."),
            page("riparazioni", "Repairs", element="hephaestus-repairs", icon="settings", order=171,
                 help="Service repairs: which runbook, what consent it needs, whether it was a trial (dry-run), how it went and where to roll back from. Approving or cancelling stays with you, in chat or on Telegram.")],
     widgets=[widget("forge", "Forge", element="hephaestus-forge-widget", sizes=["s", "m", "l"], size="m",
