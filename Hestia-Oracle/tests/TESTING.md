@@ -43,11 +43,18 @@
 - ✅ XML takes precedence over plain JSON
 - ✅ Params default to empty dict when missing
 
-### §1.2 _truncate_tool_result (4 cases)
-- ✅ Short result not truncated
-- ✅ Result exactly at limit not truncated
-- ✅ Long result truncated with note
-- ✅ Truncation note mentions max chars
+### §1.2 _shape_tool_result (4 cases)
+- ✅ Short result unchanged
+- ✅ Dict becomes compact JSON, not a Python repr
+- ✅ Long result: «of N» and a note pointing to result_more
+- ✅ Without a ref the note says the rest is missing
+
+### §1.2b test_compact_output.py — shaped outputs (dossier 2026-11-17-output-compatti, 15 cases)
+- ✅ JSON: prune keeps False/0; same-shaped lists → table; short/different lists stay; lossless shaping < 40 %;
+  over budget keeps error items and «showing N of M», full copy whole; top-level list notes the count; bad JSON = text
+- ✅ Text: repeated lines squeezed; log keeps head + errors + tail; one huge line cut with note
+- ✅ Budget follows the window (16k ≈ 2000, 256k = ceiling), fallback window and floor, a number forces it
+- ✅ result_more parts and unknown ref; stubs point to the kept copy
 
 ### §1.3 run_agent_loop (17 cases)
 - ✅ No tools returns direct answer

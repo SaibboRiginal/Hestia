@@ -14,7 +14,7 @@ import pytest
 from core.agent_loop import (
     ToolDefinition,
     _extract_tool_call,
-    _truncate_tool_result,
+    _shape_tool_result,
     run_agent_loop,
 )
 
@@ -172,31 +172,29 @@ class TestExtractToolCall:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _truncate_tool_result unit tests
+# _shape_tool_result unit tests (hestia_common.compact_output in the loop)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.unit
-class TestTruncateToolResult:
-    def test_short_result_not_truncated(self):
-        result = _truncate_tool_result("hello", max_chars=100)
-        assert result == "hello"
+class TestShapeToolResult:
+    def test_short_result_unchanged(self):
+        text, shaped = _shape_tool_result("hello", 100, "r1")
+        assert text == "hello" and not shaped.cut
 
-    def test_result_exactly_at_limit_not_truncated(self):
-        text = "x" * 100
-        assert _truncate_tool_result(text, max_chars=100) == text
+    def test_dict_becomes_compact_json_not_python_repr(self):
+        text, _ = _shape_tool_result({"ok": True, "note": None, "title": "Dentist"}, 1000, "r1")
+        assert text == '{"ok":true,"title":"Dentist"}'
 
-    def test_long_result_truncated_with_note(self):
-        text = "x" * 2100
-        out = _truncate_tool_result(text, max_chars=2000)
-        assert len(out) > 2000  # includes note
-        assert "truncated" in out.lower()
-        assert out.startswith("x" * 2000)
+    def test_long_result_note_points_to_result_more(self):
+        rows = [{"id": i, "title": f"Event {i}"} for i in range(200)]
+        text, shaped = _shape_tool_result({"events": rows}, 500, "r3")
+        assert shaped.cut and "of 200" in text
+        assert 'result_more(ref="r3", part=2)' in text and "never present it as complete" in text
 
-    def test_truncation_note_mentions_max_chars(self):
-        text = "a" * 500
-        out = _truncate_tool_result(text, max_chars=100)
-        assert "100" in out
+    def test_without_ref_says_the_rest_is_missing(self):
+        text, _ = _shape_tool_result("x" * 5000, 300, "")
+        assert "The rest is missing" in text
 
 
 # ─────────────────────────────────────────────────────────────────────────────

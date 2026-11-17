@@ -211,9 +211,10 @@ _AGENT = [
             unit="hours", order=3, help="When the assistant asks you something (choice, confirmation, free text), after this time without an answer the question closes."),
     setting(MAX_TOKENS, "Most tokens per answer", "int", 0, group="Agent", min=0, max=2_000_000,
             unit="token", order=1, advanced=True, help="Limit of tokens used in one reasoning. 0 = no limit."),
-    setting(TOOL_RESULT_MAX_CHARS, "Longest tool result", "int", 2000,
-            group="Agent", min=200, max=50000, unit="characters", order=2, advanced=True,
-            help="Beyond this length the result is shortened before giving it to the model."),
+    setting(TOOL_RESULT_MAX_CHARS, "Longest tool result", "int", 0,
+            group="Agent", min=0, max=50000, unit="characters", order=2, advanced=True,
+            help="Beyond this length the result is shortened before giving it to the model (fewer items, "
+                 "the rest on request). 0 = automatic: a share of the model's context window."),
     setting(EARLY_EXIT_NO_TOOL_TURNS, "Close after steps without tools", "int", 2, group="Agent", min=1,
             max=10, unit="steps", order=3, advanced=True,
             help="If the model uses no tools for these steps in a row (and has already done something), it answers."),

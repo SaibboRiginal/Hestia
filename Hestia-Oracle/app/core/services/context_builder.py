@@ -205,7 +205,7 @@ class ContextBuilder:
             return "DATABASE_RESPONSE: No records found."
         compact_entities = [self.compact_entity(
             entity) for entity in entities[: self.max_entities_in_context]]
-        return json.dumps(compact_entities, ensure_ascii=False, indent=2)
+        return json.dumps(compact_entities, ensure_ascii=False, separators=(",", ":"))   # no indent: spaces are tokens
 
     def build_analysis_prompt(
         self,

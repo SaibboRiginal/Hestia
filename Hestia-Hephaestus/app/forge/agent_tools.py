@@ -11,8 +11,11 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable
 
+from hestia_common.compact_output import shape_text
+
 _MAX_READ_LINES = 400
 _MAX_OUT = 6000
+_TEST_OUT = 4000
 _FORBIDDEN_PARTS = {".git"}
 _FORBIDDEN_NAMES = {".env", "credentials.json", "google_token.json", "token.json"}
 
@@ -111,7 +114,7 @@ class AgentTools:
         out = subprocess.run(cmd, capture_output=True, text=True, timeout=30).stdout
         lines = out.splitlines()
         more = f"\n...+{len(lines) - 80} more" if len(lines) > 80 else ""
-        return _clip("\n".join(lines[:80]) + more) or "(no match)"
+        return shape_text("\n".join(lines[:80]) + more, _MAX_OUT).text or "(no match)"
 
     def t_write_file(self, path: str, content: str) -> str:
         target = self._path(path)
@@ -138,7 +141,9 @@ class AgentTools:
                 self._path(p)
         ok, output = self._test_runner(paths)
         status = "PASS" if ok else ("NO TESTS" if ok is None else "FAIL")
-        return f"{status}\n{output[-4000:]}"  # tail: the pytest summary is at the end
+        # hestia_common.compact_output: repeated lines squeezed, head + failure lines + tail (the summary is at
+        # the end), the same shaping as every output that goes back into a model.
+        return f"{status}\n{shape_text(output, _TEST_OUT).text}"
 
     def t_finish(self, summary: str) -> str:
         self.finished_summary = str(summary or "").strip() or "done"
