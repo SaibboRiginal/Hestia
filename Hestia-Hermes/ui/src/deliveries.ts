@@ -1,6 +1,6 @@
 /**
- * <hermes-deliveries> — «Consegne»: what Hermes sent to which client (held / quiet / retracted / superseded),
- * the answers, the active subscriptions and the clients reached. Read-only; the inbox is the Notifiche page.
+ * <hermes-deliveries> — «Deliveries»: what Hermes sent to which client (held / quiet / retracted / superseded),
+ * the answers, the active subscriptions and the clients reached. Read-only; the inbox is the Notifications page.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
@@ -127,7 +127,7 @@ export class HermesDeliveries extends HestiaElement {
           ${n.answer.by ? html` da ${n.answer.by}` : nothing} · ${when(n.answer.at)}
           ${n.answer.outcome_text ? html` · <span class="muted">${n.answer.outcome_text}</span>` : nothing}</div>`
         : n.actions?.length ? html`<div class="small muted">${tr("Actions:")} ${n.actions.join(' · ')}</div>` : nothing}
-      ${isOpen ? html`<div class="small muted">${tr("Type")} <code>${n.event_type}</code> · stato <code>${n.state}</code>
+      ${isOpen ? html`<div class="small muted">${tr("Type")} <code>${n.event_type}</code> · ${tr('state')} <code>${n.state}</code>
           ${n.seen?.at ? html` · ${tr('seen {0}', when(n.seen.at))}${n.seen.by ? tr('dev:: on {0}', n.seen.by) : ''}` : nothing} · id <code>${n.id}</code></div>` : nothing}
       <div><hxk-button size="sm" variant="ghost" @click=${() => (this.open = isOpen ? '' : n.id)}>${isOpen ? tr('Less') : tr('Details')}</hxk-button></div>
     </div>`;

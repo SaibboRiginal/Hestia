@@ -253,7 +253,7 @@ class Day:
         logged = {s.get("step_id"): s for s in (log or {}).get("steps") or []}
         evaluated: dict[str, dict] = {}
         today_iso = self.day.isoformat()
-        for s in steps:                          # paused for a while ("niente retinolo per una settimana")
+        for s in steps:                          # paused for a while ("no retinol for a week")
             if (s.get("paused_until") or "") > today_iso:
                 until = s["paused_until"]
                 evaluated[s["id"]] = {"include": False, "state": "paused", "reason": tr("paused until {0}/{1}", until[8:10], until[5:7]),

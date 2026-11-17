@@ -227,3 +227,13 @@ def word_set(key: str) -> frozenset[str]:
 def is_yes(value: Any) -> bool:
     """True for a boolean typed as text: ``1``, ``true`` or a yes word of any language (``common.yes_word``)."""
     return value if isinstance(value, bool) else str(value).strip().lower() in {"1", "true"} | word_set("common.yes_word")
+
+
+def weekday_of(name: str) -> int:
+    """Monday = 0 … Sunday = 6 for a weekday name or its first three letters in any language (``date.weekday.<n>``);
+    ``ValueError`` when it is not one."""
+    low = str(name or "").strip().lower()
+    for n in range(7):
+        if any(low in (w, w[:3]) for w in word_set(f"date.weekday.{n}")):
+            return n
+    raise ValueError(name)

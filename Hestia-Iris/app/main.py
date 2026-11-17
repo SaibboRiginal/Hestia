@@ -387,7 +387,7 @@ def email_unsubscribe(owner: str, key: str) -> dict[str, Any]:
 
 @app.post("/api/email/subscriptions/{owner}/{key}/backfill")
 def email_backfill(owner: str, key: str, req: BackfillRequest | None = None) -> dict[str, Any]:
-    """Deliver the matching mails of the last days again (the module's «controlla ora»; Archive dedupes)."""
+    """Deliver the matching mails of the last days again (the module's «check now»; Archive dedupes)."""
     return dispatcher.backfill(f"{owner}:{key}", (req or BackfillRequest()).days)
 
 
@@ -412,7 +412,7 @@ def email_dispatch_status(limit: int = Query(default=50, ge=1, le=200)) -> dict[
 
 @app.post("/api/email/check")
 def email_check_now() -> dict[str, Any]:
-    """«Controlla ora»: ask Hecate's watcher for one check (same as the agenda job)."""
+    """«Check now»: ask Hecate's watcher for one check (same as the agenda job)."""
     status, payload = _hub_call("hecate", "POST", "api/gateway/mail/watch/run", body={"trigger": "webui"},
                                 timeout=100)
     if not status or status >= 400:

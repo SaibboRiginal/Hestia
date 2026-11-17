@@ -1,5 +1,5 @@
 /**
- * <hercules-templates> — "Schede": workout types, the weekly program and the training goals.
+ * <hercules-templates> — "Plans": workout types, the weekly program and the training goals.
  * <hercules-template>  — one template: exercises, planned sets, progression, rest; edits are local first (offline).
  */
 import { HestiaElement, html, css, nothing, plural, tr } from '@hestia/webui-sdk';

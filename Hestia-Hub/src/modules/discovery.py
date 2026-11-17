@@ -331,7 +331,7 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
 
     - ``tool`` (MCP, client ``*``) and ``command`` (per client) come from the existing discovery.
     - ``page`` · ``widget`` · ``quick_action`` (+ ``bundle``) come from each module's UI manifest.
-    Offline modules keep their last manifest with ``online: false`` so clients can say "non raggiungibile".
+    Offline modules keep their last manifest with ``online: false`` so clients can say "unreachable".
     ``local_manifests`` = manifests served in-process (Hub's own plugin: Hub never registers with itself);
     always online, and they win over a registered service with the same name.
     """

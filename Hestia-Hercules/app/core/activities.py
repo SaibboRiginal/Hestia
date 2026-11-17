@@ -1,11 +1,11 @@
 """Outdoor activities (run, bike, walk…) — light intentions next to the gym, never a Garmin replacement.
 
-Dossier docs/work/2026-10-20-meteo-hecate §3.8. «Ho voglia di correre 2 volte questa settimana» →
+Dossier docs/work/2026-10-20-meteo-hecate §3.8. «I feel like running twice this week» →
 ``propose`` picks the best slots of the week from the forecast at the place (Hecate) and the free time in the
 calendar; nothing reaches the calendar until ``confirm``. A confirmed slot becomes an event in Marko's Google
 calendar «Allenamenti» (owned by Hercules: activities and finished gym sessions = the training history) and a
-one-off agenda task that asks afterwards «L'hai fatto?» (Fatto / Non fatto / Spostato). A morning agenda job
-nudges «Ottimo giorno per…» only while an intention is open. Partial data is fine.
+one-off agenda task that asks afterwards «Did you do it?» (Done / Not done / Moved). A morning agenda job
+nudges «Great day for…» only while an intention is open. Partial data is fine.
 
 Store kinds: ``activity_plan`` (the weekly intention with its slots), ``activity`` (one done activity),
 ``calendar_link`` (session/slot → provider event), ``activity_nudge`` (one marker per morning message).
@@ -314,7 +314,7 @@ class Activities:
                 hit = next((s for i, s in enumerate(proposed) if xs in (s["id"], str(i + 1))), None)
                 if hit:
                     keep.append(hit)
-                elif len(xs) >= 13:            # an explicit time from the user: «giovedì alle 19»
+                elif len(xs) >= 13:            # an explicit time from the user: «Thursday at 7pm»
                     start = datetime.fromisoformat(xs)
                     start = start if start.tzinfo else start.replace(tzinfo=self.tz)
                     keep.append({"id": domain.new_id(), "start": start.isoformat(), "why": [tr("chosen by you")],
@@ -340,7 +340,7 @@ class Activities:
                         if planned else tr("Intention saved: in the morning I tell you when it's a good moment.")}
 
     def add_slot(self, plan_id: str, start: str = "") -> dict:
-        """«Pianifica» from the morning message or the plugin: a new planned slot (default: best today)."""
+        """«Plan» from the morning message or the plugin: a new planned slot (default: best today)."""
         plan = self.h.get("activity_plan", plan_id)
         if start:
             st = datetime.fromisoformat(start)
@@ -413,7 +413,7 @@ class Activities:
 
     def log(self, kind: str = "corsa", day: str = "", minutes: int | None = None, km: float | None = None,
             note: str = "", ext: str = "") -> dict:
-        """«Ho corso 5 km»: one done activity; a planned slot of the same kind that day becomes done.
+        """«I ran 5 km»: one done activity; a planned slot of the same kind that day becomes done.
         ``ext``: id of the same activity on a device (``garmin:<id>``), so a device sync never logs it twice."""
         d = day or self.h.today().isoformat()
         k = kind_of(kind)
@@ -532,7 +532,7 @@ class Activities:
             self.agenda.done(f"hercules.activity.{slot['id']}")
 
     def _close_question(self, slot_id: str, outcome: str = "Marked") -> None:
-        """Answered from anywhere (plugin, chat): the live «L'hai fatto?» closes (Hermes ``closes``)."""
+        """Answered from anywhere (plugin, chat): the live «Did you do it?» closes (Hermes ``closes``)."""
         key = f"hercules.activity.{slot_id}"
         try:
             self.call("hermes", "POST", "api/events/ingest", timeout=5, body={
@@ -565,7 +565,7 @@ class Activities:
 
     # ── questions to Marko (Hermes) ─────────────────────────────────────────
     def ask(self, plan_id: str, slot_id: str) -> dict | None:
-        """The «L'hai fatto?» message for a slot that is still planned (None = nothing to ask)."""
+        """The «Did you do it?» message for a slot that is still planned (None = nothing to ask)."""
         plan, slot = self._slot(plan_id, slot_id)
         if slot.get("status") != "planned":
             return None
@@ -582,7 +582,7 @@ class Activities:
 
     def morning(self) -> dict | None:
         """Morning coach line: rain on today's slot → offer to move; else a good window and the week behind →
-        «Ottimo giorno per…». One message a day at most, only while an intention is open."""
+        «Great day for…». One message a day at most, only while an intention is open."""
         today = self.h.today()
         if any(r.get("day") == today.isoformat() for r in self.h.store.items("activity_nudge")):
             return {"skip": "sent_today"}

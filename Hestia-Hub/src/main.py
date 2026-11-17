@@ -211,7 +211,7 @@ def nodes_list():
 
 @app.delete("/api/nodes/{node_id}")
 def nodes_revoke(node_id: str):
-    """«Scollega»: the token stops working and the satellite's modules leave the routing table."""
+    """«Unlink»: the token stops working and the satellite's modules leave the routing table."""
     try:
         node = nodes.revoke(node_id)
     except NodeError as exc:
@@ -289,7 +289,7 @@ def discovery_catalog(client: str = "", type: str = "", module: str = ""):
     return {"revision": events.revision, **catalog}
 
 
-# ── WebUI plugin reads (Mappa page, Servizi online widget) ─────────────────────
+# ── WebUI plugin reads (Map page, Online services widget) ─────────────────────
 
 
 def _service_map(probe: bool = False) -> dict:

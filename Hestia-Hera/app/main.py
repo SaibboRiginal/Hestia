@@ -1,4 +1,4 @@
-"""Hestia-Hera — important people («Persone», port 19025, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
+"""Hestia-Hera — important people («People», port 19025, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
 
 Data in Archive (``/api/people-store``), dates in the calendar as Chronos special events, notices through Hermes,
 settings in Themis, the daily check in the agenda, tools for the assistant and Telegram over MCP.
@@ -161,7 +161,7 @@ kit.tools([
     MCPTool(name="people_get", description="A person's card: dates, likes, gift ideas, last contact.",
             parameters={"type": "object", "properties": {"person": P}, "required": ["person"]}, handler=_get,
             title="Person card", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "People"}),
-    MCPTool(name="people_add", description=("Add a person. relation: partner|famiglia|amico|collega|altro; birthday DD/MM or YYYY-MM-DD "
+    MCPTool(name="people_add", description=("Add a person. relation: partner|family|friend|colleague|other; birthday DD/MM or YYYY-MM-DD "
                                             "(goes into the calendar with a reminder)."),
             parameters={"type": "object", "properties": {"name": S, "relation": {"type": "string", "enum": [
                 "partner", "family", "friend", "colleague", "other"]}, "birthday": S, "likes": L, "notes": S,
@@ -182,7 +182,7 @@ kit.tools([
             parameters={"type": "object", "properties": {"person": P, "idea": S}, "required": ["person", "idea"]},
             handler=lambda person, idea: {"saved": True, **_short(people.gift_idea(person, idea))},
             title="Gift idea", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Regali", "primary": 3}),
+            telegram={"section": "Gifts", "primary": 3}),
     MCPTool(name="people_like", description="Save a like (or with dislike=true something they do not like).",
             parameters={"type": "object", "properties": {"person": P, "text": S, "dislike": {"type": "boolean"}},
                         "required": ["person", "text"]},
@@ -202,7 +202,7 @@ kit.tools([
                                                                                 tr("in {0} d", u['in_days'])])
                                          for u in people.upcoming(days)[:20]])},
             title="Upcoming dates", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Regali", "primary": 4}),
+            telegram={"section": "Gifts", "primary": 4}),
 ], prefix="people_")
 
 

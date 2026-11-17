@@ -1,4 +1,4 @@
-"""Training dataset, phase D2 «Correggi» (docs/work/2026-10-30-dataset-allenamento §3.3).
+"""Training dataset, phase D2 «Correct» (docs/work/2026-10-30-dataset-allenamento §3.3).
 
 At night (agenda job ``metis.dataset.review``) a stronger model — the *teacher*, Oracle use case
 ``metis.dataset.review`` (Marko 2026-10-30: a cloud model, with his personal data masked) — re-reads the saved turns
@@ -9,12 +9,12 @@ with their signals and Hestia's rules and says what the answer should have been:
   never invent the result of a tool that was not run: a fix that needs another tool goes to the owner;
 - ``drop``  — useless for training (broken turn, nothing to learn).
 
-**Masking** before anything leaves Hestia: names of the people in Persone (Hera), e-mail addresses, phone numbers,
+**Masking** before anything leaves Hestia: names of the people in People (Hera), e-mail addresses, phone numbers,
 IBAN, street addresses become ``<PERSONA_1>``, ``<EMAIL_1>``…; the map stays in this process and the corrected text
 gets the real values back. A turn whose masking fails is not sent.
 
 A verdict with confidence ≥ ``metis.review.auto_accept`` and no doubt is accepted; the others wait in the list
-**«Da rivedere»** (WebUI Miglioramento, Telegram ``metis_review``): Accetta / Scarta / Correggi with your own text.
+**«To review»** (WebUI Improvement, Telegram ``metis_review``): Accept / Discard / Correct with your own text.
 Your choice always wins. Rows in Archive ``dataset-store``, kind ``review`` (id = trace_id, parent_id = session,
 ref_id = status ``accepted | pending | rejected | edited``) and one kind ``state`` row (where the last run stopped).
 """
@@ -29,7 +29,7 @@ from typing import Any, Callable
 from hestia_common.module_kit import Invalid, now_iso
 
 from .traces import STORE
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_regex  # owner language; owner words per language
 
 logger = logging.getLogger("hestia_metis.review")
 
@@ -43,7 +43,7 @@ R1 short, direct, in the language of the user's message; no greeting on every an
 R2 never say «done/logged/saved» without a tool that succeeded in this turn; never promise «I will try again».
 R3 a fact is saved once: a person (name, relative, birthday) goes to People, not also to memory;
    reminders/birthdays/routines not in memory.
-R4 a question or an advice («mi consigli…», «cosa mi metto») is not a write: no tool that writes.
+R4 a question or an advice («what do you suggest…», «what should I wear») is not a write: no tool that writes.
 R5 use the context and the tool results; never invent data; if a value is missing say it or ask.
 R6 do not repeat a failed tool unchanged; say it did not work.
 R7 if the right tool exists use it instead of answering from memory; the assistant's own state → system tools.
@@ -75,8 +75,8 @@ _PATTERNS = [
     ("EMAIL", re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")),
     ("IBAN", re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,3})?\b")),
     ("TEL", re.compile(r"(?<![\w])(?:\+\d{1,3}[\s.-]?)?(?:\d[\s.-]?){8,12}\d(?![\w])")),
-    ("ADDRESS", re.compile(r"\b(?:via|viale|piazza|piazzale|corso|vicolo|largo|strada|località)\s+"
-                             r"[A-ZÀ-Ü][\wÀ-ü'.]*(?:\s+[A-ZÀ-Ü][\wÀ-ü'.]*){0,3}(?:,?\s*\d+[a-zA-Z]?)?", re.IGNORECASE)),
+    ("ADDRESS", word_regex(r"\b(?:{0})\s+[^\W\d_][\w'.]*(?:\s+[^\W\d_][\w'.]*){{0,3}}(?:,?\s*\d+[a-zA-Z]?)?",
+                           "address.street_word")),
 ]
 
 
@@ -214,7 +214,7 @@ class Review:
         try:
             names = self.people()
         except Exception as exc:  # noqa: BLE001
-            # Without the names of Persone nothing would hide them: no turn leaves Hestia tonight.
+            # Without the names of People nothing would hide them: no turn leaves Hestia tonight.
             logger.warning("[🔄] event=review_skipped reason=people_unavailable error=%s", exc)
             return {"reviewed": 0, "skipped": "people_unavailable"}
         todo = self._pending_traces(max(1, int(self.batch())))

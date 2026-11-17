@@ -2,7 +2,7 @@
 
 Needs (``hestia_common.coach`` contract), always "still to do" from ``start``:
 - weekly program → one ``workout.<weekday>`` block per program day left (that weekday only);
-- otherwise a goal "N a settimana" (or a rotation program with a goal) → one ``workout`` block with ``count`` = what
+- otherwise a goal "N a week" (or a rotation program with a goal) → one ``workout`` block with ``count`` = what
   is left of the goal; no goal and no weekly program → no need (nothing to plan, no switch needed).
 ``fit`` = the time-limit rule of the adaptation engine (the short version of the next workout); ``placed`` keeps the
 plan in memory so "next workout" and the reminder can say when; ``review`` counts sessions of a past week.

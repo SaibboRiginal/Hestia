@@ -1,7 +1,7 @@
 """Next-time suggestions and stall detection (SPEC §5.1) — deterministic, explained.
 
 ``suggest`` returns, for each planned set of a template item, the weight and reps to aim for, plus a short
-Italian reason the UI and the assistant show as is ("tutte le serie a 12: +2,5 kg").
+Reason in the owner's language the UI and the assistant show as is ("all sets at 12: +2.5 kg").
 """
 from __future__ import annotations
 

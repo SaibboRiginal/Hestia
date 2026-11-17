@@ -1,8 +1,8 @@
 /**
- * <hermes-inbox> — «Notifiche»: the Hermes inbox, shared by every client (read here = read on Telegram).
- * Filters (da leggere / da decidere / tutte, modulo, altri client), answers with the notification's buttons
- * (first answer wins; a button that opens a tool goes to its form in «Comandi»), the secret form (values go to the
- * module that asked, never stored: Cindy 4), seen / all seen, «Apri» on a module page (`_link`), load more.
+ * <hermes-inbox> — «Notifications»: the Hermes inbox, shared by every client (read here = read on Telegram).
+ * Filters (to read / to decide / all, module, other clients), answers with the notification's buttons
+ * (first answer wins; a button that opens a tool goes to its form in «Commands»), the secret form (values go to the
+ * module that asked, never stored: Cindy 4), seen / all seen, «Open» on a module page (`_link`), load more.
  * Ported from the WebUI built-in page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4).
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
@@ -171,7 +171,7 @@ export class HermesInbox extends HestiaElement {
     super.connectedCallback();
     const q = this.ctx?.query || {};
     if (q.filter === 'unread' || q.filter === 'pending' || q.filter === 'all') this.filter = q.filter;
-    // «Rispondi»/«Apri» on a toast: that notification, first and highlighted, whatever the filter would hide.
+    // «Answer»/«Open» on a toast: that notification, first and highlighted, whatever the filter would hide.
     if (q.focus) { this.focusId = String(q.focus); this.filter = 'all'; }
     if (q.source) this.source = q.source;
     this.reload();
@@ -299,7 +299,7 @@ export class HermesInbox extends HestiaElement {
     const r = await this.host.api('POST', `${API}/inbox/${encodeURIComponent(n.id)}/answer`, { body: { action_id: a.id } });
     this.busy = '';
     if (r.ok && r.data?.execute === 'command' && r.data.command) {
-      // A button that starts a tool (e.g. «Racconta la giornata»): its form opens in «Comandi».
+      // A button that starts a tool (e.g. «Tell me about the day»): its form opens in «Commands».
       this.applyAnswer(n.id, { label: a.label, by: 'webui', status: 'done' });
       this.host.navigate('commands', { command: String(r.data.command) }, 'mcp');
     } else if (r.ok) {
@@ -372,7 +372,7 @@ export class HermesInbox extends HestiaElement {
     }
   }
 
-  /** The same card as a question in the chat: buttons, toggles + «Invia», a field for a free answer. */
+  /** The same card as a question in the chat: buttons, toggles + «Send», a field for a free answer. */
   private questionCard(n: any) {
     const q = n.question;
     const busy = this.busy === n.id;

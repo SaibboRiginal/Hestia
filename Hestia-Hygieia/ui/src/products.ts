@@ -134,8 +134,8 @@ export class HygieiaProducts extends HestiaElement {
   constructor() { super(); this.items = undefined; this.view = 'current'; this.area = ''; this.q = ''; this.sort = ''; this.m = null; this.form = false; }
   connectedCallback() {
     super.connectedCallback();
-    if (this.ctx?.query?.nuovo) this.form = true;
-    if (this.ctx?.query?.zona) this.area = this.ctx.query.zona;
+    if (this.ctx?.query?.new) this.form = true;
+    if (this.ctx?.query?.area) this.area = this.ctx.query.area;
     this.load();
     this.onHost('refresh', () => this.load());
   }

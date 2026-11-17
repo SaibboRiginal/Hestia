@@ -67,7 +67,7 @@ METRICS: dict[str, list[dict]] = {
     "*": [{"value": "status", "label": "General state"}],
 }
 
-JOURNAL_TAGS = ["cycle", "stress", "sole", "trip", "sport", "dormito poco", "new product", "nutrition", "illness"]
+JOURNAL_TAGS = ["cycle", "stress", "sun", "trip", "sport", "little_sleep", "new product", "nutrition", "illness"]
 
 # Advisory conflicts between active families (SPEC §4): same day, never blocking. Custom ones are options too.
 CONFLICTS: list[dict] = [

@@ -1,5 +1,5 @@
 /**
- * <hercules-history> — "Storico": every workout by month (from the local mirror, works offline).
+ * <hercules-history> — "History": every workout by month (from the local mirror, works offline).
  * <hercules-session> — one workout: sets by exercise (editable), records, feedback, repeat, delete.
  */
 import { HestiaElement, html, css, nothing, plural, locale, tr } from '@hestia/webui-sdk';

@@ -3,7 +3,7 @@ care + weekly series, published to Archive through ``hestia_common.signals_clien
 
 Built on what the planner and the statistics already judge (cadence goals, ``goal_state``, ``routine_stats`` streaks,
 the journal scores). Expiry / restock alerts are reminders, not facts about the user: they stay out. Texts speak of
-«Cura di sé», never of the module.
+«Self care», never of the module.
 """
 from __future__ import annotations
 

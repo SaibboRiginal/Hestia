@@ -586,7 +586,7 @@ def quick_done(id: str, body: dict = Body(default={})):
 
 @app.delete(f"{API}/quick/{{id}}")
 def quick_undo(id: str, date: str = ""):
-    """Undo of 'Segna fatto': removes the last quick session of that template (today or ``date``)."""
+    """Undo of 'Mark done': removes the last quick session of that template (today or ``date``)."""
     from .core import records as rec
     day = date or hercules.today().isoformat()
     rows = [s for s in hercules.store.items("session") if s.get("template_id") == id and s.get("source") == "quick"
@@ -694,7 +694,7 @@ def activities_log(body: dict = Body(default={})):
 
 @app.post(f"{API}/activities/quick-run")
 def activities_quick_run(body: dict = Body(default={})):
-    """Home quick action «Ho corso» (``km`` optional, ``date`` for another day)."""
+    """Home quick action «I ran» (``km`` optional, ``date`` for another day)."""
     return activities.log("corsa", str(body.get("date") or ""), None, domain._num(body.get("km")))
 
 
@@ -714,7 +714,7 @@ def activities_unlog(id: str):
 
 @app.post(f"{API}/activities/morning")
 def activities_morning():
-    """Agenda job (07:30): the coach line «Ottimo giorno per…» or «pioggia, spostiamo?», at most once a day."""
+    """Agenda job (07:30): the coach line «Great day for…» or «rain, shall we move it?», at most once a day."""
     msg = activities.morning()
     if not msg or msg.get("skip"):
         return {"send": False, "why": (msg or {}).get("skip") or "nothing_to_say"}
@@ -743,7 +743,7 @@ def activities_add_slot(plan_id: str, body: dict = Body(default={})):
 
 @app.post(f"{API}/activities/{{plan_id}}/keep")
 def activities_keep(plan_id: str):
-    """«Tengo» / «Non oggi» from the morning message: nothing changes."""
+    """«Keep» / «Not today» from the morning message: nothing changes."""
     return {"ok": True, "plan_id": plan_id}
 
 
@@ -769,7 +769,7 @@ def activities_slot_moved(plan_id: str, slot_id: str, body: dict = Body(default=
 
 @app.post(f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/ask")
 def activities_slot_ask(plan_id: str, slot_id: str):
-    """Agenda task after the slot: «Hai fatto la corsa delle 18:00?» (Fatto / Non fatto / Spostato)."""
+    """Agenda task after the slot: «Did you do the 18:00 run?» (Done / Not done / Moved)."""
     msg = activities.ask(plan_id, slot_id)
     if not msg:
         return {"send": False, "why": "already_answered"}
@@ -1120,7 +1120,7 @@ try:
                 title="Start workout", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
                 telegram_group="training",
                 telegram={"section": "Today", "primary": 1}),
-        MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. "
+        MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'bench 80x8, 80x8, 77.5x7; pull up 8, 7, 6'. "
                                                       "Weight x reps (x sets), optional @RPE."),
                 parameters={"type": "object", "properties": {"text": S}, "required": ["text"]}, handler=_t(_log),
                 title="Log set", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
@@ -1191,14 +1191,14 @@ try:
                 clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Goals and body", "primary": 3}),
         MCPTool(name="fitness_set_goal", description=("Set a training goal: times per day|week|month; scope any, template (target = template name) or "
-                                                      "muscle (petto, spalle, braccia, schiena, core, gambe)."),
+                                                      "muscle (chest, shoulders, arms, back, core, legs)."),
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
                 handler=_t(_goal), title="Workout goal", method="POST", path=f"{API}/goals", clients=["ui"],
                 telegram_visible=False, telegram_group="training",
                 telegram={"section": "Goals and body"}),
-        MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («ho voglia di correre 2 volte questa settimana»): kind "
-                                                           "corsa|bici|camminata|nuoto|altro, times, place (name of a saved place or a city; empty = Casa), "
+        MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («I feel like running twice this week»): kind "
+                                                           "run|bike|walk|swim|other, times, place (name of a saved place or a city; empty = Home), "
                                                            "minutes, week (empty = this one, 'next' = next). Proposes the best moments from weather and "
                                                            "commitments; does NOT write the calendar: show the moments and ask for confirmation."),
                 parameters={"type": "object", "properties": {"kind": S, "times": I, "place": S, "minutes": I, "week": S}},

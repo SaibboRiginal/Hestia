@@ -8,9 +8,9 @@ export const MUSCLES: Record<string, string> = {
   hamstrings: tr('Hamstrings'), adductors: tr('Adductors'), abductors: tr('Abductors'), calves: tr('Calves'), neck: tr('Neck'),
 };
 export const GROUPS: Record<string, string[]> = {
-  petto: ['chest'], shoulders: ['front_delts', 'side_delts', 'rear_delts'], arms: ['biceps', 'triceps', 'forearms'],
-  schiena: ['lats', 'upper_back', 'traps', 'lower_back'], core: ['abs', 'obliques'],
-  gambe: ['quads', 'hamstrings', 'glutes', 'adductors', 'abductors', 'calves'],
+  chest: ['chest'], shoulders: ['front_delts', 'side_delts', 'rear_delts'], arms: ['biceps', 'triceps', 'forearms'],
+  back: ['lats', 'upper_back', 'traps', 'lower_back'], core: ['abs', 'obliques'],
+  legs: ['quads', 'hamstrings', 'glutes', 'adductors', 'abductors', 'calves'],
 };
 export const GROUP_LABEL: Record<string, string> = { chest: tr('Chest'), shoulders: tr('Shoulders'), arms: tr('Arms'), back: tr('alt::Back'), core: tr('Core'), legs: tr('Legs') };
 export const EQUIPMENT: Record<string, string> = {

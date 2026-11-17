@@ -1,7 +1,7 @@
 /**
- * <hub-map> — "Mappa": every service registered on Hub (and Hub itself): online by heartbeat, node, version,
- * last heartbeat, topology tags, registry revision; "Verifica salute" also probes each health endpoint.
- * <hub-online-widget> — "Servizi online": n / total, the offline ones by name.
+ * <hub-map> — "Map": every service registered on Hub (and Hub itself): online by heartbeat, node, version,
+ * last heartbeat, topology tags, registry revision; "Check health" also probes each health endpoint.
+ * <hub-online-widget> — "Online services": n / total, the offline ones by name.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';

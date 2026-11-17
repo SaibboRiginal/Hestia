@@ -1,5 +1,5 @@
 /**
- * <hercules-today> — page "Allenamento": today's plan, check-in and adaptation (with the assistant), and the live
+ * <hercules-today> — page "Training": today's plan, check-in and adaptation (with the assistant), and the live
  * workout (sets, rest timer, warm-ups, plates). The live workout reads/writes only the local mirror, so it works
  * offline in the gym and syncs later (data.ts).
  */
@@ -81,7 +81,7 @@ export class HerculesToday extends HestiaElement {
     this.off = this.L.onChange(() => this.requestUpdate());
     this.L.ready.then(() => {
       this.loadNext();
-      const pre = this.ctx?.query?.card;          // "Inizia ora" from a template page
+      const pre = this.ctx?.query?.card;          // "Start now" from a template page
       if (pre && !this.L.activeSession()) { const t = this.L.get('template', pre); if (t) this.start(t); this.host.navigate('training'); }
       this.requestUpdate();
     });
@@ -348,7 +348,7 @@ export class HerculesToday extends HestiaElement {
 
   private async quickDone(t: any) {
     if (!this.host.online) {
-      // offline: a done session with the planned values, like the server's "Segna fatto"
+      // offline: a done session with the planned values, like the server's "Mark done"
       const plan = this.planFor(t);
       const end = new Date(), start = new Date(end.getTime() - 45 * 60000).toISOString();
       const sid = uuid();

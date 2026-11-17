@@ -63,7 +63,7 @@ settings.declare([
             help="If you used me from an app (Telegram, WebUI) in these minutes, the notification rings only there; in the others it arrives silently. 0 = rings everywhere."),
     setting(NOTIFICATION_STYLE, "Notification style", "enum", "card", group="Delivery", options=STYLES,
             help="Card: as always. Hestia's sentence: informative notifications arrive as a short sentence of hers, as in chat; warnings, errors and those with buttons or questions stay cards."),
-]).declare_log_level().follow_personal()   # assistant name, she/he, owner: the «frase» style speaks as her
+]).declare_log_level().follow_personal()   # assistant name, she/he, owner: the «sentence» style speaks as her
 
 
 def notification_style() -> str:

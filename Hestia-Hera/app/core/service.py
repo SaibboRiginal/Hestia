@@ -1,4 +1,4 @@
-"""Hera — the important people («Persone», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
+"""Hera — the important people («People», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
 
 A card per person: relation, birthday and other dates, likes and dislikes, gift ideas (from conversations: the
 assistant adds them with ``people_gift_idea``), notes, last contact and how often Marko wants to hear from them.
@@ -224,7 +224,7 @@ class People:
         return {"handled": True, "ideas": len(ideas)}
 
     def daily(self) -> dict:
-        """Agenda job: one «senti …» notice per person due a contact today (never piling up: ``replaces``)."""
+        """Agenda job: one «call …» notice per person due a contact today (never piling up: ``replaces``)."""
         due = [p for p in self.list() if p.get("contact_due_in") is not None and p["contact_due_in"] <= 0]
         for p in due:
             if self.hub:

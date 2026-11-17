@@ -258,7 +258,7 @@ export class HygieiaRoutine extends HestiaElement {
         <div class="grow"><div class="truncate">${productName(p)}</div><div class="small muted">${label(this.m?.categories, p.category)}${(p.actives || []).length ? ' · ' + p.actives.map((a: any) => label(this.m?.actives, a.name)).join(', ') : ''}</div></div>
         <hxk-icon name="plus"></hxk-icon></div>`)}</div>
       ${this.q.trim() ? html`<hxk-button icon="plus" @click=${() => this.addLabel()}>${tr("Step without product: «")}${this.q.trim()}»</hxk-button>` : nothing}
-      <button class="link small" @click=${() => this.host.navigate('products', { nuovo: '1' })}>${tr("The product isn't there? Add it ›")}</button>
+      <button class="link small" @click=${() => this.host.navigate('products', { new: '1' })}>${tr("The product isn't there? Add it ›")}</button>
     </div></div>`;
   }
 

@@ -19,10 +19,10 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
   (a password, a token). The client shows a form; ``POST /api/notifications/{id}/secret`` claims the notification
   (first answer wins) and forwards the values to the module through the Hub. Hermes never stores or logs them.
 - Question (dossier 2026-10-30-domande-nelle-notifiche): ``_question {kind, options, allow_other, service, path,
-  method?, body?}`` asks like the chat card (confirm, single/multiple choice, free text, «Altro…»). Clients see only
+  method?, body?}`` asks like the chat card (confirm, single/multiple choice, free text, «Other…»). Clients see only
   the question; ``POST /api/notifications/{id}/reply {client, answer}`` claims it (first answer wins) and forwards
   ``{...body, answer, answers, client, notification_id}`` to the module through the Hub.
-- «Da decidere» (Cindy 5): notifications still waiting for an answer after ``hermes.wait.recall_hours`` get ONE
+- «To decide» (Cindy 5): notifications still waiting for an answer after ``hermes.wait.recall_hours`` get ONE
   grouped reminder (agenda job ``hermes.notifications.remind_pending``), once per notification.
 - Active client (Cindy 20): if the owner used a client in the last ``hermes.delivery.client_active_minutes``,
   only that client rings; the others get the notification ``silent``.
@@ -188,7 +188,7 @@ QUESTION_KINDS = ("confirm", "single_choice", "multi_choice", "free_text")
 
 def normalize_question(raw: Any) -> dict[str, Any] | None:
     """``_question`` of an event → ``{kind, options, allow_other, service, method, path, body}`` or None
-    (malformed = ignored). Options: labels or ``{value, label}``, 2–8 for a choice; confirm without options = Sì/No."""
+    (malformed = ignored). Options: labels or ``{value, label}``, 2–8 for a choice; confirm without options = Yes/No."""
     if not isinstance(raw, dict) or not raw.get("service") or not str(raw.get("path") or "").startswith("/"):
         return None
     kind = raw.get("kind") if raw.get("kind") in QUESTION_KINDS else "confirm"
@@ -820,7 +820,7 @@ class NotificationCenter:
                 touched.add(str(row.get("outbound_event_id")))
                 self._broadcast(updated, {"state": state, "answer": final})
         if resolving and rows:
-            # Ends the repeat chain even when the latest occurrence was already handled (e.g. «Salta»).
+            # Ends the repeat chain even when the latest occurrence was already handled (e.g. «Skip»).
             latest = max(rows, key=lambda r: str(r.get("created_at") or ""))
             if str(latest.get("outbound_event_id")) not in touched:
                 self.archive.patch_outbound_event(

@@ -17,7 +17,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr, weekday_of  # owner language; owner words per language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -344,7 +344,7 @@ def journal_add(body: dict = Body(...)):
 
 
 def _diary_voice(audio: Any, date: str = "") -> dict:
-    """B9: a voice note → Echo transcribes it (recording kept) → the day's «giornata» entry."""
+    """B9: a voice note → Echo transcribes it (recording kept) → the day's «day» entry."""
     import base64
     a = audio if isinstance(audio, dict) else {"data_b64": audio}
     try:
@@ -617,7 +617,7 @@ transfer = Transfer("hygieia", hub, sections=[
     StoreSection("routine", "Routine", store, ["routine", "version"], item_kinds=["routine"], icon="repeat",
                  subtitle=lambda r: r["data"].get("slot") or "", depends_on=["products", "lists"]),
     StoreSection("log", "Log", store, ["log"], icon="history",
-                 title=lambda r: f"{r['data'].get('date')} · {r['data'].get('status') or 'fatto'}",
+                 title=lambda r: f"{r['data'].get('date')} · {r['data'].get('status') or 'done'}",
                  subtitle=lambda r: r["data"].get("note") or "", depends_on=["routine", "products"]),
     StoreSection("diary", "Diary", store, ["journal"], icon="note",
                  title=lambda r: f"{r['data'].get('date')} · {r['data'].get('area') or ''}",
@@ -744,8 +744,7 @@ try:
     def _cadence(mode: str = "", times: int | None = None, per: str = "", days: list | None = None) -> dict | None:
         if not mode and not times:
             return None
-        names = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
-        dd = [names.index(str(d)[:3].lower()) if str(d)[:3].lower() in names else int(d) for d in days or []]
+        dd = [int(d) if str(d).isdigit() else weekday_of(str(d)) for d in days or []]
         return {"mode": mode or "target", "times": times or 1, "per": per or "week", "days": dd}
 
     def _step_from_text(text: str) -> dict:
@@ -879,13 +878,13 @@ try:
                 handler=_t(_today), title="Self care today", path=f"{API}/today", clients=["telegram", "ui"], telegram_group="selfcare",
                 telegram={"section": "Today", "primary": 1, "label": "Today"}),
         MCPTool(name="selfcare_log", description=("Log: routine done (status done|partial|skipped, skipped_steps = skipped steps by name) or an "
-                                                  "extra use of a product (product, e.g. 'maschera'). date YYYY-MM-DD, default today."), parameters={"type": "object", "properties": {
+                                                  "extra use of a product (product, e.g. 'mask'). date YYYY-MM-DD, default today."), parameters={"type": "object", "properties": {
                     "routine": S, "status": S, "skipped_steps": L, "product": S, "date": S, "note": S}},
                 handler=_t(_log), title="Mark done", method="POST", path=f"{API}/log", clients=["telegram", "ui"],
                 telegram_group="selfcare",
                 telegram={"section": "Today", "primary": 2}),
-        MCPTool(name="selfcare_products", description=("Search products (query name/brand, area viso|capelli|corpo…, status current (default) | all | "
-                                                       "in_use | stock | wishlist | finished, active e.g. retinolo)."),
+        MCPTool(name="selfcare_products", description=("Search products (query name/brand, area face|hair|body…, status current (default) | all | "
+                                                       "in_use | stock | wishlist | finished, active e.g. retinol)."),
                 parameters={"type": "object", "properties": {"query": S, "area": S, "status": S, "active": S, "category": S}},
                 handler=_t(_products), title="Products", path=f"{API}/products", clients=["telegram", "ui"],
                 telegram_group="selfcare",
@@ -896,7 +895,7 @@ try:
                 handler=_t(_product_get), title="Product detail", path=f"{API}/products/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Products"}),
-        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'I bought serum X 30ml'). status in_use (open, default) | stock (closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glycolic, bha_salicylic, vitamin_c…). category e.g. detergente, siero, crema, spf, shampoo."),
+        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'I bought serum X 30ml'). status in_use (open, default) | stock (closed) | wishlist. actives = slugs (retinol, niacinamide, aha_glycolic, bha_salicylic, vitamin_c…). category e.g. cleanser, serum, cream, spf, shampoo."),
                 parameters={"type": "object", "properties": {"name": S, "brand": S, "category": S, "areas": L, "actives": L,
                                                              "size": N, "unit": S, "price": N, "status": S, "pao_months": I,
                                                              "notes": S, "favorite": B}, "required": ["name"]},
@@ -933,10 +932,10 @@ try:
                 telegram={"section": "Routine"}),
         MCPTool(name="selfcare_routine_edit", description=("Edit a routine (creates a new version, undoable): add_step (+position, amount, wait_minutes), "
                                                            "remove_step, step + step_times/step_per (the step's own frequency, 0 = always) or pause_days "
-                                                           "(e.g. 'niente retinolo per una settimana' = step retinolo, pause_days 7; 0 = resume), "
+                                                           "(e.g. 'no retinol for a week' = step retinol, pause_days 7; 0 = resume), "
                                                            "cadence_mode/times/per/days of the routine, status active|paused, reminder, favorite, plan_with "
                                                            "= put the routine in the week plan only on days with this thing (e.g. 'workout' = training "
-                                                           "days; 'nessuno' removes it). reason = why (goes into the history)."),
+                                                           "days; 'none' removes it). reason = why (goes into the history)."),
                 parameters={"type": "object", "properties": {
                     "routine": S, "reason": S, "add_step": S, "position": I, "remove_step": S, "step": S, "step_times": I,
                     "step_per": S, "pause_days": I, "amount": S, "wait_minutes": I, "name": S, "cadence_mode": S,
@@ -950,15 +949,15 @@ try:
                 handler=_t(_undo_routine), title="Undo routine change", method="POST",
                 path=f"{API}/routines/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Routine"}),
-        MCPTool(name="selfcare_journal_add", description=("Diary (if active): scores 1-5 per area, e.g. area viso scores {brufoli: 2, idratazione: 4}, "
-                                                          "capelli {caduta: 3}; notes and tags (stress, sole, ciclo…)."),
+        MCPTool(name="selfcare_journal_add", description=("Diary (if active): scores 1-5 per area, e.g. area face scores {pimples: 2, hydration: 4}, "
+                                                          "hair {hair_loss: 3}; notes and tags (stress, sun, cycle…)."),
                 parameters={"type": "object", "properties": {"area": S, "scores": O, "note": S, "tags": L, "date": S},
                             "required": ["area"]},
                 handler=_t(_journal_add), title="Write in the diary", method="POST", path=f"{API}/journal", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diary"}),
         MCPTool(name="selfcare_diary_voice", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
-                                                          "diary (area giornata). Offered after the evening recap."),
+                                                          "diary (area day). Offered after the evening recap."),
                 parameters={"type": "object", "properties": {
                     "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Your voice message"},
                     "date": S}, "required": ["audio"]},
@@ -987,7 +986,7 @@ try:
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Products"}),
         MCPTool(name="selfcare_shopping", description=("Self care shopping list: wishes, to buy again (running out, finished in a routine), finished "
-                                                       "with the verdict 'lo ricompro'."), parameters={"type": "object", "properties": {}},
+                                                       "with the verdict 'I would buy it again'."), parameters={"type": "object", "properties": {}},
                 handler=_t(_shopping), title="Shopping list", path=f"{API}/shopping", clients=["telegram", "ui"],
                 telegram_group="selfcare",
                 telegram={"section": "Products", "primary": 5}),

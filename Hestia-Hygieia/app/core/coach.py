@@ -66,7 +66,7 @@ class HygieiaCoach:
         return {"state": h.summary()["text"][:300], "needs": out}
 
     def supplements(self) -> list[str]:
-        """What I take (products of category ``integratore`` in use): information, nothing to log."""
+        """What I take (products of category ``supplement`` in use): information, nothing to log."""
         return [f"{p.get('brand') + ' ' if p.get('brand') else ''}{p['name']}" for p in self.h.items("product")
                 if p.get("category") == "supplement" and p.get("status") == "in_use"]
 

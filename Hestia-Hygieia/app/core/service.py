@@ -1086,7 +1086,7 @@ class Hygieia:
         alerts = [a["text"] for a in self.alerts()[:2]]
         out = {"done": done, "missed": missed, "next": upcoming, "note": " · ".join(alerts)}
         if day == self.today() and not self.told_today(day):
-            # B9: after the evening recap, «Racconta la giornata» opens the spoken diary (a voice note)
+            # B9: after the evening recap, «Tell me about the day» opens the spoken diary (a voice note)
             out["actions"] = [{"label": tr("Tell me about your day"), "command": DIARY_TOOL}]
         return out
 
@@ -1094,8 +1094,8 @@ class Hygieia:
         return any(j.get("date") == day.isoformat() and j.get("area") == DIARY_AREA for j in self.items("journal"))
 
     def journal_voice(self, heard: dict, date_: str | None = None) -> dict:
-        """B9 spoken diary: the transcript of the owner's voice note becomes the day's «giornata» entry
-        (tag ``voce``, the kept recording as ``audio_id``). Reflection reads it like every diary entry."""
+        """B9 spoken diary: the transcript of the owner's voice note becomes the day's «day» entry
+        (tag ``voice``, the kept recording as ``audio_id``). Reflection reads it like every diary entry."""
         text = str((heard or {}).get("text") or "").strip()
         if not text:
             raise Invalid(tr("I heard nothing, try again"))

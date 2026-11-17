@@ -7,7 +7,9 @@
   "corso",
   "largo",
   "vicolo",
-  "strada"
+  "strada",
+  "piazzale",
+  "località"
  ],
  "common.next_week": [
   "prossima",

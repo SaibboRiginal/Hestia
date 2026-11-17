@@ -1,4 +1,4 @@
-"""Hestia-Lares — the house on Home Assistant («Casa», port 19024, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A3).
+"""Hestia-Lares — the house on Home Assistant («Home», port 19024, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A3).
 
 Home Assistant is reached only from here (``LARES_HA_URL`` / ``LARES_HA_TOKEN`` in env). State changes arrive by
 push on the HA websocket; favourites in Archive (``/api/home-store``); the chosen person entity → presence signal
@@ -88,7 +88,7 @@ def add_favorite(body: dict = Body(...)):
 
 @app.get(f"{API}/quick")
 def quick_chips():
-    """Chips of the quick action «Casa» (Home strip, Ctrl+K): the saved quick actions."""
+    """Chips of the quick action «Home» (Home strip, Ctrl+K): the saved quick actions."""
     try:
         return [{"id": f["id"], "label": f["label"], "icon": "home", "hint": f.get("room") or ""}
                 for f in home.favorites()]

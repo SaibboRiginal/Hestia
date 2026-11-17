@@ -7,8 +7,8 @@ Endpoints:
   POST /mcp            → MCP (Streamable HTTP, JSON): initialize · tools/list · tools/call · ping (internal clients)
   POST /mcp/external   → the same MCP for external AIs, behind an access token (WebUI door /mcp forwards here)
   /.well-known/oauth-* · /oauth/* → OAuth 2.1 server (claude.ai / ChatGPT), via the WebUI door; consent on the WebUI
-  /api/mcp/accesses    → accesses management (Accessi page in the WebUI, plugin of this module)
-  /api/mcp/ui/tools    → Comandi page: the tools the WebUI sees, run one (core/ui_tools.py)
+  /api/mcp/accesses    → accesses management (Access page in the WebUI, plugin of this module)
+  /api/mcp/ui/tools    → Commands page: the tools the WebUI sees, run one (core/ui_tools.py)
   GET  /health         → service health
   GET  /api/logs       → log buffer
 """
@@ -50,7 +50,7 @@ SERVICE_BASE_URL = os.getenv("MCP_SERVICE_BASE_URL", "http://hestia_mcp:19013")
 SERVICE_VERSION = os.getenv("MCP_SERVICE_VERSION", "1.0.0")
 UI_DIST = os.getenv("MCP_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 
-# ── WebUI plugin (core module, Sistema section): Comandi & MCP + Accessi AI ──────────────────
+# ── WebUI plugin (core module, System section): Commands & MCP + AI access ──────────────────
 ui = PluginClient("mcp", title="Commands & MCP", icon="command", color="blue", kind="core", dist=UI_DIST,
                   description="Hestia's tools and who can use them from outside (external AIs).",
                   version=SERVICE_VERSION)
@@ -98,7 +98,7 @@ app.include_router(server.router())
 app.include_router(door.router())
 app.include_router(oauth.router())
 app.include_router(ui.router())
-app.include_router(UiTools(server, HUB_API_URL).router())   # Comandi page: /api/mcp/ui/tools…
+app.include_router(UiTools(server, HUB_API_URL).router())   # Commands page: /api/mcp/ui/tools…
 
 
 @app.on_event("startup")

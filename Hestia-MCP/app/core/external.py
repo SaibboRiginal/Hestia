@@ -7,7 +7,7 @@ Every call is logged ``event=mcp_external_call``; a write also leaves a silent H
 The 401 carries ``WWW-Authenticate: Bearer resource_metadata="…"`` so an OAuth client (claude.ai, ChatGPT) finds the
 authorization server (core/oauth.py); OAuth access tokens (``hso_``) pass the same check as ``hst_`` tokens.
 
-``/api/mcp/accesses`` manages accesses (Accessi page, behind the WebUI login). It is not reachable from the door.
+``/api/mcp/accesses`` manages accesses (Access page, behind the WebUI login). It is not reachable from the door.
 """
 from __future__ import annotations
 
@@ -188,7 +188,7 @@ class ExternalDoor:
 
         @router.get("/api/mcp/outbound")
         def outbound():
-            """Servizi esterni: third-party MCP servers Hestia itself would use. Their credentials are Hecate's
+            """External services: third-party MCP servers Hestia itself would use. Their credentials are Hecate's
             (it owns external providers): names and status only, never a value."""
             try:
                 resp = requests.post(f"{self.hub}/route/hecate/api/gateway/outbound/mcp",
