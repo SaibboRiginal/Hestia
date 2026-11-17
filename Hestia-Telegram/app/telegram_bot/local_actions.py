@@ -234,7 +234,7 @@ def tools() -> list[catalog.Tool]:
           handler=lambda c, a: _voice(c, a, on=True)),
         T("voice_off", "Turn off voice replies", "", group="system", hints={"section": "interno"},
           handler=lambda c, a: _voice(c, a, on=False)),
-        T("aiuto", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
+        T("help", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
           handler=_aiuto),
         T("webui_token", "Access to the web page", "A code to enter the web page", group="system",
           hints={"section": "Web page", "primary": 3, "label": "Web access"}, writes=False,

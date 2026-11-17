@@ -396,7 +396,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
 - **Settings** (group Presenza): `enabled`, `idle_after` 5, `nap_after` 45, `sleep_after` 180 (0 = night only),
   `use_sleep_window`, `dnd_default_duration` 120, `tired_quota` 25 %, `tired_degraded` 2, `count_ui_actions`,
   `oracle_context_line`, `states` (advanced).
-- **MCP**: `status`, `nondisturbare`, `disturbami` (Telegram group sistema).
+- **MCP**: `presence_status`, `presence_dnd_on`, `presence_dnd_off` (Telegram group system).
 
 | Method | Path | Description |
 |---|---|---|

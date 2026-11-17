@@ -549,7 +549,7 @@ def main(argv: list[str]) -> int:
         run(COMPOSE + ["logs", "--tail", "120", argv[2]] if len(argv) > 2 else COMPOSE + ["logs", "--tail", "40"])
     elif cmd == "down":
         run(COMPOSE + ["down"])
-    elif cmd in ("help", "aiuto", "-h", "--help"):
+    elif cmd in ("help", "help", "-h", "--help"):
         print(tr(GUIDE))
     else:
         print(tr(GUIDE))

@@ -647,7 +647,7 @@ def flow_presence(ctx: dict) -> None:
     step(A, "«idle» threshold changed from the panel applies at once; the chat wakes up")(idle_live_setting)
 
     def tool_and_context():
-        r = chat("come stai? #tool status {}")
+        r = chat("come stai? #tool presence_status {}")
         need(r["tools"] and r["tools"][0]["ok"], f"status: {r['tools'][:1]}")
         return f"status → {r['tools'][0]['preview'][:120]}"
     step(A, "Tool «status» from the chat (how are you?)")(tool_and_context)

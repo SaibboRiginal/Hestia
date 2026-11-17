@@ -445,12 +445,12 @@ try:
             telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="status",
+            name="presence_status",
             description=(("The assistant's activity state: awake, waiting, nap, deep sleep, do not disturb (+ "
                           "busy/tired…), last interaction, work in progress and effects (what is allowed now). Use it when "
                           "the user asks how you are, what you are doing, how long since you last talked.")),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "status", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "presence_status", "params": kw},
             title="Assistant status", method="GET", path="/api/presence",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
@@ -460,22 +460,22 @@ try:
             telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant", "primary": 1, "label": "Status"}),
         MCPTool(
-            name="nondisturbare",
+            name="presence_dnd_on",
             description=(("Turn on «Do not disturb»: only urgent notifications get through. minutes = duration (empty = default), until = until an ISO 8601 time.")),
             parameters={"type": "object", "properties": {
                 "minutes": {"type": "integer", "description": "Duration in minutes (empty = default)"},
                 "until": {"type": "string", "description": "Until when, ISO 8601"}}},
-            handler=lambda **kw: {"status": "ok", "tool": "nondisturbare", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "presence_dnd_on", "params": kw},
             title="Do not disturb", method="POST", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Confirm in one line that «Do not disturb» is on and until when (dnd_until, local time).",
             telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant", "primary": 2}),
         MCPTool(
-            name="disturbami",
+            name="presence_dnd_off",
             description="Turn off «Do not disturb».",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "disturbami", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "presence_dnd_off", "params": kw},
             title="Remove do not disturb", method="DELETE", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Confirm in one line that «Do not disturb» is off and say the new state (label).",

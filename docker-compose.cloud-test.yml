@@ -27,7 +27,7 @@ services:
         INSTALL_CLAUDE_CODE: "0"
     environment:
       - OLLAMA_URL=http://hestia_fake_llm:11434/api/generate
-      - ORACLE_KEY_GEMINI=${GEMINI_API_KEY:-}   # provider «gemini» key (Oracle a blocchi)
+      - ORACLE_KEY_GEMINI=${GEMINI_API_KEY:-}   # provider «gemini» key (Oracle blocks)
     depends_on:
       fake_llm:
         condition: service_started

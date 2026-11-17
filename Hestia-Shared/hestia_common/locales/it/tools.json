@@ -312,7 +312,7 @@
   },
   "summary": "Crea un nuovo evento nel calendario connesso."
  },
- "disturbami": {
+ "presence_dnd_off": {
   "summary": "Disattiva «Non disturbare»."
  },
  "docs_check": {
@@ -753,7 +753,7 @@
  "models_download": {
   "summary": "Download a local model for the brain, by its Ollama name, e.g."
  },
- "nondisturbare": {
+ "presence_dnd_on": {
   "params": {
    "minutes": "Durata in minuti (vuoto = predefinita)",
    "until": "Fino a quando, ISO 8601"
@@ -967,7 +967,7 @@
  "special_remove": {
   "summary": "Toglie un evento speciale."
  },
- "stato": {
+ "presence_status": {
   "summary": "Stato di attività dell'assistente: sveglio, in attesa, pisolino, sonno profondo, non disturbare, ultima interazione, lavori in corso ed effetti."
  },
  "sync_calendar": {

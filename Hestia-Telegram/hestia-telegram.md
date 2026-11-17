@@ -37,7 +37,7 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 - **Bottom keyboard** (always there): Oggi · Aree · Notifiche · Impostazioni. Tapping a key during a guided action
   leaves it.
 - **`/` menu** (10): `today`, `areas`, `now`, `discover`, `notifications`, `settings`, `new`, `voice`, `status`,
-  `aiuto` (`/now` and `/discover` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
+  `help` (`/now` and `/discover` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
   working (`ALIASES`: `/start`, `/clear`, `/settings`, `/commands`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
 - **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
@@ -93,7 +93,7 @@ A tool result is drawn by Telegram, never sent to Oracle for formatting:
 
 Actions that belong to the client itself, declared like tools (`T(name, title, description, …)`, checked by
 `check_command_contracts`): `new` (new conversation: Oracle `DELETE /api/chat/{session}`), `voice` / `voice_on` /
-`voice_off`, `aiuto`, `webui_token` / `webui_status` / `webui_revoke`, `documents` / `document_pin` /
+`voice_off`, `help`, `webui_token` / `webui_status` / `webui_revoke`, `documents` / `document_pin` /
 `document_delete`, `new_reminder` / `new_activity` (Archive calendar items), `new_alert` (Oracle
 subscription compile), `rating_paused`.
 

@@ -312,7 +312,7 @@
    "calendar_id": "Calendar ID (empty = primary)"
   }
  },
- "disturbami": {
+ "presence_dnd_off": {
   "summary": "Turns off «Do not disturb»."
  },
  "docs_check": {
@@ -753,7 +753,7 @@
  "models_download": {
   "summary": "Download a local model for the brain, by its Ollama name, e.g."
  },
- "nondisturbare": {
+ "presence_dnd_on": {
   "summary": "Turns on «Do not disturb»: only urgent notifications get through.",
   "params": {
    "minutes": "Duration in minutes (empty = default)",
@@ -967,7 +967,7 @@
  "special_remove": {
   "summary": "Removes a special event."
  },
- "stato": {
+ "presence_status": {
   "summary": "Assistant activity state: awake, waiting, nap, deep sleep, do not disturb, last interaction, jobs running and effects."
  },
  "sync_calendar": {

@@ -126,7 +126,7 @@ class TestReachability:
     def test_slash_menu_has_ten_entries(self):
         from telegram_bot.menu import model
         assert [c for c, _ in model.build([], {}).commands] == [
-            "today", "areas", "now", "discover", "notifications", "settings", "new", "voice", "status", "aiuto"]
+            "today", "areas", "now", "discover", "notifications", "settings", "new", "voice", "status", "help"]
 
     def test_adesso_and_scopri_commands_open_their_tools(self, ui_env, monkeypatch):
         import telegram_runtime

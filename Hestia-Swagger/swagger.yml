@@ -5752,7 +5752,7 @@ paths:
   /api/presence/dnd:
     post:
       tags: [Chronos — Presence]
-      summary: Non disturbare on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `nondisturbare`
+      summary: Non disturbare on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `presence_dnd_on`
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -5763,7 +5763,7 @@ paths:
         "200": {description: current state}
     delete:
       tags: [Chronos — Presence]
-      summary: Non disturbare off. MCP tool `disturbami`
+      summary: Non disturbare off. MCP tool `presence_dnd_off`
       servers:
         - url: http://localhost:19007
       responses:

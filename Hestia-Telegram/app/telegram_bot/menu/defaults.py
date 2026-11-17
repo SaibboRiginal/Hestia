@@ -27,16 +27,16 @@ COMMANDS = [
     ("new", "New conversation"),
     ("voice", "Voice replies on or off"),
     ("status", "Assistant status"),
-    ("aiuto", "How to use it"),
+    ("help", "How to use it"),
 ]
 
 # Old command names still typed by habit → new ones.
 ALIASES = {
-    "start": "home", "help": "aiuto", "commands": "areas", "menu": "areas", "clear": "new", "settings": "settings",
+    "start": "home", "commands": "areas", "menu": "areas", "clear": "new", "settings": "settings",
     "set": "settings", "live": "voice_on", "chat": "voice_off", "documents": "documents",
     "create_event": "create_event", "create_reminder": "new_reminder", "create_task": "new_activity",
     "notification_add": "new_alert", "notification_get": "notifications_active", "notification_remove": "notification_disable",
-    "now": "metis_now", "discover": "metis_discover",
+    "now": "metis_now", "discover": "metis_discover", "status": "presence_status",
     "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout.search",
 }
 
