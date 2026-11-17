@@ -1,4 +1,4 @@
-"""Model chains and use cases — *which* models, in order, and *what for* (dossier ``2026-10-19-oracle-a-blocchi``).
+"""Model chains and use cases — *which* models, in order, and *what for* (dossier ``2026-10-19-oracle-blocks``).
 
 A **chain** is a named, reusable ordered list of ``provider/model`` steps, like CSS ``font-family``
 (setting ``oracle.chains``): a call tries the first usable step; a step out of quota (429,
@@ -42,7 +42,7 @@ DEFAULT_CHAINS: dict[str, dict] = {
     "code": {"label": "Code", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
         _step("gemini", "gemini-flash-lite-latest")]},
-    # Cloud only (training dataset review, docs/work/2026-10-30-dataset-allenamento): the owner chose a model stronger
+    # Cloud only (training dataset review, docs/work/2026-10-30-training-dataset): the owner chose a model stronger
     # than the local one; personal data is masked by Metis before the call.
     "cloud": {"label": "Cloud", "steps": [
         _step("gemini", "gemini-flash-latest"), _step("gemini", "gemini-flash-lite-latest")]},

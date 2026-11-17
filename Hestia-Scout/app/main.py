@@ -112,7 +112,7 @@ retrieval_service = _build_retrieval_service()
 worker = ScoutWorker(target_domain=TARGET_DOMAIN)
 
 
-# ── Email by PUSH (SPEC docs/work/2026-10-19-email-push-spese) ─────────────
+# ── Email by PUSH (SPEC docs/work/2026-10-19-email-push-expenses) ─────────────
 # Scout no longer polls: it subscribes to Iris with its mail rules (scout.mail.*). Iris stores each matching
 # mail in Archive (domain real_estate) and calls POST /api/scout/mail; the cycle processes the pending records.
 # The old agenda job "scout.email_cycle" is retired on existing installs.

@@ -1,9 +1,9 @@
 /**
- * <echo-voice> — page «Voice» (dossier docs/work/2026-10-20-modulo-voce §8): how Hestia listens and speaks.
+ * <echo-voice> — page «Voice» (dossier docs/work/2026-10-20-voice-module §8): how Hestia listens and speaks.
  * Tabs: «Try» (record the mic → text, text → voice, with the chain and provider that answered), «Engines»
  * (<echo-blocks>: providers, chains, uses), «Usage» (calls, minutes, characters, cost, errors by use and engine),
  * «Kept audio» (space by class, recordings to listen/download/delete), «Your voice» (<echo-your-voice>:
- * voiceprint + personal dictionary). In «Prova» a wrong transcript can be corrected: the words go to the dictionary.
+ * voiceprint + personal dictionary). In «Test» a wrong transcript can be corrected: the words go to the dictionary.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, bytes, money, playB64, secs, when } from './util';
@@ -72,7 +72,7 @@ export class EchoVoice extends HestiaElement {
     }
   }
 
-  // ── Prova ──────────────────────────────────────────────────────────────
+  // ── Test ───────────────────────────────────────────────────────────────
   private async toggleMic() {
     if (!this.recording) {
       try { await this.rec.start(); this.recording = true; this.heard = null; this.fix = null; }

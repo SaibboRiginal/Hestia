@@ -1,4 +1,4 @@
-"""Web Push for the WebUI's browsers (brainstorm C15, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Web Push for the WebUI's browsers (brainstorm C15, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 A browser subscribes (``POST /api/push/subscribe`` with the PushSubscription JSON); the subscription is a row of
 Archive ``/api/hermes-store`` (kind ``push``). Every notification that rings on the WebUI is also pushed to every

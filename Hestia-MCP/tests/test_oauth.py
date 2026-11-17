@@ -1,4 +1,4 @@
-"""Tests — OAuth 2.1 for claude.ai / ChatGPT connectors (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3)."""
+"""Tests — OAuth 2.1 for claude.ai / ChatGPT connectors (docs/work/2026-10-18-core-modules-and-external-mcp §B3)."""
 from __future__ import annotations
 
 import base64

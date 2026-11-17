@@ -1,5 +1,5 @@
 """Life reflection («Vita»): links between weekly series, topics, dedup, observations only for the recap.
-SPEC docs/work/2026-10-20-riflessione-a-livelli."""
+SPEC docs/work/2026-10-20-layered-reflection."""
 from __future__ import annotations
 
 from datetime import date, timedelta

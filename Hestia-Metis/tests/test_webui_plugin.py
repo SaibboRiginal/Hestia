@@ -1,4 +1,4 @@
-"""Metis WebUI plugin (core module, SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3).
+"""Metis WebUI plugin (core module, SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3).
 
 Markers: unit, api
 """

@@ -1,4 +1,4 @@
-"""Hygieia as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.2).
+"""Hygieia as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-of-every-kind §7.2).
 
 Routines are ``slot`` needs (a day and a part of the day, no reserved time): ``daily`` → every day, ``fixed_days`` →
 those weekdays, ``target`` → what is left of the goal with the routine's spacing; ``as_needed`` and paused routines

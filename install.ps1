@@ -1,7 +1,7 @@
 # Hestia installer for Windows 10/11 (PowerShell 5.1+). Double-click Install-Hestia.cmd, or in PowerShell:
 #   irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1))) -Dir D:\Hestia
-#   ... -Join 123456 -Central 192.168.1.10     this PC becomes a satellite of the central one (code: Sistema -> Macchine)
+#   ... -Join 123456 -Central 192.168.1.10     this PC becomes a satellite of the central one (code: System -> Machines)
 #   ... -Role all|central|satellite
 #
 # Every step checks before acting, retries (2/4/8 s), has a fallback, and records where it got to: running it again
@@ -10,7 +10,7 @@
 # keys HUB_UPSTREAM_URL, HUB_NODE_TOKEN, HUB_NODE_ADDRESS, on -Join or a role change), never deletes data without -Purge. Windows asks for administrator confirmation only for WSL2 and Docker Desktop.
 # ASCII only on purpose: PowerShell 5.1 reads a BOM-less file as ANSI, and a BOM breaks `irm | iex`. Messages here are
 # English with << >> for the quotes (Expand-Text turns them back at print time); translations come from a UTF-8 file.
-# SPEC: docs/work/2026-10-30-setup-un-click
+# SPEC: docs/work/2026-10-30-one-click-setup
 [CmdletBinding()]
 param(
     [string]$Dir = '',                 # empty = where it is launched (see below)
@@ -29,7 +29,7 @@ param(
 )
 
 # No [ValidateSet] in param: with `irm | iex` the block runs as plain statements and an attribute on a variable
-# without a value (Role) fails at once ("potrebbe rendere non valida la variabile Role"). Checked here instead.
+# without a value (Role) fails at once (the Italian Windows message says the Role variable could become invalid). Checked here instead.
 if ($env:HESTIA_INSTALL_DRY_RUN -eq '1') { $DryRun = [switch]$true; $NoBrowser = [switch]$true }   # CI: iex has no arguments
 # Language: messages are English, in the language of Windows (or -Lang / HESTIA_LANG) when Hestia has a catalog for
 # it: Hestia-Shared/hestia_common/locales/<code>/installer.tsv, one line <<English<TAB>translation>>, values as {0} {1}.
@@ -432,7 +432,7 @@ function Select-Version {
     }
 }
 
-# What the guided setup shows (<<Scheda video da 16 GB>>) and uses to suggest models: git-ignored, no personal data.
+# What the guided setup shows (<<16 GB graphics card>>) and uses to suggest models: git-ignored, no personal data.
 function Write-Hardware {
     if ($DryRun) { return }
     $gpu = ''; $vram = 0
@@ -448,7 +448,7 @@ function Write-Hardware {
     Write-Log "hardware gpu=`"$gpu`" vram_gb=$vram role=$($script:Role) lan_ip=$($script:LanIp)"
 }
 
-# -- machines: role, LAN address, link to the central one (docs/work/2026-10-30-setup-un-click 4.0) -------------
+# -- machines: role, LAN address, link to the central one (docs/work/2026-10-30-one-click-setup 4.0) -------------
 function Resolve-Role {
     if ($Join) {
         if ($script:Role -and $script:Role -ne 'satellite') { Stop-Install (T '-Join is only for a satellite.') }

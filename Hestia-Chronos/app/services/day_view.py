@@ -1,6 +1,6 @@
 """What a day looks like from Chronos — the user's calendar plus Hestia's own agenda.
 
-Two users (docs/work/2026-10-20-recap-giornaliero):
+Two users (docs/work/2026-10-20-daily-recap):
 
 - ``recap(day, nxt)``: the agenda piece of the daily recap — the user's events of ``day`` and ``nxt``, assistant
   tasks done / skipped / failed, jobs that failed (a job that works is not news);

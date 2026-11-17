@@ -1,7 +1,7 @@
 /**
  * <hermes-deliveries> — «Deliveries»: what Hermes sent to which client (held / quiet / retracted / superseded),
  * the answers, the active subscriptions and the clients reached. Read-only; the inbox is the Notifications page.
- * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
+ * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, CLIENT_STATE, LEVEL_TONE, hermesStyles, todayStart, when } from './util';

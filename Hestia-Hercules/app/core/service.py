@@ -818,7 +818,7 @@ class Hercules:
                 "last_sync": self.store.cursor}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): sessions and records of ``day``,
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): sessions and records of ``day``,
         a planned day left undone, the workout planned on ``nxt``, the goal hint. Plain data, no LLM."""
         self.store.refresh()
         data = self.data()
@@ -858,7 +858,7 @@ class Hercules:
         return {"done": done, "missed": missed, "next": upcoming, "note": note}
 
 
-    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    # ── reflection signals (docs/work/2026-10-20-layered-reflection) ──────
     def signals(self) -> tuple[list[dict], list[dict]]:
         """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
         from . import signals as signals_engine

@@ -1,4 +1,4 @@
-"""Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6). Markers: unit, api"""
+"""Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-whole-cindy-brainstorm W6). Markers: unit, api"""
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -76,7 +76,7 @@ def test_adesso_habit_at_this_hour_and_day_beats_others():
     for weeks in (1, 2, 3):
         _tap(u, "gym_today", now - timedelta(days=7 * weeks))
     _tap(u, "expenses_add", now - timedelta(days=2, hours=6))
-    out = u.now("telegram", now=now)
+    out = u.right_now("telegram", now=now)
     assert out["items"][0]["tool"] == "gym_today"
     assert out["items"][0]["source"] == "habit" and "Di solito" in out["items"][0]["reason"]
 
@@ -86,7 +86,7 @@ def test_adesso_drops_tools_the_client_cannot_run_and_deletes():
     now = datetime.now(TZ)
     for ref in ("webui_only", "expenses_delete", "sparita"):
         _tap(u, ref, now - timedelta(hours=1))
-    names = [i["tool"] for i in u.now("telegram", now=now)["items"]]
+    names = [i["tool"] for i in u.right_now("telegram", now=now)["items"]]
     assert "webui_only" not in names and "expenses_delete" not in names and "sparita" not in names
 
 
@@ -95,7 +95,7 @@ def test_adesso_agenda_item_with_tool_comes_first():
     u, _ = _usage(FakeAgenda([{"title": "Palestra", "start_at": start, "params": {"tool": "gym_today"}},
                               {"title": "Lontano", "start_at": (datetime.now(timezone.utc) + timedelta(hours=9))
                                .isoformat(), "params": {"tool": "weather_today"}}]))
-    items = u.now("telegram")["items"]
+    items = u.right_now("telegram")["items"]
     assert items[0]["tool"] == "gym_today" and items[0]["source"] == "agenda"
     assert "weather_today" not in [i["tool"] for i in items]
 
@@ -105,14 +105,14 @@ def test_ideas_are_validated_stored_and_shown():
                            '{"tool":"inventato","reason":"x"},{"tool":"expenses_delete","reason":"no"}]')
     assert u.refresh_ideas("telegram") == {"ideas": 1}
     assert hub.prompts[0][1]["use_case"] == "metis.now"
-    items = u.now("telegram")["items"]
+    items = u.right_now("telegram")["items"]
     assert [(i["tool"], i["source"], i["reason"]) for i in items] == [("diary_write", "idea", "Fine giornata")]
 
 
 def test_ideas_fail_soft_when_the_model_is_away():
     u, _ = _usage(answer=None)
     assert u.refresh_ideas("telegram") == {"ideas": 0}
-    assert u.now("telegram")["items"] == []
+    assert u.right_now("telegram")["items"] == []
 
 
 def test_scopri_lists_unused_one_per_module_first():
@@ -125,7 +125,7 @@ def test_scopri_lists_unused_one_per_module_first():
     assert "gym_today" not in names and "expenses_delete" not in names and "webui_only" not in names
     assert set(names) == {"expenses_add", "weather_today", "diary_write"}
     assert all(i["reason"] == "Non l'hai mai usata" for i in out["items"])
-    # people read areas, never module names (dossier 2026-10-29-revisione-e-test-frontend §6.1)
+    # people read areas, never module names (dossier 2026-10-29-frontend-review-and-tests §6.1)
     by_tool = {i["tool"]: i for i in out["items"]}
     assert by_tool["expenses_add"]["area_label"] == "Expenses"
     assert by_tool["diary_write"]["area_label"] == "Self care"
@@ -180,7 +180,7 @@ def test_endpoints_and_tool_cards():
 
 
 def test_recent_lists_last_taps_newest_first_within_hours():
-    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-hestia-viva F3)."""
+    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-living-hestia F3)."""
     u, _ = _usage()
     now = datetime.now(timezone.utc)
     u.record([{"client": "telegram", "kind": "tool", "ref": "gym_today", "at": (now - timedelta(hours=30)).isoformat()},

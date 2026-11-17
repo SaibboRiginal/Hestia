@@ -1,4 +1,4 @@
-"""Psyche — how the owner feels over time («Mood», dossier docs/work/2026-10-30-diario-umore).
+"""Psyche — how the owner feels over time («Mood», dossier docs/work/2026-10-30-mood-diary).
 
 A check-in is one row ``mood``: mood 1–5 (required), energy and stress 1–5 (optional), labels and causes from a
 closed vocabulary, a note, and — when it came from chat — the owner's own words (``quote``). Rows come from a tap

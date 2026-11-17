@@ -1,5 +1,5 @@
 """One-time migration of the old per-use-case model settings (``oracle.models.*``, before 2026-10-19) into
-chains + use case overrides (dossier ``2026-10-19-oracle-a-blocchi``).
+chains + use case overrides (dossier ``2026-10-19-oracle-blocks``).
 
 Runs when settings load: only if Marko changed an old value and neither ``oracle.chains`` nor
 ``oracle.usecases`` was stored yet (so it runs once). Each changed use case becomes a chain

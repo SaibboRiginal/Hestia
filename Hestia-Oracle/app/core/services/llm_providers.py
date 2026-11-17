@@ -1,4 +1,4 @@
-"""Named LLM providers — *where* models live (dossier ``docs/work/2026-10-19-oracle-a-blocchi``).
+"""Named LLM providers — *where* models live (dossier ``docs/work/2026-10-19-oracle-blocks``).
 
 A provider is a named instance of a **standard** (type): ``ollama``, ``openai`` (any OpenAI-compatible server:
 llama-server, LM Studio, DeepSeek, OpenRouter, Groq…), ``anthropic`` (Claude API, DeepSeek's Anthropic

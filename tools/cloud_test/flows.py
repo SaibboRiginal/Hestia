@@ -10,7 +10,7 @@ Doors used, like the clients do:
 - notifications through the WebUI inbox (/api/webui/notifications → Hermes) and its answer buttons
 - pages through Chromium (Playwright) on the real WebUI, desk and phone
 Every run creates its own data with a «Banco» prefix; nothing is deleted from the volumes.
-Output: .cloud-test/flows.md + .cloud-test/flows/*.png. SPEC: docs/work/2026-10-19-prove-reali-banco/SPEC.md
+Output: .cloud-test/flows.md + .cloud-test/flows/*.png. SPEC: docs/work/2026-10-19-bench-real-runs/SPEC.md
 """
 from __future__ import annotations
 
@@ -1080,7 +1080,7 @@ def flow_transfer(ctx: dict) -> None:
     step(A, "Page Settings → Export and import in the browser")(page)
 
 
-# ── New modules (dossier 2026-10-24-tutto-brainstorm-cindy W5–W7) ────────────
+# ── New modules (dossier 2026-10-24-whole-cindy-brainstorm W5–W7) ────────────
 
 def flow_life(ctx: dict) -> None:
     A = "New modules: Deadlines, People, Nutrition, Documents, Look, Images, Home"

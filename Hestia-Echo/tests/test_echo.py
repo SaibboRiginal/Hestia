@@ -550,7 +550,7 @@ def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
 
 
 def test_setup_hear_tries_that_provider_only(world):
-    """Round 7: «Prova» of listening in the setup uses the provider and model picked, not the saved chain."""
+    """Round 7: «Test» of listening in the setup uses the provider and model picked, not the saved chain."""
     out = world["echo"].setup_hear({"provider": "due", "model": "m2", "audio_b64": b64(tone(1)), "mime_type": "audio/wav"})
     assert out == {"ok": True, "text": "ciao da due", "detail": ""}
     assert world["engine"].calls[-1][:3] == ("t", "due", "m2")
@@ -573,7 +573,7 @@ def test_mute_voice_is_an_error_not_a_silent_play(world):
     assert audio.peak(tone(0.3)) > 0.25 and audio.peak(b"not a wav") == 0.0
 
 
-# ── The chosen name in the voice (docs/work/2026-11-16-nome-ovunque) ─────────────────────────────────────────
+# ── The chosen name in the voice (docs/work/2026-11-16-name-everywhere) ─────────────────────────────────────────
 
 @pytest.mark.unit
 def test_sample_says_the_chosen_name_and_gender():

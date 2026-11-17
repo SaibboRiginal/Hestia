@@ -1,4 +1,4 @@
-"""Hestia-Aphrodite — how the clients look («Look», port 19023, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
+"""Hestia-Aphrodite — how the clients look («Look», port 19023, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A2).
 
 Profiles, pets and per-client choices in Archive (``/api/appearance-store``); today's special moments pushed by the
 calendar (capability ``special_moment_endpoint``); pictures asked to the image module with a callback; clients read

@@ -1,7 +1,7 @@
 """Hestia-Plutus — expenses (domain ``finance``): PayPal mails by push, bank statements (Hype PDF), quick entry,
 categories that learn, budgets, recurring payments, statistics.
 
-SPEC docs/work/2026-10-19-email-push-spese §4. Data in Archive (``/api/finance-store``, PDFs in ``/api/blobs``),
+SPEC docs/work/2026-10-19-email-push-expenses §4. Data in Archive (``/api/finance-store``, PDFs in ``/api/blobs``),
 mails pushed by Iris (subscription ``plutus:paypal``), settings in Themis, schedules in the agenda (Chronos),
 notifications through Hermes, UI as a plugin bundle (``ui/``), assistant tools over MCP, text understanding via
 Oracle only when the deterministic parsers cannot.
@@ -319,7 +319,7 @@ def export():
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     return recap.piece("plutus", tr("Expenses"), icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
 
 

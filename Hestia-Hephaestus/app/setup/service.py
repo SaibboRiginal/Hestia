@@ -1,8 +1,8 @@
-"""Guided setup «Benvenuto» — the orchestration behind the WebUI screens (docs/work/2026-10-30-setup-un-click §4.2).
+"""Guided setup «Benvenuto» — the orchestration behind the WebUI screens (docs/work/2026-10-30-one-click-setup §4.2).
 
 Hephaestus owns it because it already holds the repo (``/repo``, where the ``.env`` files live) and the Docker socket
 (to re-create a container with a new secret). It never decides anything: every value comes from the person on the
-setup screen. The brain itself is Oracle's (catalog, «Prova», chains, model downloads): this file only forwards.
+setup screen. The brain itself is Oracle's (catalog, «Test», chains, model downloads): this file only forwards.
 
 State (``data/setup.json``): when the setup was completed, the steps left for later. Hardware: what the installer
 detected (``/repo/.hestia-install/hardware.json``, git-ignored), so the screen can say «16 GB graphics card».

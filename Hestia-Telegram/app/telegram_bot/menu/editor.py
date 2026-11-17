@@ -1,4 +1,4 @@
-"""Settings › Menu: change the menus from Telegram (docs/work/2026-10-23-telegram-da-zero §5.11).
+"""Settings › Menu: change the menus from Telegram (docs/work/2026-10-23-telegram-from-scratch §5.11).
 
 Every change edits the user's layout (Themis ``telegram.menu.layout``), is saved at once and the card is redrawn.
 Callback data ``m:…``: ``root`` · ``a:<area>`` · ``p:<area>`` primary list · ``pu|pd|px:<area>:<i>`` up/down/remove ·

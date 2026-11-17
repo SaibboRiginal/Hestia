@@ -1,4 +1,4 @@
-"""Hestia-Psyche — how the owner feels over time («Mood», port 19029, dossier docs/work/2026-10-30-diario-umore).
+"""Hestia-Psyche — how the owner feels over time («Mood», port 19029, dossier docs/work/2026-10-30-mood-diary).
 
 Data in Archive (``/api/mood-store``), check-ins from a tap, a tool or Oracle's quiet capture from chat
 (capability ``mood_capture_endpoint``: no confirmation, merged within ``psyche.capture.merge_minutes``, undone by

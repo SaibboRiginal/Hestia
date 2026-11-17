@@ -1,4 +1,4 @@
-"""Garmin Connect (B10, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4): fully automatic, or nothing.
+"""Garmin Connect (B10, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4): fully automatic, or nothing.
 
 Garmin has no official API for personal use: the ``garminconnect`` library logs in like the Garmin Connect app and
 keeps its tokens (``garmin_tokens.json``, garminconnect ≥ 0.3) in ``HECATE_GARMIN_TOKENS`` (default ``/code/data/garmin``, a data folder, never in

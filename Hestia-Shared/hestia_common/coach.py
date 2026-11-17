@@ -1,4 +1,4 @@
-"""Coach contract — every domain module tells the weekly planner what it needs (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §4).
+"""Coach contract — every domain module tells the weekly planner what it needs (SPEC docs/work/2026-10-20-coach-of-every-kind §4).
 
 A module becomes a coach with one router and the Hub tag ``coach``:
 

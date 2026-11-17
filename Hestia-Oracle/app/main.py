@@ -107,7 +107,7 @@ _oracle_mcp_tools = [
         clients=["telegram", "ui"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Documents", "primary": 3}),
-    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7) ─────────
+    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-whole-cindy-brainstorm W7) ─────────
     MCPTool(
         name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_tag, **kw),
@@ -122,7 +122,7 @@ _oracle_mcp_tools = [
         clients=["ui", "telegram"], response_mode="direct",
         telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
-    # ── downloads of the brain's models (docs/work/2026-10-30-setup-un-click §4.3) ──
+    # ── downloads of the brain's models (docs/work/2026-10-30-one-click-setup §4.3) ──
     MCPTool(
         name="models_downloads", description=("The brain's model downloads: what is downloading, done or failed, "
                                               "with progress and time left."),
@@ -222,7 +222,7 @@ from core.services import quoted_context  # noqa: E402
 app.include_router(_oracle_settings.settings.router())
 
 # ── WebUI plugin (core module, System section): Brain ──────────────────────
-# Inside view of Oracle (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): recent turns, LLM use per
+# Inside view of Oracle (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2): recent turns, LLM use per
 # use case/model, tokens/cost per day, Claude Code. Reads under /api/ui/ (Oracle's routes are spread over prefixes).
 UI_DIST = os.getenv("ORACLE_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 ui = PluginClient("oracle", title="Assistant", icon="brain", color="purple", kind="core", dist=UI_DIST,
@@ -291,7 +291,7 @@ def ui_code():
     return {"status": "ok", **status(), **runs()}
 
 
-# ── Brain → Models and Usage tabs (dossier docs/work/2026-10-19-oracle-a-blocchi §D-E) ──────────────────
+# ── Brain → Models and Usage tabs (dossier docs/work/2026-10-19-oracle-blocks §D-E) ──────────────────
 _MODEL_PARTS = {"providers": _oracle_settings.PROVIDERS_KEY, "chains": _oracle_settings.CHAINS_KEY,
                 "usecases": _oracle_settings.USECASES_KEY}
 
@@ -378,7 +378,7 @@ def llm_setup_catalog(vram_gb: float = 0, ram_gb: float = 0, hosts: str = ""):
 
 @app.post("/api/llm/setup/test")
 def llm_setup_test(req: SetupTest):
-    """«Prova»: one tiny real call to a provider → ``{ok, detail}`` in plain words."""
+    """«Test»: one tiny real call to a provider → ``{ok, detail}`` in plain words."""
     from core.services import llm_setup
     return {"status": "ok", **llm_setup.test(req.provider, req.model)}
 
@@ -497,7 +497,7 @@ def _chat_route(*args, **kwargs):
 
 
 def _forget_if_excluded(session_id: str, body: dict, out: Any) -> Any:
-    """«Don't use for training» (docs/work/2026-10-30-dataset-allenamento): Metis drops the saved turns."""
+    """«Don't use for training» (docs/work/2026-10-30-training-dataset): Metis drops the saved turns."""
     if is_yes(body.get("training_off")):
         sid = str(session_id or (out.get("session_id") if isinstance(out, dict) else "") or "")
         turn_trace.forget_session(engine._hub, sid)
@@ -643,7 +643,7 @@ def llm_usecase_status_endpoint(use_case: str):
     return {"status": "ok", **usecase_status(use_case)}
 
 
-# ── External agent MCP bridge (dossier 2026-10-19-oracle-a-blocchi §D): loopback only, one token per turn ─────
+# ── External agent MCP bridge (dossier 2026-10-19-oracle-blocks §D): loopback only, one token per turn ─────
 def _bridge_guard(request: Request) -> None:
     host = (request.client.host if request.client else "") or ""
     if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
@@ -785,10 +785,10 @@ class ChatRequest(BaseModel):
     # turn where the model decides how (oracle-offline v3 C). `message` is ignored when this is set.
     queued: Optional[list[dict]] = None
     # The earlier message the user replied to or quoted ({text, from: assistant|user|notification, at, ref}):
-    # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-da-zero §5.10).
+    # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-from-scratch §5.10).
     quoted: Optional[dict] = None
     # The turn was heard and is answered aloud (WebUI «Talk», Telegram voice note with spoken replies): the answer
-    # follows the voice contract (docs/work/2026-11-06-hestia-viva F1).
+    # follows the voice contract (docs/work/2026-11-06-living-hestia F1).
     spoken: bool = False
 
 
@@ -1042,7 +1042,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
             # A written or spoken message answers the assistant's open question (it is in the history).
             engine.close_open_questions(current_session)
             if req.save_history is not False:
-                # The message she wrote first goes in this conversation, before his (docs/work/2026-11-16-nome-ovunque).
+                # The message she wrote first goes in this conversation, before his (docs/work/2026-11-16-name-everywhere).
                 from core.services import opener_history
                 opener_history.absorb(engine._hub, _chat_route, current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
@@ -1155,7 +1155,7 @@ async def chat_document_endpoint(
             default_message = "Summarise and analyse this document."
         if not message.strip():  # no words from the owner: the answer follows the language setting
             from hestia_common import identity as _identity
-            default_message += f" Answer in {_identity.LANGUAGES.get(_prompt_config.owner_language(), 'Italian')}."
+            default_message += f" Answer in {_identity.LANGUAGES.get(_prompt_config.owner_language(), 'English')}."
 
         return StreamingResponse(
             engine.analyze_document(
@@ -1283,7 +1283,7 @@ class ChatReactionRequest(BaseModel):
 @app.post("/api/chat/reaction")
 def chat_reaction(req: ChatReactionRequest):
     """The owner reacted with an emoji to one of Hestia's messages (WebUI, Telegram): one short history line so the
-    next turn knows it (docs/work/2026-11-06-hestia-viva F4). No LLM call."""
+    next turn knows it (docs/work/2026-11-06-living-hestia F4). No LLM call."""
     emoji = str(req.emoji or "").strip()[:8]
     quoted = " ".join(str(req.text or "").split())[:120]
     if not req.session_id.strip():
@@ -1310,7 +1310,7 @@ class ChatOpenerRequest(BaseModel):
 @app.post("/api/chat/opener")
 def chat_opener(req: ChatOpenerRequest):
     """She writes first: one or two sentences in the persona from the reasons Athena brings, what Oracle remembers
-    of the owner and the awareness lines (docs/work/2026-11-12-identita-e-proattivita). Oracle only writes: Athena
+    of the owner and the awareness lines (docs/work/2026-11-12-identity-and-proactivity). Oracle only writes: Athena
     decides when, Hermes delivers. ``{"text": ""}`` = nothing true to say now."""
     from core.services import opener
     if _no_usable_model():

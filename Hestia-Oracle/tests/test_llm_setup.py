@@ -1,4 +1,4 @@
-"""Tests — guided setup «Cervello» (docs/work/2026-10-30-setup-un-click §4.2). No network: providers mocked."""
+"""Tests — guided setup «Cervello» (docs/work/2026-10-30-one-click-setup §4.2). No network: providers mocked."""
 from __future__ import annotations
 
 import pytest
@@ -137,7 +137,7 @@ class _ListResp:
 
 
 def test_test_reads_the_model_list_and_spends_no_tokens(monkeypatch):
-    """Marko 2026-11-06: «Prova» must cost (almost) nothing and never ask the key twice: the list is the check."""
+    """Marko 2026-11-06: «Test» must cost (almost) nothing and never ask the key twice: the list is the check."""
     _keys(monkeypatch, "gemini")
     import requests
     import agents.universal_agent as ua
@@ -228,7 +228,7 @@ def test_plan_uses_the_chosen_program_cloud_models_and_embedding(monkeypatch):
 
 
 def test_apply_replaces_a_retired_default_with_a_listed_model(monkeypatch):
-    """Key already saved, no «Prova»: the chain must not start with an alias Google no longer lists."""
+    """Key already saved, no «Test»: the chain must not start with an alias Google no longer lists."""
     _keys(monkeypatch, "gemini")
     stored = {}
     monkeypatch.setattr(oracle_settings.settings, "put", lambda key, value, **kw: stored.__setitem__(key, value) or True)

@@ -1,4 +1,4 @@
-"""Running an action (docs/work/2026-10-23-telegram-da-zero §5.5): ask what the tool needs, in words and with buttons,
+"""Running an action (docs/work/2026-10-23-telegram-from-scratch §5.5): ask what the tool needs, in words and with buttons,
 confirm when it writes, run it, show the result in the same message.
 
 One flow per chat, persisted in ``store`` (survives a restart). Callback data:
@@ -428,7 +428,7 @@ def on_file(chat_id, message) -> bool:
 
 def _file_of(message) -> tuple[str, str, str]:
     if message.content_type == "photo":
-        return message.photo[-1].file_id, "image/jpeg", "foto.jpg"
+        return message.photo[-1].file_id, "image/jpeg", "photo.jpg"
     if message.content_type == "voice":
         return message.voice.file_id, (message.voice.mime_type or "audio/ogg"), "voice_note.ogg"
     if message.content_type == "audio":

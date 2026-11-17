@@ -51,7 +51,7 @@ public class HubClient
     }
 
     // ── Tools: Hestia's one MCP server (Hestia-MCP /mcp through Hub) ──────────
-    // Every client lists and runs tools the same way (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+    // Every client lists and runs tools the same way (docs/work/2026-10-18-core-modules-and-external-mcp §B2).
     private long _mcpId;
 
     /// <summary>MCP tools this client may see; Hestia details in <c>_meta.hestia</c>. Empty when unreachable.</summary>

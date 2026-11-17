@@ -2,7 +2,7 @@
  * <chronos-agenda> — "Agenda di Hestia": the assistant's own calendar (month / week / day / list), sidebar with mini
  * calendar, layers and filters, popover details, editor, drag & drop, quick add in words, "From a module…", module
  * logs around an occurrence, ICS file. Keys: T today · M/W/D/L views · N new · ←/→. Ported from the WebUI's
- * built-in calendar page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno P6); state in cal/store.ts.
+ * built-in calendar page (SPEC docs/work/2026-10-18-core-modules-and-external-mcp P6); state in cal/store.ts.
  */
 import { HestiaElement, css, html, nothing, tr } from '@hestia/webui-sdk';
 import { CalStore } from './cal/store';

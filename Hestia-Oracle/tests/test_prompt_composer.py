@@ -1,4 +1,4 @@
-"""One prompt for every situation (docs/work/2026-11-12-prompt-ogni-situazione).
+"""One prompt for every situation (docs/work/2026-11-12-prompt-for-every-situation).
 
 The same building blocks reach the model whatever the mode (Rapida, auto, Pensata, CoT), the path (small talk
 shortcut, agent loop, external agent, another AI, a text a module asks for) and the client: who the assistant is,
@@ -146,7 +146,7 @@ def test_generate_voice_flag_reaches_the_chain(monkeypatch):
 @pytest.mark.unit
 def test_texts_she_writes_on_her_own_follow_the_language_setting(engine, monkeypatch):  # noqa: F811
     """Notifications, recaps and formatted results use the owner's language setting, never the data's language;
-    the chat keeps following the language of the owner's last message (docs/work/2026-11-14-lingua-personale)."""
+    the chat keeps following the language of the owner's last message (docs/work/2026-11-14-personal-language)."""
     monkeypatch.setattr(prompt_config, "_identity", lambda: {"assistant": "Hestia", "gender": "she",
                                                             "owner_name": "", "owner": "", "language": "en"})
     assert "Write in English" in prompt_config.prompt("module_voice_instruction")

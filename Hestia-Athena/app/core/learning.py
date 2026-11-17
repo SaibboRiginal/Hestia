@@ -1,4 +1,4 @@
-"""What the assistant learned, with undo (Cindy 8 + 18, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""What the assistant learned, with undo (Cindy 8 + 18, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 - **Learning log**: every change the nightly consolidation makes to the memory (new fact, fact retired by a
   conflict, reinforced pattern, weight decay) is a row of Archive ``/api/athena-store`` (kind ``learning``) with

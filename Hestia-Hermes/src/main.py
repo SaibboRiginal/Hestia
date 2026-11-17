@@ -303,7 +303,7 @@ def health():
 
 app.include_router(create_log_control_router("hestia_hermes"))
 
-# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): notifications of the day, answers still awaited.
+# Daily recap piece (docs/work/2026-10-20-daily-recap): notifications of the day, answers still awaited.
 app.include_router(recap.recap_router(
     "hermes", lambda day, nxt: recap.piece("hermes", "Notifications", icon="bell", emoji="🔔", order=800,
                                          **service.notifications.recap(day.isoformat()))))

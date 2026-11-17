@@ -100,7 +100,7 @@ export class ChatService {
         mode,
         model,
         ...(context ? { context } : {}),
-        // Live mode «Talk»: the assistant answers as speech, short (docs/work/2026-11-06-hestia-viva F1).
+        // Live mode «Talk»: the assistant answers as speech, short (docs/work/2026-11-06-living-hestia F1).
         ...(spoken ? { spoken: true } : {}),
       });
     } catch (err: any) {

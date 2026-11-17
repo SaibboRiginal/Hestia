@@ -342,7 +342,7 @@ class ListingPatch(BaseModel):
 
 
 def recap_facts(views: list[dict], day) -> dict:
-    """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): listings that arrived on ``day``
+    """Facts for the daily recap (docs/work/2026-10-20-daily-recap): listings that arrived on ``day``
     (local date), the first ones named. Viewings live in the calendar, so they come from the agenda piece."""
     new = []
     for v in views:

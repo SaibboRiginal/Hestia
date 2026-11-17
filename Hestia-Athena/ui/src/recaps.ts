@@ -1,5 +1,5 @@
 /**
- * <athena-recaps> — "Recap": the daily recaps (docs/work/2026-10-20-recap-giornaliero). Each one shows the text that
+ * <athena-recaps> — "Recap": the daily recaps (docs/work/2026-10-20-daily-recap). Each one shows the text that
  * was delivered and, on demand, the facts of every area it was written from (done / missed / next), with the
  * area's stroke icon. «Recap now» composes the evening one now. The time is an agenda job: moved in the calendar.
  * Reads GET /api/athena/recaps; POST /api/athena/recap/now.

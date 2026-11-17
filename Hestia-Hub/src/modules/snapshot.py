@@ -3,7 +3,7 @@
 Single responsibility: save / load the registry as one JSON file in Hub's own volume.
 A cache of Hub's own table, not business data (that lives in Archive, which itself is found
 through Hub). Services keep re-registering every 60 s: the snapshot only covers the gap.
-SPEC ``docs/work/2026-10-20-hub-registro-persistente``.
+SPEC ``docs/work/2026-10-20-hub-persistent-registry``.
 """
 from __future__ import annotations
 

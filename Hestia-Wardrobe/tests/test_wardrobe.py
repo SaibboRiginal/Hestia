@@ -182,7 +182,7 @@ def test_outfit_mark_once_per_day_and_undo(wd):
     first = wd.mark_worn({"outfit_id": o["id"]})
     again = wd.mark_worn({"outfit_id": o["id"]})
     assert again.get("already") and wd.wears()["total"] == 1
-    assert first["label"].endswith("worn")
+    assert first["label"].endswith("indossato")
     assert wd.piece_detail(tee["id"])["wear_count"] == 1
     wd.quick_undo(o["id"])
     assert wd.wears()["total"] == 0
@@ -313,7 +313,7 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
     assert wd._local_day("2026-10-18") == "2026-10-18"
 
 
-# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+# ── daily recap piece (docs/work/2026-10-20-daily-recap) ─────────────
 @pytest.mark.unit
 def test_recap_lists_what_was_worn(wd):
     tee, jeans, *_ = _basics(wd)
@@ -468,7 +468,7 @@ def test_api_writes_ask_signals_and_run_syncs(api, monkeypatch):
     assert "/api/wardrobe/signals/run" in str(job)
 
 
-# ── photo sent in chat «aggiungi al guardaroba» (docs/work/2026-10-30-cose-aperte) ──
+# ── photo sent in chat «aggiungi al guardaroba» (docs/work/2026-10-30-open-items) ──
 def _chat_photo(wd, answer: str) -> str:
     """Oracle's vision answers ``answer``; returns the blob id of a photo sent in chat."""
     orig = wd.hub.ok

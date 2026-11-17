@@ -1,4 +1,4 @@
-"""Questions in notifications (docs/work/2026-10-30-domande-nelle-notifiche): ``_question`` like the chat card."""
+"""Questions in notifications (docs/work/2026-10-30-questions-in-notifications): ``_question`` like the chat card."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

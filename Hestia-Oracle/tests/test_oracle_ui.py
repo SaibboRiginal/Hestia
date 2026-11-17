@@ -1,4 +1,4 @@
-"""Oracle inside view (WebUI plugin «Cervello», SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2):
+"""Oracle inside view (WebUI plugin «Cervello», SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2):
 manifest, /api/ui/activity · /api/ui/stats · /api/ui/code, daily LLM totals, recent turns, Claude Code runs."""
 from __future__ import annotations
 
@@ -154,7 +154,7 @@ class TestUiApi:
         assert caps["ui_manifest"].endswith("/api/ui/manifest") and caps["ui_version"]
 
 
-# ── Cervello → Modelli / Uso (dossier 2026-10-19-oracle-a-blocchi) ─────────────
+# ── Cervello → Modelli / Uso (dossier 2026-10-19-oracle-blocks) ─────────────
 
 @pytest.mark.api
 class TestModelsTab:

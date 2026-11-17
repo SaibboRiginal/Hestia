@@ -1,4 +1,4 @@
-"""Voice on Telegram (dossier docs/work/2026-10-20-modulo-voce §7): voice notes become chat messages, replies can
+"""Voice on Telegram (dossier docs/work/2026-10-20-voice-module §7): voice notes become chat messages, replies can
 be listened to, and ``/live`` makes Hestia answer voice notes by voice.
 
 Telegram never touches audio engines: the voice module (Echo) listens and speaks through the Hub

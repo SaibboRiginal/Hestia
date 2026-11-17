@@ -1,4 +1,4 @@
-"""Conversation list, tags, pinned (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7) on in-memory SQLite."""
+"""Conversation list, tags, pinned (Cindy 26, dossier 2026-10-24-whole-cindy-brainstorm W7) on in-memory SQLite."""
 from __future__ import annotations
 
 import sys
@@ -73,7 +73,7 @@ def test_search_dates_tags_and_pinned_first(ctx):
     got = ctx.get("/api/chat/sessions/list", params={"since": "2026-10-22T00:00:00+00:00", "until": "2026-10-24T00:00:00+00:00"}).json()
     assert [i["session_id"] for i in got["items"]] == ["b"]
 
-    r = ctx.put("/api/chat/sessions/a/meta", json={"add_tags": [{"name": "Salute", "color": "green"}, "work"], "pinned": True}).json()
+    r = ctx.put("/api/chat/sessions/a/meta", json={"add_tags": [{"name": "Health", "color": "green"}, "work"], "pinned": True}).json()
     assert r["before"]["tags"] == [] and [t["name"] for t in r["tags"]] == ["health", "work"]
     assert r["tags"][0]["color"] == "green"
     items = ctx.get("/api/chat/sessions/list").json()["items"]

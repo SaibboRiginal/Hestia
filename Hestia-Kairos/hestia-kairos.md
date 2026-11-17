@@ -4,7 +4,7 @@
 due day, amount, recurrence, lead time and a practical advice
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19028 · Dossier: `docs/work/2026-10-24-tutto-brainstorm-cindy/` (W5, brainstorm B7)
+**Port:** 19028 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm B7)
 
 ---
 
@@ -20,7 +20,7 @@ due day, amount, recurrence, lead time and a practical advice
   change, marked done or cancelled with it.
 - **Mail by push** (Iris subscription `kairos:mail`, subject words = Themis setting `kairos.mail.words`): a mail
   that talks about a deadline **and** names a clear future date becomes a `proposed` deadline and a Hermes card
-  «New deadline?» with «Add» / «No». Nothing enters the calendar before the owner confirms. Each mail once.
+  «New deadline?» with «Add» / «no». Nothing enters the calendar before the owner confirms. Each mail once.
 - Agenda job `kairos.daily` (08:30): one notice at the lead time and one on the day, with «Done» and
   «In 3 days» (snooze: reminds again after the pause); a stage is notified once per due day.
 - Recap piece «Deadlines» (next 7 days). Export/import section `deadlines`.
@@ -43,13 +43,13 @@ Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, ne
 
 `Hestia-Kairos/tests/test_kairos.py` and `tests/test_webui_plugin.py` (FakeArchive + fake agenda, no network).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Scadenze widget calls `markEmpty()` when there is no deadline, so the Home cell shrinks.
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: The Scadenze widget calls `markEmpty()` when there is no deadline, so the Home cell shrinks.
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the advice prompt are English; the advice is written in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the advice prompt are English; the advice is written in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

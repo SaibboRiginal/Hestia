@@ -1307,7 +1307,7 @@ class TestEndToEndTelegramCalendarFlow:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Brain mode esterna (dossier 2026-10-19-oracle-a-blocchi §D)
+# Brain mode esterna (dossier 2026-10-19-oracle-blocks §D)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 

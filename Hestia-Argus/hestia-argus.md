@@ -65,10 +65,10 @@ Hub Monitor Logs / Docker Tails │
 
 ## WebUI plugin (core, *Sistema*)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Action history icons: detected alert, status arrows-v, alert bell, remediation wrench, recheck pulse, recovered check-circle; a failed action shows x-circle (danger).
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Action history icons: detected alert, status arrows-v, alert bell, remediation wrench, recheck pulse, recovered check-circle; a failed action shows x-circle (danger).
 
 Argus ships its "inside view" on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`, order
-110; SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A6). Manifest: `app/core/ui_plugin.py` (its
+110; SPEC `docs/work/2026-10-18-core-modules-and-external-mcp` §A2/A6). Manifest: `app/core/ui_plugin.py` (its
 `ui_manifest`/`ui_version` go in the Hub registration capabilities). Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in
 the Docker image's Node stage to `/ui/dist/webui/argus.js` (`ARGUS_UI_DIST`, outside `/code` so the dev mount does
 not hide it). `api_prefix` = `/api/argus/` (no duplicate endpoints).
@@ -171,7 +171,7 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v2.0), code `app/services/oracle_wat
 `recheck/oracle` (no loop of its own).
 - Oracle unhealthy or missing from the Hub registry for `argus.oracle.grace` s (60) → presence signal
   `oracle.offline = true` (meta `reason` unreachable/unhealthy/unregistered, `since`; refreshed every 10 min, TTL 30
-  min) → Chronos overlay «⏳ Non disponibile» (effect `chat.reply = queued`, proactive work deferred).
+  min) → Chronos overlay «⏳ Unavailable» (effect `chat.reply = queued`, proactive work deferred).
 - Same moment, one Hermes notice with fixed text (event `service.action_required`, the system subscription every
   client always has, unlike the opt-in `service.health` alerts; `replaces: "system.oracle"`, one live notice). Oracle back → signal
   cleared and the notice closed (`closes: "system.oracle"`) with «✅ Di nuovo disponibile dopo N min». Chronos then asks
@@ -182,23 +182,23 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v2.0), code `app/services/oracle_wat
   `event=oracle_online`.
 - Oracle's `/health` carries `models` (`ok` · `limited` · `none`, v3 E). `none` (no model left in any chain) counts as
   offline with reason `no_models`. `limited` (only fallback models answer) for the grace time → signal
-  `oracle.limited` (overlay «Limited»: heavy work deferred, short answers) and one notice «🔋 Limitato…»
-  (`replaces: "system.oracle"`); back to `ok` → signal cleared and «✅ Di nuovo al completo» (`closes`).
+  `oracle.limited` (overlay «Limited»: heavy work deferred, short answers) and one notice «🔋 Limited…»
+  (`replaces: "system.oracle"`); back to `ok` → signal cleared and «✅ Fully back» (`closes`).
 
 ## Immune system (v3 B, `app/services/immune.py`)
 
 Each monitor cycle calls `immune.observe(service, healthy)`. A module down for `argus.repair.restart_after` s (120) is
 restarted through the Hub on Hephaestus (`POST /api/hephaestus/restart`, Docker socket), then again after double the
 wait, up to `argus.repair.max_restarts` (3). Never acts on argus, hephaestus or hub; a module Forge is deploying is
-skipped (does not use up a try). After the last try: one Hermes notice «Una parte di Hestia non riparte da sola»
+skipped (does not use up a try). After the last try: one Hermes notice «A part of Hestia does not restart by itself»
 (key `system.repair.<svc>`); back healthy → «Back in order» closes it. Restarts run in a thread, logs
 `event=immune_restart`, `event=immune_gave_up`.
 
-## Journal (v3 F, «Log» in the Salute page)
+## Journal (v3 F, «Logs» in the Salute page)
 
 The incidents of `health_history` (down, restart, restart result, gave up, recovered) are the journal of notable
 events. They persist in Archive (`/api/argus-store`, kind `incident`; the last 200 closed kept) and are reloaded at
-startup, so the «Log» survives restarts. Hermes notices stay for what needs you; the journal is the history,
+startup, so the «Logs» survives restarts. Hermes notices stay for what needs you; the journal is the history,
 shown with an icon per action (`/api/argus/incidents?limit=` up to 200).
 
 ## Forge fix proposals
@@ -239,13 +239,13 @@ recovered → entry completed and recovery notice. Visible/movable/cancellable f
 Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Tired». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Unavailable».
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
 
-## Redaction (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 19)
+## Redaction (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 19)
 Log samples sent to Oracle for analysis and the context of Forge proposals pass through
 `hestia_common.redact.redact` first: keys, tokens, emails, phone numbers, chat ids, home paths become placeholders.
 
-## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - Every `argus.performance.every_cycles` cycles a sample runs in its own thread: per module CPU % (delta between
   `stats(one_shot)` samples), memory (usage − inactive file cache), start time, restarts (read-only Docker socket),
   the `/health` response time (`HealthReport.ms`), the Hub round trip; at most hourly the data size from Archive
@@ -257,15 +257,15 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
 - API: `GET /api/argus/performance` (last sample + thresholds) · `GET /api/argus/performance/history?service=&hours=`.
   Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Health and logs» / «Repairs»).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Health»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «System health not reachable».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Health»; recheck rows say «Ricontrolla <name for people>» with «not answering / answering slowly / unknown state» instead of the raw error; agenda template title «Recheck {service}»; widget offline text «System health not reachable».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and answer instructions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and answer instructions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

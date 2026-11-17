@@ -253,7 +253,7 @@ def test_quick_chips(hy):
 
 def test_options_and_find(hy):
     hy.add_option("actives", {"label": "Acido tranexamico", "family": ""})
-    assert any(a["value"] == "tranexamic_acid" for a in hy.options("actives"))
+    assert any(a["value"] == "acido_tranexamico" for a in hy.options("actives"))
     hy.save_product({"name": "Siero Vitamina C", "brand": "Garnier"})
     assert hy.find_product("vitamina c")["name"] == "Siero Vitamina C"
     assert catalog.product_key("CeraVe", "Crème") == "cerave_creme"
@@ -265,7 +265,7 @@ def test_store_unavailable(hy):
         hy.save_product({"name": "x"})
 
 
-# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ──────────────
+# ── daily recap piece (docs/work/2026-10-20-daily-recap) ──────────────
 def test_recap_daily_routine_due_then_done(hy):
     r, *_ = _evening(hy)
     today = hy.today()
@@ -285,7 +285,7 @@ def test_recap_skipped_routine(hy):
     assert facts["missed"] == [{"text": "Saltate: Viso sera", "tone": "warning"}]
 
 
-# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.2) ──────
+# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-of-every-kind §7.2) ──────
 def test_coach_needs_slots_conflicts_and_supplements(hy):
     from hestia_common.coach import validate_need
     from app.core.coach import HygieiaCoach

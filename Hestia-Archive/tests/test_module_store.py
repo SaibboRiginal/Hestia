@@ -1,6 +1,6 @@
 """Generic module stores (finance-store, iris-store): LWW writes, seq cursor, tombstones — in-memory SQLite.
 
-Postgres ``nextval`` is emulated with a SQLite function. SPEC docs/work/2026-10-19-email-push-spese §4.
+Postgres ``nextval`` is emulated with a SQLite function. SPEC docs/work/2026-10-19-email-push-expenses §4.
 """
 from __future__ import annotations
 

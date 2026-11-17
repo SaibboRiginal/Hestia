@@ -1,4 +1,4 @@
-"""Weather on the calendar page (dossier docs/work/2026-10-20-meteo-hecate §3.7).
+"""Weather on the calendar page (dossier docs/work/2026-10-20-weather-hecate §3.7).
 
 For the visible range (only the next ``HORIZON_DAYS`` days: past days and far days get nothing) the page gets:
 - ``days``: Home's weather per day (min–max, condition, rain hours) — the chip next to the day number;

@@ -1,4 +1,4 @@
-"""Taps → Metis usage log (docs/work/2026-10-24-tutto-brainstorm-cindy W6): each action started from a button or a
+"""Taps → Metis usage log (docs/work/2026-10-24-whole-cindy-brainstorm W6): each action started from a button or a
 command is pushed in the background, so «Now» learns what is used when. Never blocks or fails the action."""
 from __future__ import annotations
 

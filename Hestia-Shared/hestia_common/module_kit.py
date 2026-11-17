@@ -1,4 +1,4 @@
-"""Module kit: the common skeleton of a Hestia domain module (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5).
+"""Module kit: the common skeleton of a Hestia domain module (dossier docs/work/2026-10-24-whole-cindy-brainstorm W5).
 
 The older modules (Hercules, Hygieia, Wardrobe, Plutus) each carry a copy of the same pieces: Hub client, Archive
 mirror, error handlers, MCP router with REST paths, Hub registration with keepalive, warm-up. The modules born in

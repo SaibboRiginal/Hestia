@@ -1,4 +1,4 @@
-"""Actions that belong to the Telegram client itself (docs/work/2026-10-23-telegram-da-zero §5.2): new conversation,
+"""Actions that belong to the Telegram client itself (docs/work/2026-10-23-telegram-from-scratch §5.2): new conversation,
 voice answers, help, WebUI access, saved documents, quick reminder/task, a new automatic alert.
 
 They are ``catalog.Tool`` like every module tool (same flow, same confirm, same result card), with a ``handler``
@@ -230,9 +230,9 @@ def tools() -> list[catalog.Tool]:
           hints={"section": "Chat"}, writes=True, handler=_new_chat),
         T("voice", "Voice replies", "Turns voice replies to voice messages on or off", group="system",
           hints={"section": "Chat"}, handler=_voice),
-        T("voice_on", "Turn on voice replies", "", group="system", hints={"section": "interno"},
+        T("voice_on", "Turn on voice replies", "", group="system", hints={"section": "internal"},
           handler=lambda c, a: _voice(c, a, on=True)),
-        T("voice_off", "Turn off voice replies", "", group="system", hints={"section": "interno"},
+        T("voice_off", "Turn off voice replies", "", group="system", hints={"section": "internal"},
           handler=lambda c, a: _voice(c, a, on=False)),
         T("help", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
           handler=_aiuto),

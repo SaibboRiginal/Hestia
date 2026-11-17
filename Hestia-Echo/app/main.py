@@ -1,6 +1,6 @@
 """Hestia-Echo — the voice of Hestia: speech → text (listen) and text → speech (voice), files and streams in blocks.
 
-SPEC docs/work/2026-10-20-modulo-voce. Built like Oracle's blocks: named providers (Themis ``echo.providers``,
+SPEC docs/work/2026-10-20-voice-module. Built like Oracle's blocks: named providers (Themis ``echo.providers``,
 keys only in env ``ECHO_KEY_<NAME>``), reusable chains with a direction, uses declared by callers, an external
 mode where Echo is only the door (proxy to a speech engine). Echo converts sound ↔ text and nothing else: it never
 calls Oracle and never decides what to answer. Audio is kept in Archive (blobs + ``echo-store``) by the rule
@@ -99,7 +99,7 @@ settings.declare([
     setting("echo.audio.generated_days", "Days for generated audio", "int", 30, group="Audio kept",
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
-    # ── Your voice (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
+    # ── Your voice (Cindy 10 + 17, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4) ──
     setting("echo.voiceprint.threshold", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
@@ -116,7 +116,7 @@ settings.declare([
 hub = Hub(HUB_API_URL)
 
 # Voice models (Whisper, Piper, Kokoro, the voiceprint) go through the shared download manager: progress, resume,
-# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-setup-un-click §4.3).
+# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-one-click-setup §4.3).
 downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voice")
 downloads.source("whisper", _standards.whisper_download)
 _standards.DOWNLOADS = downloads
@@ -531,7 +531,7 @@ def voice_setup_catalog(hosts: str = ""):
 
 @app.post(f"{API}/setup/test")
 def voice_setup_test(body: dict = Body(...)):
-    """«Prova» of a speech service: its list read with the key, nothing spent."""
+    """«Test» of a speech service: its list read with the key, nothing spent."""
     from .core import voice_setup
     return {"status": "ok", **voice_setup.check(blocks, str(body.get("provider") or ""), echo.language())}
 
@@ -544,7 +544,7 @@ def voice_setup_preview(body: dict = Body(...)):
 
 @app.post(f"{API}/setup/hear")
 def voice_setup_hear(body: dict = Body(...)):
-    """«Prova» of listening in the setup: the recording heard by that provider and model, before saving."""
+    """«Test» of listening in the setup: the recording heard by that provider and model, before saving."""
     return {"status": "ok", **echo.setup_hear(body)}
 
 

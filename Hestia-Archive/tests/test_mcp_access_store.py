@@ -1,4 +1,4 @@
-"""MCP access store — tokens and OAuth (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B6).
+"""MCP access store — tokens and OAuth (docs/work/2026-10-18-core-modules-and-external-mcp §B6).
 
 Runs the real router on an in-memory SQLite (JSONB rendered as JSON): only the mcp_* tables are created.
 """

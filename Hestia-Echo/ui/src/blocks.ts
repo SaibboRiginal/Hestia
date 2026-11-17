@@ -1,5 +1,5 @@
 /**
- * <echo-blocks> — Voice, tab «Engines» (dossier docs/work/2026-10-20-modulo-voce §5): named providers (keys stay in
+ * <echo-blocks> — Voice, tab «Engines» (dossier docs/work/2026-10-20-voice-module §5): named providers (keys stay in
  * .env as ECHO_KEY_<NAME>), chains of listen or voice (order = fallback, quota state per step), every use declared by
  * a module → chain / mode. Built like Oracle's «Models». Saves through Themis (PUT /api/voice/blocks/<part>).
  */

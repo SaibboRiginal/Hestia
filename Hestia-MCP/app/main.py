@@ -1,6 +1,6 @@
 """Hestia-MCP — Hestia's one MCP server.
 
-Every client lists and calls tools here, the same way (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2):
+Every client lists and calls tools here, the same way (docs/work/2026-10-18-core-modules-and-external-mcp §B2):
 Oracle, Telegram, the WebUI through Hub; external AIs through the WebUI door.
 
 Endpoints:

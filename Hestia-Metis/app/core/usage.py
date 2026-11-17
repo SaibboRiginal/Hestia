@@ -1,4 +1,4 @@
-"""Usage log, «Now» and «Discover» (brainstorm C11 + C14, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6).
+"""Usage log, «Now» and «Discover» (brainstorm C11 + C14, dossier docs/work/2026-10-24-whole-cindy-brainstorm W6).
 
 Clients push **taps** (`POST /api/metis/usage`: a tool run, a page opened, a quick action) into Archive
 ``metis-store`` (kind ``tap``). From them, with no model:
@@ -85,7 +85,7 @@ class Usage:
         return sorted(out, key=lambda t: t["at"])
 
     def recent(self, limit: int = 5, hours: int = 12) -> dict:
-        """The owner's last taps, newest first (Oracle's awareness lines, docs/work/2026-11-06-hestia-viva F3)."""
+        """The owner's last taps, newest first (Oracle's awareness lines, docs/work/2026-11-06-living-hestia F3)."""
         taps = self.taps(days=max(1, (int(hours) + 23) // 24))
         since = datetime.now(timezone.utc) - timedelta(hours=max(1, int(hours)))
         rows = [t for t in reversed(taps) if t["at"] >= since][:max(1, min(int(limit), 20))]
@@ -162,7 +162,7 @@ class Usage:
                         "tool": ((occ.get("params") or {}).get("tool") or "")})
         return out
 
-    def now(self, client: str = "telegram", now: datetime | None = None, limit: int = 6) -> dict:
+    def right_now(self, client: str = "telegram", now: datetime | None = None, limit: int = 6) -> dict:
         if client not in CLIENTS:
             raise Invalid("client: " + ", ".join(CLIENTS))
         now = (now or self.now()).astimezone(self.tz)

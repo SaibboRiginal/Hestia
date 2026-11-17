@@ -6,7 +6,7 @@ mime and its text (or the user's message) contains the module's words, Oracle st
 (``owner_module=chat``) and hands the blob id to the module (``POST /route/<svc>/<path>``). The module answers
 ``{handled, text}``; that text is the chat reply and goes in the history, so the next turn («yes») reaches the module's
 tools with the ids the reply carries. No match or any failure → the normal document analysis (nothing is lost).
-SPEC docs/work/2026-10-19-email-push-spese §4 (P4).
+SPEC docs/work/2026-10-19-email-push-expenses §4 (P4).
 """
 from __future__ import annotations
 

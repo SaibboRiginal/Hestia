@@ -1,4 +1,4 @@
-"""Daily recap dossier (docs/work/2026-10-20-recap-giornaliero) on Chronos: the agenda piece (§3.3), flexible jobs
+"""Daily recap dossier (docs/work/2026-10-20-daily-recap) on Chronos: the agenda piece (§3.3), flexible jobs
 around the user's events (§3.8) and standard activities restored in one click (§3.9). Archive mocked in memory."""
 from __future__ import annotations
 

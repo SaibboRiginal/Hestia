@@ -1,4 +1,4 @@
-"""Reflection signals (docs/work/2026-10-20-riflessione-a-livelli): signals, weekly metrics, context topic and the
+"""Reflection signals (docs/work/2026-10-20-layered-reflection): signals, weekly metrics, context topic and the
 agenda endpoint, over the fake Archive store of ``test_hygieia``. No network: the signals transport is mocked.
 
 Markers: unit, api

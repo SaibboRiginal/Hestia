@@ -1,4 +1,4 @@
-"""Feed wearable.daily (Garmin via Hecate, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4 B10): outdoor
+"""Feed wearable.daily (Garmin via Hecate, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4 B10): outdoor
 activities logged once (also after a delete), morning check-in from the watch only without a hand-made one.
 Markers: unit
 """

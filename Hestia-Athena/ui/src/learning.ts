@@ -3,7 +3,7 @@
  * the owner's own sentence it comes from and «Undo»; the clean-up proposals still waiting («Apply» / «Keep»);
  * «Review what you know about me» asks for new proposals (they also arrive as notifications).
  * Reads GET /api/athena/learning, GET /api/athena/memory/proposals; POST /learning/{id}/undo, /memory/review,
- * /memory/proposals/{id}/apply|dismiss. Dossier 2026-10-24-tutto-brainstorm-cindy Cindy 8 + 18 (W3) + W7.
+ * /memory/proposals/{id}/apply|dismiss. Dossier 2026-10-24-whole-cindy-brainstorm Cindy 8 + 18 (W3) + W7.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, when } from './util';

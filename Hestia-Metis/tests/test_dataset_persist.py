@@ -1,5 +1,5 @@
 """Built datasets survive a restart: saved under METIS_DATA_DIR/datasets and read back on first use
-(docs/work/2026-10-30-cose-aperte)."""
+(docs/work/2026-10-30-open-items)."""
 from __future__ import annotations
 
 import sys

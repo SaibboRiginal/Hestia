@@ -1,4 +1,4 @@
-"""Reply / quote = context (docs/work/2026-10-23-telegram-da-zero §5.10)."""
+"""Reply / quote = context (docs/work/2026-10-23-telegram-from-scratch §5.10)."""
 from __future__ import annotations
 
 import pytest

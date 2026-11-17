@@ -1,4 +1,4 @@
-"""Stdio MCP bridge for the external agent (dossier ``docs/work/2026-10-19-oracle-a-blocchi`` §D).
+"""Stdio MCP bridge for the external agent (dossier ``docs/work/2026-10-19-oracle-blocks`` §D).
 
 Started by the agent CLI (Claude Code ``--mcp-config``, Codex ``-c mcp_servers.hestia``) as
 ``python -m core.services.mcp_bridge`` with ``HESTIA_BRIDGE_URL`` = Oracle's loopback address for this turn

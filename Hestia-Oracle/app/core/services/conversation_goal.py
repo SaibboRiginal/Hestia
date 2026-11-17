@@ -1,4 +1,4 @@
-"""Goal for a conversation (Cindy idea 23, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Goal for a conversation (Cindy idea 23, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 The owner fixes a goal in a chat («goal: sort out October's expense categories», or the model calls
 ``goal_set`` when he asks for a long job). After answering each of his messages the assistant works on the goal for a

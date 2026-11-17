@@ -1,4 +1,4 @@
-"""Mail watcher — the ONE place that looks at the mailbox for new mail (SPEC docs/work/2026-10-19-email-push-spese).
+"""Mail watcher — the ONE place that looks at the mailbox for new mail (SPEC docs/work/2026-10-19-email-push-expenses).
 
 Light check: Gmail history API from the last ``historyId`` (one tiny call with an empty answer when nothing
 arrived; no search, no body). New messages → headers only → Iris ``/api/email/incoming`` (via Hub), which

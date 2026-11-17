@@ -1,4 +1,4 @@
-"""Emoji reactions both ways (docs/work/2026-11-06-hestia-viva F4). Markers: unit."""
+"""Emoji reactions both ways (docs/work/2026-11-06-living-hestia F4). Markers: unit."""
 from __future__ import annotations
 
 import json

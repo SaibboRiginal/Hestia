@@ -104,7 +104,7 @@ def test_bundle_dir_outside_mounted_code(tmp_path, monkeypatch):
 
 
 def test_recap_facts_new_listings_of_the_day():
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     views = [ui_api.to_view(r) for r in _records()]
     day = datetime.fromisoformat(views[0]["created_at"]).astimezone().date()
     facts = ui_api.recap_facts(views, day)

@@ -1,6 +1,6 @@
 """Hub "inside view" — WebUI plugin (core module, System section) and the read model behind it.
 
-SPEC ``docs/work/2026-10-18-moduli-core-e-mcp-esterno`` §A2 (Hub: *Map*, widget *Online services*).
+SPEC ``docs/work/2026-10-18-core-modules-and-external-mcp`` §A2 (Hub: *Map*, widget *Online services*).
 Hub is the catalog builder itself and never registers with itself, so:
 - its manifest is folded into the catalog in-process (``discover_catalog(..., local_manifests=...)``);
 - calls routed to ``hub`` (``/api/route/hub/...``: bundle files, ``/api/ui/*`` reads) are answered in-process

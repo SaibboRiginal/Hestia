@@ -1,4 +1,4 @@
-"""Setup mode: link the owner with the one-time code of the guided setup (docs/work/2026-10-30-setup-un-click §4.2).
+"""Setup mode: link the owner with the one-time code of the guided setup (docs/work/2026-10-30-one-click-setup §4.2).
 
 While no owner is configured (``ALLOWED_USER_ID`` empty) the bot is private to nobody and answers only to a
 six-digit code: it hands the code and the sender's id to Hephaestus, which checks the code shown on the setup

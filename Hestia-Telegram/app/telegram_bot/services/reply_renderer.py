@@ -10,7 +10,7 @@ One Oracle stream → ONE answer message (split only when > 4096 chars):
     │ [ Listen ]  [ 👍 ] [ 👎 ]                               │  one row (voice_service)
     └────────────────────────────────────────────────────────┘
 
-Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-da-zero §7).
+Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-from-scratch §7).
 Notices are the standard Oracle `notice` packets.
 """
 from __future__ import annotations

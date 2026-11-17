@@ -820,7 +820,7 @@ def create_from_template(owner: str, template_id: str, *, values: dict, start_at
                   params={"template": template_id, "values": values}, created_by="user")
 
 
-# ── Runs view (WebUI plugin «Runs», SPEC 2026-10-18-moduli-core-e-mcp-esterno §A2) ──────────
+# ── Runs view (WebUI plugin «Runs», SPEC 2026-10-18-core-modules-and-external-mcp §A2) ──────────
 RUN_STATUSES = ("ok", "failed", "skipped")
 
 

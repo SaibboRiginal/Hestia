@@ -1,4 +1,4 @@
-"""Results without the model (docs/work/2026-10-23-telegram-da-zero §6): a tool's JSON → one card, same layout
+"""Results without the model (docs/work/2026-10-23-telegram-from-scratch §6): a tool's JSON → one card, same layout
 every time.
 
 1. The module's optional ``display`` block (``hestia_common.display``): title, subtitle, lines, items, actions.

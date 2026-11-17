@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Fixed texts of the shell and the plugins in the owner's language (dossier docs/work/2026-11-14-backend-inglese):
+/// Fixed texts of the shell and the plugins in the owner's language (dossier docs/work/2026-11-14-english-backend):
 /// browser → WebUI → Hub → Themis /api/settings/i18n → {language, messages (English source → translation)}.
 /// Public like /auth/access: the login page needs it too and it carries no personal data.
 /// </summary>

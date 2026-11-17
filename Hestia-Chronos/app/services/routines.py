@@ -1,4 +1,4 @@
-"""Routines in words (Cindy 7 + 27 + 28, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Routines in words (Cindy 7 + 27 + 28, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 A routine is **an agenda rule with a written instruction**, not a new timer:
 
@@ -17,7 +17,7 @@ Automatic **and** manual: «Run now» = the agenda's run now. The owner's edits 
 
 A **question** of the turn (the assistant's ``ask_user``, or a module confirmation such as a setting proposal) cannot
 wait for a chat: it goes out as a Hermes notification that asks (``_question``, dossier
-docs/work/2026-10-30-domande-nelle-notifiche), always, whatever ``deliver`` says. The answer comes back to
+docs/work/2026-10-30-questions-in-notifications), always, whatever ``deliver`` says. The answer comes back to
 ``POST /api/routines/{key}/answer``: Chronos hands it to the assistant; an ``ask_user`` answer is the next turn of the
 same routine session (in the background), delivered like a run.
 """

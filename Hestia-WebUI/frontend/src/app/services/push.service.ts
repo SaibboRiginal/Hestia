@@ -5,7 +5,7 @@ import { tr } from '../core/i18n';
 export type PushState = 'unsupported' | 'unavailable' | 'denied' | 'off' | 'on' | 'busy';
 
 /**
- * Web Push on this browser (dossier 2026-10-24-tutto-brainstorm-cindy C15, W7): Hermes delivers notifications to
+ * Web Push on this browser (dossier 2026-10-24-whole-cindy-brainstorm C15, W7): Hermes delivers notifications to
  * the subscribed browsers like to any client; the service worker (`public/sw.js`) shows them and opens their link.
  * Keys and subscriptions go through the Hermes plugin door (`/api/ui/push/key`, `/api/ui/push/subscribe`).
  * `unavailable` = Hermes has no VAPID keys (Web Push not set up on the server).

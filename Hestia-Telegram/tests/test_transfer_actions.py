@@ -1,4 +1,4 @@
-"""Esporta / importa / ripristina from Telegram (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F)."""
+"""Esporta / importa / ripristina from Telegram (dossier docs/work/2026-10-24-whole-cindy-brainstorm F)."""
 from __future__ import annotations
 
 import base64

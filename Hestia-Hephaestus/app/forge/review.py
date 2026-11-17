@@ -1,4 +1,4 @@
-"""Automatic review and team plan for Forge tasks (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""Automatic review and team plan for Forge tasks (dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 - **Reviewer** (Cindy 3): after Forge's own tests, a fresh model with no memory of the work and no tools (Oracle
   ``/api/llm/generate``, use case ``forge.review``) gets only labelled evidence: the request, the acceptance

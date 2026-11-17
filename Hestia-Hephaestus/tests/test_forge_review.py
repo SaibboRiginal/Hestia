@@ -1,4 +1,4 @@
-"""Forge automatic review, team plan and Claude-limit wait (docs/work/2026-10-24-tutto-brainstorm-cindy W3:
+"""Forge automatic review, team plan and Claude-limit wait (docs/work/2026-10-24-whole-cindy-brainstorm W3:
 Cindy 3, 15, 31). Git, tests and the model are stubbed."""
 from __future__ import annotations
 
@@ -106,8 +106,8 @@ def _task(forge, **extra):
 def test_reviewer_parses_issues_and_counts_blocking(monkeypatch):
     r = forge_review.ForgeReviewer("http://hub/api")
     monkeypatch.setattr(r, "_generate", lambda uc, prompt: (
-        'Ecco: {"verdict": "problemi", "issues": [{"priority": "alta", "file": "a.py", "problem": "manca il test"},'
-        '{"priority": "bassa", "file": "b.py", "problem": "nome"}, {"problem": ""}]}'))
+        'Ecco: {"verdict": "problems", "issues": [{"priority": "high", "file": "a.py", "problem": "manca il test"},'
+        '{"priority": "low", "file": "b.py", "problem": "nome"}, {"problem": ""}]}'))
     out = r.review(request="r", acceptance="a", diff="d", tests="t", summary="s")
     assert out["verdict"] == "problems" and out["blocking"] == 1 and len(out["issues"]) == 2
 

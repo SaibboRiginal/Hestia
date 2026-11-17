@@ -1,4 +1,4 @@
-"""Special events (brainstorm B6, dossier docs/work/2026-10-24-tutto-brainstorm-cindy §2.4).
+"""Special events (brainstorm B6, dossier docs/work/2026-10-24-whole-cindy-brainstorm §2.4).
 
 A special moment is an assistant-agenda ``event`` (owner ``chronos``, key ``special.<…>``) with
 ``params.special = {kind: birthday | anniversary | custom, lead_days, person_id?, person?, note?}``; birthdays and

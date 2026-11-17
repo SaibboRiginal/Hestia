@@ -4,7 +4,7 @@ import { MetisService, DiscoverItem } from '../../services/metis.service';
 import { tr, TrPipe } from '../../core/i18n';
 
 /**
- * «Discover» (dossier 2026-10-24-tutto-brainstorm-cindy C14, W7): the things the assistant can do that you never or rarely
+ * «Discover» (dossier 2026-10-24-whole-cindy-brainstorm C14, W7): the things the assistant can do that you never or rarely
  * use, what each does and «Try» to open it (GET /api/metis/discover — usage stats against the tool catalog).
  */
 @Component({

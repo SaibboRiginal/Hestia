@@ -1,5 +1,5 @@
 """«Parla con te»: when she may write first, the reasons, Oracle writes, Hermes delivers, nothing repeated.
-SPEC docs/work/2026-11-12-identita-e-proattivita. Markers: unit, api."""
+SPEC docs/work/2026-11-12-identity-and-proactivity. Markers: unit, api."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

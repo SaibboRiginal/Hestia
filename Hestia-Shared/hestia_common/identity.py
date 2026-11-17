@@ -1,4 +1,4 @@
-"""Who the assistant is and whose it is (docs/work/2026-11-12-identita-e-proattivita).
+"""Who the assistant is and whose it is (docs/work/2026-11-12-identity-and-proactivity).
 
 Five personal settings owned by Themis (``settings_client.PERSONAL``): the owner's name, how to call him, the
 assistant's name (default «Hestia»), whether it is a she or a he, and the language of what she writes on her own. Every prompt that speaks to the owner is
@@ -20,12 +20,14 @@ The product, the modules and the repository keep the name Hestia: only the voice
 
 Texts people read (buttons, notices, help) use the same two tokens where they speak of the assistant as a person
 («Ask {assistant}», «Hi, I'm {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
-``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the
+``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-name-everywhere). Where «Hestia» is the
 app (version, files, installation, the system as a whole) it stays «Hestia».
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any, Callable
 
 OWNER_NAME = "themis.personal.owner_name"
@@ -34,9 +36,26 @@ ASSISTANT_NAME = "themis.personal.assistant_name"
 ASSISTANT_GENDER = "themis.personal.assistant_gender"
 LANGUAGE = "themis.personal.language"
 
-# Language code → its English name, as the hidden prompt text says it. Same codes as the setting's options.
-# Adding a language: docs/LANGUAGES.md («A new language»).
-LANGUAGES = {"it": "Italian", "en": "English"}
+
+
+def _known_languages() -> tuple[dict[str, str], dict[str, str]]:
+    """Every language with a ``locales/<code>/language.json`` (English first): code → English name, code → own name.
+    Adding a language = adding its folder (docs/LANGUAGES.md «A new language»), no code change."""
+    english: dict[str, str] = {}
+    native: dict[str, str] = {}
+    root = Path(__file__).resolve().parent / "locales"
+    for d in sorted((p for p in root.iterdir() if p.is_dir()), key=lambda p: (p.name != "en", p.name)):
+        try:
+            data = json.loads((d / "language.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        english[d.name] = str(data.get("english") or d.name)
+        native[d.name] = str(data.get("native") or english[d.name])
+    return english or {"en": "English"}, native or {"en": "English"}
+
+
+# Language code → its English name, as the hidden prompt text says it (the setting's options use the own name).
+LANGUAGES, NATIVE_NAMES = _known_languages()
 DEFAULT_LANGUAGE = "it"
 
 DEFAULT_NAME = "Hestia"

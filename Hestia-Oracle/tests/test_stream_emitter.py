@@ -232,7 +232,7 @@ class TestEmitToolSummary:
 
 @pytest.mark.unit
 class TestCleanReasoning:
-    """Regression: a «Ragionamento» block with nothing in it (docs/work/2026-11-11-ragionamento-vuoto)."""
+    """Regression: a «Ragionamento» block with nothing in it (docs/work/2026-11-11-empty-reasoning)."""
 
     @pytest.mark.parametrize("raw", ["", None, "   \n ", "<think>\n\n</think>", "<thinking></thinking>",
                                      "<｜end▁of▁thinking｜>"])

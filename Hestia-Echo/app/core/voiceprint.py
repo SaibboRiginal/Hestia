@@ -1,4 +1,4 @@
-"""«Recognise my voice» (Cindy 10, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4).
+"""«Recognise my voice» (Cindy 10, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4).
 
 The owner records ~10 s of speech once (page «Voice» or Telegram «Record my voice»): Echo computes a speaker
 embedding and keeps it in Archive (``echo-store`` row ``kind=voiceprint``, the recording as a kept ``recording``).

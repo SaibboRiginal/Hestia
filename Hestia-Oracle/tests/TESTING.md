@@ -380,7 +380,7 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ## §13 Unit Tests — /api/llm/generate endpoint (chains, 2026-10-19)
 
-- ✅ The use case's chain answers; a declared module use case uses its own chain; undeclared → «Uso generale» (listed)
+- ✅ The use case's chain answers; a declared module use case uses its own chain; undeclared → «General use» (listed)
 - ✅ An OpenAI-compatible step without key is still tried (local servers need none)
 - ✅ Every step failing → 503 naming the chain and each step
 - ✅ Missing/blank prompt → 400 (HTTPException must not be swallowed by the generic handler)
@@ -395,7 +395,7 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 - Document pipeline modules (analyser, archiver, extractor, rag, local_models) have lower coverage — tests for these require file fixtures and are lower priority than core chat/agent functionality.
 - **2026-06-18**: Oracle Enhancement Plan P1-P3 features added with 20 new unit tests (test_plan_features.py). AgentFactory now validates required MODEL_USECASE_* env vars at startup. TRACE log level registered in conftest for all tests.
 
-## §Oracle a blocchi (2026-10-19, dossier docs/work/2026-10-19-oracle-a-blocchi)
+## §Oracle a blocchi (2026-10-19, dossier docs/work/2026-10-19-oracle-blocks)
 
 - `test_llm_chains.py`: providers (key env names, availability, unknown type dropped, no key in views, Ollama address
   from infra env, Anthropic-compatible address), quota (detection, reset from Retry-After/retryDelay/midnight
@@ -410,7 +410,7 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 - `test_oracle_ui.py::TestModelsTab`, `test_oracle_api.py`: Modelli view without keys, writes through Themis with
   validation, quota reset of one pair; `/api/llm/usage` reads the Archive store.
 
-## §Finestra del modello locale (2026-11-12, dossier docs/work/2026-11-12-contesto-e-scorciatoie)
+## §Finestra del modello locale (2026-11-12, dossier docs/work/2026-11-12-context-and-shortcuts)
 
 - `test_local_window.py`: the window is read from Ollama `/api/ps` and never overridden on «automatica» (no
   `num_ctx` sent), `:latest` is the same model, a bare install (4096) gets the 8192 floor without reload ping-pong and

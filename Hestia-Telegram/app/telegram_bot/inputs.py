@@ -1,4 +1,4 @@
-"""What an action needs, read from the tool's own JSON Schema (docs/work/2026-10-23-telegram-da-zero §5.5).
+"""What an action needs, read from the tool's own JSON Schema (docs/work/2026-10-23-telegram-from-scratch §5.5).
 
 Pure functions: a schema property becomes a ``Field`` with a label in words, a kind (choice, yes/no, number, date,
 date and time, time, list, file, text), quick values for buttons and a parser for what the user types. Nothing is
@@ -29,7 +29,7 @@ LABELS = {
     "occasion": "Occasion", "season": "Season", "color": "Colour", "colors": "Colours", "brand": "Brand",
     "size": "Size", "price": "Price", "times": "How many times", "per": "Every", "time_minutes": "Minutes available",
     "provider": "Calendar", "event_id": "Event", "ref": "Voice", "occurrence": "Which time", "to": "A",
-    "id": "Which", "momento": "Moment", "level": "Level", "contains": "Contains", "candidate_model": "Model",
+    "id": "Which", "moment": "Moment", "level": "Level", "contains": "Contains", "candidate_model": "Model",
     "dataset_name": "Dataset", "adapter_name": "Adapter name", "branch": "alt::Branch", "summary": "Summary",
     "paused": "Paused", "dry_run": "Test only", "minutes_dnd": "Minutes", "code": "Code", "type": "Type",
     "recurrence": "Repetition", "favorite": "Favourite", "rating": "Rating", "areas": "Zones", "actives": "pl::Active",

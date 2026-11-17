@@ -1,4 +1,4 @@
-"""Conversations: list, search, coloured tags, pinned (Cindy 26, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W7).
+"""Conversations: list, search, coloured tags, pinned (Cindy 26, dossier docs/work/2026-10-24-whole-cindy-brainstorm W7).
 
 Archive keeps the messages (``chat_history``) and what the owner sets on a conversation (``chat_session_meta``);
 Oracle only passes through (WebUI history sidebar via ``/api/ui/chats*``, tools ``chat_tag`` / ``chat_list`` for

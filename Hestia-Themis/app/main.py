@@ -157,7 +157,7 @@ def settings_i18n(lang: str = ""):
     """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
     ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
     English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:her-form|his-form}`` in those texts
-    (docs/work/2026-11-16-nome-ovunque). Public through the WebUI: only the assistant's name, never the owner's."""
+    (docs/work/2026-11-16-name-everywhere). Public through the WebUI: only the assistant's name, never the owner's."""
     from hestia_common import identity
     ident = _i18n.identity_now()
     code = (lang or themis.owner_language() or _i18n.FALLBACK)[:2]
@@ -346,7 +346,7 @@ try:
                 path="/api/settings/key/{key}/undo-propose", clients=["ui"], telegram_visible=False,
                 telegram_group="system",
                 telegram={"section": "Settings"}),
-        # Telegram parity (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F): proposals waiting for the owner.
+        # Telegram parity (dossier docs/work/2026-10-24-whole-cindy-brainstorm F): proposals waiting for the owner.
         MCPTool(name="settings_proposals",
                 description="Setting change proposals waiting for the user's confirmation (or all).",
                 parameters={"type": "object", "properties": {

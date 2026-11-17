@@ -1,4 +1,4 @@
-"""Reflection signals (docs/work/2026-10-20-riflessione-a-livelli): short deterministic facts about the user's
+"""Reflection signals (docs/work/2026-10-20-layered-reflection): short deterministic facts about the user's
 training + weekly series, published to Archive through ``hestia_common.signals_client``.
 
 Nothing new is judged here: stall, low energy, missed days, PRs and goals come from the engines the summary already

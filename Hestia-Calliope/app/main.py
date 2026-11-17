@@ -1,4 +1,4 @@
-"""Hestia-Calliope — real documents («Documents», port 19027, Cindy 21, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5).
+"""Hestia-Calliope — real documents («Documents», port 19027, Cindy 21, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5).
 
 HTML draft → PDF / Word / Excel with three shared themes and a final check; files in Archive blobs, records in
 ``/api/office-store``; tool ``document_create`` for the assistant and Telegram (the file arrives under the card).

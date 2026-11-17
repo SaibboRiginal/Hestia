@@ -104,7 +104,7 @@ class ThinkingRecord(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     trigger: str = "periodic"  # periodic | manual
-    track: str = "system"     # system | life (docs/work/2026-10-20-riflessione-a-livelli)
+    track: str = "system"     # system | life (docs/work/2026-10-20-layered-reflection)
     life: dict[str, Any] = Field(default_factory=dict)   # life: signals, links, topics, details used
     observation: ObservationSnapshot = Field(default_factory=ObservationSnapshot)
     candidates: list[ActionCandidate] = Field(default_factory=list)

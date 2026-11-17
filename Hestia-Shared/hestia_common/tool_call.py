@@ -6,7 +6,7 @@ target of the caller) and ``$arg.<name>``; paths may hold ``$name`` / ``{name}``
 Arguments not consumed by a template go to the query (GET/HEAD/DELETE) or to the JSON body (other methods).
 
 Before 2026-10-18 Oracle, Telegram, the WebUI and Hestia-MCP each had their own copy of these rules
-(docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+(docs/work/2026-10-18-core-modules-and-external-mcp §B2).
 """
 from __future__ import annotations
 

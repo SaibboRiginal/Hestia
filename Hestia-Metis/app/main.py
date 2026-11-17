@@ -71,7 +71,7 @@ _HUB_API_URL = os.getenv(
 hub = HubClient(_HUB_API_URL)
 
 # ── WebUI plugin (core module, «System» section): Improvement ─────────────
-# SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3. Bundle Hestia-Metis/ui → <dist>/webui/metis.js,
+# SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3. Bundle Hestia-Metis/ui → <dist>/webui/metis.js,
 # built in the image and copied outside /code (the compose dev mount of app/ would hide it). Read only:
 # insights, datasets and LoRA jobs through the existing /api/metis/ reads; training stays a chat/agenda action.
 UI_DIST = os.getenv("METIS_UI_DIST", "/ui/dist")
@@ -90,11 +90,11 @@ WINDOW_TRAINING = "metis.training"
 agenda = AgendaClient("metis", _HUB_API_URL)
 presence = PresenceClient("metis", _HUB_API_URL)
 
-# ── Usage log, «Now», «Discover» (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6) ─────────────────────
+# ── Usage log, «Now», «Discover» (dossier docs/work/2026-10-24-whole-cindy-brainstorm W6) ─────────────────────
 # Taps live in Archive ``metis-store`` (Hub-routed mirror); the suggestion engine is core/usage.py.
 usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
-# Training dataset (docs/work/2026-10-30-dataset-allenamento): chat turn traces in Archive ``dataset-store``.
+# Training dataset (docs/work/2026-10-30-training-dataset): chat turn traces in Archive ``dataset-store``.
 traces = Traces(usage_store.hub, keep_days=traces_keep_days)
 # Nightly correction by the teacher model (cloud, personal data masked) + «Da rivedere» (D2).
 review = Review(usage_store.hub, llm=usage_store.hub.llm, auto_accept=review_auto_accept, batch=review_batch)
@@ -240,7 +240,7 @@ def metis_usage_recent(limit: int = 5, hours: int = 12):
 @app.get("/api/metis/now")
 def metis_now(client: str = "telegram", limit: int = 6):
     """What fits now: agenda, habits, recents and the assistant's ideas, each with its reason."""
-    return usage.now(client, limit=max(1, min(limit, 12)))
+    return usage.right_now(client, limit=max(1, min(limit, 12)))
 
 
 @app.post("/api/metis/now/refresh")
@@ -371,7 +371,7 @@ def metis_discover(client: str = "webui", limit: int = 12):
 
 
 def _now_card(client: str = "telegram") -> dict:
-    out = usage.now(client if client in CLIENTS else "telegram")
+    out = usage.right_now(client if client in CLIENTS else "telegram")
     items = out["items"]
     return {**out, "display": display(
         tr("Now"), lines=[] if items else [tr("Nothing to suggest yet: the more you use me, the more I learn what you need.")],
@@ -693,7 +693,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="development",
-                telegram={"section": "Dataset e training"}),
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_dataset_export",
             description=(
@@ -720,7 +720,7 @@ try:
             response_mode="raw_json",
             telegram_visible=True,
             telegram_group="development",
-                telegram={"section": "Dataset e training"}),
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_dataset_status",
             description=(
@@ -746,7 +746,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="development",
-                telegram={"section": "Dataset e training"}),
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_benchmark_run",
             description=(
@@ -780,7 +780,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="development",
-                telegram={"section": "Dataset e training"}),
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_loRA_train",
             description=(
@@ -821,7 +821,7 @@ try:
             ),
             telegram_visible=True,
             telegram_group="development",
-                telegram={"section": "Dataset e training"}),
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_review",
             description=("The nightly corrections of answers waiting for the user before entering the training dataset: original answer, correction, Accept / Discard / I correct it."),
@@ -829,7 +829,7 @@ try:
             handler=lambda: _traces_call(_review_card),
             title="To review", method="GET", path="/api/metis/tools/review", clients=["telegram", "ui"],
             response_mode="raw_json", telegram_visible=True, telegram_group="development",
-            telegram={"section": "Dataset e training"}),
+            telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_review_decide",
             description=("Decide a correction of the training dataset: accept (fine), reject (drop the turn), edit (you "
@@ -844,7 +844,7 @@ try:
                 "next": _traces_call(_review_card).get("display")},
             title="Decide a fix", method="POST", path="/api/metis/tools/review_decide",
             clients=["telegram", "ui"], response_mode="raw_json", telegram_group="development",
-            telegram={"section": "Dataset e training"}),
+            telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_dataset_export",
             description=("Export the training dataset (zipped JSONL files: sft, dpo, eval, card) to download. "
@@ -859,7 +859,7 @@ try:
                 _export_card, bool(plain), bool(include_unreviewed)),
             title="Export the dataset", method="POST", path="/api/metis/tools/dataset_export",
             clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="development",
-            telegram={"section": "Dataset e training", "label": "Export"}),
+            telegram={"section": "Dataset and training", "label": "Export"}),
         MCPTool(
             name="metis_now",
             description=("What the user needs now: actions they usually use at this hour, those in the agenda in the next "

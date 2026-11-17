@@ -94,7 +94,7 @@ def search_similar_memories(
     Body: {"embedding": [...], "memory_class": "skill", "domain": "calendar", "limit": 5}
 
     Ranking runs inside Postgres (pgvector ``<=>``) and only the top rows leave the DB: it used to load every
-    candidate with its 768 floats and score them one by one in Python (docs/work/2026-11-06-ricerca-memorie-in-db).
+    candidate with its 768 floats and score them one by one in Python (docs/work/2026-11-06-memory-search-in-db).
     """
     query_embedding = body.get("embedding")
     if not isinstance(query_embedding, list) or not query_embedding:

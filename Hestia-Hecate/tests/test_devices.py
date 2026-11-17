@@ -1,4 +1,4 @@
-"""Garmin (B10) and the phone as a sensor (Cindy 32), dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4.
+"""Garmin (B10) and the phone as a sensor (Cindy 32), dossier docs/work/2026-10-24-whole-cindy-brainstorm W4.
 No network: a fake Garmin client, the feed publisher and presence replaced by recorders."""
 from __future__ import annotations
 

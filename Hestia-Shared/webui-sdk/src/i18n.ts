@@ -1,4 +1,4 @@
-/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-backend-inglese).
+/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-english-backend).
  *
  * Write the text in English and wrap it: `tr('Save')`, `tr('{0} items', n)` (standard: docs/LANGUAGES.md). The WebUI
  * loads the catalog (`/api/webui/i18n`, «Language» = `themis.personal.language`) before any plugin and shares it on
@@ -12,7 +12,7 @@ function catalog(): { language: string; messages: Record<string, string>; assist
 export function assistantName(): string { return String(catalog().assistant || '').trim() || 'Hestia'; }
 
 /** `{assistant}` → the chosen name, `{g:her-form|his-form}` → the form for her or him
- * (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the app (version, files, installation) the text says
+ * (docs/work/2026-11-16-name-everywhere). Where «Hestia» is the app (version, files, installation) the text says
  * «Hestia» and nothing changes. Also for texts that do not go through `tr` (plugin page titles and help). */
 export function named(text: string): string {
   const s = text == null ? '' : String(text);

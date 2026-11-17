@@ -1,6 +1,6 @@
 """WebUI plugin of Hephaestus (core module, «System» section of the sidebar).
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3: the module ships its own "inside view" on the
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3: the module ships its own "inside view" on the
 client plugin contract (hestia_common.plugin_client). Bundle: Hestia-Hephaestus/ui → <dist>/webui/hephaestus.js,
 built in the Docker image (Node stage) and copied to /ui/dist, outside /code (the compose dev mount of app/
 would hide it).

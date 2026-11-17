@@ -493,7 +493,7 @@ components:
           type: string
           enum: [auto, quick, thinking, cot, ""]
           default: ""
-          description: "quick = 1 call no tools · auto = classifier decides · thinking (Pensata) = always agent loop, reasoning on · cot = deep reasoning, ≥50 turns, step-by-step recap. Empty = setting oracle.chat.mode for this client/session."
+          description: "quick = 1 call no tools · auto = classifier decides · thinking = always agent loop, reasoning on · cot = deep reasoning, ≥50 turns, step-by-step recap. Empty = setting oracle.chat.mode for this client/session."
         model:
           type: string
           enum: [generic, reasoning, code]
@@ -508,7 +508,7 @@ components:
               written_at: {type: string, format: date-time}
         quoted:
           type: object
-          description: "The earlier message the user replied to or quoted (Telegram reply / quote): context for this turn only, added as one instruction line; the saved user message stays `message` (docs/work/2026-10-23-telegram-da-zero §5.10)."
+          description: "The earlier message the user replied to or quoted (Telegram reply / quote): context for this turn only, added as one instruction line; the saved user message stays `message` (docs/work/2026-10-23-telegram-from-scratch §5.10)."
           properties:
             text: {type: string}
             from: {type: string, enum: [assistant, user, notification]}
@@ -517,7 +517,7 @@ components:
         spoken:
           type: boolean
           default: false
-          description: "The turn was heard and is answered aloud (WebUI Talk, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-hestia-viva"
+          description: "The turn was heard and is answered aloud (WebUI Talk, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-living-hestia"
 
     DisplayBlock:
       type: object
@@ -3921,7 +3921,7 @@ paths:
         - url: http://localhost:19004
       responses:
         "200":
-          description: "{status, service, models: ok|limited|none} — models: how the assistant can answer now (first model of the general chain · only fallback steps · none usable); Argus turns it into «Limito» / «Non disponibile» (oracle-offline v3 E)"
+          description: "{status, service, models: ok|limited|none} — models: how the assistant can answer now (first model of the general chain · only fallback steps · none usable); Argus turns it into «Limited» / «Not available» (oracle-offline v3 E)"
 
   /api/chat:
     post:
@@ -4086,7 +4086,7 @@ paths:
   /api/chat/reaction:
     post:
       tags: [Oracle]
-      summary: "The owner reacted with an emoji to one of Hestia's messages: one history line so the next turn knows it (no LLM call). docs/work/2026-11-06-hestia-viva"
+      summary: "The owner reacted with an emoji to one of Hestia's messages: one history line so the next turn knows it (no LLM call). docs/work/2026-11-06-living-hestia"
       description: "Stream side: for webui/telegram owner turns /api/chat may emit {type: reaction, emoji} before the text; final then carries reaction and, for a reaction-only answer, reaction_only: true with reply ''."
       servers:
         - url: http://localhost:19004
@@ -4109,7 +4109,7 @@ paths:
   /api/chat/opener:
     post:
       tags: [Oracle]
-      summary: "She writes first: one or two plain-text sentences in the persona from the reasons Athena brings (no tools, nothing saved). docs/work/2026-11-12-identita-e-proattivita"
+      summary: "She writes first: one or two plain-text sentences in the persona from the reasons Athena brings (no tools, nothing saved). docs/work/2026-11-12-identity-and-proactivity"
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -4121,7 +4121,7 @@ paths:
               properties:
                 reasons: {type: array, items: {type: string}, description: "why now: mood, what an area noticed, a long silence"}
                 avoid: {type: array, items: {type: string}, description: "what she already wrote lately"}
-                past: {type: array, items: {type: string}, description: "the last days: how the owner was, what she wrote and whether they answered (docs/work/2026-11-13-prima-osserva-poi-propone)"}
+                past: {type: array, items: {type: string}, description: "the last days: how the owner was, what she wrote and whether they answered (docs/work/2026-11-13-observe-first-then-propose)"}
       responses:
         "200": {description: "{text} | {text: '', skip: nothing_to_say}"}
         "503": {description: "no model available or the model failed"}
@@ -4902,7 +4902,7 @@ paths:
   /api/llm/setup/test:
     post:
       tags: [Oracle]
-      summary: "Guided setup «Prova» — reads the provider's model list with its key (no tokens spent; one tiny call only when there is no list), answer in plain words"
+      summary: "Guided setup «Test» — reads the provider's model list with its key (no tokens spent; one tiny call only when there is no list), answer in plain words"
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -5557,7 +5557,7 @@ paths:
       tags: [Chronos]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/agenda/)
       description: |
-        Pages `agenda` «Agenda di Hestia» (chronos-agenda, order 150; WebUI /calendar redirects here) and `runs`
+        Pages `agenda` «Hestia's agenda» (chronos-agenda, order 150; WebUI /calendar redirects here) and `runs`
         (chronos-runs, order 151, parent agenda), widget `failed` «Failed jobs» (chronos-failed-widget, auto),
         quick action `retry` «Retry job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
       servers:
@@ -6030,7 +6030,7 @@ paths:
   /api/special/proposal/declined:
     post:
       tags: [Chronos — Life]
-      summary: "«No» on a special event proposal"
+      summary: "«no» on a special event proposal"
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -7240,7 +7240,7 @@ paths:
           description: "{from, to, days: 1, count, items[...], display}"
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  MCP — 19013  (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2)
+  #  MCP — 19013  (docs/work/2026-10-18-core-modules-and-external-mcp §B2)
   # ══════════════════════════════════════════════════════════════════════════
 
   /mcp:
@@ -7813,7 +7813,7 @@ paths:
   /api/setup/brain/test:
     post:
       tags: [Hephaestus]
-      summary: Save ORACLE_KEY_<PROVIDER> (if given), re-create Oracle, then «Prova» (→ Oracle via Hub)
+      summary: Save ORACLE_KEY_<PROVIDER> (if given), re-create Oracle, then «Test» (→ Oracle via Hub)
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -8060,7 +8060,7 @@ paths:
   /api/setup/voice/hear:
     post:
       tags: [Hephaestus]
-      summary: "Setup «Prova» of listening with the chosen engine (→ Echo /api/voice/setup/hear)"
+      summary: "Setup «Test» of listening with the chosen engine (→ Echo /api/voice/setup/hear)"
       servers:
         - url: http://localhost:19010
       responses:
@@ -8069,7 +8069,7 @@ paths:
   /api/setup/voice/test:
     post:
       tags: [Hephaestus]
-      summary: "Save ECHO_KEY_<PROVIDER> (if given), re-create Echo, then «Prova» (→ Echo /api/voice/setup/test)"
+      summary: "Save ECHO_KEY_<PROVIDER> (if given), re-create Echo, then «Test» (→ Echo /api/voice/setup/test)"
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -8862,7 +8862,7 @@ paths:
   /api/metis/usage/recent:
     get:
       tags: [Metis]
-      summary: "The owner's last taps, newest first (Oracle awareness lines, docs/work/2026-11-06-hestia-viva)"
+      summary: "The owner's last taps, newest first (Oracle awareness lines, docs/work/2026-11-06-living-hestia)"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -8874,7 +8874,7 @@ paths:
   /api/metis/traces:
     post:
       tags: [Metis]
-      summary: "Oracle pushes one finished chat turn for the training dataset (docs/work/2026-10-30-dataset-allenamento)"
+      summary: "Oracle pushes one finished chat turn for the training dataset (docs/work/2026-10-30-training-dataset)"
       description: "Body {trace_id, session_id, client, at, route, mode, use_case, model, provider, origin, domains, system,
         history, user, answer, tools[{name, description, parameters}], steps[{turn, tool, params, ok, writes, result}],
         total_ms, usage}. Not stored when the conversation is training_off; adds signals rephrase/correction/tool_failed."
@@ -8932,7 +8932,7 @@ paths:
   /api/metis/review/pending:
     get:
       tags: [Metis]
-      summary: "«Da rivedere»: corrections waiting for the owner"
+      summary: "«To review»: corrections waiting for the owner"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -10096,7 +10096,7 @@ paths:
   /api/hercules/activities/sync-calendar:
     post:
       tags: [Hercules]
-      summary: "Finished gym sessions → calendar «Allenamenti» {days}"
+      summary: "Finished gym sessions → calendar «Workouts» {days}"
       servers:
         - url: http://localhost:19019
       responses:
@@ -10714,7 +10714,7 @@ paths:
         "200": {description: OK}
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  PLUTUS — 19020  (expenses, domain finance — docs/work/2026-10-19-email-push-spese §4)
+  #  PLUTUS — 19020  (expenses, domain finance — docs/work/2026-10-19-email-push-expenses §4)
   #  Errors on every /api/finance path: 422 invalid input {detail}, 404 not found {detail},
   #  503 Archive unreachable {detail}. GET /api/module/context: shared contract, see Wardrobe.
   # ══════════════════════════════════════════════════════════════════════════
@@ -12540,7 +12540,7 @@ paths:
   /api/athena/recap:
     post:
       tags: [Athena]
-      summary: "Compose the daily recap (agenda job athena.recap.evening, template «recap»)"
+      summary: "Compose the daily recap (agenda job athena.recap.evening, template «Recap»)"
       description: >
         Collects every module's recap piece (GET /api/module/recap through Hub), Oracle writes the text (use case
         athena.recap; deterministic list as fallback), Hermes delivers it (replaces the previous one). A quiet day
@@ -12715,7 +12715,7 @@ paths:
   /api/athena/think:
     post:
       tags: [Athena]
-      summary: «Pensa ora» — run one full thinking cycle now (background)
+      summary: «Think now» — run one full thinking cycle now (background)
       description: >
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
@@ -12732,7 +12732,7 @@ paths:
   /api/athena/talk:
     get:
       tags: [Athena]
-      summary: "What the assistant wrote first («talks to you»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identita-e-proattivita"
+      summary: "What the assistant wrote first («talks to you»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identity-and-proactivity"
       servers:
         - url: http://localhost:19009
       parameters:
@@ -12743,7 +12743,7 @@ paths:
   /api/athena/evidence:
     get:
       tags: [Athena]
-      summary: "First observe, then propose: findings she is still collecting proof for before an improvement or a setting proposal. docs/work/2026-11-13-prima-osserva-poi-propone"
+      summary: "First observe, then propose: findings she is still collecting proof for before an improvement or a setting proposal. docs/work/2026-11-13-observe-first-then-propose"
       servers:
         - url: http://localhost:19009
       responses:
@@ -12756,7 +12756,7 @@ paths:
       description: >
         Active module signals (Archive signals-store, worst first), weekly series of the last `weeks` weeks, the
         links found between areas (Pearson, closed weeks) and the observations of the last 14 days.
-        SPEC docs/work/2026-10-20-riflessione-a-livelli.
+        SPEC docs/work/2026-10-20-layered-reflection.
       servers:
         - url: http://localhost:19009
       parameters:
@@ -12772,7 +12772,7 @@ paths:
       tags: [Athena]
       summary: Athena's piece of the daily recap («To keep an eye on») — real path /api/module/recap
       description: >
-        Recap contract (docs/work/2026-10-20-recap-giornaliero §3.2), advertised as capability recap_endpoint.
+        Recap contract (docs/work/2026-10-20-daily-recap §3.2), advertised as capability recap_endpoint.
         The life observations stored that day; deterministic, no model call. Observations reach the user only here.
       servers:
         - url: http://localhost:19009
@@ -13184,7 +13184,7 @@ paths:
           description: "{public_url, detected}"
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  ECHO — 19021  (voice core — docs/work/2026-10-20-modulo-voce)
+  #  ECHO — 19021  (voice core — docs/work/2026-10-20-voice-module)
   #  Errors: 422 invalid input {detail}, 404 not found {detail}, 503 chain exhausted {detail, tried}.
   # ══════════════════════════════════════════════════════════════════════════
 
@@ -13245,7 +13245,7 @@ paths:
   /api/voice/setup/test:
     post:
       tags: [Echo]
-      summary: "Setup «Prova» of a speech service: its model/voice list read with the key, no audio made"
+      summary: "Setup «Test» of a speech service: its model/voice list read with the key, no audio made"
       servers:
         - url: http://localhost:19021
       requestBody:
@@ -13273,7 +13273,7 @@ paths:
   /api/voice/setup/hear:
     post:
       tags: [Echo]
-      summary: "Setup «Prova» of listening: the recording heard by that provider and model only (nothing saved)"
+      summary: "Setup «Test» of listening: the recording heard by that provider and model only (nothing saved)"
       servers:
         - url: http://localhost:19021
       requestBody:
@@ -14277,7 +14277,7 @@ paths:
   /api/home/persons/options:
     get:
       tags: [Lares]
-      summary: "Options of «Tu in Home Assistant» (Themis ``options_source``)."
+      summary: "Options of «You in Home Assistant» (Themis ``options_source``)."
       servers:
         - url: http://localhost:19024
       responses:

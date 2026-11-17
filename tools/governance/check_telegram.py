@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Every function on Telegram, calm text (docs/work/2026-10-23-telegram-da-zero §5.7, §5.8).
+"""Every function on Telegram, calm text (docs/work/2026-10-23-telegram-from-scratch §5.7, §5.8).
 
 Reads the tool declarations of every module (``MCPTool(...)`` and Hub inline commands with ``telegram_group``)
 straight from the sources, then:

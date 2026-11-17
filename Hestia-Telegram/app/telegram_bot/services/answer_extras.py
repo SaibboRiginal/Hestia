@@ -1,4 +1,4 @@
-"""What comes with an answer besides its text (dossier docs/work/2026-10-24-tutto-brainstorm-cindy, Cindy 9 + 13).
+"""What comes with an answer besides its text (dossier docs/work/2026-10-24-whole-cindy-brainstorm, Cindy 9 + 13).
 
 - **changes** frame: the writes made in this turn, «Done» with one «Undo: …» button per change that has an
   undo tool. The button is a normal tool button (``t:``, ``actions.tool_button``) with the undo arguments preset,

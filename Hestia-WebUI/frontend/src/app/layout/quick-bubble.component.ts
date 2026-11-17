@@ -8,7 +8,7 @@ import { LiveVoiceService } from '../services/live-voice.service';
 import { TrPipe } from '../core/i18n';
 
 /**
- * The bubble at the bottom right of every page (docs/work/2026-11-13-sidebar-e-chat §3.4): the two ways to reach the
+ * The bubble at the bottom right of every page (docs/work/2026-11-13-sidebar-and-chat §3.4): the two ways to reach the
  * assistant without leaving the page, each with one line that says what it does.
  * - «Write here»: the side panel that knows which page you are on (Ctrl+J).
  * - «Talk»: the continuous voice conversation, which goes on while you move around (Ctrl+Shift+Space).

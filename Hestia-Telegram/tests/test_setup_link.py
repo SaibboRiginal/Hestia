@@ -1,4 +1,4 @@
-"""Setup mode: the one-time code links the owner (docs/work/2026-10-30-setup-un-click §4.2)."""
+"""Setup mode: the one-time code links the owner (docs/work/2026-10-30-one-click-setup §4.2)."""
 from __future__ import annotations
 
 from types import SimpleNamespace as NS

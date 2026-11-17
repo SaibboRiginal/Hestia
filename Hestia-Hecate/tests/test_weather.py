@@ -100,7 +100,7 @@ def test_now_uses_home_and_caches():
 def test_address_resolves_through_its_city_and_saved_coords_skip_geocoding():
     http = FakeHttp()
     svc, _ = _svc(http=http)
-    assert svc.resolve("home")["lat"] == 45.46
+    assert svc.resolve("casa")["lat"] == 45.46
     r = svc.resolve("che tempo fa in palestra")
     assert r["saved"] == "gym" and r["lat"] == 46.0
     assert all("Lugano" not in str(p.get("name")) for u, p in http.calls if "geocoding" in u)

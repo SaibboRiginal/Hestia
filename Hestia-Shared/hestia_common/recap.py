@@ -1,4 +1,4 @@
-"""Daily recap pieces — what each module says about a day (dossier ``docs/work/2026-10-20-recap-giornaliero``).
+"""Daily recap pieces — what each module says about a day (dossier ``docs/work/2026-10-20-daily-recap``).
 
 The recap is one message a day («how it went, what is on tomorrow»). Every module that has something to say
 exposes ``GET /api/module/recap?day=YYYY-MM-DD&next=YYYY-MM-DD`` and advertises it in its Hub registration
@@ -18,7 +18,7 @@ exposing the endpoint; nothing else changes.
 ``title`` is a generic word for the area («Training», «Expenses»): user texts never name modules.
 ``actions`` (optional, max 2): buttons the recap message carries for this module, Hermes action shape
 (``{label, command}`` = a tool the client opens, or ``{label, service, path, method?, body?}``). They ride even on an
-empty piece (e.g. «Tell me about your day» after the evening recap, dossier ``2026-10-24-tutto-brainstorm-cindy`` B9).
+empty piece (e.g. «Tell me about your day» after the evening recap, dossier ``2026-10-24-whole-cindy-brainstorm`` B9).
 """
 from __future__ import annotations
 

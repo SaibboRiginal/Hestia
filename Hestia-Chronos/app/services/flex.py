@@ -1,4 +1,4 @@
-"""Flexible activities — fire a job around the user's events (docs/work/2026-10-20-recap-giornaliero §3.8).
+"""Flexible activities — fire a job around the user's events (docs/work/2026-10-20-daily-recap §3.8).
 
 A rule may carry ``params.flex = {"earliest": "HH:MM", "latest": "HH:MM"}``. The nominal time (the one the user sees
 and moves) stays the reference; when it falls inside one of the user's events, or closer than

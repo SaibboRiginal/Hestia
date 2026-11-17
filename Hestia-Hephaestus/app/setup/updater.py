@@ -1,4 +1,4 @@
-"""«Update Hestia» — Hestia updates itself to the next version (docs/work/2026-10-30-setup-un-click §4.4, P6).
+"""«Update Hestia» — Hestia updates itself to the next version (docs/work/2026-10-30-one-click-setup §4.4, P6).
 
 Single responsibility: know the installed version, find a newer one, move ``/repo`` to it and apply it to the
 running containers, with an automatic way back.

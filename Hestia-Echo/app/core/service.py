@@ -195,7 +195,7 @@ class Echo:
         self._record("voice", info, ms=int((time.monotonic() - started) * 1000), ok=True, chars=len(text))
         return data, mime, info
 
-    # ── setup «Prova»: one provider tried directly, before the choice is saved ──
+    # ── setup «Test»: one provider tried directly, before the choice is saved ──
     def _setup_provider(self, name: str, direction: str) -> tuple[dict | None, str]:
         p = self.blocks.providers().get(name)
         if p is None or direction not in STANDARDS[p["type"]].directions:
@@ -230,7 +230,7 @@ class Echo:
         return {"ok": True, "audio_b64": base64.b64encode(out).decode(), "mime_type": out_mime, "duration_s": seconds}
 
     def setup_hear(self, body: dict) -> dict:
-        """«Prova» of listening in the setup: what the user said, heard by that provider and model (no chain)."""
+        """«Test» of listening in the setup: what the user said, heard by that provider and model (no chain)."""
         p, why = self._setup_provider(str(body.get("provider") or ""), "listen")
         if p is None:
             return {"ok": False, "detail": why}
@@ -431,7 +431,7 @@ class Echo:
 
 def _with_names(words: str, ident: dict[str, str]) -> str:
     """The recognition hint with the assistant's name and the owner's name first, so a renamed assistant is
-    written right from the first word (docs/work/2026-11-16-nome-ovunque)."""
+    written right from the first word (docs/work/2026-11-16-name-everywhere)."""
     known = {w.strip().lower() for w in words.rstrip(".").split(",") if w.strip()}
     names = []
     for name in (ident.get("assistant"), ident.get("owner")):

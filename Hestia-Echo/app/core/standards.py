@@ -1,4 +1,4 @@
-"""Speech standards — *how* Echo talks to an engine (dossier ``2026-10-20-modulo-voce`` §4.A).
+"""Speech standards — *how* Echo talks to an engine (dossier ``2026-10-20-voice-module`` §4.A).
 
 A standard is a protocol Echo knows (built-in local engines, OpenAI-compatible audio API, Google, ElevenLabs,
 Wyoming); a provider is a named instance of a standard (Themis ``echo.providers``). Each standard declares:

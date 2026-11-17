@@ -1,4 +1,4 @@
-"""Telegram bot entry point: one router for every button and message (docs/work/2026-10-23-telegram-da-zero §5).
+"""Telegram bot entry point: one router for every button and message (docs/work/2026-10-23-telegram-from-scratch §5).
 
 Messages, in order: the bottom keyboard (exact words) → `/` commands (doors, aliases, any tool by name) → an open
 flow (action, menu editor, chat setting, the assistant's question) → chat. Buttons go by prefix to one handler each;

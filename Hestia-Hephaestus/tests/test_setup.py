@@ -1,5 +1,5 @@
 """Tests — guided setup «Benvenuto»: secrets into .env, container re-create, Telegram one-time code
-(docs/work/2026-10-30-setup-un-click §4.2). No Docker, no network."""
+(docs/work/2026-10-30-one-click-setup §4.2). No Docker, no network."""
 from __future__ import annotations
 
 import logging

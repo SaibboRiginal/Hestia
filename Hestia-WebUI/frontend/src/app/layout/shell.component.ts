@@ -41,7 +41,7 @@ const SYSTEM_PAGES = [
 const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
 
 /** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays.
- *  One rule for the sidebar (docs/work/2026-11-13-sidebar-e-chat): on top the bell, Chat and Search; then sections that
+ *  One rule for the sidebar (docs/work/2026-11-13-sidebar-and-chat): on top the bell, Chat and Search; then sections that
  *  all fold the same way (General, Pinned, Conversations, Dashboards, Modules, System), a module with sub-pages folds
  *  too; the page on screen is marked with its parent, its section opens by itself and «Section › Page» is written
  *  above the page. «Write here» and «Talk» live in the bubble (layout/quick-bubble), not in the sidebar. */

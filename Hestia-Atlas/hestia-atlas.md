@@ -87,9 +87,9 @@ If direct access is needed, use host address reachable from container (`host.doc
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: memoria › Web: 4 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: memoria › Web: 4 (area › section: tools).
 
-## Site recipes (Cindy 12, `app/recipes.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` wave 3)
+## Site recipes (Cindy 12, `app/recipes.py`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` wave 3)
 - A recipe is a JSON file in `Hestia-Atlas/recipes/` (code in the repo, versioned, Forge fixes it): params, steps
   (`goto`, `fill`, `click`, `press`, `wait`) and fields to extract (selector, `attr`, `all`, `required`, `limit`).
   Validated at load; a malformed file is skipped with a warning.
@@ -102,8 +102,8 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. It now follows «Language» at startup (`SettingsClient("atlas").follow_personal()`).
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. It now follows «Language» at startup (`SettingsClient("atlas").follow_personal()`).

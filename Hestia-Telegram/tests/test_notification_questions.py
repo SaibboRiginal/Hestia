@@ -1,4 +1,4 @@
-"""Questions in notifications (docs/work/2026-10-30-domande-nelle-notifiche): same keyboard as the chat question,
+"""Questions in notifications (docs/work/2026-10-30-questions-in-notifications): same keyboard as the chat question,
 answer → Hermes; free text only after «Rispondi…»/«Altro…» or as a reply to the notification."""
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 /**
- * <oracle-models> — Brain tab «Models» (dossier 2026-10-19-oracle-a-blocchi §A-C): named providers (keys stay in
+ * <oracle-models> — Brain tab «Models» (dossier 2026-10-19-oracle-blocks §A-C): named providers (keys stay in
  * .env as ORACLE_KEY_<NAME>), reusable chains of provider/model steps (order = fallback, quota state per step),
  * every use case declared by a module → chain / mode / thinking. Saves through Themis (PUT /api/ui/models/<part>).
  */

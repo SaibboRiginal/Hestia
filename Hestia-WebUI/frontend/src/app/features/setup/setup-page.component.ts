@@ -9,7 +9,7 @@ import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys,
 import { SetupPickComponent, PickItem, family } from './setup-pick.component';
 import { AssistantTextComponent } from '../chat/assistant-text.component';
 import { MicRecorder, VoiceService, b64ToBlob, blobToB64 } from '../../services/voice.service';
-import { DEFAULT_ASSISTANT, IdentityService, LANGUAGES } from '../../services/identity.service';
+import { DEFAULT_ASSISTANT, IdentityService } from '../../services/identity.service';
 import { BrainCatalog, BrainChoice, CloudProvider, Download, LocalModel, Runtime, SetupApi, SetupState, TunnelState, VoiceCatalog, VoiceOption, VoiceProvider, VoiceStep, setupError } from './setup.api';
 import { tr, TrPipe } from '../../core/i18n';
 
@@ -47,7 +47,7 @@ function store(key: string, value: string): void {
 }
 
 /**
- * Guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click §4.2, layout of round 7): full screen, one column, one
+ * Guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup §4.2, layout of round 7): full screen, one column, one
  * question per screen with the buttons always at the bottom; on top the step («3/11 Memory») opens the list of the
  * steps and the downloads. The recommended answer is preselected, «Later» on the optional ones. Every answer is
  * saved at once (server side), and the screen is remembered, so closing the browser resumes where it was. Secrets go
@@ -142,7 +142,7 @@ function store(key: string, value: string): void {
               </hx-field>
               <hx-field  [label]="'Your language' | tr"  [hint]="'For the notifications and the messages I write to you. In chat I answer in the language you write in.' | tr">
                 <select class="hx-select" [value]="language()" (change)="language.set($any($event.target).value)">
-                  @for (l of languages; track l.value) {
+                  @for (l of languages(); track l.value) {
                     <option [value]="l.value" [selected]="l.value === language()">{{ l.label }}</option>
                   }
                 </select>
@@ -511,7 +511,7 @@ export class SetupPageComponent {
   assistantName = DEFAULT_ASSISTANT;
   assistantGender = signal<'she' | 'he'>('she');
   language = signal('it');
-  readonly languages = LANGUAGES;
+  readonly languages = this.identity.languages;
   readonly genderOptions: { value: 'she' | 'he'; label: string }[] = [{ value: 'she', label: tr('A woman') }, { value: 'he', label: tr('A man') }];
 
   screen = signal<Screen>('welcome');

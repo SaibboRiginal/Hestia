@@ -1,4 +1,4 @@
-"""Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §5, §14). Archive, Hub and modules mocked."""
+"""Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind §5, §14). Archive, Hub and modules mocked."""
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
@@ -131,7 +131,7 @@ def test_relation_and_daily_limits_and_kept_items():
 
 @pytest.mark.unit
 def test_outdoor_needs_avoid_rainy_and_dark_hours():
-    """Weather dossier 2026-10-20-meteo-hecate: an ``outdoor`` need is not placed where it rains; others are."""
+    """Weather dossier 2026-10-20-weather-hecate: an ``outdoor`` need is not placed where it rains; others are."""
     from services.coach import wet_hours
     from services.coach_planner import plan_week
     days = []

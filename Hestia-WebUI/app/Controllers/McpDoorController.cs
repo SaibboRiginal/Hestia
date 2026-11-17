@@ -9,7 +9,7 @@ using Hestia.WebUI.Services;
 /// the only service behind the Cloudflare tunnel. Not under /api/webui, so the WebUI login does not apply: the
 /// request goes as is (body + <c>Authorization: Bearer</c>) through Hub to Hestia-MCP <c>/mcp/external</c>, which
 /// checks the access token (401), the rate limit (429) and the scope (403).
-/// SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2.
+/// SPEC docs/work/2026-10-18-core-modules-and-external-mcp §B2.
 /// </summary>
 [ApiController]
 [Route("mcp")]

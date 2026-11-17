@@ -1,4 +1,4 @@
-"""Tests — Hub registry snapshot (SPEC docs/work/2026-10-20-hub-registro-persistente)."""
+"""Tests — Hub registry snapshot (SPEC docs/work/2026-10-20-hub-persistent-registry)."""
 from __future__ import annotations
 
 import json

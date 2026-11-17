@@ -1,6 +1,6 @@
 """Outdoor activities (run, bike, walk…) — light intentions next to the gym, never a Garmin replacement.
 
-Dossier docs/work/2026-10-20-meteo-hecate §3.8. «I feel like running twice this week» →
+Dossier docs/work/2026-10-20-weather-hecate §3.8. «I feel like running twice this week» →
 ``propose`` picks the best slots of the week from the forecast at the place (Hecate) and the free time in the
 calendar; nothing reaches the calendar until ``confirm``. A confirmed slot becomes an event in Marko's Google
 calendar «Allenamenti» (owned by Hercules: activities and finished gym sessions = the training history) and a

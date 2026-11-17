@@ -76,7 +76,7 @@ public class WebUISettings
             "WebUI dashboards: title and module widgets with position, size and params.", oracle: "propose"),
         UserSetting("webui.plugins.prefs", "Plugin preferences", "object", new Dictionary<string, object?>(), 14,
             "Preferences each plugin saves for this WebUI."),
-        // Sidebar arranged by the user (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A5): pinned entries move
+        // Sidebar arranged by the user (docs/work/2026-10-18-core-modules-and-external-mcp §A5): pinned entries move
         // into «Pinned» and leave their own section (the list is computed, never stored twice).
         UserSetting("webui.sidebar.pinned", "Pinned sidebar entries", "list", Array.Empty<string>(), 15,
             "Sidebar entries pinned on top, in order (e.g. app.chat, scout.houses, dash.home)."),

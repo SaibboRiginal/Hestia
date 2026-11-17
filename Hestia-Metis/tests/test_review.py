@@ -1,4 +1,4 @@
-"""Training dataset D2 «Correggi» (docs/work/2026-10-30-dataset-allenamento §3.3). Markers: unit"""
+"""Training dataset D2 «Correggi» (docs/work/2026-10-30-training-dataset §3.3). Markers: unit"""
 import json
 import sys
 from datetime import datetime, timedelta, timezone

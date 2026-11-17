@@ -148,7 +148,7 @@ app.include_router(create_forge_router(forge))
 app.include_router(forge_settings.settings.router())
 app.include_router(create_repo_router(forge))
 app.include_router(webui_plugin.router())   # GET /api/ui/manifest · GET /ui/webui/<file>
-setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click)
+setup_router, setup_service = create_setup_router(   # guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup)
     forge.cfg.repo_path, Path(os.getenv("HEPHAESTUS_DATA_DIR", "/code/data")), config.hub_api_url,
     channel=lambda: str(forge_settings.settings.get(forge_settings.UPDATE_CHANNEL) or "stable"),
     unhealthy=forge.unhealthy)
@@ -165,7 +165,7 @@ try:
     from hestia_common.mcp_helpers import MCPTool, create_mcp_router
 
     _hephaestus_mcp_tools = [
-        # ── Machines: central and satellites (docs/work/2026-10-30-setup-un-click §4.0) ──
+        # ── Machines: central and satellites (docs/work/2026-10-30-one-click-setup §4.0) ──
         MCPTool(
             name="machines_list", description=("The assistant's machines: this one and the satellites, on or off, with the modules running on "
                                                  "them."),
@@ -345,7 +345,7 @@ try:
             telegram_visible=True, telegram_group="development",
                 telegram={"section": "Jobs", "summary": True}),
         # Task detail, notes and "I fixed it on this branch" — also open to external AIs (MCP access, SPEC
-        # docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4). Approve/merge/rollback never leave the house.
+        # docs/work/2026-10-18-core-modules-and-external-mcp §B4). Approve/merge/rollback never leave the house.
         MCPTool(
             name="forge_task",
             description=("Detail of a development task: request, state, engine, error, tests, dossier (workdoc), branch, "

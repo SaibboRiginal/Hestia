@@ -17,7 +17,7 @@ def test_secrets_and_personal_data_are_replaced():
     for secret in ("someone@example.com", "abc123secret456", "user:pw", "zzz", "123456789", "Someone",
                    "/home/someone", "192.168.1.20", "AIzaSy", "abcdefghijklmnopqrstuv", "333 123 4567", "IT60"):
         assert secret not in out, secret
-    assert "[email]" in out and "[segreto]" in out and "[ip]" in out
+    assert "[email]" in out and "[secret]" in out and "[ip]" in out
 
 
 def test_normal_log_text_is_kept():
@@ -28,7 +28,7 @@ def test_normal_log_text_is_kept():
 
 def test_objects_hide_secret_keys():
     out = redact_obj({"password": "hunter2", "nested": [{"msg": "mail me at a@b.it"}], "count": 3})
-    assert out == {"password": "[segreto]", "nested": [{"msg": "mail me at [email]"}], "count": 3}
+    assert out == {"password": "[secret]", "nested": [{"msg": "mail me at [email]"}], "count": 3}
 
 
 def test_argus_analysis_redacts_before_oracle(monkeypatch):

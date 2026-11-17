@@ -10,7 +10,7 @@
 ## Responsibility
 
 **Hestia's one MCP server.** Every client lists and runs tools here, the same way
-(`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §B2): Oracle's agent loop, Telegram's command menu, the WebUI
+(`docs/work/2026-10-18-core-modules-and-external-mcp` §B2): Oracle's agent loop, Telegram's command menu, the WebUI
 *Comandi* page and external AIs such as Claude (through an access, below). Before 2026-10-18 there were four ways (Oracle read Hub
 `/discovery/commands` and filled templates itself, Telegram read `/tools/all`, the WebUI had its own resolver,
 `/tools/call` had a fourth copy); they are gone.
@@ -146,24 +146,24 @@ Declared in `app/core/mcp_settings.py` (`SettingsClient("mcp")`, router `GET /ap
 Env keeps only infrastructure: `HUB_API_URL`, `MCP_SERVICE_BASE_URL`, `MCP_SERVICE_VERSION`,
 `MCP_UI_DIST` (set by the Dockerfile), `LOG_LEVEL` (boot default only). No token in env: accesses are data.
 
-## Origin of the call (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 6)
+## Origin of the call (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 6)
 Every tool call carries the origin of the turn: external AIs are stamped `external:<access name>` (header
 `X-Hestia-Origin` on the module request, next to `X-Hestia-Access`); internal callers forward `hestia.origin`
 (set by Oracle from the chat's `X-Hestia-Origin`). Modules may read it; Oracle uses it to gate writes.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: `/api/mcp/ui/tools` commands carry `summary` (for people), `area`, `area_label`, `area_order`; the «Commands» page groups by area and shows the model text only under «Instructions for the assistant»; `summary` is a tool meta key.
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: `/api/mcp/ui/tools` commands carry `summary` (for people), `area`, `area_label`, `area_order`; the «Commands» page groups by area and shows the model text only under «Instructions for the assistant»; `summary` is a tool meta key.
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English
 (for the model); the `summary` of `/api/mcp/ui/tools` comes from the tool's own `summary` or the people catalog
 `hestia_common/locales/<lang>/tools.json` (by tool name), so «Commands» and «Discover» stay in the owner's language; tool titles go through `i18n.t` as well.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».

@@ -1,4 +1,4 @@
-"""LLM use cases a module declares to Oracle (dossier ``docs/work/2026-10-19-oracle-a-blocchi``).
+"""LLM use cases a module declares to Oracle (dossier ``docs/work/2026-10-19-oracle-blocks``).
 
 A module that asks Oracle for text (``POST /api/llm/generate`` with ``use_case``) declares each kind of task as a
 use case, with a suggested chain (``fast``, ``strong``, ``code``…). The declaration rides in the module's Hub

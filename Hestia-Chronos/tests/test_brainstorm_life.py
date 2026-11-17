@@ -1,4 +1,4 @@
-"""Brainstorm + Cindy wave 2 on Chronos (docs/work/2026-10-24-tutto-brainstorm-cindy): routines in words,
+"""Brainstorm + Cindy wave 2 on Chronos (docs/work/2026-10-24-whole-cindy-brainstorm): routines in words,
 special events, smart calendar, the life API tools. Archive mocked in memory."""
 from __future__ import annotations
 
@@ -142,7 +142,7 @@ class TestRoutines:
     def test_nothing_to_say_is_not_delivered(self, store):
         from services import routines
         item = routines.create(title="Settimana", instruction="Cosa c'è", recurrence="FREQ=WEEKLY")
-        with patch.object(routines, "_ask_oracle", return_value={"reply": "NIENTE.", "changes": []}), \
+        with patch.object(routines, "_ask_oracle", return_value={"reply": "NOTHING.", "changes": []}), \
                 patch.object(routines.hermes_client, "publish_event") as pub:
             out = routines.run(item["key"])
         assert out["delivered"] is False
@@ -167,7 +167,7 @@ class TestRoutines:
         assert put.call_args.args[0] == "routine_result"
 
     def test_assistant_question_becomes_a_notification_that_asks(self, store):
-        """2026-10-30-domande-nelle-notifiche: ask_user in a routine turn reaches the owner as a question."""
+        """2026-10-30-questions-in-notifications: ask_user in a routine turn reaches the owner as a question."""
         from services import routines
         item = routines.create(title="Spesa", instruction="Cosa manca", recurrence="FREQ=WEEKLY", deliver="recap")
         frame = {"type": "question", "question_id": "ask_9", "prompt": "", "kind": "multi_choice",

@@ -1,4 +1,4 @@
-"""Downloads that keep track of themselves (docs/work/2026-10-30-setup-un-click §4.3).
+"""Downloads that keep track of themselves (docs/work/2026-10-30-one-click-setup §4.3).
 
 Every module downloads its own things (Oracle its models, Echo its voices): this gives them one job format and one
 door, so the WebUI page «Download» can show them all through the Hub.

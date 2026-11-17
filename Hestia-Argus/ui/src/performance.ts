@@ -2,7 +2,7 @@
  * <argus-performance> — «Performance»: per module memory, processor, response time, uptime and restarts from the
  * last sample, over your limits highlighted; Hub round trip; database and blob size with growth per day; the
  * selected module's last 24 hours as a chart. Limits are settings («Performance» in Argus' settings).
- * Reads GET /api/argus/performance and /api/argus/performance/history. Dossier 2026-10-24-tutto-brainstorm-cindy
+ * Reads GET /api/argus/performance and /api/argus/performance/history. Dossier 2026-10-24-whole-cindy-brainstorm
  * D16 + Cindy 25 (W3) + W7.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';

@@ -41,6 +41,8 @@ from typing import Any, Callable
 
 import requests
 
+from hestia_common import identity
+
 logger = logging.getLogger("hestia_common.settings")
 
 TYPES = {"enum", "bool", "int", "float", "string", "text", "model", "time", "duration", "list", "object"}
@@ -124,7 +126,7 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
             help="Your places (Home, Work, Gym…): one is Home, the default place for the weather; the agenda and the workouts recognise events at these places. The city is enough, or the address with the city."),
     setting("themis.personal.birth_date", "Date of birth", "string", "", group="Personal",
             help="YYYY-MM-DD. Your birthday goes into the special events (you can change it there too)."),
-    # Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita): read by every prompt
+    # Who you are and who the assistant is (docs/work/2026-11-12-identity-and-proactivity): read by every prompt
     # that speaks to the owner through ``hestia_common.identity``.
     setting("themis.personal.owner_name", "Your name", "string", "", group="You and the assistant", order=1,
             help="Your name. The assistant knows it is yours and calls you by name."),
@@ -136,8 +138,8 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
     setting("themis.personal.assistant_gender", "The assistant is", "enum", "she", group="You and the assistant",
             order=4, options=[("she", "A woman"), ("he", "A man")],
             help="Changes how it talks about itself (as a woman or a man)."),
-    setting("themis.personal.language", "Language", "enum", "it", group="You and the assistant", order=5,
-            options=[("it", "Italiano"), ("en", "English")],
+    setting("themis.personal.language", "Language", "enum", identity.DEFAULT_LANGUAGE, group="You and the assistant",
+            order=5, options=list(identity.NATIVE_NAMES.items()),
             help="The language of notifications, recaps and the messages the assistant writes to you on its own. In chat it answers in the language you write in."),
 )}
 PERSONAL["themis.personal.places"]["item"] = {
@@ -147,8 +149,8 @@ PERSONAL["themis.personal.places"]["item"] = {
                "kind": {"type": "enum", "label": "Type", "options": [{"value": "home", "label": "Home"},
                                                                     {"value": "work", "label": "Work"},
                                                                     {"value": "other", "label": "Other"}]},
-               "lat": {"type": "float", "label": "Latitudine", "min": -90, "max": 90},
-               "lon": {"type": "float", "label": "Longitudine", "min": -180, "max": 180}},
+               "lat": {"type": "float", "label": "Latitude", "min": -90, "max": 90},
+               "lon": {"type": "float", "label": "Longitude", "min": -180, "max": 180}},
 }
 
 

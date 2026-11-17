@@ -1,4 +1,4 @@
-"""Routines, special events, smart calendar, manual presence (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W2).
+"""Routines, special events, smart calendar, manual presence (dossier docs/work/2026-10-24-whole-cindy-brainstorm W2).
 
 REST endpoints (``router``), the MCP tools for them (``mcp_tools()``, appended to Chronos' list so they are on
 Telegram, WebUI and the external MCP too) and the agenda rules they need (``boot_rules()``).
@@ -98,7 +98,7 @@ class AnswerIn(BaseModel):
 
 @router.post("/api/routines/{key}/answer")
 def routines_answer(key: str, req: AnswerIn) -> dict:
-    """Hermes: the owner answered a question of this routine (2026-10-30-domande-nelle-notifiche)."""
+    """Hermes: the owner answered a question of this routine (2026-10-30-questions-in-notifications)."""
     return _guard(routines.answer, key, req.question_id, req.answer, req.client)
 
 

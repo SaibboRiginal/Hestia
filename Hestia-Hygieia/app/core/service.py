@@ -1053,7 +1053,7 @@ class Hygieia:
                            "steps": [x["label"] for x in p["steps"] if x["include"]]} for p in s["plan"]["routines"]]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): routines done, skipped or left
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): routines done, skipped or left
         due on ``day``, products used, routines due on ``nxt``, product alerts. Plain data, no LLM."""
         routines = {r["id"]: r for r in self.items("routine")}
         products = {p["id"]: p for p in self.items("product")}
@@ -1103,7 +1103,7 @@ class Hygieia:
                 "audio_id": heard.get("blob_id") or "", "duration_s": heard.get("duration_s")}
         return self.journal_add(body, source="voice")[0]
 
-    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    # ── reflection signals (docs/work/2026-10-20-layered-reflection) ──────
     def signals(self) -> tuple[list[dict], list[dict]]:
         """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
         from . import signals as signals_engine

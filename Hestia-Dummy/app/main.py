@@ -173,7 +173,7 @@ app.include_router(create_log_control_router("hestia_dummy"))
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Reference recap piece (docs/work/2026-10-20-recap-giornaliero): the reconciles run on ``day``."""
+    """Reference recap piece (docs/work/2026-10-20-daily-recap): the reconciles run on ``day``."""
     with _state_lock:
         last, count = _state.get("last_reconcile_at"), _state.get("mutation_count", 0)
     if not last or datetime.fromisoformat(str(last)).astimezone().date() != day:

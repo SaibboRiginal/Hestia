@@ -280,7 +280,7 @@ user cancels marks the parent (`last_result` + run log entry `by=link:<child>`; 
 `agenda_assistant_templates`, `agenda_assistant_from_template`, `agenda_assistant_link`. Standard activities: `agenda_standard`, `agenda_standard_restore` (Telegram, WebUI). Oracle turns a
 successful write of these into an `agenda.planned` notice (calendar pages reload live).
 
-### Flexible activities (`params.flex`, dossier `docs/work/2026-10-20-recap-giornaliero` §3.8)
+### Flexible activities (`params.flex`, dossier `docs/work/2026-10-20-daily-recap` §3.8)
 
 A recurring job or task may carry `params.flex = {earliest: "HH:MM", latest: "HH:MM"}` (`job_rule(..., flex=)`, or the
 calendar editor «Flexible time»). The nominal time stays the one you see and move. When it falls on one of your
@@ -290,7 +290,7 @@ the tick fires it after the event (chained events walked through), else before i
 occurrence details; log `event=agenda_flex_moved`. Calendar unreadable → nominal time (`[🔄] event=agenda_flex_calendar_failed`).
 An occurrence you moved by hand never flexes. First user: the evening recap `athena.recap.evening` (21:30, 20:00–23:30).
 
-### Standard activities (dossier `docs/work/2026-10-20-recap-giornaliero` §3.9)
+### Standard activities (dossier `docs/work/2026-10-20-daily-recap` §3.9)
 
 Chronos keeps in memory the last rule set each module declared (`register`). Page **Attività standard**
 (`chronos-standard`, under Agenda, order 152) lists them with their state; one you deleted, paused, that stopped for
@@ -338,7 +338,7 @@ One section `agenda` (`services/agenda_transfer.py`): items the user created and
 `user_modified`, so its module will not overwrite it. «Replace» cancels the user's own items that are only here.
 Calendar items synced from Google/Outlook are not exported. Settings travel through Themis.
 
-## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
+## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-core-modules-and-external-mcp` §A2)
 
 Core module (`kind: "core"`, WebUI *Sistema* section, order 150), `api_prefix` `/api/agenda/` (Chronos' own
 agenda routes: no duplicate endpoints):
@@ -376,7 +376,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
   `label`, `emoji` (Telegram), `icon` + `tone` (WebUI stroke icon and colour: success · warning · danger · info · accent · muted), `help`, `when` (OR groups of AND clauses `{signal, op, value}`, `$name` →
   `chronos.presence.<name>`), `effects`, `notice`. One base (highest priority that matches) + every matching overlay.
   Core (editable, not deletable): `awake`, `idle`, `dnd`. Built-in optional: `nap`, `deep_sleep`, `busy`,
-  `eating`, `tired`, `oracle_offline` («⏳ Non disponibile», signal `oracle.offline` from Argus when Oracle is down past
+  `eating`, `tired`, `oracle_offline` («⏳ Unavailable», signal `oracle.offline` from Argus when Oracle is down past
   `argus.oracle.grace`; effects `work.light`/`work.heavy` defer, `chat.reply` queued; SPEC
   `docs/work/2026-10-19-oracle-offline`), `oracle_limited` («Limited», icon `battery-low`, signal `oracle.limited`
   from Argus when only fallback models answer; effects `work.heavy` defer, `chat.style` brief). Modules may add their own with `POST /api/presence/states/register`.
@@ -412,7 +412,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
 
 
 
-## Weekly plan — coaches (dossier `docs/work/2026-10-20-coach-di-ogni-tipo`)
+## Weekly plan — coaches (dossier `docs/work/2026-10-20-coach-of-every-kind`)
 
 Chronos builds **one week** from what every coach module needs, in the free time around the user's calendar.
 It never reads domain words: only the generic need fields of `hestia_common.coach` (kind block/slot/target, count,
@@ -424,8 +424,8 @@ minutes/min_minutes, days, time_of_day, gaps, `not_same_day`, `with`, priority).
 - **Planner** `app/services/coach_planner.py` (deterministic, pure): free intervals per day = day window minus
   user calendar events (Archive, non all-day) and user busy blocks, with the buffer; places must → should → could,
   full length first, else the module's shorter variant; respects the daily limits. Unplaced needs come back with a
-  reason («non entra»). **Orchestration** `app/services/coach.py`.
-- **Outdoor rule** (weather dossier `docs/work/2026-10-20-meteo-hecate`): needs tagged `outdoor` (e.g. a run) are
+  reason («does not fit»). **Orchestration** `app/services/coach.py`.
+- **Outdoor rule** (weather dossier `docs/work/2026-10-20-weather-hecate`): needs tagged `outdoor` (e.g. a run) are
   not placed in hours with rain (≥50 % or ≥0.5 mm) or dark at Casa — Hecate forecast read only when such a need
   exists (`plan_week(wet=…)`, `wet_hours`); no forecast = no filter (`[🔄] event=coach_weather_failed`).
 - **Plan items** = assistant agenda `event` items, owner = the module, key
@@ -453,7 +453,7 @@ block to another day or «Move» (= user move), «Skip», «Redo the plan», «A
 **«Today in the plan»** (`chronos-today-widget`). Icons from the kit, never emoji, no module names in texts.
 
 
-## Weather on the calendar page (dossier `docs/work/2026-10-20-meteo-hecate` §3.7)
+## Weather on the calendar page (dossier `docs/work/2026-10-20-weather-hecate` §3.7)
 
 `POST /api/agenda/weather {start, end, located: [{id, place, at}]}` (`app/services/agenda_weather.py`) → `{days,
 events, external, horizon: 14}`: Casa's weather per day (chip next to the day number: icon, min–max, rain hours),
@@ -462,9 +462,9 @@ location (Hecate, cached 10 minutes; only shown, never modified). Only the next 
 call; failures answer empty parts. The calendar views (month, week/day grid, list) show the chips with kit icons.
 
 ## Telegram card (`display`)
-`GET /api/calendar/agenda` returns a `display` card (time · title · place, grouped by day when more than one day; Nuovo evento, Prossimi giorni / Solo oggi). `GET /api/calendar/agenda/today` = the same for today only (tool `agenda_today`, which used to show 7 days). Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+`GET /api/calendar/agenda` returns a `display` card (time · title · place, grouped by day when more than one day; Nuovo evento, Prossimi giorni / Solo oggi). `GET /api/calendar/agenda/today` = the same for today only (tool `agenda_today`, which used to show 7 days). Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Routines, special events, smart calendar (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W2)
+## Routines, special events, smart calendar (dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W2)
 
 Code: `app/life_api.py` (endpoints, MCP tools, agenda rules), `app/services/routines.py`, `special.py`,
 `smart_calendar.py`, `app/core/life_store.py` (rows in Archive `/api/chronos-store`).
@@ -478,7 +478,7 @@ Code: `app/life_api.py` (endpoints, MCP tools, agenda rules), `app/services/rout
   origin `routine:<key>` (writes allowed, no deletes), then the answer goes to Hermes (`routine.result`) or is kept
   for the evening recap (`deliver: recap`, also stored in `chronos-store` kind `routine_result`). The assistant
   answers `NIENTE` when there is nothing to say: nothing is sent. Pause, move, «Run now» = the agenda.
-- questions (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a `question` frame of the routine turn (the assistant's `ask_user` or a
+- questions (dossier `docs/work/2026-10-30-questions-in-notifications`): a `question` frame of the routine turn (the assistant's `ask_user` or a
   module confirmation) cannot wait for a chat → Hermes `routine.question` with `_question` routed to
   `POST /api/routines/{key}/answer {question_id, answer, client}`, whatever `deliver` says. Chronos passes the answer
   to Oracle `/api/chat/question-answer`: a confirmation runs its action there; an `ask_user` answer gives
@@ -491,7 +491,7 @@ Code: `app/life_api.py` (endpoints, MCP tools, agenda rules), `app/services/rout
 lead_days, person, person_id, note, source}`; birthdays/anniversaries are yearly. Sources: the personal setting
 `themis.personal.birth_date` (followed, synced at boot and on change; the owner's edits win), the owner (tool
 `special_add`), modules with a stable key (`by` = module: idempotent, the owner's edits win), the assistant only by
-proposal (`special_propose` → Hermes card «Add» / «No»). Daily job `chronos.special.daily` (08:00):
+proposal (`special_propose` → Hermes card «Add» / «no»). Daily job `chronos.special.daily` (08:00):
 «Tra N giorni» `lead_days` before, and on the day the greeting plus `special_moment` to every Hub service declaring
 `capabilities.special_moment_endpoint` and to routines waiting for that signal. The recap shows tomorrow's ones.
 
@@ -523,7 +523,7 @@ as `/api/agenda/routines` (GET/POST), `/api/agenda/routines/templates`, `/api/ag
 | `POST` | `/api/routines/signal` · `/api/routines/mail` | event triggers (module signal · Iris doorbell) |
 | `GET` / `POST` | `/api/special` | list (with `next`, `in_days`) · add |
 | `DELETE` | `/api/special/{key}` | remove |
-| `POST` | `/api/special/propose` · `/api/special/proposal/declined` · `/api/special/run` | proposal card · «No» · daily pass |
+| `POST` | `/api/special/propose` · `/api/special/proposal/declined` · `/api/special/run` | proposal card · «no» · daily pass |
 | `POST` | `/api/calendar/smart/check?days=3` · `/api/calendar/smart/kept` | check · keep as is |
 | `POST` / `DELETE` | `/api/presence/manual` | manual state on / off |
 
@@ -532,17 +532,17 @@ MCP tools (all on Telegram through the dynamic menus): `routine_list`, `routine_
 `calendar_check`, `presence_set`, `presence_clear`, `presence_history`.
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the agenda parse prompt and the routine wrapper are English; the routine instruction stays the owner's text and the answer follows its language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the agenda parse prompt and the routine wrapper are English; the routine instruction stays the owner's text and the answer follows its language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».

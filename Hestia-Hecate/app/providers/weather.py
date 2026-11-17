@@ -390,7 +390,7 @@ def is_rainy(day_or_hour: dict | None) -> bool:
 
 
 def recap_facts(service: "WeatherService", nxt: str) -> dict:
-    """Daily recap (dossier 2026-10-20-meteo-hecate §3.6): tomorrow at Home, one line; rain → warning tone.
+    """Daily recap (dossier 2026-10-20-weather-hecate §3.6): tomorrow at Home, one line; rain → warning tone.
     No Home or no forecast → nothing to say."""
     try:
         f = service.forecast("", nxt, nxt)

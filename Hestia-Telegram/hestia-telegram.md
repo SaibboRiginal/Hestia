@@ -3,7 +3,7 @@
 **Role:** User Interface — Telegram client (chat, every assistant function, notifications)
 **Node:** Raspberry Pi (Always-On)
 **Stack:** Python · pyTelegramBotAPI · requests · Docker
-**Design dossier:** `docs/work/2026-10-23-telegram-da-zero` (SPEC v3.2, section 10 = as built)
+**Design dossier:** `docs/work/2026-10-23-telegram-from-scratch` (SPEC v3.2, section 10 = as built)
 
 ---
 
@@ -64,10 +64,10 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 
 ## Guided actions (`telegram_bot/actions.py`, `inputs.py`)
 
-- Fields come from the tool's JSON schema: label in words, help, «Es.» example, «Passo i di n»; enum/boolean/
+- Fields come from the tool's JSON schema: label in words, help, «Es.» example, «Step i of n»; enum/boolean/
   `arg_picker` → buttons; numbers, dates («tomorrow», «25/10»), times («18.30»), amounts («12,50 €») parsed in Italian;
   a date alone for a date-time asks the time. Indietro · Salta · Annulla on every step.
-- Writes get a **confirmation card** (Conferma); destructive tools get «Delete» in red and «Non si può annullare».
+- Writes get a **confirmation card** (Conferma); destructive tools get «Delete» in red and «It can't be undone».
 - Result: «One moment…» then the result card with the module's next-step buttons, «Change», «‹ Area», «Again».
   Images come as photo / album, exports as a document.
 - A file sent while an action waits for one is the answer (Archive blob when the schema asks `blob_id`). A voice
@@ -108,25 +108,25 @@ subscription compile), `rating_paused`.
   `quoted: {text, from: assistant|user|notification, at, ref}` with `/api/chat`; Oracle uses it for that turn only.
 - Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`). The vote buttons carry
   Oracle's `trace_id` of the turn (`fb:good:<id>`), saved as the feedback `interaction_id`, so the vote lands on that
-  answer in the training dataset (docs/work/2026-10-30-dataset-allenamento).
+  answer in the training dataset (docs/work/2026-10-30-training-dataset).
 - Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
 
-### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)
+### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-voice-module`)
 - A voice note is transcribed by Echo (use `telegram.voice_note`) and shown as «*testo*», then handled like the same
   sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
   puoi scrivermelo?» (`[🔄]`).
 - «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.answer`), kept so a second tap does not regenerate.
 - `/voice` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
   With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
-- **She wrote first** (dossier `docs/work/2026-11-12-identita-e-proattivita`): a notification whose payload has
+- **She wrote first** (dossier `docs/work/2026-11-12-identity-and-proactivity`): a notification whose payload has
   `_chat` is sent as plain chat text (escaped, no card, no tone dot, no cut at 80 characters) and remembered like an
   answer of hers («Ascolta» and the owner's reactions work on it). Hermes never retracts it.
-- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame →
+- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-living-hestia`): Oracle's `reaction` frame →
   `setMessageReaction` on the owner's message (Telegram's own emoji list; a near one is mapped, 😂 → 🤣, otherwise
   skipped); `final.reaction_only` → no text, the «Sto pensando…» message is deleted. The owner's reactions on her
   messages (`message_reaction` updates, asked for in `ALLOWED_UPDATES`) → Oracle `POST /api/chat/reaction` with the
   reacted text when the bot still has it.
-- Another model answering (dossier `docs/work/2026-11-13-sidebar-e-chat`): Oracle's `final.model` is remembered per
+- Another model answering (dossier `docs/work/2026-11-13-sidebar-and-chat`): Oracle's `final.model` is remembered per
   chat (in memory); when it differs from the last answer's, one line `〜 <model> 〜` opens the answer. No line for
   the first answer after a restart or when Oracle does not name the model.
 - Hermes `update` with `voice.audio_b64` → voice message replying to the notification.
@@ -140,12 +140,12 @@ mode and instructions are central settings (Themis, layer client `telegram`) thr
 - An Oracle `question` with `question_id` (e.g. a Themis proposal made in this chat) becomes a card with two
   buttons; the answer goes to `POST /api/chat/question-answer` (`client: telegram`).
 - `ask_user` questions (`services/assistant_questions.py`): Sì/No, single choice, multiple choice (toggles +
-  «Send»), «Other…» / free text; a question no longer open answers «Questa domanda non è più aperta».
+  «Send»), «Other…» / free text; a question no longer open answers «this question is no longer open».
 
 ## Notifications (`services/notifications.py`)
 
 - Hermes `/api/notify`: `notification` → message with tone dot and buttons `na:<short id>` (old `ntf:` still
-  accepted), «Apri» opens the WebUI page as Mini App when there is a public https address; `update` → buttons
+  accepted), «Open» opens the WebUI page as Mini App when there is a public https address; `update` → buttons
   replaced by a disabled state button («Vista su WebUI», «Approva · da WebUI»); `retract` → deleted; repeat chains
   in italics, superseded ones deleted (over 48 h: «Replaced»).
 - Button → Hermes `/api/notifications/{id}/answer` (first answer wins; 409 → «Already handled»).
@@ -157,7 +157,7 @@ mode and instructions are central settings (Themis, layer client `telegram`) thr
 
 ## Mini App (`telegram_bot/webapp.py`)
 
-With `WEBUI_PUBLIC_URL` (or `CLOUDFLARE_TUNNEL_HOSTNAME`) on https: chat menu button «Open Hestia» and «Apri»
+With `WEBUI_PUBLIC_URL` (or `CLOUDFLARE_TUNNEL_HOSTNAME`) on https: chat menu button «Open Hestia» and «Open»
 buttons open WebUI pages inside Telegram (`?tg=1`). The page logs in by itself: WebUI
 `POST /api/webui/auth/telegram` asks this module `POST /api/webapp/verify` (via Hub) to check Telegram's signed
 `initData` with the bot token (fresh ≤ 24 h, user in `ALLOWED_USER_ID`); the WebUI then issues a 12-hour session
@@ -191,7 +191,7 @@ Env keeps only secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, 
 
 Removed with the redesign: `telegram.alerts.buffer_window`, `telegram.commands.hidden*`, `telegram.signals.*`.
 Removed 2026-11-14: `telegram.chat.locale` (read by nobody): the language of notifications and formatted results is
-the personal setting `themis.personal.language` (`docs/work/2026-11-14-lingua-personale`).
+the personal setting `themis.personal.language` (`docs/work/2026-11-14-personal-language`).
 
 ## API Endpoints (control server, `services/control_service.py`)
 
@@ -210,7 +210,7 @@ the personal setting `themis.personal.language` (`docs/work/2026-11-14-lingua-pe
 
 ## WebUI token actions
 `webui_token`, `webui_status`, `webui_revoke` call the WebUI admin API directly (`WEBUI_API_URL`, security exception:
-not via Hub) with `X-WebUI-Admin-Secret` when `WEBUI_ADMIN_SECRET` is set. The token comes with «Apri» and «Copy».
+not via Hub) with `X-WebUI-Admin-Secret` when `WEBUI_ADMIN_SECRET` is set. The token comes with «Open» and «Copy».
 
 ## Assistant presence
 Every allowed message, file and button pings Chronos presence (`telegram`, debounced 60 s, `services/presence.py`).
@@ -237,24 +237,24 @@ When the assistant asks (Oracle tool `ask_user`, question id `ask_…`) the ques
 buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Send»), «Other…» or free text (the next text
 message is the answer). The callback is answered at once, then the answer goes to Oracle
 `/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
-question no longer open answers «⌛ Questa domanda non è più aperta».
+question no longer open answers «⌛ this question is no longer open».
 
-**Questions in notifications** (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a Hermes notification with `question` gets the same
+**Questions in notifications** (dossier `docs/work/2026-10-30-questions-in-notifications`): a Hermes notification with `question` gets the same
 keyboard (`assistant_questions.notification_rows`), the answer goes to Hermes `/api/notifications/{id}/reply`
-(first answer wins; «Questa domanda è già stata gestita» otherwise). A notification arrives unasked, so its free answer
+(first answer wins; «This question was already handled» otherwise). A notification arrives unasked, so its free answer
 is never the next message written: «Rispondi…» / «Other…» starts it (callback `askw:`), or a reply to the notification
-message is the answer (`notifications.answer_by_reply`). «Apri» stays under the keyboard.
+message is the answer (`notifications.answer_by_reply`). «Open» stays under the keyboard.
 
-## Answer extras (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
+## Answer extras (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 1)
 `services/answer_extras.py` + `ReplyRenderer`:
 - ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons
   become an inline keyboard «Choose» whose tap sends the button's text as the next chat message (callback `uisend:`).
 - `final.origin` not from the owner (`routine`, `autonomous`) adds its label in italics above the answer.
-- The `changes` frame becomes «📝 Ho fatto» with one «↩️ Annulla: …» button per change that has an undo; the tap
+- The `changes` frame becomes «📝 I did it» with one «↩️ Cancel…» button per change that has an undo; the tap
   (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
-- `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.
+- `goal.progress` notices («🎯 Goal») follow the normal notice settings.
 
-## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
+## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3, parity F)
 - «Export the data»: Telegram (a client, like the WebUI page) asks every module with the `transfer` capability for its
   export through Hub and sends `hestia-AAAA-MM-GG.hestia` (gzip JSON, same format, no photos) as a document.
 - «Import data»: asks for the file, shows the preview (dry run), «Import» merges (adds/updates, never deletes) and
@@ -263,9 +263,9 @@ message is the answer (`notifications.answer_by_reply`). «Apri» stays under th
 - «Restore a backup» (list of Drive backups → «Ripristina <data>», destructive confirm) and «Undo restore»
   call Archive `/api/backup/restore` · `/undo`; status, list and «Back up now» are Archive tools.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).
 
-## Setup mode: link the owner with a code (`services/setup_link.py`, dossier `docs/work/2026-10-30-setup-un-click`)
+## Setup mode: link the owner with a code (`services/setup_link.py`, dossier `docs/work/2026-10-30-one-click-setup`)
 
 While `ALLOWED_USER_ID` is empty the bot answers nobody, except a message of exactly 6 digits: it is sent to
 Hephaestus (`POST /route/hephaestus/api/setup/telegram/claim {code, user_id}`); the right code (shown by the guided
@@ -273,7 +273,7 @@ setup in the browser) makes the sender the owner («Fatto, ti riconosco!»), a w
 to open the setup. Hephaestus then writes `ALLOWED_USER_ID` and re-creates the bot. The guided setup itself stays in
 the browser on purpose: tokens and keys must not travel in a chat.
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool and field descriptions are
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool and field descriptions are
 English (for the model); the help under each form field comes from the field `title`, then the people catalog
 `hestia_common/locales/<lang>/tools.json` (`i18n.param_help`, language `themis.personal.language` via
 `settings.follow_personal()`), then the description.
@@ -284,7 +284,7 @@ outcomes and errors; the bottom keyboard is shown translated and `Menu.door_for_
 the translated label; bot commands and description, form field labels, result field labels and dates too.
 A file sent without a caption asks the model in English and to answer in the owner's language.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): fixed texts that speak of the assistant as a person
-use the chosen name (`{assistant}` through `hestia_common.i18n.t`, e.g. the setup link «parlare con …»); «Apri
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): fixed texts that speak of the assistant as a person
+use the chosen name (`{assistant}` through `hestia_common.i18n.t`, e.g. the setup link «talk to …»); «Apri
 Hestia» and other texts about the app keep «Hestia».

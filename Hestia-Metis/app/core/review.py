@@ -1,4 +1,4 @@
-"""Training dataset, phase D2 «Correct» (docs/work/2026-10-30-dataset-allenamento §3.3).
+"""Training dataset, phase D2 «Correct» (docs/work/2026-10-30-training-dataset §3.3).
 
 At night (agenda job ``metis.dataset.review``) a stronger model — the *teacher*, Oracle use case
 ``metis.dataset.review`` (Marko 2026-10-30: a cloud model, with his personal data masked) — re-reads the saved turns

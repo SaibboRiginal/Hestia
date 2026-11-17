@@ -24,10 +24,10 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 - Balances across quality tiers and domains
 - Exports as ChatML, Alpaca, or ShareGPT JSONL for LoRA training
 - Built datasets are saved as `$METIS_DATA_DIR/datasets/<name>.json` (mounted `Hestia-Metis/data`) and read back after
-  a restart (`docs/work/2026-10-30-cose-aperte`)
+  a restart (`docs/work/2026-10-30-open-items`)
 
-### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-dataset-allenamento`)
-Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.g. online). Phase **D1 «Log»**:
+### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-training-dataset`)
+Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.g. online). Phase **D1 «Logs»**:
 - Oracle pushes one **trace** per finished chat turn the owner typed (`POST /api/metis/traces`): system prompt,
   history text, user message, tool calls with arguments and results, answer, model, route (see `hestia-oracle.md`
   § Turn traces). `core/traces.py` stores it in Archive **`dataset-store`** (not `metis-store`: big rows, read with
@@ -76,14 +76,14 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   user request → starts now; module request (e.g. Athena) → agenda task `metis.train.<job>` at the next window
   opening, fired via Hub with `schedule=now`. `schedule=window|now` forces it. Move/cancel it from the agenda.
 
-### Usage log, «Now», «Discover» (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 6)
+### Usage log, «Now», «Discover» (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 6)
 - **Taps**: clients push what the owner starts (`POST /api/metis/usage`, Telegram in the background at every action
   start; the WebUI in wave 7). Rows in Archive `metis-store` (kind `tap`: client, kind tool|page|action, ref, weekday,
   hour). Kept 180 days. Only the owner's own taps; nothing leaves Hestia.
 - **Adesso** (`GET /api/metis/now?client=`, tool `metis_now`): no model at read time. In order: agenda items of
   the next 3 hours whose `params.tool` names a tool; up to 3 habits (score per tool = recency decay of 21 days ×
   same hour ±1 × same weekday / same kind of day) or recent tools; then up to 3 **ideas**. Each item has its reason
-  («Di solito il lunedì a quest'ora», «In agenda alle 18:00: …», «Used recently», the idea's own words). Only
+  («Usually on Monday at this time», «In agenda alle 18:00: …», «Used recently», the idea's own words). Only
   tools of the Hub catalog (`GET {HUB}/discovery/catalog?type=tool`, cached 10 min, last one kept if Hub is away)
   that the client can run; delete/cancel tools never appear.
 - **Ideas**: agenda jobs `metis.now.0700`, `.1230`, `.1800` (seeds: move them in the agenda) call
@@ -120,7 +120,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
 | `POST` | `/api/metis/usage` | Taps `{taps:[{client, kind, ref, label?, at?}]}` (422 if none valid) |
 | `GET` | `/api/metis/usage/stats` | Taps by client, top tools |
-| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-viva`) |
+| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-living-hestia`) |
 | `GET` | `/api/metis/now` · `/api/metis/discover` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/now/refresh` | Agenda job: new ideas + prune |
 | `GET` | `/api/metis/tools/now` · `/tools/discover` | The two tools (display cards) |
@@ -144,14 +144,14 @@ Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archiv
 `metis_benchmark_run` returns `status: not_implemented` (honest placeholder, no LLM call).
 Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `oracle.general` use case
 (first usable step of its chain), read via Hub from Oracle `GET /api/llm/usecases/oracle.general`; Oracle unreachable →
-`[🔄]` fallback to the first step of Oracle's default «veloce» chain, `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
+`[🔄]` fallback to the first step of Oracle's default «Fast» chain, `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
 `metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
 (dataset + log in `METIS_DATA_DIR`, default `/code/data` = `Hestia-Metis/data` volume); it used to report "triggered" without starting anything.
 
 ## WebUI plugin (Sistema)
 
 Metis ships its inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
-`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
+`docs/work/2026-10-18-core-modules-and-external-mcp` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
 section *Sistema*), `api_prefix` `/api/metis/`, no new endpoint.
 - page **Miglioramento** (`improvement`, `metis-improvement`, order 180): *Dataset di allenamento* from
   `/api/metis/traces/status` (saved turns, last 7 days, signals), *Da rivedere* from `/api/metis/review/pending`
@@ -213,24 +213,24 @@ import. Volume `./Hestia-Metis/data:/code/data`.
 Window-mode trainings also wait for presence `work.heavy` allow/local: held → re-planned +30 min (agenda key `metis.train.<job>.<ts>`). A running training is activity `metis.training.<job>` (heavy, gpu).
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 7 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset and training: 7 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Improvement»; «Discover» items carry a description for people and `area`, `area_label`, `area_icon`, `area_order` (one per area first); agenda titles «Window to train the models», «Allena il modello: …».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Improvement»; «Discover» items carry a description for people and `area`, `area_label`, `area_icon`, `area_order` (one per area first); agenda titles «Window to train the models», «Train the model: …».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the review, ideas and dataset system prompts are English; the reasons people read are in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the review, ideas and dataset system prompts are English; the reasons people read are in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».

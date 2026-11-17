@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { tr } from '../core/i18n';
 
 /**
- * Voice in the WebUI (dossier docs/work/2026-10-20-modulo-voce §7). The browser only records and plays:
+ * Voice in the WebUI (dossier docs/work/2026-10-20-voice-module §7). The browser only records and plays:
  * listening and speaking happen in the voice module through `/api/webui/voice/*`.
  * - voice messages in the chat (recording kept with its message, transcript shown under the audio);
  * - «Listen» under a reply (audio kept with the reply: the second time it is not generated again);

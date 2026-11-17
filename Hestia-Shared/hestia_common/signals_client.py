@@ -1,4 +1,4 @@
-"""Module signals — the first layer of Hestia's reflection (docs/work/2026-10-20-riflessione-a-livelli).
+"""Module signals — the first layer of Hestia's reflection (docs/work/2026-10-20-layered-reflection).
 
 Each domain module judges ITS OWN data with deterministic rules and publishes short **signals** (a stall on
 an exercise, routines skipped, a budget running fast) plus **weekly metrics** (one number per ISO week:

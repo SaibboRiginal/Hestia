@@ -41,10 +41,10 @@ Execution endpoints above are implemented as policy-gated remediation flows (tas
 
 ### WebUI plugin (Sistema)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Forge panel: tests passed check (success), failed x (danger), skipped minus; changed docs edit.
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Forge panel: tests passed check (success), failed x (danger), skipped minus; changed docs edit.
 
 Hephaestus ships its own inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
-`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
+`docs/work/2026-10-18-core-modules-and-external-mcp` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
 (WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it).
 - page **Sviluppo** (`development`, `hephaestus-development`, order 170, first; §A4 — ported from the WebUI built-in
   `/forge` page, which calls nothing of its own any more): Forge task list (search, filters Tutti / Aperti / *Dai
@@ -273,7 +273,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 
 ### External AIs (MCP access) — notes and "fixed on this branch"
 
-SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §B4. With an access made on the WebUI page *Accessi AI*,
+SPEC `docs/work/2026-10-18-core-modules-and-external-mcp` §B4. With an access made on the WebUI page *Accessi AI*,
 an external AI (Claude Code, Cursor…) reaches the tools Forge marked `"external"`: `forge_tasks`, `forge_task`,
 `forge_task_diff`, `forge_dossier`, `forge_status` (read) and `forge_develop`, `forge_task_note`,
 `forge_submit_branch` (write access). Approve, reject, merge, rollback, pause and engine settings stay internal.
@@ -390,17 +390,17 @@ one is clipped with a hint to read a smaller range. A stop is reported precisely
 `model stopped calling tools`. Coding on a local model needs a large window (≥32k tokens).
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Riparazioni: 5; sviluppo › Lavori: 10; sviluppo › Avanzate: 1; sviluppo › Impostazioni sviluppo: 3 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Riparazioni: 5; sviluppo › Lavori: 10; sviluppo › Avanzate: 1; sviluppo › Impostazioni sviluppo: 3 (area › section: tools).
 
-## Redaction and Marko's rules (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+## Redaction and Marko's rules (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 The context of a Forge task prompt passes through `hestia_common.redact.redact` (Cindy 19). The coding engine's
 «read first» list includes `docs/MARKO-RULES.md` (dated rules + the new-feature checklist, Cindy 11).
 
-## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - **Reviewer** (Cindy 3, `app/forge/review.py`): after the tests the task goes to state `reviewing`. A fresh model
   with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.review`, chain potente)
   gets only labelled evidence: request, acceptance criteria of the task SPEC (`docs/work/<WORKDOC>/SPEC.md`), the
-  diff, the real test output, and the engine's summary marked «autodichiarazione non verificata». Answer =
+  diff, the real test output, and the engine's summary marked «self-declared, not verified». Answer =
   `{verdict ok|problemi|unavailable, issues[{priority alta|media|bassa, file, problem, evidence}], blocking}`.
   Blocking issues (alta/media) go back to the same engine for **one** fix round (`fix_prompt`), then tests and review
   again. Saved as `review.json` in the task artifacts and `task.review`; the approval card shows «Revisione
@@ -415,9 +415,9 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
   note. Three restarts without progress (`limit_restarts`) → failed. Budget-window tasks go back to `scheduled`.
 - Endpoint: `POST /api/hephaestus/forge/tasks/{task_id}/resume`. Task fields: `review`, `team`, `limit_restarts`.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Development»; agenda titles «Scheduled development» and «Riprendi lo sviluppo: …».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Development»; agenda titles «Scheduled development» and «Riprendi lo sviluppo: …».
 
-## Guided setup «Benvenuto» (`app/setup/`, dossier `docs/work/2026-10-30-setup-un-click`)
+## Guided setup «Benvenuto» (`app/setup/`, dossier `docs/work/2026-10-30-one-click-setup`)
 
 Hephaestus owns the setup's writes because it already has the repo (`/repo`, where the `.env` files are) and the
 Docker socket. Endpoints `/api/setup/*` (state, later, complete, brain/catalog|test|apply|pull|pulls,
@@ -437,7 +437,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `/api/voice/setup/reload-keys` through the Hub); only when that fails or the key name does not come back the
   container is re-created as below. Each service result says `reloaded`, `recreated`, `applied`; `brain/test`,
   `brain/apply` and `voice/test` wait for health only after a re-create. `brain/apply` also takes `modes`
-  («Per modalità»: `potente|codice|visione` → `{provider, model}`, passed to Oracle and kept in the brain state with
+  («By mode»: `potente|codice|visione` → `{provider, model}`, passed to Oracle and kept in the brain state with
   the memory's `embedding`; an Ollama model named there is downloaded too) and `order` (the «Chosen» list in the
   user's order, local and cloud mixed: passed to Oracle and kept in the brain state, so the setup shows it again);
   a mode in `modes` can carry its own `steps` list (Ollama models in it are pulled, kept in the state too).
@@ -468,7 +468,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   the first time (a job of Hephaestus' `hestia_common.downloads`, source `docker`, progress summed over the layers,
   `/api/downloads`, page Download) and creates (first time, Docker API, never in compose so `up-all`/the installer never open Hestia to the internet by
   themselves; it carries the compose labels of Hestia's own project, read from this container, so Docker Desktop shows
-  it in the «hestia» group, service `tunnel`; an older one without them is made again) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
+  it in the «Hestia» group, service `tunnel`; an older one without them is made again) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
   `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
   reads the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
   after a reboot). Setup step `away`. MCP tools `away_status`, `away_enable` (Telegram «Machines»).
@@ -487,15 +487,15 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `updates_install`, `updates_rollback` (Telegram «Updates»).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: Forge review, plan, fix and resume prompts are English; review issues are asked in the owner's language; stored values (`high/media/low`, `simple/hard`) do not change. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: Forge review, plan, fix and resume prompts are English; review issues are asked in the owner's language; stored values (`high/media/low`, `simple/hard`) do not change. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».

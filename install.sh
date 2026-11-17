@@ -12,7 +12,7 @@
 # command again resumes or repairs. When it truly cannot go on it stops with one sentence saying what to do.
 # It never prints or logs secrets, never overwrites an existing .env value (only the machine link keys HUB_UPSTREAM_URL,
 # HUB_NODE_TOKEN, HUB_NODE_ADDRESS, on --join or a role change), never deletes data without --purge.
-# SPEC: docs/work/2026-10-30-setup-un-click
+# SPEC: docs/work/2026-10-30-one-click-setup
 set -Eeuo pipefail
 
 HESTIA_REPO_URL="${HESTIA_REPO_URL:-https://github.com/SaibboRiginal/Hestia.git}"
@@ -327,7 +327,7 @@ ensure_docker() {
         || fail "$(t "Docker Desktop does not install: download it from https://docker.com/products/docker-desktop and run again.")"
     fi
     run open -a Docker || true
-    wait_docker 300 "Apro Docker Desktop: se è la prima volta, accetta la licenza nella sua finestra." \
+    wait_docker 300 "$(t "Opening Docker Desktop: if it is the first time, accept the license in its window.")" \
       || fail "$(t "Docker Desktop does not answer: open it, accept the license, wait for «running» and run again.")"
   fi
 }
@@ -467,7 +467,7 @@ pick_version() {
     || note "$(t "The local code no longer follows GitHub: I left it as it is.")"
 }
 
-# What the guided setup shows («Scheda video da 16 GB») and uses to suggest models: git-ignored, no personal data.
+# What the guided setup shows («16 GB graphics card») and uses to suggest models: git-ignored, no personal data.
 write_hardware() {
   [ "$DRY_RUN" = 1 ] && return 0
   local gpu="" vram=0 line mib
@@ -486,7 +486,7 @@ write_hardware() {
   log "hardware gpu=\"$gpu\" vram_gb=${vram:-0} role=$ROLE lan_ip=$LAN_IP"
 }
 
-# ── machines: role, LAN address, link to the central one (docs/work/2026-10-30-setup-un-click §4.0) ─────────────
+# ── machines: role, LAN address, link to the central one (docs/work/2026-10-30-one-click-setup §4.0) ─────────────
 resolve_role() {
   if [ -z "$ROLE" ]; then   # a re-run keeps the role chosen before
     ROLE="$(sed -n 's/.*"role": *"\([a-z]*\)".*/\1/p' "$HESTIA_DIR/.hestia-install/hardware.json" 2>/dev/null || true)"

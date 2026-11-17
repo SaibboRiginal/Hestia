@@ -1,4 +1,4 @@
-"""The assistant wrote first («parla con te», docs/work/2026-11-12-identita-e-proattivita): a notification whose
+"""The assistant wrote first («parla con te», docs/work/2026-11-12-identity-and-proactivity): a notification whose
 payload has ``_chat`` is plain chat text, not a card. Markers: unit."""
 from __future__ import annotations
 

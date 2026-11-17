@@ -1,4 +1,4 @@
-"""Demeter — nutrition («Nutrition», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A5).
+"""Demeter — nutrition («Nutrition», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A5).
 
 The diet (daily kcal and protein targets, rules in plain words), the meals Marko logs (text; kcal and protein when they are
 known, otherwise an estimate the assistant writes later through Oracle use case ``demeter.estimate``, marked as

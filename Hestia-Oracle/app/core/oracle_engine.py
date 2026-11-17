@@ -257,7 +257,7 @@ class OracleEngine:
 
         # ── Infrastructure services ───────────────────────────────────────────
         self._hub = HubClient(self._hub_url)
-        # Tools of every module: only through Hestia's one MCP server (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+        # Tools of every module: only through Hestia's one MCP server (docs/work/2026-10-18-core-modules-and-external-mcp §B2).
         self._mcp = MCPClient(self._hub_url, client="oracle")
 
         # Small TTL cache for quasi-static discovery endpoints (TTL: oracle.cache.schemas_ttl, live).
@@ -777,7 +777,7 @@ class OracleEngine:
     def close_open_questions(self, session_id: str) -> int:
         """The owner wrote (or spoke) in this session: the message itself answers the open ``ask_user`` questions
         (they are in the history). Closed here and in Archive, so a reload does not draw the card again and a late
-        tap is told the question is closed (dossier docs/work/2026-10-30-domande-nelle-notifiche)."""
+        tap is told the question is closed (dossier docs/work/2026-10-30-questions-in-notifications)."""
         if not session_id:
             return 0
         closed: list[dict] = []
@@ -889,7 +889,7 @@ class OracleEngine:
                 provider=agent.provider, domains=domains, tool_log=tool_log,
                 total_ms=int((time.perf_counter() - t0) * 1000), message=user_message,
                 usage_before=usage_before, usage_after=llm_stats.session_usage(session_id), trace_id=trace_id)
-            # Training dataset (docs/work/2026-10-30-dataset-allenamento): what the model saw and did → Metis.
+            # Training dataset (docs/work/2026-10-30-training-dataset): what the model saw and did → Metis.
             if turn_trace.wanted(origin=origin, save_history=save_history, session_id=session_id):
                 parts = trace_parts or {}
                 turn_trace.send(self._hub, turn_trace.build(
@@ -933,7 +933,7 @@ class OracleEngine:
 
         # ── Resolve agent by use case ──────────────────────────────────────────
         agent = self._resolve_agent(model)
-        # Brain mode (dossier 2026-10-19-oracle-a-blocchi §D): external = an agent CLI runs the loop below.
+        # Brain mode (dossier 2026-10-19-oracle-blocks §D): external = an agent CLI runs the loop below.
         from core.services import external_agent, llm_chains
         chat_use_case = llm_chains.SLOTS.get(model, llm_chains.GENERAL)
         external = external_agent.mode_for(chat_use_case) == "external"
@@ -2598,7 +2598,7 @@ class OracleEngine:
 
         return tools
 
-    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-tutto-brainstorm-cindy) ─────────
+    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-whole-cindy-brainstorm) ─────────
     def _origin_header(self, session_id: str) -> str:
         """``X-Hestia-Origin`` for the module calls of this turn; empty for the owner typing (X-Hestia-Client says it)."""
         o = self._session_origins.get(session_id) or {}
@@ -3367,7 +3367,7 @@ class OracleEngine:
         return "\n".join(lines)
 
     def _save_history(self, session_id: str, user_message: str, answer: str, trace_id: str | None = None) -> None:
-        # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-hestia-viva F4).
+        # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-living-hestia F4).
         from core.services.reaction_marker import strip as _strip_reaction
         emoji, answer = _strip_reaction(answer)
         if emoji and not answer.strip():

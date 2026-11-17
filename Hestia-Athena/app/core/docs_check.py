@@ -1,4 +1,4 @@
-"""Repo docs aligned with the code (Cindy 29, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""Repo docs aligned with the code (Cindy 29, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 Deterministic, no model: what the running modules declare (MCP tools with their REST paths from Hestia-MCP,
 settings keys from Themis) is compared with the repo's docs read through Forge's repo browser

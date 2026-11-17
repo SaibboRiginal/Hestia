@@ -15,7 +15,7 @@ public class PublicUrlService
     private DateTime _tunnelChecked = DateTime.MinValue;
     private int _tunnelChecking;
 
-    // «Away from home» (docs/work/2026-10-30-setup-un-click): cloudflared's metrics give the quick tunnel's address.
+    // «Away from home» (docs/work/2026-10-30-one-click-setup): cloudflared's metrics give the quick tunnel's address.
     // Infrastructure address on hestia_net like Ollama's; the container exists only while the user wants it.
     private const string TunnelQuickUrl = "http://hestia_tunnel:20241/quicktunnel";
     private static readonly HttpClient TunnelHttp = new() { Timeout = TimeSpan.FromSeconds(2) };

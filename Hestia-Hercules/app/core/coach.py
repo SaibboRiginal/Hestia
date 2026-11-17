@@ -1,4 +1,4 @@
-"""Hercules as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.1).
+"""Hercules as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-of-every-kind §7.1).
 
 Needs (``hestia_common.coach`` contract), always "still to do" from ``start``:
 - weekly program → one ``workout.<weekday>`` block per program day left (that weekday only);

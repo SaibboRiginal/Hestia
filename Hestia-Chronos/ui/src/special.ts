@@ -2,7 +2,7 @@
  * <chronos-special> — «Special events»: birthdays, anniversaries and the dates that matter, with how many days
  * before the notice comes; who added them (you, People, a proposal you confirmed). Your birthday comes from the
  * personal settings. Reads GET /api/agenda/special; POST /api/agenda/special; DELETE /api/agenda/special/{key}.
- * Dossier 2026-10-24-tutto-brainstorm-cindy B6 (W2) + W7.
+ * Dossier 2026-10-24-whole-cindy-brainstorm B6 (W2) + W7.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API } from './util';

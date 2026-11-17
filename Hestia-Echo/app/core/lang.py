@@ -14,7 +14,7 @@ NAMES = {"it": "lang::Italian", "en": "lang::English", "es": "lang::Spanish", "f
          "ja": "lang::Japanese", "zh": "lang::Chinese", "hi": "lang::Hindi", "nl": "lang::Dutch", "pl": "lang::Polish", "ru": "lang::Russian"}
 # What the setup's «Listen» says, in the language of the voice tried: ``locales/<code>/voice.json`` (``sample``, and
 # ``default_name`` for scripts that do not use Latin letters). ``{assistant}`` is the name the owner gave her
-# (docs/work/2026-11-16-nome-ovunque). Each sentence is in its own language on purpose (the voice of that language reads it).
+# (docs/work/2026-11-16-name-everywhere). Each sentence is in its own language on purpose (the voice of that language reads it).
 
 
 def sample(code: str, ident: dict[str, str] | None = None) -> str:

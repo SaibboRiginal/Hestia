@@ -1,4 +1,4 @@
-"""Guided setup of the brain (docs/work/2026-10-30-setup-un-click §4.2 «Brain»).
+"""Guided setup of the brain (docs/work/2026-10-30-one-click-setup §4.2 «Brain»).
 
 What the setup screen needs from Oracle, and only from Oracle (it owns the providers):
 - ``runtimes(vram_gb, hosts)``: the programs that run models at home (Ollama, LM Studio, Jan, llama.cpp, vLLM), on
@@ -257,11 +257,11 @@ def _ollama_up() -> bool:
         return False
 
 
-# ── Prova ───────────────────────────────────────────────────────────────────
+# ── Test ────────────────────────────────────────────────────────────────────
 
 def _pick_model(provider: str, wanted: str, listed: list[str]) -> str:
     """The model to try: the one asked if the provider lists it (or lists nothing), else Hestia's default for it if
-    listed, else the provider's first chat model. So a retired name never blocks the «Prova»."""
+    listed, else the provider's first chat model. So a retired name never blocks the «Test»."""
     chat = [m for m in listed if not _is_embedding(m)]
     if wanted and (not listed or wanted in listed):
         return wanted
@@ -313,7 +313,7 @@ def _list_checked(provider: str) -> tuple[list[str] | None, str]:
 
 
 def test(provider: str, model: str = "") -> dict[str, Any]:
-    """«Prova» without spending tokens: reading the model list with the key proves the key works and gives the models
+    """«Test» without spending tokens: reading the model list with the key proves the key works and gives the models
     for the picker. Returns ``{ok, detail, model, models}`` in words a person understands; ``model`` = the one to
     preselect (the one asked, else Hestia's default, else the cheapest-looking listed). Only a service with no list
     to read gets one tiny real call."""

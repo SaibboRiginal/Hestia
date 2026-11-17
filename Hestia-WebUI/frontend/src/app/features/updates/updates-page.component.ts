@@ -16,7 +16,7 @@ export interface UpdateStatus {
 }
 
 /**
- * «Updates» (docs/work/2026-10-30-setup-un-click §4.4): the installed version, the new one with what it brings,
+ * «Updates» (docs/work/2026-10-30-one-click-setup §4.4): the installed version, the new one with what it brings,
  * «Install» (it moves to it and comes back by itself if something does not answer), «Back to the previous
  * version», the history. Browser → WebUI → Hub → Hephaestus /api/setup/update*.
  */

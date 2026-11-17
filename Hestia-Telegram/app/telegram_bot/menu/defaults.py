@@ -1,4 +1,4 @@
-"""Default menus — DATA ONLY (docs/work/2026-10-23-telegram-da-zero §5.11, layer 1).
+"""Default menus — DATA ONLY (docs/work/2026-10-23-telegram-from-scratch §5.11, layer 1).
 
 Change the look of Telegram's menus here or, without touching code, in the Themis setting
 ``telegram.menu.layout`` (same shape, every part optional, later wins). Tools that nothing mentions still appear:
@@ -46,7 +46,7 @@ from hestia_common.areas import AREAS, SERVICE_AREAS  # noqa: E402,F401
 
 # Section shown last inside «All actions», and sections never shown (used by the client itself).
 LAST_SECTION = "Advanced"
-HIDDEN_SECTIONS = ["interno"]
+HIDDEN_SECTIONS = ["internal"]
 
 # What the «Today» card shows (tools rendered one under the other) and its buttons.
 TODAY = {"tools": ["agenda_today", "weather_now"], "actions": ["agenda", "create_event", "new_reminder"]}

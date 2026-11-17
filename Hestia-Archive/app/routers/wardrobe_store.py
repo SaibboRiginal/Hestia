@@ -1,7 +1,7 @@
 """Wardrobe storage — rows with last-write-wins and a change cursor (same protocol as the Hercules store).
 
 Archive only stores: what a kind means, validation, statistics and suggestions live in
-Hestia-Wardrobe (SPEC docs/work/2026-10-17-modulo-guardaroba), the only caller.
+Hestia-Wardrobe (SPEC docs/work/2026-10-17-wardrobe-module), the only caller.
 """
 from datetime import datetime, timezone
 from typing import Any, List, Optional

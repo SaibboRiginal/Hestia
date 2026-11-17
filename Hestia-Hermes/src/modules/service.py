@@ -96,7 +96,7 @@ _ALERT_TYPES = {"service.action_required", "service.health"}
 
 def conversational_message(message: str, title: str, *, level: str, event_type: str, payload: dict[str, Any],
                            style: str) -> str:
-    """Style «Her sentence» (docs/work/2026-11-06-hestia-viva F5): an informative notification is said as one
+    """Style «Her sentence» (docs/work/2026-11-06-living-hestia F5): an informative notification is said as one
     short sentence of hers, like in chat. Warnings, errors and notifications with buttons, questions or secrets
     stay cards; Oracle down → the card text, unchanged."""
     if style != "sentence" or not str(message or "").strip():

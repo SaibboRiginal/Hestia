@@ -1,5 +1,5 @@
 """Menus as configuration, every function reachable, the action flow, every button handled, no stray emoji
-(docs/work/2026-10-23-telegram-da-zero §5, acceptance criteria)."""
+(docs/work/2026-10-23-telegram-from-scratch §5, acceptance criteria)."""
 from __future__ import annotations
 
 import ast

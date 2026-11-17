@@ -4,7 +4,7 @@
 the plugin or the chat, quick entry, categories that learn, budgets, recurring payments, statistics
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · WebUI plugin bundle (Lit, `ui/`) · `pypdf` (text only, no OCR)
-**Port:** 19020 · Domain `finance` · Tools `finance_*` · Dossier: `docs/work/2026-10-19-email-push-spese/`
+**Port:** 19020 · Domain `finance` · Tools `finance_*` · Dossier: `docs/work/2026-10-19-email-push-expenses/`
 
 ---
 
@@ -18,7 +18,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
   `link_pass` links the bank row to the PayPal row (same amount, bank text mentions PayPal, within
   `plutus.link.window_days`): both kept, counted once. Manual links/unlinks win (`link_manual`).
 - **Categories**: an explicit category wins, then the rules (longest pattern first), then Oracle for statement rows
-  no rule knows, else `other`/`income` with status `to_review` (email/statement only). Correcting with «usa sempre»
+  no rule knows, else `other`/`income` with status `to_review` (email/statement only). Correcting with «Always use»
   (`learn`) saves a user rule.
 - **Recurring**: same merchant, ±15 % amount, weekly/monthly/yearly interval, 3+ times (2 for yearly) → suggestion;
   the user confirms or dismisses (dismissed ones are not proposed again).
@@ -32,7 +32,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
 |---|---|---|
 | PayPal mails | Iris subscription `plutus:paypal` (senders = `plutus.mail.senders`) stores the mail in Archive under `finance` and rings `POST /api/finance/mail`; Plutus reads `archive/finance/unevaluated`, parses (deterministic, Oracle fallback), marks evaluated | «Recheck PayPal emails» (`POST /api/finance/mail/check`, Iris backfill N days) |
 | Bank statement PDF | Sent in chat: Oracle hands the blob to `POST /api/finance/attachments` (declared in `attachment_handlers`), reply = preview + «Li registro?» + import id; «yes» → `finance_import_statement(import_id, commit=true)` | Page *Importa*: upload → preview → confirm; undo |
-| Bank app notifications | Phone → Hecate → feed `phone.notification` (`hestia_common.feeds`, `capabilities.feeds`) → `POST /api/finance/phone`; `app/core/phone.py` (deterministic: amount + «pagamento/addebito…» or «ricevuto/accredito…», merchant after «presso/da/a») → transaction `source: phone`, always `to_review`, `external_ref` `phone:` hash (no duplicates); anything else ignored (dossier `2026-10-24-tutto-brainstorm-cindy` W4, Cindy 32) | — (choose the apps in Hecate's setting «Apps to listen to») |
+| Bank app notifications | Phone → Hecate → feed `phone.notification` (`hestia_common.feeds`, `capabilities.feeds`) → `POST /api/finance/phone`; `app/core/phone.py` (deterministic: amount + «pagamento/addebito…» or «ricevuto/accredito…», merchant after «presso/da/a») → transaction `source: phone`, always `to_review`, `external_ref` `phone:` hash (no duplicates); anything else ignored (dossier `2026-10-24-whole-cindy-brainstorm` W4, Cindy 32) | — (choose the apps in Hecate's setting «Apps to listen to») |
 | Single expense | — | Quick action «Quick expense» (amount + category chip, undo), form in the plugin, chat «ho speso 12 € al bar» (`finance_add`) |
 
 Statement parser: a line with a date at the start and an amount at the end is a row, lines in between continue the
@@ -60,7 +60,7 @@ biggest movements; `unusual_week`: week vs 8-week median, top categories and mer
 Daily recap piece «Expenses»: `GET /api/module/recap?day=&next=` (spent by category, income, to review, confirmed
 recurring payments due next; budget as note). Capability `recap_endpoint`.
 
-## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
+## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-layered-reflection`)
 
 Deterministic, no LLM; texts say «Expenses», never the module name. Stored in Archive `signals-store` through
 `Signals("plutus", "finance").sync()` (only changes written, signals gone are retracted).
@@ -89,11 +89,11 @@ debounced), once after warm-up and by the agenda job `plutus.signals` (daily 17:
 
 ## Client UI (plugin contract)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Empty states without emoji.
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Empty states without emoji.
 
 Bundle `ui/src/index.ts` → `/ui/webui/plutus.js` (built in the Dockerfile). Pages: panoramica (month: spent, income,
 left, pace, budget bar, categories, donut, latest, coming payments, top merchants, ricontrolla PayPal, chiedi),
-movimenti (by month or «to review», category, account, search; new), transactions/:id (category chips, «usa sempre»,
+movimenti (by month or «to review», category, account, search; new), transactions/:id (category chips, «Always use»,
 links, edit, delete), budget, abbonamenti, importa (PDF upload + preview + undo, PayPal state), statistiche (months,
 categories, merchants, JSON export), categorie (rename, archive, add; rules). Widgets: mese, ultimi. Quick action:
 spesa (category chips from `/quick/categories`, params amount + note, undo). A UI change needs
@@ -129,7 +129,7 @@ runtime: never exported. Settings travel through Themis.
 generated PDF, no network).
 
 
-## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.3)
+## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-of-every-kind` §7.3)
 
 Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter` (needs + review).
 - **Targets**: one per budget (category or total) — what is left this budget month spread over the weeks still to go
@@ -140,23 +140,23 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
 - **Review**: budgets kept vs over in the budget month.
 
 ## Telegram card (`display`)
-Tools `finance_summary`, `finance_search`, `finance_add` return a `display` card: spent vs budget and pace, categories with orange/red over 80/100 %, «Da rivedere (n)»; movements as merchant · amount · category · date; a saved movement with Cambia categoria / Elimina (red) / Riepilogo. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+Tools `finance_summary`, `finance_search`, `finance_add` return a `display` card: spent vs budget and pace, categories with orange/red over 80/100 %, «Da rivedere (n)»; movements as merchant · amount · category · date; a saved movement with Cambia categoria / Elimina (red) / Riepilogo. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
 ## Undo of a chat write
 `finance_add` returns `undo = {tool: finance_delete, args: {id}}` (`hestia_common.mcp_helpers.undo`): the chat shows
 «Ho fatto: Registra spesa» with «Cancel».
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Counts through the SDK `plural()` («1 movimento»).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Counts through the SDK `plural()` («1 movimento»).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the PayPal, category and statement prompts are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the PayPal, category and statement prompts are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. Default categories are seeded in the owner's language (`tr(label)` at seeding).
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. Default categories are seeded in the owner's language (`tr(label)` at seeding).

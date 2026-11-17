@@ -1,6 +1,6 @@
 """Hestia-Wardrobe — the wardrobe: pieces, accessories, outfits, "Worn" marks, suggestions (domain ``wardrobe``).
 
-SPEC docs/work/2026-10-17-modulo-guardaroba. Data in Archive (``/api/wardrobe-store`` + photos in ``/api/blobs``),
+SPEC docs/work/2026-10-17-wardrobe-module. Data in Archive (``/api/wardrobe-store`` + photos in ``/api/blobs``),
 settings in Themis, reminders through the agenda (Chronos) and Hermes, UI as a plugin bundle (``ui/``),
 assistant tools over MCP, AI photo description through Oracle only.
 """
@@ -326,7 +326,7 @@ def summary():
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     return recap.piece("wardrobe", tr("Wardrobe"), icon="shirt", emoji="👕", order=50, **wardrobe.recap(day, nxt))
 
 

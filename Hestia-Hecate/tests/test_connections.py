@@ -83,7 +83,7 @@ def test_google_client_then_page_then_pasted_code(world):
     assert r["open_url"].startswith("https://accounts.google.com") and r["item"]["state"] == "waiting"
     assert r["item"]["step"]["kind"] == "wait" and r["item"]["step"]["fields"][0]["name"] == "code"
     wrong = c.post("/api/gateway/connections/google", json={"values": {"code": "no"}})
-    assert wrong.status_code == 422 and "code" in wrong.json()["detail"]
+    assert wrong.status_code == 422 and "codice" in wrong.json()["detail"]
     r = c.post("/api/gateway/connections/google", json={"values": {"code": "ok"}}).json()
     assert r["item"]["state"] == "connected"
     assert c.post("/api/gateway/connections/nothing/sync").status_code == 404

@@ -25,7 +25,7 @@ _ALLOWED_AGGRESSIVENESS = {"low", "normal", "high"}
 _DEFAULT_CATEGORIES = ["alerts", "tasks", "reminders", "insights"]
 
 
-# Deterministic gate before the extraction LLM call (docs/work/2026-11-06-hestia-viva F2): only a message that talks
+# Deterministic gate before the extraction LLM call (docs/work/2026-11-06-living-hestia F2): only a message that talks
 # about how/when the assistant writes, reminds or asks can change a control. Everything else skips the call, so the
 # GPU is free for the next turn. Stems of every language with a words file ("control.hint").
 _CONTROL_HINT = word_regex("{0}", "control.hint")

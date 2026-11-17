@@ -4,7 +4,7 @@
 for every client. Built like Oracle a blocchi: named providers, chains, uses declared by modules, external mode.
 **Node:** main host (local engines want the CPU/GPU of the PC)
 **Stack:** Python · FastAPI · ffmpeg · faster-whisper · Piper · Kokoro (onnx) · Docker · WebUI plugin bundle (Lit, `ui/`)
-**Port:** 19021 · Core module (`kind="core"`, page «Voice» order 125) · Dossier: `docs/work/2026-10-20-modulo-voce/`
+**Port:** 19021 · Core module (`kind="core"`, page «Voice» order 125) · Dossier: `docs/work/2026-10-20-voice-module/`
 
 ---
 
@@ -19,7 +19,7 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   so the chain moves on. A program at home (Chatterbox…) gets `language` in the OpenAI request. Listening with
   `auto` lets Whisper recognise the language. A `say` stream fixes the language on its first long sentence.
   Before speaking, the text is made speakable (markdown, links, code and emoji dropped; very long texts cut at
-  `echo.voice.max_chars` with «il resto è nel testo»).
+  `echo.voice.max_chars` with « The rest is in the text»).
 - **Streams in blocks**: `listen` (microphone in chunks → partial text, trailing silence for the end of a turn) and
   `say` (text while it is written → audio sentence by sentence). Live mode on every client is Oracle (the same chat,
   the same models) + Echo. **No external live service** (no OpenAI Realtime, no Gemini Live): Marko's decision.
@@ -47,7 +47,7 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   + `echo.external.model`; Echo is only the door: cuts blocks, keeps audio, counts use). If the external engine fails:
   `echo.external.fallback` = `internal` (back to the chains) or `none` (say it does not work). Each use may override.
 
-Declared uses today: `echo.prova.*` (page «Test»), `oracle.documents` (audio in documents, chain `listening-precise`),
+Declared uses today: `echo.test.*` (page «Test»), `oracle.documents` (audio in documents, chain `listening-precise`),
 `telegram.voice_note`, `telegram.answer`, `webui.voice_note`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
 `hermes.notification`.
 
@@ -75,7 +75,7 @@ notification first, then asks Echo (use `hermes.notification`) and sends an `upd
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
 never changes.
 
-## «Your voice»: voiceprint and personal dictionary (W4, dossier `2026-10-24-tutto-brainstorm-cindy`)
+## «Your voice»: voiceprint and personal dictionary (W4, dossier `2026-10-24-whole-cindy-brainstorm`)
 
 - **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voice», Telegram «Registra la
   mia voce», tool `voiceprint_record`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
@@ -90,8 +90,8 @@ never changes.
   correction of a transcript (`POST /dictionary/learn`, tool `voice_correction`) makes the new words candidates,
   confirmed after `echo.dictionary.confirmations` (2) corrections. Rows `kind=word` (id = normalised word).
   The hint always starts with the assistant's chosen name and the owner's name (personal settings), so a new
-  name is written right from the first word; the setup «Ascolta» says «Ciao, sono <name>» in the voice's language
-  (`lang.sample`, dossier `docs/work/2026-11-16-nome-ovunque`).
+  name is written right from the first word; the setup «Ascolta» says «Hi, I am <name>» in the voice's language
+  (`lang.sample`, dossier `docs/work/2026-11-16-name-everywhere`).
 
 ## Clients
 
@@ -104,7 +104,7 @@ never changes.
 - **Page «Voice»** (plugin): Prova (mic → text, text → voice, with provider and chain that answered), Motori
   (providers, chains, uses), Uso (operations, minutes, characters, cost from `echo.pricing`, errors by use and
   engine), Audio conservati (space by class, listen, download, delete). **La tua voce** (`<echo-your-voice>`, W7): record the voiceprint
-  (≥ 6 s, a sentence to read, «Remove the voiceprint»), the personal dictionary (sure words and candidates «n di N»,
+  (≥ 6 s, a sentence to read, «Remove the voiceprint»), the personal dictionary (sure words and candidates «n of N»,
   add, remove with «Cancel»). In Prova «Fix the transcription» sends `{heard, corrected}` to `/dictionary/learn`.
   In Prova «Prepare the voice now» (`POST /models/prefetch`) downloads at once what listening and speaking need on
   this computer, with what it does written next to it (it was «Download the voices» in the WebUI Download page).
@@ -178,12 +178,12 @@ Echo's Hub capabilities declare `owns_tool_domains: ["voice"]`, so Oracle's doma
 (without it they never reached the assistant; found on the real-model bench, 2026-10-30).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

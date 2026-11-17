@@ -233,7 +233,7 @@ class Blocks:
         return rows
 
     def usecase_config(self, uc: str, direction: str) -> dict:
-        uc = (uc or f"echo.prova.{direction}").strip().lower()
+        uc = (uc or f"echo.test.{direction}").strip().lower()
         decl = self.declared_usecases().get(uc)
         if decl is None:
             with self._lock:

@@ -1,4 +1,4 @@
-"""Tests — named providers, model chains, use cases, migration (dossier 2026-10-19-oracle-a-blocchi).
+"""Tests — named providers, model chains, use cases, migration (dossier 2026-10-19-oracle-blocks).
 All network calls mocked."""
 from __future__ import annotations
 

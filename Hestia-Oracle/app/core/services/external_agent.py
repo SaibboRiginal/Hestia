@@ -1,4 +1,4 @@
-"""External brain mode (dossier ``docs/work/2026-10-19-oracle-a-blocchi`` §D): an agent CLI runs the loop.
+"""External brain mode (dossier ``docs/work/2026-10-19-oracle-blocks`` §D): an agent CLI runs the loop.
 
 Internal = Oracle's own machine (classifier, modes, agent loop, chains). External = an agent (Claude Code through the
 subscription, Codex through `codex login`) runs the tool loop; Oracle keeps the door work: context, the domain-filtered

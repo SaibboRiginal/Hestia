@@ -481,7 +481,7 @@ try:
             response_prompt="Confirm in one line that «Do not disturb» is off and say the new state (label).",
             telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant"}),
-        # ── Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §6) ──
+        # ── Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind §6) ──
         MCPTool(
             name="coach_week",
             description=(("The user's week plan: workouts, routines and the rest placed in their free time, goals, what does not fit and why. Use it for «what do I have planned this week», «when do I train», «how is the plan».")),
@@ -752,7 +752,7 @@ def _recap_with_life(day, nxt) -> dict:
     return facts
 
 
-# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): the user's events, assistant tasks, failed jobs.
+# Daily recap piece (docs/work/2026-10-20-daily-recap): the user's events, assistant tasks, failed jobs.
 app.include_router(recap_contract.recap_router(
     "chronos", lambda day, nxt: recap_contract.piece("chronos", tr("Agenda"), icon="calendar", emoji="📅", order=10,
                                                      **_recap_with_life(day, nxt))))
@@ -1315,7 +1315,7 @@ def agenda_window(key: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────
-#  Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo)
+#  Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind)
 #  Under the plugin's api_prefix (/api/agenda/) so the «Your week» page needs nothing else.
 # ─────────────────────────────────────────────────────────────────────
 

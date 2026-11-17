@@ -316,7 +316,7 @@ Google), `no_token`, `drive_api_disabled` (enable *Google Drive API* in the Clou
 does. Logs `event=drive_upload|drive_download|drive_delete …`. Setup: enable *Google Drive API* and add the scope
 `.../auth/drive.file` to the consent screen, then re-authorize Google once.
 
-### Weather (`providers/weather.py`) — dossier `docs/work/2026-10-20-meteo-hecate`
+### Weather (`providers/weather.py`) — dossier `docs/work/2026-10-20-weather-hecate`
 
 Open-Meteo (free, no key): forecast (current, daily, hourly, 16 days, `timezone=auto`) and geocoding (city level:
 an address resolves through its city; saved lat/lon skip geocoding). `WeatherService` caches per rounded lat/lon and
@@ -326,7 +326,7 @@ owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoi
 with one line «Domani a Casa: 10–18°, pioggia 15–17» (warning tone when rainy; no Casa → empty piece). Modules
 read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
 
-### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W4
+### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W4
 
 Hecate owns the devices and only passes data on, as **device feeds** (`hestia_common.feeds`): modules declare
 `capabilities.feeds = {kind: path}` in their Hub registration, Hecate discovers them and POSTs each item through the
@@ -432,19 +432,19 @@ just runs the normal watcher. `users.watch` expires after 7 days → daily agend
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 4; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 4; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Accounts and devices»; agenda job titles «Check new emails» and «Renew the Gmail watch» (no module name).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Accounts and devices»; agenda job titles «Check new emails» and «Renew the Gmail watch» (no module name).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

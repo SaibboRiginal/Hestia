@@ -144,7 +144,7 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     link = body.get("link") if isinstance(body.get("link"), dict) else {}
     question = body.get("question") if isinstance(body.get("question"), dict) else None
     if question:
-        # Asks like the chat card (dossier 2026-10-30-domande-nelle-notifiche): same keyboard, answer → Hermes.
+        # Asks like the chat card (dossier 2026-10-30-questions-in-notifications): same keyboard, answer → Hermes.
         from telegram_bot.services import assistant_questions
         path = f"/p/{link['module']}/{link['page']}" if link.get("module") and link.get("page") else ""
         question_rows, hint = assistant_questions.notification_rows(chat_id, notification_id, question, path)

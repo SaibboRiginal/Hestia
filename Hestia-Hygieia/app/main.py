@@ -436,7 +436,7 @@ def export():
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     return recap.piece("hygieia", tr("Self care"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
 
 

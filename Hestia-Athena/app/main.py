@@ -156,7 +156,7 @@ service = AthenaService(
 runtime = AthenaRuntime()
 
 # ── WebUI plugin (core module, System section): Thoughts ────────────────────
-# Inside view (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): every cycle observe → think → gate → act.
+# Inside view (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2): every cycle observe → think → gate → act.
 UI_DIST = os.getenv("ATHENA_UI_DIST", "/ui/dist")   # outside /code/app: the compose dev mount must not hide it
 API = "/api/athena"
 ui = plugin_client("athena", title="Thoughts", icon="zap", color="amber", kind="core", dist=UI_DIST,
@@ -330,7 +330,7 @@ def athena_think_now(track: str = "system") -> dict[str, Any]:
     """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
     ``track`` = ``system`` (default) or ``life``. ``started`` or ``busy`` (a cycle is already running); the
     record appears in /api/athena/thinking."""
-    if track == "talk":       # «Write to me now»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
+    if track == "talk":       # «Write to me now»: she writes first now (docs/work/2026-11-12-identity-and-proactivity)
         return runtime.talk_now()
     if track not in ("system", "life"):
         raise HTTPException(status_code=422, detail="track: system | life | talk")
@@ -358,7 +358,7 @@ def athena_talk(days: int = 7) -> dict[str, Any]:
 
 @app.get("/api/athena/evidence")
 def athena_evidence() -> dict[str, Any]:
-    """First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone): the findings she is still
+    """First observe, then propose (docs/work/2026-11-13-observe-first-then-propose): the findings she is still
     collecting proof for, the days she has been observing and what she needs before proposing."""
     from .core import athena_settings as AS
     return {"known_days": runtime.evidence.known_days(),
@@ -390,7 +390,7 @@ def athena_signals(domain: str | None = None, limit: int = 50, weeks: int = 12) 
 
 @app.get("/api/module/recap")
 def module_recap(day: str | None = None, next: str | None = None) -> dict[str, Any]:  # noqa: A002 — contract name
-    """Athena's piece of the daily recap (contract docs/work/2026-10-20-recap-giornaliero §3.2): the life
+    """Athena's piece of the daily recap (contract docs/work/2026-10-20-daily-recap §3.2): the life
     observations of ``day`` under «Keep an eye on», or ``{empty: true}``. Deterministic, no model call."""
     from .core.reflection import local_day
     return runtime.reflection.recap_piece(day or local_day())
@@ -410,7 +410,7 @@ def athena_observation() -> dict[str, Any]:
     }
 
 
-# ── Daily recap (docs/work/2026-10-20-recap-giornaliero) ─────────────────────
+# ── Daily recap (docs/work/2026-10-20-daily-recap) ─────────────────────
 @app.post("/api/athena/recap")
 def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
     """Compose the recap (agenda job, template, quick action). ``deliver`` false = return the text only."""
@@ -486,7 +486,7 @@ try:
             telegram_visible=True,
             telegram_group="day",
                 telegram={"section": "Recap", "primary": 3, "label": "Recap"}),
-        # Inside view, also for external AIs (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): read only.
+        # Inside view, also for external AIs (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §B4): read only.
         MCPTool(
             name="athena_thinking",
             description=(

@@ -1,4 +1,4 @@
-"""Training dataset D1 «Registra» (docs/work/2026-10-30-dataset-allenamento). Markers: unit"""
+"""Training dataset D1 «Registra» (docs/work/2026-10-30-training-dataset). Markers: unit"""
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path

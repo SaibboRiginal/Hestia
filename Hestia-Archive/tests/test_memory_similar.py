@@ -1,4 +1,4 @@
-"""Memory similarity search ranks inside Postgres (docs/work/2026-11-06-ricerca-memorie-in-db).
+"""Memory similarity search ranks inside Postgres (docs/work/2026-11-06-memory-search-in-db).
 
 Unit tests cover the guards that answer before any query; the live test needs ``ARCHIVE_TEST_PG_URL``
 (a Postgres with pgvector, e.g. the cloud bench) and is skipped otherwise.

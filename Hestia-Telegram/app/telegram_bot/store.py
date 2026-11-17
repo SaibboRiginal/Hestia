@@ -1,5 +1,5 @@
 """Small persisted state of the Telegram client (``data/telegram_ui.json``), so buttons and half-filled actions
-survive a restart (docs/work/2026-10-23-telegram-da-zero §5.8).
+survive a restart (docs/work/2026-10-23-telegram-from-scratch §5.8).
 
 - ``sid(value)``: a stable 6-char id for anything a button must carry (tool names, notification ids…): callback data
   never gets cut at 64 bytes and the same value always gives the same id.

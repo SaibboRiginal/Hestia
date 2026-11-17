@@ -1,4 +1,4 @@
-"""Tests — «Aggiorna Hestia» (docs/work/2026-10-30-setup-un-click §4.4): versions from git tags, what's new from the
+"""Tests — «Aggiorna Hestia» (docs/work/2026-10-30-one-click-setup §4.4): versions from git tags, what's new from the
 CHANGELOG, apply with health check and automatic way back. Real git in a temp dir, fake Docker, no network."""
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Voice uses a caller declares to Echo (dossier ``docs/work/2026-10-20-modulo-voce`` §4.C).
+"""Voice uses a caller declares to Echo (dossier ``docs/work/2026-10-20-voice-module`` §4.C).
 
 Same shape as ``oracle_usecases``: a module that asks Echo to listen (speech → text) or speak (text → speech)
 declares each kind of task as a use, with its direction and a suggested chain (``listen``, ``listening-precise``,

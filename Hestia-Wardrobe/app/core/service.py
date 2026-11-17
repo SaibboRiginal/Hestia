@@ -1,4 +1,4 @@
-"""Wardrobe service: everything the REST API, the UI and the MCP tools do (SPEC docs/work/2026-10-17-modulo-guardaroba).
+"""Wardrobe service: everything the REST API, the UI and the MCP tools do (SPEC docs/work/2026-10-17-wardrobe-module).
 
 Reads come from the in-memory mirror (instant stats/suggestions), writes go to Archive first (``Store``).
 """
@@ -575,7 +575,7 @@ class Wardrobe:
                 "favorite_outfits": [o["name"] for o in self.outfits(favorite=True, limit=8)["items"]]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): what was worn on ``day``, pieces in
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): what was worn on ``day``, pieces in
         the laundry. Nothing worn → nothing to say. No LLM."""
         pieces = {p["id"]: p for p in self.store.items("piece")}
         outfits = {o["id"]: o for o in self.store.items("outfit")}
@@ -871,7 +871,7 @@ class Wardrobe:
         with the photo. Answer ``{handled, text}`` for Oracle's attachment hand-off; the text carries the piece id so
         the next turn («no, it's black») reaches the edit tools."""
         blob = self.hub.ok("archive", "GET", f"api/blobs/{blob_id}/base64", timeout=30) or {}
-        upload = {"name": "foto.jpg", "mime": blob.get("mime") or "image/jpeg",
+        upload = {"name": "photo.jpg", "mime": blob.get("mime") or "image/jpeg",
                   "data_b64": blob.get("data_b64") or ""}
         guess = self.describe_photo(upload)
         fields = guess.get("fields") or {}

@@ -4,14 +4,14 @@
 who is at home
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `websockets` · `hestia_common.module_kit`
-**Port:** 19024 · Dossier: `docs/work/2026-10-24-tutto-brainstorm-cindy/` (W5, brainstorm A3)
+**Port:** 19024 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A3)
 
 ---
 
 ## Responsibility
 
 - The only module that talks to Home Assistant. Env (infrastructure/secret): `LARES_HA_URL`, `LARES_HA_TOKEN`
-  (long-lived access token). Empty → «la casa non è collegata», nothing else breaks.
+  (long-lived access token). Empty → «the home is not linked», nothing else breaks.
 - **Push, not poll**: a websocket to `/api/websocket` (auth, `subscribe_events state_changed`) keeps an in-memory
   mirror of the entities of the domains `light, switch, cover, climate, fan, media_player, lock, scene, script,
   sensor, binary_sensor, person`; one full `GET /api/states` on every (re)connect; reconnect with backoff 5 s → 5 min
@@ -41,13 +41,13 @@ Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by 
 
 `Hestia-Lares/tests/test_lares.py` (fake Home Assistant, no network).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: The Casa widget no longer repeats «Home» under the frame title and calls `markEmpty()` when there is nothing to show.
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: The Casa widget no longer repeats «Home» under the frame title and calls `markEmpty()` when there is nothing to show.
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

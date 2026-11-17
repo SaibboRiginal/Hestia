@@ -1,4 +1,4 @@
-"""Audio in documents is transcribed by the voice module Echo (dossier 2026-10-20-modulo-voce §7): no Whisper in
+"""Audio in documents is transcribed by the voice module Echo (dossier 2026-10-20-voice-module §7): no Whisper in
 Oracle, the use ``oracle.documents`` is declared in the Hub registration, failures return "" (fallback upstream)."""
 import pytest
 

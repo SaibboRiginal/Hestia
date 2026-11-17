@@ -54,7 +54,7 @@ light outdoor activities (run, bike, walk) planned with the weather
   still to mark, slots planned tomorrow (`Activities.recap`). Plain facts, capability `recap_endpoint`.
 - Template edits by the assistant keep the previous revision (`POST /templates/{id}/undo`).
 
-## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
+## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-layered-reflection)
 
 Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hercules`,
 domain `fitness`); texts say «Training» things, never the module name. No LLM, no new judging logic.
@@ -84,7 +84,7 @@ Sends only when enabled, a goal is behind, nothing done or skipped today, no liv
 
 ## Client UI (plugin contract)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Favourites star (warning), streaks flame, records trophy, rest timer; energy 1–5 as numbers (1 with battery-low).
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Favourites star (warning), streaks flame, records trophy, rest timer; energy 1–5 as numbers (1 with battery-low).
 
 Bundle `ui/src/index.ts` → `/ui/webui/hercules.js` (built in the Dockerfile). Pages: allenamento (today / live),
 schede, plans/:id, esercizi, exercises/:id, storico, history/:id, progressi, corpo. Widgets: prossimo (name always visible; exercise list only in size l), settimana,
@@ -126,7 +126,7 @@ Settings travel through Themis.
 mocks the signals transport).
 
 
-## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.1)
+## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-of-every-kind` §7.1)
 
 Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter`.
 - **Needs**: a weekly program → one `workout.<weekday>` block per program day still to do this week; otherwise an
@@ -139,7 +139,7 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
 - Settings: `hercules.coach.time_of_day` (evening), `hercules.coach.min_minutes` (30), group «Weekly plan».
 
 
-## Outdoor activities (dossier `docs/work/2026-10-20-meteo-hecate` §3.8)
+## Outdoor activities (dossier `docs/work/2026-10-20-weather-hecate` §3.8)
 
 `app/core/activities.py`. «Ho voglia di correre 2 volte questa settimana» → `fitness_plan_activity` picks the best
 slots of the week (pure `score_hour`/`best_of_day`/`pick_slots`): dry, daylight, comfortable temperature, little wind,
@@ -161,7 +161,7 @@ calendar before `fitness_confirm_activity` (all slots, some by number, or times 
 - Store kinds `activity_plan`, `activity` (written by the server only; refused from the offline sync),
   `calendar_link`, `activity_nudge`.
 
-## From the watch (feed `wearable.daily`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W4 B10)
+## From the watch (feed `wearable.daily`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W4 B10)
 
 Hecate pushes each day read from Garmin to `POST /api/hercules/wearable` (`hestia_common.feeds`, declared as
 `capabilities.feeds`). Outdoor activities (corsa, bici, camminata, nuoto) become done activities like «I went running»
@@ -172,25 +172,25 @@ there is no check-in made by hand; the adaptation of today's workout reads it li
 
 ## Telegram card (`display`)
 `GET /api/hercules/summary` (tool `fitness_summary`) also lists the week's logged activities (runs, walks, rides:
-line «Attività: …», field `activities_week`), not only gym sessions.
-`GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+line «Activity: …», field `activities_week`), not only gym sessions.
+`GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Counts through the SDK `plural()` («1 esercizio», «1 allenamento»); templates offline text «Apri Allenamento…».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Counts through the SDK `plural()` («1 esercizio», «1 allenamento»); templates offline text «Open Training…».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».

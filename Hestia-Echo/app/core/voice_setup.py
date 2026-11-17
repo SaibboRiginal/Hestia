@@ -1,4 +1,4 @@
-"""Guided setup «Voice» (docs/work/2026-10-30-setup-un-click §4.2): the same shape as the models screen.
+"""Guided setup «Voice» (docs/work/2026-10-30-one-click-setup §4.2): the same shape as the models screen.
 
 Echo owns the speech providers, so the screen asks Echo only:
 - ``catalog(blocks, language, hosts)``: for each direction (``listen`` = listening, ``voice`` = speaking) the providers
@@ -6,7 +6,7 @@ Echo owns the speech providers, so the screen asks Echo only:
   models and voices once its key is there) and the step the chain uses now; plus the speech programs found at home
   (Speaches/LocalAI with the OpenAI API, Home Assistant's Wyoming servers) on this computer and on the other
   computers the user names, like the models screen finds Ollama or LM Studio;
-- ``check(blocks, name, language)``: «Prova» without spending anything: a cloud service's model or voice list read
+- ``check(blocks, name, language)``: «Test» without spending anything: a cloud service's model or voice list read
   with its key proves the key;
 - ``plan(chains, listen, speak)``: the chosen steps first, in order, in the ``listen`` / ``voice`` chains (one local
   engine, then any cloud services as fallbacks), the other steps kept after them (pure, for the tests); ``apply``
@@ -238,7 +238,7 @@ def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) 
 
 
 def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
-    """«Prova» for a cloud speech service: its list read with the key (no audio made, nothing spent)."""
+    """«Test» for a cloud speech service: its list read with the key (no audio made, nothing spent)."""
     p = blocks.providers().get(name)
     if p is None:
         return {"ok": False, "detail": tr("This service is not configured.")}

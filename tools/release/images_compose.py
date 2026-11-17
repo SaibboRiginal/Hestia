@@ -10,7 +10,7 @@ Every service of docker-compose.global.yml that has a `build:` gets, in the over
 package `ghcr.io/saibboriginal/hestia` tagged `<service>-<version>` (one package = one visibility switch).
 `docker compose -f docker-compose.global.yml -f docker-compose.images.yml pull` then downloads a release instead
 of building it; without the override (up-all.bat, Forge) everything still builds locally as before.
-Standard library only: the installer may run it in a bare python container. SPEC: docs/work/2026-10-30-setup-un-click
+Standard library only: the installer may run it in a bare python container. SPEC: docs/work/2026-10-30-one-click-setup
 """
 from __future__ import annotations
 

@@ -1,7 +1,7 @@
 """Turn guards: fixed rules in code around the write tools of one chat turn, whatever the model decides.
 
 The prompt asks the model to behave; a small model (or a big one on a bad day) does not always do it. These rules
-do not depend on the model (bench with real and small models, 2026-10-30, docs/work/2026-10-30-ai-vera-gemini):
+do not depend on the model (bench with real and small models, 2026-10-30, docs/work/2026-10-30-real-ai-gemini):
 
 1. A question or a request for advice changes nothing: write tools are refused (settings_propose and
    forge_develop excepted: they only propose, the user confirms).

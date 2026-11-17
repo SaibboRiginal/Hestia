@@ -1,4 +1,4 @@
-"""Texts people read, in their language (dossier docs/work/2026-11-14-backend-inglese).
+"""Texts people read, in their language (dossier docs/work/2026-11-14-english-backend).
 
 The code is English, always (standard: ``docs/LANGUAGES.md``). Everything the model reads lives in the code as
 English; every fixed text a person reads is written in English in the code and translated through

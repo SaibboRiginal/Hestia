@@ -1,4 +1,4 @@
-"""Hestia-Hera — important people («People», port 19025, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
+"""Hestia-Hera — important people («People», port 19025, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A4).
 
 Data in Archive (``/api/people-store``), dates in the calendar as Chronos special events, notices through Hermes,
 settings in Themis, the daily check in the agenda, tools for the assistant and Telegram over MCP.

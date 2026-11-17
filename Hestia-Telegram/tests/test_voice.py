@@ -1,4 +1,4 @@
-"""Voice on Telegram (docs/work/2026-10-20-modulo-voce §7): a voice note is a chat message, «Ascolta» under
+"""Voice on Telegram (docs/work/2026-10-20-voice-module §7): a voice note is a chat message, «Ascolta» under
 replies, /live answers voice notes by voice, fallback to the document path when listening fails."""
 from __future__ import annotations
 
@@ -149,7 +149,7 @@ def test_notification_voice_replies_to_the_text_and_goes_with_it():
 
 @pytest.mark.unit
 def test_vote_buttons_carry_the_turn_id(env):
-    """Training dataset (docs/work/2026-10-30-dataset-allenamento): 👍/👎 land on the right turn."""
+    """Training dataset (docs/work/2026-10-30-training-dataset): 👍/👎 land on the right turn."""
     from telegram_bot.services import voice_service
     kb = voice_service.listen_keyboard(True, "abc123")
     datas = [b.callback_data for b in kb.keyboard[0]]

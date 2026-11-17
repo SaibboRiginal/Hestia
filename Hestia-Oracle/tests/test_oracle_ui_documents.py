@@ -1,4 +1,4 @@
-"""Documenti page (Oracle WebUI plugin, SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4):
+"""Documenti page (Oracle WebUI plugin, SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4):
 /api/ui/documents list · search · add (background archiving) · permanent · delete, all through Hub → Archive."""
 from __future__ import annotations
 

@@ -3,7 +3,7 @@
  * speech, so the TV and other people do not end up in what you dictate; forget it) and the personal dictionary
  * (names and words passed to every listening engine; the ones learnt from your corrections become sure after a few
  * times). Calls GET/POST/DELETE /api/voice/voiceprint, GET/POST /api/voice/dictionary, DELETE /dictionary/{word}.
- * Dossier 2026-10-24-tutto-brainstorm-cindy Cindy 10 + 17 (W4) + W7.
+ * Dossier 2026-10-24-whole-cindy-brainstorm Cindy 10 + 17 (W4) + W7.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, secs, when } from './util';

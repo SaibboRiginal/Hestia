@@ -4,7 +4,7 @@
  * tools, expiry, last use, calls today. OAuth connections (claude.ai, ChatGPT) are in the same list (kind oauth):
  * `/oauth/authorize` sends the browser here with `?oauth=<request>` and the consent card decides scope and tools —
  * nothing is granted without it. Second list: External services (third-party MCP servers, credentials in Hecate).
- * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3, §B6.
+ * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §B3, §B6.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 

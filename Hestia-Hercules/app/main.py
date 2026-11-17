@@ -535,7 +535,7 @@ def _activity_hints() -> list[dict]:
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     facts = hercules.recap(day, nxt)
     try:
         outdoor = activities.recap(day, nxt)
@@ -663,7 +663,7 @@ def reminder_check():
     return {"send": True, "text": text}
 
 
-# ── outdoor activities (dossier 2026-10-20-meteo-hecate §3.8) ─────────────────
+# ── outdoor activities (dossier 2026-10-20-weather-hecate §3.8) ─────────────────
 def _notify(msg: dict, title: str) -> bool:
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(

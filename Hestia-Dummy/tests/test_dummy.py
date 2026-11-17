@@ -52,7 +52,7 @@ class TestDummyLogs:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): reference module for the shared contract
+# Daily recap piece (docs/work/2026-10-20-daily-recap): reference module for the shared contract
 # ─────────────────────────────────────────────────────────────────────────────
 
 

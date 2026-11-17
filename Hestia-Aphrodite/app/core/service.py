@@ -1,4 +1,4 @@
-"""Aphrodite — how the clients look («Look», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
+"""Aphrodite — how the clients look («Look», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A2).
 
 Profiles (palette, a light effect, a background) and pets (a small companion with a few poses). Aphrodite decides
 by itself which profile is on: a special moment of today pushed by the calendar (the owner's birthday, the owner's

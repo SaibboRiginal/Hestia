@@ -1,4 +1,4 @@
-"""Tests — Argus "inside view" WebUI plugin (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3/A6).
+"""Tests — Argus "inside view" WebUI plugin (docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3/A6).
 
 Manifest (kind core, Salute page, Stato sistema widget, Ricontrolla quick action, order 110), the in-memory
 health history / incidents, the new read endpoints and the monitor hooks that feed them.

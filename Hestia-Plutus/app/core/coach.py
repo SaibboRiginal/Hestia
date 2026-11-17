@@ -1,4 +1,4 @@
-"""Plutus as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.3).
+"""Plutus as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-of-every-kind §7.3).
 
 Needs (``hestia_common.coach`` contract):
 - one ``target`` per budget (category or total): what is left this budget month, spread over the weeks still to go

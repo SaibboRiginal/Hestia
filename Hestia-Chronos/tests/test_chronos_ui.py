@@ -1,6 +1,6 @@
 """Chronos inside view (WebUI plugin «Esecuzioni»): manifest, /api/agenda/runs, /api/agenda/runs/failed.
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked (agenda rows in memory).
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked (agenda rows in memory).
 """
 from __future__ import annotations
 

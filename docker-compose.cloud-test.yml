@@ -1,6 +1,6 @@
 # Cloud test bench override — use ONLY with tools/cloud_test.py (Claude cloud session, GitHub Codespaces).
 #   python tools/cloud_test.py up      → docker compose -f docker-compose.global.yml -f docker-compose.cloud-test.yml …
-# The normal local run (up-all.bat) never reads this file. Dossier: docs/work/2026-10-19-banco-prova-cloud/
+# The normal local run (up-all.bat) never reads this file. Dossier: docs/work/2026-10-19-cloud-test-bench/
 #
 # - fake_llm: deterministic stand-in for Ollama (no GPU in the cloud); every answer starts with "[fake LLM]".
 #   With GEMINI_API_KEY in the environment the script points Oracle's chat use cases at a Gemini chain instead.

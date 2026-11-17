@@ -131,7 +131,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Check emails»). No WebUI code: both
   come from the Hub plugin catalog.
 
-### Adesso, Scopri, aspetto, Web Push (2026-10-29, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W7)
+### Adesso, Scopri, aspetto, Web Push (2026-10-29, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W7)
 
 - **Taps** (`services/metis.service.ts`): every page opened (`/p/<module>/<page>` → `<module>.<page>`, WebUI pages
   → `webui.<path>`) and every quick action or suggested tool run is a tap, sent in batches (20 s, 40 max, on tab
@@ -180,12 +180,12 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   live goes on when you leave the chat, a pill at the bottom shows its state with the pet as face (happy while
   talking), *Interrompi*, *Apri la chat*, close. The Chat page keeps its own panel.
   A question of the assistant is read with its options («Puoi dire: A, B o C», `spokenOptions`); the spoken answer is
-  the next message, which closes the question in Oracle (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A Hermes notification with
+  the next message, which closes the question in Oracle (dossier `docs/work/2026-10-30-questions-in-notifications`). A Hermes notification with
   `question` counts as pending in the shell toast («Reply»); the card is in the Hermes *Notifiche* page.
 - **Detta** (chat composer): speak, the text lands in the box to read again; use case `webui.dictation` (declared by
   `VoiceController`), nothing is kept.
 
-### Voce (2026-10-20, dossier `docs/work/2026-10-20-modulo-voce`)
+### Voce (2026-10-20, dossier `docs/work/2026-10-20-voice-module`)
 
 - Chat composer: with an empty field the send button is a **microphone**. Touch: hold to record, release to send,
   slide left to cancel. Mouse: click to record, then bin or send. The voice message appears at once as an audio
@@ -199,15 +199,15 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   and the sentences play in order; speaking again (or «Stop») stops the voice and the answer. No external live
   service. The panel shows Ti ascolto / Ti sento / Ci penso / Sto parlando. Its turns go to Oracle with
   `spoken: true` (SignalR `chat` message → `ChatHubMessage.Spoken`): short spoken answers, no lists.
-- **Name of the assistant** (`services/identity.service.ts`, dossier `docs/work/2026-11-12-identita-e-proattivita`):
+- **Name of the assistant** (`services/identity.service.ts`, dossier `docs/work/2026-11-12-identity-and-proactivity`):
   reads/saves the five personal settings (`themis.personal.assistant_name|assistant_gender|owner_name|owner_call|language`)
-  through the central-settings door. The chat («Scrivi a …», «Parla con … a voce») and the setup greeting show the
+  through the central-settings door. The chat («Write to …», «Talk to … by voice») and the setup greeting show the
   chosen name; the product stays «Hestia». Guided setup, second step **«You and me»**: your name (needed to go on), how
   to call you, her/his name, a she or a he, «Your language» (notifications and the messages she writes first;
 in chat she answers in the language you write) → saved live. Later: Sistema → Impostazioni → Personali.
-- **She wrote first**: a Hermes push whose payload has `_chat` (Athena «parla con te») is also added to the open
+- **She wrote first**: a Hermes push whose payload has `_chat` (Athena «talks to you») is also added to the open
   chat as a message of hers (it stays in Notifiche too).
-- **Reactions** (dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame shows Hestia's emoji on the
+- **Reactions** (dossier `docs/work/2026-11-06-living-hestia`): Oracle's `reaction` frame shows Hestia's emoji on the
   owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
   six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =
   taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons; the list lives in `features/chat/reaction-emoji.ts`, the one file the icon gate (`check_icons.py`) exempts.
@@ -311,7 +311,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Chat header ⚙ (`<hx-chat-quick-settings>`): tone and instructions for **this conversation** (scope session,
   id chosen by the backend); *Come predefinito* drops the override. Oracle applies them (`client: "webui"`).
 
-### Mode, reasoning display, context gauge (2026-10-11, `docs/work/2026-10-11-chat-modalita-contesto/`)
+### Mode, reasoning display, context gauge (2026-10-11, `docs/work/2026-10-11-chat-mode-context/`)
 - Composer `<hx-chat-mode>`: Auto · Rapida · Pensata · CoT (Oracle `oracle.chat.mode`). Loads the value of this
   conversation from Themis, a pick is saved with scope session and sent with every message; ChatHub passes
   `auto|quick|thinking|cot`, anything else as "" (= Oracle uses the setting; retry uses it too). Default in
@@ -322,7 +322,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   a click wins. Editable from the chat ⚙ popover and Personali; the drawer follows it too.
   The title says what is inside: «Ragionamento · N passi · M strumenti» only when the model really reasoned (N =
   reasoning steps), «Strumenti usati · M» when the trace holds tool calls alone; an empty frame is not a step
-  (docs/work/2026-11-11-ragionamento-vuoto).
+  (docs/work/2026-11-11-empty-reasoning).
 - Header `<hx-chat-context>`: ring with the % of the context window of the provider in use; popover with
   provider/model and billing kind, a coloured bar of what the last prompt was made of (instructions, tools of the
   turn, history, your message, tool results, free space) with a legend whose rows add up to the total, where the
@@ -330,7 +330,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   that setting, a warning when the prompt is larger than the window, this conversation's tokens (input / cache /
   output, calls, API-equivalent cost for Claude CLI) split per model («estimated» only on the model whose numbers
   are estimated) and *Compatta*. Refreshed when an answer ends or the conversation changes.
-- **Shortcuts to settings** (2026-11-12, `docs/work/2026-11-12-contesto-e-scorciatoie/`): one component,
+- **Shortcuts to settings** (2026-11-12, `docs/work/2026-11-12-context-and-shortcuts/`): one component,
   `<hx-setting-link>` (`ui/setting-link.component.ts`), next to a value that comes from a setting; it opens
   Impostazioni on that setting, scrolled to and highlighted (`/settings?key=<central key>` or
   `?section=<personal section>&row=<row>`; filters and «Advanced» are opened when needed). Used in the context
@@ -507,7 +507,7 @@ when the Hub answers 404/502/503/504 or is unreachable before the stream starts;
 in Archive (`ChatQueueService`, client `webui`, with mode/model/instructions in `meta`) and sends `queued` (bubble
 «🕒 In coda»). `POST /api/chat-queue/drain` (internal network only, capability `chat_queue_drain`, called by Chronos
 when Oracle is back) and startup replay the queue server-side (no browser needed; Oracle saves the history) and
-push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Non disponibile» while
+push `queued_answer` to every tab, which replaces the bubble. The Chat page shows a strip «⏳ Unavailable» while
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Create with Hestia» drawer does
 not queue (it answers «riprova appena torna»).
 
@@ -521,12 +521,12 @@ bubbles of queued messages and the open question. «Limited» shows as a presenc
 
 ## Icons, not emoji
 
-SPEC `docs/work/2026-10-20-icone-nei-client`. The WebUI and plugins draw `<hx-icon>` / `<hxk-icon>` (one shared set) with a
+SPEC `docs/work/2026-10-20-icons-in-clients`. The WebUI and plugins draw `<hx-icon>` / `<hxk-icon>` (one shared set) with a
 `tone` colour, never emoji. Presence popover: the `icon` + `tone` of the top overlay, else of the base state. Chat:
 `ChatMessage.icon` (paperclip = file, zap = command) and `error` (alert icon, danger). Toasts and the Hermes inbox hide the
 emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
-## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
+## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-one-click-setup`)
 
 `/setup` (`features/setup/`; the old `/welcome` redirects there) is a full-screen page outside the shell, one
 question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram → Backup →
@@ -542,14 +542,14 @@ as the order of the steps for the voice), below two tabs. «Local» (this comput
 engine, first few and «Mostra tutti»; tap the chosen one again to leave it out), the links to install Ollama or LM
 Studio when nothing is found, and «Is it on another computer in the network?» (remembered in the browser, sent as `?hosts=`
 to both catalogs, «Search again» looks again for models and speech programs). «Cloud» = one row per service that
-opens in place: key typed once and tried in a second (a saved key is checked by itself), «La chiave funziona» with
+opens in place: key typed once and tried in a second (a saved key is checked by itself), «The key works» with
 the models already chosen in the same picker, «Change key». A cloud service is preselected only when its key (or
 the Claude code) is already saved, in every step. Modelli lists only chat models and has a tab per mode
 (Generale, Ragionamento, Codice, Immagini): the three others say «The same as General» (ticked by default);
 unticked, the mode gets its own copy of the same step, with its own «Chosen» to change and reorder (sent as
 `modes {mode: {steps: [{provider, model}]}}`; the keys are shared between the modes, the model lists are read by
 each step when a service is opened). «The models are ready» shows the assistant's first message, written
-with the models just chosen (`brain/hello`, «Scritto con <model>»), drawn by the chat's own `hx-assistant-text`
+with the models just chosen (`brain/hello`, «Written with <model>»), drawn by the chat's own `hx-assistant-text`
 (`features/chat/assistant-text.component.ts`: prose, answer blocks, typing dots, caret), so it looks like the chat; when the local model is still downloading it
 writes again once the download is over. In Voce every voice has «Ascolta», in the lists too, before choosing it (a short sentence with that voice,
 `voice/preview`; `setup-pick` `trial`), in Ascolto «Try speaking» on every engine (tap, speak, tap: «Ho capito: …»,
@@ -565,7 +565,7 @@ Voce writes both chains and queues the downloads. The «Your services» screen m
 services `<hecate-connections>` (ctx `params.place = setup`) through `hx-plugin-outlet`, the same list as the
 Dispositivi page (every service the same card):
 Google connects by hand there (OAuth client with a short guide, «Link Google», pasted address as fallback).
-«Outside home»: one line on what it is, «Active» right there, the steps while it starts, then the address with «Apri»
+«Outside home»: one line on what it is, «Active» right there, the steps while it starts, then the address with «Open»
 and «Copy», a warning with «Try again» when no address comes in 90 s. «All set»: each choice as a row that goes
 back to it. In the cloud rows a saved key
 is never typed again: its model list is read at once (no tokens), «Save and try» saves a new one. `setupGuard`
@@ -581,7 +581,7 @@ for later. Backend: `SetupController` forwards only the screens' paths of `/api/
 `/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home
 network, or token).
 
-## Macchine page (`/machines`, dossier `docs/work/2026-10-30-setup-un-click` §4.0)
+## Macchine page (`/machines`, dossier `docs/work/2026-10-30-one-click-setup` §4.0)
 
 `features/machines/` (button «Machines» in Sistema; «Devices» is the page of phones and watches): this machine
 (role, video card, LAN address) and its satellites (address, online, what they do in plain words: voce, allenamento
@@ -595,13 +595,13 @@ also the setup screen `away`). `PublicUrlService` reads the tunnel's address fro
 at most once a minute in the background (never blocking a request; a manual URL wins; the address is forgotten when
 the tunnel is off), so the login links follow it; requests to that host always need the token.
 
-## Aggiornamenti page (`/updates`, dossier `docs/work/2026-10-30-setup-un-click` §4.4)
+## Aggiornamenti page (`/updates`, dossier `docs/work/2026-10-30-one-click-setup` §4.4)
 
 `features/updates/` (button «Updates» in Sistema): installed version and channel (link to the setting), the new
 version with what's new, «Install» (asks first), the running step every 3 s, history, «Torna alla versione di
 prima». Backend: `SetupController` whitelist `GET update`, `POST update/check|apply|back` (180 s; → Hephaestus).
 
-## Download page (`/download`, dossier `docs/work/2026-10-30-setup-un-click` §4.3)
+## Download page (`/download`, dossier `docs/work/2026-10-30-one-click-setup` §4.3)
 
 `features/downloads/` (kept in git by a `!` line in `.gitignore`, whose generic `downloads/` rule would hide it; button «Download» in Sistema): every download of every module with the `downloads`
 capability (Oracle's models, Echo's voices), progress, speed, time left; Pausa · Riprendi · Riprova · Annulla ·
@@ -610,7 +610,7 @@ something moves, every 10 s otherwise. Backend `DownloadsController`: `GET /api/
 through the Hub; one not answering is listed as offline, never named to the user) and `POST
 /api/webui/downloads/{module}/{op}` with body `{id}` (ids carry «:»).
 
-### Sidebar with one rule, conversations, bubble, microphone, dividers (2026-11-13, dossier `docs/work/2026-11-13-sidebar-e-chat`)
+### Sidebar with one rule, conversations, bubble, microphone, dividers (2026-11-13, dossier `docs/work/2026-11-13-sidebar-and-chat`)
 
 Replaces what the 2026-10-29 section says about the sidebar's top and the «System» entry.
 
@@ -631,7 +631,7 @@ Replaces what the 2026-10-29 section says about the sidebar's top and the «Syst
   day (Oggi, Ieri, «mer 5 nov») and for another model answering (`final.model`, kept with the message).
 - **Download**: «Download the voices» moved to the Voce page as «Prepare the voice now»; the page is listed in Sistema.
 
-## Owner's language (2026-11-15, dossier `docs/work/2026-11-14-backend-inglese`)
+## Owner's language (2026-11-15, dossier `docs/work/2026-11-14-english-backend`)
 
 Every fixed text of the shell and of the plugins follows «Language» (`themis.personal.language`). `index.html` loads
 `/api/webui/i18n.js` (public, no-store: `I18nController` → Hub → Themis `/api/settings/i18n`) before any bundle; it sets
@@ -645,8 +645,8 @@ page once. «Language» offers Italian and English (`LANGUAGES` in `identity.ser
 standard for texts is `docs/LANGUAGES.md`. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs
 them; no personal data).
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-nome-ovunque`): `tr` fills
-`{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-name-everywhere`): `tr` fills
+`{assistant}` and `{g:lei|lui}` («Create with {assistant}»), and so do the SDK `tr` of the plugins and the plugin
 manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
 she/he reloads the page (`followIdentity`), except during the setup.

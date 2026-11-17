@@ -20,7 +20,7 @@ export function family(id: string): string {
 }
 
 /**
- * The one selector of the guided setup (docs/work/2026-10-30-setup-un-click): cards, a search box when the list is long,
+ * The one selector of the guided setup (docs/work/2026-10-30-one-click-setup): cards, a search box when the list is long,
  * the first few shown and «Show all». Used for local models, the memory's model, cloud models and voices, so every
  * choice looks and works the same. ``multi``: several chosen in order (``chosen``), each card shows its place
  * (1º, 2º…): the first is used, the next ones take over when it fails; a click adds or removes one.
@@ -129,7 +129,7 @@ export class SetupPickComponent {
   all = signal(false);
   /** The filter chip on ('' = all). */
   group = signal('');
-  /** Chips: the groups of the list in order of first appearance (at most 8; the rest go under «Tutti»). */
+  /** Chips: the groups of the list in order of first appearance (at most 8; the rest go under «All»). */
   groups = computed(() => [...new Set(this.items().map(i => i.group || '').filter(Boolean))].slice(0, 8));
 
   /** The language selector: the languages of the list in order of appearance (only when the items have one). */

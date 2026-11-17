@@ -1,4 +1,4 @@
-"""Chat with the assistant (docs/work/2026-10-23-telegram-da-zero §7, §5.10).
+"""Chat with the assistant (docs/work/2026-10-23-telegram-from-scratch §7, §5.10).
 
 A message (typed, voice note, file) is one chat turn: Oracle streams the answer into one message (``ReplyRenderer``),
 notices go under it in italics, «Listen» and the vote share one row. A reply to a message — or a quote of part of
@@ -390,7 +390,7 @@ _DEFAULT_MSG = {"audio": "Transcribe and summarise this audio.", "voice": "Trans
 def _default_request(content_type: str) -> str:
     from hestia_common import i18n, identity
     return (_DEFAULT_MSG.get(content_type, "Analyse this file.")
-            + f" Answer in {identity.LANGUAGES.get(i18n.current(), 'Italian')}.")
+            + f" Answer in {identity.LANGUAGES.get(i18n.current(), 'English')}.")
 
 
 def _download_telegram_file(file_id: str) -> bytes:

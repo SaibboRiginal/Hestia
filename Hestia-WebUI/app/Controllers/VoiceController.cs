@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Voice in the WebUI (dossier docs/work/2026-10-20-modulo-voce §7): token-protected proxy to the voice
+/// Voice in the WebUI (dossier docs/work/2026-10-20-voice-module §7): token-protected proxy to the voice
 /// module through the Hub. The browser records and plays; listening and speaking happen in the voice module.
 /// <list type="bullet">
 /// <item><c>POST /api/webui/voice/transcribe</c> — a voice message of the chat (kept with its message).</item>

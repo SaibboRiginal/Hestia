@@ -1,4 +1,4 @@
-"""Personal dictionary for listening (Cindy 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4).
+"""Personal dictionary for listening (Cindy 17, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4).
 
 Names and terms the engine gets wrong (people, places, «Hygieia»…) are passed to every listening engine as a hint
 (Whisper ``initial_prompt``, OpenAI-compatible ``prompt``). The dictionary fills itself: when the owner corrects

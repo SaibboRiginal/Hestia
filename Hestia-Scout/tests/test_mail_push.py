@@ -1,4 +1,4 @@
-"""Scout gets its mails by PUSH from Iris (no agenda poll). SPEC docs/work/2026-10-19-email-push-spese §3.4."""
+"""Scout gets its mails by PUSH from Iris (no agenda poll). SPEC docs/work/2026-10-19-email-push-expenses §3.4."""
 from __future__ import annotations
 
 from unittest.mock import patch

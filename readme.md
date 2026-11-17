@@ -185,18 +185,18 @@ curl -fsSL https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.s
 end the browser opens a guided setup, like a new phone. Choose where Hestia thinks (your computer, the cloud, or both;
 in the cloud Gemini, your Claude subscription or another key; the right model for your graphics card downloads by itself), paste your Telegram bot token
 from [@BotFather](https://t.me/BotFather) and write to the bot the code it shows, pick a backup passphrase, and turn
-on access from outside home if you want it. Anything can wait: it stays as a «Da finire» card in Home.
+on access from outside home if you want it. Anything can wait: it stays as a «To finish» card in Home.
 
 <img src="docs/assets/icons/step-3.svg" width="26" height="26" align="top" alt="3">&nbsp; **Say hi** to your bot or open
 `http://localhost:19015`. From then on Hestia asks before installing each new version and goes back by itself if
 something breaks (Sistema → Aggiornamenti). A second computer with a graphics card can join for voice and local
-models: Sistema → Macchine → «Collega una macchina».
+models: Sistema → Macchine → «Link a machine».
 
 Prefer doing it by hand, or developing Hestia? [docs/SETUP.md](docs/SETUP.md#manual-install) has the manual steps,
 the installer options and where everything goes.
 
 > **Just want to look around?** Open it in a [GitHub Codespace](https://codespaces.new/SaibboRiginal/Hestia): the
-> whole stack starts by itself and prints a login link. See [TESTING.md](TESTING.md#banco-di-prova-cloud-whole-stack-no-local-pc).
+> whole stack starts by itself and prints a login link. See [TESTING.md](TESTING.md#cloud-test-bench-whole-stack-no-local-pc).
 
 <img src="docs/assets/icons/divider.svg" width="100%" height="6" alt="">
 

@@ -1,4 +1,4 @@
-"""Export and import from Telegram (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F; format and module contract:
+"""Export and import from Telegram (dossier docs/work/2026-10-24-whole-cindy-brainstorm F; format and module contract:
 docs/work/2026-10-20-import-export).
 
 Like the WebUI page, the client orchestrates: every module exports and imports only its own data through Hub
@@ -226,15 +226,15 @@ def tools() -> list[catalog.Tool]:
           schema={"type": "object", "required": ["file"], "properties": {"file": {
               "type": "string", "contentMediaType": "application/octet-stream", "title": "The .hestia file"}}},
           handler=import_data),
-        T("import_confirm", "Confirm import", "", group="system", hints={"section": "interno"},
+        T("import_confirm", "Confirm import", "", group="system", hints={"section": "internal"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           writes=True, handler=import_confirm),
-        T("import_cancel", "Cancel import", "", group="system", hints={"section": "interno"},
+        T("import_cancel", "Cancel import", "", group="system", hints={"section": "internal"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           handler=import_cancel),
         T("restore", "Restore a backup", "Brings all data back to a backup on Google Drive", group="system",
           hints={"section": "Data and backups"}, handler=restore_backup),
-        T("restore_confirm", "f::Restore", "", group="system", hints={"section": "interno"},
+        T("restore_confirm", "f::Restore", "", group="system", hints={"section": "internal"},
           schema={"type": "object", "properties": {"file_id": {"type": "string"}}, "required": ["file_id"]},
           writes=True, destructive=True, handler=restore_confirm),
         T("restore_cancel", "Undo restore", "Back to the data before the last restore",

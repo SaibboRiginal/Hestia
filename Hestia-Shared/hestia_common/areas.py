@@ -1,5 +1,5 @@
 """Areas of Hestia as people see them, and tool texts written for people (dossier
-docs/work/2026-10-29-revisione-e-test-frontend §6, proposal 1).
+docs/work/2026-10-29-frontend-review-and-tests §6, proposal 1).
 
 A person never reads module names (Hercules, Hecate…) or text written for the model. Every client groups tools by
 **area** (Training, Home, Expenses…) and shows a short **summary**:

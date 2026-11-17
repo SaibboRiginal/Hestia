@@ -48,12 +48,12 @@ Marko. Satellites: Hub unit/api tests (`Hestia-Hub/tests/test_hub_nodes.py`: pai
 rewrite, satellite-first routing); a two-machine run (central + PC with `--join`) is Marko's. «Aggiorna Hestia»:
 `Hestia-Hephaestus/tests/test_updater.py` (real git repos with tags, fake Docker: notes, restart only what changed,
 way back on a failed health check, local work refused); a real update needs a first tag `v1.0.0`. Dossier:
-`docs/work/2026-10-30-setup-un-click/`.
+`docs/work/2026-10-30-one-click-setup/`.
 
-## Banco di prova cloud (whole stack, no local PC)
+## Cloud test bench (whole stack, no local PC)
 
 Runs every service for real (WebUI .NET + Angular included) in a **Claude cloud session** or a **GitHub Codespace**,
-then checks it like a user. Dossier: `docs/work/2026-10-19-banco-prova-cloud/`.
+then checks it like a user. Dossier: `docs/work/2026-10-19-cloud-test-bench/`.
 
 ```
 python tools/cloud_test.py          # no argument: starts Hestia if it is off, prints the login link + a short Italian guide (also `help`)
@@ -66,7 +66,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 ```
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
-- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
+- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-bench-real-runs/`): areas hercules, hygieia, wardrobe,
   agenda, presence, settings, plugins, mcp, webui, transfer, vita (new modules), shell (Adesso, Scopri, chats, push) (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` (or `ORACLE_KEY_GEMINI`) in the environment (cloud environment variable / Codespaces secret,
@@ -93,7 +93,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   Browser «ERR_INVALID_RESPONSE» on the link = the forwarded port talks HTTPS to the WebUI (plain HTTP): *Ports* tab →
   row 19015 → right click → *Change Port Protocol → HTTP* (the devcontainer now sets HTTP for 19015/19000).
 
-## Setups that need Marko's devices (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+## Setups that need Marko's devices (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 
 - **Garmin** (W4 B10): `pip` gets `garminconnect` with the Hecate image (`up-all.bat --build`). Telegram → Sistema →
   Dispositivi → «Link Garmin» → «Insert» → email + password (+ the code Garmin mails, second form). Then
@@ -103,7 +103,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   `X-Hestia-Phone-Token: <token>`, body `{"type":"state","wifi":"%WIFII_SSID","charging":%BATT_CHARGING}` (Wi-Fi names
   in Themis «Home Wi-Fi»); profile «Notification» of the bank app → body `{"type":"notification","app":"%an",
   "title":"%ntitle","text":"%ntext"}` → Spese shows a transaction to review. Telegram «Phone» shows the last state.
-- **Voice** (W4 Cindy 10/17): Telegram → Voce → «Registra la mia voce» (≥ 6 s); WebUI «Talk» with the TV on: the TV
+- **Voice** (W4 Cindy 10/17): Telegram → Voce → «Record my voice» (≥ 6 s); WebUI «Talk» with the TV on: the TV
   must not end in the transcript. «Parole» → add a name; after two corrections of the same word it is confirmed.
 - **Spoken diary** (W4 B9): after the evening recap tap «Tell me about your day», send a voice note → Cura di sé → diario.
 - **.NET WebUI build** (W7): never built in the cloud sessions (no `dotnet` there; the bench builds it in Docker).
@@ -112,8 +112,8 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   `OracleEvent.items` / `origin` fields: a reply from a routine must show «Avviato da …».
 - **Images / ComfyUI** (W5 A1): on the PC with the GPU start ComfyUI with `--listen 0.0.0.0`; root `.env`
   `APOLLO_COMFYUI_URL=http://<pc>:8188`. ComfyUI → your txt2img workflow → *Save (API Format)* → WebUI Immagini →
-  Flussi → upload it as «generico» (and «mascotte» for the pet). Then «Nuova immagine»: the job goes queued → running →
-  done and Hermes says «Image ready». Aspetto → pet → «Genera» uses the «mascotte» flow.
+  Flussi → upload it as «generico» (and «Mascot» for the pet). Then «Nuova immagine»: the job goes queued → running →
+  done and Hermes says «Image ready». Aspetto → pet → «Genera» uses the «Mascot» flow.
 - **House / Home Assistant** (W5 A3): root `.env` `LARES_HA_URL` + `LARES_HA_TOKEN` (HA → profile → Security →
   Long-lived access tokens). WebUI Casa shows the rooms; star a light → it appears as a Home chip and in Telegram Casa.
   Themis «You in Home Assistant» = your `person.*` → leaving home sets the presence.
@@ -137,7 +137,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 | 2026-10-19 | Self care suggests the AHA the evening after the retinol | Hygieia `test_after_a_retinol_evening_the_aha_says_not_today` | Steps done today sorted after the others, so the clash was never seen |
 | 2026-10-19 | «Cosa mi metto … ufficio» ignores the occasion | Wardrobe `test_italian_labels_become_vocabulary_keys` | Occasions/styles saved and matched as labels, rules use vocabulary keys |
 | 2026-10-19 | Chatting in the WebUI leaves the assistant «Waiting» | Oracle `test_webui_chat_counts_as_user_activity` | Presence pinged only when `notify_target` was set (Telegram) |
-| 2026-10-19 | Coach/Self care sidebar entries show the «info» icon | `cloud_test.py flows plugins` (icon check) | Plugin manifests used icons the WebUI did not draw |
+| 2026-10-19 | Coach/Self care sidebar entries show the «Info» icon | `cloud_test.py flows plugins` (icon check) | Plugin manifests used icons the WebUI did not draw |
 | 2026-10-19 | *Mappa* shows WebUI and Hermes offline after 3 min; a Hub restart forgets them | Hermes `TestHubKeepalive` | Hermes started its keepalive only if every first registration failed; the WebUI had none |
 | 2026-10 | Google OAuth always failed (`Error 400 invalid_request`) | Hecate 7.13–7.25 | OOB redirect blocked by Google since 2023 |
 | _first entry TBD_ | LLM returns `**bold**` instead of `<b>bold</b>` | Telegram 2.1.1, Oracle 1.8.13 | Format contract not enforced on all paths |

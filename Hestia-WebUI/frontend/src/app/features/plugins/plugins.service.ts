@@ -27,7 +27,7 @@ export const SIZE_SPAN: Record<WidgetSize, { c: number; r: number }> = { s: { c:
 
 type HostEvent = 'refresh' | 'theme' | 'visible' | 'hidden' | 'online' | 'offline';
 const BASE = '/api/webui/plugins';
-/** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A6). */
+/** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A6). */
 /** Titled «System status» (2026-10-29): «System» is the sidebar page of the system modules, only one of each name. */
 const SYSTEM_DASHBOARD: Dashboard = { id: 'system', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
 
@@ -476,7 +476,7 @@ function kvStore(dbName: string) {
 
 
 /** Module texts written with `{assistant}` («{assistant}'s agenda», «What {assistant} remembers about you») show the
- * chosen name; nothing else changes (docs/work/2026-11-16-nome-ovunque). */
+ * chosen name; nothing else changes (docs/work/2026-11-16-name-everywhere). */
 function namedCatalog(cat: PluginCatalog): PluginCatalog {
   if (!cat) return cat;
   const fix = <T extends Record<string, any>>(x: T): T => {

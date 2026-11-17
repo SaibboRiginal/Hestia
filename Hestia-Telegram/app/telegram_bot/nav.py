@@ -1,4 +1,4 @@
-"""Navigation cards (docs/work/2026-10-23-telegram-da-zero §5.1–5.4): Home, Today, Areas, area card, all actions,
+"""Navigation cards (docs/work/2026-10-23-telegram-from-scratch §5.1–5.4): Home, Today, Areas, area card, all actions,
 Notifications, Settings. One live navigation message per chat, edited in place; opening a new one collapses the old.
 
 Callback data (≤ 64 bytes, short ids from ``store``):

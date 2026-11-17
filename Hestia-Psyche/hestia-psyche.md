@@ -4,7 +4,7 @@
 quietly by the assistant when he says how he feels in chat; trend, insights and signals like a coach
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19029 · Dossier: `docs/work/2026-10-30-diario-umore/` (SPEC v2.0)
+**Port:** 19029 · Dossier: `docs/work/2026-10-30-mood-diary/` (SPEC v2.0)
 
 ---
 
@@ -31,7 +31,7 @@ quietly by the assistant when he says how he feels in chat; trend, insights and 
 - **Recap** piece «Mood» (order 28): today's mood and words; a gentle line when energy or mood has been low for 3+
   days; action «How are you?» (opens `mood_log`) while today has nothing.
 - **Check-in**: agenda job `psyche.checkin` (20:30, the owner moves or pauses it in the agenda) sends one Hermes
-  question «How did today go?» with «Giù / Così così / Bene» only when `psyche.reminder.enabled` (shared
+  question «How did today go?» with «Down / So so / Good» only when `psyche.reminder.enabled` (shared
   `hestia_common.reminders`, off by default) and today has no check-in. Agenda job `psyche.signals` (17:30).
 - Context contract (tag `context`): `GET /api/module/context` = the last 7 days in one line (`topic=insights` →
   the insights sentences).
@@ -66,10 +66,10 @@ shows the quote) and «Togli». Widget «Mood» (`psyche-widget`, s/m): today's 
 and prompt are tested in `Hestia-Oracle/tests/test_mood_capture.py`.
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

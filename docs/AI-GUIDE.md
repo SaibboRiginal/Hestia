@@ -55,7 +55,7 @@ Hub turns them into commands (`/api/discovery/commands?client=telegram|ui`). Pat
 `{name}`/`$name` placeholders, filled by Oracle/Telegram/WebUI/MCP. `mount_missing_rest_routes`
 serves the declared REST path of handler-only tools — call it after the app's own routes.
 
-Turn safety (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`): whoever calls `/api/chat` without being the
+Turn safety (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`): whoever calls `/api/chat` without being the
 owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomous:<module>`, `hestia_common.origin`); write tools
 return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Cancel»; register
 `capabilities.when_to_use` + `manual` so the assistant knows when to use your module; text sent to a cloud model or
@@ -63,7 +63,7 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` b
 
 ## 3. LLM access (Oracle only)
 
-- Oracle a blocchi (dossier `docs/work/2026-10-19-oracle-a-blocchi`): named **providers** `oracle.providers`
+- Oracle a blocchi (dossier `docs/work/2026-10-19-oracle-blocks`): named **providers** `oracle.providers`
   (type = standard: ollama | openai | anthropic | gemini | claude_cli; keys only in env `ORACLE_KEY_<NAME>`),
   reusable **chains** `oracle.chains` (ordered provider/model steps; a quota error skips that model until its reset),
   **use cases** `<module>.<task>` declared by each module in its Hub registration (`capabilities.llm_usecases` via
@@ -79,7 +79,7 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` b
 
 ## 3a. Voice (Echo only)
 
-- Dossier `docs/work/2026-10-20-modulo-voce`. Nobody but Echo calls speech engines; Oracle has no Whisper any more.
+- Dossier `docs/work/2026-10-20-voice-module`. Nobody but Echo calls speech engines; Oracle has no Whisper any more.
 - Callers: `hestia_common.voice_client.VoiceClient(hub).transcribe(audio, mime, use_case=, keep=)` /
   `.speak(text, use_case=, fmt=, keep=)` / `.forget(notification_id=)`; streams `/api/voice/listen*` and `/say*`.
   Every use is declared in Hub capabilities `voice_usecases` (`hestia_common.voice_usecases.usecase`).
@@ -224,7 +224,7 @@ and `tools/hestia_transfer.py`. Details: `Hestia-Shared/hestia-shared.md`, dossi
   needs Marko's stack. Hermes has no «resolve» endpoint: to close a live question answered elsewhere, ingest an
   event with `payload.closes = <key>` (Wardrobe/Hercules pattern).
 - No Marko PC needed for a real run: `python tools/cloud_test.py all` starts the whole stack in a Claude cloud
-  session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Banco di prova cloud».
+  session or a Codespace (fake LLM unless `GEMINI_API_KEY`), see `TESTING.md` «Cloud test bench».
 
 ## 8. Where to look
 

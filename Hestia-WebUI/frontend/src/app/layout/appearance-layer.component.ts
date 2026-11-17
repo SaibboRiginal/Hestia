@@ -18,8 +18,8 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
 /**
  * Never in the way (pointer-events off): the light effect of the active graphic profile (snow, leaves, petals,
  * confetti, hearts, stars, pumpkins, a warm sun) — only on Home, and the falling bits fade out after about ten
- * seconds so reading is never disturbed (dossier 2026-10-29-revisione-e-test-frontend §6.4) — and the pet in the
- * corner on every page: a tap makes it happy, at night it sleeps (dossier 2026-10-24-tutto-brainstorm-cindy A2, W7).
+ * seconds so reading is never disturbed (dossier 2026-10-29-frontend-review-and-tests §6.4) — and the pet in the
+ * corner on every page: a tap makes it happy, at night it sleeps (dossier 2026-10-24-whole-cindy-brainstorm A2, W7).
  * With «reduce motion» or the «Animations: reduced» knob the effect is off.
  */
 @Component({

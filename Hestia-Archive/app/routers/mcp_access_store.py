@@ -1,4 +1,4 @@
-"""MCP access storage — who may use Hestia's MCP from outside (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B6).
+"""MCP access storage — who may use Hestia's MCP from outside (docs/work/2026-10-18-core-modules-and-external-mcp §B6).
 
 Archive only stores: scopes, tool lists, expiry and the token check live in Hestia-MCP, the only caller.
 Tokens arrive already hashed; no endpoint returns a hash. OAuth (kind ``oauth``): self-registered clients, one-time

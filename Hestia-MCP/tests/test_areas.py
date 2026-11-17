@@ -1,4 +1,4 @@
-"""Tests — areas and texts for people (hestia_common.areas, dossier docs/work/2026-10-29-revisione-e-test-frontend §6.1)."""
+"""Tests — areas and texts for people (hestia_common.areas, dossier docs/work/2026-10-29-frontend-review-and-tests §6.1)."""
 from __future__ import annotations
 
 import pytest

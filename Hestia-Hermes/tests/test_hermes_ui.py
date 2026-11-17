@@ -1,6 +1,6 @@
 """Hermes inside view (WebUI plugin «Consegne»): manifest + /api/ui/* reads.
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked.
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked.
 """
 from __future__ import annotations
 

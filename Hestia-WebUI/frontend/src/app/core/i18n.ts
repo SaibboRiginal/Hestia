@@ -1,6 +1,6 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-backend-inglese).
+/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-english-backend).
  *
  * The English text in the code is the key (standard: docs/LANGUAGES.md): `tr('Save')`, `tr('Today — {0}', day)`, in
  * templates `{{ 'Save' | tr }}`; `f::Active` = a context tag, never shown.
@@ -18,7 +18,7 @@ function catalog(): Catalog {
 export function assistantName(): string { return String(catalog().assistant || '').trim() || 'Hestia'; }
 
 /** `{assistant}` → the chosen name, `{g:her-form|his-form}` → the form for her or him
- * (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the app (version, files, installation) the text says
+ * (docs/work/2026-11-16-name-everywhere). Where «Hestia» is the app (version, files, installation) the text says
  * «Hestia» and nothing changes. Also for texts that do not go through `tr` (plugin page titles and help). */
 export function named(text: string): string {
   const s = text == null ? '' : String(text);

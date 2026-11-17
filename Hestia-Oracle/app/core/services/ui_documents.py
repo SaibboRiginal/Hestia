@@ -3,7 +3,7 @@
 Thin layer over what Oracle already does: documents live in Archive (reached through Hub), search is the same
 semantic search the chat uses (``DocumentRAG``), adding a file runs the same archiving pipeline as a chat
 attachment (``DocumentArchiver``: extract → chunk → embed → Archive), without a chat turn.
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4.
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4.
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Training dataset, phase D3 «Export» (docs/work/2026-10-30-dataset-allenamento §3.4).
+"""Training dataset, phase D3 «Export» (docs/work/2026-10-30-training-dataset §3.4).
 
 Turns the saved turns into JSONL files any trainer reads (Unsloth, TRL, axolotl, online services), zipped and kept
 as an Archive blob the owner downloads (WebUI Improvement, Telegram: the file arrives under the card):

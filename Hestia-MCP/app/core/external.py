@@ -1,4 +1,4 @@
-"""External AIs on Hestia's MCP (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2, §B6).
+"""External AIs on Hestia's MCP (docs/work/2026-10-18-core-modules-and-external-mcp §B2, §B6).
 
 ``POST /mcp/external`` is the same MCP server with an access in front: the WebUI door (``/mcp``, the only
 service behind the tunnel) forwards ``Authorization: Bearer <token>`` here through Hub. Wrong, revoked or expired

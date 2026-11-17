@@ -517,7 +517,7 @@ class Themis:
             raise
         self._bump(f"proposal_{status}:{proposal['proposal_id']}")
         if notify:
-            outcome = {"approved": tr("alt::Approved"), "rejected": tr("alt::Rejected"), "expired": "Expired"}.get(status, status)
+            outcome = {"approved": tr("alt::Approved"), "rejected": tr("alt::Rejected"), "expired": tr("alt::Expired")}.get(status, status)
             self._emit("settings.proposal_closed", f"settings.proposal_closed:{proposal['proposal_id']}",
                        {"proposal_id": proposal["proposal_id"], "decision": status, "key": proposal.get("key"),
                         "closes": f"settings.proposal:{proposal['proposal_id']}",

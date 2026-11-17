@@ -203,7 +203,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
 
     @router.post("/voice/hear")
     def voice_hear(body: dict):
-        """«Prova» of listening in the setup: the recording heard by that provider (→ Echo, nothing saved)."""
+        """«Test» of listening in the setup: the recording heard by that provider (→ Echo, nothing saved)."""
         keep = {k: body.get(k) for k in ("provider", "model", "audio_b64", "mime_type") if body.get(k)}
         return service.echo("POST", "/api/voice/setup/hear", body=keep, timeout=120)
 
