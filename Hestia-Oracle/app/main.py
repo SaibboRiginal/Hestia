@@ -212,6 +212,7 @@ except Exception as exc:
 
 from core.services import oracle_settings as _oracle_settings  # noqa: E402
 from core.services import llm_stats  # noqa: E402
+from core.services import llm_bus  # noqa: E402
 from core.services import activity_log  # noqa: E402
 from core.services import prompt_config as _prompt_config  # noqa: E402
 from core.services import awareness  # noqa: E402
@@ -1073,6 +1074,8 @@ def chat_endpoint(req: ChatRequest, request: Request):
                 origin=turn_origin)
         if reacts:
             stream = reaction_marker.filter_stream(stream)
+        # The owner's turn goes ahead of background work in the local-model queue (llm_bus).
+        stream = llm_bus.bind(stream, llm_bus.for_origin(turn_origin))
         return StreamingResponse(
             llm_stats.bind_session(current_session, stream, client=req.client or ""),
             media_type="application/x-ndjson"
@@ -1157,8 +1160,9 @@ async def chat_document_endpoint(
             from hestia_common import identity as _identity
             default_message += f" Answer in {_identity.LANGUAGES.get(_prompt_config.owner_language(), 'Italian')}."
 
+        from hestia_common import origin as _origin
         return StreamingResponse(
-            engine.analyze_document(
+            llm_bus.bind(engine.analyze_document(
                 file_bytes=file_bytes,
                 mime_type=content_type,
                 user_message=message.strip() or default_message,
@@ -1167,7 +1171,7 @@ async def chat_document_endpoint(
                 client_instructions=_with_personal_settings(client_instructions, client, current_session,
                                                             presence_state),
                 filename=resolved_filename,
-            ),
+            ), llm_bus.for_origin(_origin.parse({}, client or ""))),
             media_type="application/x-ndjson",
         )
     except Exception as exc:
@@ -1579,7 +1583,7 @@ def llm_code_endpoint(req: CodeTaskRequest):
 
 
 @app.post("/api/llm/generate")
-def llm_generate_endpoint(req: dict):
+def llm_generate_endpoint(req: dict, request: Request):
     """
     Plain generation for services: {"prompt": "...", "use_case": "scout.annunci", "voice": false}.
     ``voice: true`` = the text is for the owner: Oracle speaks as the assistant (same identity, style and language
@@ -1610,8 +1614,11 @@ def llm_generate_endpoint(req: dict):
             logger.warning("[🔄] event=llm_generate_external_failed use_case=%s fallback=interna error=%s",
                            use_case, str(exc)[:200])
     agent = llm_chains.agent_for(use_case, voice=voice)
+    from hestia_common import origin as _origin
+    level = llm_bus.module_priority(_origin.parse(dict(request.headers)))
     try:
-        text = agent.ask(prompt)
+        with llm_bus.priority(level):
+            text = agent.ask(prompt)
     except llm_chains.ChainExhausted as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:

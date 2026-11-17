@@ -194,3 +194,5 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 **2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».
+
+**2026-11-17 (fix while merging the LLM bus, dossier `docs/work/2026-11-16-bus-llm`)**: the morning coach line has one phrase per activity (`GOOD_DAY` in `core/activities.py`), so each language puts its own article («Ottimo giorno per la corsa», «per il nuoto»); the English-source change had dropped «la».

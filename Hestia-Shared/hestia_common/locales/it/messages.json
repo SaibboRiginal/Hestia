@@ -2510,7 +2510,6 @@
   "Graphics card with 6–11 GB": "Scheda video da 6–11 GB",
   "Greasiness": "Untuosità",
   "Great": "Ottimo",
-  "Great day for {0}: {1}–{2}": "Ottimo giorno per {0}: {1}–{2}",
   "Great day to move: {0}–{1}": "Ottimo giorno per muoverti: {0}–{1}",
   "Green": "Verde",
   "Grey": "Grigio",
@@ -7591,5 +7590,11 @@
   "🧩 Forge <code>{0}</code>: work split into {1} pieces.": "🧩 Forge <code>{0}</code>: lavoro diviso in {1} pezzi.",
   "🩺 <b>A part of Hestia does not restart by itself</b>: I tried {0} times. The rest works; the details are in the log of the Health page.": "🩺 <b>Una parte di Hestia non riparte da sola</b>: ho provato {0} volte. Il resto funziona; i dettagli sono nel registro della pagina Salute.",
   "🩺 <b>A part of {assistant} does not restart by itself</b>: I tried {0} times. The rest works; the details are in the log of the Health page.": "🩺 <b>Una parte di {assistant} non riparte da sola</b>: ho provato {0} volte. Il resto funziona; i dettagli sono nel registro della pagina Salute.",
-  "🩺 Recheck {0} ({1}) — attempt {2}": "🩺 Ricontrollo {0} ({1}) — tentativo {2}"
+  "🩺 Recheck {0} ({1}) — attempt {2}": "🩺 Ricontrollo {0} ({1}) — tentativo {2}",
+  "Local models · answers prepared together": "Modelli locali · risposte preparate insieme",
+  "How many requests the local model works on at the same time; the others wait in line and your messages always go ahead of background work. 1 = one at a time. Raise it only if the program running the model can handle more at once (Ollama: OLLAMA_NUM_PARALLEL, llama-server: --parallel).": "Quante richieste il modello locale lavora nello stesso momento; le altre aspettano in fila e i tuoi messaggi passano sempre davanti ai lavori in sottofondo. 1 = una alla volta. Alzalo solo se il programma del modello ne regge di più insieme (Ollama: OLLAMA_NUM_PARALLEL, llama-server: --parallel).",
+  "Great day for a run: {0}–{1}": "Ottimo giorno per la corsa: {0}–{1}",
+  "Great day for a ride: {0}–{1}": "Ottimo giorno per la bici: {0}–{1}",
+  "Great day for a walk: {0}–{1}": "Ottimo giorno per una camminata: {0}–{1}",
+  "Great day for a swim: {0}–{1}": "Ottimo giorno per il nuoto: {0}–{1}"
 }
