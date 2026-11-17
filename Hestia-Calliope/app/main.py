@@ -1,4 +1,4 @@
-"""Hestia-Calliope — real documents («Documenti», port 19027, Cindy 21, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5).
+"""Hestia-Calliope — real documents («Documents», port 19027, Cindy 21, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5).
 
 HTML draft → PDF / Word / Excel with three shared themes and a final check; files in Archive blobs, records in
 ``/api/office-store``; tool ``document_create`` for the assistant and Telegram (the file arrives under the card).
@@ -107,7 +107,7 @@ S = {"type": "string"}
 G = "documents"
 kit.tools([
     MCPTool(name="document_create", description=("Create a PDF, Word or Excel file: title, html (h1-h3, p, ul/ol/li, table/tr/th/td, b, i), "
-                                                "format pdf|docx|xlsx, theme classico|moderno|sobrio, must_contain (texts that must appear, "
+                                                "format pdf|docx|xlsx, theme classic|modern|sober, must_contain (texts that must appear, "
                                                 "checked again)."),
             parameters={"type": "object", "properties": {
                 "title": S, "html": {"type": "string", "description": "content in simple HTML"},

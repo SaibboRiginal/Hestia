@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from . import secrets, tunnel
 from .updater import UpdateRefused, Updater
 from .service import STEPS, SetupService
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.setup.router")
 
@@ -344,8 +344,8 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
 
     @router.post("/update/answer")
     def update_answer(req: UpdateAnswer):
-        """The answer to the «Installo?» notification (Hermes question)."""
-        if req.answer.strip().lower() not in {"si", "sì", "yes", "ok"}:
+        """The answer to the «Shall I install?» notification (Hermes question)."""
+        if not (is_yes(req.answer) or req.answer.strip().lower() == "ok"):
             return {"status": "ok", "message": tr("All right, I won't install. You find it in System → Updates.")}
         try:
             updater.apply()

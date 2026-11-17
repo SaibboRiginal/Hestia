@@ -341,7 +341,7 @@ def module_maintenance_reconcile(req: schemas.ModuleMaintenanceRequest, db: Sess
 
 
 # Undo of a maintenance pass: deleted rows are kept in one trash entity per task (domain TRASH_DOMAIN)
-# and put back on request, so «Annulla riparazione» really restores what the reconcile removed.
+# and put back on request, so «Undo repair» really restores what the reconcile removed.
 TRASH_DOMAIN = "archive_trash"
 
 

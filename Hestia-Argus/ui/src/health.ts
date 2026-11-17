@@ -1,7 +1,7 @@
 /**
- * <argus-health> — "Salute": health per service over time (strip of the last 1/6/24 h), open incidents with
+ * <argus-health> — "Health": health per service over time (strip of the last 1/6/24 h), open incidents with
  * what Argus did (alert, repair request, recheck in the agenda, recovery), closed incidents, log viewer with
- * filters, «Ricontrolla» per service. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
+ * filters, «Recheck» per service. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, ago, duration, statusOf, stripStyles, when } from './util';

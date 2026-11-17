@@ -91,7 +91,7 @@ def test_endpoints_and_tools(monkeypatch):
     monkeypatch.setattr(imgs, "wait", lambda jid, s: (imgs.run_next(), imgs.job(jid))[1])
     c = TestClient(main.app)
     assert c.post("/api/images/flows", json={"purpose": "portrait", "graph": GRAPH}).json()["inputs"]["prompt"]
-    out = c.post("/api/images/tools/crea", json={"prompt": "portrait", "purpose": "portrait"}).json()
+    out = c.post("/api/images/tools/create", json={"prompt": "portrait", "purpose": "portrait"}).json()
     assert out["status"] == "done" and out["display"]["files"][0]["blob_id"] == "b1"
     assert c.get("/api/images/flows").json()["items"][0]["purpose"] == "portrait"
     assert "graph" not in c.get("/api/images/flows").json()["items"][0]

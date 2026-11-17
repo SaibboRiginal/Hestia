@@ -51,10 +51,10 @@ export function day(iso?: string | null): string {
   return new Date(`${iso}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
-/** «3 ore fa» / «2 giorni fa» from seconds. */
+/** «3 hours ago» / «2 days ago» from seconds. */
 export function hours(seconds: number): string {
   const s = Math.max(0, Number(seconds) || 0);
-  if (s < 3600) return `${Math.max(1, Math.round(s / 60))} min fa`;
+  if (s < 3600) return tr("{0} min ago", Math.max(1, Math.round(s / 60)));
   if (s < 172800) return tr("{0} hours ago", Math.round(s / 3600));
   return tr("{0} days ago", Math.round(s / 86400));
 }
@@ -74,12 +74,12 @@ export const AREAS: Record<string, string> = {
 export const area = (d?: string) => (d && AREAS[d]) || d || '';
 
 export const SEVERITY: Record<string, { label: string; tone: string; icon: string }> = {
-  alta: { label: tr('important'), tone: 'danger', icon: 'alert' },
-  attenzione: { label: tr('to watch'), tone: 'warning', icon: 'eye' },
+  high: { label: tr('important'), tone: 'danger', icon: 'alert' },
+  warning: { label: tr('to watch'), tone: 'warning', icon: 'eye' },
   info: { label: 'informazione', tone: 'neutral', icon: 'info' },
 };
 
-/** «Allenamenti → Routine rispettate % (stessa settimana): salgono insieme, r +0,72 su 9 settimane». */
+/** «Workouts → Routines kept % (same week): they rise together, r +0.72 over 9 weeks». */
 export function linkText(l: any): string {
   const when = l.lag ? tr('the week after') : tr('same week');
   const dir = l.r > 0 ? tr('they rise together') : tr('one rises, the other falls');

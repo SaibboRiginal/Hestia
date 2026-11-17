@@ -43,7 +43,7 @@ def register_on_hub(
             },
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["calendar", "coach"],
-            # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Modelli.
+            # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Models.
             "llm_usecases": [{"id": "chronos.agenda", "label": "Agenda · reading requests", "chain": "fast",
                               "help": "Turns a sentence into an appointment or an agenda rule.",
                               "thinking": "auto", "mode": "follow"},

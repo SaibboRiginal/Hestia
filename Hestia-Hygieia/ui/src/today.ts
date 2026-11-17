@@ -253,7 +253,7 @@ export class HygieiaToday extends HestiaElement {
       ${!p.routines.length ? html`<div class="card col" style="align-items:flex-start">
           <h2>${tr("No routine")}</h2>
           <div class="muted">${tr("Create the first one, for example «Evening face: cleanser → retinol → cream». You can say how many times a week to do it, no fixed times.")}</div>
-          <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Create a routine")}</hxk-button>
+          <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('routine', { new: '1' })}>${tr("Create a routine")}</hxk-button>
             <hxk-button icon="plus" @click=${() => this.host.navigate('products', { nuovo: '1' })}>${tr("Add products")}</hxk-button></div></div>` : nothing}
       ${(['morning', 'anytime', 'evening'] as const).map(slot => groups[slot].length ? html`<div class="slot">
         <h3>${slotIcon(slot)} ${this.m?.slots?.[slot] || slot}</h3>${groups[slot].map(r => this.card(r))}</div>` : nothing)}

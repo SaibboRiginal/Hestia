@@ -282,7 +282,7 @@ def get_performance_history(
 
 @app.get("/api/argus/recheck-targets", tags=["argus"])
 def get_recheck_targets() -> dict:
-    """Quick-action chips «Ricontrolla <servizio>»: one per service that is not up."""
+    """Quick-action chips «Recheck <service>»: one per service that is not up."""
     return {"items": health_history.recheck_targets()}
 
 

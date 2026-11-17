@@ -39,7 +39,7 @@ def test_file_as_base64(monkeypatch):
     from app import main
     monkeypatch.setattr(main, "docs", Documents(Store(FakeArchive(), "office-store", min_refresh_seconds=0), FakeArchive()))
     c = TestClient(main.app)
-    did = c.post("/api/office/tools/crea", json={"title": "Nota", "html": HTML, "format": "pdf"}).json()["id"]
+    did = c.post("/api/office/tools/create", json={"title": "Nota", "html": HTML, "format": "pdf"}).json()["id"]
     out = c.get(f"/api/office/{did}/b64").json()
     assert out["mime"] == "application/pdf" and out["name"].endswith(".pdf")
     assert base64.b64decode(out["data_b64"]) == c.get(f"/api/office/{did}/file").content

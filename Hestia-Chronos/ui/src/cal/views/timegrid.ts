@@ -1,7 +1,7 @@
 /**
  * <chronos-cal-grid> — week (7 days) / day (1 day) time grid.
  * - windows: 'lane' = clickable strip at the column's left edge + sticky label + faint tint; 'band' = translucent band
- * - frequent rules in 'compact' mode → one summary chip per rule per day in the top «Ricorrenti» row
+ * - frequent rules in 'compact' mode → one summary chip per rule per day in the top «Recurring» row
  *   (failed runs always stay as their own blocks)
  * - drag a block to move (15-min snap, across days), drag its bottom edge to resize
  * Events: cal-select {ev, rect} · cal-create (Date) · cal-move {ev,start,end} · cal-day (Date).

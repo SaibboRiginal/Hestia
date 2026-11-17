@@ -1,4 +1,4 @@
-"""Health history + incidents — what the *Salute* page shows (SPEC 2026-10-18-moduli-core-e-mcp-esterno §A2).
+"""Health history + incidents — what the *Health* page shows (SPEC 2026-10-18-moduli-core-e-mcp-esterno §A2).
 
 - **History**: per service, one sample per minute (worst status seen in that minute), last 24 h. In memory only:
   an Argus restart starts it again.
@@ -216,7 +216,7 @@ def history(minutes: int = 360, buckets: int = 60, now: float | None = None) -> 
 
 
 def overview() -> dict:
-    """Cheap snapshot from the last monitor cycle (widget *Stato sistema*, no network)."""
+    """Cheap snapshot from the last monitor cycle (widget *System status*, no network)."""
     with _lock:
         last = {k: dict(v) for k, v in _last.items()}
         cycle = dict(_cycle)
@@ -235,7 +235,7 @@ def recheck_targets() -> list[dict]:
         names = {n for n, v in _last.items() if v.get("status") != "up"} | set(_open)
         last = {n: dict(_last.get(n, {})) for n in names}
     from hestia_common.areas import module_label
-    # people read «Ricontrolla Self care · non risponde», never a module name or a raw error
+    # people read «Recheck Self care · not answering», never a module name or a raw error
     words = {"down": tr("does not answer"), "degraded": tr("answers slowly"), "unknown": tr("unknown state")}
     return [{"id": n, "label": tr("Recheck {0}", tr(module_label(n))), "icon": "refresh", "state": "late",
              "hint": words.get(str(last[n].get("status") or "down"), tr("does not answer"))} for n in sorted(names)]

@@ -1,4 +1,4 @@
-"""Chronos rows in Archive ``/api/chronos-store`` (routine results for the recap, «Lascia così» choices).
+"""Chronos rows in Archive ``/api/chronos-store`` (routine results for the recap, «Leave it» choices).
 
 Best effort: a failed write logs ``[🔄]`` and the value stays in memory; the next start reloads what was written.
 """

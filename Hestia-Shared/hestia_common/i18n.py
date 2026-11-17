@@ -190,6 +190,11 @@ def _languages() -> tuple[str, ...]:
     return tuple(sorted(p.name for p in LOCALES.iterdir() if (p / "words.json").is_file()))
 
 
+def languages() -> tuple[str, ...]:
+    """Every language Hestia knows (one folder in ``locales/``), English first."""
+    return tuple(sorted(_languages(), key=lambda c: c != SOURCE))
+
+
 @lru_cache(maxsize=512)
 def words(key: str) -> tuple[str, ...]:
     """Every entry of the list ``key`` in every language with a ``words.json`` (English first, no duplicates)."""
@@ -217,3 +222,8 @@ def word_regex(template: str, *keys: str, flags: int = re.IGNORECASE) -> "re.Pat
 def word_set(key: str) -> frozenset[str]:
     """The entries of ``key`` as plain lower-case words (lists of whole words, not fragments)."""
     return frozenset(w.lower() for w in words(key))
+
+
+def is_yes(value: Any) -> bool:
+    """True for a boolean typed as text: ``1``, ``true`` or a yes word of any language (``common.yes_word``)."""
+    return value if isinstance(value, bool) else str(value).strip().lower() in {"1", "true"} | word_set("common.yes_word")

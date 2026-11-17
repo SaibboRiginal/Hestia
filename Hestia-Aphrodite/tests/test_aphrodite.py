@@ -79,7 +79,7 @@ def test_endpoints_and_tools(monkeypatch):
     monkeypatch.setattr(main, "look", Appearance(Store(hub, "appearance-store", min_refresh_seconds=0), hub))
     c = TestClient(main.app)
     assert c.get("/api/appearance/now").json()["profile"]["key"]
-    assert c.post("/api/appearance/tools/scelta", json={"auto": "false"}).json()["auto"] is False
+    assert c.post("/api/appearance/tools/choice", json={"auto": "false"}).json()["auto"] is False
     assert c.get("/api/appearance/now?client=webui").json()["profile"]["key"] == "standard"
-    assert c.post("/api/appearance/tools/animale", json={"name": "Pip"}).json()["images_asked"] == 3
+    assert c.post("/api/appearance/tools/pet", json={"name": "Pip"}).json()["images_asked"] == 3
     assert main.kit.registration()["capabilities"]["special_moment_endpoint"] == "/api/appearance/moment"

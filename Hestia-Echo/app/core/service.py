@@ -138,7 +138,7 @@ class Echo:
 
         def call(provider, step):
             std = STANDARDS[provider["type"]]
-            # Local engines (and every engine in interna) get clean 16 kHz WAV; an external engine that accepts
+            # Local engines (and every engine in internal) get clean 16 kHz WAV; an external engine that accepts
             # common formats gets the audio as it came (the proxy does not reshape it).
             # A filtered audio (other voices muted) always goes as WAV.
             external = self.blocks.usecase_config(uc, "listen")["mode"] == "external" and not std.wants_pcm \
@@ -207,7 +207,7 @@ class Echo:
         return p, ""
 
     def setup_preview(self, body: dict) -> dict:
-        """«Ascolta» on a voice of the setup: a short sentence spoken by that provider and voice (no chain)."""
+        """«Listen» on a voice of the setup: a short sentence spoken by that provider and voice (no chain)."""
         p, why = self._setup_provider(str(body.get("provider") or ""), "voice")
         if p is None:
             return {"ok": False, "detail": why}
@@ -290,7 +290,7 @@ class Echo:
         except audio.AudioError as exc:
             raise Invalid(f"conversione audio: {exc}")
         seconds = audio.wav_duration(pcm)
-        if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:   # «Ascolta» that plays nothing: say why instead
+        if seconds <= 0.2 or audio.peak(pcm) < MUTE_PEAK:   # «Listen» that plays nothing: say why instead
             logger.warning("[🔄] event=voice_speak_mute provider=%s bytes=%s seconds=%s", info["provider"], len(data), seconds)
             raise Invalid(tr("the voice ({0}) answered with silent audio", info['provider']))
         blob_id = None

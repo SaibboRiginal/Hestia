@@ -77,7 +77,7 @@ export class PlutusTransactions extends HestiaElement {
   connectedCallback() {
     super.connectedCallback();
     const q = this.ctx?.query || {};
-    this.cat = q.categoria || ''; this.q = q.q || ''; this.review = q.rivedere === '1'; this.month = q.mese || ''; this.account = q.conto || '';
+    this.cat = q.categoria || ''; this.q = q.q || ''; this.review = q.rivedere === '1'; this.month = q.month || ''; this.account = q.conto || '';
     if (q.nuovo === '1') this.form = true;
     this.load();
     this.onHost('refresh', () => this.load());

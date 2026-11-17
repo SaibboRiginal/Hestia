@@ -1,7 +1,7 @@
 /**
- * <chronos-standard> — «Attività standard»: every activity a module puts in the agenda by default (the evening recap,
- * reminders, syncs…) with its state, so one you deleted, paused or changed comes back with «Ripristina» instead of
- * being rebuilt from scratch; plus the templates each module offers («Aggiungi» opens the calendar wizard).
+ * <chronos-standard> — «Standard activities»: every activity a module puts in the agenda by default (the evening recap,
+ * reminders, syncs…) with its state, so one you deleted, paused or changed comes back with «Restore» instead of
+ * being rebuilt from scratch; plus the templates each module offers («Add» opens the calendar wizard).
  * Reads GET /api/agenda/standard; POST /api/agenda/standard/{key}/restore. Recap dossier §3.9.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
@@ -10,11 +10,11 @@ import { describeRRule } from './cal/rrule';
 import { ownerLabel } from './cal/models';
 
 const STATES: Record<string, { tone: string; icon: string; text: string }> = {
-  eliminata: { tone: 'danger', icon: 'trash', text: tr('f::Deleted') },
-  fallita: { tone: 'danger', icon: 'alert', text: tr('Stopped on errors') },
-  'in pausa': { tone: 'warning', icon: 'pause', text: tr('Paused') },
-  modificata: { tone: 'info', icon: 'edit', text: tr('Changed by you') },
-  attiva: { tone: 'success', icon: 'check-circle', text: tr('f::Active') },
+  deleted: { tone: 'danger', icon: 'trash', text: tr('f::Deleted') },
+  failed: { tone: 'danger', icon: 'alert', text: tr('Stopped on errors') },
+  paused: { tone: 'warning', icon: 'pause', text: tr('Paused') },
+  edited: { tone: 'info', icon: 'edit', text: tr('Changed by you') },
+  active: { tone: 'success', icon: 'check-circle', text: tr('f::Active') },
 };
 const FILTERS = [{ id: 'todo', label: tr('To put back') }, { id: '', label: tr('All') }];
 
@@ -80,7 +80,7 @@ export class ChronosStandard extends HestiaElement {
   }
 
   private row(a: any) {
-    const st = STATES[a.state] || STATES.attiva;
+    const st = STATES[a.state] || STATES.active;
     return html`<div class="r">
       <hxk-icon name=${st.icon} tone=${st.tone} size="16"></hxk-icon>
       <div class="grow col" style="gap:3px">

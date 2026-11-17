@@ -2,7 +2,7 @@
 
 Looks at the owner's own events (every source but the assistant's agenda) of the next days and, where two timed
 events overlap, **proposes** to move the later one to the first free slot of the same day — never moves anything by
-itself (R4). The proposal is a Hermes card «Sposta alle 15:30» (→ the provider update through Hecate) / «Lascia così».
+itself (R4). The proposal is a Hermes card «Move to 15:30» (→ the provider update through Hecate) / «Leave it».
 Deterministic, no model call. Agenda job ``chronos.smart_calendar`` (daily, movable/pausable) or by hand (tool
 ``calendar_check``). The same pair is proposed once (dedupe key per pair and day).
 """
@@ -21,7 +21,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_chronos.smart_calendar")
 
 DAY_START, DAY_END = 8, 21        # free slots are looked for inside the owner's day
-_kept: set[str] = set()           # «Lascia così»: that event is not proposed again (Archive chronos-store)
+_kept: set[str] = set()           # «Leave it»: that event is not proposed again (Archive chronos-store)
 
 
 def load_kept() -> int:

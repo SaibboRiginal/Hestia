@@ -43,12 +43,12 @@ _TAG = re.compile(r"</?(?!b>|/b>|i>|/i>)[a-zA-Z][^>]*>")
 
 
 def day_label(d: date, lang: str | None = None) -> str:
-    """«mercoledì 21 ott» in the owner's language (``lang="en"`` for the hidden prompt)."""
+    """«Wednesday 21 Oct» in the owner's language (``lang="en"`` for the hidden prompt)."""
     return f"{weekday_name(d.weekday(), lang)} {d.day} {month_name(d.month, lang)[:3].lower()}"
 
 
 def moment_days(momento: str, day: date | None = None, *, today: date | None = None) -> tuple[date, date]:
-    """``sera``: the day that ends (today) + tomorrow. ``mattina``: yesterday + today."""
+    """``evening``: the day that ends (today) + tomorrow. ``morning``: yesterday + today."""
     base = today or datetime.now().date()
     if momento == "morning":
         d = day or base - timedelta(days=1)

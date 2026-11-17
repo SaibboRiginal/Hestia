@@ -81,7 +81,7 @@ export class HerculesToday extends HestiaElement {
     this.off = this.L.onChange(() => this.requestUpdate());
     this.L.ready.then(() => {
       this.loadNext();
-      const pre = this.ctx?.query?.scheda;          // "Inizia ora" from a template page
+      const pre = this.ctx?.query?.card;          // "Inizia ora" from a template page
       if (pre && !this.L.activeSession()) { const t = this.L.get('template', pre); if (t) this.start(t); this.host.navigate('training'); }
       this.requestUpdate();
     });

@@ -1,4 +1,4 @@
-"""Hestia-Apollo — images through a remote ComfyUI («Immagini», port 19022, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A1).
+"""Hestia-Apollo — images through a remote ComfyUI («Images», port 19022, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A1).
 
 The only module that talks to image generators (``APOLLO_COMFYUI_URL`` / ``APOLLO_COMFYUI_KEY`` in env). Flows and
 jobs in Archive (``/api/images-store``), images in Archive blobs, results pushed to the requester (``callback``) or
@@ -95,7 +95,7 @@ def job_image(jid: str, n: int):
 
 
 def _job_display(j: dict) -> dict:
-    files = [file(b, f"immagine-{n + 1}.png", "image/png") for n, b in enumerate(j.get("blob_ids") or [])]
+    files = [file(b, f"image-{n + 1}.png", "image/png") for n, b in enumerate(j.get("blob_ids") or [])]
     if j["status"] == "done":
         return display(tr("Image ready"), subtitle=PURPOSES.get(j["purpose"], ""), lines=[j["prompt"][:200]],
                        files=files)

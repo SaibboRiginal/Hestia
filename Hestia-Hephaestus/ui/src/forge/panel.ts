@@ -127,7 +127,7 @@ export class HephaestusTaskPanel extends LitElement {
     const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'unavailable' ? 'neutral' : r.blocking ? 'danger' : 'warning';
     const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'unavailable' ? tr('Not available now')
       : `${r.issues.length === 1 ? tr('1 point') : tr('{0} points', r.issues.length)}${r.blocking ? tr(', {0} important', r.blocking) : ''}`;
-    const ptone: Record<string, string> = { alta: 'danger', media: 'warning', bassa: 'neutral' };
+    const ptone: Record<string, string> = { high: 'danger', media: 'warning', low: 'neutral' };
     return html`<h4>${tr("Automatic review")}</h4>
       <div class="review"><div class="tsum"><hxk-badge tone=${tone}>${head}</hxk-badge>
         ${r.rounds ? html`<span class="small muted">${tr("after a round of fixes (")}${r.first?.length ?? 0} ${tr("points found the first time)")}</span>` : nothing}</div>

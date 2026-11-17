@@ -33,8 +33,8 @@ const SCREEN_KEY = 'hestia_setup_screen';
 const HOSTS_KEY = 'hestia_setup_hosts';
 /** The steps list (from the bar on top): one line per screen. */
 const TITLES: Record<Screen, string> = {
-  benvenuto: tr('Start'), chi: tr('You and me'), modelli: tr('Models'), memoria: tr('Memory'), cervello: tr('Models ready'), ascolto: tr('Listening'),
-  voce: tr('Voice'), telegram: 'Telegram', backup: tr('Backup'), esterni: tr('Calendar and Garmin'), fuori: tr('Outside home'), pronto: tr('End'),
+  benvenuto: tr('Start'), who: tr('You and me'), models: tr('Models'), memory: tr('Memory'), brain: tr('Models ready'), listen: tr('Listening'),
+  voce: tr('Voice'), telegram: 'Telegram', backup: tr('Backup'), external_ais: tr('Calendar and Garmin'), away: tr('Outside home'), ready: tr('End'),
 };
 /** No address after this long: say so instead of a spinner forever. */
 const TUNNEL_PATIENCE_MS = 90_000;
@@ -548,11 +548,11 @@ export class SetupPageComponent {
   voiceCat = signal<VoiceCatalog | null>(null);
   voiceError = signal('');
   /** Per direction: the local engine and its model/voice as «provider|id» (one), then cloud services in order. */
-  voiceLocalPick = signal<Record<VoiceDir, string>>({ ascolto: '', voce: '' });
-  voiceOrder = signal<Record<VoiceDir, string[]>>({ ascolto: [], voce: [] });
-  voicePicks = signal<Record<VoiceDir, Record<string, string[]>>>({ ascolto: {}, voce: {} });
-  voiceReadyMap = signal<Record<VoiceDir, Record<string, boolean>>>({ ascolto: {}, voce: {} });
-  voiceRank = signal<Record<VoiceDir, string[]>>({ ascolto: [], voce: [] });
+  voiceLocalPick = signal<Record<VoiceDir, string>>({ listen: '', voice: '' });
+  voiceOrder = signal<Record<VoiceDir, string[]>>({ listen: [], voice: [] });
+  voicePicks = signal<Record<VoiceDir, Record<string, string[]>>>({ listen: {}, voice: {} });
+  voiceReadyMap = signal<Record<VoiceDir, Record<string, boolean>>>({ listen: {}, voice: {} });
+  voiceRank = signal<Record<VoiceDir, string[]>>({ listen: [], voice: [] });
 
   async loadVoice() {
     this.voiceError.set('');
@@ -560,10 +560,10 @@ export class SetupPageComponent {
       const cat = await this.api.voiceCatalog(this.hosts());
       this.voiceCat.set(cat);
       const saved = this.state()?.voice || {};
-      const local: Record<VoiceDir, string> = { ascolto: '', voce: '' };
-      const order: Record<VoiceDir, string[]> = { ascolto: [], voce: [] };
-      const picks: Record<VoiceDir, Record<string, string[]>> = { ascolto: {}, voce: {} };
-      const rank: Record<VoiceDir, string[]> = { ascolto: [], voce: [] };
+      const local: Record<VoiceDir, string> = { listen: '', voice: '' };
+      const order: Record<VoiceDir, string[]> = { listen: [], voice: [] };
+      const picks: Record<VoiceDir, Record<string, string[]>> = { listen: {}, voice: {} };
+      const rank: Record<VoiceDir, string[]> = { listen: [], voice: [] };
       for (const d of this.voiceDirs) {
         const own = d.id === 'listen' ? saved.listen : saved.speak;
         // what the user chose in the setup, else the chain in use; never Hestia's defaults for services without a key
@@ -673,7 +673,7 @@ export class SetupPageComponent {
         return toCheck(r);
       } catch (e) {
         // A slow restart can drop the answer while the key was saved: if it is there, read the list again.
-        const saved = key ? await this.api.voiceCatalog().then(c => [...c.ascolto.providers, ...c.voce.providers].some(p => p.name === name && p.key)).catch(() => false) : false;
+        const saved = key ? await this.api.voiceCatalog().then(c => [...c.listen.providers, ...c.voice.providers].some(p => p.name === name && p.key)).catch(() => false) : false;
         if (saved) { this.markVoiceKey(name); return toCheck(await this.api.voiceTest(name, '')); }
         throw new Error(setupError(e));
       }
@@ -683,7 +683,7 @@ export class SetupPageComponent {
     const c = this.voiceCat();
     if (!c) return;
     const mark = (list: VoiceProvider[]) => list.map(p => p.name === name ? { ...p, key: true } : p);
-    this.voiceCat.set({ ascolto: { ...c.ascolto, providers: mark(c.ascolto.providers) }, voce: { ...c.voce, providers: mark(c.voce.providers) } });
+    this.voiceCat.set({ listen: { ...c.listen, providers: mark(c.listen.providers) }, voice: { ...c.voice, providers: mark(c.voice.providers) } });
   }
   /** The chain of one direction: the local choice, then each cloud service with its models/voices in order. */
   private voiceSteps(dir: VoiceDir): VoiceStep[] {

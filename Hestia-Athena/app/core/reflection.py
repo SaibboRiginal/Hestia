@@ -1,15 +1,15 @@
-"""Life reflection («Vita») — the coordinator layer above the modules (docs/work/2026-10-20-riflessione-a-livelli).
+"""Life reflection («Life») — the coordinator layer above the modules (docs/work/2026-10-20-riflessione-a-livelli).
 
 The modules judge their own data and publish short signals + weekly metrics (``hestia_common.signals_client``,
 Archive ``signals-store``). This track reads ONLY those, never the raw data:
 
 1. read active signals and the weekly series;
 2. link series of different domains (Pearson at lag 0 and 1 week, closed weeks only) — numbers, not the model;
-3. choose a few topics (strongest links, ``alta``/``warning`` signals), skipping what was said recently;
+3. choose a few topics (strongest links, ``high``/``warning`` signals), skipping what was said recently;
 4. ask the owning module for details (``/api/module/context?topic=``);
 5. one Oracle call (use case ``athena.reflection``) → observations / one setting proposal;
 6. the runtime gates them; accepted observations are stored (``kind=observation``, ``ref_id=athena``) and reach
-   Marko only inside the evening recap («Da tenere d'occhio», ``recap_piece``). Nothing is sent to Hermes.
+   Marko only inside the evening recap («Keep an eye on», ``recap_piece``). Nothing is sent to Hermes.
 
 System health is the other track (``runtime._thinking_cycle``) and never sees this data.
 """
@@ -105,13 +105,13 @@ def link_text(link: dict) -> str:
 
 
 def choose_topics(signals: list[dict], links: list[dict], told: set[str], max_topics: int) -> list[dict]:
-    """Alta signals first, then links (strongest), then attenzione signals; ``info`` only enrich the context."""
+    """High signals first, then links (strongest), then warning signals; ``info`` only enrich the context."""
     topics: list[dict] = []
     ranked = sorted((s for s in signals if s.get("severity") in ("high", "warning")),
                     key=lambda s: SEVERITY_RANK.get(s.get("severity"), 9))
-    alta = [s for s in ranked if s.get("severity") == "high"]
+    high = [s for s in ranked if s.get("severity") == "high"]
     rest = [s for s in ranked if s.get("severity") != "high"]
-    for s in alta:
+    for s in high:
         topics.append({"type": "signal", "key": f"signal:{s.get('module')}:{s.get('key')}", "signal": s})
     for link in links:
         topics.append({"type": "link", "key": link["key"], "link": link})
@@ -159,7 +159,7 @@ def _prompt(topics: list[dict], info: list[dict], details: dict[str, str], setti
 
 
 class LifeReflection:
-    """One «Vita» cycle. The runtime owns the gate, the setting proposals and the records."""
+    """One «Life» cycle. The runtime owns the gate, the setting proposals and the records."""
 
     def __init__(self, hub_api_url: str, *, gate: Callable[[ActionCandidate], ActionCandidate],
                  propose_setting: Callable[[ActionCandidate, str], bool],
@@ -295,9 +295,9 @@ class LifeReflection:
         for item, cand in zip(parsed, candidates):
             cand.track = "life"
             topic = None
-            tema = str(item.get("topic") or "").strip().upper().lstrip("T")
-            if tema.isdigit() and 1 <= int(tema) <= len(topics):
-                topic = topics[int(tema) - 1]
+            number = str(item.get("topic") or "").strip().upper().lstrip("T")
+            if number.isdigit() and 1 <= int(number) <= len(topics):
+                topic = topics[int(number) - 1]
             cand.topic_key = topic["key"] if topic else None
             if cand.kind not in ("observation", "setting"):
                 cand.kind = "observation"

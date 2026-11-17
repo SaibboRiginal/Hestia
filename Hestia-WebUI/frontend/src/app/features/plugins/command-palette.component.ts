@@ -13,7 +13,7 @@ interface Entry { id: string; label: string; hint: string; icon: string; group: 
   /** Extra text the search reads (help, key…). */ more?: string; }
 
 /**
- * Ctrl/⌘+K palette: «Adesso» (what makes sense now, from Metis), every quick action (one tap, same as the Home
+ * Ctrl/⌘+K palette: «Now» (what makes sense now, from Metis), every quick action (one tap, same as the Home
  * strip), module pages, dashboards and the WebUI's own pages. Type to filter, ↑/↓ + Enter to run. Also opened by
  * the sidebar «Cerca» (`open()`).
  */

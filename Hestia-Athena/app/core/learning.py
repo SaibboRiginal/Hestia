@@ -2,11 +2,11 @@
 
 - **Learning log**: every change the nightly consolidation makes to the memory (new fact, fact retired by a
   conflict, reinforced pattern, weight decay) is a row of Archive ``/api/athena-store`` (kind ``learning``) with
-  ``before`` / ``after`` and, for a new fact, the owner's exact words it comes from (``quote``). «Annulla» restores
+  ``before`` / ``after`` and, for a new fact, the owner's exact words it comes from (``quote``). «Undo» restores
   ``before``, but only while the memory is still as the assistant left it: an edit of the owner wins (409).
-- **«Rivedi cosa sai di me»** (``memory_review``): exact duplicates are found without a model; then one model call
+- **«Review what you know about me»** (``memory_review``): exact duplicates are found without a model; then one model call
   (use case ``athena.strategy``) looks for contradictions, near duplicates and stale facts. Nothing is changed:
-  each finding is a proposal (kind ``memory_proposal``) sent as a Hermes card «Applica» / «Lascia».
+  each finding is a proposal (kind ``memory_proposal``) sent as a Hermes card «Apply» / «Keep».
 """
 from __future__ import annotations
 
@@ -141,7 +141,7 @@ class Learning:
                             for m in memories[:150])
         prompt = ("Review these memories about one person. Find ONLY: contradictions, duplicates in other words, "
                   "things probably outdated. Never invent. Answer ONLY JSON: {\"findings\": [{\"kind\": "
-                  "\"contraddizione\"|\"doppione\"|\"vecchia\", \"keep\": id to keep or null, \"retire\": [ids to "
+                  "\"contradiction\"|\"duplicate\"|\"old\", \"keep\": id to keep or null, \"retire\": [ids to "
                   "remove], \"merged\": \"merged text if duplicate (same language as the memories), else empty\", "
                   f"\"why\": \"one line, in {S.owner_language()}\"}}]}}\n\n"
                   + listing)

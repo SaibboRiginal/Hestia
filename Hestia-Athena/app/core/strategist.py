@@ -48,7 +48,7 @@ def _build_observation_prompt(snapshot: ObservationSnapshot) -> str:
         else:
             lines.append("No service registered on Hub.")
 
-    # Life domains are not here: they reach the «Vita» track as module signals (reflection.py).
+    # Life domains are not here: they reach the «Life» track as module signals (reflection.py).
 
     # Self state
     self_parts = [f"{snapshot.active_commitments} active commitments"]
@@ -110,13 +110,13 @@ def _build_strategist_prompt(observation_text: str) -> str:
 _FIELDS = {"type": "type", "priority": "priority", "domain": "domain", "reason": "reason", "summary": "summary",
            "key": "key", "value": "value", "topic": "topic",
            **{k: k for k in ("type", "priority", "domain", "reason", "summary", "key", "value", "topic")}}
-_ACTION = re.compile(r"(?:ACTION|AZIONE):")
+_ACTION = re.compile(r"ACTION:")
 
 
 def _parse_candidates(raw: str) -> list[dict[str, str]]:
     """Parse Oracle's response into candidate dicts.
 
-    Uses a simple state-machine parser that splits on ACTION: markers (AZIONE: still read).
+    Uses a simple state-machine parser that splits on ACTION: markers.
     Robust against local model formatting inconsistencies.
     """
     if not raw or not raw.strip():
@@ -252,7 +252,7 @@ class Strategist:
         timeout = get_float(S.STRATEGIST_TIMEOUT)
         body = {
             "prompt": prompt,
-            "use_case": "athena.strategy",   # chain chosen in Oracle → Modelli
+            "use_case": "athena.strategy",   # chain chosen in Oracle → Models
         }
         envelope = {
             "method": "POST",

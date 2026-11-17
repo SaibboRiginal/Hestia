@@ -1,8 +1,8 @@
-"""Aphrodite — how the clients look («Aspetto», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
+"""Aphrodite — how the clients look («Look», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
 
 Profiles (palette, a light effect, a background) and pets (a small companion with a few poses). Aphrodite decides
 by itself which profile is on: a special moment of today pushed by the calendar (the owner's birthday, the owner's
-important events), then the holidays (Natale, Capodanno, San Valentino, Pasqua, Halloween…), then the season.
+important events), then the holidays (Christmas, New Year, Valentine's Day, Easter, Halloween…), then the season.
 Marko's only switch is per client: ``auto`` off = the standard look. The pet is a per-client choice. Pictures are
 asked to the image module (``POST /api/images/jobs`` with a callback here); clients only read ``GET /now``.
 """
@@ -46,7 +46,7 @@ BUILTIN: dict[str, dict] = {
                "prompt": "soft celebratory background, gentle sparkles, minimal, no text"},
     "capodanno": {"name": "Capodanno", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
                   "prompt": "new year night, gold fireworks, elegant minimal, no text"},
-    "christmas": {"name": "Natale", "palette": {"accent": "#B91C1C", "accent2": "#166534"}, "effect": "snow",
+    "christmas": {"name": "Christmas", "palette": {"accent": "#B91C1C", "accent2": "#166534"}, "effect": "snow",
                "prompt": "cozy christmas, warm lights, snow, minimal illustration, no text"},
     "san_valentino": {"name": "San Valentino", "palette": {"accent": "#DB2777"}, "effect": "hearts",
                       "prompt": "soft pink hearts, minimal, no text"},
@@ -54,10 +54,10 @@ BUILTIN: dict[str, dict] = {
                "prompt": "spring easter, pastel flowers, minimal, no text"},
     "halloween": {"name": "Halloween", "palette": {"accent": "#EA580C", "accent2": "#6D28D9"}, "effect": "pumpkins",
                   "prompt": "friendly halloween, pumpkins, purple dusk, minimal illustration, no text"},
-    "spring": {"name": "Primavera", "palette": {"accent": "#16A34A"}, "effect": "petals", "prompt": ""},
+    "spring": {"name": "Spring", "palette": {"accent": "#16A34A"}, "effect": "petals", "prompt": ""},
     "estate": {"name": "Estate", "palette": {"accent": "#0284C7"}, "effect": "sun", "prompt": ""},
-    "autumn": {"name": "Autunno", "palette": {"accent": "#C2410C"}, "effect": "leaves", "prompt": ""},
-    "winter": {"name": "Inverno", "palette": {"accent": "#2563EB"}, "effect": "none", "prompt": ""},
+    "autumn": {"name": "Autumn", "palette": {"accent": "#C2410C"}, "effect": "leaves", "prompt": ""},
+    "winter": {"name": "Winter", "palette": {"accent": "#2563EB"}, "effect": "none", "prompt": ""},
 }
 
 
@@ -206,7 +206,7 @@ class Appearance:
         name = str(body.get("name") or old.get("name") or "").strip()[:30]
         if not name:
             raise Invalid(tr("what is its name?"))
-        data = {"name": name, "species": str(body.get("species", old.get("species") or "gatto"))[:30],
+        data = {"name": name, "species": str(body.get("species", old.get("species") or "cat"))[:30],
                 "look": str(body.get("look", old.get("look") or ""))[:300], "images": old.get("images") or {},
                 "updated_at": now_iso()}
         for pose in POSES:                                   # an uploaded picture (blob id) wins over a generated one

@@ -1,5 +1,5 @@
 /**
- * Apollo («Immagini», ComfyUI) WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * Apollo («Images», ComfyUI) WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages declared in Hestia-Apollo/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';

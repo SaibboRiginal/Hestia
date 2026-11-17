@@ -200,6 +200,417 @@
   "hike",
   "hiking"
  ],
+ "hercules.body.ankle": [
+  "ankles"
+ ],
+ "hercules.body.biceps": [
+  "arms"
+ ],
+ "hercules.body.chest": [
+  "chest"
+ ],
+ "hercules.body.elbow": [
+  "elbows"
+ ],
+ "hercules.body.hip": [
+  "hips"
+ ],
+ "hercules.body.knee": [
+  "knees"
+ ],
+ "hercules.body.lower_back": [
+  "back",
+  "lower back"
+ ],
+ "hercules.body.quads": [
+  "legs"
+ ],
+ "hercules.body.shoulder": [
+  "shoulders"
+ ],
+ "hercules.body.wrist": [
+  "wrists"
+ ],
+ "hercules.exercise.ab_wheel": [
+  "ab wheel rollout"
+ ],
+ "hercules.exercise.arnold_press": [
+  "arnold press"
+ ],
+ "hercules.exercise.assisted_dip": [
+  "assisted dip machine"
+ ],
+ "hercules.exercise.assisted_pull_up": [
+  "assisted pull up",
+  "gravitron"
+ ],
+ "hercules.exercise.back_extension": [
+  "back extension",
+  "hyperextension"
+ ],
+ "hercules.exercise.back_squat": [
+  "back squat",
+  "squat"
+ ],
+ "hercules.exercise.band_pull_apart": [
+  "band pull apart"
+ ],
+ "hercules.exercise.barbell_curl": [
+  "barbell curl"
+ ],
+ "hercules.exercise.barbell_row": [
+  "barbell row",
+  "bent over row"
+ ],
+ "hercules.exercise.barbell_shrug": [
+  "barbell shrug"
+ ],
+ "hercules.exercise.bench_dip": [
+  "bench dip"
+ ],
+ "hercules.exercise.bench_press": [
+  "bench press"
+ ],
+ "hercules.exercise.bodyweight_squat": [
+  "air squat",
+  "bodyweight squat"
+ ],
+ "hercules.exercise.bulgarian_split_squat": [
+  "bulgarian split squat"
+ ],
+ "hercules.exercise.burpee": [
+  "burpee"
+ ],
+ "hercules.exercise.cable_crunch": [
+  "cable crunch"
+ ],
+ "hercules.exercise.cable_curl": [
+  "cable curl"
+ ],
+ "hercules.exercise.cable_fly": [
+  "cable crossover",
+  "cable fly"
+ ],
+ "hercules.exercise.cable_kickback": [
+  "cable glute kickback"
+ ],
+ "hercules.exercise.cable_lateral_raise": [
+  "cable lateral raise"
+ ],
+ "hercules.exercise.chest_press_machine": [
+  "chest press machine"
+ ],
+ "hercules.exercise.chest_supported_row": [
+  "chest supported row",
+  "seal row"
+ ],
+ "hercules.exercise.chin_up": [
+  "chin up"
+ ],
+ "hercules.exercise.close_grip_bench_press": [
+  "close grip bench press"
+ ],
+ "hercules.exercise.close_grip_pulldown": [
+  "close grip lat pulldown",
+  "v-bar pulldown"
+ ],
+ "hercules.exercise.concentration_curl": [
+  "concentration curl"
+ ],
+ "hercules.exercise.crunch": [
+  "crunch"
+ ],
+ "hercules.exercise.db_bench_press": [
+  "dumbbell bench press"
+ ],
+ "hercules.exercise.db_curl": [
+  "dumbbell curl"
+ ],
+ "hercules.exercise.db_fly": [
+  "dumbbell fly"
+ ],
+ "hercules.exercise.db_incline_press": [
+  "incline dumbbell press"
+ ],
+ "hercules.exercise.db_romanian_deadlift": [
+  "dumbbell romanian deadlift"
+ ],
+ "hercules.exercise.db_row": [
+  "dumbbell row",
+  "one arm row"
+ ],
+ "hercules.exercise.db_shoulder_press": [
+  "dumbbell shoulder press"
+ ],
+ "hercules.exercise.db_shrug": [
+  "dumbbell shrug"
+ ],
+ "hercules.exercise.db_tricep_extension": [
+  "dumbbell tricep extension"
+ ],
+ "hercules.exercise.dead_bug": [
+  "dead bug"
+ ],
+ "hercules.exercise.deadlift": [
+  "deadlift"
+ ],
+ "hercules.exercise.decline_bench_press": [
+  "decline bench press"
+ ],
+ "hercules.exercise.decline_sit_up": [
+  "decline sit up"
+ ],
+ "hercules.exercise.dip": [
+  "dips",
+  "chest dip"
+ ],
+ "hercules.exercise.ez_curl": [
+  "ez bar curl"
+ ],
+ "hercules.exercise.face_pull": [
+  "face pull"
+ ],
+ "hercules.exercise.farmer_carry": [
+  "farmer carry",
+  "farmer walk"
+ ],
+ "hercules.exercise.front_raise": [
+  "front raise"
+ ],
+ "hercules.exercise.front_squat": [
+  "front squat"
+ ],
+ "hercules.exercise.glute_bridge": [
+  "glute bridge"
+ ],
+ "hercules.exercise.goblet_squat": [
+  "goblet squat"
+ ],
+ "hercules.exercise.good_morning": [
+  "good morning"
+ ],
+ "hercules.exercise.hack_squat": [
+  "hack squat"
+ ],
+ "hercules.exercise.hammer_curl": [
+  "hammer curl"
+ ],
+ "hercules.exercise.hanging_knee_raise": [
+  "hanging knee raise"
+ ],
+ "hercules.exercise.hanging_leg_raise": [
+  "hanging leg raise"
+ ],
+ "hercules.exercise.high_bar_squat": [
+  "high bar squat"
+ ],
+ "hercules.exercise.hip_abduction": [
+  "hip abduction machine"
+ ],
+ "hercules.exercise.hip_adduction": [
+  "hip adduction machine"
+ ],
+ "hercules.exercise.hip_thrust": [
+  "hip thrust"
+ ],
+ "hercules.exercise.incline_bench_press": [
+  "incline bench press"
+ ],
+ "hercules.exercise.incline_db_curl": [
+  "incline dumbbell curl"
+ ],
+ "hercules.exercise.inverted_row": [
+  "inverted row",
+  "australian pull up"
+ ],
+ "hercules.exercise.kb_goblet_squat": [
+  "kettlebell goblet squat"
+ ],
+ "hercules.exercise.kb_swing": [
+  "kettlebell swing"
+ ],
+ "hercules.exercise.lat_pulldown": [
+  "lat pulldown"
+ ],
+ "hercules.exercise.lateral_raise": [
+  "lateral raise",
+  "side raise"
+ ],
+ "hercules.exercise.leg_curl_lying": [
+  "lying leg curl"
+ ],
+ "hercules.exercise.leg_curl_seated": [
+  "seated leg curl"
+ ],
+ "hercules.exercise.leg_extension": [
+  "leg extension"
+ ],
+ "hercules.exercise.leg_press": [
+  "leg press"
+ ],
+ "hercules.exercise.leg_press_calf_raise": [
+  "calf press"
+ ],
+ "hercules.exercise.lying_leg_raise": [
+  "lying leg raise"
+ ],
+ "hercules.exercise.machine_lateral_raise": [
+  "lateral raise machine"
+ ],
+ "hercules.exercise.machine_row": [
+  "row machine"
+ ],
+ "hercules.exercise.nordic_curl": [
+  "nordic hamstring curl"
+ ],
+ "hercules.exercise.overhead_press": [
+  "overhead press",
+  "military press",
+  "ohp"
+ ],
+ "hercules.exercise.overhead_tricep_extension": [
+  "overhead tricep extension",
+  "overhead cable extension"
+ ],
+ "hercules.exercise.pallof_press": [
+  "pallof press"
+ ],
+ "hercules.exercise.pec_deck": [
+  "pec deck",
+  "chest fly machine"
+ ],
+ "hercules.exercise.pendlay_row": [
+  "pendlay row"
+ ],
+ "hercules.exercise.plank": [
+  "plank"
+ ],
+ "hercules.exercise.power_clean": [
+  "power clean"
+ ],
+ "hercules.exercise.preacher_curl": [
+  "preacher curl"
+ ],
+ "hercules.exercise.pull_up": [
+  "pull up"
+ ],
+ "hercules.exercise.push_up": [
+  "push up"
+ ],
+ "hercules.exercise.rack_pull": [
+  "rack pull"
+ ],
+ "hercules.exercise.rear_delt_fly": [
+  "rear delt fly",
+  "reverse fly"
+ ],
+ "hercules.exercise.reverse_curl": [
+  "reverse curl"
+ ],
+ "hercules.exercise.reverse_lunge": [
+  "reverse lunge"
+ ],
+ "hercules.exercise.reverse_pec_deck": [
+  "reverse pec deck",
+  "rear delt machine"
+ ],
+ "hercules.exercise.romanian_deadlift": [
+  "romanian deadlift",
+  "rdl"
+ ],
+ "hercules.exercise.rope_pushdown": [
+  "rope pushdown"
+ ],
+ "hercules.exercise.russian_twist": [
+  "russian twist"
+ ],
+ "hercules.exercise.seated_cable_row": [
+  "seated cable row"
+ ],
+ "hercules.exercise.seated_calf_raise": [
+  "seated calf raise"
+ ],
+ "hercules.exercise.shoulder_press_machine": [
+  "shoulder press machine"
+ ],
+ "hercules.exercise.side_plank": [
+  "side plank"
+ ],
+ "hercules.exercise.skull_crusher": [
+  "skull crusher",
+  "lying tricep extension"
+ ],
+ "hercules.exercise.sled_push": [
+  "sled push"
+ ],
+ "hercules.exercise.smith_bench_press": [
+  "smith machine bench press"
+ ],
+ "hercules.exercise.smith_squat": [
+  "smith machine squat"
+ ],
+ "hercules.exercise.standing_calf_raise": [
+  "standing calf raise"
+ ],
+ "hercules.exercise.step_up": [
+  "step up"
+ ],
+ "hercules.exercise.stiff_leg_deadlift": [
+  "stiff leg deadlift"
+ ],
+ "hercules.exercise.straight_arm_pulldown": [
+  "straight arm pulldown"
+ ],
+ "hercules.exercise.sumo_deadlift": [
+  "sumo deadlift"
+ ],
+ "hercules.exercise.t_bar_row": [
+  "t bar row"
+ ],
+ "hercules.exercise.thruster": [
+  "thruster"
+ ],
+ "hercules.exercise.trap_bar_deadlift": [
+  "trap bar deadlift",
+  "hex bar deadlift"
+ ],
+ "hercules.exercise.tricep_kickback": [
+  "tricep kickback"
+ ],
+ "hercules.exercise.tricep_pushdown": [
+  "tricep pushdown",
+  "pushdown"
+ ],
+ "hercules.exercise.upright_row": [
+  "upright row"
+ ],
+ "hercules.exercise.walking_lunge": [
+  "walking lunge"
+ ],
+ "hercules.exercise.weighted_dip": [
+  "weighted dip"
+ ],
+ "hercules.exercise.weighted_pull_up": [
+  "weighted pull up"
+ ],
+ "hercules.exercise.weighted_push_up": [
+  "weighted push up"
+ ],
+ "hercules.exercise.wrist_curl": [
+  "wrist curl"
+ ],
+ "hercules.template.legs": [
+  "leg",
+  "squat"
+ ],
+ "hercules.template.pull": [
+  "pull",
+  "back"
+ ],
+ "hercules.template.push": [
+  "push",
+  "chest"
+ ],
  "kairos.category.bill": [
   "bill",
   "electricity",

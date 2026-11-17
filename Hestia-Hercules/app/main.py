@@ -15,7 +15,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -1258,7 +1258,7 @@ try:
                     except ValueError:
                         pass
                 elif typ == "boolean":
-                    kw[k] = v.lower() in ("1", "true", "si", "sì", "yes")
+                    kw[k] = is_yes(v)
                 elif typ == "array":
                     kw[k] = [x.strip() for x in v.split(",") if x.strip()]
             return inner(**{k: v for k, v in kw.items() if k in props})

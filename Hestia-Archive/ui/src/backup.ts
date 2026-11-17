@@ -1,6 +1,6 @@
 /**
- * <archive-backup-panel> — Impostazioni → Sistema → Archive → «Backup»: state, history of the backups on Google
- * Drive, «Ripristina» on each one, «Annulla ripristino», «Esegui backup ora», «Verifica ora».
+ * <archive-backup-panel> — Settings → System → Archive → «Backup»: state, history of the backups on Google
+ * Drive, «Restore» on each one, «Undo restore», «Back up now», «Verify now».
  * SPEC docs/work/2026-10-20-backup-drive §2. The texts name no module.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';

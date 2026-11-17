@@ -18,7 +18,7 @@ import { tr, TrPipe } from '../../core/i18n';
 const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium'), l: tr('Large'), xl: tr('Whole') };
 
 /**
- * Home and dashboards (SPEC §4.6, §4.8): «Adesso» and quick actions on top (Home), widgets of every module in a grid.
+ * Home and dashboards (SPEC §4.6, §4.8): «Now» and quick actions on top (Home), widgets of every module in a grid.
  * Edit mode: add from the catalog, drag to reorder, size, per-widget params and title, remove.
  * Saved as this client's setting `webui.dashboards` (Themis history/undo).
  */

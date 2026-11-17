@@ -827,7 +827,7 @@ try:
             description=("The nightly corrections of answers waiting for the user before entering the training dataset: original answer, correction, Accept / Discard / I correct it."),
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: _traces_call(_review_card),
-            title="To review", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
+            title="To review", method="GET", path="/api/metis/tools/review", clients=["telegram", "ui"],
             response_mode="raw_json", telegram_visible=True, telegram_group="development",
             telegram={"section": "Dataset e training"}),
         MCPTool(
@@ -842,7 +842,7 @@ try:
             handler=lambda trace_id="", decision="", answer="": {
                 **_traces_call(review.decide, trace_id, decision, answer),
                 "next": _traces_call(_review_card).get("display")},
-            title="Decide a fix", method="POST", path="/api/metis/tools/rivedi_decidi",
+            title="Decide a fix", method="POST", path="/api/metis/tools/review_decide",
             clients=["telegram", "ui"], response_mode="raw_json", telegram_group="development",
             telegram={"section": "Dataset e training"}),
         MCPTool(

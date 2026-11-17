@@ -52,7 +52,7 @@ export class HerculesTemplates extends LocalPage {
 
   private create() {
     const t = this.L.put('template', uuid(), { name: tr('New plan'), favorite: false, items: [], folder: '', notes: '', color: '', position: this.L.templates().length, archived: false, revision: 0 });
-    this.host.navigate('plans/' + t.id, { nuova: '1' });
+    this.host.navigate('plans/' + t.id, { new: '1' });
   }
 
   private program(): any | null { return this.L.list('program').find(p => p.active) || null; }
@@ -295,7 +295,7 @@ export class HerculesTemplate extends LocalPage {
 
   private startNow(t: any) {
     // the live page owns the session logic: open it with this template preselected
-    this.host.navigate('training', { scheda: t.id });
+    this.host.navigate('training', { card: t.id });
   }
 }
 

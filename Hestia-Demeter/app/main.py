@@ -1,4 +1,4 @@
-"""Hestia-Demeter — nutrition («Alimentazione», port 19026, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A5).
+"""Hestia-Demeter — nutrition («Nutrition», port 19026, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A5).
 
 Data in Archive (``/api/food-store``): diet, meals, supplements and intakes. A coach of the weekly plan (Hub tag
 ``coach``, ``/api/coach/*``), kcal estimates from Oracle (use case ``demeter.estimate``, async, never blocking the log),
@@ -163,7 +163,7 @@ def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", 
         d = food.set_diet({k: v for k, v in {"kcal": kcal, "protein": protein, "rules": rules or None,
                                               "notes": notes or None}.items() if v not in (None, "")})
     else:
-        d = {**food.diet(), "unchanged": True}   # read only: no «Fatto» in the chat
+        d = {**food.diet(), "unchanged": True}   # read only: no «Done» in the chat
     lines = [tr("Goal: {0} kcal · {1} g protein", d['kcal'] or '—', d['protein'] or '—')] + d["rules"][:10]
     return {**d, "display": display(tr("Diet"), lines=lines, actions=[action(tr("Edit"), "food_diet")])}
 
@@ -185,7 +185,7 @@ kit.tools([
             handler=lambda date="": (lambda t: {**t, "display": _today_display(t)})(
                 food.day_summary(__import__("datetime").date.fromisoformat(date) if date else None)),
             title="Today", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Meals", "primary": 1}),
-    MCPTool(name="food_meal", description=("Log a meal: text (what), slot colazione|pranzo|cena|spuntino, kcal and protein if known "
+    MCPTool(name="food_meal", description=("Log a meal: text (what), slot breakfast|lunch|dinner|snack, kcal and protein if known "
                                             "(otherwise the assistant estimates them)."),
             parameters={"type": "object", "properties": {"text": S, "slot": {"type": "string", "enum": list(SLOTS)},
                                                          "kcal": I, "protein": I, "date": S}, "required": ["text"]},

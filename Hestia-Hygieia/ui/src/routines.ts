@@ -50,7 +50,7 @@ export class HygieiaRoutines extends HestiaElement {
   constructor() { super(); this.items = undefined; this.archived = false; this.creating = null; this.m = null; }
   connectedCallback() {
     super.connectedCallback();
-    if (this.ctx?.query?.nuova) this.startCreate();
+    if (this.ctx?.query?.new) this.startCreate();
     this.load();
     this.onHost('refresh', () => this.load());
   }
@@ -64,7 +64,7 @@ export class HygieiaRoutines extends HestiaElement {
     const c = this.creating;
     if (!c.name.trim()) { this.host.toast(tr('Name the routine'), 'warning'); return; }
     const r = await call(this.host, 'POST', `${API}/routines`, { body: { ...c, steps: [] } });
-    if (r.ok) { this.creating = null; this.host.navigate('routine/' + r.data.id, { nuova: '1' }); }
+    if (r.ok) { this.creating = null; this.host.navigate('routine/' + r.data.id, { new: '1' }); }
   }
   private async fav(r: any, e: Event) {
     e.stopPropagation();
@@ -154,7 +154,7 @@ export class HygieiaRoutine extends HestiaElement {
     super.connectedCallback();
     this.load();
     this.onHost('refresh', () => { if (!this.dirty) this.load(); });
-    if (this.ctx?.query?.nuova) this.picking = true;
+    if (this.ctx?.query?.new) this.picking = true;
   }
   private async load() {
     const [r, m, p, o] = await Promise.all([this.host.api('GET', `${API}/routines/${this.rid}`), meta(this.host),

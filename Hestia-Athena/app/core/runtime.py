@@ -137,12 +137,12 @@ class AthenaRuntime:
         )
         self._skill_curation_ran_today: str = ""
 
-        # Life reflection («Vita»): module signals → links between domains → observations for the recap.
+        # Life reflection («Life»): module signals → links between domains → observations for the recap.
         self.reflection = LifeReflection(
             self.hub_api_url, gate=self._gate, propose_setting=self._propose_setting,
             settings_lines=lambda: self.observer.observe_settings(limit=40))
         self._reflection_ran_today: str = ""
-        # «Parla con te»: she writes first when she has a reason (its own gate, not the thinking loop's).
+        # «Talk to you»: she writes first when she has a reason (its own gate, not the thinking loop's).
         self.evidence = Evidence(self.hub_api_url)
         self.talk = Talk(self.hub_api_url, idle_seconds=self._chat_idle_seconds,
                          known_days=self.evidence.known_days)
@@ -463,7 +463,7 @@ class AthenaRuntime:
     def list_thinking_records(
         self, limit: int = 20, track: str | None = None
     ) -> list[dict[str, Any]]:
-        """Return recent thinking records (newest first), optionally one track (``sistema`` | ``vita``)."""
+        """Return recent thinking records (newest first), optionally one track (``system`` | ``life``)."""
         with self._lock:
             records = list(self._thinking_records)
         if track:
@@ -472,7 +472,7 @@ class AthenaRuntime:
         return records[: max(1, min(int(limit), self.thinking_store_max))]
 
     def thinking_summary(self, limit: int = 10, track: str | None = None) -> dict[str, Any]:
-        """Compact cycles for the Pensieri page and the MCP tool ``athena_thinking`` (newest first): what was
+        """Compact cycles for the Thoughts page and the MCP tool ``athena_thinking`` (newest first): what was
         observed (counts, not payloads), every candidate with its 5 gate factors, score, accepted/discarded and
         why, and what was done with it."""
         rows = [compact_record(r) for r in self.list_thinking_records(limit=max(1, min(int(limit or 10), 50)),
@@ -998,7 +998,7 @@ class AthenaRuntime:
             logger.info("event=think_now_busy")
             return {"status": "busy", "detail": tr("Athena is already thinking")}
         life = track == "life"
-        trace_id = f"athena-{'vita' if life else 'now'}-{uuid4().hex[:10]}"
+        trace_id = f"athena-{'life' if life else 'now'}-{uuid4().hex[:10]}"
 
         def _run() -> None:
             try:
@@ -1013,7 +1013,7 @@ class AthenaRuntime:
         return {"status": "started", "trace_id": trace_id, "track": "life" if life else "system"}
 
     def _life_cycle(self, trigger: str, run_trace_id: str) -> dict[str, Any]:
-        """«Vita»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
+        """«Life»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
         Separate from the system cycle: no services, errors or Forge here."""
         t0 = time.perf_counter()
         with self.presence.activity("athena.reflection", label=tr("{assistant} reflects"), load="light", resource="gpu",
@@ -1241,7 +1241,7 @@ class AthenaRuntime:
 
     def _light_work_wait(self) -> int:
         """Seconds to wait before thinking (0 = go). The assistant presence decides (effect
-        ``work.light``: the user is "Sveglio" → defer); Chronos down → old Oracle idle check."""
+        ``work.light``: the user is "Awake" → defer); Chronos down → old Oracle idle check."""
         state = self.presence.get()
         if state:
             effect = (state.get("effects") or {}).get("work.light", "allow")
@@ -1257,7 +1257,7 @@ class AthenaRuntime:
         return 0
 
     def _talk_tick(self) -> None:
-        """«Parla con te»: one attempt when it is due and the window ``athena.talk`` is open. Never raises."""
+        """«Talk to you»: one attempt when it is due and the window ``athena.talk`` is open. Never raises."""
         try:
             if not self.talk.due():
                 return
@@ -1270,7 +1270,7 @@ class AthenaRuntime:
             logger.warning("[🔄] event=talk_tick_failed error=%s fallback=next_tick", exc)
 
     def talk_now(self) -> dict[str, Any]:
-        """«Scrivimi ora»: one attempt now, in the background, past the daily limit and the pause."""
+        """«Write to me now»: one attempt now, in the background, past the daily limit and the pause."""
         trace_id = f"athena-talk-{uuid4().hex[:10]}"
 
         def _run() -> None:

@@ -1,4 +1,4 @@
-/** <argus-status-widget> — "Stato sistema": healthy / total from Argus's last cycle, open incidents, who is down. */
+/** <argus-status-widget> — "System status": healthy / total from Argus's last cycle, open incidents, who is down. */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, ago, statusOf } from './util';
 

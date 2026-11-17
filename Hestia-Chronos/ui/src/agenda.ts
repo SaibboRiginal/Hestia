@@ -1,7 +1,7 @@
 /**
  * <chronos-agenda> — "Agenda di Hestia": the assistant's own calendar (month / week / day / list), sidebar with mini
- * calendar, layers and filters, popover details, editor, drag & drop, quick add in words, "Da un modulo…", module
- * logs around an occurrence, ICS file. Keys: T oggi · M/W/D/L viste · N nuovo · ←/→. Ported from the WebUI's
+ * calendar, layers and filters, popover details, editor, drag & drop, quick add in words, "From a module…", module
+ * logs around an occurrence, ICS file. Keys: T today · M/W/D/L views · N new · ←/→. Ported from the WebUI's
  * built-in calendar page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno P6); state in cal/store.ts.
  */
 import { HestiaElement, css, html, nothing, tr } from '@hestia/webui-sdk';
@@ -167,7 +167,7 @@ export class ChronosAgenda extends HestiaElement {
     return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Record<string, string | number>;
   }
 
-  // ── "Crea con Hestia" ──────────────────────────────────────────────────
+  // ── "Create with Hestia" ────────────────────────────────────────────────
   private askCreate(at?: Date, prompt = '') {
     const d = at ?? this.store.anchor;
     this.sel = null;

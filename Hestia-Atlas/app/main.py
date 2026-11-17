@@ -299,7 +299,7 @@ _atlas_mcp_tools = [
         parameters={
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Recipe name (e.g. duckduckgo, pagina)"},
+                "name": {"type": "string", "description": "Recipe name (e.g. duckduckgo, page)"},
                 "params": {"type": "object", "description": "Recipe parameters (e.g. {\"q\": \"...\"})"},
             },
         },

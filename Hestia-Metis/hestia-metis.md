@@ -130,7 +130,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `POST` | `/api/metis/review/run` | Agenda job: the teacher reviews the next batch → `{reviewed, failed, accepted, pending, …}` |
 | `GET` | `/api/metis/review/pending` | «Da rivedere» (`limit`): `{items[{trace_id, user, answer, fixed, remove, reasons, confidence, needs_owner}], pending, reviews}` |
 | `POST` | `/api/metis/review/{trace_id}` | Owner decision `{decision: accept|reject|edit, answer?}` |
-| `GET`/`POST` | `/api/metis/tools/rivedi` · `/tools/rivedi_decidi` | The two tools (display card) |
+| `GET`/`POST` | `/api/metis/tools/review` · `/tools/review_decide` | The two tools (display card) |
 | `POST` | `/api/metis/export` | Build the training zip `{plain?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
 | `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
 | `POST` | `/api/metis/tools/dataset_export` | Tool `metis_dataset_export` (card with the file) |

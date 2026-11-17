@@ -46,7 +46,7 @@ export interface VoiceStep { provider: string; model: string; voice: string; url
 export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep; steps?: VoiceStep[];
   /** Free speech programs not found at home, offered to install (Chatterbox, Kokoro, Speaches). */
   programs?: { name: string; label: string; site: string; note: string }[]; }
-export interface VoiceCatalog { ascolto: VoiceDirection; voce: VoiceDirection; }
+export interface VoiceCatalog { listen: VoiceDirection; voce: VoiceDirection; }
 export interface Download { module?: string; id: string; what: string; source?: string;
   state: 'queued' | 'running' | 'paused' | 'done' | 'error'; size: number; done: number;
   speed?: number; eta_s?: number | null; error?: string; }

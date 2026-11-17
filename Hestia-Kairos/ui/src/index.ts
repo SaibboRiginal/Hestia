@@ -123,7 +123,7 @@ export class KairosDetail extends Base {
   private async save() { const r = await call(this.host, 'PUT', `/${this.did}`, this.draft); if (r.ok) { this.d = r.data; this.host.toast(tr('f::Saved'), 'success'); } }
   private async advise() {
     this.thinking = true;
-    const r = await call(this.host, 'POST', '/tools/consiglio', { deadline: this.did });
+    const r = await call(this.host, 'POST', '/tools/advice', { deadline: this.did });
     this.thinking = false;
     if (r.ok && r.data.advice) this.d = { ...this.d, advice: r.data.advice };
   }

@@ -1,6 +1,6 @@
 /**
- * <chronos-runs> — «Esecuzioni»: every run of the assistant agenda's jobs/tasks (riuscito / fallito / saltato,
- * duration, who started it) and the rules each module registered. «Riprova» = the agenda's run-now action.
+ * <chronos-runs> — «Runs»: every run of the assistant agenda's jobs/tasks (succeeded / failed / skipped,
+ * duration, who started it) and the rules each module registered. «Retry» = the agenda's run-now action.
  * The calendar stays the WebUI Agenda page. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
@@ -38,7 +38,7 @@ export class ChronosRuns extends HestiaElement {
 
   connectedCallback() {
     super.connectedCallback();
-    const q = this.ctx?.query?.status;   // «Job falliti» widget opens the page filtered
+    const q = this.ctx?.query?.status;   // «Failed jobs» widget opens the page filtered
     if (q && FILTERS.some(f => f.id === q)) this.status = q;
     this.load();
     this.onHost('refresh', () => this.load());

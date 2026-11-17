@@ -849,7 +849,7 @@ class Hercules:
                                    "tone": "warning"})
         nw = self.next_workout(nxt)
         planned_for_next = nw.get("template") and (nw.get("planned_date") == nxt.isoformat()
-                                                   or nw.get("reason") in (tr("Moved to today."), "Spostato a oggi."))
+                                                   or nw.get("reason") == tr("Moved to today."))
         if planned_for_next and not nw.get("skipped"):
             mins = nw.get("estimated_minutes")
             upcoming.append({"text": f"{nw['template']['name']}" + (tr(" · about {0} min", mins) if mins else "")})

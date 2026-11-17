@@ -22,7 +22,7 @@ plugin_client = import_shared_symbol("hestia_common.plugin_client", "PluginClien
 llm_usecase = import_shared_symbol("hestia_common.oracle_usecases", "usecase")
 llm_capabilities = import_shared_symbol("hestia_common.oracle_usecases", "capabilities")
 
-# What Athena asks Oracle for (chains chosen by Marko in Oracle → Cervello → Modelli).
+# What Athena asks Oracle for (chains chosen by the owner in Oracle → Brain → Models).
 LLM_USECASES = [
     llm_usecase("athena.strategy", "Athena · strategy and memory", chain="strong",
                 help="Athena's reasoning (proposals, memory consolidation)."),
@@ -76,7 +76,7 @@ class AthenaService(HestiaServiceBase):
             "observation_endpoint": "/api/athena/observation",
             "recap_compose_endpoint": "/api/athena/recap",
             "signals_endpoint": "/api/athena/signals",
-            # Athena's own piece of the daily recap («Da tenere d'occhio»), discovered like any module's.
+            # Athena's own piece of the daily recap («Keep an eye on»), discovered like any module's.
             "recap_endpoint": "/api/module/recap",
             **ui.capabilities(SERVICE_BASE_URL),
             **llm_capabilities(LLM_USECASES),
@@ -155,7 +155,7 @@ service = AthenaService(
 )
 runtime = AthenaRuntime()
 
-# ── WebUI plugin (core module, Sistema section): Pensieri ────────────────────
+# ── WebUI plugin (core module, System section): Thoughts ────────────────────
 # Inside view (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): every cycle observe → think → gate → act.
 UI_DIST = os.getenv("ATHENA_UI_DIST", "/ui/dist")   # outside /code/app: the compose dev mount must not hide it
 API = "/api/athena"
@@ -319,7 +319,7 @@ def athena_thinking(
 
 @app.get("/api/athena/thinking/summary")
 def athena_thinking_summary(limit: int = 10, track: str | None = None) -> dict[str, Any]:
-    """Compact cycles (newest first) for the Pensieri page and the MCP tool ``athena_thinking``: observation
+    """Compact cycles (newest first) for the Thoughts page and the MCP tool ``athena_thinking``: observation
     counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome.
     ``track`` = ``life`` | ``system`` (both when omitted)."""
     return runtime.thinking_summary(limit=limit, track=track or None)
@@ -330,10 +330,10 @@ def athena_think_now(track: str = "system") -> dict[str, Any]:
     """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
     ``track`` = ``system`` (default) or ``life``. ``started`` or ``busy`` (a cycle is already running); the
     record appears in /api/athena/thinking."""
-    if track == "talk":       # «Scrivimi ora»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
+    if track == "talk":       # «Write to me now»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
         return runtime.talk_now()
     if track not in ("system", "life"):
-        raise HTTPException(status_code=422, detail="track: sistema | vita | parla")
+        raise HTTPException(status_code=422, detail="track: system | life | talk")
     return runtime.think_now(track=track)
 
 
@@ -369,7 +369,7 @@ def athena_evidence() -> dict[str, Any]:
 @app.get("/api/athena/signals")
 def athena_signals(domain: str | None = None, limit: int = 50, weeks: int = 12) -> dict[str, Any]:
     """What the reflection reads: active signals of the modules (worst first), the weekly series, the links found
-    and the observations of the last 14 days (page Segnali, MCP ``athena_signals``)."""
+    and the observations of the last 14 days (page Signals, MCP ``athena_signals``)."""
     from .core.reflection import correlate
     from .core import athena_settings as AS
     try:
@@ -391,7 +391,7 @@ def athena_signals(domain: str | None = None, limit: int = 50, weeks: int = 12) 
 @app.get("/api/module/recap")
 def module_recap(day: str | None = None, next: str | None = None) -> dict[str, Any]:  # noqa: A002 — contract name
     """Athena's piece of the daily recap (contract docs/work/2026-10-20-recap-giornaliero §3.2): the life
-    observations of ``day`` under «Da tenere d'occhio», or ``{empty: true}``. Deterministic, no model call."""
+    observations of ``day`` under «Keep an eye on», or ``{empty: true}``. Deterministic, no model call."""
     from .core.reflection import local_day
     return runtime.reflection.recap_piece(day or local_day())
 
@@ -425,7 +425,7 @@ def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
 
 @app.post("/api/athena/recap/now")
 def athena_recap_now() -> dict[str, Any]:
-    """Quick action «Recap adesso»: evening recap now, delivered like the scheduled one."""
+    """Quick action «Recap now»: evening recap now, delivered like the scheduled one."""
     out = runtime.recap.compose(momento="evening", trigger="quick")
     label = (tr("Nothing to tell today") if out.get("status") == "empty"
              else tr("Recap sent") if out.get("delivered") else tr("Recap ready (late delivery)"))
@@ -439,7 +439,7 @@ def athena_recaps(limit: int = 20) -> dict[str, Any]:
 
 
 def _recap_today_handler(momento: str = "", **_kw) -> dict:
-    """Chat «fammi il recap»: before 14:00 the morning view (yesterday + today), then the evening one."""
+    """Chat «give me the recap»: before 14:00 the morning view (yesterday + today), then the evening one."""
     from datetime import datetime as _dt
     moment = momento if momento in {"evening", "morning"} else ("morning" if _dt.now().hour < 14 else "evening")
     out = runtime.recap.compose(momento=moment, deliver=False, trigger="chat")
@@ -472,11 +472,11 @@ try:
         MCPTool(
             name="recap_today",
             description=(("Recap of the day: how it went (training, routines, expenses, agenda, open notifications…) and "
-                          "what comes next. 'momento': sera = today + tomorrow, mattina = yesterday + today (default by "
+                          "what comes next. 'moment': evening = today + tomorrow, morning = yesterday + today (default by "
                           "the hour). Returns the ready text.")),
             parameters={"type": "object", "properties": {
                 "momento": {"type": "string", "enum": ["evening", "morning"],
-                            "description": "sera = today and tomorrow; mattina = yesterday and today"}}},
+                            "description": "evening = today and tomorrow; morning = yesterday and today"}}},
             handler=_recap_today_handler,
             title="Daily recap",
             method="POST",

@@ -863,7 +863,7 @@ def get_agenda(
     This endpoint is used by Telegram commands (``/agenda``, ``/agenda_today``)
     and by Oracle when the user asks about their schedule.
     """
-    # Window starts at local midnight: "agenda di oggi" used to start at "now",
+    # Window starts at local midnight: "today's agenda" used to start at "now",
     # hiding events already started today and all-day events (stored 00:00).
     from zoneinfo import ZoneInfo
     tz = ZoneInfo(assistant_agenda._TZ_DEFAULT)
@@ -1036,7 +1036,7 @@ def agenda_occurrences(days: int = Query(7, ge=1, le=400), owner: str | None = N
 
 @app.post("/api/agenda/weather")
 def agenda_weather_view(body: dict) -> dict:
-    """Weather for the calendar page: Casa per day, located occurrences (``located: [{key, place, at}]``) and
+    """Weather for the calendar page: Home per day, located occurrences (``located: [{key, place, at}]``) and
     Marko's own located calendar events, next 14 days only (``services/agenda_weather.py``)."""
     b = body or {}
     located = b.get("located") if isinstance(b.get("located"), list) else []
@@ -1190,13 +1190,13 @@ def agenda_runs(owner: str | None = None, status: str | None = Query(None, descr
                 since: str | None = Query(None, description="ISO; or use hours"),
                 hours: float | None = Query(None, ge=0, le=24 * 400), limit: int = Query(100, ge=1, le=500)) -> dict:
     """Job/task runs of the assistant agenda (newest first) + summary + rules registered per owner
-    (WebUI plugin page «Esecuzioni»)."""
+    (WebUI plugin page «Runs»)."""
     return _agenda_guard(assistant_agenda.runs, owner=owner, status=status, since=_since(since, hours), limit=limit)
 
 
 @app.get("/api/agenda/runs/failed")
 def agenda_runs_failed(hours: float = Query(24, ge=1, le=24 * 30)) -> list[dict]:
-    """Chips of the quick action «Riprova job»: jobs whose last run failed (id = item key)."""
+    """Chips of the quick action «Retry job»: jobs whose last run failed (id = item key)."""
     return assistant_agenda.failed_jobs(since=_since(None, hours))
 
 
@@ -1206,7 +1206,7 @@ _LOG_SERVICE_RE = __import__("re").compile(r"^[a-z0-9_-]{2,40}$")
 @app.get("/api/agenda/logs")
 def agenda_logs(service: str, at: str, minutes: int = Query(5, ge=1, le=120), level: str | None = None,
                 contains: str | None = None) -> dict:
-    """«Log del modulo» of the calendar page: the service's own ``/api/logs`` (in-memory buffer, recent hours) read
+    """«Module log» of the calendar page: the service's own ``/api/logs`` (in-memory buffer, recent hours) read
     through Hub and cut to ``at ± minutes``. Under the plugin's api_prefix so the page needs nothing else."""
     import requests
 
@@ -1316,7 +1316,7 @@ def agenda_window(key: str) -> dict:
 
 # ─────────────────────────────────────────────────────────────────────
 #  Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo)
-#  Under the plugin's api_prefix (/api/agenda/) so the «La tua settimana» page needs nothing else.
+#  Under the plugin's api_prefix (/api/agenda/) so the «Your week» page needs nothing else.
 # ─────────────────────────────────────────────────────────────────────
 
 
@@ -1376,7 +1376,7 @@ def coach_week(date: str | None = None) -> dict:
 
 @app.get("/api/agenda/coach/today")
 def coach_today(date: str | None = None) -> dict:
-    """Today's plan items (widget «Oggi nel piano», daily recap)."""
+    """Today's plan items (widget «Today in the plan», daily recap)."""
     day = _coach_day(date)
     return {"date": (day or weekly_coach.now().date()).isoformat(),
             "items": _coach_guard(weekly_coach.today_items, day)}
@@ -1384,7 +1384,7 @@ def coach_today(date: str | None = None) -> dict:
 
 @app.post("/api/agenda/coach/replan")
 def coach_replan(req: CoachReplan | None = None) -> dict:
-    """Re-plan from ``date`` to the end of its week (chat «rifai il piano», page button)."""
+    """Re-plan from ``date`` to the end of its week (chat «redo the plan», page button)."""
     req = req or CoachReplan()
     for b in req.busy:
         _coach_guard(weekly_coach.add_busy, b.get("start_at"), b.get("end_at"), b.get("title") or "")
@@ -1416,7 +1416,7 @@ def coach_skip(ref: str, req: CoachSkip | None = None) -> dict:
 
 @app.post("/api/agenda/coach/busy")
 def coach_busy_add(req: CoachBusy) -> dict:
-    """A period the plan leaves free («mercoledì sono via»)."""
+    """A period the plan leaves free («I'm away on Wednesday»)."""
     return _coach_guard(weekly_coach.add_busy, req.start_at, req.end_at, req.title)
 
 

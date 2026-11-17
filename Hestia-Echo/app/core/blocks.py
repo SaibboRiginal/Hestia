@@ -1,4 +1,4 @@
-"""Providers, chains, uses — the blocks of Echo, same shape as Oracle a blocchi (dossier §4).
+"""Providers, chains, uses — the blocks of Echo, same shape as Oracle's blocks (dossier §4).
 
 - **Providers** (``echo.providers``): ``{name: {type, label, url, options}}``; the key only in env
   ``ECHO_KEY_<NAME>`` (upper-case, ``-`` → ``_``).
@@ -254,7 +254,7 @@ class Blocks:
 
     # ── running ──────────────────────────────────────────────────────────────
     def external_step(self, direction: str) -> tuple[dict, dict] | None:
-        """``(provider, step)`` of the external engine for ``esterna`` (None = not usable for this direction)."""
+        """``(provider, step)`` of the external engine for ``external`` (None = not usable for this direction)."""
         name = str(self.get(EXTERNAL_KEY, "") or "")
         p = self.providers().get(name)
         if not p or direction not in STANDARDS[p["type"]].directions or self.provider_state(p) != "ready":

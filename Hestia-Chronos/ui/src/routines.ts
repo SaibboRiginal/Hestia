@@ -1,7 +1,7 @@
 /**
  * <chronos-routines> — «Routine»: what the assistant does by itself, written in words, by time or when a mail
- * arrives; the ready-made gallery (radar notizie, case nuove, spese, settimana, mail da un mittente); «Esegui
- * adesso», pause, delete. The result goes as a notification or into the evening recap.
+ * arrives; the ready-made gallery (news radar, new houses, expenses, week, mail from a sender); «Run
+ * now», pause, delete. The result goes as a notification or into the evening recap.
  * Reads GET /api/agenda/routines(+/templates); POST /api/agenda/routines, /routines/from-template/{id};
  * the agenda item routes for run / pause / delete. Dossier 2026-10-24-tutto-brainstorm-cindy W2 + W7.
  */
@@ -13,7 +13,7 @@ const DELIVER = [{ value: 'hermes', label: tr('Notification') }, { value: 'recap
 const TRIGGER = [{ value: 'daily', label: tr('Every day') }, { value: 'weekly', label: tr('Every week') },
                  { value: 'mail', label: tr('When an email arrives') }];
 
-/** «Ogni giorno alle 07:30», «Ogni lun, ven alle 18:00», «Quando arriva una mail da …». */
+/** «Every day at 07:30», «Every Mon, Fri at 18:00», «When a mail from … arrives». */
 export function describeRoutine(r: any): string {
   if (r.on?.mail) return tr("When an email arrives from {0}", r.on.mail.senders || tr('a sender'));
   if (r.on) return tr('When something happens');

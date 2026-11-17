@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, untracked } from '@angular/core';
 import { IconComponent } from '../../ui';
-import { AdessoItem, MetisService } from '../../services/metis.service';
+import { NowItem, MetisService } from '../../services/metis.service';
 import { PluginsService } from './plugins.service';
 import { TrPipe } from '../../core/i18n';
 
 const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat', recent: 'history', idea: 'sparkle' };
 
 /**
- * Home row «Adesso» (dossier 2026-10-24-tutto-brainstorm-cindy C11, W7): what makes sense now, from the agenda,
+ * Home row «Now» (dossier 2026-10-24-tutto-brainstorm-cindy C11, W7): what makes sense now, from the agenda,
  * habits, recent use and a few ideas, each with its reason. A tap opens the tool (run at once when it needs nothing
  * more) and is remembered, so the row learns. Hidden when there is nothing to suggest.
  */
@@ -57,7 +57,7 @@ export class AdessoRowComponent implements OnInit {
 
   ngOnInit(): void { void this.metis.loadAdesso(); }
 
-  icon(it: AdessoItem): string { return this.plugins.modules().get(it.module)?.icon || SOURCE_ICON[it.source] || 'zap'; }
+  icon(it: NowItem): string { return this.plugins.modules().get(it.module)?.icon || SOURCE_ICON[it.source] || 'zap'; }
 
-  open(it: AdessoItem): void { this.metis.open(it.tool, it.args ?? {}, it.title); }
+  open(it: NowItem): void { this.metis.open(it.tool, it.args ?? {}, it.title); }
 }

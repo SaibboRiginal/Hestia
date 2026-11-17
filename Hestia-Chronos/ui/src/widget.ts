@@ -1,4 +1,4 @@
-/** <chronos-failed-widget> — «Job falliti»: agenda jobs whose last run failed in the last 24 h, with «Riprova». */
+/** <chronos-failed-widget> — «Failed jobs»: agenda jobs whose last run failed in the last 24 h, with «Retry». */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, retry, when } from './util';
 import { areaIcon, hhmm } from './week';
@@ -44,7 +44,7 @@ export class ChronosFailedWidget extends HestiaElement {
   }
 }
 
-/** <chronos-today-widget> — «Oggi nel piano»: what today's weekly plan holds, with the time. */
+/** <chronos-today-widget> — «Today in the plan»: what today's weekly plan holds, with the time. */
 export class ChronosTodayWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, rows: { state: true }, error: { state: true } };
   declare rows: any[] | null; declare error: string;

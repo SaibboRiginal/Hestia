@@ -38,7 +38,7 @@ def _ffmpeg(data: bytes, out_args: list[str], timeout: float = 120) -> bytes:
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vn", *out_args, "pipe:1"],
                           input=data, capture_output=True, timeout=timeout)
     if proc.returncode != 0 or not proc.stdout:
-        raise AudioError((proc.stderr or b"conversione fallita").decode(errors="replace")[:300])
+        raise AudioError((proc.stderr or b"conversion failed").decode(errors="replace")[:300])
     return proc.stdout
 
 
@@ -59,7 +59,7 @@ def to_pcm16k(data: bytes, mime_type: str = "") -> bytes:
 
 def _fixed_header(data: bytes) -> bytes:
     """ffmpeg writing WAV to a pipe cannot seek back: the header says 0xFFFFFFFF frames (a 2.5 s answer read as
-    134217 s → «audio troppo lungo», bench 2026-10-30). Rewrite the header from the frames really there."""
+    134217 s → «audio too long», bench 2026-10-30). Rewrite the header from the frames really there."""
     try:
         frames, rate, width, channels = wav_frames(data)
     except Exception:

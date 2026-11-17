@@ -197,6 +197,314 @@
   "passeggiata",
   "escursione"
  ],
+ "hercules.body.ankle": [
+  "caviglie",
+  "caviglia"
+ ],
+ "hercules.body.biceps": [
+  "braccia"
+ ],
+ "hercules.body.chest": [
+  "petto"
+ ],
+ "hercules.body.elbow": [
+  "gomiti",
+  "gomito"
+ ],
+ "hercules.body.hip": [
+  "anche",
+  "anca"
+ ],
+ "hercules.body.knee": [
+  "ginocchia",
+  "ginocchio"
+ ],
+ "hercules.body.lats": [
+  "dorso"
+ ],
+ "hercules.body.lower_back": [
+  "lombare",
+  "schiena bassa"
+ ],
+ "hercules.body.quads": [
+  "gambe",
+  "quadricipiti"
+ ],
+ "hercules.body.shoulder": [
+  "spalle",
+  "spalla"
+ ],
+ "hercules.body.wrist": [
+  "polsi",
+  "polso"
+ ],
+ "hercules.exercise.assisted_dip": [
+  "dip assistiti"
+ ],
+ "hercules.exercise.assisted_pull_up": [
+  "trazioni assistite"
+ ],
+ "hercules.exercise.back_squat": [
+  "squat con bilanciere"
+ ],
+ "hercules.exercise.band_pull_apart": [
+  "pull apart con elastico"
+ ],
+ "hercules.exercise.barbell_curl": [
+  "curl con bilanciere"
+ ],
+ "hercules.exercise.barbell_row": [
+  "rematore con bilanciere"
+ ],
+ "hercules.exercise.barbell_shrug": [
+  "scrollate con bilanciere"
+ ],
+ "hercules.exercise.bench_dip": [
+  "dip su panca"
+ ],
+ "hercules.exercise.bench_press": [
+  "panca piana con bilanciere",
+  "panca"
+ ],
+ "hercules.exercise.bodyweight_squat": [
+  "squat a corpo libero"
+ ],
+ "hercules.exercise.cable_crunch": [
+  "crunch ai cavi"
+ ],
+ "hercules.exercise.cable_curl": [
+  "curl ai cavi"
+ ],
+ "hercules.exercise.cable_fly": [
+  "croci ai cavi"
+ ],
+ "hercules.exercise.cable_kickback": [
+  "slanci ai cavi"
+ ],
+ "hercules.exercise.cable_lateral_raise": [
+  "alzate laterali al cavo"
+ ],
+ "hercules.exercise.chest_supported_row": [
+  "rematore con petto appoggiato"
+ ],
+ "hercules.exercise.chin_up": [
+  "trazioni presa supina"
+ ],
+ "hercules.exercise.close_grip_bench_press": [
+  "panca presa stretta"
+ ],
+ "hercules.exercise.close_grip_pulldown": [
+  "lat machine presa stretta"
+ ],
+ "hercules.exercise.concentration_curl": [
+  "curl di concentrazione"
+ ],
+ "hercules.exercise.db_bench_press": [
+  "panca piana con manubri"
+ ],
+ "hercules.exercise.db_curl": [
+  "curl con manubri"
+ ],
+ "hercules.exercise.db_fly": [
+  "croci con manubri"
+ ],
+ "hercules.exercise.db_incline_press": [
+  "panca inclinata con manubri"
+ ],
+ "hercules.exercise.db_romanian_deadlift": [
+  "stacco rumeno con manubri"
+ ],
+ "hercules.exercise.db_row": [
+  "rematore con manubrio"
+ ],
+ "hercules.exercise.db_shoulder_press": [
+  "shoulder press con manubri"
+ ],
+ "hercules.exercise.db_shrug": [
+  "scrollate con manubri"
+ ],
+ "hercules.exercise.db_tricep_extension": [
+  "estensioni tricipiti con manubrio"
+ ],
+ "hercules.exercise.deadlift": [
+  "stacco da terra",
+  "stacco"
+ ],
+ "hercules.exercise.decline_bench_press": [
+  "panca declinata con bilanciere"
+ ],
+ "hercules.exercise.decline_sit_up": [
+  "sit up su panca declinata"
+ ],
+ "hercules.exercise.dip": [
+  "dip alle parallele"
+ ],
+ "hercules.exercise.ez_curl": [
+  "curl con bilanciere ez"
+ ],
+ "hercules.exercise.front_raise": [
+  "alzate frontali"
+ ],
+ "hercules.exercise.glute_bridge": [
+  "ponte glutei"
+ ],
+ "hercules.exercise.hammer_curl": [
+  "curl a martello"
+ ],
+ "hercules.exercise.hanging_knee_raise": [
+  "ginocchia al petto alla sbarra"
+ ],
+ "hercules.exercise.hanging_leg_raise": [
+  "sollevamento gambe alla sbarra"
+ ],
+ "hercules.exercise.hip_thrust": [
+  "hip thrust con bilanciere"
+ ],
+ "hercules.exercise.incline_bench_press": [
+  "panca inclinata con bilanciere"
+ ],
+ "hercules.exercise.incline_db_curl": [
+  "curl su panca inclinata"
+ ],
+ "hercules.exercise.inverted_row": [
+  "rematore inverso"
+ ],
+ "hercules.exercise.kb_goblet_squat": [
+  "goblet squat con kettlebell"
+ ],
+ "hercules.exercise.kb_swing": [
+  "swing con kettlebell"
+ ],
+ "hercules.exercise.lat_pulldown": [
+  "lat machine avanti"
+ ],
+ "hercules.exercise.lateral_raise": [
+  "alzate laterali con manubri"
+ ],
+ "hercules.exercise.leg_curl_lying": [
+  "leg curl sdraiato"
+ ],
+ "hercules.exercise.leg_curl_seated": [
+  "leg curl seduto"
+ ],
+ "hercules.exercise.leg_press": [
+  "pressa"
+ ],
+ "hercules.exercise.leg_press_calf_raise": [
+  "calf alla leg press"
+ ],
+ "hercules.exercise.lying_leg_raise": [
+  "sollevamento gambe a terra"
+ ],
+ "hercules.exercise.machine_lateral_raise": [
+  "alzate laterali alla macchina"
+ ],
+ "hercules.exercise.overhead_press": [
+  "lento avanti con bilanciere"
+ ],
+ "hercules.exercise.overhead_tricep_extension": [
+  "french press sopra la testa"
+ ],
+ "hercules.exercise.power_clean": [
+  "girata al petto"
+ ],
+ "hercules.exercise.preacher_curl": [
+  "curl alla panca scott"
+ ],
+ "hercules.exercise.pull_up": [
+  "trazioni alla sbarra",
+  "trazioni"
+ ],
+ "hercules.exercise.push_up": [
+  "piegamenti",
+  "flessioni"
+ ],
+ "hercules.exercise.rear_delt_fly": [
+  "alzate posteriori"
+ ],
+ "hercules.exercise.reverse_curl": [
+  "curl inverso"
+ ],
+ "hercules.exercise.reverse_lunge": [
+  "affondi indietro"
+ ],
+ "hercules.exercise.romanian_deadlift": [
+  "stacco rumeno"
+ ],
+ "hercules.exercise.rope_pushdown": [
+  "pushdown con corda"
+ ],
+ "hercules.exercise.seated_cable_row": [
+  "pulley basso"
+ ],
+ "hercules.exercise.seated_calf_raise": [
+  "calf seduto"
+ ],
+ "hercules.exercise.shoulder_press_machine": [
+  "shoulder press alla macchina"
+ ],
+ "hercules.exercise.side_plank": [
+  "plank laterale"
+ ],
+ "hercules.exercise.skull_crusher": [
+  "french press con ez"
+ ],
+ "hercules.exercise.sled_push": [
+  "spinta slitta"
+ ],
+ "hercules.exercise.smith_bench_press": [
+  "panca piana al multipower"
+ ],
+ "hercules.exercise.smith_squat": [
+  "squat al multipower"
+ ],
+ "hercules.exercise.standing_calf_raise": [
+  "calf in piedi"
+ ],
+ "hercules.exercise.stiff_leg_deadlift": [
+  "stacco a gambe tese"
+ ],
+ "hercules.exercise.straight_arm_pulldown": [
+  "pulldown a braccia tese"
+ ],
+ "hercules.exercise.sumo_deadlift": [
+  "stacco sumo"
+ ],
+ "hercules.exercise.trap_bar_deadlift": [
+  "stacco con trap bar"
+ ],
+ "hercules.exercise.tricep_pushdown": [
+  "pushdown ai cavi"
+ ],
+ "hercules.exercise.upright_row": [
+  "tirate al mento"
+ ],
+ "hercules.exercise.walking_lunge": [
+  "affondi in camminata"
+ ],
+ "hercules.exercise.weighted_dip": [
+  "dip zavorrati"
+ ],
+ "hercules.exercise.weighted_pull_up": [
+  "trazioni zavorrate"
+ ],
+ "hercules.exercise.weighted_push_up": [
+  "piegamenti zavorrati"
+ ],
+ "hercules.exercise.wrist_curl": [
+  "curl per polsi"
+ ],
+ "hercules.template.legs": [
+  "gamb"
+ ],
+ "hercules.template.pull": [
+  "trazion",
+  "schiena"
+ ],
+ "hercules.template.push": [
+  "spinta",
+  "petto"
+ ],
  "kairos.category.bill": [
   "bollett",
   "luce",

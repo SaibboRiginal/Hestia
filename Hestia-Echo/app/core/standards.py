@@ -63,7 +63,7 @@ def whisper_download(job) -> None:
 
 
 def prefetch(provider_type: str, model: str = "", voice: str = "") -> list[str]:
-    """Queue what a local step needs, without waiting (setup «Voce», Download page). Returns the job ids."""
+    """Queue what a local step needs, without waiting (setup «Voice», Download page). Returns the job ids."""
     if DOWNLOADS is None:
         return []
     if provider_type == "whisper_local":
@@ -269,7 +269,7 @@ class Piper(Standard):
 
     @staticmethod
     def title(name: str, suffix: str = ".onnx") -> str:
-        """«Voce Paola» for it_IT-paola-medium (the small .json is its settings)."""
+        """«Paola voice» for it_IT-paola-medium (the small .json is its settings)."""
         speaker = name.split("-")[1].capitalize() if name.count("-") >= 2 else name
         return tr("Voice {0}", speaker) + (tr(" · settings") if suffix.endswith(".json") else "")
 
@@ -344,7 +344,7 @@ KOKORO_BY_LANG = {"it": ("if_sara", "im_nicola"), "en": ("af_heart", "am_michael
                   "zh": ("zf_xiaoxiao", "zm_yunxi"), "hi": ("hf_alpha", "hm_omega")}
 KOKORO_ESPEAK = {"a": "en-us", "b": "en-gb", "e": "es", "f": "fr-fr", "h": "hi", "i": "it", "j": "ja", "p": "pt-br",
                  "z": "cmn"}
-# Every voice of voices-v1.0.bin (Marko 2026-11-07: «mettiamo tutte le voci»), listed in the setup.
+# Every voice of voices-v1.0.bin (Marko 2026-11-07: «let's put all the voices»), listed in the setup.
 KOKORO_ALL = ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river",
               "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx",
               "am_puck", "am_santa", "bf_alice", "bf_emma", "bf_isabella", "bf_lily", "bm_daniel", "bm_fable", "bm_george",

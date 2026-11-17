@@ -4,7 +4,7 @@ import { UI } from '../../ui';
 import { SetupApi, SetupState } from './setup.api';
 import { TrPipe, tr } from '../../core/i18n';
 
-const LABELS: Record<string, string> = { cervello: tr('models'), voce: tr('voice'), telegram: 'Telegram', backup: tr('backup'), esterni: tr('external accounts') };
+const LABELS: Record<string, string> = { brain: tr('models'), voice: tr('voice'), telegram: 'Telegram', backup: tr('backup'), external_ais: tr('external accounts') };
 
 /** Home card «Da finire»: what the guided setup left for later (no nag, it just stays here until done). */
 @Component({

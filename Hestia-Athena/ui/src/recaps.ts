@@ -1,7 +1,7 @@
 /**
  * <athena-recaps> — "Recap": the daily recaps (docs/work/2026-10-20-recap-giornaliero). Each one shows the text that
  * was delivered and, on demand, the facts of every area it was written from (done / missed / next), with the
- * area's stroke icon. «Recap adesso» composes the evening one now. The time is an agenda job: moved in the calendar.
+ * area's stroke icon. «Recap now» composes the evening one now. The time is an agenda job: moved in the calendar.
  * Reads GET /api/athena/recaps; POST /api/athena/recap/now.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
@@ -17,7 +17,7 @@ function richText(text: string) {
     part.startsWith('<b>') ? html`<b>${part.slice(3, -4)}</b>` : part);
 }
 
-const MOMENTS: Record<string, string> = { sera: tr('evening'), mattina: tr('morning') };
+const MOMENTS: Record<string, string> = { evening: tr('evening'), morning: tr('morning') };
 const TRIGGERS: Record<string, string> = { agenda: tr('from the calendar'), quick: tr('on request'), manual: tr('on request') };
 
 export class AthenaRecaps extends HestiaElement {

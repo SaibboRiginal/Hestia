@@ -1,4 +1,4 @@
-"""Hestia-Aphrodite — how the clients look («Aspetto», port 19023, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
+"""Hestia-Aphrodite — how the clients look («Look», port 19023, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
 
 Profiles, pets and per-client choices in Archive (``/api/appearance-store``); today's special moments pushed by the
 calendar (capability ``special_moment_endpoint``); pictures asked to the image module with a callback; clients read
@@ -131,7 +131,7 @@ def _now(client: str = "webui") -> dict:
     lines = [tr("Theme: {0}", p['name']) + ("" if n["auto"] else tr(" (themes off)")), tr("Why: {0}", n['why'])]
     if n["pet"]:
         lines.append(tr("Pet: {0}", n['pet']['name']))
-    files = [file(p["background"], "sfondo.png", "image/png")] if p.get("background") else []
+    files = [file(p["background"], "background.png", "image/png")] if p.get("background") else []
     return {**n, "display": display(tr("Look now"), lines=lines, files=files, actions=[
         action(tr("Turn themes off") if n["auto"] else tr("Turn themes back on"), "look_choice",
                {"client": client, "auto": not n["auto"]}),
@@ -144,7 +144,7 @@ def _choice(client: str = "webui", auto: bool | None = None, pet: str | None = N
     return {"saved": True, **out, "undo": undo("look_choice", client=client, auto=before["auto"], pet=before["pet"])}
 
 
-def _pet(name: str, species: str = "gatto", look_: str = "") -> dict:
+def _pet(name: str, species: str = "cat", look_: str = "") -> dict:
     p = look.save_pet({"name": name, "species": species, "look": look_})
     gen = look.generate("pet", p["id"])
     return {"saved": True, "id": p["id"], "name": p["name"], "images_asked": gen["asked"],
@@ -172,7 +172,7 @@ kit.tools([
             title="Upcoming themes", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="look_pet", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
             parameters={"type": "object", "properties": {"name": S, "species": S, "look": S}, "required": ["name"]},
-            handler=lambda name, species="gatto", look="": _pet(name, species, look), title="New pet",
+            handler=lambda name, species="cat", look="": _pet(name, species, look), title="New pet",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="look_pets", description="The pets created.", parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": rows, "display": display(tr("Pets"), items=[

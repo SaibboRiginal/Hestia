@@ -90,10 +90,10 @@ class ActionCandidate(BaseModel):
     signals: RelevanceSignals = Field(default_factory=RelevanceSignals)
     score: float = 0.0
     accepted: bool = False
-    gate_reason: str = ""   # why the relevance gate accepted/discarded it (Italian, shown on the Pensieri page)
+    gate_reason: str = ""   # why the relevance gate accepted/discarded it (owner's language, shown on the Thoughts page)
     outcome: str = ""       # emitted | collecting | forge | forge_skipped | setting_proposed | setting_skipped | observed | failed | discarded
-    track: str = "system"  # sistema (Hestia's own health) | vita (life reflection, observations go to the recap)
-    topic_key: str | None = None   # vita: the signal / link the observation is about (dedup)
+    track: str = "system"  # system (Hestia's own health) | life (life reflection, observations go to the recap)
+    topic_key: str | None = None   # life: the signal / link the observation is about (dedup)
 
 
 class ThinkingRecord(BaseModel):
@@ -104,8 +104,8 @@ class ThinkingRecord(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
     trigger: str = "periodic"  # periodic | manual
-    track: str = "system"     # sistema | vita (docs/work/2026-10-20-riflessione-a-livelli)
-    life: dict[str, Any] = Field(default_factory=dict)   # vita: signals, links, topics, details used
+    track: str = "system"     # system | life (docs/work/2026-10-20-riflessione-a-livelli)
+    life: dict[str, Any] = Field(default_factory=dict)   # life: signals, links, topics, details used
     observation: ObservationSnapshot = Field(default_factory=ObservationSnapshot)
     candidates: list[ActionCandidate] = Field(default_factory=list)
     emitted_count: int = 0

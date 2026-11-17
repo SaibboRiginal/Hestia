@@ -1,13 +1,13 @@
 /**
- * <athena-thoughts> — "Pensieri": every Athena cycle, observe → think → gate (5 factors) → act, with accepted /
+ * <athena-thoughts> — "Thoughts": every Athena cycle, observe → think → gate (5 factors) → act, with accepted /
  * discarded candidates and why; open commitments; «Pensa ora» runs a cycle now and the list refreshes when done.
- * Two tracks (docs/work/2026-10-20-riflessione-a-livelli): Vita (signals → links → details → observations for the
- * evening recap) and Sistema (Hestia's own health).
+ * Two tracks (docs/work/2026-10-20-riflessione-a-livelli): Life (signals → links → details → observations for the
+ * evening recap) and System (Hestia's own health).
  * Reads GET /api/athena/thinking/summary?track= · /api/athena/commitments; POST /api/athena/think?track=,
  * POST /api/athena/commitments/{id}/resolve.
- * Same page, no new one (docs/work/2026-11-13-prima-osserva-poi-propone): Sistema shows what she is still collecting
- * proof for (GET /api/athena/evidence); the third tab «Ti scrive» shows how much she wants to write now, why, what
- * she wrote and whether you answered (GET /api/athena/talk), with «Scrivimi ora» (POST /api/athena/think?track=parla).
+ * Same page, no new one (docs/work/2026-11-13-prima-osserva-poi-propone): System shows what she is still collecting
+ * proof for (GET /api/athena/evidence); the third tab «Writes to you» shows how much she wants to write now, why, what
+ * she wrote and whether you answered (GET /api/athena/talk), with «Write to me now» (POST /api/athena/think?track=talk).
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, FACTORS, KINDS, OUTCOMES, ago, area, day, hours, linkText, pct, secs, when } from './util';
@@ -188,7 +188,7 @@ export class AthenaThoughts extends HestiaElement {
       <button aria-pressed=${String(this.track === 'talk')} @click=${() => this.setTrack('talk')}>${tr("Writes to you")}</button></span>`;
   }
 
-  /** Sistema: findings she saw but does not propose yet (first observe, then propose). */
+  /** System: findings she saw but does not propose yet (first observe, then propose). */
   private renderEvidence() {
     const e = this.evidence;
     if (!e) return nothing;
@@ -208,7 +208,7 @@ export class AthenaThoughts extends HestiaElement {
     </hxk-card>`;
   }
 
-  /** «Ti scrive»: her drive to write now, the reasons, what she wrote and how it went. */
+  /** «Writes to you»: her drive to write now, the reasons, what she wrote and how it went. */
   private renderTalk() {
     const t = this.talk;
     if (!t) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;

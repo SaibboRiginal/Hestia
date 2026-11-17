@@ -48,7 +48,7 @@ export class HerculesNextWidget extends Widget {
       <div class="big truncate click" @click=${() => this.host.navigate('plans/' + t.id)}>${t.name}</div>
       <div class="small muted">${plural((t.items || []).length, 'exercise', 'exercises')}${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
       ${this.size === 'l' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
-      <div class="row"><hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('training', { scheda: t.id })}>${tr("f::Start")}</hxk-button></div>
+      <div class="row"><hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('training', { card: t.id })}>${tr("f::Start")}</hxk-button></div>
     </div>`;
   }
 }

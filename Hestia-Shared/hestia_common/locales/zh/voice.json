@@ -1,0 +1,5 @@
+{
+ "_about": "What a voice of this language says when the owner tries it (Echo «Listen»). docs/LANGUAGES.md",
+ "sample": "你好，我是{assistant}。这是我的声音。",
+ "default_name": "赫斯提亚"
+}

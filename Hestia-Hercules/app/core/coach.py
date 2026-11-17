@@ -15,7 +15,7 @@ from typing import Any
 
 from . import adapt as adapt_engine
 from . import records
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # owner language; owner words per language
 
 TOD = ("morning", "midday", "afternoon", "evening", "any")
 
@@ -107,8 +107,7 @@ class HerculesCoach:
     @staticmethod
     def _muscle_tags(template: dict) -> list[str]:
         name = (template.get("name") or "").lower()
-        return [t for t, words in (("legs", ("gamb", "leg", "squat")), ("push", ("push", "spinta", "chest")),
-                                   ("pull", ("pull", "trazion", "back"))) if any(w in name for w in words)]
+        return [t for t in ("legs", "push", "pull") if any(w in name for w in words(f"hercules.template.{t}"))]
 
     def fit(self, need_id: str, day: date, minutes: int) -> dict:
         """Short version: the adaptation engine's time-limit rule on the workout of that day."""

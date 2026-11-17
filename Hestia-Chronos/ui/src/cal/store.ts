@@ -172,7 +172,7 @@ export class CalStore {
   }
 
   events(): CalEvent[] { return this.visible().events; }
-  /** Upcoming occurrences in the visible range hidden by the focused view ("N nascoste"). */
+  /** Upcoming occurrences in the visible range hidden by the focused view ("N hidden"). */
   hiddenByPolicy(): number { return this.visible().hidden; }
 
   title(): string {

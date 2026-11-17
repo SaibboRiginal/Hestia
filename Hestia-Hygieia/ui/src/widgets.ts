@@ -38,7 +38,7 @@ export class HygieiaTodayWidget extends Widget {
         ${c ? html`<span class="small muted">${c.done ? html`${icon('check', 12, 'success')} ${c.done}` : ''}${c.done && c.due ? ' · ' : ''}${c.due ? tr("{0} to do", c.due) : ''}</span>` : nothing}</div>
       ${this.plan === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${[this.n].map(() => html`<hxk-quicklog .host=${this.host} source=${`${API}/quick/routines`} .action=${ROUTINE_ACTION} @logged=${() => this.load()}></hxk-quicklog>`)}
-        ${this.plan && !this.plan.routines.length ? html`<div class="muted small">${tr("No routine yet.")} <button class="link" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Create one")}</button></div>` : nothing}
+        ${this.plan && !this.plan.routines.length ? html`<div class="muted small">${tr("No routine yet.")} <button class="link" @click=${() => this.host.navigate('routine', { new: '1' })}>${tr("Create one")}</button></div>` : nothing}
         ${this.size === 'l' || this.size === 'xl' ? html`<span class="small muted">${tr("Favourite products")}</span>
           ${[this.n].map(() => html`<hxk-quicklog compact .host=${this.host} source=${`${API}/quick/products`} .action=${PRODUCT_ACTION}></hxk-quicklog>`)}` : nothing}`}
     </div>`;

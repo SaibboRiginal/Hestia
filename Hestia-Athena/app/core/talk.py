@@ -1,4 +1,4 @@
-"""«Parla con te»: the assistant writes first, like a person (docs/work/2026-11-12-identita-e-proattivita,
+"""«Talk to you»: the assistant writes first, like a person (docs/work/2026-11-12-identita-e-proattivita,
 timing and memory: docs/work/2026-11-13-prima-osserva-poi-propone).
 
 Third output of Athena, next to the system briefs and the life observations (which stay in the evening recap):
@@ -233,7 +233,7 @@ class Talk:
     # ── the attempt ──────────────────────────────────────────────────────────
     def run(self, trace_id: str, *, force: bool = False) -> dict[str, Any]:
         """One attempt: ``{"status": sent|quiet|nothing|chatting|failed, ...}`` (quiet = not enough drive).
-        ``force`` = the owner asked («Scrivimi ora»): past the drive, the daily limit and the pause between two
+        ``force`` = the owner asked («Write to me now»): past the drive, the daily limit and the pause between two
         messages, never past a failure."""
         now = datetime.now(timezone.utc)
         idle = self._idle_seconds()

@@ -11,20 +11,18 @@ from typing import Any
 
 from .catalog import JOINTS, MUSCLES, MUSCLE_GROUPS
 from .progression import round_to
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import languages, t as tr, word_set  # owner language; owner words per language
 
 DEFAULTS = {"low_energy": 2, "weight_cut_pct": 10, "very_low_weight_cut_pct": 15, "work_seconds": 40,
             "setup_seconds": 90, "default_rest": 90, "min_sets_main": 2}
 
-# Words the owner may use: the English labels, their Italian translations and a few plural/colloquial forms.
-_LABELS = {**{tr(v, lang=lang).lower(): k for lang in ("en", "it") for names in (JOINTS, MUSCLES) for k, v in names.items()},
-           "shoulders": "shoulder", "knees": "knee", "back": "lower_back", "lombare": "lower_back",
-           "wrists": "wrist", "gomiti": "elbow", "anche": "hip", "caviglie": "ankle", "legs": "quads",
-           "chest": "chest", "dorso": "lats", "arms": "biceps"}
+# Words the owner may use: the labels in every language and the plural/colloquial forms of hercules.body.<key>.
+_LABELS = {**{tr(v, lang=lang).lower(): k for lang in languages() for names in (JOINTS, MUSCLES) for k, v in names.items()},
+           **{w: k for k in (*JOINTS, *MUSCLES) for w in word_set(f"hercules.body.{k}")}}
 
 
 def resolve_areas(areas: list[str] | None) -> tuple[set[str], set[str]]:
-    """Split free words (Italian or keys) into joints and muscles; muscle groups expand to their muscles."""
+    """Split free words (any language, or keys) into joints and muscles; muscle groups expand to their muscles."""
     joints, muscles = set(), set()
     for raw in areas or []:
         a = str(raw).strip().lower()

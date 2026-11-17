@@ -1,4 +1,4 @@
-"""Apollo — images through a remote ComfyUI («Immagini», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A1).
+"""Apollo — images through a remote ComfyUI («Images», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A1).
 
 Marko uploads **flows** (ComfyUI workflows in API format) with a purpose (``ritratto``, ``background``, ``mascot``…);
 Apollo fills the prompt/size/seed inputs and queues **jobs** one at a time (a worker woken by new jobs, no timer).
@@ -22,8 +22,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_apollo.service")
 
-PURPOSES = {"generic": "Generic image", "portrait": "Ritratto", "background": "Background", "mascot": "Mascot",
-            "icon": "Icona", "illustrazione": "Illustrazione"}
+PURPOSES = {"generic": "Generic image", "portrait": "Portrait", "background": "Background", "mascot": "Mascot",
+            "icon": "Icon", "illustration": "Illustration"}
 INPUTS = ("prompt", "negative", "width", "height", "seed")
 
 

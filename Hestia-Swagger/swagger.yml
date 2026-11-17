@@ -805,7 +805,7 @@ components:
           type: boolean
         gate_reason:
           type: string
-          description: Why the relevance gate accepted/discarded it (Italian, e.g. "punteggio 0.48 < soglia 0.55 (urgenza bassa)")
+          description: Why the relevance gate accepted/discarded it (Italian, e.g. "punteggio 0.48 < soglia 0.55 (urgenza low)")
         outcome:
           type: string
           enum: ["", emitted, forge, forge_skipped, setting_proposed, setting_skipped, failed, discarded]
@@ -1651,7 +1651,7 @@ paths:
       tags: [Hub]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `mappa` (hub-map, order 100), widget
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `map` (hub-map, order 100), widget
         `online` (hub-online-widget, auto). Bundle file at /ui/webui/hub.js. Hub never registers with itself: this
         manifest is folded into `/api/discovery/catalog` in-process, and `/api/route/hub/{api/ui/*, ui/*}` is answered
         locally (GET only; other paths 404, other methods 405).
@@ -3930,7 +3930,7 @@ paths:
       servers:
         - url: http://localhost:19004
       parameters:
-        - {name: X-Hestia-Origin, in: header, required: false, schema: {type: string}, description: "who started the turn, set by the caller's code (hestia_common.origin): utente | esterno:<access> | routine:<rule> | autonomo:<module>. Missing = utente for a user client (telegram, webui), else autonomo. routine cannot delete, autonomo can only propose/notify/ask."}
+        - {name: X-Hestia-Origin, in: header, required: false, schema: {type: string}, description: "who started the turn, set by the caller's code (hestia_common.origin): user | external:<access> | routine:<rule> | autonomous:<module>. Missing = user for a user client (telegram, webui), else autonomous. routine cannot delete, autonomous can only propose/notify/ask."}
         - {name: X-Hestia-Origin-Label, in: header, required: false, schema: {type: string}, description: "label clients show above the answer (e.g. Da una tua routine)"}
       requestBody:
         required: true
@@ -4312,7 +4312,7 @@ paths:
                   type: string
                 use_case:
                   type: string
-                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.listings, athena.strategy; default oracle.general; undeclared → runs like oracle.general and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
+                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.listings, athena.strategy; default oracle.general; undeclared → runs like oracle.general and is listed. In brain mode external the external agent answers (one shot, no tools)."
                 voice:
                   type: boolean
                   default: false
@@ -4355,11 +4355,11 @@ paths:
   /api/llm/usecases/{use_case}:
     get:
       tags: [Oracle]
-      summary: What a chat on this use case would use now (Forge engine oracle, use case forge.codice)
+      summary: What a chat on this use case would use now (Forge engine oracle, use case forge.code)
       servers:
         - url: http://localhost:19004
       parameters:
-        - {name: use_case, in: path, required: true, schema: {type: string, example: forge.codice}}
+        - {name: use_case, in: path, required: true, schema: {type: string, example: forge.code}}
       responses:
         "200": {description: "{status, use_case, chain, available, detail, provider, model, context_window, billed, steps[{provider, model}]}"}
 
@@ -4507,7 +4507,7 @@ paths:
       tags: [Oracle]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `cervello` (oracle-brain, order 120),
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `brain` (oracle-brain, order 120),
         widget `usage-today` (oracle-usage-widget). Bundle file at /ui/webui/oracle.js.
       servers:
         - url: http://localhost:19004
@@ -4529,7 +4529,7 @@ paths:
   /oracle/api/ui/stats:
     get:
       tags: [Oracle]
-      summary: LLM use per day and per use case/model (real path /api/ui/stats; page Cervello, widget Uso modelli oggi)
+      summary: LLM use per day and per use case/model (real path /api/ui/stats; page Cervello, widget Uso models today)
       description: From the in-memory llm_stats (since Oracle started; days kept ≤ 31).
       servers:
         - url: http://localhost:19004
@@ -4939,13 +4939,13 @@ paths:
             schema:
               type: object
               properties:
-                recipe: {type: string, enum: [locale, cloud, entrambi, claude]}
+                recipe: {type: string, enum: [locale, cloud, both, claude]}
                 local_model: {type: string}
                 local_provider: {type: string, description: "provider block or found program (ollama, lmstudio, jan, llamacpp-pc, vllm); a found program becomes a block", default: ollama}
                 cloud: {type: array, items: {type: string}}
                 cloud_models: {type: object, additionalProperties: {oneOf: [{type: array, items: {type: string}}, {type: string}]}, description: "provider → models picked from its list, in order (the next takes over when the first fails); a single name is still accepted"}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model (at home or a cloud one, e.g. gemini-embedding-001); only a different one changes the chain (re-index)"}
-                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "potente|codice|visione → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
+                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "strong|code|vision → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
                 order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Scelti» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
       responses:
         "200": {description: "{ok, detail} (detail = one-sentence summary)"}
@@ -4975,7 +4975,7 @@ paths:
       servers:
         - url: http://localhost:19004
       responses:
-        "200": {description: "{downloads[{id, what, source, state queued|running|fatto|errore, size, done, error}]}"}
+        "200": {description: "{downloads[{id, what, source, state queued|running|done|error, size, done, error}]}"}
 
   /api/llm/setup/machine:
     get:
@@ -5042,7 +5042,7 @@ paths:
               type: object
               required: [messages]
               properties:
-                use_case: {type: string, default: forge.codice, description: "Declared use case (Forge: forge.codice, Wardrobe: wardrobe.photo)"}
+                use_case: {type: string, default: forge.code, description: "Declared use case (Forge: forge.code, Wardrobe: wardrobe.photo)"}
                 messages: {type: array, items: {type: object}}
                 tools: {type: array, items: {type: object}}
                 temperature: {type: number}
@@ -5429,8 +5429,8 @@ paths:
       tags: [Chronos]
       summary: "Standard activities: every default rule a module declared, with its state (recap dossier §3.9)"
       description: >
-        Rules created by a module (not by the user), retired ones excluded. state = eliminata | fallita |
-        in pausa | modificata | attiva; can_restore true for every state but attiva. Also lists the modules'
+        Rules created by a module (not by the user), retired ones excluded. state = deleted | failed |
+        in pausa | edited | active; can_restore true for every state but active. Also lists the modules'
         templates. Rule fields: key, owner, title, type, recurrence, start_at, flex, state, can_restore, description.
       servers:
         - url: http://localhost:19007
@@ -5557,9 +5557,9 @@ paths:
       tags: [Chronos]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/agenda/)
       description: |
-        Pages `agenda` «Agenda di Hestia» (chronos-agenda, order 150; WebUI /calendar redirects here) and `esecuzioni`
-        (chronos-runs, order 151, parent agenda), widget `falliti` «Job falliti» (chronos-failed-widget, auto),
-        quick action `riprova` «Riprova job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
+        Pages `agenda` «Agenda di Hestia» (chronos-agenda, order 150; WebUI /calendar redirects here) and `runs`
+        (chronos-runs, order 151, parent agenda), widget `failed` «Job falliti» (chronos-failed-widget, auto),
+        quick action `retry` «Riprova job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
       servers:
         - url: http://localhost:19007
       responses:
@@ -5827,7 +5827,7 @@ paths:
   /api/routines/templates:
     get:
       tags: [Chronos — Life]
-      summary: "Gallery of ready-made routines (radar, case, spese, settimana, mail)"
+      summary: "Gallery of ready-made routines (radar, case, expenses, week, mail)"
       servers:
         - url: http://localhost:19007
       responses:
@@ -6319,9 +6319,9 @@ paths:
       tags: [Hermes]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `notifiche` (hermes-inbox, order 140,
-        badge {source: /api/ui/inbox/counts, field: unread}), sub-page `consegne` (hermes-deliveries, order 141),
-        widget `oggi` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `notifications` (hermes-inbox, order 140,
+        badge {source: /api/ui/inbox/counts, field: unread}), sub-page `deliveries` (hermes-deliveries, order 141),
+        widget `today` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
       servers:
         - url: http://localhost:19005
       responses:
@@ -6330,7 +6330,7 @@ paths:
   /hermes/api/ui/deliveries:
     get:
       tags: [Hermes]
-      summary: Delivery log (real path /api/ui/deliveries) — page Consegne, widget Consegne oggi
+      summary: Delivery log (real path /api/ui/deliveries) — page Consegne, widget Consegne today
       description: |
         Notifications newest first with their state on every client and what happened to them: held by presence
         (and released in the digest), quiet (inbox copy only), retracted from a chat, superseded (repeat chain),
@@ -7257,7 +7257,7 @@ paths:
           `params._meta.hestia.services` narrows the list. A client sees tools whose `clients` is empty, `*` or its own.
         - tools/call → `params {name, arguments, _meta.hestia {session_id, notify_target, trace_id, client, service,
           origin, timeout_seconds}}` (`origin` → `X-Hestia-Origin` on the module request; external AIs are stamped
-          `esterno:<access>`); answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
+          `external:<access>`); answer `{content: [{type: text}], structuredContent, isError, _meta.hestia {status_code,
           service, wrapped}}` (`wrapped` = a non-object module answer is in `structuredContent.result`).
           `_meta.hestia.client` is forwarded to the module as `X-Hestia-Client` (the client the user talks from).
           A module answer may carry `display` (DisplayBlock, `hestia_common.display`): how Telegram draws it without the
@@ -7457,7 +7457,7 @@ paths:
   /api/mcp/outbound:
     get:
       tags: [MCP]
-      summary: Servizi esterni — third-party MCP servers Hestia may use (from Hecate; names and status only)
+      summary: Servizi external_ais — third-party MCP servers Hestia may use (from Hecate; names and status only)
       servers:
         - url: http://localhost:19013
       responses:
@@ -7665,7 +7665,7 @@ paths:
   /api/argus/overview:
     get:
       tags: [Argus]
-      summary: Last monitor cycle in one look (no network) — widget Stato sistema
+      summary: Last monitor cycle in one look (no network) — widget Stato system
       servers:
         - url: http://localhost:19008
       responses:
@@ -7736,8 +7736,8 @@ paths:
       tags: [Argus]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/argus/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `salute` (argus-health, order 110),
-        widget `stato` (argus-status-widget, auto), quick action `ricontrolla` (POST /api/argus/recheck/{id}, source
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `health` (argus-health, order 110),
+        widget `status` (argus-status-widget, auto), quick action `recheck` (POST /api/argus/recheck/{id}, source
         /api/argus/recheck-targets). Bundle file at /ui/webui/argus.js. Read by Hub through `capabilities.ui_manifest`.
       servers:
         - url: http://localhost:19008
@@ -7776,7 +7776,7 @@ paths:
   /api/setup/later:
     post:
       tags: [Hephaestus]
-      summary: "Leave a step for later (cervello, telegram, backup, esterni)"
+      summary: "Leave a step for later (brain, telegram, backup, external_ais)"
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -7849,7 +7849,7 @@ paths:
                 cloud: {type: array, items: {type: string}}
                 cloud_models: {type: object, additionalProperties: {type: string}}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}}
-                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "potente|codice|visione → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
+                modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "strong|code|vision → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
                 order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Scelti» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
                 keys: {type: object, description: "provider → key (written to Oracle's .env, then Oracle re-reads it; re-create only as fallback)"}
                 claude_token: {type: string}
@@ -8015,7 +8015,7 @@ paths:
   /api/setup/tunnel:
     get:
       tags: [Hephaestus]
-      summary: "Da fuori casa: whether the outside address is on, and which"
+      summary: "Da away home: whether the outside address is on, and which"
       servers:
         - url: http://localhost:19010
       responses:
@@ -8046,7 +8046,7 @@ paths:
       parameters:
         - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
-        "200": {description: "{ascolto {providers[], current, steps, programs[]}, voce {…}}; programs = free speech programs to install {name, label, site, note}"}
+        "200": {description: "{listen {providers[], current, steps, programs[]}, voice {…}}; programs = free speech programs to install {name, label, site, note}"}
 
   /api/setup/voice/preview:
     post:
@@ -8190,7 +8190,7 @@ paths:
       tags: [Hephaestus]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/hephaestus/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `riparazioni` (hephaestus-repairs,
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `repairs` (hephaestus-repairs,
         order 170), widget `forge` (hephaestus-forge-widget, auto). Bundle file at /ui/webui/hephaestus.js
         (404 for unknown files). Read by Hub through `capabilities.ui_manifest`.
       servers:
@@ -8804,7 +8804,7 @@ paths:
       tags: [Metis]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/metis/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `miglioramento` (metis-improvement,
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `improvement` (metis-improvement,
         order 180), no widgets. Bundle file at /ui/webui/metis.js (404 for unknown files).
       servers:
         - url: http://localhost:19014
@@ -8961,7 +8961,7 @@ paths:
         "200": {description: "{trace_id, status}"}
         "422": {description: "Unknown decision, review not found, edit without answer"}
 
-  /api/metis/tools/rivedi:
+  /api/metis/tools/review:
     get:
       tags: [Metis]
       summary: "Tool metis_review: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
@@ -8970,7 +8970,7 @@ paths:
       responses:
         "200": {description: "{items, pending, reviews, display}"}
 
-  /api/metis/tools/rivedi_decidi:
+  /api/metis/tools/review_decide:
     post:
       tags: [Metis]
       summary: "Tool metis_review_decide {trace_id, decision, answer?}: decides and returns the next card"
@@ -9023,7 +9023,7 @@ paths:
         "200": {description: "{name, mime, data_b64}"}
         "404": {description: "Unknown export"}
 
-  /api/metis/tools/dataset_esporta:
+  /api/metis/tools/dataset_export:
     post:
       tags: [Metis]
       summary: "Tool metis_dataset_export {plain?, include_unreviewed?}: exports and returns a card with the zip"
@@ -9074,7 +9074,7 @@ paths:
       responses:
         "200": {description: "{client, items[{tool, title, description (for people), module, area, area_label, area_icon, area_order, uses, reason}], total, tools}"}
 
-  /api/metis/tools/adesso:
+  /api/metis/tools/now:
     get:
       tags: [Metis]
       summary: "Tool metis_now: the Adesso list as a display card with one button per item"
@@ -9083,9 +9083,9 @@ paths:
       parameters:
         - {name: client, in: query, schema: {type: string, default: telegram}}
       responses:
-        "200": {description: "adesso payload + display"}
+        "200": {description: "now payload + display"}
 
-  /api/metis/tools/scopri:
+  /api/metis/tools/discover:
     get:
       tags: [Metis]
       summary: "Tool metis_discover: the Scopri list as a display card"
@@ -9094,7 +9094,7 @@ paths:
       parameters:
         - {name: client, in: query, schema: {type: string, default: telegram}}
       responses:
-        "200": {description: "scopri payload + display"}
+        "200": {description: "discover payload + display"}
 
   /api/settings/register:
     post:
@@ -9281,7 +9281,7 @@ paths:
     get:
       tags: [Themis]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/settings/)
-      description: Page `registro` (themis-log, order 160), no widget. Bundle file at /ui/webui/themis.js.
+      description: Page `log` (themis-log, order 160), no widget. Bundle file at /ui/webui/themis.js.
       servers:
         - url: http://localhost:19016
       responses:
@@ -10177,7 +10177,7 @@ paths:
   /api/hercules/quick/templates:
     get:
       tags: [Hercules]
-      summary: "Home chips for \"fatto oggi\""
+      summary: "Home chips for \"done today\""
       servers:
         - url: http://localhost:19019
       responses:
@@ -10206,7 +10206,7 @@ paths:
   /api/hercules/quick-bodyweight:
     post:
       tags: [Hercules]
-      summary: "Log bodyweight from the Home quick action ({peso})"
+      summary: "Log bodyweight from the Home quick action ({weight})"
       servers:
         - url: http://localhost:19019
       responses:
@@ -10796,7 +10796,7 @@ paths:
   /api/finance/accounts:
     get:
       tags: [Plutus]
-      summary: "Accounts (contanti, hype, paypal…) {items}"
+      summary: "Accounts (cash, hype, paypal…) {items}"
       servers:
         - url: http://localhost:19020
       responses:
@@ -11037,7 +11037,7 @@ paths:
   /api/finance/quick/expense/{id}:
     post:
       tags: [Plutus]
-      summary: "One-tap quick expense in category id {amount, note?|merchant?, date?, account? (contanti)} → transaction + label"
+      summary: "One-tap quick expense in category id {amount, note?|merchant?, date?, account? (cash)} → transaction + label"
       servers:
         - url: http://localhost:19020
       parameters:
@@ -11746,7 +11746,7 @@ paths:
   /api/selfcare/journal/voice:
     post:
       tags: [Hygieia]
-      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diary, recording kept) → {item} area giornata, tag voce"
+      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diary, recording kept) → {item} area day, tag voice"
       servers:
         - url: http://localhost:19018
       responses:
@@ -11755,7 +11755,7 @@ paths:
   /api/selfcare/wearable:
     post:
       tags: [Hygieia]
-      summary: "Feed wearable.daily from Hecate: the night's sleep → diary entry area sonno (one per date) {status, sleep}"
+      summary: "Feed wearable.daily from Hecate: the night's sleep → diary entry area sleep (one per date) {status, sleep}"
       servers:
         - url: http://localhost:19018
       responses:
@@ -12553,7 +12553,7 @@ paths:
             schema:
               type: object
               properties:
-                momento: {type: string, enum: [sera, mattina], default: sera, description: "sera = day + next day; mattina = previous day + day"}
+                momento: {type: string, enum: [evening, morning], default: evening, description: "evening = day + next day; morning = previous day + day"}
                 day: {type: string, format: date, description: "Default today (local)"}
                 deliver: {type: boolean, default: true}
                 trigger: {type: string, example: agenda}
@@ -12708,9 +12708,9 @@ paths:
         - url: http://localhost:19009
       parameters:
         - {name: limit, in: query, schema: {type: integer, default: 10, maximum: 50}}
-        - {name: track, in: query, schema: {type: string, enum: [vita, sistema]}, description: "one track only (both when omitted)"}
+        - {name: track, in: query, schema: {type: string, enum: [life, system]}, description: "one track only (both when omitted)"}
       responses:
-        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, track (vita|sistema), life{signals[], links[], topics[], details{}, series} (vita), threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
+        "200": {description: "{status, count, running, threshold, loop_enabled, strategist_enabled, interval_seconds, weights{urgency, usefulness, novelty, confidence, interruption_cost}, cycles: [{record_id, trace_id, cycle_at, trigger, track (life|system), life{signals[], links[], topics[], details{}, series} (life), threshold, duration_ms, emitted_count, error, observation{services, unhealthy_services[], domains[{domain, total, recent, pending}], active_commitments, unresolved_commitments, failure_streak, recent_errors, recent_errors_sample[], quality_issues[], presence}, candidates: [{candidate_id, title, summary, kind, domain, priority, reasoning, signals, score, accepted, gate_reason, outcome, setting_key, setting_value}]}]}"}
 
   /api/athena/think:
     post:
@@ -12719,12 +12719,12 @@ paths:
       description: >
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
-        track=vita runs the life reflection instead (signals → links → details → observations for the recap).
-        track=parla = «Scrivimi ora»: she writes first now (reasons → Oracle /api/chat/opener → Hermes).
+        track=life runs the life reflection instead (signals → links → details → observations for the recap).
+        track=talk = «Scrivimi ora»: she writes first now (reasons → Oracle /api/chat/opener → Hermes).
       servers:
         - url: http://localhost:19009
       parameters:
-        - {name: track, in: query, schema: {type: string, enum: [sistema, vita, parla], default: sistema}}
+        - {name: track, in: query, schema: {type: string, enum: [system, life, talk], default: system}}
       responses:
         "200": {description: "{status: started, trace_id, track} | {status: busy, detail}"}
         "422": {description: "unknown track"}
@@ -12787,9 +12787,9 @@ paths:
       tags: [Athena]
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/athena/)
       description: |
-        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `pensieri` (athena-thoughts, order 130,
-        tracks Vita/Sistema), page `segnali` (athena-signals, order 131),
-        widget `ultimo` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
+        Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `thoughts` (athena-thoughts, order 130,
+        tracks Vita/Sistema), page `signals` (athena-signals, order 131),
+        widget `latest` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
       servers:
         - url: http://localhost:19009
       responses:
@@ -12939,7 +12939,7 @@ paths:
   /.well-known/oauth-authorization-server (WebUI door):
     get:
       tags: [WebUI]
-      summary: "Public OAuth door (OAuthDoorController, no WebUI login): /.well-known/oauth-*, /oauth/register|token|revoke → Hub → Hestia-MCP with X-Hestia-Public-Base; /oauth/authorize → 302 /p/mcp/accessi?oauth=<id> (consent card)"
+      summary: "Public OAuth door (OAuthDoorController, no WebUI login): /.well-known/oauth-*, /oauth/register|token|revoke → Hub → Hestia-MCP with X-Hestia-Public-Base; /oauth/authorize → 302 /p/mcp/access?oauth=<id> (consent card)"
       servers:
         - url: http://localhost:19015
       responses:
@@ -13191,7 +13191,7 @@ paths:
   /api/downloads:
     get:
       tags: [Oracle, Echo]
-      summary: "hestia_common.downloads, served by every module with capability downloads (Oracle, Echo): {module, downloads[{id, what, source, module, size, done, speed, eta_s, state queued|running|paused|fatto|errore, error}]}"
+      summary: "hestia_common.downloads, served by every module with capability downloads (Oracle, Echo): {module, downloads[{id, what, source, module, size, done, speed, eta_s, state queued|running|paused|done|error, error}]}"
       servers:
         - url: http://localhost:19004
         - url: http://localhost:19021
@@ -13225,13 +13225,13 @@ paths:
   /api/voice/setup/catalog:
     get:
       tags: [Echo]
-      summary: "Setup «Voce»: providers per direction (ascolto, voce), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Chatterbox 8004, Kokoro-FastAPI 8880, Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
+      summary: "Setup «Voce»: providers per direction (listen, voice), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Chatterbox 8004, Kokoro-FastAPI 8880, Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
       servers:
         - url: http://localhost:19021
       parameters:
         - {name: hosts, in: query, required: false, schema: {type: string}, description: "other computers of the house to look on too (comma separated, at most 4)"}
       responses:
-        "200": {description: "{ascolto {providers[{name,label,type,local,needs_key,key,state,note,models[],voices[],found?,url?}] (found = a program at home, not a block yet: its url comes back with the step and apply adds it), current {provider,model,voice}, steps[] (the whole chain)}, voce {…}}; note = one line on what the engine is (Kokoro vs Piper)"}
+        "200": {description: "{listen {providers[{name,label,type,local,needs_key,key,state,note,models[],voices[],found?,url?}] (found = a program at home, not a block yet: its url comes back with the step and apply adds it), current {provider,model,voice}, steps[] (the whole chain)}, voice {…}}; note = one line on what the engine is (Kokoro vs Piper)"}
 
   /api/voice/setup/reload-keys:
     post:
@@ -13254,7 +13254,7 @@ paths:
           application/json:
             schema: {type: object, properties: {provider: {type: string}}}
       responses:
-        "200": {description: "{ok, detail, models[], voices[], recommended {ascolto[], voce[]}}"}
+        "200": {description: "{ok, detail, models[], voices[], recommended {listen[], voice[]}}"}
 
   /api/voice/setup/preview:
     post:
@@ -13287,7 +13287,7 @@ paths:
   /api/voice/setup/apply:
     post:
       tags: [Echo]
-      summary: "Setup choice → echo.chains (the chosen steps first, in order, in ascolto/voce: one local engine then cloud services; the others kept as fallbacks), then the local models are queued"
+      summary: "Setup choice → echo.chains (the chosen steps first, in order, in listen/voice: one local engine then cloud services; the others kept as fallbacks), then the local models are queued"
       servers:
         - url: http://localhost:19021
       requestBody:

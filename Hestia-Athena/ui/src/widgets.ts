@@ -1,4 +1,4 @@
-/** <athena-last-widget> — "Ultimo pensiero": the latest Athena cycle and what came out of it. */
+/** <athena-last-widget> — "Latest thought": the latest Athena cycle and what came out of it. */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, KINDS, OUTCOMES, ago } from './util';
 

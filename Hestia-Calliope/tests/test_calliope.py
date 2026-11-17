@@ -61,7 +61,7 @@ def test_endpoints_and_tool(monkeypatch):
     hub = FakeArchive()
     monkeypatch.setattr(main, "docs", Documents(Store(hub, "office-store", min_refresh_seconds=0), hub))
     c = TestClient(main.app)
-    out = c.post("/api/office/tools/crea", json={"title": "Tabella", "html": HTML, "format": "xlsx"}).json()
+    out = c.post("/api/office/tools/create", json={"title": "Tabella", "html": HTML, "format": "xlsx"}).json()
     assert out["created"] and out["display"]["files"][0]["mime"].endswith("sheet")
     r = c.get(f"/api/office/{out['id']}/file")
     assert r.status_code == 200 and r.content.startswith(b"PK")

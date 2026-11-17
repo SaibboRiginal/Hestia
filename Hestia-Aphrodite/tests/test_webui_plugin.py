@@ -39,7 +39,7 @@ def test_pet_picture_upload_and_read(monkeypatch):
     monkeypatch.setattr(main, "look", Appearance(Store(hub, "appearance-store", min_refresh_seconds=0), hub))
     monkeypatch.setattr(main.kit, "hub", hub)
     c = TestClient(main.app)
-    pid = c.post("/api/appearance/tools/animale", json={"name": "Pip"}).json()["id"]
+    pid = c.post("/api/appearance/tools/pet", json={"name": "Pip"}).json()["id"]
     pet = c.post(f"/api/appearance/pets/{pid}/image/happy", json={"mime": "image/png", "data_b64": "AAAA"}).json()
     bid = pet["images"]["happy"]
     assert hub.blobs[bid]["meta"] == {"pet": pid, "pose": "happy"}

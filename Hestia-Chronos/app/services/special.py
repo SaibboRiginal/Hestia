@@ -7,10 +7,10 @@ anniversaries repeat every year (``FREQ=YEARLY``). Sources:
 - the owner's birthday from the personal setting ``themis.personal.birth_date`` (kept in sync, the owner's edits win);
 - the owner, by hand (calendar, chat tool ``special_add``) — **manual**;
 - the assistant, which discovers them in mails, conversations or memory and only **proposes** them
-  (``special_propose`` → Hermes card «Aggiungi» / «No»); other modules (Persone) register people dates — **automatic**.
+  (``special_propose`` → Hermes card «Add» / «No»); other modules (People) register people dates — **automatic**.
 
 The daily job ``chronos.special.daily`` (``POST /api/special/run``) sends the lead-time notice ``lead_days`` before
-(«Tra 7 giorni: compleanno di Anna»), and on the day the greeting plus the ``special_moment`` push to every Hub
+(«In 7 days: Anna's birthday»), and on the day the greeting plus the ``special_moment`` push to every Hub
 service declaring ``capabilities.special_moment_endpoint`` (effects, gift ideas) and to routines waiting for it.
 """
 from __future__ import annotations
@@ -118,7 +118,7 @@ def add(*, title: str, day: str, kind: str = "custom", lead_days: int | None = N
     rule = {"key": key, "type": "event", "title": title[:200], "start_at": start.isoformat(),
             "end_at": (start + timedelta(hours=1)).isoformat(), "recurrence": "FREQ=YEARLY" if yearly else None,
             "params": params, "description": note or KIND_LABEL[kind]}
-    if by != "user":                    # a module (Persone…) with a stable key: the owner's edits win
+    if by != "user":                    # a module (People…) with a stable key: the owner's edits win
         try:
             current = agenda.get(key)
         except agenda.AgendaError:
@@ -154,7 +154,7 @@ def sync_birthday(birth_date: Any) -> dict | None:
     start = datetime(day.year, day.month, day.day, 9, 0, tzinfo=_tz())
     rule = {"key": BIRTH_KEY, "type": "event", "title": tr("Your birthday"), "start_at": start.isoformat(),
             "end_at": (start + timedelta(hours=1)).isoformat(), "recurrence": "FREQ=YEARLY",
-            "params": {"special": {"kind": "birthday", "lead_days": 0, "source": tr("personal settings")}}}
+            "params": {"special": {"kind": "birthday", "lead_days": 0, "source": "personal_settings"}}}
     return agenda.register_rules(OWNER, [rule])[0]
 
 
@@ -163,7 +163,7 @@ def propose(*, title: str, day: str, kind: str = "custom", person: str = "", evi
             lead_days: int | None = None) -> dict:
     _parse_day(day)
     body = {"title": title, "day": str(day)[:10], "kind": kind if kind in KINDS else "custom", "person": person,
-            "lead_days": lead_days, "source": tr("assistant's proposal")}
+            "lead_days": lead_days, "source": "assistant_proposal"}
     pid = uuid.uuid4().hex[:8]
     when = _parse_day(day).strftime("%d/%m")
     text = tr("I found an important date: <b>{0}</b> on {1}.", title, when)
