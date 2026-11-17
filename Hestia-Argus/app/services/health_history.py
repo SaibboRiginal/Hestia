@@ -127,13 +127,13 @@ def note_unhealthy(service: str, status: str, error: str | None = None) -> bool:
             _open[service] = {"id": f"{service}-{int(now)}-{_seq['n']}", "service": service, "status": status,
                               "error": error, "opened_at": now, "closed_at": None,
                               "actions": [{"at": now, "kind": "detected", "ok": None,
-                                           "text": tr("Rilevato: {0}", status) + (f" — {error}" if error else "")}]}
+                                           "text": tr("Detected: {0}", status) + (f" — {error}" if error else "")}]}
             opened = True
             changed = _open[service]
         else:
             changed = None
             if inc["status"] != status:
-                inc["actions"].append({"at": now, "kind": "status", "ok": None, "text": tr("Ora {0}", status)})
+                inc["actions"].append({"at": now, "kind": "status", "ok": None, "text": tr("Now {0}", status)})
                 del inc["actions"][:-ACTIONS_KEPT]
                 changed = inc
             inc["status"], inc["error"] = status, error
@@ -161,7 +161,7 @@ def note_recovered(service: str) -> None:
         inc = _open.pop(service, None)
         if inc is None:
             return
-        inc["actions"].append({"at": now, "kind": "recovered", "ok": True, "text": tr("Di nuovo online")})
+        inc["actions"].append({"at": now, "kind": "recovered", "ok": True, "text": tr("Back online")})
         inc["closed_at"], inc["status"] = now, "up"
         _closed.appendleft(inc)
     _persist(inc)
@@ -236,6 +236,6 @@ def recheck_targets() -> list[dict]:
         last = {n: dict(_last.get(n, {})) for n in names}
     from hestia_common.areas import module_label
     # people read «Ricontrolla Self care · non risponde», never a module name or a raw error
-    words = {"down": tr("non risponde"), "degraded": "risponde a fatica", "unknown": "stato sconosciuto"}
-    return [{"id": n, "label": tr("Ricontrolla {0}", module_label(n)), "icon": "refresh", "state": "late",
-             "hint": words.get(str(last[n].get("status") or "down"), "non risponde")} for n in sorted(names)]
+    words = {"down": tr("does not answer"), "degraded": tr("answers slowly"), "unknown": tr("unknown state")}
+    return [{"id": n, "label": tr("Recheck {0}", tr(module_label(n))), "icon": "refresh", "state": "late",
+             "hint": words.get(str(last[n].get("status") or "down"), tr("does not answer"))} for n in sorted(names)]

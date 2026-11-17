@@ -252,6 +252,6 @@ class UserControlService:
 
         return [{
             "event": "user.controls.updated",
-            "message": tr("Controlli utente aggiornati."),
+            "message": tr("User controls updated."),
             "data": controls,
         }]

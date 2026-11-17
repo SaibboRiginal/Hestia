@@ -951,7 +951,7 @@ class OracleEngine:
         )
 
         # ── Phase 1: INIT ─────────────────────────────────────────────────────
-        yield stream_emitter.emit_status("📂 Recupero cronologia e routing...")
+        yield stream_emitter.emit_status(tr("📂 Loading history and routing..."))
         t_init = time.perf_counter()
         history_text, available_domains, schemas = self._phase_init(
             session_id,
@@ -1029,7 +1029,7 @@ class OracleEngine:
         # Pensata / CoT were chosen by the user: always reason with the agent loop.
         if (intent.mode == "quick_chat" and intent.confidence >= QUICK_CHAT_CONFIDENCE_THRESHOLD
                 and mode not in ("thinking", "cot") and not external):
-            yield stream_emitter.emit_status("💬 Conversazione rapida...")
+            yield stream_emitter.emit_status(tr("💬 Quick conversation..."))
             extra_context = ""
             if self._doc_rag.message_is_about_docs(user_message):
                 extra_context = self._doc_rag.list_user_docs_brief(
@@ -1060,7 +1060,7 @@ class OracleEngine:
                     yield stream_emitter.emit_signal(
                         event=str(signal.get("event") or "memory.updated"),
                         message=str(signal.get("message")
-                                    or tr("Aggiornamento memoria completato.")),
+                                    or tr("Memory update completed.")),
                         data=signal.get("data") if isinstance(
                             signal.get("data"), dict) else {},
                     )
@@ -1096,7 +1096,7 @@ class OracleEngine:
 
         # ── Phase 4: AGENT LOOP (unified — all tools, all commands) ───────────
         yield stream_emitter.emit_status(
-            f"🧠 Analisi domini: {', '.join(intent.valid_domains)}..."
+            tr("🧠 Analysing domains: {0}...", ', '.join(intent.valid_domains))
         )
 
         # Load preferences for agent loop context
@@ -1226,7 +1226,7 @@ class OracleEngine:
             for tok in self._agents.generic.ask_stream(prompt):
                 yield tok
 
-        yield stream_emitter.emit_status("🔄 Ciclo agente in corso...")
+        yield stream_emitter.emit_status(tr("🔄 Agent loop running..."))
         t_agent_loop = time.perf_counter()
 
         # Resolve max turns: higher when action_intent is True (complex tasks)
@@ -1238,9 +1238,9 @@ class OracleEngine:
         _is_thinking_mode = mode in ("thinking", "cot", "auto")
         if mode == "cot":
             resolved_max_turns = max(resolved_max_turns, 50)
-            yield stream_emitter.emit_status(tr("🧠 Modalità CoT — ragionamento passo passo..."))
+            yield stream_emitter.emit_status(tr("🧠 CoT mode — step by step reasoning..."))
         elif mode == "thinking":
-            yield stream_emitter.emit_status(tr("🧠 Modalità pensata — ragiono prima di rispondere..."))
+            yield stream_emitter.emit_status(tr("🧠 Thinking mode — I reason before answering..."))
 
         # Mode controls the think level; model (resolved above) controls the brain.
         # Any mode × any model combination works — mode and model are independent.
@@ -1272,7 +1272,7 @@ class OracleEngine:
         _prior_actions: list[dict] = []
         _loop_trace: dict = {}
         if external:
-            yield stream_emitter.emit_status(tr("🤖 Agente esterno al lavoro..."))
+            yield stream_emitter.emit_status(tr("🤖 External agent at work..."))
             try:
                 answer, tool_log = external_agent.run_turn(
                     session_id=session_id, user_message=user_message,
@@ -1283,12 +1283,12 @@ class OracleEngine:
                 # Writes the agent already did must not run twice (Cindy 2): the internal loop continues from them.
                 _prior_actions = [e for e in (getattr(exc, "log", None) or []) if e.get("ok")]
                 if external_agent.brain()["fallback"] != "interna":
-                    answer, tokens, tool_log = (tr("⚠️ L'agente esterno non ha risposto. Riprova tra poco."),
-                                                [tr("⚠️ L'agente esterno non ha risposto. Riprova tra poco.")], [])
+                    answer, tokens, tool_log = (tr("⚠️ The external agent did not answer. Try again shortly."),
+                                                [tr("⚠️ The external agent did not answer. Try again shortly.")], [])
                 else:
                     logger.warning("[🔄] event=chat_external_agent_failed session_id=%s fallback=interna error=%s",
                                    session_id, str(exc)[:200])
-                    yield stream_emitter.emit_status(tr("🔄 Agente esterno non disponibile: rispondo io..."))
+                    yield stream_emitter.emit_status(tr("🔄 External agent not available: I'll answer myself..."))
         if answer is None:
             external_agent.note_internal_turn(session_id)
             answer, tokens, tool_log = run_agent_loop(
@@ -1380,7 +1380,7 @@ class OracleEngine:
                 yield stream_emitter.emit_signal(
                     event=str(signal.get("event") or "memory.updated"),
                     message=str(signal.get("message")
-                                or tr("Aggiornamento memoria completato.")),
+                                or tr("Memory update completed.")),
                     data=signal.get("data") if isinstance(
                         signal.get("data"), dict) else {},
                 )
@@ -1425,7 +1425,7 @@ class OracleEngine:
                 card = entry.get("confirm")
                 if isinstance(card, dict) and card.get("question_id"):
                     yield self.ask_question(
-                        session_id, str(card["question_id"]), str(card.get("header") or tr("Confermi?")),
+                        session_id, str(card["question_id"]), str(card.get("header") or tr("Confirm?")),
                         str(card.get("prompt") or ""), kind="confirm", options=card.get("options") or None,
                         actions=card.get("actions") if isinstance(card.get("actions"), dict) else None)
             # The model asked the user (tool ask_user): the turn stopped on it, the answer is the next turn.
@@ -1433,7 +1433,7 @@ class OracleEngine:
                 ask = entry.get("ask")
                 if isinstance(ask, dict) and ask.get("question_id"):
                     yield self.ask_question(
-                        session_id, str(ask["question_id"]), str(ask.get("header") or tr("Rispondi")),
+                        session_id, str(ask["question_id"]), str(ask.get("header") or tr("Reply")),
                         str(ask.get("prompt") or ""),
                         kind=str(ask.get("kind") or "confirm"), options=ask.get("options") or None,
                         resume=True, allow_other=bool(ask.get("allow_other")))
@@ -1612,8 +1612,8 @@ class OracleEngine:
         matched = [s for s in (signals or []) if str(
             s.get("event", "")).lower() in notification_events]
         if matched:
-            return {"ok": True, "message": tr("✅ Notifica elaborata con il comando rapido."), "signals": signals}
-        return {"ok": False, "message": tr("⚠️ Nessuna notifica creata. Specifica meglio dominio, evento o filtri."), "signals": signals or []}
+            return {"ok": True, "message": tr("✅ Notification handled with the quick command."), "signals": signals}
+        return {"ok": False, "message": tr("⚠️ No notification created. Specify domain, event or filters better."), "signals": signals or []}
 
     def delete_chat_history(self, session_id: str):
         """Delete chat history for *session_id* via Hub/Archive (and its training traces in Metis)."""
@@ -1681,9 +1681,9 @@ class OracleEngine:
         part_sum = sum(parts.values())
         if part_sum > 0:
             scale = (used_tokens / part_sum) if measured else 1.0
-            order = [("system", tr("Istruzioni e preferenze")), ("tools", tr("Strumenti di questo turno")),
-                     ("history", tr("Cronologia")), ("message", tr("Il tuo messaggio")),
-                     ("results", tr("Risultati degli strumenti")), ("other", tr("Altro"))]
+            order = [("system", tr("Instructions and preferences")), ("tools", tr("Tools of this turn")),
+                     ("history", tr("alt2::History")), ("message", tr("Your message")),
+                     ("results", tr("Tool results")), ("other", tr("Other"))]
             breakdown = [{"id": pid, "label": label, "tokens": int(round(parts.get(pid, 0) * scale))}
                          for pid, label in order if parts.get(pid, 0) > 0]
             drift = used_tokens - sum(r["tokens"] for r in breakdown) if measured else 0
@@ -1691,9 +1691,9 @@ class OracleEngine:
                 biggest = max(breakdown, key=lambda r: r["tokens"])
                 biggest["tokens"] = max(0, biggest["tokens"] + drift)
         else:
-            breakdown = [{"id": "system", "label": tr("Istruzioni e preferenze"), "tokens": system_tokens + pref_tokens},
-                         {"id": "tools", "label": tr("Strumenti (tutti)"), "tokens": tools_tokens},
-                         {"id": "history", "label": tr("Cronologia"), "tokens": history_tokens}]
+            breakdown = [{"id": "system", "label": tr("Instructions and preferences"), "tokens": system_tokens + pref_tokens},
+                         {"id": "tools", "label": tr("Tools (all)"), "tokens": tools_tokens},
+                         {"id": "history", "label": tr("alt2::History"), "tokens": history_tokens}]
 
         return {
             "context_window": _window,
@@ -2217,7 +2217,7 @@ class OracleEngine:
         for signal in waiter.get("signals") or []:
             yield stream_emitter.emit_signal(
                 event=str(signal.get("event") or "memory.updated"),
-                message=str(signal.get("message") or tr("Memoria aggiornata.")),
+                message=str(signal.get("message") or tr("Memory updated.")),
                 data=signal.get("data") if isinstance(signal.get("data"), dict) else {},
             )
 
@@ -2470,7 +2470,7 @@ class OracleEngine:
             },
             handler=_memory_save_handler,
             writes=True,
-            title="💾 Memoria",
+            title="💾 Memory",
         ))
 
         def _memory_forget_handler(id: int | str = 0) -> tuple[bool, dict | str]:
@@ -2493,7 +2493,7 @@ class OracleEngine:
             },
             handler=_memory_forget_handler,
             writes=True,
-            title=tr("Memoria dimenticata"),
+            title=tr("alt::Memory forgotten"),
         ))
 
         def _memory_search_handler(query: str = "") -> tuple[bool, list]:
@@ -2533,10 +2533,10 @@ class OracleEngine:
 
         tools.append(ToolDefinition(
             name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
-            handler=_chat_tag_handler, writes=True, title=tr("Etichetta la conversazione"), method="POST"))
+            handler=_chat_tag_handler, writes=True, title=tr("Tag the conversation"), method="POST"))
         tools.append(ToolDefinition(
             name="chat_list", description=chat_sessions.LIST_DESCRIPTION, parameters=chat_sessions.LIST_PARAMETERS,
-            handler=_chat_list_handler, title=tr("Le tue conversazioni"), method="GET"))
+            handler=_chat_list_handler, title=tr("Your conversations"), method="GET"))
 
         # ── Asking the user (always available, v3 A): the turn stops on it ─────
         tools.append(ToolDefinition(
@@ -2544,7 +2544,7 @@ class OracleEngine:
             description=user_questions.TOOL_DESCRIPTION,
             parameters=user_questions.TOOL_PARAMETERS,
             handler=user_questions.build_question,
-            title="❓ Domanda",
+            title="❓ Question",
         ))
 
         # ── Oracle self-introspection tools (always available) ─────────────
@@ -2614,11 +2614,11 @@ class OracleEngine:
         def _manual(module: str = "") -> tuple[bool, Any]:
             text = registry.manual(module)
             if not text:
-                return False, tr("Nessun manuale per «{0}». Moduli: {1}", module, ', '.join(sorted(registry.guides())))
+                return False, tr("No manual for «{0}». Modules: {1}", module, ', '.join(sorted(registry.guides())))
             return True, text
 
         tools = [ToolDefinition(
-            name="module_manual", title=tr("Manuale del modulo"),
+            name="module_manual", title=tr("Module manual"),
             description="Short manual of a module (what it can do, how to use its tools). Use it when you don't know "
                         "which tool of that module you need.",
             parameters={"type": "object", "properties": {"module": {"type": "string"}}, "required": ["module"]},
@@ -2631,15 +2631,15 @@ class OracleEngine:
             if not str(text or "").strip():
                 return False, "text is required"
             goal = conversation_goal.set_goal(hub, session_id, str(text))
-            return True, {"goal": goal["text"], "note": tr("Obiettivo fissato: ci lavoro dopo ogni risposta.")}
+            return True, {"goal": goal["text"], "note": tr("Goal set: I work on it after every answer.")}
 
         def _goal_done(summary: str = "") -> tuple[bool, Any]:
             goal = conversation_goal.end(hub, session_id, "raggiunto", summary)
-            return (True, {"done": True, "goal": goal["text"]}) if goal else (False, tr("nessun obiettivo attivo"))
+            return (True, {"done": True, "goal": goal["text"]}) if goal else (False, tr("no active goal"))
 
         def _goal_stop() -> tuple[bool, Any]:
             goal = conversation_goal.end(hub, session_id, "fermato")
-            return (True, {"stopped": True}) if goal else (False, tr("nessun obiettivo attivo"))
+            return (True, {"stopped": True}) if goal else (False, tr("no active goal"))
 
         handlers = {"goal_set": _goal_set, "goal_done": _goal_done, "goal_stop": _goal_stop}
         for spec in conversation_goal.tool_specs():
@@ -2693,7 +2693,7 @@ class OracleEngine:
                 break
             if int(goal.get("rounds") or 0) >= total:
                 conversation_goal.end(self._hub, session_id, "budget")
-                last = (tr("Obiettivo «{0}»: ho finito i giri a disposizione ({1}). Dimmi se continuo.", goal['text'], total))
+                last = (tr("Goal «{0}»: I used up the available rounds ({1}). Tell me if I go on.", goal['text'], total))
                 break
             try:
                 ans, _toks, round_log = run_agent_loop(
@@ -2716,7 +2716,7 @@ class OracleEngine:
         if not last:
             return "", log, frames
         state = conversation_goal.active(self._hub, session_id)
-        head = tr("Obiettivo") + (f" (giro {state['rounds']}/{total})" if state else tr(" — fatto"))
+        head = tr("Goal") + (tr(" (round {0}/{1})", state['rounds'], total) if state else tr(" — done"))
         return f"**{head}:** {last}", log, frames
 
     # ── Context compaction (REST + MCP) ──────────────────────────────────────
@@ -2774,8 +2774,9 @@ class OracleEngine:
             }
 
         # Build compactable text
+        her = prompt_config.assistant_label()
         compactable_text = "\n".join(
-            f"{'User' if m.get('role') == 'user' else 'Hestia'}: {str(m.get('content', ''))}"
+            f"{'User' if m.get('role') == 'user' else her}: {str(m.get('content', ''))}"
             for m in to_compact
         )
 
@@ -3077,7 +3078,7 @@ class OracleEngine:
                 "title": matched.get("title") or action_name,
                 "service": matched.get("service") or "",
                 "path": str(matched.get("path") or ""),
-                "text": tr("⚠️ Parametri azione non validi o incompleti."),
+                "text": tr("⚠️ Invalid or incomplete action parameters."),
             }
 
         route_results: list[dict] = []
@@ -3118,7 +3119,7 @@ class OracleEngine:
                 "title": matched.get("title") or action_name,
                 "service": matched.get("service") or "",
                 "path": str(matched.get("path") or ""),
-                "text": tr("⚠️ Non è stato possibile completare l'azione. Uno o più target non sono stati aggiornati."),
+                "text": tr("⚠️ The action could not be completed. One or more targets were not updated."),
             }
 
         payload_for_format: Any

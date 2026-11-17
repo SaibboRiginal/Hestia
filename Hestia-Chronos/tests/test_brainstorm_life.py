@@ -126,7 +126,7 @@ class TestRoutines:
             routines.from_template("radar", {})
         item = routines.from_template("radar", {"topic": "Formula 1"})
         r = routines.routine_of(item)
-        assert "Formula 1" in r["instruction"] and r["precheck"]["args"]["q"] == "Formula 1 notizie oggi"
+        assert "Formula 1" in r["instruction"] and r["precheck"]["args"]["q"] == "Formula 1 news today"
         assert r["deliver"] == "recap"
 
     def test_empty_precheck_stops_without_the_model(self, store):

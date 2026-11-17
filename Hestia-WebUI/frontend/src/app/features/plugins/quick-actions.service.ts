@@ -71,21 +71,21 @@ export class QuickActionsService {
   /** Runs a chip (optionally with {date, note, …params}); toast with «Annulla» when the action has an undo. */
   async run(chip: QuickChipView, body?: Record<string, unknown>): Promise<boolean> {
     const a = chip.action;
-    if (a.confirm && !(await this.dialogs.confirm(chip.label, a.confirm, tr('Conferma')))) return false;
+    if (a.confirm && !(await this.dialogs.confirm(chip.label, a.confirm, tr('Confirm')))) return false;
     this.metis.tap('action', a.id, chip.label);
     this.busy.set(chip.key);
     const r = await this.plugins.call(a.module, a.method, fill(a.path, chip.chipId), { body: body ?? (a.method === 'GET' ? undefined : {}) });
     this.busy.set('');
     if (!r.ok) {
-      this.toasts.error(r.error === 'offline' ? 'Sei offline: riprova quando torni in linea'
-        : r.error === 'unreachable' ? `${this.plugins.modules().get(a.module)?.title ?? a.module} non raggiungibile`
-        : (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : 'Non sono riuscito a farlo');
+      this.toasts.error(r.error === 'offline' ? tr('You are offline: try again when you are back online')
+        : r.error === 'unreachable' ? tr('{0} not reachable', this.plugins.modules().get(a.module)?.title ?? a.module)
+        : (r.status === 409 || r.status === 422) && r.error && !r.error.startsWith('HTTP') ? r.error : tr('I could not do it'));
       return false;
     }
     const msg = (r.data as { message?: string } | null)?.message || chip.label;
     const prev = chip.state;
     this.chips.update(list => list.map(c => c.key === chip.key && c.chipId ? { ...c, state: 'done' } : c));
-    this.toasts.show(msg, 'success', a.undo ? { label: tr('Annulla'), run: () => void this.undo(chip, prev) } : undefined, a.undo ? 7000 : 4500);
+    this.toasts.show(msg, 'success', a.undo ? { label: tr('Cancel'), run: () => void this.undo(chip, prev) } : undefined, a.undo ? 7000 : 4500);
     this.plugins.emit(a.module, 'refresh');
     void this.reload(true);
     return true;
@@ -95,9 +95,9 @@ export class QuickActionsService {
     const u = chip.action.undo;
     if (!u) return;
     const r = await this.plugins.call(chip.action.module, u.method, fill(u.path, chip.chipId));
-    if (!r.ok) { this.toasts.error('Annullamento non riuscito'); return; }
+    if (!r.ok) { this.toasts.error(tr('Undo failed')); return; }
     this.chips.update(list => list.map(c => c.key === chip.key ? { ...c, state: prev } : c));
-    this.toasts.show(tr('Annullato'), 'info');
+    this.toasts.show(tr('Cancelled'), 'info');
     this.plugins.emit(chip.action.module, 'refresh');
     void this.reload(true);
   }

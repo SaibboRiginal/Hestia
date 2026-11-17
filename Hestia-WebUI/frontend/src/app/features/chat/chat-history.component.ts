@@ -3,7 +3,7 @@ import { DatePipe } from '@angular/common';
 import { ButtonComponent, IconComponent, SpinnerComponent, ToastService } from '../../ui';
 import { ChatSummary, ChatTag, ChatsService, TAG_COLORS, TAG_CSS } from '../../services/chats.service';
 import { SessionService } from '../../services/session.service';
-import { TrPipe } from '../../core/i18n';
+import { TrPipe, tr } from '../../core/i18n';
 
 const PAGE = 30;
 
@@ -16,13 +16,13 @@ const PAGE = 30;
   imports: [TrPipe, DatePipe, ButtonComponent, IconComponent, SpinnerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <aside class="hist hx-glass hx-fade-in"  [attr.aria-label]="'Cronologia delle conversazioni' | tr">
-      <div class="h"><b>{{ "Cronologia" | tr }}</b><span class="hx-grow"></span>
-        <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Chiudi' | tr" (click)="chats.historyOpen.set(false)"></button></div>
+    <aside class="hist hx-glass hx-fade-in"  [attr.aria-label]="'Conversation history' | tr">
+      <div class="h"><b>{{ "alt2::History" | tr }}</b><span class="hx-grow"></span>
+        <button hx-btn variant="ghost" size="sm" icon="x" iconOnly  [attr.aria-label]="'Close' | tr" (click)="chats.historyOpen.set(false)"></button></div>
       <div class="search"><hx-icon name="search" [size]="14" />
-        <input class="hx-input"  [placeholder]="'Cerca nelle conversazioni' | tr" [value]="q()" (input)="type($any($event.target).value)" (keydown.enter)="reload()"  [attr.aria-label]="'Cerca' | tr"></div>
+        <input class="hx-input"  [placeholder]="'Search in the conversations' | tr" [value]="q()" (input)="type($any($event.target).value)" (keydown.enter)="reload()"  [attr.aria-label]="'Search' | tr"></div>
       <div class="dates">
-        <label>{{ "Dal" | tr }} <input class="hx-input" type="date" [value]="since()" (change)="since.set($any($event.target).value); reload()"></label>
+        <label>{{ "From" | tr }} <input class="hx-input" type="date" [value]="since()" (change)="since.set($any($event.target).value); reload()"></label>
         <label>Al <input class="hx-input" type="date" [value]="until()" (change)="until.set($any($event.target).value); reload()"></label>
       </div>
       @if (chats.tags().length) {
@@ -37,35 +37,35 @@ const PAGE = 30;
           <div class="it" [class.cur]="c.session_id === session.sessionId()">
             <button class="open" (click)="open(c)">
               <span class="t">@if (c.pinned) { <hx-icon name="pin" [size]="12" /> }{{ c.title }}</span>
-              <span class="m">{{ c.last_at | date:'d MMM, HH:mm' }} · {{ c.messages }} {{ "messaggi" | tr }}</span>
+              <span class="m">{{ c.last_at | date:'d MMM, HH:mm' }} · {{ c.messages }} {{ "messages" | tr }}</span>
               @if (c.tags.length) { <span class="ct">@for (t of c.tags; track t.name) { <span class="chip" [style.--c]="css(t.color)"><i></i>{{ t.name }}</span> }</span> }
             </button>
-            <button class="mini" [class.on]="c.pinned" (click)="pin(c)" [attr.aria-label]="c.pinned ? ('Sblocca' | tr) : ('Fissa' | tr)" [attr.title]="c.pinned ? ('Togli da fissate' | tr) : ('Fissa in cima' | tr)"><hx-icon name="pin" [size]="13" /></button>
-            <button class="mini" [class.on]="edit() === c.session_id" (click)="edit.set(edit() === c.session_id ? '' : c.session_id)"  [attr.aria-label]="'Altro: titolo, etichette, elimina' | tr"  [title]="'Altro: titolo, etichette, elimina' | tr"><hx-icon name="more" [size]="13" /></button>
+            <button class="mini" [class.on]="c.pinned" (click)="pin(c)" [attr.aria-label]="c.pinned ? ('Unlock' | tr) : ('Pin' | tr)" [attr.title]="c.pinned ? ('Remove from pinned' | tr) : ('Pin to the top' | tr)"><hx-icon name="pin" [size]="13" /></button>
+            <button class="mini" [class.on]="edit() === c.session_id" (click)="edit.set(edit() === c.session_id ? '' : c.session_id)"  [attr.aria-label]="'More: title, labels, delete' | tr"  [title]="'More: title, labels, delete' | tr"><hx-icon name="more" [size]="13" /></button>
           </div>
           @if (edit() === c.session_id) {
             <div class="ed">
-              <input class="hx-input"  [placeholder]="'Titolo' | tr" [value]="c.title" (change)="rename(c, $any($event.target).value)"  [attr.aria-label]="'Titolo' | tr">
+              <input class="hx-input"  [placeholder]="'Title' | tr" [value]="c.title" (change)="rename(c, $any($event.target).value)"  [attr.aria-label]="'Title' | tr">
               <div class="row">
-                <input #nt class="hx-input"  [placeholder]="'Nuova etichetta' | tr" (keydown.enter)="addTag(c, nt.value, color()); nt.value = ''"  [attr.aria-label]="'Nuova etichetta' | tr">
-                <button hx-btn size="sm" icon="plus" (click)="addTag(c, nt.value, color()); nt.value = ''">{{ "Aggiungi" | tr }}</button>
+                <input #nt class="hx-input"  [placeholder]="'New label' | tr" (keydown.enter)="addTag(c, nt.value, color()); nt.value = ''"  [attr.aria-label]="'New label' | tr">
+                <button hx-btn size="sm" icon="plus" (click)="addTag(c, nt.value, color()); nt.value = ''">{{ "Add" | tr }}</button>
               </div>
               <div class="colors">@for (k of colors; track k) {
                 <button class="sw" [class.on]="color() === k" [style.background]="css(k)" (click)="color.set(k)" [attr.aria-label]="k"></button> }</div>
               @if (c.tags.length) { <div class="ct">@for (t of c.tags; track t.name) {
-                <button class="chip rm" [style.--c]="css(t.color)" (click)="dropTag(c, t)" [attr.title]="('Togli ' | tr) + t.name"><i></i>{{ t.name }}<hx-icon name="x" [size]="11" /></button> }</div> }
-              <label class="train"  [title]="'Le conversazioni restano solo sul tuo computer; quelle escluse non entrano nel dataset di allenamento.' | tr">
+                <button class="chip rm" [style.--c]="css(t.color)" (click)="dropTag(c, t)" [attr.title]="('Remove ' | tr) + t.name"><i></i>{{ t.name }}<hx-icon name="x" [size]="11" /></button> }</div> }
+              <label class="train"  [title]="'Conversations stay only on your computer; the excluded ones don\\'t enter the training dataset.' | tr">
                 <input type="checkbox" [checked]="!!c.training_off" (change)="trainingOff(c, $any($event.target).checked)">
-                <hx-icon name="eye-off" [size]="13" /> {{ "Non usare per l'allenamento" | tr }}
+                <hx-icon name="eye-off" [size]="13" /> {{ "Don't use for training" | tr }}
               </label>
-              <button hx-btn variant="ghost" size="sm" icon="trash" class="del" (click)="remove(c)">{{ "Elimina conversazione" | tr }}</button>
+              <button hx-btn variant="ghost" size="sm" icon="trash" class="del" (click)="remove(c)">{{ "Delete conversation" | tr }}</button>
             </div>
           }
         } @empty {
-          @if (!loading()) { <div class="none">{{ error() ? ('Non disponibile, riprova tra poco.' | tr) : ('Nessuna conversazione.' | tr) }}</div> }
+          @if (!loading()) { <div class="none">{{ error() ? ('Not available, try again shortly.' | tr) : ('No conversations.' | tr) }}</div> }
         }
         @if (loading()) { <div class="none"><hx-spinner [size]="16" /></div> }
-        @else if (items().length < total()) { <button hx-btn variant="ghost" size="sm" (click)="more()">{{ "Carica altre" | tr }}</button> }
+        @else if (items().length < total()) { <button hx-btn variant="ghost" size="sm" (click)="more()">{{ "Load more" | tr }}</button> }
       </div>
     </aside>`,
   styles: [`
@@ -160,13 +160,13 @@ export class ChatHistoryComponent implements OnInit {
   pickTag(name: string): void { this.tag.set(this.tag() === name ? '' : name); void this.reload(); }
 
   async open(c: ChatSummary): Promise<void> {
-    if (!(await this.chats.open(c.session_id))) { this.toast.error('Conversazione non disponibile'); return; }
+    if (!(await this.chats.open(c.session_id))) { this.toast.error(tr('Conversation not available')); return; }
     if (window.innerWidth < 861) this.chats.historyOpen.set(false);
   }
 
   private async save(c: ChatSummary, body: Parameters<ChatsService['setMeta']>[1]): Promise<void> {
     const r = await this.chats.setMeta(c.session_id, body);
-    if (!r.ok) { this.toast.error('Non salvato'); return; }
+    if (!r.ok) { this.toast.error(tr('Not saved')); return; }
     this.items.update(x => x.map(i => i.session_id === c.session_id ? { ...i, title: r.data.title || i.title, tags: r.data.tags, pinned: r.data.pinned, training_off: r.data.training_off } : i));
   }
 

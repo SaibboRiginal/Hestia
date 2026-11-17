@@ -76,7 +76,7 @@ export class SignalRService {
     }
     if (this.hub?.state !== signalR.HubConnectionState.Connected) {
       // Never drop silently: the caller marks the message as failed.
-      throw new Error(tr('Connessione al server non disponibile'));
+      throw new Error(tr('Connection to the server not available'));
     }
     await this.hub.invoke('SendMessage', message);
   }

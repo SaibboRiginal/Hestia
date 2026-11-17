@@ -35,11 +35,11 @@ export class HygieiaTodayWidget extends Widget {
     const c = this.plan?.counts;
     return html`<div class="w">
       <div class="between click" @click=${() => this.host.navigate('oggi')}><span></span>
-        ${c ? html`<span class="small muted">${c.done ? html`${icon('check', 12, 'success')} ${c.done}` : ''}${c.done && c.due ? ' · ' : ''}${c.due ? tr("{0} da fare", c.due) : ''}</span>` : nothing}</div>
+        ${c ? html`<span class="small muted">${c.done ? html`${icon('check', 12, 'success')} ${c.done}` : ''}${c.done && c.due ? ' · ' : ''}${c.due ? tr("{0} to do", c.due) : ''}</span>` : nothing}</div>
       ${this.plan === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         ${[this.n].map(() => html`<hxk-quicklog .host=${this.host} source=${`${API}/quick/routines`} .action=${ROUTINE_ACTION} @logged=${() => this.load()}></hxk-quicklog>`)}
-        ${this.plan && !this.plan.routines.length ? html`<div class="muted small">${tr("Nessuna routine ancora.")} <button class="link" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Creane una")}</button></div>` : nothing}
-        ${this.size === 'l' || this.size === 'xl' ? html`<span class="small muted">${tr("Prodotti preferiti")}</span>
+        ${this.plan && !this.plan.routines.length ? html`<div class="muted small">${tr("No routine yet.")} <button class="link" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Create one")}</button></div>` : nothing}
+        ${this.size === 'l' || this.size === 'xl' ? html`<span class="small muted">${tr("Favourite products")}</span>
           ${[this.n].map(() => html`<hxk-quicklog compact .host=${this.host} source=${`${API}/quick/products`} .action=${PRODUCT_ACTION}></hxk-quicklog>`)}` : nothing}`}
     </div>`;
   }
@@ -55,7 +55,7 @@ export class HygieiaNextWidget extends Widget {
     this.busy = true;
     const r = await call(this.host, 'POST', `${API}/quick/routine/${n.routine_id}`, { body: {} });
     this.busy = false;
-    if (r.ok) this.host.toast(r.data.label, 'success', { label: tr('Annulla'), run: async () => { await call(this.host, 'DELETE', `${API}/quick/routine/${n.routine_id}`); this.load(); } });
+    if (r.ok) this.host.toast(r.data.label, 'success', { label: tr('Cancel'), run: async () => { await call(this.host, 'DELETE', `${API}/quick/routine/${n.routine_id}`); this.load(); } });
     this.load();
   }
   render() {
@@ -66,16 +66,16 @@ export class HygieiaNextWidget extends Widget {
     if (!n) {
       const done = p.counts?.done || 0;
       return html`<div class="w click" @click=${() => this.host.navigate('oggi')}><span class="small muted">${tr("Self care")}</span>
-        <div class="big">${done ? html`${tr("Tutto fatto")} ${icon('check', 18, 'success')}` : tr('Niente da fare')}</div><div class="small muted">${done ? tr("{0} routine oggi", done) : tr('Nessuna routine in programma oggi')}</div></div>`;
+        <div class="big">${done ? html`${tr("All done")} ${icon('check', 18, 'success')}` : tr('Nothing to do')}</div><div class="small muted">${done ? tr("{0} routines today", done) : tr('No routine scheduled today')}</div></div>`;
     }
     const st = STATE[n.state] || STATE.rest;
     const steps = n.steps.filter((s: any) => s.include);
     return html`<div class="w">
-      <div class="between"><span class="small muted">${tr("Prossima")}</span><hxk-badge tone=${st.tone}>${st.text}</hxk-badge></div>
+      <div class="between"><span class="small muted">${tr("f::Next")}</span><hxk-badge tone=${st.tone}>${st.text}</hxk-badge></div>
       <div class="big truncate click" @click=${() => this.host.navigate('oggi')}>${n.name}</div>
-      <div class="small muted truncate">${n.hint}${steps.length ? ` · ${steps.length} ${steps.length === 1 ? 'passo' : 'passi'}` : ''}</div>
+      <div class="small muted truncate">${n.hint}${steps.length ? (steps.length === 1 ? tr(' · 1 step') : tr(' · {0} steps', steps.length)) : ''}</div>
       ${this.size !== 's' ? html`<div class="small truncate">${steps.map((s: any) => s.label).join(' → ')}</div>` : nothing}
-      <div><hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.done(n)}>${tr("Fatta")}</hxk-button></div>
+      <div><hxk-button variant="primary" icon="check" ?loading=${this.busy} @click=${() => this.done(n)}>${tr("f::Done")}</hxk-button></div>
     </div>`;
   }
 }
@@ -95,11 +95,11 @@ export class HygieiaAlertsWidget extends Widget {
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const max = this.size === 'l' || this.size === 'xl' ? 8 : 4;
     return html`<div class="w">
-      <div class="between click" @click=${() => this.host.navigate('spesa')}><span class="small muted">${tr("Prodotti")}</span>
-        ${this.shop ? html`<span class="pill">${icon('cart', 12, 'info')} ${this.shop} ${tr("da comprare")}</span>` : nothing}</div>
+      <div class="between click" @click=${() => this.host.navigate('spesa')}><span class="small muted">${tr("Products")}</span>
+        ${this.shop ? html`<span class="pill">${icon('cart', 12, 'info')} ${this.shop} ${tr("to buy")}</span>` : nothing}</div>
       ${this.items.length ? html`<div class="list">${this.items.slice(0, max).map(a => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('prodotti/' + a.product_id)}>
         <span>${alertIcon(a)}</span><span class="grow truncate small">${a.text}</span></div>`)}</div>`
-        : html`<div class="muted small">${tr("Niente in scadenza o in esaurimento.")}</div>`}
+        : html`<div class="muted small">${tr("Nothing expiring or running out.")}</div>`}
     </div>`;
   }
 }
@@ -120,8 +120,8 @@ export class HygieiaWeekWidget extends Widget {
     const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return localDay(d); });
     const goals = (s.routines || []).filter((r: any) => r.history?.length && r.history[r.history.length - 1].need);
     return html`<div class="w click" @click=${() => this.host.navigate('statistiche')}>
-      <div class="between"><span class="small muted">${tr("Questa settimana")}</span>${s.week.goals ? html`<span class="small muted">${tr("obiettivi")} ${s.week.goals_met}/${s.week.goals}</span>` : nothing}</div>
-      <div class="big tnum">${s.week.logs} <span class="muted" style="font-size:14px;font-weight:400">${tr("routine fatte")}</span></div>
+      <div class="between"><span class="small muted">${tr("This week")}</span>${s.week.goals ? html`<span class="small muted">${tr("goals")} ${s.week.goals_met}/${s.week.goals}</span>` : nothing}</div>
+      <div class="big tnum">${s.week.logs} <span class="muted" style="font-size:14px;font-weight:400">${tr("routines done")}</span></div>
       <div class="row" style="gap:4px">${days.map((d, i) => html`<div class="col" style="align-items:center;gap:2px;flex:1">
         <span style="width:100%;max-width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:11px;color:var(--accent-contrast);background:${counts[d] ? 'var(--success)' : d === localDay(now) ? 'var(--accent-soft)' : 'var(--surface-3)'}">${counts[d] > 1 ? counts[d] : ''}</span>
         <span class="small muted">${WEEKDAYS[i][0]}</span></div>`)}</div>

@@ -274,7 +274,7 @@ class MemoryConsolidator:
                     timeout=8,
                 )
                 self.learning.record("retire", old_id, before={"is_active": True}, after={"is_active": False},
-                                     session_id=self._session, fact=tr("sostituita da: {0}", conflict.get('new_fact', '')))
+                                     session_id=self._session, fact=tr("replaced by: {0}", conflict.get('new_fact', '')))
             except Exception:
                 pass
 

@@ -271,7 +271,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "- 1-2 sentences, chat tone. No formal greeting, no 'how can I help', no lists, no reminders, no "
         "unrequested advice.\n"
         "- Never invent facts about them or things you would have done.\n"
-        "- Nothing true to say, or it is a bad moment -> write only: NIENTE"
+        "- Nothing true to say, or it is a bad moment -> write only: NOTHING"
     ),
     # The assistant inside Claude (mod «hestia», docs/work/2026-10-30-hestia-in-claude): what changes when the
     # model is Claude on the owner's machine instead of Oracle's own loop.
@@ -385,6 +385,12 @@ def prompt_with_variant(
             break
 
     return prompt(resolved_key, **kwargs), variant, resolved_key
+
+
+def assistant_label() -> str:
+    """The name that marks her turns in a transcript the model reads («Hestia» or the name the owner chose)."""
+    from hestia_common import identity as _id
+    return (_identity() or _id.default()).get("assistant") or _id.DEFAULT_NAME
 
 
 def _identity() -> dict[str, str] | None:

@@ -75,13 +75,12 @@ hub = HubClient(_HUB_API_URL)
 # built in the image and copied outside /code (the compose dev mount of app/ would hide it). Read only:
 # insights, datasets and LoRA jobs through the existing /api/metis/ reads; training stays a chat/agenda action.
 UI_DIST = os.getenv("METIS_UI_DIST", "/ui/dist")
-ui = PluginClient("metis", title="Miglioramento", icon="flask", color="purple", kind="core", dist=UI_DIST,
-                  description="Miglioramento continuo: dove Hestia sbaglia, dataset e training dei modelli.",
+ui = PluginClient("metis", title="Improvement", icon="flask", color="purple", kind="core", dist=UI_DIST,
+                  description="Continuous improvement: where {assistant} gets it wrong, datasets and model training.",
                   version=SERVICE_VERSION)
 ui.webui(entry="metis.js", api_prefix="/api/metis/",
-         pages=[page("miglioramento", "Miglioramento", element="metis-improvement", icon="chart", order=180,
-                     help="Dove Hestia risponde peggio secondo i tuoi voti, i dataset raccolti e i training LoRA "
-                          "(pianificati nella finestra notturna dell'agenda, in corso, finiti).")])
+         pages=[page("miglioramento", "Improvement", element="metis-improvement", icon="chart", order=180,
+                     help="Where {assistant} answers worst according to your ratings, the collected datasets and the LoRA trainings (planned in the agenda's night window, running, finished).")])
 
 # ── Assistant agenda (Chronos) ────────────────────────────────────────────────
 # Training is heavy (GPU/CPU for hours): non-user requests are planned as agenda
@@ -126,17 +125,15 @@ def _agenda_rules() -> list[dict]:
     # (Chronos owns scheduling; user edits win), so it is neither env nor a Themis setting.
     tz = os.getenv("TZ") or "Europe/Rome"
     return [daily_window(
-        WINDOW_TRAINING, tr("Finestra per allenare i modelli"), 1, 6,
-        description="Training LoRA pianificati (non richiesti da te) partono qui. "
-                    "Sposta/salta la finestra per rimandarli.")] + [
-        job_rule(f"metis.adesso.{at.replace(':', '')}", tr("Idee per «Adesso»"), service="metis",
+        WINDOW_TRAINING, "Window to train the models", 1, 6,
+        description="Planned LoRA trainings (not requested by you) start here. Move/skip the window to postpone them.")] + [
+        job_rule(f"metis.adesso.{at.replace(':', '')}", "Ideas for «Now»", service="metis",
                  path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
-                 description="L'assistente pensa a tre cose utili per le prossime ore (e pulisce i tocchi vecchi).")
+                 description="The assistant thinks of three useful things for the next hours (and cleans old taps).")
         for at in IDEAS_AT] + [
-        job_rule("metis.dataset.review", tr("Rilettura delle risposte per l'allenamento"), service="metis",
+        job_rule("metis.dataset.review", "Review of the answers for training", service="metis",
                  path="/api/metis/review/run", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{REVIEW_AT}:00", tz=tz,
-                 description="Un modello più forte rilegge le risposte del giorno (con i tuoi dati oscurati) e "
-                             "corregge quelle sbagliate; i casi dubbi aspettano te in «Da rivedere».")]
+                 description="A stronger model rereads the day's answers (with your data hidden) and fixes the wrong ones; doubtful cases wait for you in «To review».")]
 
 
 def _load_jobs() -> dict:
@@ -219,7 +216,7 @@ async def _invalid(_, exc: Invalid):
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_, exc: StoreUnavailable):
     from fastapi.responses import JSONResponse
-    return JSONResponse(status_code=503, content={"detail": tr("registro non raggiungibile, riprova")})
+    return JSONResponse(status_code=503, content={"detail": tr("log not reachable, try again")})
 
 
 @app.post("/api/metis/usage")
@@ -268,7 +265,7 @@ def _traces_call(fn, *args):
     except Exception as exc:  # noqa: BLE001 — Archive away
         from fastapi import HTTPException
         logger.warning("[🔄] event=traces_archive_failed fn=%s error=%s", fn.__name__, str(exc)[:200])
-        raise HTTPException(status_code=503, detail=tr("archivio non raggiungibile, riprova"))
+        raise HTTPException(status_code=503, detail=tr("archive not reachable, try again"))
 
 
 @app.post("/api/metis/traces")
@@ -317,21 +314,21 @@ def _review_card(limit: int = 1) -> dict:
     out = review.pending(limit)
     items = out["items"]
     if not items:
-        return {**out, "display": display(tr("Da rivedere"), lines=[tr("Niente da rivedere: le correzioni della notte sono tutte sicure o non ce ne sono.")])}
+        return {**out, "display": display(tr("To review"), lines=[tr("Nothing to review: the night's corrections are all safe or there are none.")])}
     i = items[0]
-    lines = [tr("Tu: {0}", i['user'][:300]), tr("Risposta: {0}", i['answer'][:400])]
+    lines = [tr("You: {0}", i['user'][:300]), tr("Answer: {0}", i['answer'][:400])]
     if i["fixed"]:
-        lines.append(tr("Correzione: {0}", i['fixed'][:400]))
+        lines.append(tr("Correction: {0}", i['fixed'][:400]))
     if i["remove"]:
-        lines.append(tr("Da togliere: ") + ", ".join(t for t in i["remove"] if t))
+        lines.append(tr("To remove: ") + ", ".join(t for t in i["remove"] if t))
     if i["needs_owner"]:
-        lines.append(tr("Il revisore non sa correggerla da solo: scrivi tu la risposta giusta."))
-    acts = [action(tr("Scarta"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
-            action(tr("Correggi io"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
+        lines.append(tr("The reviewer can't fix it by itself: write the right answer yourself."))
+    acts = [action(tr("Discard"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
+            action(tr("I'll fix it"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
     if not i["needs_owner"]:
-        acts.insert(0, action(tr("Accetta"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
+        acts.insert(0, action(tr("Accept"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
                               style="primary"))
-    return {**out, "display": display(tr("Da rivedere"), subtitle=f"motivi: {', '.join(i['reasons']) or '—'}",
+    return {**out, "display": display(tr("To review"), subtitle=tr("reasons: {0}", ', '.join(i['reasons']) or '—'),
                                       lines=lines, actions=acts)}
 
 
@@ -355,15 +352,15 @@ def metis_export_b64(export_id: str):
         return _traces_call(exporter.file_b64, export_id)
     except KeyError:
         from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=tr("esportazione non trovata"))
+        raise HTTPException(status_code=404, detail=tr("export not found"))
 
 
 def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> dict:
     out = exporter.build(not in_chiaro, include_unreviewed)
-    lines = [tr("{0} esempi per l'allenamento, {1} per la prova, {2} coppie corretta/originale", out['sft'], out['eval'], out['dpo']),
-             tr("{0} turni lasciati fuori (non riletti, scartati o in attesa)", out['skipped']),
-             "Nomi e contatti oscurati" if out["masked"] else tr("Dati in chiaro: non condividere il file")]
-    return {**out, "display": display(tr("Dataset esportato"), subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
+    lines = [tr("{0} examples for training, {1} for testing, {2} corrected/original pairs", out['sft'], out['eval'], out['dpo']),
+             tr("{0} turns left out (not reviewed, discarded or waiting)", out['skipped']),
+             tr("Names and contacts masked") if out["masked"] else tr("Data in clear: don't share the file")]
+    return {**out, "display": display(tr("Dataset exported"), subtitle=f"{max(1, out['size'] // 1024)} KB · JSONL",
                                       lines=lines, files=[file(out["blob_id"], out["name"], "application/zip")])}
 
 
@@ -377,7 +374,7 @@ def _adesso_card(client: str = "telegram") -> dict:
     out = usage.adesso(client if client in CLIENTS else "telegram")
     items = out["items"]
     return {**out, "display": display(
-        tr("Adesso"), lines=[] if items else [tr("Ancora niente da suggerire: più usi Hestia, più impara cosa ti serve.")],
+        tr("Now"), lines=[] if items else [tr("Nothing to suggest yet: the more you use me, the more I learn what you need.")],
         items=[item(i["title"], [i["reason"]]) for i in items],
         actions=[action(i["title"], i["tool"], i["args"] or None) for i in items])}
 
@@ -386,8 +383,8 @@ def _scopri_card(client: str = "telegram") -> dict:
     out = usage.scopri(client if client in CLIENTS else "telegram", limit=8)
     items = out["items"]
     return {**out, "display": display(
-        tr("Scopri"), subtitle=f"{out['total']} funzioni poco usate su {out['tools']}",
-        lines=[] if items else [tr("Hai già provato tutto.")],
+        tr("Discover"), subtitle=tr("{0} little-used functions out of {1}", out['total'], out['tools']),
+        lines=[] if items else [tr("You've already tried everything.")],
         items=[item(i["title"], [i["description"][:90], i["reason"]]) for i in items],
         actions=[action(i["title"], i["tool"]) for i in items[:6]])}
 
@@ -560,13 +557,13 @@ try:
                 # the key that is completing); it fires with schedule=window so the checks run again.
                 agenda_key = f"metis.train.{job_id}.{int(time.time())}"
                 planned = agenda.plan(
-                    agenda_key, tr("Allena il modello: {0}", ds_name or '?'), start_at,
+                    agenda_key, tr("Train the model: {0}", ds_name or '?'), start_at,
                     action={"service": "metis", "path": "/api/metis/lora/train", "method": "POST",
                             "body": {"dataset_name": ds_name, "base_model": base_model,
                                      "adapter_name": adapter_name, "schedule": "window",
                                      "requested_by": requested_by, "job_id": job_id},
                             "timeout_seconds": 60},
-                    description=f"Richiesto da {requested_by}. Annulla o sposta dall'agenda di Hestia.",
+                    description=tr("Requested by {0}. Cancel or move it from {assistant}'s agenda.", requested_by),
                     params={"dataset_name": ds_name, "job_id": job_id})
                 _save_job({"job_id": job_id, "status": "scheduled", "dataset_name": ds_name,
                            "requested_by": requested_by, "start_at": start_at,
@@ -574,8 +571,8 @@ try:
                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S")})
                 return {"status": "scheduled" if planned else "schedule_failed", "job_id": job_id,
                         "start_at": start_at, "agenda_key": agenda_key,
-                        "message": tr("Training pianificato nella finestra notturna dell'agenda di Hestia.")
-                        if planned else tr("Agenda non raggiungibile: riprova o usa schedule=now.")}
+                        "message": tr("Training scheduled in the night window of {assistant}'s agenda.")
+                        if planned else tr("Agenda not reachable: try again or use schedule=now.")}
         examples = dataset_builder.get_dataset_examples(ds_name)
 
         if not examples:
@@ -685,7 +682,7 @@ try:
                 "required": ["name"],
             },
             handler=_metis_dataset_build_handler,
-            title="Crea dataset",
+            title="Create dataset",
             method="POST",
             path="/api/metis/dataset/build",
             clients=["telegram", "ui"],
@@ -716,7 +713,7 @@ try:
                 "required": ["name"],
             },
             handler=_metis_dataset_export_handler,
-            title="Esporta dataset",
+            title="Export dataset",
             method="GET",
             path="/api/metis/dataset/export",
             clients=["telegram", "ui"],
@@ -738,7 +735,7 @@ try:
                 "required": [],
             },
             handler=_metis_dataset_status_handler,
-            title="Stato dataset",
+            title="Dataset status",
             method="GET",
             path="/api/metis/dataset/status",
             clients=["telegram", "ui"],
@@ -773,7 +770,7 @@ try:
                 "required": ["candidate_model", "dataset_name"],
             },
             handler=_metis_benchmark_run_handler,
-            title="Esegui benchmark",
+            title="Run benchmark",
             method="POST",
             path="/api/metis/benchmark/run",
             clients=["telegram", "ui"],
@@ -813,7 +810,7 @@ try:
                 "required": ["dataset_name", "adapter_name"],
             },
             handler=_metis_loRA_train_handler,
-            title="Avvia training LoRA",
+            title="Start LoRA training",
             method="POST",
             path="/api/metis/lora/train",
             clients=["telegram", "ui"],
@@ -827,11 +824,10 @@ try:
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_rivedi",
-            description=("The nightly corrections of answers waiting for the user before entering the training dataset: "
-                         "original answer, correction, Accetta / Scarta / Correggi io."),
+            description=("The nightly corrections of answers waiting for the user before entering the training dataset: original answer, correction, Accept / Discard / I correct it."),
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: _traces_call(_review_card),
-            title="Da rivedere", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
+            title="To review", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
             response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
             telegram={"section": "Dataset e training"}),
         MCPTool(
@@ -846,7 +842,7 @@ try:
             handler=lambda trace_id="", decision="", answer="": {
                 **_traces_call(review.decide, trace_id, decision, answer),
                 "next": _traces_call(_review_card).get("display")},
-            title="Decidi una correzione", method="POST", path="/api/metis/tools/rivedi_decidi",
+            title="Decide a fix", method="POST", path="/api/metis/tools/rivedi_decidi",
             clients=["telegram", "ui"], response_mode="raw_json", telegram_group="sviluppo",
             telegram={"section": "Dataset e training"}),
         MCPTool(
@@ -861,9 +857,9 @@ try:
                 "required": []},
             handler=lambda in_chiaro=False, include_unreviewed=False: _traces_call(
                 _export_card, bool(in_chiaro), bool(include_unreviewed)),
-            title="Esporta il dataset", method="POST", path="/api/metis/tools/dataset_esporta",
+            title="Export the dataset", method="POST", path="/api/metis/tools/dataset_esporta",
             clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
-            telegram={"section": "Dataset e training", "label": "Esporta"}),
+            telegram={"section": "Dataset e training", "label": "Export"}),
         MCPTool(
             name="metis_adesso",
             description=("What the user needs now: actions they usually use at this hour, those in the agenda in the next "
@@ -872,9 +868,9 @@ try:
                 "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
             handler=lambda client="telegram": _adesso_card(client),
-            title="Adesso", method="GET", path="/api/metis/tools/adesso", clients=["telegram", "ui"],
+            title="Now", method="GET", path="/api/metis/tools/adesso", clients=["telegram", "ui"],
             response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
-            telegram={"section": "Adesso", "primary": 1}),
+            telegram={"section": "Now", "primary": 1}),
         MCPTool(
             name="metis_scopri",
             description=("Functions of the assistant the user never or hardly used, with what they do and a button to try "
@@ -883,9 +879,9 @@ try:
                 "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
             handler=lambda client="telegram": _scopri_card(client),
-            title="Scopri", method="GET", path="/api/metis/tools/scopri", clients=["telegram", "ui"],
+            title="Discover", method="GET", path="/api/metis/tools/scopri", clients=["telegram", "ui"],
             response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
-            telegram={"section": "Scopri"}),
+            telegram={"section": "Discover"}),
     ]
 
     app.include_router(
@@ -929,11 +925,10 @@ _HUB_REGISTRATION_PAYLOAD = {
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
-        **llm_capabilities([usecase(IDEAS_USE, "Adesso · idee", chain="veloce",
-                                    help="Tre azioni utili per le prossime ore, diverse dalle abitudini."),
-                            usecase(REVIEW_USE, "Revisione del dataset", chain="cloud", thinking="true",
-                                    help="Di notte rilegge le risposte e corregge quelle sbagliate. Scegli un modello "
-                                         "più forte di quello locale: i tuoi dati personali vengono oscurati.")]),
+        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="veloce",
+                                    help="Three useful actions for the next hours, different from the habits."),
+                            usecase(REVIEW_USE, "Dataset review", chain="cloud", thinking="true",
+                                    help="At night it rereads the answers and fixes the wrong ones. Choose a model stronger than the local one: your personal data is hidden.")]),
     },
 }
 

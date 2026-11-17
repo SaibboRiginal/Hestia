@@ -121,7 +121,7 @@ def test_sends_what_oracle_wrote_through_hermes_and_keeps_it(monkeypatch):
     by = {c[0]: c for c in calls}
     assert by["oracle"][1] == "api/chat/opener"
     assert by["oracle"][2]["reasons"] == ["How they feel today: giù, energy 2/5 (because of lavoro)",
-                                          "Allenamento: Nessun allenamento da 9 giorni",
+                                          "Training: Nessun allenamento da 9 giorni",
                                           "You two have not talked for about 30 hours"]
     event = by["hermes"][2]
     assert event["event_type"] == "service.action_required" and event["payload"]["kind"] == KIND

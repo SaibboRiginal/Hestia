@@ -7,7 +7,7 @@ from .catalog import MUSCLE_GROUPS
 from .records import Data, is_hard, local_date, period_next, period_start
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
-PER_LABEL = {"day": "oggi", "week": "questa settimana", "month": "questo mese"}
+PER_LABEL = {"day": "oggi", "week": "this week", "month": "this month"}
 
 
 def _counts(data: Data, goal: dict, sessions: list[dict]) -> int:
@@ -71,12 +71,12 @@ def progress(data: Data, goal: dict, tz, week_start: int = 0, today: date | None
 def label(goal: dict, data: Data | None = None, templates: dict | None = None) -> str:
     if goal.get("label"):
         return goal["label"]
-    per = {"day": "al giorno", "week": "a settimana", "month": "al mese"}.get(goal.get("per") or "week", "")
+    per = {"day": tr("per day"), "week": tr("per week"), "month": tr("per month")}.get(goal.get("per") or "week", "")
     times = goal.get("times") or 1
     scope = goal.get("scope") or "any"
     if scope == "any":
-        return tr("Allenamento {0} {1} {2}", times, 'volta' if times == 1 else 'volte', per)
+        return (tr("Workout once {0}", per) if times == 1 else tr("Workout {0} times {1}", times, per))
     if scope == "muscle":
         return f"{(goal.get('target_id') or '').capitalize()} {times} {per}"
-    name = (templates or {}).get(goal.get("target_id"), {}).get("name") or tr("Scheda")
+    name = (templates or {}).get(goal.get("target_id"), {}).get("name") or tr("Workout plan")
     return f"{name} {times} {per}"

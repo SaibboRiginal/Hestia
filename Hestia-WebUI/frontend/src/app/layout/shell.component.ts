@@ -32,10 +32,10 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
 interface Crumb { label: string; link?: string; }
 /** Pages of the app that belong to «Sistema» next to the system modules' own pages. */
 const SYSTEM_PAGES = [
-  { id: 'app.sistema', label: tr('Panoramica'), icon: 'grid', link: '/sistema' },
-  { id: 'app.aggiornamenti', label: tr('Aggiornamenti'), icon: 'refresh', link: '/aggiornamenti' },
-  { id: 'app.macchine', label: tr('Macchine'), icon: 'host', link: '/macchine' },
-  { id: 'app.download', label: tr('Download'), icon: 'download', link: '/download' },
+  { id: 'app.sistema', label: tr('Overview'), icon: 'grid', link: '/sistema' },
+  { id: 'app.aggiornamenti', label: tr('Updates'), icon: 'refresh', link: '/aggiornamenti' },
+  { id: 'app.macchine', label: tr('Machines'), icon: 'host', link: '/macchine' },
+  { id: 'app.download', label: tr('alt::Download'), icon: 'download', link: '/download' },
 ];
 /** Sections whose pages show «Sezione › Pagina» above the page. */
 const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
@@ -59,12 +59,12 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             <path d="M12 7.2 16.8 12 12 16.8 7.2 12Z" fill="currentColor" />
           </svg>
           <span class="name">Hestia</span>
-          @if (!plugins.online()) { <span class="offline"  [title]="'Sei offline: i moduli mostrano gli ultimi dati salvati' | tr"><hx-icon name="offline" [size]="14" />{{ "offline" | tr }}</span> }
+          @if (!plugins.online()) { <span class="offline"  [title]="'You are offline: the modules show the last saved data' | tr"><hx-icon name="offline" [size]="14" />{{ "offline" | tr }}</span> }
           <a class="icon-btn bell" routerLink="/notifications" (click)="mobileOpen.set(false)" [attr.aria-label]="bellLabel()" [attr.title]="bellLabel()">
             <hx-icon name="bell" [size]="17" />
             @if (notifications.badge(); as n) { <b class="dot">{{ n > 99 ? '99+' : n }}</b> }
           </a>
-          <button class="icon-btn collapse" (click)="toggleCollapse()" [attr.aria-label]="collapsed() ? ('Espandi' | tr) : ('Comprimi' | tr)">
+          <button class="icon-btn collapse" (click)="toggleCollapse()" [attr.aria-label]="collapsed() ? ('Expand' | tr) : ('Collapse' | tr)">
             <hx-icon name="sidebar" [size]="17" />
           </button>
         </div>
@@ -72,8 +72,8 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
           <a class="item" routerLink="/chat" routerLinkActive="active" (click)="mobileOpen.set(false)"  [title]="'Chat' | tr">
             <hx-icon name="chat" [size]="18" /><span>{{ "Chat" | tr }}</span>
           </a>
-          <button class="item" (click)="openSearch(); mobileOpen.set(false)"  [title]="'Cerca azioni, pagine, impostazioni (Ctrl+K)' | tr">
-            <hx-icon name="search" [size]="18" /><span>{{ "Cerca" | tr }}</span><kbd>{{ "Ctrl K" | tr }}</kbd>
+          <button class="item" (click)="openSearch(); mobileOpen.set(false)"  [title]="'Search actions, pages, settings (Ctrl+K)' | tr">
+            <hx-icon name="search" [size]="18" /><span>{{ "Search" | tr }}</span><kbd>{{ "Ctrl K" | tr }}</kbd>
           </button>
         </div>
         <!-- One scroll area between the fixed top and bottom (A5): sections, collapsible, with pinned entries first. -->
@@ -81,13 +81,13 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
           @for (sec of view(); track sec.key) {
             @if (sec.key === 'dashboards') {
               <button type="button" class="sect" (click)="plugins.toggleNavSection('chats')" [attr.aria-expanded]="!isSectionClosed('chats')">
-                <span>{{ "Conversazioni" | tr }}</span><hx-icon [name]="isSectionClosed('chats') ? 'chevron-right' : 'chevron-down'" [size]="13" />
+                <span>{{ "Conversations" | tr }}</span><hx-icon [name]="isSectionClosed('chats') ? 'chevron-right' : 'chevron-down'" [size]="13" />
               </button>
               @if (!isSectionClosed('chats') || collapsed()) {
                 <nav>
                   @for (c of chats.recent(); track c.session_id) {
                     @if (renaming() === c.session_id) {
-                      <input #ri class="hx-input ren" [value]="c.title"  [attr.aria-label]="'Titolo della conversazione' | tr"
+                      <input #ri class="hx-input ren" [value]="c.title"  [attr.aria-label]="'Conversation title' | tr"
                              (keydown.enter)="rename(c, ri.value)" (keydown.escape)="renaming.set('')" (blur)="rename(c, ri.value)">
                     } @else {
                       <div class="row">
@@ -96,12 +96,12 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
                           @if (c.tags.length) { <i class="tdot" [style.background]="tagCss(c.tags[0].color)"></i> }
                         </button>
                         <button type="button" class="pin" (click)="openChatMenu($event, c)" aria-haspopup="menu"
-                                 [attr.aria-label]="'Altro: rinomina, fissa, elimina' | tr"  [title]="'Altro' | tr"><hx-icon name="more" [size]="14" /></button>
+                                 [attr.aria-label]="'More: rename, pin, delete' | tr"  [title]="'Other' | tr"><hx-icon name="more" [size]="14" /></button>
                       </div>
                     }
                   }
-                  <button class="item chat all" [class.active]="chats.historyOpen()" (click)="chats.historyOpen.set(!chats.historyOpen()); mobileOpen.set(false)"  [title]="'Tutte le conversazioni, con ricerca ed etichette' | tr">
-                    <hx-icon name="history" [size]="16" /><span>{{ "Tutte le conversazioni" | tr }}</span>
+                  <button class="item chat all" [class.active]="chats.historyOpen()" (click)="chats.historyOpen.set(!chats.historyOpen()); mobileOpen.set(false)"  [title]="'All conversations, with search and labels' | tr">
+                    <hx-icon name="history" [size]="16" /><span>{{ "All conversations" | tr }}</span>
                   </button>
                 </nav>
               }
@@ -119,18 +119,18 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
                          (dragstart)="dragStart(e.id, sec.key)" (dragover)="dragOver($event, e.id, sec.key)"
                          (drop)="drop($event)" (dragend)="dragId.set(null)">
                       <a class="item" [class.child]="e.child" [class.off]="!e.online" [class.within]="e.within" [class.kids]="e.kids" [routerLink]="e.link" routerLinkActive="active"
-                         (click)="mobileOpen.set(false)" [attr.title]="e.online ? e.label : e.label + (' (non raggiungibile)' | tr)">
+                         (click)="mobileOpen.set(false)" [attr.title]="e.online ? e.label : e.label + (' (not reachable)' | tr)">
                         <hx-icon [name]="e.icon" [size]="e.child ? 16 : 18" /><span>{{ e.label }}</span>
                         @if (e.badge) { <b class="count">{{ e.badge > 99 ? '99+' : e.badge }}</b> }
                       </a>
                       @if (e.kids) {
                         <button type="button" class="fold" (click)="plugins.toggleNavSection('m:' + e.id)" [attr.aria-expanded]="e.open"
-                                [attr.aria-label]="(e.open ? ('Chiudi le pagine di ' | tr) : ('Apri le pagine di ' | tr)) + e.label" [attr.title]="e.open ? ('Chiudi' | tr) : ('Apri' | tr)">
+                                [attr.aria-label]="(e.open ? ('Close the pages of ' | tr) : ('Open the pages of ' | tr)) + e.label" [attr.title]="e.open ? ('Close' | tr) : ('Open' | tr)">
                           <hx-icon [name]="e.open ? 'chevron-down' : 'chevron-right'" [size]="13" /></button>
                       }
                       <button type="button" class="pin" [class.on]="sec.key === 'pinned'" (click)="plugins.toggleNavPin(e.id)"
-                              [attr.aria-label]="sec.key === 'pinned' ? ('Togli da Fissati' | tr) : ('Fissa in cima' | tr)"
-                              [attr.title]="sec.key === 'pinned' ? ('Togli da Fissati' | tr) : ('Fissa in cima' | tr)">
+                              [attr.aria-label]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)"
+                              [attr.title]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)">
                         <hx-icon name="pin" [size]="14" />
                       </button>
                     </div>
@@ -147,34 +147,34 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             </a>
           }
           @if (!auth.local()) {
-            <button class="item" (click)="logout()"  [title]="'Esci' | tr">
-              <hx-icon name="logout" [size]="18" /><span>{{ "Esci" | tr }}</span>
+            <button class="item" (click)="logout()"  [title]="'Log out' | tr">
+              <hx-icon name="logout" [size]="18" /><span>{{ "Log out" | tr }}</span>
             </button>
           }
         </nav>
         @if (presence.state(); as p) {
           <div class="presence-wrap">
             <button class="item presence" [attr.data-tone]="online() ? presence.tone() : 'off'" (click)="togglePresence($event)"
-                    [attr.title]="'Stato: ' + p.label + ' · ' + connLabel() + (' · ultima interazione ' | tr) + ago(p.idle_minutes)"
+                    [attr.title]="('Status:' | tr) + ' ' + p.label + ' · ' + connLabel() + (' · last interaction ' | tr) + ago(p.idle_minutes)"
                     [attr.aria-expanded]="presenceOpen()">
               <span class="pdot"></span><span class="plabel">{{ online() ? p.label : connLabel() }}</span>
             </button>
             @if (presenceOpen()) {
-              <div class="presence-pop" role="dialog"  [attr.aria-label]="'Stato dell\\'assistente' | tr"
+              <div class="presence-pop" role="dialog"  [attr.aria-label]="'Assistant status' | tr"
                    [style.left.px]="presencePos().left" [style.bottom.px]="presencePos().bottom"
                    [style.max-height.px]="presencePos().maxHeight">
                 <div class="ptitle"><hx-icon [name]="presence.icon().name" [tone]="presence.icon().tone" [size]="15" />{{ p.label }}</div>
                 @if (p.help) { <div class="pline">{{ p.help }}</div> }
-                <div class="pline dim">Sito: {{ connLabel() }}</div>
-                <div class="pline dim">{{ "Ultima interazione:" | tr }} {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
-                @if (p.dnd_until) { <div class="pline">{{ "Non disturbare fino alle" | tr }} {{ p.dnd_until | date:'HH:mm' }}</div> }
+                <div class="pline dim">{{ 'Site:' | tr }} {{ connLabel() }}</div>
+                <div class="pline dim">{{ "Last interaction:" | tr }} {{ ago(p.idle_minutes) }}{{ p.last_interaction_client ? ' (' + p.last_interaction_client + ')' : '' }}</div>
+                @if (p.dnd_until) { <div class="pline">{{ "Do not disturb until" | tr }} {{ p.dnd_until | date:'HH:mm' }}</div> }
                 @for (a of p.activities; track a.key) { <div class="pline">• {{ a.label || a.key }}</div> }
                 <div class="ptabs">
-                  <button type="button" [class.on]="presenceTab() === 'effects'" (click)="presenceTab.set('effects')">{{ "Cosa cambia" | tr }}</button>
-                  <button type="button" [class.on]="presenceTab() === 'history'" (click)="openPresenceHistory()">{{ "Storico" | tr }}</button>
+                  <button type="button" [class.on]="presenceTab() === 'effects'" (click)="presenceTab.set('effects')">{{ "What changes" | tr }}</button>
+                  <button type="button" [class.on]="presenceTab() === 'history'" (click)="openPresenceHistory()">{{ "History" | tr }}</button>
                 </div>
                 @if (presenceTab() === 'effects') {
-                  <div class="pnote">{{ "Lo stato decide cosa può fare il sistema in quel momento:" | tr }}</div>
+                  <div class="pnote">{{ "The state decides what the system can do at that moment:" | tr }}</div>
                   @for (e of presence.effects(); track e) { <div class="pline">• {{ e }}</div> }
                 } @else {
                   <div class="phist">
@@ -183,17 +183,17 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
                         <span class="ht">{{ h.at | date:'dd/MM HH:mm' }}</span>
                         <span class="hl">{{ h.label }}@if (reasonLabel(h.reason)) {<span class="hr"> · {{ reasonLabel(h.reason) }}</span>}</span>
                       </div>
-                    } @empty { <div class="pline dim">{{ presence.history() === null ? 'Carico…' : ('Nessun cambio registrato.' | tr) }}</div> }
+                    } @empty { <div class="pline dim">{{ presence.history() === null ? 'Carico…' : ('No change recorded.' | tr) }}</div> }
                   </div>
                 }
                 <div class="pactions">
                   @if (p.base === 'dnd') {
-                    <button hx-btn variant="secondary" size="sm" icon="bell" [loading]="presence.busy()" (click)="presence.dnd(false)">{{ "Disattiva" | tr }}</button>
+                    <button hx-btn variant="secondary" size="sm" icon="bell" [loading]="presence.busy()" (click)="presence.dnd(false)">{{ "alt::Turn off" | tr }}</button>
                   } @else {
                     <button hx-btn variant="secondary" size="sm" icon="bell-off" [loading]="presence.busy()" (click)="presence.dnd(true)"
-                            [attr.title]="dndHint(p)">{{ "Non disturbare" | tr }}</button>
+                            [attr.title]="dndHint(p)">{{ "Do not disturb" | tr }}</button>
                   }
-                  <a hx-btn variant="ghost" size="sm" routerLink="/settings" (click)="presenceOpen.set(false)">{{ "Impostazioni" | tr }}</a>
+                  <a hx-btn variant="ghost" size="sm" routerLink="/settings" (click)="presenceOpen.set(false)">{{ "Settings" | tr }}</a>
                 </div>
                 @if (p.base !== 'dnd') { <div class="pnote">{{ dndHint(p) }}</div> }
               </div>
@@ -213,7 +213,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
           <hx-icon name="menu" />@if (notifications.badge(); as n) { <b class="dot">{{ n > 99 ? '99+' : n }}</b> }
         </button>
         @if (crumbs().length) {
-          <nav class="crumbs"  [attr.aria-label]="'Dove sei' | tr">
+          <nav class="crumbs"  [attr.aria-label]="'Where you are' | tr">
             @for (c of crumbs(); track $index) {
               @if ($index) { <hx-icon name="chevron-right" [size]="12" /> }
               @if (c.link && !$last) { <a [routerLink]="c.link">{{ c.label }}</a> } @else { <span [class.cur]="$last">{{ c.label }}</span> }
@@ -226,9 +226,9 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
     @if (chatMenu(); as m) {
       <div class="hx-ctx-scrim" (click)="chatMenu.set(null)"></div>
       <div class="hx-ctx hx-fade-in" role="menu" [style.left.px]="m.x" [style.top.px]="m.y">
-        <button type="button" role="menuitem" (click)="startRename(m.chat)"><hx-icon name="edit" [size]="16" />{{ "Rinomina" | tr }}</button>
-        <button type="button" role="menuitem" (click)="pinChat(m.chat)"><hx-icon name="pin" [size]="16" />{{ m.chat.pinned ? ('Togli da fissate' | tr) : ('Fissa in cima' | tr) }}</button>
-        <button type="button" role="menuitem" class="danger" (click)="deleteChat(m.chat)"><hx-icon name="trash" [size]="16" />{{ "Elimina" | tr }}</button>
+        <button type="button" role="menuitem" (click)="startRename(m.chat)"><hx-icon name="edit" [size]="16" />{{ "Rename" | tr }}</button>
+        <button type="button" role="menuitem" (click)="pinChat(m.chat)"><hx-icon name="pin" [size]="16" />{{ m.chat.pinned ? ('Remove from pinned' | tr) : ('Pin to the top' | tr) }}</button>
+        <button type="button" role="menuitem" class="danger" (click)="deleteChat(m.chat)"><hx-icon name="trash" [size]="16" />{{ "Delete" | tr }}</button>
       </div>
     }
     <hx-quick-bubble />
@@ -405,11 +405,11 @@ export class ShellComponent {
     });
     const rest = (list: NavEntry[]) => list.filter(e => !taken.has(e.id));
     return [
-      { key: 'app', label: tr('Generale'), items: rest(app) },
-      { key: 'pinned', label: tr('Fissati'), items: pinned },
+      { key: 'app', label: tr('General'), items: rest(app) },
+      { key: 'pinned', label: tr('pl::Pinned'), items: pinned },
       { key: 'dashboards', label: tr('Dashboard'), items: rest(dash) },
-      { key: 'modules', label: tr('Moduli'), items: rest(mods) },
-      { key: 'system', label: tr('Sistema'), items: rest(system) },
+      { key: 'modules', label: tr('Modules'), items: rest(mods) },
+      { key: 'system', label: tr('System'), items: rest(system) },
     ];
   });
 
@@ -457,7 +457,7 @@ export class ShellComponent {
 
   readonly bellLabel = computed(() => {
     const n = this.notifications.badge();
-    return n ? tr("Notifiche: {0} da leggere", n) : tr('Notifiche');
+    return n ? tr("Notifications: {0} to read", n) : tr('Notifications');
   });
 
   /** «…» on a conversation: rename, pin, delete. Drawn outside the sidebar, which clips what overflows it. */
@@ -478,11 +478,11 @@ export class ShellComponent {
     this.renaming.set('');
     const t = title.trim();
     if (!t || t === c.title) return;
-    if (!(await this.chats.setMeta(c.session_id, { title: t })).ok) this.toasts.error('Non salvato');
+    if (!(await this.chats.setMeta(c.session_id, { title: t })).ok) this.toasts.error(tr('Not saved'));
   }
   async pinChat(c: ChatSummary): Promise<void> {
     this.chatMenu.set(null);
-    if (!(await this.chats.setMeta(c.session_id, { pinned: !c.pinned })).ok) this.toasts.error('Non salvato');
+    if (!(await this.chats.setMeta(c.session_id, { pinned: !c.pinned })).ok) this.toasts.error(tr('Not saved'));
   }
   deleteChat(c: ChatSummary): void {
     this.chatMenu.set(null);
@@ -545,7 +545,7 @@ export class ShellComponent {
   dndHint(p: PresenceState): string {
     const m = p.dnd_minutes ?? 120;
     const d = m % 60 === 0 ? `${m / 60} ${m === 60 ? 'ora' : 'ore'}` : `${m} min`;
-    return tr("«Non disturbare»: per {0} ti arrivano solo le notifiche urgenti; le altre le ricevi in un riepilogo quando finisce.", d);
+    return tr("«Do not disturb»: for {0} you get only urgent notifications; you receive the others in a summary when it ends.", d);
   }
   readonly ago = ago;
   session = inject(SessionService);
@@ -562,7 +562,7 @@ export class ShellComponent {
   navWidth = signal(savedWidth('nav', 248));
   mobileOpen = signal(false);
   online = computed(() => this.signalR.connectionState() === 'connected');
-  connLabel = computed(() => ({ connected: tr('Connesso'), connecting: 'Connessione…', disconnected: tr('Disconnesso') })[this.signalR.connectionState()]);
+  connLabel = computed(() => ({ connected: tr('Connected'), connecting: tr('Connecting…'), disconnected: tr('Disconnected') })[this.signalR.connectionState()]);
   private bootstrapped = false;
 
   constructor() {

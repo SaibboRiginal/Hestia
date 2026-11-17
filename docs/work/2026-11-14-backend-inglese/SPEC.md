@@ -2,7 +2,7 @@
 
 | Version | Source | Status |
 |---|---|---|
-| 1.3 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese») | phase 1, 2a (Telegram), 2b (settings, tools), 2c (module texts), 2d (WebUI and plugins) done |
+| 2.0 | user via external chat (Marko, 2026-11-14: «utente lingua che usa, backend tutto inglese»; 2026-11-16: «togli tutto l'italiano!! e devono usare tutti la lingua!!») | phases 1, 2a–2d and 3 (English source, Italian only in the catalog) done |
 
 ## Goal
 Every text the model reads is English; every fixed text a person reads comes from translation files in the
@@ -44,7 +44,8 @@ what the assistant writes on its own follows the language setting (dossier `2026
   loads before any bundle, so module-level constants of the shell and of every plugin are translated too.
   Angular: `tr()` and the pipe `{{ 'Testo' | tr }}` (`core/i18n.ts`); plugins: `tr` of `@hestia/webui-sdk`.
   Saving «Lingua» (set, reset, undo) reloads the page. Technical strings (SVG paths, CSS) are never wrapped.
-- German, French and Spanish catalogs (until then they show English).
+- Languages: Italian and English only (Marko 2026-11-16); German, French and Spanish removed from «Lingua».
+  The standard for every module is `docs/LANGUAGES.md`, enforced by `tools/governance/check_i18n.py`.
 
 ## Acceptance criteria
 - No Italian sentence in a prompt, tool description, parameter description or `response_prompt`.
@@ -61,3 +62,22 @@ what the assistant writes on its own follows the language setting (dossier `2026
   the owner's words, not a prompt.
 - Routine instructions are the owner's own text and stay in the owner's language; the wrapper is English and
   says to answer in the instruction's language.
+
+## Phase 3 (v2.0, 2026-11-16): no Italian in the code
+Marko: «togli tutto l'italiano!! e devono usare tutti la lingua!!».
+- The source flips: every `tr` text in Python, WebUI and plugins is English; the one catalog becomes
+  `locales/it/messages.json` (English → Italian); `locales/en/messages.json` is gone. `i18n.SOURCE = "en"`.
+- Labels declared at import/registration (manifests, capabilities, `llm_usecases`, agenda rules, settings, areas,
+  module labels, catalogs) are plain English, never `tr` (it froze the language at startup); `i18n.localize`
+  (WebUI interceptor, Telegram) and `settings_client.translated` translate them at the edge.
+- Every module follows «Lingua»: Iris and Atlas too (`SettingsClient(...).follow_personal()`).
+- Dates and numbers: `locale()` in the SDK and the WebUI (no `'it-IT'` literal), `i18n.month_name/weekday_name`,
+  `display.money` by language; SDK `plural` translates both forms.
+- Context tags (`pl::`, `f::`, `abbr::`, `mood::`…) when one English word needs two Italian ones.
+- Stays Italian on purpose: stored ids/values, parsers of the owner's words, tool names (`cibo_*`, `casa_*`,
+  `scadenze_*`: renaming them goes with the tool merges, his decision).
+
+### Acceptance (phase 3)
+- `check_i18n.py`: every text has its Italian; all module suites green (Echo: only `langdetect` missing here).
+- Angular build and `tsc` of the SDK and every plugin clean.
+- `docs/LANGUAGES.md` rewritten for the English source.

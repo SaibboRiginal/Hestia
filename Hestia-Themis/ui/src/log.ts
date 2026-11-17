@@ -4,36 +4,36 @@
  * key (the same as «Annulla ultima» in Impostazioni); proposals still wait for your Approva / Rifiuta.
  * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/settings';
 const WHO_FILTERS = [
-  { id: '', label: tr('Tutti') }, { id: 'user,webui,telegram', label: 'Tu' }, { id: 'athena', label: 'Athena' },
-  { id: 'oracle', label: 'Oracle' }, { id: 'external', label: tr('AI esterne') },
+  { id: '', label: tr('pl::All') }, { id: 'user,webui,telegram', label: 'Tu' }, { id: 'athena', label: 'Athena' },
+  { id: 'oracle', label: 'Oracle' }, { id: 'external', label: tr('External AIs') },
 ];
-const KIND: Record<string, string> = { undo: 'annullata', reset: 'predefinito', approved: 'proposta approvata', preset: 'preset' };
+const KIND: Record<string, string> = { undo: tr('f::undone'), reset: tr('default'), approved: tr('proposal approved'), preset: 'preset' };
 const PROPOSAL: Record<string, { text: string; tone: string }> = {
-  pending: { text: tr('in attesa'), tone: 'accent' }, approved: { text: 'approvata', tone: 'success' },
-  rejected: { text: 'rifiutata', tone: 'danger' }, expired: { text: 'scaduta', tone: 'neutral' },
+  pending: { text: tr('waiting'), tone: 'accent' }, approved: { text: tr('f::approved'), tone: 'success' },
+  rejected: { text: tr('f::rejected'), tone: 'danger' }, expired: { text: tr('f::expired'), tone: 'neutral' },
 };
-const SCOPE: Record<string, string> = { client: 'client', profile: 'profilo', session: 'sessione' };
+const SCOPE: Record<string, string> = { client: 'client', profile: tr('profile'), session: tr('session') };
 
 export function who(actor?: string | null): string {
   const a = String(actor || '');
   if (!a) return '–';
-  if (a.startsWith('external:')) return `${a.slice(9)} (AI esterna)`;
-  return ({ user: 'Tu', webui: tr('Tu (WebUI)'), telegram: tr('Tu (Telegram)'), oracle: tr('Oracle (chat)'), athena: 'Athena',
-            themis: 'Themis', cascade: 'automatico' } as Record<string, string>)[a] || a;
+  if (a.startsWith('external:')) return tr('{0} (external AI)', a.slice(9));
+  return ({ user: 'Tu', webui: tr('You (WebUI)'), telegram: tr('You (Telegram)'), oracle: tr('Oracle (chat)'), athena: 'Athena',
+            themis: tr('settings'), cascade: tr('automatic') } as Record<string, string>)[a] || a;
 }
 
 function when(iso?: string | null): string {
   if (!iso) return '–';
-  return new Date(iso).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function val(v: unknown): string {
-  if (v === null || v === undefined) return 'predefinito';
-  if (typeof v === 'boolean') return v ? tr('sì') : 'no';
+  if (v === null || v === undefined) return tr('default');
+  if (typeof v === 'boolean') return v ? tr('yes') : 'no';
   const s = typeof v === 'string' ? v : JSON.stringify(v);
   return s.length > 60 ? s.slice(0, 59) + '…' : s || '""';
 }
@@ -74,7 +74,7 @@ export class ThemisLog extends HestiaElement {
     this.addEventListener('retry', () => this.load());
   }
 
-  private fail(r: any) { this.error = r.status === 0 ? tr('Themis non raggiungibile') : r.error || tr('Themis non raggiungibile'); }
+  private fail(r: any) { this.error = r.status === 0 ? tr('Themis unreachable') : r.error || tr('Themis unreachable'); }
 
   private async load() {
     const [h, p] = await Promise.all([this.loadChanges(0), this.host.api('GET', `${API}/proposals`, { query: { status: 'all' } })]);
@@ -93,7 +93,7 @@ export class ThemisLog extends HestiaElement {
     if (this.module) query.module = this.module;
     const r = await this.host.api('GET', `${API}/history`, { query });
     if (!r.ok) {
-      if (offset) { this.host.toast(r.error || tr('Non caricato'), 'danger'); return false; }
+      if (offset) { this.host.toast(r.error || tr('Not uploaded'), 'danger'); return false; }
       this.fail(r); return false;
     }
     this.error = '';
@@ -105,15 +105,15 @@ export class ThemisLog extends HestiaElement {
   private filter(k: 'actor' | 'module', v: string) { (this as any)[k] = v; this.rows = null; this.loadChanges(0); }
 
   private async undo(row: any) {
-    const ok = await this.host.confirm(tr('Annullare la modifica?'),
-      tr("«{0}» torna a {1}. Anche l'annullamento finisce nel registro.", row.label, val(row.old_value)), { label: tr('Annulla modifica') });
+    const ok = await this.host.confirm(tr('Undo the change?'),
+      tr("«{0}» goes back to {1}. The undo also ends up in the log.", row.label, val(row.old_value)), { label: tr('Undo change') });
     if (!ok) return;
     this.busy = `u${row.id}`;
     const r = await this.host.api('POST', `${API}/key/${encodeURIComponent(row.key)}/undo`,
       { body: { scope: row.scope, scope_id: row.scope_id, actor: 'user' } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || tr('Non annullata'), 'danger'); return; }
-    this.host.toast(`«${row.label}» annullata`, 'success');
+    if (!r.ok) { this.host.toast(r.error || tr('f::Not cancelled'), 'danger'); return; }
+    this.host.toast(tr('«{0}» undone', row.label), 'success');
     this.load();
   }
 
@@ -122,8 +122,8 @@ export class ThemisLog extends HestiaElement {
     const r = await this.host.api('POST', `${API}/proposals/${encodeURIComponent(p.proposal_id)}/${approve ? 'approve' : 'reject'}`,
       { body: { by: 'webui' } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || tr('Non riuscito'), 'danger'); this.load(); return; }
-    this.host.toast(approve ? tr('Proposta approvata') : tr('Proposta rifiutata'), approve ? 'success' : 'neutral');
+    if (!r.ok) { this.host.toast(r.error || tr('alt::Failed'), 'danger'); this.load(); return; }
+    this.host.toast(approve ? tr('Proposal approved') : tr('Proposal rejected'), approve ? 'success' : 'neutral');
     this.load();
   }
 
@@ -135,7 +135,7 @@ export class ThemisLog extends HestiaElement {
         <div class="ch"><span class="old">${val(r.old_value)}</span> → <b>${val(r.new_value)}</b></div>
         <div class="small muted">${when(r.created_at)} · ${who(r.actor)}${r.reason && r.kind !== 'undo' ? ` · ${r.reason}` : ''}</div>
       </div>
-      ${r.undoable ? html`<hxk-button size="sm" variant="ghost" icon="undo" ?loading=${this.busy === `u${r.id}`} @click=${() => this.undo(r)}>${tr("Annulla")}</hxk-button>` : nothing}
+      ${r.undoable ? html`<hxk-button size="sm" variant="ghost" icon="undo" ?loading=${this.busy === `u${r.id}`} @click=${() => this.undo(r)}>${tr("Cancel")}</hxk-button>` : nothing}
     </div>`;
   }
 
@@ -146,41 +146,41 @@ export class ThemisLog extends HestiaElement {
         <div class="row wrap"><span class="t">${p.label || p.key}</span><hxk-badge tone=${st.tone}>${st.text}</hxk-badge></div>
         <div class="ch">→ <b>${val(p.value)}</b></div>
         ${p.reason ? html`<div class="small">${p.reason}</div>` : nothing}
-        <div class="small muted">${when(p.created_at)} ${tr("· proposta da")} ${who(p.proposer)}
+        <div class="small muted">${when(p.created_at)} ${tr("· proposed by")} ${who(p.proposer)}
           ${p.decided_at ? html` · ${st.text} ${when(p.decided_at)}${p.decided_by ? ` (${who(p.decided_by)})` : ''}` : nothing}</div>
       </div>
       ${pending ? html`<div class="acts">
-        <hxk-button size="sm" variant="primary" icon="check" ?loading=${this.busy === `p${p.proposal_id}`} @click=${() => this.decide(p, true)}>${tr("Approva")}</hxk-button>
-        <hxk-button size="sm" variant="ghost" @click=${() => this.decide(p, false)}>${tr("Rifiuta")}</hxk-button></div>` : nothing}
+        <hxk-button size="sm" variant="primary" icon="check" ?loading=${this.busy === `p${p.proposal_id}`} @click=${() => this.decide(p, true)}>${tr("Approve")}</hxk-button>
+        <hxk-button size="sm" variant="ghost" @click=${() => this.decide(p, false)}>${tr("Reject")}</hxk-button></div>` : nothing}
     </div>`;
   }
 
   render() {
-    if (this.error) return html`<div class="page"><h1>${tr("Registro")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
+    if (this.error) return html`<div class="page"><h1>${tr("Log")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const pending = (this.props || []).filter(p => p.status === 'pending');
     const props = (this.props || []).filter(p => !this.module || String(p.key || '').startsWith(`${this.module}.`));
     return html`<div class="page">
-      <div class="head"><h1>${tr("Registro")}</h1><span class="sub">${tr("Chi ha cambiato le impostazioni, quando e come")}</span></div>
-      ${pending.length ? html`<hxk-card heading=${tr("Da confermare")} subtitle=${tr("Nessuna proposta cambia qualcosa senza il tuo sì")}>
+      <div class="head"><h1>${tr("Log")}</h1><span class="sub">${tr("Who changed the settings, when and how")}</span></div>
+      ${pending.length ? html`<hxk-card heading=${tr("To confirm")} subtitle=${tr("No proposal changes anything without your yes")}>
         ${pending.map(p => this.renderProposal(p))}</hxk-card>` : nothing}
       <div class="row wrap">
         <div class="chips grow">
-          <button class="chip" aria-pressed=${this.tab === 'changes'} @click=${() => (this.tab = 'changes')}>${tr("Modifiche")}</button>
-          <button class="chip" aria-pressed=${this.tab === 'proposals'} @click=${() => (this.tab = 'proposals')}>${tr("Proposte")}</button>
+          <button class="chip" aria-pressed=${this.tab === 'changes'} @click=${() => (this.tab = 'changes')}>${tr("Changes")}</button>
+          <button class="chip" aria-pressed=${this.tab === 'proposals'} @click=${() => (this.tab = 'proposals')}>${tr("Proposals")}</button>
         </div>
-        ${this.modules.length ? html`<select aria-label=${tr("Modulo")} @change=${(e: any) => this.filter('module', e.target.value)}>
-          <option value="">${tr("Tutti i moduli")}</option>${this.modules.map(m => html`<option value=${m} ?selected=${this.module === m}>${m}</option>`)}</select>` : nothing}
+        ${this.modules.length ? html`<select aria-label=${tr("Module")} @change=${(e: any) => this.filter('module', e.target.value)}>
+          <option value="">${tr("All modules")}</option>${this.modules.map(m => html`<option value=${m} ?selected=${this.module === m}>${m}</option>`)}</select>` : nothing}
       </div>
       ${this.tab === 'changes' ? html`
         <div class="chips">${WHO_FILTERS.map(f => html`<button class="chip" aria-pressed=${this.actor === f.id} @click=${() => this.filter('actor', f.id)}>${f.label}</button>`)}</div>
         ${this.rows === null ? html`<hxk-state kind="loading"></hxk-state>`
           : this.rows.length ? html`<div class="card">${this.rows.map(r => this.renderChange(r))}
-              ${this.next !== null ? html`<div style="padding-top:8px"><hxk-button size="sm" @click=${() => this.loadChanges(this.next!)}>${tr("Carica altre (")}${this.total - this.rows.length})</hxk-button></div>` : nothing}</div>`
-          : html`<hxk-state kind="empty" text=${tr("Nessuna modifica registrata con questo filtro")}></hxk-state>`}
-        <p class="small muted">${tr("Per ogni impostazione restano le ultime modifiche. «Annulla» riporta il valore di prima, come «Annulla ultima» in Impostazioni.")}</p>`
+              ${this.next !== null ? html`<div style="padding-top:8px"><hxk-button size="sm" @click=${() => this.loadChanges(this.next!)}>${tr("Load more (")}${this.total - this.rows.length})</hxk-button></div>` : nothing}</div>`
+          : html`<hxk-state kind="empty" text=${tr("No change recorded with this filter")}></hxk-state>`}
+        <p class="small muted">${tr("For each setting the last changes stay. «Undo» brings back the previous value, like «Undo last» in Settings.")}</p>`
       : this.props === null ? html`<hxk-state kind="loading"></hxk-state>`
         : props.length ? html`<div class="card">${props.map(p => this.renderProposal(p))}</div>`
-        : html`<hxk-state kind="empty" text=${tr("Nessuna proposta")}></hxk-state>`}
+        : html`<hxk-state kind="empty" text=${tr("No proposals")}></hxk-state>`}
     </div>`;
   }
 }

@@ -31,16 +31,16 @@ logger = logging.getLogger("hestia_oracle.llm_setup")
 
 # Tier → models. Sizes are the download size in GB (what the user waits for), "good" is one short line.
 CATALOG: list[dict[str, Any]] = [
-    {"tier": "cpu", "label": "Senza scheda video", "max_vram": 5.9, "chat": [
-        {"model": "gemma4:e4b", "size_gb": 3.3, "good": "Leggero, risponde bene alle cose di tutti i giorni."}]},
-    {"tier": "8gb", "label": "Scheda video da 6–11 GB", "max_vram": 11.9, "chat": [
-        {"model": "qwen3:8b", "size_gb": 5.2, "good": "Buon equilibrio tra velocità e ragionamento."},
-        {"model": "gemma4:e4b", "size_gb": 3.3, "good": "Più leggero e veloce."}]},
-    {"tier": "16gb", "label": "Scheda video da 12 GB o più", "max_vram": 999, "chat": [
-        {"model": "qwen3:14b", "size_gb": 9.3, "good": "Ragiona meglio, ottimo per gli strumenti."},
-        {"model": "qwen3:8b", "size_gb": 5.2, "good": "Più veloce, un po' meno preciso."}]},
+    {"tier": "cpu", "label": "Without a graphics card", "max_vram": 5.9, "chat": [
+        {"model": "gemma4:e4b", "size_gb": 3.3, "good": "Light, answers everyday things well."}]},
+    {"tier": "8gb", "label": "Graphics card with 6–11 GB", "max_vram": 11.9, "chat": [
+        {"model": "qwen3:8b", "size_gb": 5.2, "good": "Good balance between speed and reasoning."},
+        {"model": "gemma4:e4b", "size_gb": 3.3, "good": "Lighter and faster."}]},
+    {"tier": "16gb", "label": "Graphics card with 12 GB or more", "max_vram": 999, "chat": [
+        {"model": "qwen3:14b", "size_gb": 9.3, "good": "Reasons better, great for tools."},
+        {"model": "qwen3:8b", "size_gb": 5.2, "good": "Faster, a bit less accurate."}]},
 ]
-EMBEDDING_MODEL = {"model": "qwen3-embedding:0.6b", "size_gb": 0.6, "good": "Serve alla memoria per ritrovare le cose."}
+EMBEDDING_MODEL = {"model": "qwen3-embedding:0.6b", "size_gb": 0.6, "good": "Memory needs it to find things again."}
 RECIPES = ("locale", "cloud", "entrambi", "claude")
 CHAT_CHAINS = ("veloce", "potente", "codice", "visione")
 
@@ -221,7 +221,7 @@ def ensure_runtime(name: str, runtime: dict | None = None) -> bool:
         entry = {"type": "ollama" if runtime.get("type") == "ollama" else "openai",
                  "label": str(runtime.get("label") or name)[:80], "url": url}
     elif spec is not None:
-        entry = {"type": "openai", "label": f"{spec['label']} (locale)", "url": f"http://{_host()}:{spec['port']}/v1"}
+        entry = {"type": "openai", "label": tr("{0} (local)", spec['label']), "url": f"http://{_host()}:{spec['port']}/v1"}
     else:
         return False
     current = oracle_settings.settings.get(oracle_settings.PROVIDERS_KEY)
@@ -229,7 +229,7 @@ def ensure_runtime(name: str, runtime: dict | None = None) -> bool:
                                      else llm_providers.DEFAULT_PROVIDERS).items()}
     provs[name] = entry
     ok = oracle_settings.settings.put(oracle_settings.PROVIDERS_KEY, provs, actor="user",
-                                      reason=f"Setup guidato: {entry['label']}")
+                                      reason=tr("Guided setup: {0}", entry['label']))
     logger.info("event=llm_setup_runtime_added provider=%s ok=%s", name, ok)
     return bool(ok)
 
@@ -299,17 +299,17 @@ def _list_checked(provider: str) -> tuple[list[str] | None, str]:
             return None, ""
     except Exception as exc:
         logger.info("[🔄] event=llm_setup_list_failed provider=%s error=%s", provider, str(exc)[:160])
-        return None, tr("Non risponde: controlla la connessione.")
+        return None, tr("It does not answer: check the connection.")
     if resp.status_code in (400, 401, 403):
-        return None, tr("La chiave non è valida.")
+        return None, tr("The key is not valid.")
     if resp.status_code == 429:
         return [], ""
     if not resp.ok:
-        return None, tr("Non risponde (errore {0}).", resp.status_code)
+        return None, tr("It does not answer (error {0}).", resp.status_code)
     try:
         return [m for m in ids(resp.json() or {}) if m], ""
     except ValueError:
-        return None, tr("Risposta non valida dal servizio.")
+        return None, tr("Invalid answer from the service.")
 
 
 def test(provider: str, model: str = "") -> dict[str, Any]:
@@ -319,10 +319,10 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     to read gets one tiny real call."""
     from core.services import llm_providers
     if not llm_providers.get(provider):
-        return {"ok": False, "detail": tr("Questo servizio non è configurato.")}
+        return {"ok": False, "detail": tr("This service is not configured.")}
     ok, why = llm_providers.available(provider)
     if not ok:
-        return {"ok": False, "detail": tr("Manca la chiave.") if "not set" in why else why}
+        return {"ok": False, "detail": tr("The key is missing.") if "not set" in why else why}
     listed, error = _list_checked(provider)
     if error:
         return {"ok": False, "detail": error, "models": []}
@@ -331,11 +331,11 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     embed = [m for m in listed or [] if _is_embedding(m)]
     if models is not None:
         if not models:
-            return {"ok": True, "detail": tr("La chiave funziona (per oggi la quota potrebbe essere finita)."),
+            return {"ok": True, "detail": tr("The key works (today's quota might be used up)."),
                     "model": model or _default_model(provider), "models": []}
         chosen = _pick_model(provider, model, models)
         logger.info("event=llm_setup_test_ok provider=%s models=%s via=list", provider, len(models))
-        return {"ok": True, "detail": tr("La chiave funziona: {0} modelli disponibili.", len(models)), "model": chosen,
+        return {"ok": True, "detail": tr("The key works: {0} models available.", len(models)), "model": chosen,
                 "models": models, "recommended": recommended(provider, models), "embed": embed}
     return _tiny_call(provider, model or _default_model(provider))
 
@@ -372,7 +372,7 @@ def _tiny_call(provider: str, model: str) -> dict[str, Any]:
     """One tiny real call («ok»), for services whose model list cannot be read."""
     from agents.universal_agent import UniversalAgent
     if not model:
-        return {"ok": False, "detail": tr("Nessun modello da provare."), "models": []}
+        return {"ok": False, "detail": tr("No model to try."), "models": []}
     started = time.monotonic()
     try:
         answer = UniversalAgent(role_prompt="", provider=provider, model_name=model, thinking=False,
@@ -382,13 +382,13 @@ def _tiny_call(provider: str, model: str) -> dict[str, Any]:
         logger.info("[🔄] event=llm_setup_test_failed provider=%s model=%s error=%s", provider, model, text[:200])
         low = text.lower()
         if any(w in low for w in ("401", "403", "api key", "invalid", "permission", "unauthorized")):
-            return {"ok": False, "detail": tr("La chiave non è valida."), "models": []}
+            return {"ok": False, "detail": tr("The key is not valid."), "models": []}
         if any(w in low for w in ("429", "quota", "resource_exhausted")):
-            return {"ok": True, "detail": tr("La chiave funziona, ma per oggi la quota è finita."), "model": model, "models": []}
-        return {"ok": False, "detail": tr("Non risponde: ") + text[:160], "models": []}
+            return {"ok": True, "detail": tr("The key works, but today's quota is used up."), "model": model, "models": []}
+        return {"ok": False, "detail": tr("Does not answer: ") + text[:160], "models": []}
     ms = int((time.monotonic() - started) * 1000)
     logger.info("event=llm_setup_test_ok provider=%s model=%s ms=%s via=call", provider, model, ms)
-    return {"ok": bool(str(answer or "").strip()), "detail": tr("Funziona ({0}, {1:.1f} s).", model, ms / 1000), "model": model,
+    return {"ok": bool(str(answer or "").strip()), "detail": tr("It works ({0}, {1:.1f} s).", model, ms / 1000), "model": model,
             "models": []}
 
 
@@ -500,14 +500,14 @@ def summary(chains: dict[str, dict]) -> str:
     from core.services import llm_providers
     steps = (chains.get("veloce") or {}).get("steps") or []
     if not steps:
-        return tr("Nessun modello scelto.")
+        return tr("No model chosen.")
 
     def say(step: dict) -> str:
-        where = tr("sul tuo computer") if llm_providers.is_local(step["provider"]) else tr("nel cloud")
+        where = tr("on your computer") if llm_providers.is_local(step["provider"]) else tr("in the cloud")
         return f"{step['model']} {where}"
-    text = tr("Ti risponde {0}", say(steps[0]))
+    text = tr("{0} answers you", say(steps[0]))
     if len(steps) > 1:
-        text += tr("; se non c'è, {0}", say(steps[1]))
+        text += tr("; if missing, {0}", say(steps[1]))
     return text + "."
 
 
@@ -536,36 +536,36 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
           order: list[dict] | None = None) -> dict[str, Any]:
     from core.services import llm_chains, oracle_settings
     if recipe not in RECIPES:
-        return {"ok": False, "detail": tr("Scelta non valida.")}
+        return {"ok": False, "detail": tr("Invalid choice.")}
     local_provider = local_provider or "ollama"
     if recipe != "cloud" and local_model and not ensure_runtime(local_provider, local_runtime):
-        return {"ok": False, "detail": tr("Non riesco ad aggiungere quel programma alle impostazioni.")}
+        return {"ok": False, "detail": tr("I can't add that program to the settings.")}
     emb = embedding or {}
     if emb.get("model") and not ensure_runtime(emb.get("provider") or "ollama",
                                                {k: emb.get(k, "") for k in ("url", "type", "label")}):
-        return {"ok": False, "detail": tr("Non riesco ad aggiungere quel programma alle impostazioni.")}
+        return {"ok": False, "detail": tr("I can't add that program to the settings.")}
     modes = {k: v for k, v in (modes or {}).items()
              if k in CHAT_CHAINS and isinstance(v, dict) and (v.get("model") or v.get("steps"))}
     for own in modes.values():
         for step in ([s for s in own.get("steps") or [] if isinstance(s, dict)] or [own]):
             if (step.get("model") or step.get("url")) and not ensure_runtime(step.get("provider") or "ollama", {k: step.get(k, "") for k in ("url", "type", "label")}):
-                return {"ok": False, "detail": tr("Non riesco ad aggiungere quel programma alle impostazioni.")}
+                return {"ok": False, "detail": tr("I can't add that program to the settings.")}
     chosen = _as_lists(cloud_models)
     cloud_models = {**_live_models(list(cloud or []), chosen), **chosen}
     chains = plan_chains(recipe, local_model if recipe != "cloud" else "", list(cloud or []), llm_chains.chains(),
                          local_provider=local_provider, cloud_models=cloud_models, embedding=embedding, modes=modes,
                          order=order)
-    if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason="Setup guidato"):
-        return {"ok": False, "detail": tr("Le impostazioni non hanno accettato la scelta.")}
+    if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason=tr("Guided setup")):
+        return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     if recipe == "claude":
         for key, value in ((oracle_settings.BRAIN_MODE, "esterna"), (oracle_settings.BRAIN_AGENT, "claude"),
                            (oracle_settings.BRAIN_FALLBACK, "interna")):
-            oracle_settings.settings.put(key, value, actor="user", reason="Setup guidato")
+            oracle_settings.settings.put(key, value, actor="user", reason=tr("Guided setup"))
     logger.info("event=llm_setup_applied recipe=%s local=%s/%s cloud=%s", recipe, local_provider, local_model or "-",
                 ",".join(cloud or []) or "-")
     text = summary(chains)
     if recipe == "claude":
-        text = tr("Ti risponde Claude con il tuo abbonamento; se non c'è, ") + text[0].lower() + text[1:]
+        text = tr("Claude answers you with your subscription; if missing, ") + text[0].lower() + text[1:]
     return {"ok": True, "detail": text, "chains": chains}
 
 
@@ -586,20 +586,20 @@ def use_machine(address: str, name: str = "") -> dict[str, Any]:
     from core.services import llm_providers, oracle_settings
     address = str(address or "").strip()
     if address and not re.fullmatch(r"[A-Za-z0-9.-]{1,120}", address):
-        return {"ok": False, "detail": tr("Indirizzo non valido.")}
+        return {"ok": False, "detail": tr("Invalid address.")}
     current = oracle_settings.settings.get(oracle_settings.PROVIDERS_KEY)
     provs = {k: dict(v) for k, v in (current if isinstance(current, dict) and current
                                      else llm_providers.DEFAULT_PROVIDERS).items()}
-    entry = provs.get("ollama") or {"type": "ollama", "label": tr("Ollama (locale)"), "url": ""}
+    entry = provs.get("ollama") or {"type": "ollama", "label": tr("Ollama (local)"), "url": ""}
     entry["url"] = f"http://{address}:11434" if address else ""
-    entry["label"] = f"Ollama ({name or address})" if address else tr("Ollama (locale)")
+    entry["label"] = f"Ollama ({name or address})" if address else tr("Ollama (local)")
     provs["ollama"] = entry
     if not oracle_settings.settings.put(oracle_settings.PROVIDERS_KEY, provs, actor="user",
-                                        reason=f"Macchine: modelli locali su {name or address or 'questa macchina'}"):
-        return {"ok": False, "detail": tr("Le impostazioni non hanno accettato la scelta.")}
+                                        reason=tr("Machines: local models on {0}", name or address or tr("this machine"))):
+        return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     logger.info("event=llm_setup_machine address=%s", address or "local")
-    return {"ok": True, "detail": tr("I modelli locali ora girano su {0}.", name or address) if address
-            else tr("I modelli locali tornano su questa macchina.")}
+    return {"ok": True, "detail": tr("Local models now run on {0}.", name or address) if address
+            else tr("Local models are back on this machine.")}
 
 
 # ── Download dei modelli (Ollama) — hestia_common.downloads, page «Download» ──────────────
@@ -630,7 +630,7 @@ def pull(model: str) -> dict[str, Any]:
     """Queue (or report) the download of an Ollama model. Idempotent per model."""
     model = str(model or "").strip()
     if not model or len(model) > 120 or any(c.isspace() for c in model):
-        return {"ok": False, "detail": tr("Nome del modello non valido.")}
+        return {"ok": False, "detail": tr("Invalid model name.")}
     from core.services import llm_providers
     have = llm_providers.list_models("ollama") if llm_providers.get("ollama") else []
     if model in have or f"{model}:latest" in have:
@@ -658,9 +658,9 @@ def _run_pull(job) -> None:
             if data.get("error"):
                 text = str(data["error"])
                 if "not found" in text.lower() or "manifest" in text.lower():
-                    raise DownloadError(tr("{0} non è nella libreria di Ollama: se l'hai creato tu (Modelfile) o viene da un altro posto, caricalo in Ollama e scegli quello.", model), final=True)
+                    raise DownloadError(tr("{0} is not in the Ollama library: if you created it (Modelfile) or it comes from elsewhere, load it into Ollama and choose that.", model), final=True)
                 if "space" in text.lower():
-                    raise DownloadError(tr("Il disco è pieno: libera spazio o scegli un modello più piccolo."), final=True)
+                    raise DownloadError(tr("The disk is full: free some space or choose a smaller model."), final=True)
                 raise RuntimeError(text)
             if data.get("total") and data.get("digest"):
                 layers[data["digest"]] = (int(data.get("completed") or 0), int(data["total"]))

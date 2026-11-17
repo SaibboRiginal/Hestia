@@ -13,9 +13,9 @@ import { tr, TrPipe } from '../../core/i18n';
   imports: [TrPipe, ...UI, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <p class="intro">{{ "Ogni modulo con un'interfaccia porta qui le sue pagine, i widget per le dashboard e le azioni rapide della Home. Quello che nascondi sparisce solo da questa WebUI; gli altri client restano come sono." | tr }}</p>
+    <p class="intro">{{ "Each module with an interface brings its pages here, the widgets for the dashboards and the quick actions of Home. What you hide disappears only from this WebUI; the other clients stay as they are." | tr }}</p>
     @if (!plugins.catalog()) {
-      @if (plugins.catalogError()) { <hx-empty icon="offline"  [title]="'Catalogo non raggiungibile' | tr">{{ "Hub non risponde: riprova tra poco." | tr }}</hx-empty> }
+      @if (plugins.catalogError()) { <hx-empty icon="offline"  [title]="'Catalog not reachable' | tr">{{ "Hub doesn't answer: try again shortly." | tr }}</hx-empty> }
       @else { <hx-spinner /> }
     } @else {
       @for (g of groups(); track g.module) {
@@ -25,7 +25,7 @@ import { tr, TrPipe } from '../../core/i18n';
             <span class="mt">{{ g.title }}</span>
             <hx-badge [tone]="g.online ? 'success' : 'warning'" dot>{{ g.online ? 'attivo' : 'offline' }}</hx-badge>
             <span class="hx-grow"></span>
-            <hx-toggle [checked]="!plugins.isHidden(g.module + '.*')" (changed)="plugins.setHidden(g.module + '.*', !$event)" [attr.title]="('Mostra ' | tr) + g.title" />
+            <hx-toggle [checked]="!plugins.isHidden(g.module + '.*')" (changed)="plugins.setHidden(g.module + '.*', !$event)" [attr.title]="('Show ' | tr) + g.title" />
           </header>
           @if (g.description) { <p class="md">{{ g.description }}</p> }
           @if (!plugins.isHidden(g.module + '.*')) {
@@ -35,14 +35,14 @@ import { tr, TrPipe } from '../../core/i18n';
                 <span class="rk">{{ row.kind }}</span>
                 <span class="rl">{{ row.label }}</span>
                 <span class="hx-grow"></span>
-                @if (row.link) { <a [routerLink]="row.link" class="open">{{ "Apri" | tr }}</a> }
-                <hx-toggle [checked]="!plugins.hidden().includes(row.id)" (changed)="plugins.setHidden(row.id, !$event)" [attr.title]="('Mostra ' | tr) + row.label" />
+                @if (row.link) { <a [routerLink]="row.link" class="open">{{ "Open" | tr }}</a> }
+                <hx-toggle [checked]="!plugins.hidden().includes(row.id)" (changed)="plugins.setHidden(row.id, !$event)" [attr.title]="('Show ' | tr) + row.label" />
               </div>
             }
           }
         </section>
       } @empty {
-        <hx-empty icon="puzzle"  [title]="'Nessun modulo con interfaccia' | tr">{{ "Quando un modulo ne ha una, compare qui da solo." | tr }}</hx-empty>
+        <hx-empty icon="puzzle"  [title]="'No module with an interface' | tr">{{ "When a module has one, it appears here by itself." | tr }}</hx-empty>
       }
     }`,
   styles: [`
@@ -66,11 +66,11 @@ export class PluginSettingsComponent implements OnInit {
 
   readonly groups = computed(() => [...this.plugins.modules().values()].map(m => {
     const pages = this.plugins.allPages().filter(p => p.module === m.module && !p.detail)
-      .map(p => ({ id: p.id, kind: tr('Pagina'), label: p.parent ? `↳ ${p.label}` : p.label, icon: p.icon || 'file', link: this.plugins.link(p.module, p.local_id) }));
+      .map(p => ({ id: p.id, kind: tr('Page'), label: p.parent ? `↳ ${p.label}` : p.label, icon: p.icon || 'file', link: this.plugins.link(p.module, p.local_id) }));
     const widgets = this.plugins.allWidgets().filter(w => w.module === m.module)
       .map(w => ({ id: w.id, kind: 'Widget', label: w.label, icon: 'grid', link: '' }));
     const quick = this.plugins.allQuick().filter(q => q.module === m.module)
-      .map(q => ({ id: q.id, kind: tr('Azione rapida'), label: q.label, icon: q.icon || 'zap', link: '' }));
+      .map(q => ({ id: q.id, kind: tr('Quick action'), label: q.label, icon: q.icon || 'zap', link: '' }));
     return { ...m, rows: [...pages, ...widgets, ...quick] };
   }).filter(g => g.rows.length));
 

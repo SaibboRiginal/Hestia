@@ -70,8 +70,8 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.m
   `hestia_common.oracle_usecases`) and mapped to chain/mode/thinking in `oracle.usecases`. One editor: Oracle →
   Cervello → Modelli. A new module that needs an LLM declares its use cases; it never names a provider or model.
 - **LLM bus** (`core/services/llm_bus.py`, dossier `docs/work/2026-11-16-bus-llm`): each call to a local model waits
-  for one of `oracle.bus.locali_insieme` workers (default 1: the owner's PC runs one model at a time); owner turns
-  (`chat`) go before `sottofondo`; cloud steps and embeddings skip it. Never add another LLM queue or lock.
+  for one of `oracle.bus.local_workers` workers (default 1: the owner's PC runs one model at a time); owner turns
+  (`chat`) go before `background`; cloud steps and embeddings skip it. Never add another LLM queue or lock.
 - Brain mode `oracle.brain.mode` interna (chains) | esterna (Claude Code / Codex run the loop with Hestia's tools
   through `core.services.mcp_bridge`; Archive stays the session truth). Usage rows → Archive `llm-usage`.
 - `/api/llm/generate {prompt, use_case, voice?}` plain prompt (`voice: true` = a text for the owner, written as the assistant; never write «Sei Hestia…» in a module); `/api/llm/chat {use_case, messages, tools}` OpenAI-compatible
@@ -159,6 +159,16 @@ A new tunable is a **setting**, not an env var: declare it with `hestia_common.s
 at runtime (`on_change`), `apply="restart"` ones are flagged until restart. Env keeps only secrets and
 infrastructure (URLs, ports, paths). The assistant only *proposes* changes (Themis → Hermes → user).
 Details: `Hestia-Themis/hestia-themis.md`.
+
+## 5b2. Texts and languages — one catalog
+
+All the code is English. Texts a person reads are English in the code wrapped in `tr` (Python
+`hestia_common.i18n.t`, Angular `tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`) with the Italian text in
+`Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared once (manifests, capabilities, agenda rules,
+settings) are plain English keys translated at the edge (`i18n.localize`, `settings_client.translated`), never `tr`
+at import. Every module follows «Lingua» (`follow_personal()`); dates via `locale()` / `month_name`, money via
+`display.money`. Languages: English (source) and Italian («Lingua»). Full standard,
+examples and how to add a language: `docs/LANGUAGES.md`; gate `python tools/governance/check_i18n.py`.
 
 ## 5c. Export and import — every module moves its own data
 

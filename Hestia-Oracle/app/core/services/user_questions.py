@@ -19,8 +19,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger(__name__)
 
 KINDS = ("free_text", "single_choice", "multi_choice", "confirm")
-_HEADERS = {"free_text": "Rispondi", "single_choice": "Scegli", "multi_choice": "Scegli (anche più di una)",
-            "confirm": "Confermi?"}
+_HEADERS = {"free_text": "Reply", "single_choice": "Choose", "multi_choice": "Choose (even more than one)",
+            "confirm": "Confirm?"}
 _STORE = "api/oracle-store/records"
 
 TOOL_DESCRIPTION = (
@@ -36,7 +36,7 @@ TOOL_PARAMETERS = {
         "kind": {"type": "string", "enum": list(KINDS), "description": "confirm | single_choice | multi_choice | free_text"},
         "options": {"type": "array", "items": {"type": "string"},
                     "description": "Choices for single_choice / multi_choice (2-8 short labels)"},
-        "allow_other": {"type": "boolean", "description": "Also accept a free answer («Altro…»)"},
+        "allow_other": {"type": "boolean", "description": "Also accept a free answer («Other…»)"},
     },
     "required": ["prompt"],
 }
@@ -53,7 +53,7 @@ def build_question(prompt: str = "", kind: str = "confirm", options: list | None
     if kind in ("single_choice", "multi_choice") and len(labels) < 2:
         return False, "single_choice / multi_choice need at least 2 options"
     if kind == "confirm":
-        opts = [{"value": "si", "label": tr("Sì")}, {"value": "no", "label": "No"}]
+        opts = [{"value": "si", "label": tr("Yes")}, {"value": "no", "label": "No"}]
     else:
         opts = [{"value": label, "label": label} for label in labels]
     ask = {"question_id": f"ask_{uuid.uuid4().hex[:12]}", "header": _HEADERS[kind], "prompt": prompt,
@@ -66,7 +66,7 @@ def resume_message(entry: dict, answer: str) -> str:
     prompt = str(entry.get("prompt") or "").strip()
     answer = str(answer or "").strip()
     if entry.get("kind") == "confirm":
-        answer = {"si": "Sì", "no": "No"}.get(answer.lower(), answer)
+        answer = {"si": "Yes", "no": "No"}.get(answer.lower(), answer)
     if entry.get("kind") == "multi_choice":
         parts = [p.strip() for p in answer.split("\n") if p.strip()]
         answer = ", ".join(parts) if parts else answer

@@ -19,29 +19,32 @@ def english():
 def test_italian_by_default():
     from telegram_bot import ui
     assert ui.button(ui.CANCEL, "x").text == "Annulla"
-    assert i18n.t("Oggi — {0}", "lunedì") == "Oggi — lunedì"
+    assert i18n.t("Today — {0}", "lunedì") == "Oggi — lunedì"
+    assert ui.card("All actions", [ui.note("Nothing new.")]) == "<b>Tutte le azioni</b>\n<i>Niente di nuovo.</i>"
 
 
 @pytest.mark.unit
 def test_buttons_cards_and_notes_follow_english(english):
     from telegram_bot import ui
     assert ui.button(ui.CANCEL, "x").text == "Cancel"
-    assert ui.card("Tutte le azioni", [ui.note("Niente di nuovo.")]) == "<b>All actions</b>\n<i>Nothing new.</i>"
-    assert i18n.t("Oggi — {0}", "monday") == "Today — monday"
+    assert ui.card("All actions", [ui.note("Nothing new.")]) == "<b>All actions</b>\n<i>Nothing new.</i>"
+    assert i18n.t("Today — {0}", "monday") == "Today — monday"
 
 
 @pytest.mark.unit
 def test_bottom_keyboard_matches_both_languages(english):
     from telegram_bot.menu import model as menu_model
     menu = menu_model.Menu.__new__(menu_model.Menu)
-    menu.doors = {"oggi": "Oggi"}
-    assert menu.door_for_text("Today") == "oggi" and menu.door_for_text("oggi") == "oggi"
+    menu.doors = {"oggi": "Today"}
+    assert menu.door_for_text("Today") == "oggi" and menu.door_for_text("today") == "oggi"
+    i18n.use(None)
+    assert menu.door_for_text("Oggi") == "oggi"
 
 
 @pytest.mark.unit
-def test_every_english_text_keeps_its_placeholders():
+def test_every_translation_keeps_its_placeholders():
     import re
-    for source, text in i18n.catalog("messages", "en").items():
+    for source, text in i18n.catalog("messages", "it").items():
         if source.startswith("• {0} notific"):
             continue
         fields = r"\{\d+[^{}]*\}|\{[a-z_]+\}"     # str.format fields, not JSON examples in help texts
@@ -59,66 +62,35 @@ def test_english_tools_catalog_covers_every_italian_tool():
         assert bool(en[name].get("summary")) == bool(entry.get("summary")), name
         assert set(en[name].get("params") or {}) == set(entry.get("params") or {}), name
     assert i18n.tool_summary("agenda", "en").startswith("Shows")
-    assert i18n.tool_summary("agenda", "de").startswith("Shows")  # no German catalog yet → English
+    assert i18n.tool_summary("agenda", "de").startswith("Shows")  # a language without a catalog → English
 
 
-_IT = re.compile(r"[àèéìòù]|\b(il|la|le|non|per|che|della|del|una|sono|nessun[ao]?|serve|riprova|trovat[oa])\b", re.I)
+def _check_i18n():
+    """The governance gate tools/governance/check_i18n.py (the standard: docs/LANGUAGES.md)."""
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[2] / "tools" / "governance" / "check_i18n.py"
+    spec = importlib.util.spec_from_file_location("check_i18n", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 @pytest.mark.unit
-def test_every_module_text_has_an_english_translation():
-    """Every ``tr("…")`` literal in the modules (Telegram excluded: its own test above) is in the English catalog."""
-    import ast
-    from pathlib import Path
-    from hestia_common import i18n
-    en = i18n.catalog("messages", "en")
-    root = Path(__file__).resolve().parents[2]
-    missing = []
-    for path in root.glob("Hestia-*/**/*.py"):
-        if "/tests/" in str(path) or "Hestia-Telegram" in str(path):
-            continue
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-        except (SyntaxError, UnicodeDecodeError):
-            continue
-        for n in ast.walk(tree):
-            if (isinstance(n, ast.Call) and getattr(n.func, "id", "") == "tr" and n.args
-                    and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str)):
-                text = n.args[0].value
-                if text not in en and _IT.search(text):
-                    missing.append(f"{path.relative_to(root)}: {text[:60]}")
+def test_every_module_text_has_an_italian_translation():
+    """Every ``tr("…")`` literal (English source) in the Python modules is in the Italian catalog."""
+    gate = _check_i18n()
+    it = i18n.catalog("messages", "it")
+    missing = [f"{p.name}: {t[:60]}" for p, t in gate.python_texts() if t not in it]
     assert not missing, missing[:20]
 
 
-# A quoted literal; `\\'` is an Angular template quote escaped inside a TS string.
-_Q = r"""'(?:\\\\.|[^'\\\n]|\\.)*'""" + r'''|"(?:\\\\.|[^"\\\n]|\\.)*"'''
-_TS_TR = re.compile(rf"""\btr\(\s*({_Q})\s*[,)]|({_Q})\s*\|\s*tr\b""")
-
-
-def _ts_unquote(lit: str) -> str:
-    body = re.sub(r"\\\\(['\"])", r"\1", lit[1:-1])
-    return re.sub(r"\\(u\{?[0-9a-fA-F]+\}?|.)", lambda m: {
-        "n": "\n", "t": "\t", "\\": "\\", "'": "'", '"': '"', "`": "`", "$": "$",
-    }.get(m.group(1), None) or (chr(int(m.group(1)[1:].strip("{}"), 16)) if m.group(1)[0] == "u" else m.group(1)), body)
-
-
 @pytest.mark.unit
-def test_every_webui_and_plugin_text_has_an_english_translation():
-    """Every ``tr('…')`` / ``'…' | tr`` literal of the WebUI shell, the plugins and the SDK kit is in the English catalog."""
-    from pathlib import Path
-    from hestia_common import i18n
-    en = i18n.catalog("messages", "en")
-    root = Path(__file__).resolve().parents[2]
-    files = [*root.glob("Hestia-WebUI/frontend/src/**/*.ts"), *root.glob("Hestia-WebUI/frontend/src/**/*.html"),
-             *root.glob("Hestia-*/ui/src/**/*.ts"), *root.glob("Hestia-Shared/webui-sdk/src/**/*.ts")]
-    missing, seen = [], 0
-    for path in files:
-        if "node_modules" in path.parts or path.name == "i18n.ts":
-            continue
-        for m in _TS_TR.finditer(path.read_text(encoding="utf-8")):
-            text = _ts_unquote(m.group(1) or m.group(2))
-            seen += 1
-            if text and text not in en:
-                missing.append(f"{path.relative_to(root)}: {text[:60]}")
-    assert seen > 1000, seen
+def test_every_webui_and_plugin_text_has_an_italian_translation():
+    """Every ``tr('…')`` / ``'…' | tr`` literal (English source) of the WebUI shell, the plugins and the SDK kit is in the Italian catalog."""
+    gate = _check_i18n()
+    en = i18n.catalog("messages", "it")
+    texts = list(gate.web_texts())
+    assert len(texts) > 1000, len(texts)
+    missing = [f"{p.name}: {t[:60]}" for p, t in texts if t not in en]
     assert not missing, missing[:20]

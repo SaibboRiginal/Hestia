@@ -106,7 +106,7 @@ export class ChatService {
     } catch (err: any) {
       // Do not leave the placeholder "streaming" forever.
       this.messages.update(msgs => msgs.map(m => m.id === streamId
-        ? { ...m, isStreaming: false, error: true, content: err?.message || tr('Invio non riuscito') } : m));
+        ? { ...m, isStreaming: false, error: true, content: err?.message || tr('Sending failed') } : m));
       this.currentStreamingId.set(null);
       this.isStreaming.set(false);
     }
@@ -128,7 +128,7 @@ export class ChatService {
     } catch { text = ''; }
     if (!text) {
       this.messages.update(msgs => msgs.map(m => m.id === id
-        ? { ...m, transcribing: false, error: true, content: tr('Non sono riuscita ad ascoltarlo: riprova o scrivilo.') } : m));
+        ? { ...m, transcribing: false, error: true, content: tr('I couldn\'t listen to it: try again or write it.') } : m));
       return null;
     }
     await this.sendMessage(text, sessionId, mode, 'generic', undefined, id);
@@ -160,7 +160,7 @@ export class ChatService {
       });
       if (!resp.ok || !resp.body) {
         const detail = await resp.text().catch(() => '');
-        throw new Error(tr("Upload non riuscito ({0}) {1}", resp.status, detail.slice(0, 200)));
+        throw new Error(tr("Upload failed ({0}) {1}", resp.status, detail.slice(0, 200)));
       }
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -179,7 +179,7 @@ export class ChatService {
       }
       if (this.currentStreamingId() === streamId) this.finalizeStreaming(streamId, null);
     } catch (err: any) {
-      this.finalizeStreaming(streamId, err?.message || tr('Upload non riuscito'), undefined, undefined, true);
+      this.finalizeStreaming(streamId, err?.message || tr('Upload failed'), undefined, undefined, true);
     }
   }
 
@@ -201,7 +201,7 @@ export class ChatService {
     this.messages.update(msgs => [...msgs,
       { id: streamId, role: 'assistant', content: '', timestamp: new Date(), isStreaming: true, thinkingSteps: [] }]);
     this.signalR.send({ type: 'retry' }).catch((err: any) =>
-      this.finalizeStreaming(streamId, err?.message || tr('Invio non riuscito'), undefined, undefined, true));
+      this.finalizeStreaming(streamId, err?.message || tr('Sending failed'), undefined, undefined, true));
   }
 
   answerQuestion(questionId: string, answer: string, sessionId = '', mode = 'auto', context?: string): void {
@@ -229,7 +229,7 @@ export class ChatService {
       if (known.has(q.queue_id)) continue;
       const at = q.created_at ? new Date(q.created_at) : new Date();
       add.push({ id: uid(), role: 'user', content: q.text, timestamp: at },
-               { id: uid(), role: 'assistant', content: tr('Non posso rispondere adesso: messaggio in coda, ti rispondo appena possibile.'),
+               { id: uid(), role: 'assistant', content: tr('I can\'t answer right now: message queued, I\'ll answer as soon as possible.'),
                  timestamp: at, queuedId: q.queue_id });
     }
     if (add.length) this.messages.update(msgs => [...msgs, ...add]);
@@ -307,7 +307,7 @@ export class ChatService {
       case 'queued':
         // Oracle offline: the message waits in Archive and gets its answer when Oracle is back.
         if (streamId) {
-          this.finalizeStreaming(streamId, event.content || tr('Messaggio in coda'));
+          this.finalizeStreaming(streamId, event.content || tr('Message queued'));
           this.messages.update(msgs => msgs.map(m => m.id === streamId ? { ...m, queuedId: event.queue_id } : m));
         }
         break;
@@ -345,7 +345,7 @@ export class ChatService {
 
       case 'needs_input':
         if (streamId && event.missing_fields?.length) {
-          this.appendToStreaming(streamId, tr("\n<i>Servono altri dati: {0}</i>", event.missing_fields.join(', ')));
+          this.appendToStreaming(streamId, tr("\n<i>More data is needed: {0}</i>", event.missing_fields.join(', ')));
         }
         break;
     }
@@ -358,11 +358,11 @@ export class ChatService {
       : { label: String(o.label ?? o.value ?? ''), value: String(o.value ?? o.label ?? '') });
     this.pendingQuestion.set({
       questionId: event.question_id,
-      header: event.header || tr('Domanda'),
+      header: event.header || tr('Question'),
       prompt: event.prompt || '',
       kind: (event.kind || (opts.length ? 'single_choice' : 'free_text')) as PendingQuestion['kind'],
       options: event.kind === 'confirm' && !opts.length
-        ? [{ label: tr('Sì'), value: 'yes' }, { label: 'No', value: 'no' }] : opts,
+        ? [{ label: tr('Yes'), value: 'yes' }, { label: 'No', value: 'no' }] : opts,
       required: event.required !== false,
       allowOther: !!event.allow_other,
       expiresAt: event.timeout_sec ? Date.now() + event.timeout_sec * 1000 : undefined,

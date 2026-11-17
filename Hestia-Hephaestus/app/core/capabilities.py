@@ -16,15 +16,15 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
 # (chosen by Marko in Oracle → Cervello → Modelli; a ``claude`` step there also sets Claude Code's model).
 FORGE_USECASE = "forge.codice"
 LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · sviluppo", chain="codice",
-                            help="Il modello che scrive il codice quando Forge usa il motore Oracle."),
-                llm_usecase("forge.revisione", "Forge · revisione automatica", chain="potente",
-                            help="Il revisore indipendente che legge diff e test prima che tu approvi."),
-                llm_usecase("forge.piano", "Forge · divisione in pezzi", chain="potente",
-                            help="Divide un lavoro grande in pezzi e sceglie per ognuno se è semplice o difficile."),
-                llm_usecase("hephaestus.aggiornamenti", "Novità di un aggiornamento", chain="veloce",
-                            help="Riscrive in italiano semplice le novità di una versione nuova prima di chiederti se installarla."),
-                llm_usecase("hephaestus.setup", "Primo saluto del setup", chain="veloce",
-                            help="Il messaggio con cui l'assistente ti saluta appena hai scelto i modelli nel setup.")]
+                            help="The model that writes the code when Forge uses the Oracle engine."),
+                llm_usecase("forge.revisione", "Forge · automatic review", chain="potente",
+                            help="The independent reviewer that reads diff and tests before you approve."),
+                llm_usecase("forge.piano", "Forge · split into pieces", chain="potente",
+                            help="Splits a big job into pieces and chooses for each one whether it is simple or hard."),
+                llm_usecase("hephaestus.aggiornamenti", "What's new in an update", chain="veloce",
+                            help="Rewrites in plain words what's new in a new version before asking whether to install it."),
+                llm_usecase("hephaestus.setup", "First greeting of the setup", chain="veloce",
+                            help="The message the assistant greets you with right after you chose the models in the setup.")]
 
 
 def build_capabilities() -> dict[str, Any]:

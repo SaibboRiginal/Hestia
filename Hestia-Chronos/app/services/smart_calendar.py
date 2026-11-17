@@ -125,23 +125,23 @@ def check(days: int = 3, now: datetime | None = None) -> dict:
         if not event_id or event_id in _kept:
             continue
         when = move["_start"].strftime("%d/%m %H:%M")
-        text = (tr("<b>{0}</b> ({1}) si sovrappone a <b>{2}</b> ({3}–{4}).", move.get('title'), when, keep.get('title'), keep['_start'].strftime('%H:%M'), keep['_end'].strftime('%H:%M')))
+        text = (tr("<b>{0}</b> ({1}) overlaps with <b>{2}</b> ({3}–{4}).", move.get('title'), when, keep.get('title'), keep['_start'].strftime('%H:%M'), keep['_end'].strftime('%H:%M')))
         actions = []
         if to:
             dur = move["_end"] - move["_start"]
-            text += tr("\nPosso spostarlo alle {0}.", to.strftime('%H:%M'))
-            actions.append({"id": "move", "label": tr("Sposta alle {0}", to.strftime('%H:%M')), "style": "primary",
+            text += tr("\nI can move it to {0}.", to.strftime('%H:%M'))
+            actions.append({"id": "move", "label": tr("Move to {0}", to.strftime('%H:%M')), "style": "primary",
                             "service": "chronos", "method": "PATCH", "path": f"/api/calendar/events/{event_id}",
                             "body": {"provider": provider, "calendar_id": str(move.get("calendar_id") or "primary"),
                                      "updates": {"start_datetime": to.isoformat(),
                                                  "end_datetime": (to + dur).isoformat()}}})
         else:
-            text += tr("\nQuel giorno non trovo un buco libero: decidi tu.")
-        actions.append({"id": "keep", "label": tr("Lascia così"), "service": "chronos", "method": "POST",
+            text += tr("\nThat day I find no free gap: you decide.")
+        actions.append({"id": "keep", "label": tr("Leave it"), "service": "chronos", "method": "POST",
                         "path": "/api/calendar/smart/kept", "body": {"event_id": event_id}})
         key = f"smart_calendar:{event_id}:{move['_start'].date().isoformat()}:{keep.get('external_id') or keep.get('id')}"
         hermes_client.publish_event("calendar", "service.action_required", f"smart.{event_id}", {
-            "_title": tr("Due impegni si sovrappongono"), "_message": text, "_source": tr("Calendario"),
+            "_title": tr("Two appointments overlap"), "_message": text, "_source": tr("Calendar"),
             "_level": "warning", "dedupe_key": key, "_actions": actions,
             "_link": {"module": "chronos", "page": "agenda"}})
         proposals.append({"event": move.get("title"), "with": keep.get("title"),

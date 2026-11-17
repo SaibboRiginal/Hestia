@@ -34,7 +34,7 @@ def ffmpeg_available() -> bool:
 
 def _ffmpeg(data: bytes, out_args: list[str], timeout: float = 120) -> bytes:
     if not ffmpeg_available():
-        raise AudioError(tr("ffmpeg non installato"))
+        raise AudioError(tr("ffmpeg not installed"))
     proc = subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-vn", *out_args, "pipe:1"],
                           input=data, capture_output=True, timeout=timeout)
     if proc.returncode != 0 or not proc.stdout:

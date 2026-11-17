@@ -50,7 +50,7 @@ registry = Registry(DATA_DIR / "schema_cache.json")
 themis = Themis(hub, registry)
 # Themis owns the personal settings: its own fixed texts follow the language it stores (hestia_common.i18n).
 from hestia_common import i18n as _i18n  # noqa: E402
-_i18n.use(lambda key: themis.owner_language())
+_i18n.use(themis.personal)   # language, assistant's name and she/he of Themis's own texts
 # export / import: every module's settings, one section per module (hestia_common.transfer)
 transfer = Transfer("themis", hub, sections=lambda: settings_sections(themis))
 # Personal settings shared by every module (week start, currency): Themis owns them, modules follow them.
@@ -61,13 +61,12 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 
 # ── WebUI plugin (core module, Sistema section): Registro ────────────────────
 UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
-ui = PluginClient("themis", title="Registro impostazioni", icon="settings", color="gray", kind="core", dist=UI_DIST,
-                  description="Chi ha cambiato quale impostazione, quando e come: modifiche, proposte, annulla.",
+ui = PluginClient("themis", title="Settings log", icon="settings", color="gray", kind="core", dist=UI_DIST,
+                  description="Who changed which setting, when and how: changes, proposals, undo.",
                   version=SERVICE_VERSION)
 ui.webui(entry="themis.js", api_prefix="/api/settings/",
-         pages=[page("registro", "Registro", element="themis-log", icon="settings", order=160,
-                     help="Ogni modifica e proposta di impostazione: chi (tu, Athena, Oracle, un client, un'AI "
-                          "esterna), quando, da cosa a cosa. Annulla l'ultima modifica; le proposte aspettano te.")])
+         pages=[page("registro", "Log", element="themis-log", icon="settings", order=160,
+                     help="Every setting change and proposal: who (you, Athena, Oracle, a client, an external AI), when, from what to what. Undo the latest change; proposals wait for you.")])
 app.include_router(ui.router())
 app.include_router(transfer.router())   # /api/transfer/* (settings of every module)
 
@@ -83,13 +82,13 @@ async def _themis_error(_: Request, exc: ThemisError):
 @app.exception_handler(HubError)
 async def _hub_error(_: Request, exc: HubError):
     logger.warning("[🔄] event=themis_archive_error status=%s payload=%s", exc.status, str(exc.payload)[:200])
-    return JSONResponse(status_code=502, content={"detail": tr("archivio non disponibile"), "upstream": exc.status})
+    return JSONResponse(status_code=502, content={"detail": tr("archive not available"), "upstream": exc.status})
 
 
 @app.exception_handler(requests.RequestException)
 async def _transport_error(_: Request, exc: requests.RequestException):
     logger.warning("[🔄] event=themis_hub_unreachable error=%s", exc)
-    return JSONResponse(status_code=503, content={"detail": tr("hub non raggiungibile")})
+    return JSONResponse(status_code=503, content={"detail": tr("hub not reachable")})
 
 
 @app.get("/health")
@@ -155,14 +154,18 @@ def settings_modules():
 
 @app.get("/api/settings/i18n")
 def settings_i18n(lang: str = ""):
-    """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages}`` where ``messages`` maps
-    the Italian source text to the owner's language (English fills what a language lacks; Italian = empty map)."""
+    """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
+    ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
+    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:lei|lui}`` in those texts
+    (docs/work/2026-11-16-nome-ovunque). Public through the WebUI: only the assistant's name, never the owner's."""
+    from hestia_common import identity
+    ident = _i18n.identity_now()
     code = (lang or themis.owner_language() or _i18n.FALLBACK)[:2]
     messages: dict = {}
-    if code != _i18n.FALLBACK:
-        for c in reversed(tuple(dict.fromkeys((code, "en")))):
-            messages.update({k: v for k, v in _i18n.catalog("messages", c).items() if isinstance(v, str) and v})
-    return {"language": code, "messages": messages}
+    if code != _i18n.SOURCE:
+        messages = {k: v for k, v in _i18n.catalog("messages", code).items() if isinstance(v, str) and v}
+    return {"language": code, "messages": messages, "assistant": ident.get("assistant") or identity.DEFAULT_NAME,
+            "gender": ident.get("gender") or "lei"}
 
 
 # ── settings ─────────────────────────────────────────────────────────────────
@@ -278,12 +281,12 @@ def settings_undo_propose(key: str, body: dict | None = None):
     """Assistant undo: proposes the value before the last change (still confirmed by the user)."""
     rows = themis.history(key, limit=1)
     if not rows:
-        raise ThemisError(tr("niente da annullare"), 404)
+        raise ThemisError(tr("nothing to undo"), 404)
     d = registry.definition(key) or {}
     old = rows[0].get("old_value")
     return themis.propose(key, d.get("default") if old is None else old,
                           proposer=str((body or {}).get("proposer") or "oracle"),
-                          reason=str((body or {}).get("reason") or tr("annulla l'ultima modifica")))
+                          reason=str((body or {}).get("reason") or tr("undo the last change")))
 
 
 # ── MCP tools (aggregated by Hestia-MCP; the assistant uses them on demand) ──
@@ -303,26 +306,26 @@ try:
         return themis.propose(key, value, proposer="oracle", reason=reason)
 
     def _tool_undo(key: str = "", reason: str = "") -> dict:
-        return settings_undo_propose(key, {"proposer": "oracle", "reason": reason or tr("annulla l'ultima modifica")})
+        return settings_undo_propose(key, {"proposer": "oracle", "reason": reason or tr("undo the last change")})
 
     _themis_mcp_tools = [
         MCPTool(name="settings_search",
                 description="Search the assistant's settings (all modules) by words: what they do, current value.",
                 parameters={"type": "object", "properties": {
-                    "query": {"type": "string", "description": "words to search (e.g. modello codice)"},
+                    "query": {"type": "string", "description": "words to search (e.g. code model)"},
                     "module": {"type": "string", "description": "optional module (oracle, argus…)"},
                     "limit": {"type": "integer"}}},
-                handler=_tool_search, title="Cerca impostazioni", method="GET",
+                handler=_tool_search, title="Search settings", method="GET",
                 path="/api/settings/search", clients=["telegram", "ui", "external"], response_mode="oracle_natural",
                 telegram_visible=False, telegram_group="sistema",
-                telegram={"section": "Impostazioni", "primary": 5, "label": "Impostazioni"}),
+                telegram={"section": "Settings", "primary": 5, "label": "Settings"}),
         MCPTool(name="settings_get",
                 description="Detail of a setting: description, allowed values, current value, state.",
                 parameters={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]},
-                handler=_tool_get, title="Dettaglio impostazione", method="GET",
+                handler=_tool_get, title="Setting detail", method="GET",
                 path="/api/settings/key/{key}", clients=["telegram", "ui", "external"], telegram_visible=False,
                 telegram_group="sistema",
-                telegram={"section": "Impostazioni"}),
+                telegram={"section": "Settings"}),
         MCPTool(name="settings_propose",
                 description=("Propose to the user a change of a setting. It does NOT apply it: the user confirms or refuses "
                              "from the notification. Then tell the user the proposal was sent. Exact key: if unknown, first "
@@ -331,18 +334,18 @@ try:
                     "key": {"type": "string"}, "value": {"description": "new value (the setting's type)"},
                     "reason": {"type": "string", "description": "why, in one sentence"}},
                     "required": ["key", "value"]},
-                handler=_tool_propose, title="Cambia un'impostazione", method="POST",
+                handler=_tool_propose, title="Change a setting", method="POST",
                 path="/api/settings/proposals", clients=["ui", "external"], telegram_visible=False,
                 telegram_group="sistema",
-                telegram={"section": "Impostazioni"}),
+                telegram={"section": "Settings"}),
         MCPTool(name="settings_undo",
                 description="Propose to undo the last change of a setting (the user confirms).",
                 parameters={"type": "object", "properties": {
                     "key": {"type": "string"}, "reason": {"type": "string"}}, "required": ["key"]},
-                handler=_tool_undo, title="Annulla una modifica", method="POST",
+                handler=_tool_undo, title="Undo a change", method="POST",
                 path="/api/settings/key/{key}/undo-propose", clients=["ui"], telegram_visible=False,
                 telegram_group="sistema",
-                telegram={"section": "Impostazioni"}),
+                telegram={"section": "Settings"}),
         # Telegram parity (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F): proposals waiting for the owner.
         MCPTool(name="settings_proposals",
                 description="Setting change proposals waiting for the user's confirmation (or all).",
@@ -350,11 +353,11 @@ try:
                     "status": {"type": "string", "description": "pending (default) · approved · rejected · all"}}},
                 handler=lambda status="pending", **_kw: {"proposals": themis.proposals(
                     status=None if status in (None, "", "all") else status)},
-                title="Proposte in attesa", method="GET", path="/api/settings/proposals",
+                title="Pending proposals", method="GET", path="/api/settings/proposals",
                 clients=["telegram", "ui", "external"], response_mode="oracle_natural",
                 response_prompt="Short list: '• setting — proposed value — why'. None: one sentence.",
                 telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Impostazioni", "label": "Proposte"}),
+                telegram={"section": "Settings", "label": "Proposals"}),
     ]
     app.include_router(create_mcp_router(_themis_mcp_tools, service_name="themis"))
 except ModuleNotFoundError:

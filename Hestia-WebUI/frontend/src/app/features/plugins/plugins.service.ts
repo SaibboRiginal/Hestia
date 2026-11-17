@@ -10,7 +10,7 @@ import { CentralSettingsApi, apiError } from '../settings/central-settings.api';
 import {
   Dashboard, DashboardItem, PluginBundle, PluginCatalog, PluginModule, PluginPage, PluginWidget, QuickActionDef, WidgetSize,
 } from './plugins.types';
-import { tr } from '../../core/i18n';
+import { tr, named } from '../../core/i18n';
 
 /** WebUI settings that hold this client's plugin configuration (Themis, user scope, client layer "webui"). */
 export const CFG = {
@@ -29,7 +29,7 @@ type HostEvent = 'refresh' | 'theme' | 'visible' | 'hidden' | 'online' | 'offlin
 const BASE = '/api/webui/plugins';
 /** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A6). */
 /** Titled «Stato del sistema» (2026-10-29): «Sistema» is the sidebar page of the system modules, only one of each name. */
-const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: tr('Stato del sistema'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
+const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
 
 /**
  * Client plugins runtime (SPEC docs/work/2026-10-17-client-plugins §4): Hub catalog for client=webui, this client's
@@ -84,7 +84,7 @@ export class PluginsService {
    *  the ready-made «Sistema» built from the core modules' `auto` widgets until the user deletes it. */
   readonly dashboards = computed<Dashboard[]>(() => {
     const saved = this.dashboardsCfg() ?? [];
-    const list: Dashboard[] = saved.length ? saved : [{ id: 'home', title: tr('Home'), icon: 'home', auto: true, created_by: 'user', items: [] }];
+    const list: Dashboard[] = saved.length ? saved : [{ id: 'home', title: tr('alt::Home'), icon: 'home', auto: true, created_by: 'user', items: [] }];
     const savedSystem = list.some(d => d.id === SYSTEM_DASHBOARD.id);
     return [...list, ...(savedSystem ? [] : [SYSTEM_DASHBOARD])]
       .filter(d => !d.removed)
@@ -120,7 +120,7 @@ export class PluginsService {
 
   async refreshCatalog(fresh = false): Promise<void> {
     try {
-      const cat = await firstValueFrom(this.http.get<PluginCatalog>(`${BASE}/catalog`, { params: fresh ? { fresh: 'true' } : {} }));
+      const cat = namedCatalog(await firstValueFrom(this.http.get<PluginCatalog>(`${BASE}/catalog`, { params: fresh ? { fresh: 'true' } : {} })));
       const prev = this.catalog();
       this.catalog.set(cat);
       this.catalogError.set(false);
@@ -161,7 +161,7 @@ export class PluginsService {
       await this.settingsApi.set(key, value, 'client');
       return true;
     } catch (e) {
-      this.toasts.error(apiError(e, 'Impostazione non salvata'));
+      this.toasts.error(apiError(e, tr('Setting not saved')));
       return false;
     }
   }
@@ -341,7 +341,7 @@ export class PluginsService {
       openSetting: (key?: string) =>
         void svc.router.navigate(['/settings'], { queryParams: key ? { key } : { tab: 'system', module } }),
       toast: (text: string, t?: string, action?: { label: string; run: () => void }) => svc.toasts.show(text, tone(t), action, action ? 6000 : 4500),
-      confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? tr('Conferma'), !!o?.danger),
+      confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? tr('Confirm'), !!o?.danger),
       assistant: (o: { label: string; hints?: Record<string, string | number>; prompt?: string; suggestions?: string[] }) =>
         svc.assistant.open({ page: `plugin:${module}`, intent: 'ask', label: o.label, hints: { module, ...(o.hints ?? {}) }, prompt: o.prompt, suggestions: o.suggestions }),
       notify: (title: string, body?: string, o?: { tag?: string }) => notify(title, body, o?.tag),
@@ -471,5 +471,26 @@ function kvStore(dbName: string) {
       const [keys, values] = await Promise.all([run('readonly', s => s.getAllKeys()), run('readonly', s => s.getAll())]);
       return keys.map((k, i) => [String(k), values[i]] as [string, unknown]);
     },
+  };
+}
+
+
+/** Module texts written with `{assistant}` («Agenda di {assistant}», «Quello che {assistant} ricorda di te») show the
+ * chosen name; nothing else changes (docs/work/2026-11-16-nome-ovunque). */
+function namedCatalog(cat: PluginCatalog): PluginCatalog {
+  if (!cat) return cat;
+  const fix = <T extends Record<string, any>>(x: T): T => {
+    const out: Record<string, any> = { ...x };
+    for (const k of ['title', 'description', 'label', 'help', 'confirm']) if (typeof out[k] === 'string') out[k] = named(out[k]);
+    return out as T;
+  };
+  const w = cat.contributions?.webui;
+  return {
+    ...cat,
+    modules: (cat.modules ?? []).map(fix),
+    contributions: { ...cat.contributions, webui: w ? {
+      ...w, page: w.page?.map(fix), widget: w.widget?.map(fix), quick_action: w.quick_action?.map(fix),
+      settings_panel: w.settings_panel?.map(fix),
+    } : w },
   };
 }

@@ -3,12 +3,12 @@
  * what Argus did (alert, repair request, recheck in the agenda, recovery), closed incidents, log viewer with
  * filters, «Ricontrolla» per service. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, ago, duration, statusOf, stripStyles, when } from './util';
 
-const WINDOWS = [{ value: 60, label: tr('1 ora') }, { value: 360, label: tr('6 ore') }, { value: 1440, label: tr('24 ore') }];
+const WINDOWS = [{ value: 60, label: tr('1 hour') }, { value: 360, label: tr('6 hours') }, { value: 1440, label: tr('24 hours') }];
 const LEVELS = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'];
-const SINCE = [{ value: '30m', label: '30 min' }, { value: '1h', label: tr('1 ora') }, { value: '6h', label: tr('6 ore') }, { value: '24h', label: tr('24 ore') }];
+const SINCE = [{ value: '30m', label: '30 min' }, { value: '1h', label: tr('1 hour') }, { value: '6h', label: tr('6 hours') }, { value: '24h', label: tr('24 hours') }];
 const LEVEL_TONE: Record<string, string> = { INFO: 'info', WARNING: 'warning', ERROR: 'danger', CRITICAL: 'danger' };
 /** Incident timeline: action kind → [kit icon, tone] (tone '' = inherit). */
 const ACTION_ICON: Record<string, [string, string]> = { detected: ['alert', 'warning'], status: ['arrows-v', 'info'], alert: ['bell', 'warning'],
@@ -74,7 +74,7 @@ export class ArgusHealth extends HestiaElement {
       this.host.api('GET', `${API}/history`, { query: { minutes: this.minutes, buckets: 60 } }),
       this.host.api('GET', `${API}/incidents`, { query: { limit: 100 } }),
     ]);
-    if (!ov.ok) { this.error = ov.error === 'offline' ? tr('Sei offline') : tr('Argus non raggiungibile'); return; }
+    if (!ov.ok) { this.error = ov.error === 'offline' ? tr('You are offline') : tr('Argus not reachable'); return; }
     this.error = ''; this.ov = ov.data;
     if (hist.ok) this.hist = hist.data;
     if (inc.ok) this.inc = inc.data;
@@ -86,19 +86,19 @@ export class ArgusHealth extends HestiaElement {
     if (this.lf.service) q.service = this.lf.service;
     const r = await this.host.api('GET', `${API}/logs`, { query: q });
     this.logBusy = false;
-    if (!r.ok) { this.logErr = tr('Log non disponibili'); return; }
+    if (!r.ok) { this.logErr = tr('Logs not available'); return; }
     this.logErr = '';
     this.logs = [...(r.data.events || [])].sort((a: any, b: any) => String(b.timestamp).localeCompare(String(a.timestamp)));
   }
 
   private async recheck(service: string, unhealthy: boolean) {
-    if (unhealthy && !(await this.host.confirm(tr("Ricontrollare {0}?", service),
-      tr('Se non risponde ancora, Argus chiede di nuovo la riparazione a Hephaestus e pianifica il prossimo ricontrollo.'),
-      { label: tr('Ricontrolla') }))) return;
+    if (unhealthy && !(await this.host.confirm(tr("Recheck {0}?", service),
+      tr('If it still doesn\'t answer, Argus asks Hephaestus for the repair again and schedules the next recheck.'),
+      { label: tr('Recheck') }))) return;
     this.busy = service;
     const r = await this.host.api('POST', `${API}/recheck/${encodeURIComponent(service)}`, { body: { trigger: 'webui' } });
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error === 'unreachable' ? tr('Argus non raggiungibile') : tr('Ricontrollo non riuscito'), 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error === 'unreachable' ? tr('Argus not reachable') : tr('Recheck failed'), 'danger'); return; }
     const h = r.data?.health;
     this.host.toast(r.data?.message || `${service}: ${statusOf(h)[1]}`, h === 'up' ? 'success' : 'warning');
     this.load();
@@ -110,12 +110,12 @@ export class ArgusHealth extends HestiaElement {
   private renderIncident(i: any, open: boolean) {
     const [tone, label] = statusOf(i.status);
     return html`<div class="card incident">
-      <div class="row wrap"><b>${i.service}</b><hxk-badge tone=${open ? tone : 'success'}>${open ? label : 'risolto'}</hxk-badge>
-        <span class="small muted grow">${open ? `da ${duration(i.duration_seconds)}` : `durato ${duration(i.duration_seconds)} · ${when(i.closed_at)}`}</span>
-        ${open ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === i.service} @click=${() => this.recheck(i.service, true)}>${tr("Ricontrolla")}</hxk-button>` : nothing}</div>
+      <div class="row wrap"><b>${i.service}</b><hxk-badge tone=${open ? tone : 'success'}>${open ? label : tr('resolved')}</hxk-badge>
+        <span class="small muted grow">${open ? tr("for {0}", duration(i.duration_seconds)) : tr("lasted {0} · {1}", duration(i.duration_seconds), when(i.closed_at))}</span>
+        ${open ? html`<hxk-button size="sm" icon="refresh" ?loading=${this.busy === i.service} @click=${() => this.recheck(i.service, true)}>${tr("Recheck")}</hxk-button>` : nothing}</div>
       ${open && i.error ? html`<div class="small muted">${i.error}</div>` : nothing}
       <ul class="acts">${(i.actions || []).map((a: any) => html`<li><span class="t tnum">${when(a.at)}</span>
-        ${((ic: [string, string]) => html`<hxk-icon name=${ic[0]} size=${14} tone=${ic[1]}></hxk-icon>`)(a.ok === false ? ['x-circle', 'danger'] : ACTION_ICON[a.kind] || ['check-circle', 'success'])}<span class=${a.ok === false ? 'ko' : ''}>${a.text}${a.ok === false ? tr(' — non riuscito') : ''}</span></li>`)}</ul>
+        ${((ic: [string, string]) => html`<hxk-icon name=${ic[0]} size=${14} tone=${ic[1]}></hxk-icon>`)(a.ok === false ? ['x-circle', 'danger'] : ACTION_ICON[a.kind] || ['check-circle', 'success'])}<span class=${a.ok === false ? 'ko' : ''}>${a.text}${a.ok === false ? tr(' — failed') : ''}</span></li>`)}</ul>
     </div>`;
   }
 
@@ -123,7 +123,7 @@ export class ArgusHealth extends HestiaElement {
     const h = this.hist;
     if (!h) return html`<hxk-state kind="loading"></hxk-state>`;
     const names = Object.keys(h.services || {});
-    if (!names.length) return html`<hxk-state kind="empty" text=${tr("Nessun controllo ancora: Argus raccoglie la storia da quando è partito.")}></hxk-state>`;
+    if (!names.length) return html`<hxk-state kind="empty" text=${tr("No check yet: Argus collects the history since it started.")}></hxk-state>`;
     const bad = (n: string) => h.services[n].status !== 'up';
     names.sort((a, b) => Number(bad(b)) - Number(bad(a)) || a.localeCompare(b));
     const label = WINDOWS.find(w => w.value === h.minutes)?.label || `${h.minutes} min`;
@@ -133,10 +133,10 @@ export class ArgusHealth extends HestiaElement {
         <div class="name"><b class="truncate">${n}</b><span class="small muted tnum">${s.uptime_pct == null ? '–' : `${s.uptime_pct}% ok`} · ${ago(s.checked_at)}</span></div>
         <div class="bar" title=${s.error || ''}><div class="strip">${[...String(s.strip || '')].map(c => html`<span class=${c}></span>`)}</div></div>
         <div class="right"><hxk-badge tone=${tone}>${lab}</hxk-badge>
-          <hxk-button size="sm" variant="ghost" icon="refresh" ?loading=${this.busy === n} @click=${() => this.recheck(n, s.status !== 'up')}>${tr("Ricontrolla")}</hxk-button></div>
+          <hxk-button size="sm" variant="ghost" icon="refresh" ?loading=${this.busy === n} @click=${() => this.recheck(n, s.status !== 'up')}>${tr("Recheck")}</hxk-button></div>
       </div>`;
     })}
-      <div class="axis"><span>${label} fa</span><span>${tr("adesso")}</span></div></div>`;
+      <div class="axis"><span>${label} fa</span><span>${tr("now")}</span></div></div>`;
   }
 
   private renderLogs() {
@@ -144,24 +144,24 @@ export class ArgusHealth extends HestiaElement {
     const q = this.text.trim().toLowerCase();
     const rows = (this.logs || []).filter(e => !q || `${e.service} ${e.message}`.toLowerCase().includes(q));
     return html`<section>
-      <div class="sec"><h2 class="grow">${tr("Log")}</h2><hxk-button size="sm" variant="ghost" icon="refresh" ?loading=${this.logBusy} @click=${() => this.loadLogs()}>${tr("Aggiorna")}</hxk-button></div>
+      <div class="sec"><h2 class="grow">${tr("Logs")}</h2><hxk-button size="sm" variant="ghost" icon="refresh" ?loading=${this.logBusy} @click=${() => this.loadLogs()}>${tr("Refresh")}</hxk-button></div>
       <div class="filters">
-        <select aria-label=${tr("Servizio")} .value=${this.lf.service} @change=${(e: any) => this.setLf('service', e.target.value)}>
-          <option value="">${tr("Tutti i servizi")}</option>${services.map(s => html`<option value=${s} ?selected=${this.lf.service === s}>${s}</option>`)}</select>
-        <select aria-label=${tr("Livello minimo")} @change=${(e: any) => this.setLf('level', e.target.value)}>
+        <select aria-label=${tr("Service")} .value=${this.lf.service} @change=${(e: any) => this.setLf('service', e.target.value)}>
+          <option value="">${tr("All services")}</option>${services.map(s => html`<option value=${s} ?selected=${this.lf.service === s}>${s}</option>`)}</select>
+        <select aria-label=${tr("Minimum level")} @change=${(e: any) => this.setLf('level', e.target.value)}>
           ${LEVELS.map(l => html`<option value=${l} ?selected=${this.lf.level === l}>da ${l}</option>`)}</select>
-        <select aria-label=${tr("Periodo")} @change=${(e: any) => this.setLf('since', e.target.value)}>
-          ${SINCE.map(s => html`<option value=${s.value} ?selected=${this.lf.since === s.value}>${tr("ultime")} ${s.label}</option>`)}</select>
-        <input type="search" placeholder=${tr("Cerca nel testo")} .value=${this.text} @input=${(e: any) => (this.text = e.target.value)}>
+        <select aria-label=${tr("Period")} @change=${(e: any) => this.setLf('since', e.target.value)}>
+          ${SINCE.map(s => html`<option value=${s.value} ?selected=${this.lf.since === s.value}>${tr("latest")} ${s.label}</option>`)}</select>
+        <input type="search" placeholder=${tr("Search in the text")} .value=${this.text} @input=${(e: any) => (this.text = e.target.value)}>
       </div>
       ${this.logErr ? html`<hxk-state kind="error" text=${this.logErr} @retry=${() => this.loadLogs()}></hxk-state>`
         : this.logs === null ? html`<hxk-state kind="loading"></hxk-state>`
-        : !rows.length ? html`<hxk-state kind="empty" text=${tr("Nessun evento con questi filtri.")}></hxk-state>`
+        : !rows.length ? html`<hxk-state kind="empty" text=${tr("No event with these filters.")}></hxk-state>`
         : html`<div class="card">${rows.slice(0, 300).map(e => html`<div class="log">
             <hxk-badge tone=${LEVEL_TONE[e.level] || 'neutral'}>${e.level}</hxk-badge>
-            <div class="grow"><div class="row wrap"><b>${e.service}</b><span class="t tnum">${new Date(e.timestamp).toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
+            <div class="grow"><div class="row wrap"><b>${e.service}</b><span class="t tnum">${new Date(e.timestamp).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
               <div class="msg">${e.message}</div></div></div>`)}
-            ${rows.length > 300 ? html`<div class="small muted">${tr("Mostro i 300 più recenti di")} ${rows.length}.</div>` : nothing}</div>`}
+            ${rows.length > 300 ? html`<div class="small muted">${tr("I show the 300 most recent of")} ${rows.length}.</div>` : nothing}</div>`}
     </section>`;
   }
 
@@ -170,25 +170,25 @@ export class ArgusHealth extends HestiaElement {
     if (!this.ov) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const ov = this.ov; const open: any[] = this.inc?.open || []; const closed: any[] = this.inc?.recent || [];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Salute")}</h1>
-        <span class="sub">${ov.last_cycle_at ? tr("ultimo controllo {0}{1}", ago(ov.last_cycle_at), ov.last_cycle_ms != null ? ` · ${ov.last_cycle_ms} ms` : '') : tr('primo controllo in corso…')}</span>
-        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => { this.load(); this.loadLogs(); }}>${tr("Aggiorna")}</hxk-button></div>
-      ${this.error ? html`<hxk-state kind="error" text="${this.error}: mostro gli ultimi dati" @retry=${() => this.load()}></hxk-state>` : nothing}
+      <div class="head"><h1>${tr("Health")}</h1>
+        <span class="sub">${ov.last_cycle_at ? tr("last check {0}{1}", ago(ov.last_cycle_at), ov.last_cycle_ms != null ? ` · ${ov.last_cycle_ms} ms` : '') : tr('first check in progress…')}</span>
+        <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => { this.load(); this.loadLogs(); }}>${tr("Refresh")}</hxk-button></div>
+      ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last data", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
-        { label: tr('Servizi sani'), value: `${ov.healthy}/${ov.total}`, tone: ov.unhealthy ? 'warning' : 'success' },
-        { label: tr('Non sani'), value: ov.unhealthy, tone: ov.unhealthy ? 'danger' : 'neutral' },
-        { label: tr('Incidenti aperti'), value: ov.open_incidents, tone: ov.open_incidents ? 'danger' : 'neutral' },
-        { label: tr('Controlli'), value: ov.cycles, hint: tr('Cicli di controllo da quando Argus è partito') },
+        { label: tr('Healthy services'), value: `${ov.healthy}/${ov.total}`, tone: ov.unhealthy ? 'warning' : 'success' },
+        { label: tr('Unhealthy'), value: ov.unhealthy, tone: ov.unhealthy ? 'danger' : 'neutral' },
+        { label: tr('Open incidents'), value: ov.open_incidents, tone: ov.open_incidents ? 'danger' : 'neutral' },
+        { label: tr('Checks'), value: ov.cycles, hint: tr('Check cycles since Argus started') },
       ]}></hxk-stat>
-      ${open.length ? html`<section><h2>${tr("Incidenti aperti")}</h2>${open.map(i => this.renderIncident(i, true))}</section>` : nothing}
+      ${open.length ? html`<section><h2>${tr("Open incidents")}</h2>${open.map(i => this.renderIncident(i, true))}</section>` : nothing}
       <section>
-        <div class="sec"><h2 class="grow">${tr("Servizi nel tempo")}</h2>
+        <div class="sec"><h2 class="grow">${tr("Services over time")}</h2>
           <div class="seg">${WINDOWS.map(w => html`<button class="chip" aria-pressed=${this.minutes === w.value} @click=${() => this.setWindow(w.value)}>${w.label}</button>`)}</div></div>
         ${this.renderHistory()}
       </section>
       ${closed.length ? html`<section>
-        <div class="sec"><h2 class="grow">${tr("Registro")}</h2>
-          <hxk-button size="sm" variant="ghost" @click=${() => (this.showClosed = !this.showClosed)}>${this.showClosed ? tr('Nascondi') : tr("Mostra ({0})", closed.length)}</hxk-button></div>
+        <div class="sec"><h2 class="grow">${tr("Log")}</h2>
+          <hxk-button size="sm" variant="ghost" @click=${() => (this.showClosed = !this.showClosed)}>${this.showClosed ? tr('Hide') : tr("Show ({0})", closed.length)}</hxk-button></div>
         ${this.showClosed ? closed.map(i => this.renderIncident(i, false)) : nothing}</section>` : nothing}
       ${this.renderLogs()}
     </div>`;

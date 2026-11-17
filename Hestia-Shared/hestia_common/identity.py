@@ -17,6 +17,11 @@ A module reads the values with its own ``SettingsClient`` after ``follow_persona
     text = identity.render(TEMPLATE, ident)
 
 The product, the modules and the repository keep the name Hestia: only the voice that talks to the owner changes.
+
+Texts people read (buttons, notices, help) use the same two tokens where they speak of the assistant as a person
+(«Chiedi a {assistant}», «Ciao, sono {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
+``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the
+app (version, files, installation, the system as a whole) it stays «Hestia».
 """
 from __future__ import annotations
 
@@ -30,7 +35,8 @@ ASSISTANT_GENDER = "themis.personal.assistant_gender"
 LANGUAGE = "themis.personal.language"
 
 # Language code → its English name, as the hidden prompt text says it. Same codes as the setting's options.
-LANGUAGES = {"it": "Italian", "en": "English", "de": "German", "fr": "French", "es": "Spanish"}
+# Adding a language: docs/LANGUAGES.md («A new language»).
+LANGUAGES = {"it": "Italian", "en": "English"}
 DEFAULT_LANGUAGE = "it"
 
 DEFAULT_NAME = "Hestia"
@@ -95,3 +101,14 @@ def render(text: str, ident: dict[str, str] | None = None) -> str:
                .replace("{owner_rule}", owner_rule(ident))
                .replace("{owner_language}", language_name(ident))
                .replace("{owner}", ident.get("owner") or UNKNOWN_OWNER))
+
+
+def named(text: str, ident: dict[str, str] | None = None) -> str:
+    """A text people read with the assistant's name and gender filled (``{assistant}``, ``{g:lei|lui}``); every
+    other brace stays for ``str.format``."""
+    raw = str(text or "")
+    if "{assistant}" not in raw and "{g:" not in raw:
+        return raw
+    ident = ident or default()
+    index = 2 if ident.get("gender") == "lui" else 1
+    return _GENDERED.sub(lambda m: m.group(index), raw).replace("{assistant}", ident.get("assistant") or DEFAULT_NAME)

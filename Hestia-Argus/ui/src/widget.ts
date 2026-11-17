@@ -17,19 +17,19 @@ export class ArgusStatusWidget extends HestiaElement {
     this.error = !r.ok; if (r.ok) this.data = r.data;
   }
   render() {
-    if (this.error && !this.data) return html`<hxk-state kind="offline" text=${tr("Salute del sistema non raggiungibile")} @retry=${() => this.load()}></hxk-state>`;
+    if (this.error && !this.data) return html`<hxk-state kind="offline" text=${tr("System health not reachable")} @retry=${() => this.load()}></hxk-state>`;
     if (!this.data) return html`<hxk-state kind="loading"></hxk-state>`;
     const d = this.data;
-    if (!d.last_cycle_at) return html`<div class="w"><span class="small muted">${tr("Stato sistema")}</span><div class="muted">${tr("Primo controllo in corso…")}</div></div>`;
+    if (!d.last_cycle_at) return html`<div class="w"><span class="small muted">${tr("System status")}</span><div class="muted">${tr("First check in progress…")}</div></div>`;
     const bad: any[] = d.unhealthy_services || [];
     const n = this.ctx?.size === 's' ? 2 : this.ctx?.size === 'l' ? 8 : 4;
     return html`<div class="w" @click=${() => this.host.navigate('salute')}>
-      <div class="row"><span class="small muted grow">${tr("Stato sistema")}</span><span class="small muted">${ago(d.last_cycle_at)}</span></div>
-      <div class="big">${d.healthy}<span class="muted" style="font-size:15px"> / ${d.total} ${tr("sani")}</span></div>
+      <div class="row"><span class="small muted grow">${tr("System status")}</span><span class="small muted">${ago(d.last_cycle_at)}</span></div>
+      <div class="big">${d.healthy}<span class="muted" style="font-size:15px"> / ${d.total} ${tr("healthy")}</span></div>
       ${bad.length ? html`<div class="row wrap">${bad.slice(0, n).map(s => html`<hxk-badge tone=${statusOf(s.status)[0]}>${s.service}</hxk-badge>`)}
           ${bad.length > n ? html`<span class="small muted">+${bad.length - n}</span>` : nothing}</div>`
-        : html`<hxk-badge tone="success">${tr("tutto in ordine")}</hxk-badge>`}
-      ${d.open_incidents && this.ctx?.size !== 's' ? html`<span class="small muted">${d.open_incidents} ${tr("incidenti aperti")}</span>` : nothing}
+        : html`<hxk-badge tone="success">${tr("all in order")}</hxk-badge>`}
+      ${d.open_incidents && this.ctx?.size !== 's' ? html`<span class="small muted">${d.open_incidents} ${tr("open incidents")}</span>` : nothing}
     </div>`;
   }
 }

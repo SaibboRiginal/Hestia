@@ -17,17 +17,17 @@ class SettingValueError(ValueError):
 
 def _number(defn: dict, value: Any, cast) -> Any:
     if isinstance(value, bool):
-        raise SettingValueError("numero atteso")
+        raise SettingValueError(tr("number expected"))
     try:
         number = cast(value)
     except (TypeError, ValueError):
-        raise SettingValueError("numero atteso")
+        raise SettingValueError(tr("number expected"))
     if cast is int and isinstance(value, float) and value != int(value):
-        raise SettingValueError("numero intero atteso")
+        raise SettingValueError(tr("whole number expected"))
     if defn.get("min") is not None and number < defn["min"]:
-        raise SettingValueError(f"minimo {defn['min']}")
+        raise SettingValueError(tr("minimum {0}", defn['min']))
     if defn.get("max") is not None and number > defn["max"]:
-        raise SettingValueError(f"massimo {defn['max']}")
+        raise SettingValueError(tr("maximum {0}", defn['max']))
     return number
 
 
@@ -35,7 +35,7 @@ def validate(defn: dict, value: Any) -> Any:
     """Return the value coerced to the declared type, or raise SettingValueError (Italian message)."""
     kind = defn.get("type", "string")
     if value is None:
-        raise SettingValueError(tr("valore mancante (per tornare al predefinito usa Ripristina)"))
+        raise SettingValueError(tr("missing value (to go back to the default use Restore)"))
     if kind == "bool":
         if isinstance(value, bool):
             return value
@@ -44,7 +44,7 @@ def validate(defn: dict, value: Any) -> Any:
             return True
         if text in _FALSE:
             return False
-        raise SettingValueError(tr("sì/no atteso"))
+        raise SettingValueError(tr("yes/no expected"))
     if kind == "int":
         return _number(defn, value, int)
     if kind == "float":
@@ -57,36 +57,36 @@ def validate(defn: dict, value: Any) -> Any:
         for option in allowed:
             if str(option) == text:
                 return option
-        raise SettingValueError(tr("valore non ammesso: ") + ", ".join(str(a) for a in allowed))
+        raise SettingValueError(tr("value not allowed: ") + ", ".join(str(a) for a in allowed))
     if kind in {"string", "text", "model"}:
         if not isinstance(value, (str, int, float)) or isinstance(value, bool):
-            raise SettingValueError("testo atteso")
+            raise SettingValueError(tr("text expected"))
         text = str(value)
         if kind != "text" and len(text) > 500:
-            raise SettingValueError("testo troppo lungo")
+            raise SettingValueError(tr("text too long"))
         if kind == "text" and len(text) > 20000:
-            raise SettingValueError("testo troppo lungo")
+            raise SettingValueError(tr("text too long"))
         return text
     if kind == "time":
         text = str(value).strip()
         if not _TIME.match(text):
-            raise SettingValueError("orario HH:MM atteso")
+            raise SettingValueError(tr("time HH:MM expected"))
         return text
     if kind == "duration":
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             return value
         text = str(value).strip().lower()
         if not _DURATION.match(text):
-            raise SettingValueError("durata attesa (es. 30s, 5m, 2h)")
+            raise SettingValueError(tr("duration expected (e.g. 30s, 5m, 2h)"))
         return text
     if kind == "list":
         if not isinstance(value, list):
-            raise SettingValueError("lista attesa")
+            raise SettingValueError(tr("list expected"))
         item = defn.get("item")
         return [validate(item, v) for v in value] if isinstance(item, dict) else value
     if kind == "object":
         if not isinstance(value, dict):
-            raise SettingValueError("oggetto atteso")
+            raise SettingValueError(tr("object expected"))
         fields = defn.get("fields") or {}
         out = dict(value)
         for name, sub in fields.items():
@@ -96,4 +96,4 @@ def validate(defn: dict, value: Any) -> Any:
                 except SettingValueError as exc:
                     raise SettingValueError(f"{sub.get('label') or name}: {exc}")
         return out
-    raise SettingValueError(f"tipo sconosciuto {kind}")
+    raise SettingValueError(tr("unknown type {0}", kind))

@@ -96,7 +96,7 @@ def test_signal_detail_topics(cared):
     assert "Massaggio" in g and "0/7" in g
     assert "serie 4" in cared.signal_detail(f"streak:{cared._ids['weekly']}")
     assert cared.signal_detail("nonsense") is None and cared.signal_detail("goal:missing") is None
-    assert cared.context_text(400, "nonsense").startswith("Self care:")
+    assert cared.context_text(400, "nonsense").startswith("Cura di sé:")
     assert len(cared.context_text(60, "adherence_drop")) <= 60
 
 
@@ -133,11 +133,11 @@ def test_signals_run_endpoint_syncs(api):
 def test_module_context_topic(api):
     client, _, _ = api
     normal = client.get("/api/module/context").json()
-    assert normal["module"] == "hygieia" and normal["domain"] == "selfcare" and normal["text"].startswith("Self care:")
+    assert normal["module"] == "hygieia" and normal["domain"] == "selfcare" and normal["text"].startswith("Cura di sé:")
     detail = client.get("/api/module/context", params={"topic": "adherence_drop", "budget": 600}).json()
     assert set(detail) == {"module", "domain", "updated_at", "text"} and detail["text"].startswith("Cura di sé")
     unknown = client.get("/api/module/context", params={"topic": "nope"}).json()
-    assert unknown["text"].startswith("Self care:")
+    assert unknown["text"].startswith("Cura di sé:")
 
 
 @pytest.mark.api

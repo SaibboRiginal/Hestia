@@ -70,6 +70,18 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
   while, less if you do not answer, little in the first days. And she **observes before proposing**: no
   improvement or setting proposal on a new install, only after days of data and the same thing seen on several
   days (faults are reported at once; on demand always works).
+- (2026-11-16) The name you chose is everywhere it speaks of her as a person (buttons, pages, Telegram, voice);
+  «Hestia» stays only for the app. What she wrote first stays in the conversation where you answer. Something
+  clearly wrong is fixed, not asked about.
+
+## R9 — Backend English, the owner reads his language (2026-11-14, 2026-11-16)
+- Everything the model reads is English; every fixed text a person reads comes from the catalog in the owner's
+  language; chat answers follow the language he writes in, what she writes on her own follows «Lingua».
+- (2026-11-16) Only **Italian and English** are needed: «Lingua» offers those two. Another language only if he asks.
+- (2026-11-16) «Togli tutto l'italiano»: the code has no Italian texts. English is the source, Italian lives only in
+  `locales/it/messages.json`; every module (Iris and Atlas too) follows «Lingua». Stored ids and parsers of his words
+  keep their Italian words.
+- How, for every module: `docs/LANGUAGES.md`. Check: `python tools/governance/check_i18n.py` (precheck and CI).
 
 ## R7 — Working style (2026-10-22, 2026-10-24)
 - Threads merge their own PR once CI is green, unless they need an answer from the owner; main must always be ready
@@ -86,3 +98,4 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
 6. Does it work on every client: WebUI (icons, no emoji) and Telegram (tool + display) (R5)?
 7. Can the owner stop it, correct it and undo it?
 8. Which docs change (module doc, swagger, ARCHITECTURE, AI-GUIDE, flow map, readme)?
+9. Texts: all code English, people texts wrapped in `tr` with their Italian entry, registration labels plain English (R9, `docs/LANGUAGES.md`)?

@@ -49,14 +49,14 @@ def _hub_default() -> str:
 def ago(minutes: float | None) -> str:
     """Italian, short: "adesso", "12 min fa", "3 h fa", "2 giorni fa"."""
     if minutes is None:
-        return "mai"
+        return tr("never")
     if minutes < 1:
         return "adesso"
     if minutes < 60:
         return f"{int(minutes)} min fa"
     if minutes < 48 * 60:
         return f"{int(minutes // 60)} h fa"
-    return f"{int(minutes // 1440)} giorni fa"
+    return tr("{0} days ago", int(minutes // 1440))
 
 
 class PresenceClient:
@@ -143,9 +143,9 @@ class PresenceClient:
         parts = [f"Assistant state: {state.get('label') or state.get('base')}"]
         if state.get("last_interaction_at"):
             client = state.get("last_interaction_client") or ""
-            parts.append(f"ultima interazione {ago(state.get('idle_minutes'))}" + (f" ({client})" if client else ""))
+            parts.append(tr("last interaction {0}", ago(state.get('idle_minutes'))) + (f" ({client})" if client else ""))
         else:
-            parts.append(tr("nessuna interazione registrata"))
+            parts.append(tr("no interaction recorded"))
         notice = (state.get("effects") or {}).get("chat.notice")
         if notice:
             parts.append(f"notify if useful: {notice}")

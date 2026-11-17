@@ -40,12 +40,12 @@ import { tr, TrPipe } from '../../core/i18n';
       }
       @case ('model') {
         <input class="hx-input mono" [attr.list]="listId()" [value]="text(it.value)" [disabled]="disabled()"
-               [attr.aria-label]="it.label"  [placeholder]="'nome del modello' | tr"
+               [attr.aria-label]="it.label"  [placeholder]="'model name' | tr"
                (focus)="loadChoices()" (change)="commitText($any($event.target).value)" (keydown.enter)="blur($event)" />
         <datalist [id]="listId()">
           @for (o of choices(); track $index) { <option [value]="o.value">{{ o.label }}</option> }
         </datalist>
-        @if (loadingChoices()) { <span class="hint">{{ "carico i modelli…" | tr }}</span> }
+        @if (loadingChoices()) { <span class="hint">{{ "loading models…" | tr }}</span> }
       }
       @case ('int') { <ng-container [ngTemplateOutlet]="num" /> }
       @case ('float') { <ng-container [ngTemplateOutlet]="num" /> }
@@ -58,7 +58,7 @@ import { tr, TrPipe } from '../../core/i18n';
       }
       @case ('list') {
         <textarea class="hx-textarea mono" rows="3" [value]="lines(it.value)" [disabled]="disabled()"
-                  [attr.aria-label]="it.label"  [placeholder]="'un valore per riga' | tr"
+                  [attr.aria-label]="it.label"  [placeholder]="'one value per line' | tr"
                   (change)="commitList($any($event.target).value)"></textarea>
       }
       @case ('object') {
@@ -128,17 +128,17 @@ export class SettingControlComponent {
   commitNumber(v: string) {
     if (v.trim() === '') return;
     const n = Number(v);
-    if (Number.isNaN(n)) { this.toast.error('Numero non valido'); return; }
+    if (Number.isNaN(n)) { this.toast.error(tr('Invalid number')); return; }
     this.commit.emit(n);
   }
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
   /** Object values with a dedicated editor: link to it (the JSON stays editable below). */
   editorLink(editor?: string): { path: string; label: string } | null {
-    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: tr('Modifica in Oracle · Cervello · Modelli') } : null;
+    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: tr('Edit in Oracle · Brain · Models') } : null;
   }
 
   commitJson(v: string) {
-    try { this.commit.emit(JSON.parse(v)); } catch { this.toast.error('JSON non valido'); }
+    try { this.commit.emit(JSON.parse(v)); } catch { this.toast.error(tr('Invalid JSON')); }
   }
 
   /** Model names come from the owning module (e.g. installed Ollama models), via Themis. */

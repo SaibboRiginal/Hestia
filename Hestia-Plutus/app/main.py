@@ -68,28 +68,24 @@ DEFAULT_PAYPAL_SENDERS = ["paypal.it", "paypal.com"]
 # ── settings (Themis) ────────────────────────────────────────────────────────
 settings = SettingsClient("plutus")
 settings.declare([
-    setting("plutus.month_start_day", "Il mese inizia il giorno", "int", 1, group="Mese", min=1, max=28,
-            help="Per budget e riepiloghi. Es. 27 se ragioni da uno stipendio all'altro."),
-    setting("plutus.alerts.enabled", "Avvisi budget", "bool", True, group="Avvisi",
-            help="Un avviso quando una categoria (o il totale) arriva alla soglia e uno quando la supera. "
-                 "Al massimo uno per categoria per livello al mese."),
-    setting("plutus.alerts.threshold", "Soglia avviso", "int", 80, group="Avvisi", min=50, max=99, unit="%",
+    setting("plutus.month_start_day", "The month starts on day", "int", 1, group="Month", min=1, max=28,
+            help="For budgets and summaries. E.g. 27 if you think from one salary to the next."),
+    setting("plutus.alerts.enabled", "Budget alerts", "bool", True, group="Notices",
+            help="One alert when a category (or the total) reaches the threshold and one when it exceeds it. At most one per category per level per month."),
+    setting("plutus.alerts.threshold", "Alert threshold", "int", 80, group="Notices", min=50, max=99, unit="%",
             depends_on={"key": "plutus.alerts.enabled", "equals": True}),
-    setting("plutus.review.enabled", "Riepilogo mensile", "bool", False, group="Avvisi",
-            help="Il primo del mese: com'è andato il mese passato rispetto al budget e al mese prima."),
-    *reminder_settings("plutus", help="Ti ricordo di caricare l'estratto conto (PDF dei movimenti) se il mese "
-                                      "passato non c'è ancora. Uno alla volta."),
+    setting("plutus.review.enabled", "Monthly summary", "bool", False, group="Notices",
+            help="On the first of the month: how last month went against the budget and the month before."),
+    *reminder_settings("plutus", help="I remind you to upload the bank statement (PDF of the transactions) if last month's is not there yet. One at a time."),
     voice_setting("plutus", False),
-    setting("plutus.mail.senders", "Mittenti PayPal", "list", list(DEFAULT_PAYPAL_SENDERS), group="Email", order=0,
-            help="Indirizzi o domini delle email di pagamento: Iris le passa a Spese appena arrivano."),
-    setting("plutus.coach.review_threshold", "Movimenti da controllare per proporre un ripasso", "int", 10,
-            group="Piano della settimana", min=1, max=100, unit="movimenti",
-            help="Da questo numero di movimenti da controllare metto nel piano della settimana 15 minuti per "
-                 "rivedere le spese."),
-    setting("plutus.link.window_days", "Giorni per collegare PayPal e banca", "int", 3, group="Email", min=0, max=10,
-            unit="giorni", advanced=True,
-            help="Un pagamento PayPal pagato con la carta compare due volte: le due righe con lo stesso importo "
-                 "entro questi giorni vengono collegate e contate una volta sola."),
+    setting("plutus.mail.senders", "PayPal senders", "list", list(DEFAULT_PAYPAL_SENDERS), group="Email", order=0,
+            help="Addresses or domains of payment emails: Iris passes them to Expenses as soon as they arrive."),
+    setting("plutus.coach.review_threshold", "Transactions to check before proposing a review", "int", 10,
+            group="Weekly plan", min=1, max=100, unit="transactions",
+            help="From this number of transactions to check I put 15 minutes in the weekly plan to review expenses."),
+    setting("plutus.link.window_days", "Days to match PayPal and bank", "int", 3, group="Email", min=0, max=10,
+            unit="days", advanced=True,
+            help="A PayPal payment paid with the card appears twice: the two lines with the same amount within these days are matched and counted once."),
 ]).follow_personal()                                       # currency, week start: personal settings shared by every module
 
 hub = Hub(HUB_API_URL)
@@ -98,9 +94,8 @@ store = Store(hub)
 
 # What Spese asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
 LLM_USECASE = "plutus.lettura"
-LLM_USECASES = [llm_usecase(LLM_USECASE, "Spese · email ed estratti", chain="veloce",
-                            help="Legge le email o gli estratti che il lettore automatico non capisce e propone le "
-                                 "categorie.")]
+LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="veloce",
+                            help="Reads the emails or statements the automatic reader doesn't understand and proposes the categories.")]
 
 
 def _voice(prompt: str) -> str | None:
@@ -156,7 +151,7 @@ def _coach_check() -> None:
 
 app = FastAPI(title="Hestia-Plutus", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.include_router(CoachRouter("plutus", DOMAIN, "Spese", needs=coach.needs, review=coach.review).router)
+app.include_router(CoachRouter("plutus", DOMAIN, "Expenses", needs=coach.needs, review=coach.review).router)
 
 
 @app.exception_handler(Invalid)
@@ -171,7 +166,7 @@ async def _not_found(_: Request, exc: NotFound):
 
 @app.exception_handler(StoreUnavailable)
 async def _store_down(_: Request, exc: StoreUnavailable):
-    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
+    return JSONResponse(status_code=503, content={"detail": tr("archive not reachable, try again shortly")})
 
 
 @app.get("/health")
@@ -219,7 +214,7 @@ def rules():
 def rule_create(body: dict = Body(...)):
     out = plutus.learn_rule(str(body.get("pattern") or ""), plutus.resolve_category(body.get("category")) or "")
     if not out:
-        raise Invalid(tr("serve un testo di almeno 3 lettere e una categoria esistente"))
+        raise Invalid(tr("a text of at least 3 letters and an existing category are needed"))
     return out
 
 
@@ -325,7 +320,7 @@ def export():
 
 def _recap_piece(day, nxt) -> dict:
     """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
-    return recap.piece("plutus", tr("Spese"), icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
+    return recap.piece("plutus", tr("Expenses"), icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
 
 
 app.include_router(recap.recap_router("plutus", _recap_piece, today=lambda: plutus.today()))
@@ -381,7 +376,7 @@ def import_undo(id: str):
 
 
 # Chat attachments (Oracle hand-off): a PDF whose text has these words is offered to Plutus (Hub capability).
-ATTACHMENT_HANDLERS = [{"mime": ["application/pdf"], "label": "Estratto conto", "min_hits": 2, "path": f"{API}/attachments",
+ATTACHMENT_HANDLERS = [{"mime": ["application/pdf"], "label": "Bank statement", "min_hits": 2, "path": f"{API}/attachments",
                         "match": ["lista movimenti", "estratto conto", "saldo contabile", "saldo disponibile", "saldo iniziale",
                                   "saldo finale", "data valuta", "data operazione", "iban", "movimenti"]}]
 
@@ -407,13 +402,13 @@ def attachment(body: dict = Body(...)):
     new, dup, link = c.get("new", 0), c.get("duplicate", 0), c.get("link", 0)
     period = " → ".join(_day(d) for d in v["period"])
     if not new and not link:
-        text = tr("Ho letto l'estratto conto ({0}): i movimenti ci sono già tutti ({1}), non aggiungo niente.", period, dup)
+        text = tr("I read the statement ({0}): all transactions are already there ({1}), I add nothing.", period, dup)
     else:
         n = new + link
-        text = (tr("Ho letto l'estratto conto ({0}): {1} {2} da aggiungere, spese nuove {3}", period, n, 'movimento' if n == 1 else 'movimenti', _money(v['total_new_spent'], cur))
-                + (tr(", {0} {1} PayPal già {2} (contati una volta)", link, 'collegato a un pagamento' if link == 1 else 'collegati a pagamenti', 'registrato' if link == 1 else 'registrati') if link else "")
-                + (tr(", {0} già {1}", dup, 'presente' if dup == 1 else 'presenti') if dup else "")
-                + tr(". Li registro? Rispondi «sì» oppure controllali in Spese › Importa. (import_id {0})", v['id']))
+        text = ((tr("I read the statement ({0}): 1 transaction to add, new expenses {1}", period, _money(v['total_new_spent'], cur)) if n == 1 else tr("I read the statement ({0}): {1} transactions to add, new expenses {2}", period, n, _money(v['total_new_spent'], cur)))
+                + ((tr(", 1 linked to a PayPal payment already logged (counted once)") if link == 1 else tr(", {0} linked to PayPal payments already logged (counted once)", link)) if link else "")
+                + ((tr(", 1 already there") if dup == 1 else tr(", {0} already there", dup)) if dup else "")
+                + tr(". Shall I log them? Answer «yes» or check them in Expenses › Import. (import_id {0})", v['id']))
     return {"handled": True, "text": text, "import_id": v["id"], "counts": c}
 
 
@@ -424,8 +419,8 @@ _mail_stats: dict[str, Any] = {"last_run": None, "processed": 0, "added": 0, "la
 
 def _mail_rules() -> list[dict]:
     senders = settings.get("plutus.mail.senders") or DEFAULT_PAYPAL_SENDERS
-    return [mail_rule(MAIL_KEY, tr("Pagamenti PayPal"), path=f"{API}/mail", domain=DOMAIN, senders=senders,
-                      description="Ricevute, rimborsi e denaro ricevuto: Spese li registra da sola.")]
+    return [mail_rule(MAIL_KEY, "PayPal payments", path=f"{API}/mail", domain=DOMAIN, senders=senders,
+                      description="Receipts, refunds and money received: Expenses records them by itself.")]
 
 
 def process_pending_mail() -> dict:
@@ -523,7 +518,7 @@ def quick_expense_undo(id: str, date: str = ""):
     day = date or plutus.today().isoformat()
     rows = [t for t in plutus._tx_rows() if t.get("category") == id and t.get("source") == "quick" and t["date"] == day]
     if not rows:
-        raise NotFound(tr("nessuna spesa veloce da annullare"))
+        raise NotFound(tr("no quick expense to undo"))
     last = max(rows, key=lambda t: t.get("created_at") or "")
     out = plutus.delete_tx(last["id"])
     signals.changed()
@@ -550,7 +545,7 @@ def alerts_run():
         if store.data("alert", sid):
             continue
         try:
-            _emit(a["key"], tr("Spese"), a["text"], [], level="warning" if a["level"] == 100 else "info", page_="budget")
+            _emit(a["key"], tr("Expenses"), a["text"], [], level="warning" if a["level"] == 100 else "info", page_="budget")
             store.upsert("alert", sid, {"sent": now_iso(), **a})
             sent.append(a["key"])
         except Exception as exc:
@@ -566,16 +561,16 @@ def _review_text(r: dict) -> str:
     text = (_voice(prompt) or "").strip()
     if text:
         return text[:1200]
-    parts = [f"{r['month']}: spesi {r['spent']:.2f} {cur}"
-             + (tr(" su un budget di {0:.2f}", r['budget']) if r.get("budget") else "")
-             + tr(" (mese prima {0:.2f}).", r['previous_spent'])]
+    parts = [tr("{0}: spent {1:.2f} {2}", r['month'], r['spent'], cur)
+             + (tr(" on a budget of {0:.2f}", r['budget']) if r.get("budget") else "")
+             + tr(" (month before {0:.2f}).", r['previous_spent'])]
     if r["over_budget"]:
-        parts.append(tr("Oltre il budget: ") + ", ".join(r["over_budget"]) + ".")
+        parts.append(tr("Over the budget: ") + ", ".join(r["over_budget"]) + ".")
     if r["biggest_changes"]:
         c = r["biggest_changes"][0]
-        parts.append(tr("Cambiata di più: {0} ({1}{2:.2f}).", c['label'], '+' if c['delta'] >= 0 else '', c['delta']))
+        parts.append(tr("Changed the most: {0} ({1}{2:.2f}).", c['label'], '+' if c['delta'] >= 0 else '', c['delta']))
     if r["to_review"]:
-        parts.append(tr("{0} movimenti da rivedere.", r['to_review']))
+        parts.append(tr("{0} transactions to review.", r['to_review']))
     return " ".join(parts)
 
 
@@ -586,7 +581,7 @@ def review_run(body: dict = Body(default={})):
         return {"sent": False, "why": "disabled"}
     r = plutus.review()
     text = _review_text(r)
-    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Spese di {0}", r['month']), text, [], page_="panoramica")
+    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Expenses of {0}", r['month']), text, [], page_="panoramica")
     return {"sent": True, "text": text, "review": r}
 
 
@@ -607,12 +602,12 @@ def reminders_run():
     if today.isoformat() in week or len(week) >= int(plutus.setting("plutus.reminder.max_per_week", 2) or 2):
         return {"sent": False, "why": "limit"}
     label = plutus.month_label(prev_start)
-    actions = [{"id": "skip", "label": tr("Non questo mese"), "text": tr("🌙 Non questo mese"), "service": "plutus",
+    actions = [{"id": "skip", "label": tr("Not this month"), "text": tr("🌙 Not this month"), "service": "plutus",
                 "method": "POST", "path": f"{API}/reminders/skip", "body": {"month": prev_start.isoformat()},
                 "resolves": True}]
     try:
-        _emit("finance.reminder.statement", tr("Spese"),
-              tr("Manca l'estratto conto di {0}: scarica la lista movimenti in PDF dall'app della banca e caricala nella pagina Importa (o mandala in chat).", label), actions, page_="importa")
+        _emit("finance.reminder.statement", tr("Expenses"),
+              tr("The statement of {0} is missing: download the transaction list as PDF from the bank app and upload it in the Import page (or send it in chat).", label), actions, page_="importa")
     except Exception as exc:
         logger.warning("[🔄] event=plutus_reminder_emit_failed error=%s fallback=next_run", exc)
         return {"sent": False, "why": "hermes_unreachable"}
@@ -624,53 +619,51 @@ def reminders_run():
 def reminders_skip(body: dict = Body(default={})):
     state = store.data("reminder", "statement") or {}
     store.upsert("reminder", "statement", {**state, "skip_month": body.get("month")})
-    return {"status": "ok", "label": tr("Promemoria estratto conto: salto questo mese")}
+    return {"status": "ok", "label": tr("Statement reminder: I skip this month")}
 
 
 def _agenda_rules() -> list[dict]:
     return [
-        job_rule("plutus.daily", "Spese: avvisi budget e abbonamenti", service="plutus", path=f"{API}/alerts/run",
+        job_rule("plutus.daily", "Expenses: budget and subscription alerts", service="plutus", path=f"{API}/alerts/run",
                  recurrence="FREQ=DAILY", start_at="2026-01-01T21:00:00", tz=TZ,
-                 description="Controlla i budget del mese (avviso alla soglia e al superamento, uno per categoria) "
-                             "e riconosce i pagamenti ricorrenti."),
-        job_rule("plutus.review", tr("Spese: riepilogo del mese"), service="plutus", path=f"{API}/review/run",
+                 description="Checks the month's budgets (notice at the threshold and when exceeded, one per category) and recognises recurring payments."),
+        job_rule("plutus.review", "Expenses: monthly summary", service="plutus", path=f"{API}/review/run",
                  recurrence="FREQ=MONTHLY;BYMONTHDAY=1", start_at="2026-01-01T09:00:00", tz=TZ,
-                 description="Solo se il riepilogo mensile è attivo: com'è andato il mese passato."),
-        job_rule("plutus.statement_reminder", "Spese: promemoria estratto conto", service="plutus",
+                 description="Only if the monthly summary is on: how last month went."),
+        job_rule("plutus.statement_reminder", "Expenses: bank statement reminder", service="plutus",
                  path=f"{API}/reminders/run", recurrence="FREQ=MONTHLY;BYMONTHDAY=3,6,9", start_at="2026-01-01T10:00:00",
-                 tz=TZ, description="Solo se il promemoria è attivo e manca l'estratto del mese passato."),
-        signals_rule("plutus", tr("Spese"), path=f"{API}/signals/run", tz=TZ),
+                 tz=TZ, description="Only if the reminder is on and last month's statement is missing."),
+        signals_rule("plutus", "Expenses", path=f"{API}/signals/run", tz=TZ),
     ]
 
 
 # ── plugin (UI bundle) ───────────────────────────────────────────────────────
-ui = PluginClient("plutus", title="Spese", icon="wallet", color="green",
-                  description="Spese e entrate: PayPal da solo, estratti conto, budget, abbonamenti, statistiche.",
+ui = PluginClient("plutus", title="Expenses", icon="wallet", color="green",
+                  description="Expenses and income: PayPal by itself, bank statements, budgets, subscriptions, statistics.",
                   dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="plutus.js", api_prefix=f"{API}/",
-    pages=[page("panoramica", "Spese", element="plutus-overview", icon="wallet", order=60,
-                help="Il mese in corso: speso, budget, categorie, ultimi movimenti."),
-           page("movimenti", "Movimenti", element="plutus-transactions", icon="list", order=61, parent="panoramica",
+    pages=[page("panoramica", "Expenses", element="plutus-overview", icon="wallet", order=60,
+                help="The current month: spent, budget, categories, latest transactions."),
+           page("movimenti", "Transactions", element="plutus-transactions", icon="list", order=61, parent="panoramica",
                 badge={"source": f"{API}/summary", "field": "to_review"}),
-           page("movimenti/:id", "Movimento", element="plutus-transaction", detail=True, parent="panoramica"),
+           page("movimenti/:id", "Transaction", element="plutus-transaction", detail=True, parent="panoramica"),
            page("budget", "Budget", element="plutus-budgets", icon="target", order=62, parent="panoramica"),
-           page("abbonamenti", "Abbonamenti", element="plutus-recurring", icon="repeat", order=63, parent="panoramica"),
-           page("importa", "Importa", element="plutus-import", icon="upload", order=64, parent="panoramica",
-                help="Carica il PDF dei movimenti della banca (es. Hype): vedi l'anteprima e confermi. Le email "
-                     "PayPal arrivano da sole."),
-           page("statistiche", "Statistiche", element="plutus-stats", icon="chart", order=65, parent="panoramica"),
-           page("categorie", "Categorie e regole", element="plutus-categories", icon="tag", order=66,
+           page("abbonamenti", "Subscriptions", element="plutus-recurring", icon="repeat", order=63, parent="panoramica"),
+           page("importa", "Import", element="plutus-import", icon="upload", order=64, parent="panoramica",
+                help="Upload the PDF of the bank transactions (e.g. Hype): see the preview and confirm. PayPal emails arrive by themselves."),
+           page("statistiche", "Statistics", element="plutus-stats", icon="chart", order=65, parent="panoramica"),
+           page("categorie", "Categories and rules", element="plutus-categories", icon="tag", order=66,
                 parent="panoramica")],
-    widgets=[widget("mese", "Spese del mese", element="plutus-month-widget", sizes=["s", "m", "l"], auto=True,
+    widgets=[widget("mese", "This month's expenses", element="plutus-month-widget", sizes=["s", "m", "l"], auto=True,
                     open_page="panoramica", icon="wallet"),
-             widget("ultimi", "Ultimi movimenti", element="plutus-latest-widget", sizes=["m", "l"],
+             widget("ultimi", "Latest transactions", element="plutus-latest-widget", sizes=["m", "l"],
                     open_page="movimenti", icon="list")],
-    quick_actions=[quick_action("spesa", "Spesa veloce", "POST", f"{API}/quick/expense/{{id}}", icon="wallet",
-                                group="Spese", source=f"{API}/quick/categories",
+    quick_actions=[quick_action("spesa", "Quick expense", "POST", f"{API}/quick/expense/{{id}}", icon="wallet",
+                                group="Expenses", source=f"{API}/quick/categories",
                                 undo={"method": "DELETE", "path": f"{API}/quick/expense/{{id}}"},
-                                params={"amount": {"type": "float", "label": "Importo", "required": True},
-                                        "note": {"type": "string", "label": "Dove / cosa"}},
+                                params={"amount": {"type": "float", "label": "Amount", "required": True},
+                                        "note": {"type": "string", "label": "Where / what"}},
                                 favorite=True, order=60)],
 )
 app.include_router(ui.router())
@@ -678,17 +671,17 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("plutus", hub, sections=[
-    StoreSection("movimenti", "Movimenti", store, ["tx"], icon="wallet",
-                 title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or tr('Movimento')} "
+    StoreSection("movimenti", "Transactions", store, ["tx"], icon="wallet",
+                 title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or tr('Transaction')} "
                                  f"{r['data'].get('amount')} {r['data'].get('currency') or ''}".strip(),
                  subtitle=lambda r: r["data"].get("date") or "", depends_on=["categorie", "conti"]),
-    StoreSection("categorie", "Categorie", store, ["category"], icon="tag"),
-    StoreSection("regole", "Regole", store, ["rule"], icon="filter",
+    StoreSection("categorie", "Categories", store, ["category"], icon="tag"),
+    StoreSection("regole", "Rules", store, ["rule"], icon="filter",
                  title=lambda r: f"{r['data'].get('pattern')} → {r['data'].get('category')}", depends_on=["categorie"]),
     StoreSection("budget", "Budget", store, ["budget"], icon="target",
                  title=lambda r: f"{r['data'].get('category')}: {r['data'].get('amount')}", depends_on=["categorie"]),
-    StoreSection("conti", "Conti", store, ["account"], icon="wallet"),
-    StoreSection("ricorrenti", "Ricorrenti", store, ["recurring"], icon="repeat",
+    StoreSection("conti", "Accounts", store, ["account"], icon="wallet"),
+    StoreSection("ricorrenti", "Recurring", store, ["recurring"], icon="repeat",
                  title=lambda r: r["data"].get("merchant") or r["id"], depends_on=["categorie"]),
 ])
 app.include_router(transfer.router())
@@ -713,43 +706,43 @@ def _short(t: dict) -> dict:
 def _tx_item(t: dict) -> dict:
     amount = t.get("amount") or 0
     when = str(t.get("date") or "")[:10]
-    return item(t.get("merchant") or t.get("category_label") or tr("Movimento"),
+    return item(t.get("merchant") or t.get("category_label") or tr("Transaction"),
                 [("+" if amount > 0 else "") + money(abs(amount)),
                  t.get("category_label"), f"{when[8:10]}/{when[5:7]}" if len(when) == 10 else "",
-                 tr("da rivedere") if t.get("status") == "to_review" else ""],
+                 tr("to review") if t.get("status") == "to_review" else ""],
                 tone="success" if amount > 0 else "")
 
 
 def summary_display(s: dict) -> dict:
-    lines = [tr("Speso {0}", money(s.get('spent'))) + (f" su {money(s['budget'])}" if s.get("budget") else "")
-             + (f" · restano {money(s['left'])}" if s.get("budget") and s.get("left") is not None else "")]
+    lines = [tr("Spent {0}", money(s.get('spent'))) + (f" su {money(s['budget'])}" if s.get("budget") else "")
+             + (tr(" · {0} left", money(s['left'])) if s.get("budget") and s.get("left") is not None else "")]
     if s.get("income"):
-        lines.append(tr("Entrate {0}", money(s['income'])))
+        lines.append(tr("Income {0}", money(s['income'])))
     if s.get("pace") and s.get("budget") and s["pace"] > s["budget"]:
-        lines.append(tr("A questo ritmo arrivi a {0}", money(s['pace'])))
-    rows = [item(c["label"], [money(c["spent"]), tr("{0}% del budget", c['pct']) if c.get("budget") else ""],
+        lines.append(tr("At this pace you reach {0}", money(s['pace'])))
+    rows = [item(c["label"], [money(c["spent"]), tr("{0}% of the budget", c['pct']) if c.get("budget") else ""],
                  tone="danger" if (c.get("pct") or 0) >= 100 else ("warning" if (c.get("pct") or 0) >= 80 else ""))
             for c in (s.get("categories") or [])[:8]]
     over = s.get("budget") and (s.get("left") or 0) < 0
-    acts = [action(tr("Aggiungi spesa"), "finance_add", style="primary"), action(tr("Cerca"), "finance_search")]
+    acts = [action(tr("Add expense"), "finance_add", style="primary"), action(tr("Search"), "finance_search")]
     if s.get("to_review"):
-        acts.append(action(tr("Da rivedere ({0})", s['to_review']), "finance_search", {"to_review": True}))
-    return display(tr("Spese · {0}", s.get('label') or 'questo mese'), lines=lines, items=rows, actions=acts,
+        acts.append(action(tr("To review ({0})", s['to_review']), "finance_search", {"to_review": True}))
+    return display(tr("Expenses · {0}", s.get('label') or 'this month'), lines=lines, items=rows, actions=acts,
                    tone="danger" if over else "")
 
 
 def search_display(items: list[dict], total: float) -> dict:
-    return display(tr("Movimenti"), subtitle=f"{len(items)} · totale {money(abs(total))}" if items else "",
-                   items=[_tx_item(t) for t in items[:20]], lines=[] if items else [tr("Nessun movimento trovato.")],
-                   footer=f"e altri {len(items) - 20}" if len(items) > 20 else "",
-                   actions=[action(tr("Aggiungi spesa"), "finance_add", style="primary")])
+    return display(tr("Transactions"), subtitle=tr("{0} · total {1}", len(items), money(abs(total))) if items else "",
+                   items=[_tx_item(t) for t in items[:20]], lines=[] if items else [tr("No transaction found.")],
+                   footer=tr("and {0} more", len(items) - 20) if len(items) > 20 else "",
+                   actions=[action(tr("Add expense"), "finance_add", style="primary")])
 
 
 def added_display(t: dict) -> dict:
-    return display(tr("Salvato"), tone="success", items=[_tx_item(t)],
-                   actions=[action(tr("Cambia categoria"), "finance_update", {"id": t.get("id")}),
-                            action(tr("Elimina"), "finance_delete", {"id": t.get("id")}, style="danger"),
-                            action(tr("Riepilogo"), "finance_summary")])
+    return display(tr("Saved"), tone="success", items=[_tx_item(t)],
+                   actions=[action(tr("Change category"), "finance_update", {"id": t.get("id")}),
+                            action(tr("Delete"), "finance_delete", {"id": t.get("id")}, style="danger"),
+                            action(tr("Summary"), "finance_summary")])
 
 
 try:
@@ -761,7 +754,7 @@ try:
             "categories": [f"{c['label']} {c['spent']:.2f}" + (f"/{c['budget']:.0f} ({c['pct']}%)" if c.get("budget") else "")
                            for c in s["categories"]],
             "top_merchants": [f"{m['merchant']} {m['spent']:.2f}" for m in s["top_merchants"]],
-            "recurring_next": [tr("{0} {1:.2f} il {2}", r['merchant'], r['amount'], r['next']) for r in s["recurring_next"]],
+            "recurring_next": [tr("{0} {1:.2f} on {2}", r['merchant'], r['amount'], r['next']) for r in s["recurring_next"]],
             "display": summary_display(s)}
 
     def _search(query: str = "", category: str = "", month: str = "", since: str = "", until: str = "",
@@ -785,7 +778,7 @@ try:
         body = {k: v for k, v in {"category": category, "amount": amount, "date": date, "merchant": merchant,
                                   "notes": note}.items() if v not in (None, "")}
         if not body:
-            return {"error": tr("nessuna modifica indicata")}
+            return {"error": tr("no change given")}
         out = plutus.update_tx(id, body, learn=always)
         signals.changed()
         _coach_check()
@@ -823,14 +816,14 @@ try:
 
     def _recurring() -> dict:
         plutus.detect_recurring()
-        return {"items": [f"{r['merchant']} {r['amount']:.2f} {r['period']} prossimo {r['next']} [{r['status']}]"
+        return {"items": [tr("{0} {1:.2f} {2} next {3} [{4}]", r['merchant'], r['amount'], r['period'], r['next'], r['status'])
                           for r in plutus.recurring()]}
 
     def _stats(months: int = 6) -> dict:
         s = plutus.stats(months)
         return {"currency": s["currency"], "avg_spent": s["avg_spent"],
-                "months": [f"{m['label']}: {m['spent']:.2f} spese, {m['income']:.2f} entrate" for m in s["months"]],
-                "categories": [f"{c['label']} {c['total']:.2f} (media {c['avg']:.2f})" for c in s["categories"][:10]],
+                "months": [tr("{0}: {1:.2f} expenses, {2:.2f} income", m['label'], m['spent'], m['income']) for m in s["months"]],
+                "categories": [tr("{0} {1:.2f} (average {2:.2f})", c['label'], c['total'], c['avg']) for c in s["categories"][:10]],
                 "merchants": [f"{m['merchant']} {m['total']:.2f} ×{m['count']}" for m in s["merchants"][:10]]}
 
     S = {"type": "string"}
@@ -841,62 +834,60 @@ try:
     _tools = [
         MCPTool(name="finance_summary", description=("Expenses of the month (or 'month' YYYY-MM-DD): spent, income, budget, pace, categories, main "
                                                      "merchants, upcoming recurring payments. Use it first for questions on money, expenses, budget."), parameters={"type": "object", "properties": {"month": S}},
-                handler=_t(_summary), title="Spese del mese", clients=["telegram", "ui"], telegram_group="spese",
-                telegram={"section": "Movimenti", "summary": True}),
+                handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Transactions", "summary": True}),
         MCPTool(name="finance_search", description=("Search transactions: query (merchant/description), category, month or since/until YYYY-MM-DD, "
                                                     "account (paypal, hype, contanti…), to_review. Also gives the total."),
                 parameters={"type": "object", "properties": {"query": S, "category": S, "month": S, "since": S,
                                                              "until": S, "account": S, "to_review": B, "limit": I}},
-                handler=_t(_search), title="Cerca movimenti", clients=["telegram", "ui"], telegram_group="spese",
-                telegram={"section": "Movimenti", "primary": 2}),
-        MCPTool(name="finance_add", description=("Log an expense (e.g. 'ho speso 12 € al bar' = amount 12, merchant bar, category ristoranti) or "
-                                                 "an income (income=true). date YYYY-MM-DD (default today), account contanti (default) | hype | "
-                                                 "paypal."),
+                handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Transactions", "primary": 2}),
+        MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category ristoranti) or an income (income=true). date YYYY-MM-DD (default today), account contanti (default) | hype | paypal."),
                 parameters={"type": "object", "properties": {"amount": N, "category": S, "merchant": S, "date": S,
                                                              "account": S, "note": S, "income": B},
                             "required": ["amount"]},
-                handler=_t(_add), title="Registra spesa", method="POST", clients=["telegram", "ui"], telegram_group="spese",
-                telegram={"section": "Movimenti", "primary": 1}),
+                handler=_t(_add), title="Log expense", method="POST", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Transactions", "primary": 1}),
         MCPTool(name="finance_update", description=("Fix a transaction (id from finance_search): category, amount, date, merchant, note. always=true "
                                                     "→ from now on the same category for that merchant."),
                 parameters={"type": "object", "properties": {"id": S, "category": S, "amount": N, "date": S,
                                                              "merchant": S, "note": S, "always": B},
                             "required": ["id"]},
-                handler=_t(_update), title="Correggi movimento", method="POST", clients=["ui"],
+                handler=_t(_update), title="Fix transaction", method="POST", clients=["ui"],
                 telegram_visible=False, telegram_group="spese",
-                telegram={"section": "Movimenti"}),
+                telegram={"section": "Transactions"}),
         MCPTool(name="finance_delete", description="Delete a transaction (id). Only after the user's yes.",
                 parameters={"type": "object", "properties": {"id": S}, "required": ["id"]},
-                handler=_t(_delete), title="Elimina movimento", method="POST", clients=["ui"],
+                handler=_t(_delete), title="Delete transaction", method="POST", clients=["ui"],
                 telegram_visible=False, telegram_group="spese",
-                telegram={"section": "Movimenti"}),
+                telegram={"section": "Transactions"}),
         MCPTool(name="finance_budget", description="Budget of the month by category and total, with what was spent.",
                 parameters={"type": "object", "properties": {"month": S}}, handler=_t(_budget),
                 title="Budget", clients=["telegram", "ui"], telegram_group="spese",
-                telegram={"section": "Budget e categorie", "primary": 3}),
+                telegram={"section": "Budget and categories", "primary": 3}),
         MCPTool(name="finance_set_budget", description="Set the monthly budget of a category (or 'total'). amount 0 = remove. Only after the user's yes.",
                 parameters={"type": "object", "properties": {"category": S, "amount": N}, "required": ["amount"]},
-                handler=_t(_set_budget), title="Imposta budget", method="POST", clients=["ui"],
+                handler=_t(_set_budget), title="Set budget", method="POST", clients=["ui"],
                 telegram_visible=False, telegram_group="spese",
-                telegram={"section": "Budget e categorie"}),
+                telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_categories", description="The expense categories (id = name).",
-                parameters={"type": "object", "properties": {}}, handler=_t(_categories), title="Categorie",
+                parameters={"type": "object", "properties": {}}, handler=_t(_categories), title="Categories",
                 clients=["ui"], telegram_visible=False, telegram_group="spese",
-                telegram={"section": "Budget e categorie"}),
+                telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_import_statement", description=("Bank statement PDF sent in chat (blob_id of the attachment): first a preview (new transactions, "
                                                               "already present, linked to PayPal), then, after the user's yes, import_id + commit=true. "
                                                               "account hype (default) or another bank."),
                 parameters={"type": "object", "properties": {"blob_id": S, "account": S, "commit": B, "import_id": S}},
-                handler=_t(_import), title="Importa estratto conto", method="POST", clients=["ui"],
+                handler=_t(_import), title="Import bank statement", method="POST", clients=["ui"],
                 telegram_visible=False, telegram_group="spese",
-                telegram={"section": "Importa"}),
+                telegram={"section": "Import"}),
         MCPTool(name="finance_recurring", description="Recurring payments and subscriptions recognised (amount, period, next date).", parameters={"type": "object", "properties": {}},
-                handler=_t(_recurring), title="Abbonamenti", clients=["telegram", "ui"], telegram_group="spese",
-                telegram={"section": "Statistiche", "primary": 4}),
+                handler=_t(_recurring), title="Subscriptions", clients=["telegram", "ui"], telegram_group="spese",
+                telegram={"section": "Statistics", "primary": 4}),
         MCPTool(name="finance_stats", description="Trend of the last months: totals, by category, merchants.",
                 parameters={"type": "object", "properties": {"months": I}}, handler=_t(_stats),
-                title="Statistiche spese", clients=["ui"], telegram_visible=False, telegram_group="spese",
-                telegram={"section": "Statistiche", "label": "Statistiche"}),
+                title="Expense statistics", clients=["ui"], telegram_visible=False, telegram_group="spese",
+                telegram={"section": "Statistics", "label": "Statistics"}),
     ]
 
     def _coerced(t: MCPTool):

@@ -145,8 +145,9 @@ def normalize_states(stored: Any, declared: dict[str, dict] | None = None) -> di
 
 
 def render(text: str, activities: list[dict]) -> str:
-    heavy = [a.get("label") or a.get("key") for a in activities if a.get("load") == "heavy"]
-    return str(text or "").replace("{activities}", ", ".join(heavy) or "lavoro in corso")
+    """A state text (English key from the registration, or the owner's own words) in the owner's language."""
+    heavy = [tr(a.get("label") or a.get("key")) for a in activities if a.get("load") == "heavy"]
+    return tr(str(text or "")).replace("{activities}", ", ".join(heavy) or tr("work in progress"))
 
 
 def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[str], Any],
@@ -168,7 +169,7 @@ def decide(states: dict[str, dict], signals: dict[str, Any], resolve: Callable[[
     labels = [render(s.get("label") or s["key"], activities) for s in [base, *overlays] if s]
     return {
         "base": base["key"] if base else "idle",
-        "base_label": labels[0] if labels else tr("In attesa"),
+        "base_label": labels[0] if labels else tr("Waiting"),
         "emoji": (base or {}).get("emoji") or "",
         "icon": (base or {}).get("icon") or "",
         "tone": (base or {}).get("tone") or "",
@@ -384,8 +385,8 @@ class PresenceEngine:
         if enabled:
             decision = decide(states, values, PS.threshold, activities)
         else:
-            decision = {"base": "awake", "base_label": tr("Sveglio"), "emoji": "", "overlays": [],
-                        "label": tr("Sveglio"), "help": tr("Stato spento: nessun effetto sul sistema."), "effects": dict(PS.DEFAULT_EFFECTS),
+            decision = {"base": "awake", "base_label": tr("Awake"), "emoji": "", "overlays": [],
+                        "label": tr("Awake"), "help": tr("State off: no effect on the system."), "effects": dict(PS.DEFAULT_EFFECTS),
                         "decided_by": {k: "disabled" for k in PS.DEFAULT_EFFECTS}}
         idle = values["user.idle_minutes"]
         now_iso = _iso(_now())

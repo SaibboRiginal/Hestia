@@ -41,10 +41,10 @@ class TestArgusManifest:
         webui = m["clients"]["webui"]
         assert webui["entry"] == "/ui/webui/argus.js" and webui["api_prefix"] == "/api/argus/"
         p, perf = webui["page"]
-        assert (p["id"], p["label"], p["element"], p["order"]) == ("salute", "Salute", "argus-health", 110)
+        assert (p["id"], p["label"], p["element"], p["order"]) == ("salute", "Health", "argus-health", 110)
         assert (perf["id"], perf["element"], perf["order"]) == ("prestazioni", "argus-performance", 111)
         (w,) = webui["widget"]
-        assert (w["id"], w["label"], w["element"], w["auto"]) == ("stato", "Stato sistema", "argus-status-widget", True)
+        assert (w["id"], w["label"], w["element"], w["auto"]) == ("stato", "System status", "argus-status-widget", True)
         (q,) = webui["quick_action"]
         assert q["path"] == "/api/argus/recheck/{id}" and q["source"] == "/api/argus/recheck-targets"
         assert q["method"] == "POST"

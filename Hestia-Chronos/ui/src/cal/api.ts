@@ -26,7 +26,7 @@ export class AgendaApi {
     const r: ApiResult<T> = await this.host.api<T>(method, `${API}${path}`, opts);
     if (!r.ok) {
       const offline = r.status === 0 || r.error === 'unreachable' || r.error === 'offline';
-      throw new AgendaError(offline ? tr('Chronos non raggiungibile') : r.error || tr('Operazione non riuscita'), offline);
+      throw new AgendaError(offline ? tr('Chronos not reachable') : r.error || tr('Operation failed'), offline);
     }
     return r.data;
   }
@@ -77,7 +77,7 @@ export class AgendaApi {
   async ics(): Promise<string> {
     const r = await this.call<any>('GET', '/ics', { query: { days: 60 } });
     const text = typeof r === 'string' ? r : r?.raw ?? '';
-    if (!String(text).startsWith('BEGIN:VCALENDAR')) throw new AgendaError(tr('Chronos non ha restituito un calendario'));
+    if (!String(text).startsWith('BEGIN:VCALENDAR')) throw new AgendaError(tr('Chronos returned no calendar'));
     return text;
   }
 }

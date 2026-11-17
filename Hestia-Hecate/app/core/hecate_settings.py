@@ -30,39 +30,32 @@ PHONE_APPS = "hecate.telefono.app"
 
 settings = SettingsClient("hecate")
 settings.declare([
-    setting(CALENDAR_BACKFILL_DAYS, "Giorni passati da sincronizzare", "int", 7, group="Calendario",
-            min=0, max=365, unit="giorni",
-            help="Quanti giorni indietro leggo dai calendari (Google/Outlook) a ogni sincronizzazione. "
-                 "Più giorni = più eventi passati importati, sincronizzazione più lenta."),
-    setting(ARCHIVE_ROUTE_TIMEOUT, "Attesa salvataggio dati", "int", 8, group="Archivio",
+    setting(CALENDAR_BACKFILL_DAYS, "Past days to sync", "int", 7, group="Calendar",
+            min=0, max=365, unit="days",
+            help="How many days back I read from the calendars (Google/Outlook) at each sync. More days = more past events imported, slower sync."),
+    setting(ARCHIVE_ROUTE_TIMEOUT, "Wait to save data", "int", 8, group="Archive",
             min=1, max=120, unit="s", advanced=True,
-            help="Quanti secondi aspetto l'Archivio quando salvo un dato. Se è lento, aumentalo."),
-    setting(CALENDAR_WRITE_TIMEOUT, "Attesa salvataggio eventi", "int", 10, group="Archivio",
+            help="How many seconds I wait for the Archive when I save data. If it is slow, raise it."),
+    setting(CALENDAR_WRITE_TIMEOUT, "Wait to save events", "int", 10, group="Archive",
             min=1, max=120, unit="s", advanced=True,
-            help="Quanti secondi aspetto l'Archivio quando salvo un evento del calendario."),
-    setting(AUTH_RECHECK_INTERVAL, "Controllo accessi account", "int", 3600, group="Account",
+            help="How many seconds I wait for the Archive when I save a calendar event."),
+    setting(AUTH_RECHECK_INTERVAL, "Account access check", "int", 3600, group="alt::Account",
             min=0, max=86400, unit="s",
-            help="Ogni quanti secondi ricontrollo che Google/Outlook siano ancora collegati e, se no, "
-                 "ti avviso di nuovo. 0 = solo all'avvio."),
-    setting(ACTION_NOTIFY_COOLDOWN, "Pausa tra avvisi uguali", "int", 300, group="Account",
+            help="Every how many seconds I check again that Google/Outlook are still linked and, if not, I tell you again. 0 = only at startup."),
+    setting(ACTION_NOTIFY_COOLDOWN, "Pause between identical notices", "int", 300, group="alt::Account",
             min=0, max=86400, unit="s", advanced=True,
-            help="Tempo minimo tra due avvisi uguali (es. 'ricollega Google'), per non ricevere doppioni."),
-    setting(MAIL_WATCH_INTERVAL, "Controllo nuove email", "int", 900, group="Email", min=60, max=86400,
+            help="Shortest time between two identical notices (e.g. 'link Google again'), so you don't get duplicates."),
+    setting(MAIL_WATCH_INTERVAL, "New email check", "int", 900, group="Email", min=60, max=86400,
             unit="s",
-            help="Ogni quanto guardo se sono arrivate email nuove (un solo controllo leggero per tutta Hestia: "
-                 "poi Iris le passa ai moduli interessati). È la ricorrenza predefinita del lavoro in agenda."),
-    setting(MAIL_SAFETY_INTERVAL, "Controllo di sicurezza con Gmail push", "int", 21600, group="Email",
+            help="How often I look for new emails (one light check for all of Hestia: then Iris passes them to the interested modules). It is the default recurrence of the agenda job."),
+    setting(MAIL_SAFETY_INTERVAL, "Safety check with Gmail push", "int", 21600, group="Email",
             min=300, max=86400, unit="s", advanced=True,
-            help="Quando le notifiche push di Gmail (Pub/Sub) sono attive, il controllo periodico serve solo "
-                 "da rete di sicurezza e passa a questo intervallo."),
-    setting(WEATHER_CACHE_MINUTES, "Validità della previsione meteo", "int", 30, group="Meteo", min=5, max=360,
+            help="When Gmail push notifications (Pub/Sub) are on, the periodic check is only a safety net and moves to this interval."),
+    setting(WEATHER_CACHE_MINUTES, "Weather forecast validity", "int", 30, group="Weather", min=5, max=360,
             unit="min", advanced=True,
-            help="Per quanti minuti riuso la previsione già scaricata per un luogo prima di chiederla di nuovo "
-                 "(il servizio meteo aggiorna i dati circa ogni ora)."),
-    setting(PHONE_HOME_WIFI, "Wi-Fi di casa", "list", [], group="Telefono",
-            help="Nomi delle reti Wi-Fi di casa: quando il telefono è connesso a una di queste sei «a casa». "
-                 "Vuoto = il telefono deve dirlo da solo (campo home)."),
-    setting(PHONE_APPS, "App da ascoltare", "list", [], group="Telefono",
-            help="Le notifiche di queste app (es. la banca, Satispay) passano ai moduli che le usano, come le spese. "
-                 "Vuoto = tutte quelle che il telefono manda."),
+            help="For how many minutes I reuse the forecast already downloaded for a place before asking again (the weather service updates the data about every hour)."),
+    setting(PHONE_HOME_WIFI, "Home Wi-Fi", "list", [], group="Phone",
+            help="Names of the home Wi-Fi networks: when the phone is connected to one of these you are «home». Empty = the phone must say it itself (home field)."),
+    setting(PHONE_APPS, "Apps to listen to", "list", [], group="Phone",
+            help="Notifications from these apps (e.g. the bank, Satispay) go to the modules that use them, like expenses. Empty = all the phone sends."),
 ]).declare_log_level().follow_personal()

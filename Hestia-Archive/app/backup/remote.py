@@ -35,12 +35,12 @@ class DriveRemote:
             routed = resp.json() or {}
         except Exception as exc:                               # details in the log, a plain sentence for Marko
             logger.warning("[🔄] event=drive_unreachable path=%s error=%s", path.split("/")[0], str(exc)[:300])
-            raise RemoteError(tr("Google Drive non raggiungibile ora"), "unreachable") from exc
+            raise RemoteError(tr("Google Drive not reachable now"), "unreachable") from exc
         status, payload = int(routed.get("status_code", 500)), routed.get("payload")
         if status >= 400:
             detail = (payload or {}).get("detail") if isinstance(payload, dict) else None
             detail = detail if isinstance(detail, dict) else {}
-            raise RemoteError(detail.get("message") or tr("Google Drive ha risposto {0}", status),
+            raise RemoteError(detail.get("message") or tr("Google Drive answered {0}", status),
                               detail.get("error") or "drive_error", status)
         return payload or {}
 
@@ -66,7 +66,7 @@ class DriveRemote:
                                  body={"offset": offset, "data_b64": base64.b64encode(block).decode("ascii")})
                 offset = int(out.get("received", offset + len(block)))
         if not out.get("done") or not out.get("file"):
-            raise RemoteError(tr("caricamento non completato"))
+            raise RemoteError(tr("upload not completed"))
         return out["file"]
 
     def download(self, file_id: str, path: Path) -> int:

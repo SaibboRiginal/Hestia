@@ -103,7 +103,7 @@ class Plutus:
         self.store.refresh()
         row = self.store.data(kind, id)
         if not row:
-            raise NotFound(tr("{0} '{1}' non trovato", kind, id))
+            raise NotFound(tr("{0} '{1}' not found", kind, id))
         return row
 
     def month_range(self, ref: date | str | None = None) -> tuple[date, date]:
@@ -114,10 +114,9 @@ class Plutus:
         return start, _month_add(start, 1).replace(day=start_day)
 
     def month_label(self, start: date) -> str:
-        names = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre",
-                 "ottobre", "novembre", "dicembre"]
+        from hestia_common.i18n import month_name
         ref = start if start.day <= 15 else _month_add(start, 1)
-        return f"{names[ref.month - 1]} {ref.year}"
+        return f"{month_name(ref.month)} {ref.year}"
 
     # ── seed (categories + default rules), once ──────────────────────────────
     def ensure_seed(self) -> int:
@@ -126,7 +125,7 @@ class Plutus:
             return 0
         rows = []
         for i, (cid, label, icon, color, kind) in enumerate(catalog.CATEGORIES):
-            rows.append({"kind": "category", "id": cid, "data": {"label": label, "icon": icon, "color": color,
+            rows.append({"kind": "category", "id": cid, "data": {"label": tr(label), "icon": icon, "color": color,
                                                                  "kind": kind, "order": i, "seed": True}})
         for cid, patterns in catalog.DEFAULT_RULES.items():
             for p in patterns:
@@ -134,7 +133,7 @@ class Plutus:
                              "data": {"pattern": p.strip(), "category": cid, "source": "default"}})
         rows.append({"kind": "account", "id": "paypal", "data": {"name": "PayPal", "kind": "wallet", "seed": True}})
         rows.append({"kind": "account", "id": "hype", "data": {"name": "Hype", "kind": "bank", "seed": True}})
-        rows.append({"kind": "account", "id": "contanti", "data": {"name": tr("Contanti"), "kind": "cash", "seed": True}})
+        rows.append({"kind": "account", "id": "contanti", "data": {"name": tr("Cash"), "kind": "cash", "seed": True}})
         self.store.write(rows)
         logger.info("event=plutus_seeded categories=%d rules=%d", len(catalog.CATEGORIES),
                     sum(len(v) for v in catalog.DEFAULT_RULES.values()))
@@ -165,15 +164,15 @@ class Plutus:
         label = str(body.get("label") or "").strip()
         current = self.store.data("category", id) if id else None
         if not label and not current:
-            raise Invalid(tr("nome della categoria mancante"))
+            raise Invalid(tr("category name missing"))
         cid = id or catalog.slug(label) or _id("cat")
         if not id and self.store.data("category", cid):
-            raise Invalid(tr("la categoria «{0}» esiste già", label))
+            raise Invalid(tr("the category «{0}» already exists", label))
         data = {**(current or {"kind": "expense", "order": 50, "icon": "tag", "color": "gray"}),
                 **{k: body[k] for k in ("label", "icon", "color", "kind", "order", "archived", "parent")
                    if k in body}}
         if data.get("kind") not in ("expense", "income", "transfer"):
-            raise Invalid("tipo categoria: expense, income o transfer")
+            raise Invalid(tr("category type: expense, income or transfer"))
         data.pop("id", None)
         return self.store.upsert("category", cid, data)
 
@@ -232,7 +231,7 @@ class Plutus:
     def add_tx(self, body: dict, *, source: str = "manual", link: bool = True) -> dict:
         amount = catalog.parse_amount(body.get("amount"))
         if amount is None or amount == 0:
-            raise Invalid("importo mancante o zero")
+            raise Invalid(tr("amount missing or zero"))
         kind = body.get("type") or ""
         typed_category = self.resolve_category(body.get("category"))
         if not kind and typed_category:
@@ -276,13 +275,13 @@ class Plutus:
         if "amount" in body:
             amount = catalog.parse_amount(body["amount"])
             if amount is None or amount == 0:
-                raise Invalid(tr("importo non valido"))
+                raise Invalid(tr("invalid amount"))
             kind = body.get("type") or ("income" if current.get("amount", 0) > 0 else "expense")
             data["amount"] = abs(amount) if kind == "income" else -abs(amount)
         if "category" in body:
             cat = self.resolve_category(body["category"])
             if not cat:
-                raise Invalid(f"categoria «{body['category']}» sconosciuta")
+                raise Invalid(tr("unknown category «{0}»", body['category']))
             data["category"] = cat
             data["status"] = "confirmed"
             if learn and data.get("merchant"):
@@ -290,7 +289,7 @@ class Plutus:
         if "date" in body:
             when = _d(body["date"])
             if not when:
-                raise Invalid(tr("data non valida"))
+                raise Invalid(tr("invalid date"))
             data["date"] = when.isoformat()
         if "account" in body:
             data["account"] = self.resolve_account(body["account"])
@@ -310,7 +309,7 @@ class Plutus:
             if other.get("linked_to") == id:
                 self.store.upsert("tx", other["id"], {**{k: v for k, v in other.items() if k != "id"},
                                                       "linked_to": None})
-        return {"deleted": True, "id": id, "label": f"{tx.get('merchant') or tr('Movimento')} eliminato"}
+        return {"deleted": True, "id": id, "label": tr("{0} deleted", tx.get('merchant') or tr('Transaction'))}
 
     def tx_view(self, t: dict) -> dict:
         cats = self.category_map()
@@ -391,10 +390,10 @@ class Plutus:
     def set_budget(self, category: str, amount: Any) -> dict:
         target = "total" if catalog.slug(category) in ("total", "totale", "") else self.resolve_category(category)
         if not target:
-            raise Invalid(f"categoria «{category}» sconosciuta")
+            raise Invalid(tr("unknown category «{0}»", category))
         value = catalog.parse_amount(amount)
         if value is None or value < 0:
-            raise Invalid(tr("importo del budget non valido"))
+            raise Invalid(tr("invalid budget amount"))
         bid = f"budget_{target}"
         if value == 0:
             self.store.delete("budget", bid)
@@ -520,7 +519,7 @@ class Plutus:
 
     def set_recurring(self, id: str, status: str) -> dict:
         if status not in ("confirmed", "dismissed", "suggested"):
-            raise Invalid("stato: confirmed, dismissed o suggested")
+            raise Invalid(tr("state: confirmed, dismissed or suggested"))
         r = self.get("recurring", id)
         return self.store.upsert("recurring", id, {**{k: v for k, v in r.items() if k != "id"}, "status": status})
 
@@ -605,15 +604,15 @@ class Plutus:
         cur = s["currency"]
         items = [c for c in s["categories"] if c.get("budget")]
         if s.get("budget"):
-            items.append({"id": "total", "label": tr("Totale del mese"), "spent": s["spent"], "budget": s["budget"],
+            items.append({"id": "total", "label": tr("Month total"), "spent": s["spent"], "budget": s["budget"],
                           "pct": round(100 * s["spent"] / s["budget"]) if s["budget"] else None})
         for c in items:
             pct = c.get("pct") or 0
             level = 100 if pct >= 100 else threshold if pct >= threshold else 0
             if not level:
                 continue
-            text = (tr("{0}: hai speso {1:.2f} {2} su {3:.2f} ({4}%)", c['label'], c['spent'], cur, c['budget'], pct)
-                    + (" — budget superato." if level == 100 else tr(" — oltre il {0}%.", threshold)))
+            text = (tr("{0}: you spent {1:.2f} {2} of {3:.2f} ({4}%)", c['label'], c['spent'], cur, c['budget'], pct)
+                    + (tr(" — budget exceeded.") if level == 100 else tr(" — over {0}%.", threshold)))
             out.append({"key": f"finance.budget.{c['id']}", "category": c["id"], "level": level, "pct": pct,
                         "text": text, "month": s["month"]})
         return out
@@ -652,15 +651,15 @@ class Plutus:
         spent = sum(by_cat.values())
         if spent:
             top = sorted(by_cat.items(), key=lambda kv: -kv[1])[:3]
-            done.append({"text": tr("Spesi {0} (", money(spent))
+            done.append({"text": tr("Spent {0} (", money(spent))
                                  + ", ".join(f"{(cats.get(c) or {}).get('label') or c or 'altro'} {money(v)}" for c, v in top)
                                  + ")"})
         income = sum(t["amount"] for t in counted if t["amount"] > 0)
         if income:
-            done.append({"text": tr("Entrate {0}", money(income)), "tone": "success"})
+            done.append({"text": tr("Income {0}", money(income)), "tone": "success"})
         review = sum(1 for t in rows if t.get("status") == "to_review")
         if review:
-            done.append({"text": tr("{0} moviment{1} da rivedere", review, 'o' if review == 1 else 'i'), "tone": "warning"})
+            done.append({"text": (tr("1 transaction to review") if review == 1 else tr("{0} transactions to review", review)), "tone": "warning"})
         for r in self.recurring():
             if r.get("status") == "confirmed" and r.get("next") == nxt.isoformat():
                 upcoming.append({"text": f"{r['merchant']} {money(float(r.get('amount') or 0))}"})
@@ -678,18 +677,18 @@ class Plutus:
     def context_text(self, budget: int = 400) -> str:
         s = self.summary()
         cur = s["currency"]
-        parts = [tr("Spese {0}: {1:.0f}{2}", s['label'], s['spent'], cur)
+        parts = [tr("Expenses {0}: {1:.0f}{2}", s['label'], s['spent'], cur)
                  + (f"/{s['budget']:.0f} budget" if s.get("budget") else "")
-                 + (f", ritmo {s['pace']:.0f}" if s.get("pace") and s["days_gone"] < s["days_total"] else "")]
+                 + (tr(", pace {0:.0f}", s['pace']) if s.get("pace") and s["days_gone"] < s["days_total"] else "")]
         over = [f"{c['label']} {c['pct']}%" for c in s["categories"] if c.get("pct") and c["pct"] >= 80]
         if over:
-            parts.append("budget alto: " + ", ".join(over[:4]))
+            parts.append(tr("high budget: ") + ", ".join(over[:4]))
         if s["categories"]:
             parts.append("top: " + ", ".join(f"{c['label']} {c['spent']:.0f}" for c in s["categories"][:3]))
         if s["to_review"]:
-            parts.append(tr("{0} da rivedere", s['to_review']))
+            parts.append(tr("{0} to review", s['to_review']))
         if s["recurring_next"]:
-            parts.append("in arrivo: " + ", ".join(f"{r['merchant']} {r['amount']:.0f}" for r in s["recurring_next"][:3]))
+            parts.append(tr("coming up: ") + ", ".join(f"{r['merchant']} {r['amount']:.0f}" for r in s["recurring_next"][:3]))
         text = ". ".join(parts)
         return text if len(text) <= budget else text[: max(0, budget - 1)] + "…"
 
@@ -728,18 +727,17 @@ class Plutus:
         s = self.summary()
         items = [(c["id"], c["label"], c["spent"], c["budget"]) for c in s["categories"] if c.get("budget")]
         if s.get("budget"):
-            items.append(("month", tr("del mese"), s["spent"], s["budget"]))
+            items.append(("month", tr("of the month"), s["spent"], s["budget"]))
         for cid, label, spent, budget in items:
             pace = round(spent / s["days_gone"] * s["days_total"], 2) if spent else 0.0
-            name = tr("Budget {0}", label) if cid != "month" else tr("Budget del mese")
+            name = tr("Budget {0}", label) if cid != "month" else tr("Monthly budget")
             nums = {"spent": round(spent, 2), "budget": budget, "pace": pace, "days_gone": s["days_gone"],
                     "days_total": s["days_total"]}
             if spent >= budget:
-                sigs.append(signal(f"budget_pace:{cid}", f"{name} superato: {spent:.0f}/{budget:.0f}{sym}.",
+                sigs.append(signal(f"budget_pace:{cid}", tr("{0} exceeded: {1:.0f}/{2:.0f}{3}.", name, spent, budget, sym),
                                    kind="goal", severity="alta", metrics=nums, period=s["month"], page="budget"))
             elif s["days_gone"] >= self.PACE_MIN_DAYS and pace > budget:
-                sigs.append(signal(f"budget_pace:{cid}", f"{name} a ritmo alto: {spent:.0f}/{budget:.0f}{sym}, "
-                                   f"fine mese ~{pace:.0f}{sym}.", kind="goal", severity="attenzione", metrics=nums,
+                sigs.append(signal(f"budget_pace:{cid}", tr("{0} at a high pace: {1:.0f}/{2:.0f}{3}, end of month ~{4:.0f}{5}.", name, spent, budget, sym, pace, sym), kind="goal", severity="attenzione", metrics=nums,
                                    period=s["month"], page="budget"))
         # unusual week vs median of the previous 8
         weeks = self.weekly_spending(12)
@@ -749,23 +747,23 @@ class Plutus:
         mid = median(prev) if prev else 0
         now = weeks[this_week]["total"]
         if mid > 0 and now > self.UNUSUAL_RATIO * mid:
-            sigs.append(signal("unusual_week", tr("Settimana di spesa alta: {0:.0f}{1} contro {2:.0f}{3} di solito.", now, sym, mid, sym), kind="anomaly", severity="attenzione",
+            sigs.append(signal("unusual_week", tr("High spending week: {0:.0f}{1} against {2:.0f}{3} usually.", now, sym, mid, sym), kind="anomaly", severity="attenzione",
                                metrics={"spent": round(now, 2), "median_8w": round(mid, 2)}, period=this_week,
                                page="statistiche"))
         # recurring payments found in the last days
         since = (self.today() - timedelta(days=self.NEW_RECURRING_DAYS)).isoformat()
         for r in self.detect_recurring():
             if r.get("status") != "dismissed" and (r.get("found_at") or "") >= since:
-                period = {"weekly": "settimanale", "monthly": "mensile", "yearly": "annuale"}.get(r["period"], "")
-                sigs.append(signal(f"new_subscription:{r['id']}", tr("Nuovo pagamento ricorrente: {0} {1:.2f}{2} {3}.", r['merchant'], r['amount'], sym, period), kind="trend", severity="info",
+                period = {"weekly": tr("weekly"), "monthly": tr("monthly"), "yearly": tr("yearly")}.get(r["period"], "")
+                sigs.append(signal(f"new_subscription:{r['id']}", tr("New recurring payment: {0} {1:.2f}{2} {3}.", r['merchant'], r['amount'], sym, period), kind="trend", severity="info",
                                    metrics={"amount": r["amount"], "count": r["count"]}, page="abbonamenti"))
         # rows waiting for a category
         n = sum(1 for t in self._tx_rows() if t.get("status") == "to_review")
         if n >= self.TO_REVIEW_MIN:
-            sigs.append(signal("to_review", tr("{0} movimenti di spesa da rivedere.", n), kind="trend", severity="info",
+            sigs.append(signal("to_review", tr("{0} expense transactions to review.", n), kind="trend", severity="info",
                                metrics={"count": n}, page="movimenti"))
         # weekly metrics: total + top 4 categories of the period
-        mets = [metric("finance.spent", w, weeks[w]["total"], tr("Spesa settimanale")) for w in order]
+        mets = [metric("finance.spent", w, weeks[w]["total"], tr("Weekly spending")) for w in order]
         totals: dict[str, float] = defaultdict(float)
         for w in order:
             for k, v in weeks[w]["by_cat"].items():
@@ -784,8 +782,7 @@ class Plutus:
             s = self.summary()
             start = s["start"]
             if cid == "month" and s.get("budget"):
-                text = (f"Budget mese {s['label']}: speso {s['spent']:.0f}/{s['budget']:.0f}{sym}, giorno "
-                        f"{s['days_gone']}/{s['days_total']}, ritmo {s['pace']:.0f}. Categorie: "
+                text = (tr("Budget for {0}: spent {1:.0f}/{2:.0f}{3}, day {4}/{5}, pace {6:.0f}. Categories: ", s['label'], s['spent'], s['budget'], sym, s['days_gone'], s['days_total'], s['pace'])
                         + ", ".join(f"{c['label']} {c['spent']:.0f}" for c in s["categories"][:4]))
             else:
                 c = next((c for c in s["categories"] if c["id"] == cid and c.get("budget")), None)
@@ -793,7 +790,7 @@ class Plutus:
                     pace = c["spent"] / s["days_gone"] * s["days_total"] if c["spent"] else 0
                     big = sorted((t for t in self.transactions(month=start, category=cid)
                                   if t.get("counted") and t["amount"] < 0), key=lambda t: t["amount"])[:4]
-                    text = (tr("{0} {1}: speso {2:.0f}/{3:.0f}{4} ({5}%), giorno {6}/{7}, ritmo {8:.0f}. Più grandi: ", c['label'], s['label'], c['spent'], c['budget'], sym, c['pct'], s['days_gone'], s['days_total'], pace) + ", ".join(f"{t.get('merchant') or '—'} {-t['amount']:.0f} {t['date'][5:]}"
+                    text = (tr("{0} {1}: spent {2:.0f}/{3:.0f}{4} ({5}%), day {6}/{7}, pace {8:.0f}. Biggest: ", c['label'], s['label'], c['spent'], c['budget'], sym, c['pct'], s['days_gone'], s['days_total'], pace) + ", ".join(f"{t.get('merchant') or '—'} {-t['amount']:.0f} {t['date'][5:]}"
                                                        for t in big))
         elif topic == "unusual_week":
             weeks = self.weekly_spending(12)
@@ -805,18 +802,16 @@ class Plutus:
             merch: dict[str, float] = defaultdict(float)
             for t in cur["rows"]:
                 merch[t.get("merchant") or "—"] += -t["amount"]
-            text = (f"Settimana {order[-1]}: {cur['total']:.0f}{sym}, mediana 8 settimane {mid:.0f}{sym}. "
-                    "Categorie: " + ", ".join(f"{(cats.get(k) or {}).get('label', k)} {v:.0f}" for k, v in top_c)
-                    + ". Esercenti: " + ", ".join(f"{m} {v:.0f}" for m, v in
+            text = (tr("Week {0}: {1:.0f}{2}, 8-week median {3:.0f}{4}. Categories: ", order[-1], cur['total'], sym, mid, sym) + ", ".join(f"{(cats.get(k) or {}).get('label', k)} {v:.0f}" for k, v in top_c)
+                    + tr(". Merchants: ") + ", ".join(f"{m} {v:.0f}" for m, v in
                                                   sorted(merch.items(), key=lambda kv: -kv[1])[:3]))
         elif topic.startswith("new_subscription:"):
             r = self.store.data("recurring", topic.split(":", 1)[1])
             if r:
-                text = (f"Ricorrente {r['merchant']}: {r['amount']:.2f}{sym} {r['period']}, visto {r['count']} volte, "
-                        f"ultimo {r['last']}, prossimo {r['next']}, stato {r['status']}.")
+                text = (tr("Recurring {0}: {1:.2f}{2} {3}, seen {4} times, last {5}, next {6}, state {7}.", r['merchant'], r['amount'], sym, r['period'], r['count'], r['last'], r['next'], r['status']))
         elif topic == "to_review":
             rows = self.transactions(status="to_review", limit=6)
-            text = (tr("{0} da rivedere. Ultimi: ", len(self.transactions(status='to_review', limit=5000)))
+            text = (tr("{0} to review. Latest: ", len(self.transactions(status='to_review', limit=5000)))
                     + ", ".join(f"{t.get('merchant') or '—'} {abs(t['amount']):.0f}" for t in rows))
         if text is None:
             return None

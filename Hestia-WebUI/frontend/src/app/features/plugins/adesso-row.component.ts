@@ -17,8 +17,8 @@ const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (items().length) {
-      <section class="row"  [attr.aria-label]="'Adesso' | tr">
-        <div class="h"><hx-icon name="zap" [size]="14" /><span>{{ "Adesso" | tr }}</span></div>
+      <section class="row"  [attr.aria-label]="'Now' | tr">
+        <div class="h"><hx-icon name="zap" [size]="14" /><span>{{ "Now" | tr }}</span></div>
         <div class="list">
           @for (it of items(); track it.tool + it.title) {
             <button class="card" (click)="open(it)" [attr.title]="it.reason || it.title">

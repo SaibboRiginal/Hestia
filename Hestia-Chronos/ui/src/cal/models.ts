@@ -103,18 +103,18 @@ export interface CalWeather { days: Record<string, WxDay>; events: Record<string
 export const NO_WEATHER: CalWeather = { days: {}, events: {}, external: [] };
 
 export const TYPE_META: Record<AgendaType, { label: string; icon: string; hint: string }> = {
-  event: { label: tr('Evento'), icon: 'event', hint: tr('Informativo: qualcosa che un modulo ha pianificato') },
-  task: { label: tr('Task'), icon: 'task', hint: tr('Azione una tantum eseguita all\'orario indicato') },
-  job: { label: tr('Job ricorrente'), icon: 'repeat', hint: tr('Azione ripetuta secondo la regola') },
-  window: { label: tr('Finestra'), icon: 'window', hint: tr('Periodo in cui un modulo può lavorare') },
+  event: { label: tr('Event'), icon: 'event', hint: tr('Informational: something a module planned') },
+  task: { label: tr('Task'), icon: 'task', hint: tr('One-off action run at the given time') },
+  job: { label: tr('Recurring job'), icon: 'repeat', hint: tr('Action repeated according to the rule') },
+  window: { label: tr('Window'), icon: 'window', hint: tr('Period in which a module can work') },
 };
 
 export const STATUS_META: Record<AgendaStatus, { label: string; tone: 'neutral' | 'success' | 'warning' | 'danger' | 'info' }> = {
-  confirmed: { label: tr('Attivo'), tone: 'success' },
-  paused: { label: tr('In pausa'), tone: 'warning' },
-  cancelled: { label: tr('Annullato'), tone: 'neutral' },
-  completed: { label: tr('Completato'), tone: 'info' },
-  failed: { label: tr('Fallito'), tone: 'danger' },
+  confirmed: { label: tr('Active'), tone: 'success' },
+  paused: { label: tr('Paused'), tone: 'warning' },
+  cancelled: { label: tr('Cancelled'), tone: 'neutral' },
+  completed: { label: tr('Completed'), tone: 'info' },
+  failed: { label: tr('Failed'), tone: 'danger' },
 };
 
 /** Friendly names for module owners (fallback: capitalized owner). */
@@ -156,9 +156,9 @@ export function colorFor(owner: string): string {
 
 /** Plain-language meaning of a window, by module (fallback: generic). */
 export const WINDOW_TEXT: Record<string, string> = {
-  athena: tr('Athena può lavorare (consolidare memoria, analisi) solo in questo intervallo, di solito quando sei inattivo. Fuori dalla finestra non parte.'),
-  metis: tr('Metis può addestrare i modelli solo in questo intervallo, per non rallentare il PC mentre lo usi.'),
-  hephaestus: tr('Forge può usare il motore indicato (es. Claude Pro) solo in questo intervallo.'),
+  athena: tr('Athena can work (consolidating memory, analyses) only in this interval, usually when you are idle. Outside the window she does not start.'),
+  metis: tr('Metis can train the models only in this interval, so as not to slow down the PC while you use it.'),
+  hephaestus: tr('Forge can use the given engine (e.g. Claude Pro) only in this interval.'),
 };
 
 export interface MoveRequest { ev: CalEvent; start: Date; end: Date | null; }

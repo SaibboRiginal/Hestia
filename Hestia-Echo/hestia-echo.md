@@ -89,6 +89,9 @@ never changes.
   a hint (Whisper `initial_prompt`, OpenAI `prompt`, ≤ 80 words). Words added by hand are confirmed at once; a
   correction of a transcript (`POST /dictionary/learn`, tool `voce_correzione`) makes the new words candidates,
   confirmed after `echo.dizionario.conferme` (2) corrections. Rows `kind=word` (id = normalised word).
+  The hint always starts with the assistant's chosen name and the owner's name (personal settings), so a new
+  name is written right from the first word; the setup «Ascolta» says «Ciao, sono <name>» in the voice's language
+  (`lang.sample`, dossier `docs/work/2026-11-16-nome-ovunque`).
 
 ## Clients
 
@@ -181,4 +184,6 @@ Echo's Hub capabilities declare `owns_tool_domains: ["voice"]`, so Oracle's doma
 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

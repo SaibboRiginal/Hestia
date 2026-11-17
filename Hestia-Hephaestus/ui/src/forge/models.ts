@@ -76,29 +76,29 @@ export const ACTIVE: string[] = ['queued', 'running', 'reviewing', 'waiting_limi
 export const CLOSED: string[] = ['merged', 'deployed', 'failed', 'rejected', 'rolled_back', 'no_changes'];
 
 export const STATE_META: Record<string, { label: string; tone: string }> = {
-  new: { label: 'nuovo', tone: 'neutral' },
-  proposed: { label: tr('da approvare'), tone: 'warning' },
-  scheduled: { label: 'programmato', tone: 'info' },
-  queued: { label: tr('in coda'), tone: 'info' },
-  running: { label: tr('in lavorazione'), tone: 'accent' },
-  reviewing: { label: 'revisione automatica', tone: 'accent' },
-  waiting_limit: { label: tr('attende il limite di Claude'), tone: 'info' },
-  awaiting_review: { label: tr('diff da rivedere'), tone: 'warning' },
-  approved: { label: tr('merge in corso'), tone: 'accent' },
-  merging: { label: tr('merge in corso'), tone: 'accent' },
+  new: { label: tr('new'), tone: 'neutral' },
+  proposed: { label: tr('to approve'), tone: 'warning' },
+  scheduled: { label: tr('scheduled'), tone: 'info' },
+  queued: { label: tr('queued'), tone: 'info' },
+  running: { label: tr('in progress'), tone: 'accent' },
+  reviewing: { label: tr('automatic review'), tone: 'accent' },
+  waiting_limit: { label: tr('waiting for Claude\'s limit'), tone: 'info' },
+  awaiting_review: { label: tr('diff to review'), tone: 'warning' },
+  approved: { label: tr('merge in progress'), tone: 'accent' },
+  merging: { label: tr('merge in progress'), tone: 'accent' },
   merged: { label: 'applicato', tone: 'success' },
-  deployed: { label: tr('in produzione'), tone: 'success' },
-  failed: { label: 'fallito', tone: 'danger' },
-  rejected: { label: 'rifiutato', tone: 'neutral' },
-  rolled_back: { label: 'annullato (rollback)', tone: 'neutral' },
-  no_changes: { label: tr('nessuna modifica'), tone: 'neutral' },
+  deployed: { label: tr('in production'), tone: 'success' },
+  failed: { label: tr('failed'), tone: 'danger' },
+  rejected: { label: tr('rejected'), tone: 'neutral' },
+  rolled_back: { label: tr('undone (rollback)'), tone: 'neutral' },
+  no_changes: { label: tr('no changes'), tone: 'neutral' },
 };
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
 
 export const ENGINES = ['', 'oracle', 'claude'];
 // oracle = Oracle's chain of use case forge.codice (Cervello → Modelli); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
-  '': tr('Predefinito'), auto: tr('Predefinito'), oracle: tr('Catena di Oracle'), local: tr('Catena di Oracle'), cloud: tr('Catena di Oracle'),
+  '': tr('Default'), auto: tr('Default'), oracle: tr('Oracle chain'), local: tr('Oracle chain'), cloud: tr('Oracle chain'),
   claude: tr('Claude Code'),
 };
 export const engineLabel = (e: string) => ENGINE_LABEL[e] ?? e;
@@ -107,14 +107,14 @@ export const engineOf = (t: ForgeTask) => ENGINE_LABEL[t.engine || t.engine_requ
 /** Who asked for a task (Forge ``source``): you, or a module that proposed it on its own. */
 export const USER_SOURCES = ['user', 'telegram', 'ui', 'oracle'];
 const SOURCE_LABEL: Record<string, string> = {
-  user: 'Tu', telegram: tr('Tu (Telegram)'), ui: tr('Tu (WebUI)'), oracle: tr('Tu (chat)'), external: tr('AI esterna'),
-  athena: 'Athena', argus: 'Argus', 'hephaestus.remediation': tr('Riparazioni'), metis: 'Metis',
+  user: 'Tu', telegram: tr('You (Telegram)'), ui: tr('You (WebUI)'), oracle: tr('You (chat)'), external: tr('External AI'),
+  athena: 'Athena', argus: 'Argus', 'hephaestus.remediation': tr('Repairs'), metis: 'Metis',
 };
 export const sourceLabel = (source?: string) => SOURCE_LABEL[source || 'user'] ?? (source || 'Tu');
 export const byModule = (t: ForgeTask) => !USER_SOURCES.includes(t.source || 'user');
 
 export const FILE_STATUS: Record<string, string> = {
-  A: 'aggiunto', M: 'modificato', D: 'eliminato', R: 'rinominato', C: 'copiato', '?': 'nuovo',
+  A: tr('added'), M: tr('changed'), D: tr('deleted'), R: tr('renamed'), C: tr('copied'), '?': tr('new'),
 };
 
 // ── formatters (24h, Italian) ────────────────────────────────────────────
@@ -130,7 +130,7 @@ export function ago(iso?: string | null): string {
   const t = new Date(iso).getTime();
   if (isNaN(t)) return '';
   const s = Math.round((Date.now() - t) / 1000);
-  if (s < 60) return 'adesso';
+  if (s < 60) return tr('just now');
   if (s < 3600) return `${Math.floor(s / 60)} min fa`;
   if (s < 86400) return `${Math.floor(s / 3600)} h fa`;
   if (s < 86400 * 7) return `${Math.floor(s / 86400)} g fa`;
@@ -152,7 +152,7 @@ export async function call<T = any>(host: HestiaHost, method: 'GET' | 'POST', pa
   const r = await host.api<T>(method, path, opts);
   if (!r.ok) {
     const offline = r.status === 0 || r.error === 'offline' || r.error === 'unreachable';
-    throw new ApiError(offline ? tr('Hephaestus non raggiungibile') : (r.error || tr("Errore {0}", r.status)), r.status);
+    throw new ApiError(offline ? tr('Hephaestus not reachable') : (r.error || tr("Error {0}", r.status)), r.status);
   }
   return r.data;
 }

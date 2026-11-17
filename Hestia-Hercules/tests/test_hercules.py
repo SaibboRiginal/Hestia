@@ -96,7 +96,7 @@ def test_domain_rejects_set_without_session():
 def test_catalog_seed_is_idempotent(hc):
     assert hc.ensure_catalog() == 0
     names = [e["name"] for e in hc.exercises(q="panca")[:3]]
-    assert any("Panca" in n for n in names)
+    assert any("Bench" in n for n in names)
 
 
 def test_live_session_prs_and_double_progression(hc):

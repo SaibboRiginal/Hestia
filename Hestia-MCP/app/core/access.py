@@ -110,9 +110,9 @@ class AccessStore:
                expires_days: int | None = None) -> tuple[dict, str]:
         name = " ".join(str(name or "").split())[:80]
         if not name:
-            raise AccessError(tr("Dai un nome all'accesso (es. Claude Code PC)"))
+            raise AccessError(tr("Name the access (e.g. Claude Code PC)"))
         if scope not in SCOPES:
-            raise AccessError(f"Scope sconosciuto '{scope}': usa read o write")
+            raise AccessError(tr("Unknown scope '{0}': use read or write", scope))
         token = new_token()
         expires = (datetime.now(timezone.utc) + timedelta(days=int(expires_days))).isoformat() \
             if expires_days else None
@@ -130,7 +130,7 @@ class AccessStore:
             body["name"] = " ".join(str(changes["name"]).split())[:80]
         if changes.get("scope") is not None:
             if changes["scope"] not in SCOPES:
-                raise AccessError(f"Scope sconosciuto '{changes['scope']}': usa read o write")
+                raise AccessError(tr("Unknown scope '{0}': use read or write", changes['scope']))
             body["scope"] = changes["scope"]
         if changes.get("tools") is not None:
             body["tools"] = sorted({str(t).strip() for t in changes["tools"] if str(t).strip()})

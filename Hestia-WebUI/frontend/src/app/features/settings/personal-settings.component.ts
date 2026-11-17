@@ -45,7 +45,7 @@ export function personalHits(query: string): Map<string, number> {
               @case ('theme') {
                 <div class="themes">
                   <button class="th" [class.on]="theme.selected() === 'auto'" (click)="theme.set('auto')">
-                    <span class="pv auto"><i></i><i></i></span><span>{{ "Automatico (sistema)" | tr }}</span>
+                    <span class="pv auto"><i></i><i></i></span><span>{{ "Automatic (system)" | tr }}</span>
                   </button>
                   @for (t of themesSorted; track t.id) {
                     <button class="th" [class.on]="theme.selected() === t.id" (click)="theme.set(t.id)">
@@ -76,26 +76,26 @@ export function personalHits(query: string): Map<string, number> {
                       <hx-segmented [options]="k.options" [value]="theme.knobs()[k.key]" (changed)="theme.setKnob(k.key, $any($event))" />
                     </div>
                   }
-                  @if (customised()) { <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="theme.setStyle(theme.style().id)">{{ "Torna allo stile" | tr }}</button> }
+                  @if (customised()) { <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="theme.setStyle(theme.style().id)">{{ "Back to style" | tr }}</button> }
                 </div>
               }
               @case ('look') {
                 <div class="look">
-                  <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { {{ "Aspetto standard" | tr }} }</span>
-                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">{{ "Scegli" | tr }}</a>
+                  <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { {{ "Standard look" | tr }} }</span>
+                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">{{ "Choose" | tr }}</a>
                 </div>
               }
               @case ('push') {
                 <div class="look">
                   <span>{{ pushLabel() }}</span>
-                  @if (push.state() === 'on') { <button hx-btn size="sm" (click)="push.disable()">{{ "Disattiva" | tr }}</button> }
+                  @if (push.state() === 'on') { <button hx-btn size="sm" (click)="push.disable()">{{ "alt::Turn off" | tr }}</button> }
                   @else if (push.state() === 'off' || push.state() === 'busy') {
-                    <button hx-btn size="sm" variant="primary" icon="bell" [loading]="push.state() === 'busy'" (click)="enablePush()">{{ "Attiva" | tr }}</button>
+                    <button hx-btn size="sm" variant="primary" icon="bell" [loading]="push.state() === 'busy'" (click)="enablePush()">{{ "f::Active" | tr }}</button>
                   }
                 </div>
               }
               @case ('tone') {
-                <select class="hx-select"  [attr.aria-label]="'Tono' | tr" (change)="save({ tone: $any($event.target).value })">
+                <select class="hx-select"  [attr.aria-label]="'Tone' | tr" (change)="save({ tone: $any($event.target).value })">
                   @for (o of tones; track o.value) { <option [value]="o.value" [selected]="settings.settings().tone === o.value">{{ o.label }}</option> }
                 </select>
               }
@@ -103,12 +103,12 @@ export function personalHits(query: string): Map<string, number> {
                 <hx-segmented [options]="thinking" [value]="settings.settings().thinkingDisplay" (changed)="save({ thinkingDisplay: $event })" />
               }
               @case ('instructions') {
-                <textarea class="hx-textarea" rows="4" [(ngModel)]="custom"  [attr.aria-label]="'Istruzioni personali' | tr"></textarea>
+                <textarea class="hx-textarea" rows="4" [(ngModel)]="custom"  [attr.aria-label]="'Personal instructions' | tr"></textarea>
                 <button hx-btn size="sm" variant="primary" [disabled]="custom === settings.settings().customPrompt"
-                        (click)="save({ customPrompt: custom })">{{ "Salva istruzioni" | tr }}</button>
+                        (click)="save({ customPrompt: custom })">{{ "Save instructions" | tr }}</button>
               }
               @case ('notice_mode') {
-                <select class="hx-select"  [attr.aria-label]="'Dove mostrarli' | tr" (change)="notices.update({ mode: $any($event.target).value })">
+                <select class="hx-select"  [attr.aria-label]="'Where to show them' | tr" (change)="notices.update({ mode: $any($event.target).value })">
                   @for (o of noticeModes; track o.value) { <option [value]="o.value" [selected]="notices.prefs().mode === o.value">{{ o.label }}</option> }
                 </select>
               }
@@ -122,8 +122,8 @@ export function personalHits(query: string): Map<string, number> {
                   }
                 </div>
               }
-              @case ('new_session') { <button hx-btn size="sm" (click)="newSession()">{{ "Nuova sessione" | tr }}</button> }
-              @case ('reset') { <button hx-btn size="sm" icon="refresh" (click)="reset()">{{ "Ripristina" | tr }}</button> }
+              @case ('new_session') { <button hx-btn size="sm" (click)="newSession()">{{ "New session" | tr }}</button> }
+              @case ('reset') { <button hx-btn size="sm" icon="refresh" (click)="reset()">{{ "f::Restore" | tr }}</button> }
             }
           </hx-setting-shell>
         }
@@ -187,10 +187,10 @@ export class PersonalSettingsComponent implements OnInit {
   /** Light themes first, then dark (the original order inside each). */
   readonly themesSorted = [...this.theme.themes].sort((a, b) => (a.mode === b.mode ? 0 : a.mode === 'light' ? -1 : 1));
   readonly knobRows: { key: keyof LookKnobs; label: string; options: SegmentOption[] }[] = [
-    { key: 'corners', label: tr('Angoli'), options: [...KNOB_OPTIONS.corners] },
-    { key: 'borders', label: tr('Bordi'), options: [...KNOB_OPTIONS.borders] },
-    { key: 'glass', label: tr('Trasparenze'), options: [...KNOB_OPTIONS.glass] },
-    { key: 'motion', label: tr('Animazioni'), options: [...KNOB_OPTIONS.motion] },
+    { key: 'corners', label: tr('Corners'), options: [...KNOB_OPTIONS.corners] },
+    { key: 'borders', label: tr('Borders'), options: [...KNOB_OPTIONS.borders] },
+    { key: 'glass', label: tr('Transparency'), options: [...KNOB_OPTIONS.glass] },
+    { key: 'motion', label: tr('Animations'), options: [...KNOB_OPTIONS.motion] },
   ];
   readonly customised = computed(() => Object.keys(this.theme.look().knobs).length > 0);
 
@@ -204,31 +204,31 @@ export class PersonalSettingsComponent implements OnInit {
   });
 
   readonly tones: SegmentOption[] = [
-    { value: 'neutral', label: tr('Neutro') }, { value: 'warm', label: tr('Caldo') }, { value: 'direct', label: tr('Diretto') }, { value: 'formal', label: tr('Formale') },
+    { value: 'neutral', label: tr('Neutral') }, { value: 'warm', label: tr('Warm') }, { value: 'direct', label: tr('Direct') }, { value: 'formal', label: tr('Formal') },
   ];
   readonly thinking: SegmentOption[] = THINKING_DISPLAY_OPTIONS;
   readonly noticeModes: SegmentOption[] = [
-    { value: 'inline', label: tr('Sotto la risposta') }, { value: 'toast', label: tr('Popup') }, { value: 'both', label: tr('Entrambi') },
-    { value: 'important', label: tr('Solo importanti') }, { value: 'hidden', label: tr('Nascosti') },
+    { value: 'inline', label: tr('Under the answer') }, { value: 'toast', label: tr('Popup') }, { value: 'both', label: tr('Both') },
+    { value: 'important', label: tr('Only important ones') }, { value: 'hidden', label: tr('pl::Hidden') },
   ] satisfies { value: NoticeMode; label: string }[];
   readonly noticeStyles: SegmentOption[] = [
-    { value: 'compact', label: tr('Compatto') }, { value: 'rich', label: tr('Dettagliato') },
+    { value: 'compact', label: tr('Compact') }, { value: 'rich', label: tr('Detailed') },
   ] satisfies { value: NoticeStyle; label: string }[];
   readonly noticeGroups: { id: NoticeGroup; label: string }[] = [
-    { id: 'memory', label: tr('Memoria') }, { id: 'actions', label: tr('Azioni') },
-    { id: 'subscriptions', label: tr('Notifiche') }, { id: 'other', label: tr('Altro (documenti, agenda, sviluppo)') },
+    { id: 'memory', label: tr('Memory') }, { id: 'actions', label: tr('Actions') },
+    { id: 'subscriptions', label: tr('Notifications') }, { id: 'other', label: tr('More (documents, agenda, development)') },
   ];
   readonly pushLabel = computed(() => ({
-    unsupported: tr('Questo browser non riceve notifiche push.'), unavailable: tr('Non ancora attive sul server.'),
-    denied: tr('Il browser le blocca: consentile dalle impostazioni del sito.'), off: tr('Spente su questo dispositivo.'),
-    on: tr('Attive su questo dispositivo.'), busy: tr('Un momento…'),
+    unsupported: tr('This browser doesn\'t receive push notifications.'), unavailable: tr('Not active on the server yet.'),
+    denied: tr('The browser blocks them: allow them from the site settings.'), off: tr('Off on this device.'),
+    on: tr('Active on this device.'), busy: tr('alt::One moment…'),
   })[this.push.state()]);
 
   ngOnInit(): void { void this.push.refresh(); }
 
   async enablePush() {
-    if (await this.push.enable()) this.toast.success(tr('Notifiche attive su questo dispositivo'));
-    else if (this.push.state() === 'off') this.toast.error('Non riuscito, riprova');
+    if (await this.push.enable()) this.toast.success(tr('Notifications active on this device'));
+    else if (this.push.state() === 'off') this.toast.error(tr('Did not work, try again'));
   }
 
   setGroup(id: NoticeGroup, on: boolean) {
@@ -236,16 +236,16 @@ export class PersonalSettingsComponent implements OnInit {
   }
 
   async save(p: Record<string, string>) {
-    try { await this.settings.update(p); this.toast.success(tr('Salvato')); } catch { this.toast.error('Salvataggio non riuscito'); }
+    try { await this.settings.update(p); this.toast.success(tr('Saved')); } catch { this.toast.error(tr('Saving failed')); }
   }
   async newSession() {
-    if (await this.dialogs.confirm(tr('Nuova sessione?'))) { await this.session.clear(); this.toast.success(tr('Nuova sessione')); }
+    if (await this.dialogs.confirm(tr('New session?'))) { await this.session.clear(); this.toast.success(tr('New session')); }
   }
   async reset() {
-    if (!await this.dialogs.confirm(tr('Ripristinare le impostazioni personali?'))) return;
+    if (!await this.dialogs.confirm(tr('Restore the personal settings?'))) return;
     await this.settings.reset();
     this.notices.reset();
     this.custom = this.settings.settings().customPrompt ?? '';
-    this.toast.success(tr('Impostazioni ripristinate'));
+    this.toast.success(tr('Settings restored'));
   }
 }

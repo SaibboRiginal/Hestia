@@ -129,14 +129,14 @@ class Forge:
             from ..core.shared_imports import import_shared_symbol
             template = import_shared_symbol("hestia_common.agenda_client", "template")
             self.agenda.register_async([], templates=[template(
-                "develop", tr("Sviluppo programmato"), service="hephaestus", path="/api/hephaestus/forge/tasks",
+                "develop", "Scheduled development", service="hephaestus", path="/api/hephaestus/forge/tasks",
                 type="task", types=["task"], icon="terminal",
-                fields={"request": {"type": "string", "label": tr("Richiesta"), "format": "textarea", "description": tr("Cosa sviluppare o correggere")},
-                        "engine": {"type": "string", "label": tr("Motore"), "enum": ["", "oracle", "claude"], "default": "",
-                                   "description": tr("Motore (vuoto = predefinito)")}},
+                fields={"request": {"type": "string", "label": "Request", "format": "textarea", "description": "What to develop or fix"},
+                        "engine": {"type": "string", "label": "Engine", "enum": ["", "oracle", "claude"], "default": "",
+                                   "description": "Engine (empty = default)"}},
                 required=["request"], body={"source": "agenda", "requested_by": "user"},
-                title=tr("Sviluppo programmato"), timeout_seconds=30,
-                description="All'orario scelto Forge avvia il task di sviluppo (diff da approvare come sempre).")])
+                title="Scheduled development", timeout_seconds=30,
+                description="At the chosen time Forge starts the development task (diff to approve as always).")])
         except Exception as exc:  # never block Forge start on the agenda
             logger.warning("[🔄] event=forge_agenda_templates_failed error=%s", exc)
 
@@ -191,9 +191,9 @@ class Forge:
         """User switch (Sviluppo page, Telegram): persisted as a central setting. Resuming
         restarts nothing: tasks held during the pause stay proposed until the user starts them."""
         saved = forge_settings.settings.put(forge_settings.PAUSED, bool(paused), actor="user",
-                                            reason=f"Sviluppo {'in pausa' if paused else 'ripreso'} da {by}")
+                                            reason=tr("Development paused by {0}", by) if paused else tr("Development resumed by {0}", by))
         if not saved:
-            raise ForgeError(tr("Themis non ha salvato l'impostazione: riprova tra poco"), 503)
+            raise ForgeError(tr("Themis did not save the setting: try again shortly"), 503)
         # Apply now (Themis also pushes it back): no autonomous start slips in meanwhile.
         forge_settings.settings.apply({**forge_settings.settings._stored, forge_settings.PAUSED: bool(paused)})
         with self._lock:
@@ -243,7 +243,7 @@ class Forge:
         """Pause: keep the task as a silent proposal (no notification), the user starts it by hand."""
         with self._lock:
             task["held_by_pause"] = True
-        self._set_state(task, "proposed", f"sviluppo in pausa: {note}")
+        self._set_state(task, "proposed", tr("development paused: {0}", note))
         logger.info("event=forge_task_held_by_pause task_id=%s source=%s", task["id"], task.get("source"))
 
     def set_default_engine(self, engine: str) -> dict[str, Any]:
@@ -335,14 +335,14 @@ class Forge:
 
     # ── assistant agenda mirror ─────────────────────────────────────────────
     _AGENDA_LABELS = {
-        "proposed": "⏳ da approvare",
-        "queued": "🔨 in coda",
-        "running": "🔨 in lavorazione",
-        "reviewing": "🔎 revisione automatica",
-        "awaiting_review": "👀 diff da rivedere",
-        "waiting_limit": "⏸ attende il limite di Claude",
-        "approved": "🔀 merge in corso",
-        "merging": "🔀 merge in corso",
+        "proposed": "⏳ to approve",
+        "queued": "🔨 queued",
+        "running": "🔨 in progress",
+        "reviewing": "🔎 automatic review",
+        "awaiting_review": "👀 diff to review",
+        "waiting_limit": "⏸ waiting for Claude's limit",
+        "approved": "🔀 merging",
+        "merging": "🔀 merging",
     }
 
     def _mirror_agenda(self, task: dict) -> None:
@@ -376,7 +376,7 @@ class Forge:
         if not reachable or not item:
             return True, ""
         if item.get("status") == "cancelled":
-            self.reject(task["id"], reason=tr("annullato dall'agenda di Hestia"), rejected_by="user")
+            self.reject(task["id"], reason=tr("cancelled by {assistant}'s agenda"), rejected_by="user")
             return False, "cancelled in agenda"
         try:
             start = datetime.fromisoformat(str(item.get("start_at")).replace("Z", "+00:00"))
@@ -415,7 +415,7 @@ class Forge:
                 continue
             try:
                 if task["state"] == "queued" and self.paused and self._autonomous(task):
-                    self._hold(task, "in coda")
+                    self._hold(task, "queued")
                     continue
                 if task["state"] == "approved":
                     with self.presence.activity("hephaestus.deploy", label="aggiornamento", load="heavy",
@@ -434,7 +434,7 @@ class Forge:
                 logger.exception("[🔄] event=forge_task_crashed task_id=%s", task_id)
                 task["error"] = str(exc)[:1000]
                 self._set_state(task, "failed", f"crash: {exc}")
-                self._notify(task, f"❌ Forge task <code>{task_id}</code> fallito: {exc}")
+                self._notify(task, tr("❌ Forge task <code>{0}</code> failed: {1}", task_id, exc))
 
     # ── public API ──────────────────────────────────────────────────────────
     def status(self) -> dict[str, Any]:
@@ -534,7 +534,7 @@ class Forge:
         with self._lock:
             self._tasks[task_id] = task
         if self.paused and self._autonomous(task):
-            self._hold(task, tr("proposto da {0} ({1})", source, why))
+            self._hold(task, tr("proposed by {0} ({1})", source, why))
         elif auto_start and task["budgeted"]:
             self._schedule(task, f"submitted by {source}")
         elif auto_start:
@@ -542,7 +542,7 @@ class Forge:
         else:
             self._set_state(task, "proposed", f"proposed by {source} ({why})")
             self._notify(task, (
-                tr("💡 <b>Proposta di sviluppo</b> <code>{0}</code>\n{1}\n\nRispondi \"approva sviluppo {2}\" per avviarla, \"rifiuta {3}\" per scartarla.", task_id[:6], _esc(request[:600]), task_id[:6], task_id[:6])))
+                tr("💡 <b>Development proposal</b> <code>{0}</code>\n{1}\n\nAnswer \"approva sviluppo {2}\" to start it, \"rifiuta {3}\" to discard it.", task_id[:6], _esc(request[:600]), task_id[:6], task_id[:6])))
         return task
 
     def approve(self, task_id: str, approved_by: str = "user", now: bool = False,
@@ -671,10 +671,10 @@ class Forge:
         self._set_state(task, "scheduled", f"{note}; {st['reason']}")
         nights = self.agenda.window(KEY_NIGHTS) or {}
         self.agenda.show_task(task["id"], task["request"], nights.get("next_open") or st["next_reset"],
-                              f"Task Forge programmato (Claude Pro). id={task['id']}",
+                              f"Forge task scheduled (Claude Pro). id={task['id']}",
                               parent=task.get("agenda_parent"))
         self._notify(task, (
-            tr("🌙 <b>Sviluppo programmato</b> <code>{0}</code> (Claude Pro)\n{1}\nParte nella finestra notturna prima del reset ({2}). Per avviarlo ora: \"approva sviluppo {3} subito\".", task['id'][:6], _esc(task['request'][:300]), _esc(st['next_reset'][:16]), task['id'][:6])))
+            tr("🌙 <b>Scheduled development</b> <code>{0}</code> (Claude Pro)\n{1}\nIt starts in the night window before the reset ({2}). To start it now: \"approva sviluppo {3} subito\".", task['id'][:6], _esc(task['request'][:300]), _esc(st['next_reset'][:16]), task['id'][:6])))
 
     def claude_window(self) -> tuple[bool, str]:
         """Agenda windows first (user can move/skip them), built-in schedule as fallback."""
@@ -684,15 +684,15 @@ class Forge:
         final, nights = self.agenda.window(KEY_FINAL), self.agenda.window(KEY_NIGHTS)
         if final is not None and nights is not None and (final.get("exists") or nights.get("exists")):
             if final.get("active"):
-                return True, tr("agenda: ultime ore prima del reset")
+                return True, tr("agenda: last hours before the reset")
             if nights.get("active"):
                 cap = int((nights.get("params") or {}).get("night_max_tasks",
                                                            self.claude_budget.schedule.night_max_tasks))
                 if st["used_tonight"] < cap:
-                    return True, "agenda: finestra notturna"
-                return False, f"agenda: tetto notturno raggiunto ({st['used_tonight']}/{cap})"
+                    return True, tr("agenda: night window")
+                return False, tr("agenda: night cap reached ({0}/{1})", st['used_tonight'], cap)
             skipped = nights.get("skipped_now") or final.get("skipped_now")
-            return False, "agenda: finestra saltata dall'utente" if skipped else "agenda: finestra chiusa"
+            return False, tr("agenda: window skipped by the user") if skipped else tr("agenda: window closed")
         return self.claude_budget.can_start()
 
     def presence_allows_autonomous(self) -> tuple[bool, str]:
@@ -716,7 +716,7 @@ class Forge:
             reachable, item = self.agenda.lookup(self.agenda.task_key(task["id"]))
             if reachable and item and item.get("status") == "cancelled":
                 try:
-                    self.reject(task["id"], reason=tr("annullato dall'agenda di Hestia (voce collegata)"),
+                    self.reject(task["id"], reason=tr("cancelled by {assistant}'s agenda (linked item)"),
                                 rejected_by="user")
                 except ForgeError as exc:
                     logger.debug("event=forge_reap_unlinked_skip task_id=%s error=%s", task["id"], exc)
@@ -792,7 +792,7 @@ class Forge:
         if engine is None:
             task["error"] = reason
             self._set_state(task, "failed", reason)
-            self._notify(task, tr("❌ Forge: nessun motore disponibile — {0}", _esc(reason)))
+            self._notify(task, tr("❌ Forge: no engine available — {0}", _esc(reason)))
             return
 
         worktree = self.cfg.worktrees_path / task["id"]
@@ -808,7 +808,7 @@ class Forge:
                          "base_sha": base_sha, "engine": engine.name})
         self._set_state(task, "running", f"engine={engine.name} base={base_branch}@{base_sha[:8]}")
         self._notify(task, (
-            tr("🔨 <b>Forge al lavoro</b> <code>{0}</code> ({1})\n{2}", task['id'][:6], engine.name, _esc(task['request'][:400]))))
+            tr("🔨 <b>Forge at work</b> <code>{0}</code> ({1})\n{2}", task['id'][:6], engine.name, _esc(task['request'][:400]))))
 
         def test_runner(paths: list[str] | None):
             changed = git_ops.git(worktree, "status", "--porcelain").splitlines()
@@ -832,13 +832,12 @@ class Forge:
             with self._lock:
                 task["team"] = [{"title": p["title"], "difficulty": p["difficulty"], "state": "queued"}
                                 for p in pieces]
-            self._notify(task, f"🧩 Forge <code>{task['id'][:6]}</code>: lavoro diviso in {len(pieces)} pezzi.")
+            self._notify(task, tr("🧩 Forge <code>{0}</code>: work split into {1} pieces.", task['id'][:6], len(pieces)))
             summaries, all_ok = [], True
             for n, piece in enumerate(pieces):
                 piece_engine = self._engine_for_piece(piece, engine)
                 prompt = build_task_prompt(
-                    f"[Pezzo {n + 1}/{len(pieces)}: {piece['title']}] {piece['request']}\n\nLavoro completo: "
-                    f"{task['request']}", piece["services"] or task["services"], context, workdoc, src)
+                    f"[Piece {n + 1}/{len(pieces)}: {piece['title']}] {piece['request']}\n\nWhole job: {task['request']}", piece["services"] or task["services"], context, workdoc, src)
                 result = self._engine_pass(task, piece_engine, worktree, prompt, test_runner)
                 if result is None:
                     return
@@ -872,7 +871,7 @@ class Forge:
             task["error"] = None if result.ok else result.summary[:500]
             self._set_state(task, "no_changes", "engine produced no diff")
             self._notify(task, (
-                tr("⚠️ Forge <code>{0}</code>: nessuna modifica prodotta.\n{1}", task['id'][:6], _esc(result.summary[:500]))))
+                tr("⚠️ Forge <code>{0}</code>: no change produced.\n{1}", task['id'][:6], _esc(result.summary[:500]))))
             return
 
         self._review(task, worktree, base_sha, sha, result.summary, result.ok, engine=engine,
@@ -903,7 +902,7 @@ class Forge:
         # A fact for the presence engine ("Stanco" overlay): no Claude quota left until the reset.
         self.presence.signal("resource.claude_quota_left", 0, meta={"until": until},
                              ttl_seconds=self._seconds_until(until))
-        partial = git_ops.commit_all(worktree, tr("forge({0}): lavoro parziale prima del limite", task['id']),
+        partial = git_ops.commit_all(worktree, tr("forge({0}): partial work before the limit", task['id']),
                                      self.cfg.git_author_name, self.cfg.git_author_email)
         head = git_ops.rev(worktree)
         progressed = bool(partial) or head != task.get("resume_from")
@@ -919,7 +918,7 @@ class Forge:
         if restarts >= self.LIMIT_MAX_RESTARTS:
             task["error"] = "Claude usage limit reached, no progress after 3 restarts"
             self._set_state(task, "failed", f"Claude usage limit: {restarts} restarts without progress")
-            self._notify(task, tr("⛔ Forge <code>{0}</code>: fermo al limite di Claude per {1} volte senza progressi. Riprova a mano quando vuoi.", task['id'][:6], restarts))
+            self._notify(task, tr("⛔ Forge <code>{0}</code>: stopped at the Claude limit {1} times without progress. Retry by hand when you want.", task['id'][:6], restarts))
             return
         if task.get("budgeted"):
             self._set_state(task, "scheduled", f"Claude usage limit: paused until {until}")
@@ -928,12 +927,12 @@ class Forge:
             import random
             at = datetime.fromisoformat(until) if "T" in str(until) else datetime.now(timezone.utc)
             at = (at if at.tzinfo else at.replace(tzinfo=timezone.utc)) + timedelta(seconds=random.randint(30, 90))
-            self.agenda.plan(f"forge.resume.{task['id']}", tr("Riprendi lo sviluppo: {0}", task['request'][:60]), at,
+            self.agenda.plan(f"forge.resume.{task['id']}", tr("Resume the development: {0}", task['request'][:60]), at,
                              action={"service": "hephaestus", "method": "POST",
                                      "path": f"/api/hephaestus/forge/tasks/{task['id']}/resume",
                                      "timeout_seconds": 30},
-                             description="Riprende il task di sviluppo fermato dal limite di Claude.")
-        self._notify(task, tr("⏸ Limite di Claude raggiunto. Il lavoro <code>{0}</code> riprende da dove era alle {1}.", task['id'][:6], _esc(str(until)[11:16] or str(until)[:16])))
+                             description="Resumes the development task stopped by Claude's limit.")
+        self._notify(task, tr("⏸ Claude limit reached. The job <code>{0}</code> resumes from where it was at {1}.", task['id'][:6], _esc(str(until)[11:16] or str(until)[:16])))
 
     def resume(self, task_id: str, by: str = "agenda") -> dict[str, Any]:
         """One-off agenda task at the Claude reset (or the owner): a task waiting for the limit starts again."""
@@ -970,7 +969,7 @@ class Forge:
                                     tests=tests_out, summary=summary)
 
     def _review(self, task: dict, worktree: Path, base_sha: str, sha: str, summary: str, engine_ok: bool,
-                heading: str = "Forge: modifica pronta", engine=None, test_runner=None) -> None:
+                heading: str = "", engine=None, test_runner=None) -> None:
         """Forge's own tests, the automatic review (+ one round of fixes by the engine), then the owner's
         approval (or auto merge when allowed)."""
         changed, tests_ok, tests_out = self._run_tests(task, worktree, base_sha)
@@ -982,9 +981,9 @@ class Forge:
             if fix is None:
                 return                          # Claude limit: the task waits and resumes later
             review["rounds"] = 1
-            new_sha = git_ops.commit_all(worktree, f"forge({task['id']}): correzioni della revisione\n\n{fix.summary[:1000]}", self.cfg.git_author_name, self.cfg.git_author_email)
+            new_sha = git_ops.commit_all(worktree, f"forge({task['id']}): fixes after the review\n\n{fix.summary[:1000]}", self.cfg.git_author_name, self.cfg.git_author_email)
             if new_sha:
-                sha, summary = new_sha, tr("{0}\n\nCorrezioni dopo la revisione: {1}", summary, fix.summary[:600])
+                sha, summary = new_sha, tr("{0}\n\nFixes after the review: {1}", summary, fix.summary[:600])
                 engine_ok = engine_ok and fix.ok
                 changed, tests_ok, tests_out = self._run_tests(task, worktree, base_sha)
                 second = self._auto_review(task, worktree, base_sha, summary, tests_out)
@@ -1007,10 +1006,11 @@ class Forge:
                 logger.warning("[🔄] event=forge_push_failed task_id=%s error=%s", task["id"], exc)
 
         self._set_state(task, "awaiting_review", f"engine_ok={engine_ok} tests_ok={tests_ok}")
-        tests_label = {True: "✅ test ok", False: "❌ test falliti", None: tr("➖ nessun test")}[tests_ok]
+        tests_label = {True: tr("✅ tests ok"), False: tr("❌ tests failed"), None: tr("➖ no tests")}[tests_ok]
+        heading = heading or tr("Forge: change ready")
         short = task["id"][:6]
         self._notify(task, (
-            tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nRispondi \"approva sviluppo {6}\" per applicarla, \"rifiuta {7}\" per scartarla.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))
+            tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nAnswer \"approva sviluppo {6}\" to apply it, \"rifiuta {7}\" to discard it.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))
 
         if task.get("auto_merge") and tests_ok is True and engine_ok and not review.get("blocking"):
             with self._lock:
@@ -1034,7 +1034,7 @@ class Forge:
                 ext["pending"] = False
                 task["error"] = f"fetch {branch}: {exc}"[:1000]
             self._set_state(task, "failed", f"external branch {branch} not fetched: {exc}")
-            self._notify(task, tr("❌ Forge <code>{0}</code>: branch <code>{1}</code> non scaricato da origin — {2}", task['id'][:6], _esc(branch), _esc(str(exc)[:300])))
+            self._notify(task, tr("❌ Forge <code>{0}</code>: branch <code>{1}</code> not downloaded from origin — {2}", task['id'][:6], _esc(branch), _esc(str(exc)[:300])))
             return
         git_ops.create_worktree(repo, worktree, task["branch"], head)
         with self._lock:
@@ -1046,14 +1046,14 @@ class Forge:
             with self._lock:
                 ext["pending"] = False
             self._set_state(task, "no_changes", f"branch {branch} has nothing new on {base_branch}")
-            self._notify(task, tr("⚠️ Forge <code>{0}</code>: il branch <code>{1}</code> non cambia nulla rispetto a {2}.", task['id'][:6], _esc(branch), _esc(base_branch)))
+            self._notify(task, tr("⚠️ Forge <code>{0}</code>: the branch <code>{1}</code> changes nothing compared to {2}.", task['id'][:6], _esc(branch), _esc(base_branch)))
             return
         summary = ext.get("summary") or tr("Branch {0}", branch)
         with self._lock:
             ext["pending"] = False
-            task["summary"] = tr("{0}\n\n(branch {1} di {2})", summary, branch, by)
+            task["summary"] = tr("{0}\n\n(branch {1} of {2})", summary, branch, by)
         self._review(task, worktree, base_sha, head, task["summary"], True,
-                     heading=f"Forge: correzione esterna pronta ({by})")
+                     heading=tr("Forge: external fix ready ({0})", by))
 
     def _check_mergeable(self, task: dict) -> None:
         repo = self.cfg.repo_path
@@ -1081,7 +1081,7 @@ class Forge:
         except git_ops.GitError as exc:
             task["error"] = str(exc)[:1000]
             self._set_state(task, "awaiting_review", f"merge failed: {exc}")
-            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: merge fallito (conflitto?) — {_esc(str(exc)[:300])}")
+            self._notify(task, tr("⚠️ Forge <code>{0}</code>: merge failed (conflict?) — {1}", task['id'][:6], _esc(str(exc)[:300])))
             return
         with self._lock:
             task["merge_sha"] = merge_sha
@@ -1092,12 +1092,12 @@ class Forge:
         task["deploy_plan"] = {"restart": dplan.restart, "rebuild": dplan.rebuild,
                                "restart_self": dplan.restart_self}
         services = dplan.restart
-        rebuild_note = (tr("\n🔧 Da ricostruire a mano: <code>up-all.bat --build {0}</code>", ' '.join(dplan.rebuild))
+        rebuild_note = (tr("\n🔧 To rebuild by hand: <code>up-all.bat --build {0}</code>", ' '.join(dplan.rebuild))
                         if dplan.rebuild else "")
         if not self.cfg.deploy_cmd or not (services or dplan.restart_self):
             self._notify(task, (
                 f"✅ <b>Forge: applicata</b> <code>{task['id'][:6]}</code> (merge {merge_sha[:8]}).\n"
-                + (tr("Riavvia: {0}.", ', '.join(services + (['hephaestus'] if dplan.restart_self else [])))
+                + (tr("Restart: {0}.", ', '.join(services + (['hephaestus'] if dplan.restart_self else [])))
                    if (services or dplan.restart_self) else "") + rebuild_note))
             return
 
@@ -1108,8 +1108,7 @@ class Forge:
         if ok and not unhealthy:
             self._set_state(task, "deployed", f"{dplan.summary()}")
             self._notify(task, (
-                f"🚀 <b>Forge: in produzione</b> <code>{task['id'][:6]}</code> → {_esc(dplan.summary())}.\n"
-                f"Rollback: \"rollback sviluppo {task['id'][:6]}\"." + rebuild_note))
+                tr("🚀 <b>Forge: in production</b> <code>{0}</code> → {1}.\nRollback: \"rollback sviluppo {2}\".", task['id'][:6], _esc(dplan.summary()), task['id'][:6]) + rebuild_note))
             if dplan.restart_self:
                 self._restart_self()
             return
@@ -1220,4 +1219,4 @@ def notes_text(task: dict) -> str:
     if not notes:
         return ""
     lines = [f"- [{n.get('by')}] {' '.join(str(n.get('text') or '').split())[:1500]}" for n in notes[-10:]]
-    return "\nNote sul task (analisi e indicazioni):\n" + "\n".join(lines)
+    return "\nNotes on the task (analysis and directions):\n" + "\n".join(lines)

@@ -116,7 +116,7 @@ export class CentralSettingsStore {
 
   dependencyLabel(i: SettingItem): string {
     const dep = this.items().find(x => x.key === i.depends_on?.key);
-    return dep ? tr("Attiva solo con «{0}»", dep.label) : '';
+    return dep ? tr("Active only with «{0}»", dep.label) : '';
   }
 
   // ── loading ───────────────────────────────────────────────────────────
@@ -210,10 +210,10 @@ export class CentralSettingsStore {
       await this.loadItems();
       void this.loadModules();
       const restart = item.apply === 'restart';
-      this.toast.show(restart ? tr("{0}: salvato, serve il riavvio di {1}", item.label, moduleLabel(item.module)) : tr("{0}: salvato", item.label),
-        restart ? 'warning' : 'success', { label: tr('Annulla'), run: () => void this.set({ ...item, value }, before) });
+      this.toast.show(restart ? tr("{0}: saved, {1} needs a restart", item.label, moduleLabel(item.module)) : tr("{0}: saved", item.label),
+        restart ? 'warning' : 'success', { label: tr('Cancel'), run: () => void this.set({ ...item, value }, before) });
     } catch (e) {
-      this.toast.error(apiError(e, 'Salvataggio non riuscito'));
+      this.toast.error(apiError(e, tr('Saving failed')));
       await this.loadItems();
     } finally {
       this.saving.set(null);
@@ -225,7 +225,7 @@ export class CentralSettingsStore {
     try {
       await this.api.reset(item.key);
       await this.loadItems();
-      this.toast.success(tr("{0}: ripristinato il predefinito", item.label));
+      this.toast.success(tr("{0}: default restored", item.label));
     } catch (e) {
       this.toast.error(apiError(e));
     } finally {
@@ -237,9 +237,9 @@ export class CentralSettingsStore {
     try {
       await this.api.undo(item.key);
       await this.loadItems();
-      this.toast.success(tr("{0}: modifica annullata", item.label));
+      this.toast.success(tr("{0}: change undone", item.label));
     } catch (e) {
-      this.toast.error(apiError(e, 'Niente da annullare'));
+      this.toast.error(apiError(e, tr('Nothing to undo')));
     }
   }
 
@@ -259,9 +259,9 @@ export class CentralSettingsStore {
   async decide(p: Proposal, approve: boolean): Promise<void> {
     try {
       await this.api.decide(p.proposal_id, approve);
-      this.toast.success(approve ? tr('Proposta approvata') : tr('Proposta rifiutata'));
+      this.toast.success(approve ? tr('Proposal approved') : tr('Proposal rejected'));
     } catch (e) {
-      this.toast.error(apiError(e, 'Proposta già decisa altrove'));
+      this.toast.error(apiError(e, tr('Proposal already decided elsewhere')));
     }
     await this.refresh();
   }

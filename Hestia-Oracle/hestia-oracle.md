@@ -45,10 +45,10 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   `documents`, `embedding` slots). Streams fall back only before the first token.
 - **LLM bus** (dossier `docs/work/2026-11-16-bus-llm`, `core/services/llm_bus.py`): every model call of a **local**
   step (`llm_providers.is_local`: Ollama, llama-server, a local OpenAI-compatible server) takes one worker of a single
-  queue; setting `oracle.bus.locali_insieme` (default 1, live) = local calls served together (match Ollama
+  queue; setting `oracle.bus.local_workers` (default 1, live) = local calls served together (match Ollama
   `OLLAMA_NUM_PARALLEL` / llama-server `--parallel`). One call waits, never a whole turn, so between two steps of a long
   job a chat call passes ahead. Priority `chat` (turn started by the owner: `/api/chat` and `/api/chat/document` with
-  origin level `utente`) before `sottofondo` (routines, autonomous turns, `/api/llm/generate`, `/api/llm/chat`, memory
+  origin level `utente`) before `background` (routines, autonomous turns, `/api/llm/generate`, `/api/llm/chat`, memory
   threads); same priority = arrival order. A `/api/llm/generate` call made while an owner turn waits for its tools is
   promoted to `chat` (it is that tool's work). Cloud steps and embeddings never wait; a nested call on the thread that
   holds a worker never waits (no deadlock with 1 worker); a stream holds its worker until it ends. Log
@@ -116,6 +116,13 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - **She writes first** (`core/services/opener.py`, `POST /api/chat/opener {reasons[], avoid[], past[]}`): Athena brings the
   reasons and the last days (`past`: how the owner was, what she wrote and whether they answered), Oracle writes one or two plain-text sentences in the persona with the memory digest and the awareness
   lines; `NIENTE` → `{text: ""}` (no message). Oracle only writes: Athena decides when, Hermes delivers.
+- **Her first message stays in the conversation** (`core/services/opener_history.py`, dossier
+  `docs/work/2026-11-16-nome-ovunque`): at an owner's chat turn that saves history, the newest Hermes item
+  `kind: athena.talk` of the last 3 days is saved in that conversation (Archive `/chat/history`, role assistant,
+  `timestamp` = when she wrote it) before his message, once: skipped when any conversation was written after it,
+  when the conversation list cannot be read, or when it is already there (`[🔄] event=opener_history_*`).
+  Transcripts the model reads (history, compaction) mark her turns with her chosen name
+  (`prompt_config.assistant_label()`).
 - **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
   `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
 - **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today
@@ -799,4 +806,6 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

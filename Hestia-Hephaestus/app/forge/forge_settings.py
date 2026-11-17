@@ -36,83 +36,76 @@ REPAIR_RETRY_MINUTES = "hephaestus.remediate.retry_minutes"
 REPAIR_MAX_ATTEMPTS = "hephaestus.remediate.max_attempts"
 UPDATE_CHANNEL = "hephaestus.update.channel"
 
-_ENGINES = [("oracle", "Oracle (catena «Forge · sviluppo»)"), ("claude", "Claude Code")]
-_MODES = [("ask", "Chiedi sempre"), ("auto", "Sviluppa da solo, il merge chiede"),
-          ("full_auto", "Tutto da solo se i test passano")]
-_FORGE = "Sviluppo (Forge)"
-_REPAIR = "Riparazioni"
-_UPDATE = "Aggiornamenti"
+_ENGINES = [("oracle", "Oracle (chain «Forge · sviluppo»)"), ("claude", "Claude Code")]
+_MODES = [("ask", "Always ask"), ("auto", "Develops by itself, the merge asks"),
+          ("full_auto", "Everything by itself if the tests pass")]
+_FORGE = "Development (Forge)"
+_REPAIR = "Repairs"
+_UPDATE = "Updates"
 
 settings = SettingsClient("hephaestus").follow_personal()
 settings.declare([
     # Manual brake, user only: the assistant can read it but never propose a change.
-    setting(PAUSED, "Sviluppo in pausa", "bool", False, group=_FORGE, order=-1, oracle="read",
-            help="Se attivo nessun task di sviluppo parte da solo (Athena, Argus, riparazioni, "
-                 "finestre Claude): restano proposti in silenzio finché non premi Avvia. "
-                 "Le tue richieste dirette partono comunque."),
-    setting(DEDUP_DAYS, "Niente proposte doppie per", "int", 7, group=_FORGE, min=0, max=90, unit="giorni",
+    setting(PAUSED, "Development paused", "bool", False, group=_FORGE, order=-1, oracle="read",
+            help="If on, no development task starts by itself (Athena, Argus, repairs, Claude windows): they stay proposed quietly until you press Start. Your direct requests start anyway."),
+    setting(DEDUP_DAYS, "No double proposals for", "int", 7, group=_FORGE, min=0, max=90, unit="days",
             order=-1,
-            help="Se un modulo propone un task uguale o molto simile a uno degli ultimi giorni (anche "
-                 "rifiutato) non ne creo un altro. 0 = controllo spento. Le tue richieste non sono filtrate."),
-    setting(ENGINE, "Motore di sviluppo predefinito", "enum", "oracle", group=_FORGE,
+            help="If a module proposes a task equal or very similar to one of the last days (even rejected) I don't create another. 0 = check off. Your requests are not filtered."),
+    setting(ENGINE, "Default development engine", "enum", "oracle", group=_FORGE,
             options=_ENGINES, order=0,
-            help="Chi scrive il codice quando chiedi una modifica. Oracle usa la catena dell'uso «Forge · "
-                 "sviluppo» (Oracle → Modelli). Se non è disponibile si usa il successivo."),
+            help="Who writes the code when you ask for a change. Oracle uses the chain of the use «Forge · sviluppo» (Oracle → Models). If it is not available the next one is used."),
     # Safety switches: the assistant can read them but never propose a change.
-    setting(MODE["local"], "Permessi · motore locale", "enum", "auto", group=_FORGE,
+    setting(MODE["local"], "Permissions · local engine", "enum", "auto", group=_FORGE,
             options=_MODES, order=1, oracle="read",
-            help="Quanta autonomia ha Forge quando la catena di Forge usa solo modelli locali (gratis)."),
-    setting(MODE["cloud"], "Permessi · cloud e Claude", "enum", "ask", group=_FORGE,
+            help="How much autonomy Forge has when Forge's chain uses only local (free) models."),
+    setting(MODE["cloud"], "Permissions · cloud and Claude", "enum", "ask", group=_FORGE,
             options=_MODES, order=2, oracle="read",
-            help="Quanta autonomia ha Forge quando usa motori a pagamento o a consumo."),
-    setting(FALLBACK, "Ordine dei motori di riserva", "list", ["oracle", "claude"], group=_FORGE,
+            help="How much autonomy Forge has when it uses paid or pay-per-use engines."),
+    setting(FALLBACK, "Order of backup engines", "list", ["oracle", "claude"], group=_FORGE,
             order=3, advanced=True,
-            help="Se il motore predefinito non è disponibile provo questi, in ordine (oracle, claude)."),
-    setting(MAX_TURNS, "Passi massimi per task", "int", 40, group=_FORGE, min=5, max=300, order=4,
-            help="Quante azioni (letture, modifiche, test) può fare il motore prima di fermarsi."),
-    setting(LLM_TIMEOUT, "Attesa massima per risposta del modello", "int", 600, group=_FORGE,
+            help="If the default engine is not available I try these, in order (oracle, claude)."),
+    setting(MAX_TURNS, "Most steps per task", "int", 40, group=_FORGE, min=5, max=300, order=4,
+            help="How many actions (reads, changes, tests) the engine can do before stopping."),
+    setting(LLM_TIMEOUT, "Longest wait for a model answer", "int", 600, group=_FORGE,
             min=60, max=3600, unit="s", order=5, advanced=True,
-            help="Motori local/cloud: quanto aspetto ogni risposta del modello prima di dare errore."),
-    setting(ENGINE_TIMEOUT, "Durata massima Claude Code", "int", 1800, group=_FORGE,
+            help="Local/cloud engines: how long I wait for each model answer before giving an error."),
+    setting(ENGINE_TIMEOUT, "Longest Claude Code run", "int", 1800, group=_FORGE,
             min=60, max=14400, unit="s", order=6, advanced=True,
-            help="Tempo massimo di una sessione Claude Code su un task."),
-    setting(AUTO_MERGE, "Merge automatico predefinito", "bool", False, group=_FORGE, order=7, oracle="read",
-            help="Se attivo, i task senza indicazione fanno il merge da soli quando i test passano "
-                 "(sempre nel rispetto dei permessi)."),
-    setting(AUTO_ROLLBACK, "Annulla da solo un deploy non sano", "bool", True, group=_FORGE, order=8,
+            help="Longest time of a Claude Code session on a task."),
+    setting(AUTO_MERGE, "Default automatic merge", "bool", False, group=_FORGE, order=7, oracle="read",
+            help="If on, tasks with no indication merge by themselves when the tests pass (always within the permissions)."),
+    setting(AUTO_ROLLBACK, "Undo an unhealthy deploy by itself", "bool", True, group=_FORGE, order=8,
             oracle="read",
-            help="Dopo il deploy, se un servizio non risponde sano, Forge annulla il merge e riavvia."),
-    setting(PUSH_BRANCH, "Pubblica il branch sul remoto", "bool", False, group=_FORGE, order=9,
+            help="After the deploy, if a service does not answer healthy, Forge undoes the merge and restarts."),
+    setting(PUSH_BRANCH, "Publish the branch on the remote", "bool", False, group=_FORGE, order=9,
             oracle="read", advanced=True,
-            help="Fa git push del branch del task verso il remoto (origin) dopo i test."),
-    setting(VERIFY_DELAY, "Attesa prima del controllo salute", "int", 20, group=_FORGE,
+            help="Git-pushes the task branch to the remote (origin) after the tests."),
+    setting(VERIFY_DELAY, "Wait before the health check", "int", 20, group=_FORGE,
             min=0, max=600, unit="s", order=10, advanced=True,
-            help="Dopo il riavvio dei servizi aspetto questo tempo prima di verificarne la salute."),
-    setting(SCHEDULER_INTERVAL, "Controllo finestra Claude", "int", 300, group=_FORGE,
+            help="After restarting the services I wait this long before checking their health."),
+    setting(SCHEDULER_INTERVAL, "Claude window check", "int", 300, group=_FORGE,
             min=30, max=3600, unit="s", order=11, advanced=True,
-            help="Ogni quanto controllo se un task in attesa della finestra Claude Pro può partire."),
-    setting(TEAM_MIN_SERVICES, "Dividi in pezzi i lavori che toccano almeno", "int", 3, group=_FORGE,
-            min=1, max=20, unit="moduli", order=12,
-            help="Un lavoro grande viene diviso in pezzi fatti uno dopo l'altro, ognuno col motore adatto "
-                 "(i pezzi semplici col modello locale, i difficili con Claude), poi rivisto tutto insieme."),
-    setting(REMEDIATE_TIMEOUT, "Attesa massima di una riparazione", "float", 25.0, group=_REPAIR,
+            help="How often I check whether a task waiting for the Claude Pro window can start."),
+    setting(TEAM_MIN_SERVICES, "Split into pieces the work that touches at least", "int", 3, group=_FORGE,
+            min=1, max=20, unit="modules", order=12,
+            help="A big job is split into pieces done one after the other, each with the right engine (simple pieces with the local model, hard ones with Claude), then reviewed all together."),
+    setting(REMEDIATE_TIMEOUT, "Longest wait for a repair", "float", 25.0, group=_REPAIR,
             min=5, max=600, unit="s", order=20, advanced=True,
-            help="Quanto aspetto il servizio quando eseguo un'azione di manutenzione."),
-    setting(REMEDIATE_REQUIRE_APPROVAL, "Chiedi conferma per le riparazioni", "bool", True, group=_REPAIR,
+            help="How long I wait for the service when I run a maintenance action."),
+    setting(REMEDIATE_REQUIRE_APPROVAL, "Ask confirmation for repairs", "bool", True, group=_REPAIR,
             order=21, oracle="read",
-            help="Se attivo, ogni riparazione che modifica qualcosa (non simulata) aspetta il tuo ok."),
-    setting(REMEDIATE_AUTO_APPROVE_NON_PROD, "Auto-approvazione fuori produzione", "bool", False,
+            help="If on, every repair that changes something (not simulated) waits for your ok."),
+    setting(REMEDIATE_AUTO_APPROVE_NON_PROD, "Auto-approval outside production", "bool", False,
             group=_REPAIR, order=22, oracle="read",
-            help="Permette alle richieste di auto-approvarsi negli ambienti non di produzione."),
-    setting(REPAIR_RETRY_MINUTES, "Attesa tra i tentativi", "int", 15, group=_REPAIR,
+            help="Lets requests auto-approve themselves in non-production environments."),
+    setting(REPAIR_RETRY_MINUTES, "Wait between attempts", "int", 15, group=_REPAIR,
             min=1, max=1440, unit="min", order=23,
-            help="Dopo una riparazione fallita riprovo dopo questo tempo × numero di tentativi."),
-    setting(REPAIR_MAX_ATTEMPTS, "Tentativi massimi", "int", 3, group=_REPAIR, min=1, max=20, order=24,
-            help="Dopo l'ultimo tentativo fallito il problema passa a Forge come correzione del codice."),
-    setting(UPDATE_CHANNEL, "Quali aggiornamenti", "enum", "stabile", group=_UPDATE, order=30, oracle="read",
-            options=[("stabile", "Versioni pubblicate (consigliato)"), ("novita", "Ogni novità appena è pronta")],
-            help="Versioni pubblicate: provate e con le note. Ogni novità: l'ultimo codice, prima ma meno provato. "
-                 "Ti chiedo sempre prima di installare."),
+            help="After a failed repair I retry after this time × number of attempts."),
+    setting(REPAIR_MAX_ATTEMPTS, "Most attempts", "int", 3, group=_REPAIR, min=1, max=20, order=24,
+            help="After the last failed attempt the problem goes to Forge as a code fix."),
+    setting(UPDATE_CHANNEL, "Which updates", "enum", "stabile", group=_UPDATE, order=30, oracle="read",
+            options=[("stabile", "Published versions (recommended)"), ("novita", "Each piece of news as soon as it's ready")],
+            help="Published versions: tested and with notes. Every news: the latest code, sooner but less tested. I always ask you before installing."),
 ]).declare_log_level()
 
 

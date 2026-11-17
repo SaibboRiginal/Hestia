@@ -36,11 +36,11 @@ def _num(v: Any, *, lo: float | None = None, hi: float | None = None, integer: b
     try:
         x = float(str(v).replace(",", "."))
     except (TypeError, ValueError):
-        raise Invalid(tr("numero non valido: {0!r}", v))
+        raise Invalid(tr("invalid number: {0!r}", v))
     if lo is not None and x < lo:
-        raise Invalid(tr("{0} sotto il minimo {1}", v, lo))
+        raise Invalid(tr("{0} below the minimum {1}", v, lo))
     if hi is not None and x > hi:
-        raise Invalid(tr("{0} sopra il massimo {1}", v, hi))
+        raise Invalid(tr("{0} above the maximum {1}", v, hi))
     return int(round(x)) if integer else round(x, 3)
 
 
@@ -54,19 +54,19 @@ def _list(v: Any, allowed: dict | tuple | None = None) -> list:
     if allowed is not None:
         bad = [i for i in out if i not in allowed]
         if bad:
-            raise Invalid(tr("valori non validi: {0}", bad))
+            raise Invalid(tr("invalid values: {0}", bad))
     return list(dict.fromkeys(out))
 
 
 def exercise(d: dict) -> dict:
     name = _str(d.get("name"), 120)
     if not name:
-        raise Invalid(tr("l'esercizio ha bisogno di un nome"))
+        raise Invalid(tr("the exercise needs a name"))
     equip = d.get("equipment") or "other"
     kind = d.get("kind") or "weight_reps"
     pattern = d.get("movement_pattern") or "isolation"
     if equip not in EQUIPMENT or kind not in KINDS or pattern not in PATTERNS:
-        raise Invalid(tr("attrezzo, tipo o schema motorio non validi"))
+        raise Invalid(tr("invalid equipment, type or movement pattern"))
     return {**d, "name": name, "aliases": _list(d.get("aliases")),
             "primary_muscles": _list(d.get("primary_muscles"), MUSCLES),
             "secondary_muscles": _list(d.get("secondary_muscles"), MUSCLES),
@@ -81,7 +81,7 @@ def exercise(d: dict) -> dict:
 def planned_set(d: dict) -> dict:
     t = d.get("type") or "normal"
     if t not in SET_TYPES:
-        raise Invalid(tr("tipo di serie non valido: {0}", t))
+        raise Invalid(tr("invalid set type: {0}", t))
     rmin = _num(d.get("reps_min", d.get("reps")), lo=0, hi=200, integer=True)
     rmax = _num(d.get("reps_max", d.get("reps")), lo=0, hi=200, integer=True)
     if rmin is not None and rmax is not None and rmin > rmax:
@@ -93,10 +93,10 @@ def planned_set(d: dict) -> dict:
 
 def template_item(d: dict) -> dict:
     if not d.get("exercise_id"):
-        raise Invalid(tr("ogni voce della scheda ha bisogno di un esercizio"))
+        raise Invalid(tr("each item of the plan needs an exercise"))
     prog = d.get("progression") or "double"
     if prog not in PROGRESSIONS:
-        raise Invalid(tr("progressione non valida: {0}", prog))
+        raise Invalid(tr("invalid progression: {0}", prog))
     sets = [planned_set(s) for s in (d.get("sets") or [])] or [planned_set({"reps_min": 8, "reps_max": 12}) for _ in range(3)]
     return {"id": d.get("id") or new_id(), "exercise_id": str(d["exercise_id"]),
             "superset": _str(d.get("superset"), 10) or None,
@@ -108,7 +108,7 @@ def template_item(d: dict) -> dict:
 def template(d: dict) -> dict:
     name = _str(d.get("name"), 120)
     if not name:
-        raise Invalid(tr("la scheda ha bisogno di un nome"))
+        raise Invalid(tr("the plan needs a name"))
     return {**d, "name": name, "folder": _str(d.get("folder"), 80), "notes": _str(d.get("notes")),
             "color": _str(d.get("color"), 20), "position": _num(d.get("position"), integer=True) or 0,
             "archived": bool(d.get("archived")), "favorite": bool(d.get("favorite")),
@@ -119,10 +119,10 @@ def template(d: dict) -> dict:
 def program(d: dict) -> dict:
     name = _str(d.get("name"), 120)
     if not name:
-        raise Invalid(tr("il programma ha bisogno di un nome"))
+        raise Invalid(tr("the programme needs a name"))
     mode = d.get("mode") or "weekly"
     if mode not in ("weekly", "rotation"):
-        raise Invalid("modo programma: weekly o rotation")
+        raise Invalid(tr("program mode: weekly or rotation"))
     days = []
     for day in d.get("days") or []:
         if not day.get("template_id"):
@@ -136,7 +136,7 @@ def program(d: dict) -> dict:
 
 def session_exercise(d: dict) -> dict:
     if not d.get("exercise_id"):
-        raise Invalid("esercizio mancante")
+        raise Invalid(tr("missing exercise"))
     return {"id": d.get("id") or new_id(), "exercise_id": str(d["exercise_id"]),
             "superset": _str(d.get("superset"), 10) or None, "notes": _str(d.get("notes")),
             "rest_seconds": _num(d.get("rest_seconds"), lo=0, hi=1800, integer=True),
@@ -147,11 +147,11 @@ def session_exercise(d: dict) -> dict:
 def session(d: dict) -> dict:
     status = d.get("status") or "active"
     if status not in SESSION_STATUS:
-        raise Invalid(tr("stato non valido: {0}", status))
+        raise Invalid(tr("invalid state: {0}", status))
     if not d.get("started_at"):
-        raise Invalid("started_at mancante")
+        raise Invalid(tr("missing started_at"))
     readiness = d.get("readiness") or {}
-    return {**d, "name": _str(d.get("name"), 120) or tr("Allenamento"), "status": status,
+    return {**d, "name": _str(d.get("name"), 120) or tr("Training"), "status": status,
             "started_at": d["started_at"], "ended_at": d.get("ended_at") or None,
             "template_id": d.get("template_id") or None, "program_id": d.get("program_id") or None,
             "notes": _str(d.get("notes")), "source": d.get("source") or "live",
@@ -165,10 +165,10 @@ def session(d: dict) -> dict:
 def logged_set(d: dict) -> dict:
     t = d.get("type") or "normal"
     if t not in SET_TYPES:
-        raise Invalid(tr("tipo di serie non valido: {0}", t))
+        raise Invalid(tr("invalid set type: {0}", t))
     for k in ("session_id", "session_exercise_id", "exercise_id"):
         if not d.get(k):
-            raise Invalid(f"{k} mancante")
+            raise Invalid(tr("{0} missing", k))
     return {**d, "session_id": str(d["session_id"]), "session_exercise_id": str(d["session_exercise_id"]),
             "exercise_id": str(d["exercise_id"]), "type": t,
             "position": _num(d.get("position"), lo=0, hi=200, integer=True) or 0,
@@ -184,9 +184,9 @@ def measurement(d: dict) -> dict:
     kind = _str(d.get("kind"), 40) or "bodyweight"
     value = _num(d.get("value"), lo=0, hi=1000)
     if value is None:
-        raise Invalid("valore mancante")
+        raise Invalid(tr("missing value"))
     if not d.get("taken_at"):
-        raise Invalid("taken_at mancante")
+        raise Invalid(tr("missing taken_at"))
     return {**d, "kind": kind, "value": value, "unit": _str(d.get("unit"), 10) or MEASUREMENTS.get(kind, ""),
             "taken_at": d["taken_at"], "notes": _str(d.get("notes"), 300)}
 
@@ -195,7 +195,7 @@ def feedback(d: dict) -> dict:
     tags = _list(d.get("tags"), FEEDBACK_TAGS)
     text = _str(d.get("text"), 1000)
     if not tags and not text:
-        raise Invalid("feedback vuoto")
+        raise Invalid(tr("empty feedback"))
     return {**d, "tags": tags, "text": text, "session_id": d.get("session_id") or None,
             "exercise_id": d.get("exercise_id") or None, "at": d.get("at"),
             "joints": _list(d.get("joints"), JOINTS), "source": d.get("source") or "ui"}
@@ -204,15 +204,15 @@ def feedback(d: dict) -> dict:
 def goal(d: dict) -> dict:
     scope = d.get("scope") or "any"
     if scope not in ("any", "template", "muscle"):
-        raise Invalid("ambito obiettivo: any, template o muscle")
+        raise Invalid(tr("goal scope: any, template or muscle"))
     per = d.get("per") or "week"
     if per not in PERIODS:
-        raise Invalid("periodo: day, week o month")
+        raise Invalid(tr("period: day, week or month"))
     times = _num(d.get("times"), lo=1, hi=31, integer=True)
     if not times:
-        raise Invalid("quante volte?")
+        raise Invalid(tr("how many times?"))
     if scope != "any" and not d.get("target_id"):
-        raise Invalid("obiettivo specifico senza scheda o muscolo")
+        raise Invalid(tr("specific goal without workout or muscle"))
     return {**d, "scope": scope, "target_id": d.get("target_id") or None, "times": times, "per": per,
             "active": bool(d.get("active", True)), "min_hard_sets": _num(d.get("min_hard_sets"), lo=1, hi=30, integer=True) or 4,
             "label": _str(d.get("label"), 80)}
@@ -222,10 +222,10 @@ def plan(d: dict) -> dict:
     """A day override of the program: do template X on date D, or skip D, or D moved elsewhere."""
     day = _str(d.get("date"), 10)
     if len(day) != 10:
-        raise Invalid("data mancante (YYYY-MM-DD)")
+        raise Invalid(tr("missing date (YYYY-MM-DD)"))
     status = d.get("status") or "planned"
     if status not in PLAN_STATUS:
-        raise Invalid(tr("stato non valido: {0}", status))
+        raise Invalid(tr("invalid state: {0}", status))
     return {**d, "date": day, "status": status, "template_id": d.get("template_id") or None,
             "from_date": _str(d.get("from_date"), 10) or None, "note": _str(d.get("note"), 300)}
 
@@ -233,7 +233,7 @@ def plan(d: dict) -> dict:
 def checkin(d: dict) -> dict:
     """How I feel today (energy 1–5, sleep 1–5, soreness/pain areas, minutes available)."""
     if not d.get("at"):
-        raise Invalid("at mancante")
+        raise Invalid(tr("missing at"))
     return {**d, "energy": _num(d.get("energy"), lo=1, hi=5, integer=True),
             "sleep": _num(d.get("sleep"), lo=1, hi=5, integer=True), "stress": _num(d.get("stress"), lo=1, hi=5, integer=True),
             "soreness": _list(d.get("soreness")), "pain_areas": _list(d.get("pain_areas")),
@@ -254,7 +254,7 @@ def _activities():
 def normalize(kind: str, data: dict) -> dict:
     fn = NORMALIZERS.get(kind)
     if fn is None:
-        raise Invalid(f"tipo sconosciuto: {kind}")
+        raise Invalid(tr("unknown type: {0}", kind))
     return fn(dict(data or {}))
 
 

@@ -25,8 +25,8 @@ LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "ner
           "arrabbiato", "malato")
 CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
-MOOD_WORDS = {1: "a terra", 2: "giù", 3: "così così", 4: "bene", 5: "benissimo"}
-WEEKDAYS = ("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
+MOOD_WORDS = {1: "mood::very low", 2: "mood::low", 3: "mood::so-so", 4: "mood::good", 5: "mood::great"}   # shown through tr
+WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 QUOTE_MAX = 200
 NOTE_MAX = 1000
 
@@ -34,14 +34,14 @@ NOTE_MAX = 1000
 def _level(value: Any, field: str, required: bool = False) -> int | None:
     if value in (None, ""):
         if required:
-            raise Invalid(tr("{0}: serve un numero da 1 a 5", field))
+            raise Invalid(tr("{0}: a number from 1 to 5 is needed", field))
         return None
     try:
         n = int(round(float(str(value).replace(",", "."))))
     except ValueError as exc:
-        raise Invalid(tr("{0}: serve un numero da 1 a 5", field)) from exc
+        raise Invalid(tr("{0}: a number from 1 to 5 is needed", field)) from exc
     if not 1 <= n <= 5:
-        raise Invalid(tr("{0}: serve un numero da 1 a 5", field))
+        raise Invalid(tr("{0}: a number from 1 to 5 is needed", field))
     return n
 
 
@@ -59,7 +59,7 @@ def _vocab(values: Any, allowed: tuple[str, ...]) -> list[str]:
 
 
 def mood_word(level: int | float | None) -> str:
-    return MOOD_WORDS.get(int(round(level)), "") if level else ""
+    return tr(MOOD_WORDS.get(int(round(level)), "")) if level else ""
 
 
 class Psyche:
@@ -115,9 +115,9 @@ class Psyche:
         try:
             d = date.fromisoformat(text[:10])
         except ValueError as exc:
-            raise Invalid(tr("date: usa AAAA-MM-GG, «oggi» o «ieri»")) from exc
+            raise Invalid(tr("date: use YYYY-MM-DD, «today» or «yesterday»")) from exc
         if d > self.today():
-            raise Invalid(tr("date: non può essere nel futuro"))
+            raise Invalid(tr("date: it can't be in the future"))
         return d
 
     def _at(self, day: str) -> str:
@@ -202,7 +202,7 @@ class Psyche:
         self.store.refresh()
         row = self.store.data(KIND, str(mid or "").strip())
         if not row:
-            raise NotFound(tr("Voce dell'umore non trovata."))
+            raise NotFound(tr("Mood entry not found."))
         return row
 
     @staticmethod
@@ -260,19 +260,18 @@ class Psyche:
                                "min_days": min_days}
         if len(recent) < min_days:
             missing = min_days - len(recent)
-            out["sentences"].append(tr("Servono ancora {0} giorn{1} con l'umore segnato per vedere un andamento.", missing, 'o' if missing == 1 else 'i'))
+            out["sentences"].append((tr("1 more day with the mood noted is needed to see a trend.") if missing == 1 else tr("{0} more days with the mood noted are needed to see a trend.", missing)))
             return out
         s = out["sentences"]
-        s.append(f"Ultimi 30 giorni: umore medio {stats['mood_avg']:.1f} su 5 ({mood_word(stats['mood_avg'])}), "
-                 f"{stats['good_days']} giorni buoni e {stats['bad_days']} giorni no.")
+        s.append(tr("Last 30 days: average mood {0:.1f} out of 5 ({1}), {2} good days and {3} bad days.", stats['mood_avg'], mood_word(stats['mood_avg']), stats['good_days'], stats['bad_days']))
         if prev["mood_avg"] is not None and prev["days"] >= min_days:
             delta = stats["mood_avg"] - prev["mood_avg"]
             if abs(delta) >= 0.3:
-                s.append(tr("Rispetto al mese prima va {0} ({1:.1f} → {2:.1f}).", 'meglio' if delta > 0 else 'peggio', prev['mood_avg'], stats['mood_avg']))
+                s.append((tr("Compared with the month before it goes better ({0:.1f} → {1:.1f}).", prev['mood_avg'], stats['mood_avg']) if delta > 0 else tr("Compared with the month before it goes worse ({0:.1f} → {1:.1f}).", prev['mood_avg'], stats['mood_avg'])))
             else:
-                s.append(tr("Rispetto al mese prima è stabile."))
+                s.append(tr("Compared with the month before it is stable."))
         if stats["energy_avg"] is not None:
-            s.append(tr("Energia media {0:.1f} su 5.", stats['energy_avg']))
+            s.append(tr("Average energy {0:.1f} out of 5.", stats['energy_avg']))
         by_wd: dict[int, list[int]] = {}
         for d in self.days(90):
             by_wd.setdefault(date.fromisoformat(d["date"]).weekday(), []).append(d["mood"])
@@ -280,22 +279,22 @@ class Psyche:
         if len(wd) >= 3:
             best, worst = max(wd, key=wd.get), min(wd, key=wd.get)
             if wd[best] - wd[worst] >= 0.8:
-                s.append(tr("Il giorno che va meglio di solito è il {0}, quello più pesante il {1}.", WEEKDAYS[best], WEEKDAYS[worst]))
+                s.append(tr("The day that usually goes best is {0}, the heaviest {1}.", tr(WEEKDAYS[best]), tr(WEEKDAYS[worst])))
                 out["weekdays"] = {WEEKDAYS[k]: round(v, 2) for k, v in sorted(wd.items())}
         labels = Counter(l for d in recent for l in d["labels"])
         if labels:
             top = [f"{l} ({n})" for l, n in labels.most_common(3)]
-            s.append(tr("Le parole più frequenti: ") + ", ".join(top) + ".")
+            s.append(tr("The most frequent words: ") + ", ".join(top) + ".")
         bad_causes = Counter(c for d in recent if d["mood"] <= 2 for c in d["causes"])
         if bad_causes:
             c, n = bad_causes.most_common(1)[0]
             if n >= 2:
-                s.append(f"Nei giorni no torna spesso «{c}» ({n} volte).")
+                s.append(tr("On bad days «{0}» comes up often ({1} times).", c, n))
         good_causes = Counter(c for d in recent if d["mood"] >= 4 for c in d["causes"])
         if good_causes:
             c, n = good_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("Nei giorni buoni c'è spesso «{0}» ({1} volte).", c, n))
+                s.append(tr("On good days there is often «{0}» ({1} times).", c, n))
         out["labels"] = dict(labels.most_common(8))
         return out
 
@@ -318,20 +317,20 @@ class Psyche:
         last7 = [d["mood"] for d in recent if d["date"] > (self.today() - timedelta(days=7)).isoformat()]
         prev21 = [d["mood"] for d in recent if d["date"] <= (self.today() - timedelta(days=7)).isoformat()]
         if len(last7) >= 3 and len(prev21) >= 5 and mean(prev21) - mean(last7) >= 1:
-            sigs.append(signal("mood_drop", tr("Umore in calo: media {0:.1f} negli ultimi 7 giorni contro {1:.1f} prima.", mean(last7), mean(prev21)), kind="trend", severity="attenzione",
+            sigs.append(signal("mood_drop", tr("Mood going down: average {0:.1f} in the last 7 days against {1:.1f} before.", mean(last7), mean(prev21)), kind="trend", severity="attenzione",
                                metrics={"last7": round(mean(last7), 2), "before": round(mean(prev21), 2)},
                                page="umore"))
         low = self.streak(lambda d: d["mood"] <= 2, recent)
         if low >= 3:
-            sigs.append(signal("low_streak", tr("{0} giorni di fila con l'umore giù.", low), kind="streak",
+            sigs.append(signal("low_streak", tr("{0} days in a row with low mood.", low), kind="streak",
                                severity="attenzione", metrics={"days": low}, page="umore", ttl_days=2))
         tired = self.streak(lambda d: bool(d.get("energy")) and d["energy"] <= 2, recent)
         if tired >= 3:
-            sigs.append(signal("energy_low", tr("{0} giorni di fila con poca energia: una settimana più leggera potrebbe aiutare.", tired), kind="streak", severity="attenzione",
+            sigs.append(signal("energy_low", tr("{0} days in a row with little energy: a lighter week might help.", tired), kind="streak", severity="attenzione",
                                metrics={"days": tired}, page="umore", ttl_days=2))
         good = self.streak(lambda d: d["mood"] >= 4, recent)
         if good >= 5:
-            sigs.append(signal("good_streak", tr("{0} giorni di fila di buon umore.", good), kind="milestone",
+            sigs.append(signal("good_streak", tr("{0} days in a row in a good mood.", good), kind="milestone",
                                severity="info", metrics={"days": good}, page="umore", ttl_days=2))
         mets: list[dict] = []
         by_week: dict[str, list[dict]] = {}
@@ -341,10 +340,10 @@ class Psyche:
             rows = by_week.get(week) or []
             if not rows:
                 continue
-            mets.append(metric("mood.avg", week, mean(r["mood"] for r in rows), tr("Umore medio")))
+            mets.append(metric("mood.avg", week, mean(r["mood"] for r in rows), tr("Average mood")))
             energies = [r["energy"] for r in rows if r.get("energy")]
             if energies:
-                mets.append(metric("mood.energy", week, mean(energies), tr("Energia media")))
+                mets.append(metric("mood.energy", week, mean(energies), tr("Average energy")))
         return sigs, mets
 
     def recap(self, day: date, nxt: date) -> dict:
@@ -353,25 +352,25 @@ class Psyche:
         done = []
         if s:
             extra = ", ".join(s["labels"][:3])
-            done.append({"text": tr("Umore {0}/5 · {1}", s['mood'], s['mood_word']) + (f" · {extra}" if extra else ""),
+            done.append({"text": tr("Mood {0}/5 · {1}", s['mood'], s['mood_word']) + (f" · {extra}" if extra else ""),
                          "tone": "success" if s["mood"] >= 4 else "warning" if s["mood"] <= 2 else ""})
         recent = self.days(14, day)
         nxt_lines = []
         if self.streak(lambda d: bool(d.get("energy")) and d["energy"] <= 2, recent) >= 3:
-            nxt_lines.append({"text": tr("Da qualche giorno hai poca energia: domani vai piano."), "tone": "info"})
+            nxt_lines.append({"text": tr("For a few days you've had little energy: go easy tomorrow."), "tone": "info"})
         elif self.streak(lambda d: d["mood"] <= 2, recent) >= 3:
-            nxt_lines.append({"text": tr("Qualche giorno pesante di fila: domani ritagliati qualcosa di bello."),
+            nxt_lines.append({"text": tr("A few heavy days in a row: tomorrow treat yourself to something nice."),
                               "tone": "info"})
-        actions = [] if s else [{"label": tr("Come stai?"), "command": "mood_log"}]
+        actions = [] if s else [{"label": tr("How are you?"), "command": "mood_log"}]
         return {"done": done, "next": nxt_lines, "actions": actions}
 
     def context_text(self, budget: int = 400) -> str:
         days = self.days(7)
         if not days:
-            return tr("Umore: nessun dato negli ultimi 7 giorni.")
+            return tr("Mood: no data in the last 7 days.")
         parts = [f"{d['date'][8:10]}/{d['date'][5:7]} {d['mood']}/5" + (f" ({', '.join(d['labels'][:2])})"
                                                                        if d["labels"] else "") for d in days]
-        return (tr("Umore ultimi 7 giorni: ") + "; ".join(parts))[:max(80, int(budget))]
+        return (tr("Mood of the last 7 days: ") + "; ".join(parts))[:max(80, int(budget))]
 
     def checkin(self) -> dict | None:
         """Agenda job: the evening question, only when today has no check-in (the module decides, Hermes sends)."""
@@ -381,5 +380,5 @@ class Psyche:
         actions = [{"id": f"m{n}", "label": label, "text": label, "service": "psyche", "method": "POST",
                     "path": base, "body": {"mood": n, "source": "checkin"}, "resolves": True,
                     **({"style": "primary"} if n == 4 else {})}
-                   for n, label in ((2, tr("Giù")), (3, tr("Così così")), (4, tr("Bene")))]
-        return {"key": "psyche.checkin", "text": tr("Com'è andata oggi?"), "actions": actions}
+                   for n, label in ((2, tr("Down")), (3, tr("So-so")), (4, tr("Good")))]
+        return {"key": "psyche.checkin", "text": tr("How did today go?"), "actions": actions}

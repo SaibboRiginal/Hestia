@@ -367,7 +367,7 @@ class Observer:
             if isinstance(ev, dict):
                 msg = str(ev.get("message", "")).strip().splitlines()
                 by_service.setdefault(str(ev.get("service", "?")), []).append(msg[-1][:100] if msg else "")
-        return [f"{svc}: {len(msgs)} errori (es. {msgs[-1]})" for svc, msgs in list(by_service.items())[:4]]
+        return [f"{svc}: {len(msgs)} errors (e.g. {msgs[-1]})" for svc, msgs in list(by_service.items())[:4]]
 
     def observe_quality(self) -> list[str]:
         """Weak spots from Metis feedback insights (best effort)."""
@@ -376,11 +376,11 @@ class Observer:
             data = data["payload"]
         if not isinstance(data, dict) or not data.get("bad_feedback"):
             return []
-        lines = [f"feedback negativi {data.get('bad_feedback')}/{data.get('total_feedback')}"]
+        lines = [f"negative feedback {data.get('bad_feedback')}/{data.get('total_feedback')}"]
         for weak in (data.get("weak_domains") or [])[:3]:
             sample = (weak.get("samples") or [{}])[0]
-            hint = f" (es. utente: \"{sample.get('user', '')[:80]}\")" if sample.get("user") else ""
-            lines.append(f"dominio {weak.get('domain')}: {weak.get('bad')} negativi{hint}")
+            hint = f" (e.g. user: \"{sample.get('user', '')[:80]}\")" if sample.get("user") else ""
+            lines.append(f"domain {weak.get('domain')}: {weak.get('bad')} negative{hint}")
         return lines
 
     def observe_settings(self, limit: int = 12) -> list[str]:

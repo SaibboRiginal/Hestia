@@ -8,10 +8,10 @@ export const MODE_KEY = 'oracle.chat.mode';
 
 /** Conversation modes (Oracle owns them: setting oracle.chat.mode). */
 export const CHAT_MODES = [
-  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('Hestia decide: risposta rapida o ragionata con gli strumenti.') },
-  { value: 'quick', label: tr('Rapida'), icon: 'zap', help: tr('Una sola risposta, niente strumenti. La più veloce.') },
-  { value: 'thinking', label: tr('Pensata'), icon: 'brain', help: tr('Ragiona sempre e usa gli strumenti prima di rispondere.') },
-  { value: 'cot', label: 'CoT', icon: 'list', help: tr('Ragionamento profondo passo passo, con i passi in fondo. Più lenta.') },
+  { value: 'auto', label: tr('Auto'), icon: 'sparkle', help: tr('{assistant} decides: quick answer or reasoned with the tools.') },
+  { value: 'quick', label: tr('Quick'), icon: 'zap', help: tr('A single answer, no tools. The fastest.') },
+  { value: 'thinking', label: tr('Thoughtful'), icon: 'brain', help: tr('Always reasons and uses the tools before answering.') },
+  { value: 'cot', label: 'CoT', icon: 'list', help: tr('Deep step by step reasoning, with the steps at the bottom. Slower.') },
 ] as const;
 
 /**
@@ -24,11 +24,11 @@ export const CHAT_MODES = [
   imports: [TrPipe, IconComponent, PopoverComponent, SettingLinkComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <button class="pick" (click)="toggle($event)"  [title]="'Modalità di conversazione' | tr"  [attr.aria-label]="'Modalità di conversazione' | tr">
+    <button class="pick" (click)="toggle($event)"  [title]="'Conversation mode' | tr"  [attr.aria-label]="'Conversation mode' | tr">
       <hx-icon [name]="current().icon" [size]="14" /><span>{{ current().label }}</span><hx-icon name="chevron-down" [size]="13" />
     </button>
     <hx-popover [open]="open()" [anchor]="anchor()" [width]="300" (closed)="open.set(false)">
-      <div class="list" role="listbox"  [attr.aria-label]="'Modalità' | tr">
+      <div class="list" role="listbox"  [attr.aria-label]="'alt::Mode' | tr">
         @for (m of modes; track m.value) {
           <button class="opt" role="option" [class.on]="m.value === mode()" [attr.aria-selected]="m.value === mode()" (click)="pick(m.value)">
             <hx-icon [name]="m.icon" [size]="15" />
@@ -36,8 +36,8 @@ export const CHAT_MODES = [
             @if (m.value === mode()) { <hx-icon name="check" [size]="14" /> }
           </button>
         }
-        <div class="foot"><span>{{ "Vale per questa conversazione" | tr }}</span>
-          <hx-setting-link [key]="key"  [label]="'predefinita' | tr"  [title]="'Cambia la modalità predefinita' | tr" (go)="open.set(false)" /></div>
+        <div class="foot"><span>{{ "Applies to this conversation" | tr }}</span>
+          <hx-setting-link [key]="key"  [label]="'f::default' | tr"  [title]="'Change the default mode' | tr" (go)="open.set(false)" /></div>
       </div>
     </hx-popover>`,
   styles: [`
@@ -95,6 +95,6 @@ export class ChatModeComponent {
     if (v === this.mode()) return;
     this.mode.set(v);   // sent with the next message even if saving fails
     try { await this.api.set(MODE_KEY, v, 'session'); }
-    catch (e) { this.toast.error(apiError(e, 'Modalità non salvata per questa conversazione')); }
+    catch (e) { this.toast.error(apiError(e, tr('Mode not saved for this conversation'))); }
   }
 }

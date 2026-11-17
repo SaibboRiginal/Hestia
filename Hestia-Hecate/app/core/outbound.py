@@ -16,8 +16,7 @@ from urllib.parse import urlsplit
 
 _URL_RE = re.compile(r"^HECATE_MCP_([A-Z0-9_]+)_URL$")
 
-HOW_TO = ("Aggiungi nel .env HECATE_MCP_<NOME>_URL (indirizzo del server MCP) e, se serve una chiave, "
-          "HECATE_MCP_<NOME>_KEY; poi riavvia Hecate.")
+HOW_TO = ("Add HECATE_MCP_<NAME>_URL (address of the MCP server) to .env and, if a key is needed, HECATE_MCP_<NAME>_KEY; then restart Hecate.")
 
 
 def outbound_servers(env: dict[str, str] | None = None) -> list[dict]:

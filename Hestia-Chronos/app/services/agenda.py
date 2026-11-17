@@ -352,7 +352,7 @@ def _standard_state(item: dict) -> str:
     if item["status"] == "cancelled":
         return "eliminata"
     if item["status"] == "paused":
-        return "in pausa"
+        return "paused"
     if item["status"] == "failed":
         return "fallita"
     if item["user_modified"]:
@@ -387,7 +387,7 @@ def restore(key: str, by: str = "user") -> dict:
     with _lock:
         item = get(key)
         if item["created_by"] != item["owner"] or item["created_by"] in {"user", ""}:
-            raise AgendaError(tr("solo le attività standard di un modulo si ripristinano"), 400)
+            raise AgendaError(tr("only the standard activities of a module can be restored"), 400)
         declared = (_DECLARED.get(item["owner"]) or {}).get(item["key"]) or {}
         for f in ("title", "description", "start_at", "end_at", "recurrence", "action", "params"):
             if f in declared:
@@ -466,7 +466,7 @@ def cancel(ref: str | int, by: str = "user") -> dict:
                     logger.warning("[🔄] event=agenda_cascade_cancel_failed item=%s child=%s error=%s",
                                    item["key"], child["key"], exc)
         if item.get("parent") and not by.startswith("cascade:"):
-            _mark_parent(item, ok=False, detail=f"voce collegata annullata: {item['title']}", by=by)
+            _mark_parent(item, ok=False, detail=tr("linked item cancelled: {0}", item['title']), by=by)
         if by.startswith("cascade:"):
             logger.info("event=agenda_cascade_cancelled item=%s by=%s", item["key"], by)
         return item
@@ -499,7 +499,7 @@ def fail(ref: str | int, detail: str = "", by: str = "module") -> dict:
         _record_run(item, None, False, (detail or "fallito")[:300], at, by)
         item = _save(item)
         if item.get("parent"):
-            _mark_parent(item, ok=False, detail=f"voce collegata fallita: {item['title']}", by=by)
+            _mark_parent(item, ok=False, detail=tr("linked item failed: {0}", item['title']), by=by)
         return item
 
 
@@ -520,7 +520,7 @@ def _mark_parent(child: dict, *, ok: bool, detail: str, by: str) -> None:
     _save(parent)
     logger.info("event=agenda_parent_marked parent=%s child=%s ok=%s", parent["key"], child["key"], ok)
     if parent["status"] == "failed" and parent.get("parent"):
-        _mark_parent(parent, ok=False, detail=f"voce collegata fallita: {parent['title']}", by=by)
+        _mark_parent(parent, ok=False, detail=tr("linked item failed: {0}", parent['title']), by=by)
 
 
 def skip(ref: str | int, occurrence: str | None = None, by: str = "user") -> dict:
@@ -718,7 +718,7 @@ def tick(now: datetime | None = None) -> dict:
                         fresh["status"] = "failed"
                 _save(fresh)
                 if fresh["status"] == "failed" and fresh.get("parent"):
-                    _mark_parent(fresh, ok=False, detail=f"voce collegata fallita: {fresh['title']}", by="agenda")
+                    _mark_parent(fresh, ok=False, detail=tr("linked item failed: {0}", fresh['title']), by="agenda")
             fired += int(ok)
             failed += int(not ok)
             if not ok:

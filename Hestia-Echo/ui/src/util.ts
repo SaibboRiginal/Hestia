@@ -1,19 +1,19 @@
-import { tr } from '@hestia/webui-sdk';
+import { locale, tr } from '@hestia/webui-sdk';
 /** Helpers shared by the Voce page: API prefix, labels, audio in the browser (play base64, record the mic). */
 export const API = '/api/voice';
 
 export const STATES: Record<string, { label: string; tone: string }> = {
-  ready: { label: 'pronto', tone: 'success' },
-  no_key: { label: tr('manca la chiave'), tone: 'warning' },
-  no_url: { label: tr('manca l\'indirizzo'), tone: 'warning' },
-  not_installed: { label: tr('non installato'), tone: 'warning' },
-  downloading: { label: tr('scarico il modello'), tone: 'info' },
-  quota: { label: 'senza quota', tone: 'warning' },
-  missing: { label: 'fornitore tolto', tone: 'danger' },
-  wrong_direction: { label: 'direzione sbagliata', tone: 'danger' },
+  ready: { label: tr('m::ready'), tone: 'success' },
+  no_key: { label: tr('the key is missing'), tone: 'warning' },
+  no_url: { label: tr('the address is missing'), tone: 'warning' },
+  not_installed: { label: tr('not installed'), tone: 'warning' },
+  downloading: { label: tr('downloading the model'), tone: 'info' },
+  quota: { label: tr('out of quota'), tone: 'warning' },
+  missing: { label: tr('provider removed'), tone: 'danger' },
+  wrong_direction: { label: tr('wrong direction'), tone: 'danger' },
 };
 
-export const DIRECTIONS = [{ value: 'ascolto', label: tr('Ascolto (voce → testo)') }, { value: 'voce', label: tr('Voce (testo → voce)') }];
+export const DIRECTIONS = [{ value: 'ascolto', label: tr('Listening (voice → text)') }, { value: 'voce', label: tr('Voice (text → speech)') }];
 
 export function slug(s: string): string {
   return s.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
@@ -37,8 +37,8 @@ export function when(iso: string | null | undefined): string {
   if (!iso) return '–';
   const d = new Date(iso);
   const today = new Date().toDateString() === d.toDateString();
-  return today ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return today ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function money(eur: number | null | undefined): string {

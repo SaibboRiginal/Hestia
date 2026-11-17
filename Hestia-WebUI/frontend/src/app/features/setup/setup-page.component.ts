@@ -33,8 +33,8 @@ const SCREEN_KEY = 'hestia_setup_screen';
 const HOSTS_KEY = 'hestia_setup_hosts';
 /** The steps list (from the bar on top): one line per screen. */
 const TITLES: Record<Screen, string> = {
-  benvenuto: tr('Inizio'), chi: tr('Tu e io'), modelli: tr('Modelli'), memoria: tr('Memoria'), cervello: tr('Modelli pronti'), ascolto: tr('Ascolto'),
-  voce: tr('Voce'), telegram: 'Telegram', backup: tr('Backup'), esterni: tr('Calendario e Garmin'), fuori: tr('Fuori casa'), pronto: tr('Fine'),
+  benvenuto: tr('Start'), chi: tr('You and me'), modelli: tr('Models'), memoria: tr('Memory'), cervello: tr('Models ready'), ascolto: tr('Listening'),
+  voce: tr('Voice'), telegram: 'Telegram', backup: tr('Backup'), esterni: tr('Calendar and Garmin'), fuori: tr('Outside home'), pronto: tr('End'),
 };
 /** No address after this long: say so instead of a spinner forever. */
 const TUNNEL_PATIENCE_MS = 90_000;
@@ -62,20 +62,20 @@ function store(key: string, value: string): void {
     <header class="bar">
       <span class="brand"><hx-icon name="sparkle" [size]="18" tone="accent" /> Hestia</span>
       @if (state()) {
-        <button type="button" class="pill" [class.on]="panel()" (click)="panel.set(!panel())" [attr.aria-expanded]="panel()"  [attr.aria-label]="'Passi e download' | tr">
+        <button type="button" class="pill" [class.on]="panel()" (click)="panel.set(!panel())" [attr.aria-expanded]="panel()"  [attr.aria-label]="'Steps and downloads' | tr">
           <span class="pn">{{ index() + 1 }}/{{ screens().length }}</span> {{ title(screen()) }}
           @if (activeDownloads()) { <span class="dlc"><hx-icon name="download" [size]="13" /> {{ activeDownloads() }}</span> }
           <hx-icon [name]="panel() ? 'chevron-up' : 'chevron-down'" [size]="14" tone="muted" />
         </button>
       }
       <span class="sp"></span>
-      <a class="out" routerLink="/home" (click)="leave()">{{ "Finisco dopo" | tr }}</a>
+      <a class="out" routerLink="/home" (click)="leave()">{{ "I finish after" | tr }}</a>
     </header>
     <div class="progress" aria-hidden="true"><span [style.width.%]="100 * (index() + 1) / screens().length"></span></div>
 
     @if (panel() && state()) {
       <div class="scrim" (click)="panel.set(false)"></div>
-      <aside class="drop"  [attr.aria-label]="'Passi e download' | tr">
+      <aside class="drop"  [attr.aria-label]="'Steps and downloads' | tr">
         <ol class="steps-nav">
           @for (s of screens(); track s; let i = $index) {
             <li>
@@ -87,7 +87,7 @@ function store(key: string, value: string): void {
           }
         </ol>
         @if (downloads().length) {
-          <div class="dlh"><hx-icon name="download" [size]="15" tone="muted" /> {{ "Download" | tr }} <small>{{ "vanno avanti da soli" | tr }}</small></div>
+          <div class="dlh"><hx-icon name="download" [size]="15" tone="muted" /> {{ "alt::Download" | tr }} <small>{{ "run on their own" | tr }}</small></div>
           <ul class="dl">
             @for (d of downloads(); track (d.module || '') + d.id) {
               <li>
@@ -99,7 +99,7 @@ function store(key: string, value: string): void {
               </li>
             }
           </ul>
-          <a class="more" href="/download" target="_blank" rel="noopener">{{ "Pagina Download" | tr }} <hx-icon name="external" [size]="13" /></a>
+          <a class="more" href="/download" target="_blank" rel="noopener">{{ "Downloads page" | tr }} <hx-icon name="external" [size]="13" /></a>
         }
       </aside>
     }
@@ -111,7 +111,7 @@ function store(key: string, value: string): void {
             @if (loadError()) {
               <hx-icon name="offline" [size]="28" tone="warning" />
               <p>{{ loadError() }}</p>
-              <button hx-btn variant="primary" icon="refresh" (click)="load()">{{ "Riprova" | tr }}</button>
+              <button hx-btn variant="primary" icon="refresh" (click)="load()">{{ "Try again" | tr }}</button>
             } @else { <hx-spinner /> }
           </div>
         } @else {
@@ -119,28 +119,28 @@ function store(key: string, value: string): void {
             @case ('benvenuto') {
               <div class="hero">
                 <span class="mark"><hx-icon name="sparkle" [size]="26" tone="accent" /></span>
-                <h1>{{ "Ciao, sono" | tr }} {{ identity.assistant() }}</h1>
-                <p class="lead">{{ "Ti preparo tutto in pochi passi. Ogni risposta si salva subito: puoi chiudere e riprendere quando vuoi." | tr }}</p>
+                <h1>{{ "Hi, I'm" | tr }} {{ identity.assistant() }}</h1>
+                <p class="lead">{{ "I'll set everything up in a few steps. Every answer is saved right away: you can close and resume whenever you want." | tr }}</p>
                 <p class="fact top"><hx-icon name="host" [size]="16" tone="muted" /><span>{{ hardwareText() }}</span></p>
               </div>
             }
 
             @case ('chi') {
-              <h1>{{ "Come ti chiami?" | tr }}</h1>
-              <p class="lead">{{ "Così so chi sei e come chiamarti. Puoi anche darmi un altro nome." | tr }}</p>
-              <hx-field  [label]="'Il tuo nome' | tr">
+              <h1>{{ "What's your name?" | tr }}</h1>
+              <p class="lead">{{ "So I know who you are and what to call you. You can also give me another name." | tr }}</p>
+              <hx-field  [label]="'Your name' | tr">
                 <input class="hx-input" autocomplete="given-name" maxlength="40" [(ngModel)]="ownerName" />
               </hx-field>
-              <hx-field  [label]="'Come vuoi che ti chiami' | tr"  [hint]="'Un soprannome o un diminutivo. Vuoto = il tuo nome.' | tr">
+              <hx-field  [label]="'What you want me to call you' | tr"  [hint]="'A nickname or short name. Empty = your name.' | tr">
                 <input class="hx-input" autocomplete="nickname" maxlength="40" [(ngModel)]="ownerCall" />
               </hx-field>
-              <hx-field  [label]="'Il mio nome' | tr">
+              <hx-field  [label]="'My name' | tr">
                 <input class="hx-input" autocomplete="off" maxlength="40" [(ngModel)]="assistantName" />
               </hx-field>
-              <hx-field  [label]="'Sono' | tr">
+              <hx-field  [label]="'I am' | tr">
                 <hx-segmented [options]="genderOptions" [value]="assistantGender()" (changed)="assistantGender.set($event)" />
               </hx-field>
-              <hx-field  [label]="'La tua lingua' | tr"  [hint]="'Per le notifiche e i messaggi che ti scrivo io. In chat ti rispondo nella lingua in cui scrivi.' | tr">
+              <hx-field  [label]="'Your language' | tr"  [hint]="'For the notifications and the messages I write to you. In chat I answer in the language you write in.' | tr">
                 <select class="hx-select" [value]="language()" (change)="language.set($any($event.target).value)">
                   @for (l of languages; track l.value) {
                     <option [value]="l.value" [selected]="l.value === language()">{{ l.label }}</option>
@@ -150,27 +150,27 @@ function store(key: string, value: string): void {
             }
 
             @case ('modelli') {
-              <h1>{{ "Con quali modelli pensa?" | tr }}</h1>
-              <p class="lead">{{ "Scegline almeno uno, locale o cloud. Ogni modalità può avere i suoi." | tr }}</p>
-              <div class="modetabs" role="tablist"  [attr.aria-label]="'Modalità' | tr">
+              <h1>{{ "With which models does it think?" | tr }}</h1>
+              <p class="lead">{{ "Choose at least one, local or cloud. Each mode can have its own." | tr }}</p>
+              <div class="modetabs" role="tablist"  [attr.aria-label]="'alt::Mode' | tr">
                 @for (m of modeList; track m.id) {
                   <button type="button" role="tab" [attr.aria-selected]="modeTab() === m.id" [class.on]="modeTab() === m.id" (click)="modeTab.set(m.id)">
-                    {{ m.label }}<small>{{ m.id === 'generale' ? ('per tutto' | tr) : modeOwn()[m.id] ? 'propri' : ('come Generale' | tr) }}</small>
+                    {{ m.label }}<small>{{ m.id === 'generale' ? ('for everything' | tr) : modeOwn()[m.id] ? 'propri' : ('like General' | tr) }}</small>
                   </button>
                 }
               </div>
               @if (modeTab() === 'generale') {
                 <app-setup-chain [homeItems]="localItems()" [home]="localKey()" (homeChange)="pickLocalKey($event)" [programs]="programs()"
-                                 homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis), aprilo e premi «Cerca di nuovo»."
+                                 [homeEmpty]="'No program for the models found. Install one (they are free), open it and press «Search again».' | tr"
                                  [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                  [services]="cloudRows()" [tester]="chatTester" [(order)]="cloudPicked" [(picks)]="cloudModel" [(ready)]="cloudReady" [(tokens)]="cloudTokens" [(rank)]="cloudRank">
                   <div home-extra>
                     @if (hasOllama()) {
                       @if (otherOpen() || otherModel()) {
-                        <hx-field  [label]="'Un altro modello di Ollama' | tr"  [hint]="'Il nome come su ollama.com/library, per esempio qwen3:32b: Ollama lo scarica.' | tr">
-                          <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" placeholder="nome:versione" />
+                        <hx-field  [label]="'Another Ollama model' | tr"  [hint]="'The name as on ollama.com/library, for example qwen3:32b: Ollama downloads it.' | tr">
+                          <input class="hx-input mono" autocomplete="off" spellcheck="false" [ngModel]="otherModel()" (ngModelChange)="typeLocal($event)" [placeholder]="'name:version' | tr" />
                         </hx-field>
-                      } @else { <button type="button" class="link" (click)="otherOpen.set(true)">{{ "Un altro modello di Ollama" | tr }}</button> }
+                      } @else { <button type="button" class="link" (click)="otherOpen.set(true)">{{ "Another Ollama model" | tr }}</button> }
                     }
                   </div>
                 </app-setup-chain>
@@ -179,11 +179,11 @@ function store(key: string, value: string): void {
                   @if (modeTab() === m.id) {
                     <label class="same">
                       <input type="checkbox" [checked]="!modeOwn()[m.id]" (change)="toggleMode(m.id)" />
-                      <span><b>{{ "Gli stessi di Generale" | tr }}</b><small>{{ m.help }}</small></span>
+                      <span><b>{{ "The same as General" | tr }}</b><small>{{ m.help }}</small></span>
                     </label>
                     @if (modeOwn()[m.id]; as own) {
                       <app-setup-chain [homeItems]="localItems()" [home]="own.home" (homeChange)="setMode(m.id, 'home', $event)" [programs]="programs()"
-                                       homeEmpty="Nessun programma per i modelli trovato."
+                                       [homeEmpty]="'No program for the models found.' | tr"
                                        [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                        [services]="cloudRows()" [tester]="chatTester" [(ready)]="cloudReady" [(tokens)]="cloudTokens"
                                        [order]="own.order" (orderChange)="setMode(m.id, 'order', $event)"
@@ -196,23 +196,23 @@ function store(key: string, value: string): void {
             }
 
             @case ('memoria') {
-              <h1>{{ "Con quale modello ricorda?" | tr }}</h1>
-              <p class="lead">{{ "Serve a ritrovare ricordi e documenti. Uno solo: se lo cambi più avanti, Hestia rilegge la memoria." | tr }}</p>
+              <h1>{{ "With which model does it remember?" | tr }}</h1>
+              <p class="lead">{{ "It's used to find memories and documents again. Only one: if you change it later, Hestia rereads the memory." | tr }}</p>
               <app-setup-chain [single]="true" [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
-                               homeEmpty="Nessun programma per i modelli trovato. Installane uno (sono gratis) e premi «Cerca di nuovo», oppure scegli un servizio cloud."
+                               [homeEmpty]="'No program for the models found. Install one (they are free) and press «Search again», or choose a cloud service.' | tr"
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
-                               [services]="embedRows()" [tester]="embedTester" cloudEmpty="Nessun servizio cloud con modelli per la memoria."
+                               [services]="embedRows()" [tester]="embedTester" [cloudEmpty]="'No cloud service with models for the memory.' | tr"
                                [(order)]="embedOrder" [(picks)]="embedPicks" [(ready)]="embedReady" [(tokens)]="embedTokens" />
             }
 
             @case ('cervello') {
-              <h1>{{ "I modelli sono pronti" | tr }}</h1>
+              <h1>{{ "The models are ready" | tr }}</h1>
               <div class="msg">
                 @if (hello(); as h) {
-                  @if (h.ok) { <hx-assistant-text [html]="h.html || ''" /><small>{{ "Scritto con" | tr }} {{ h.model }}</small> }
+                  @if (h.ok) { <hx-assistant-text [html]="h.html || ''" /><small>{{ "Written with" | tr }} {{ h.model }}</small> }
                   @else {
-                    <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ activeDownloads() ? ('Il modello si sta ancora scaricando: ti scrivo appena è pronto.' | tr) : h.detail }}</p>
-                    @if (!activeDownloads()) { <div class="row start"><button hx-btn variant="secondary" size="sm" icon="refresh" [loading]="helloBusy()" (click)="sayHello()">{{ "Riprova" | tr }}</button></div> }
+                    <p class="warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ activeDownloads() ? ('The model is still downloading: I\\'ll write to you as soon as it\\'s ready.' | tr) : h.detail }}</p>
+                    @if (!activeDownloads()) { <div class="row start"><button hx-btn variant="secondary" size="sm" icon="refresh" [loading]="helloBusy()" (click)="sayHello()">{{ "Try again" | tr }}</button></div> }
                   }
                 } @else { <hx-assistant-text [streaming]="true" /> }
               </div>
@@ -221,69 +221,69 @@ function store(key: string, value: string): void {
 
             @case ('telegram') {
               <h1>Telegram</h1>
-              <p class="lead">{{ "Per scrivere e parlare con Hestia dal telefono." | tr }}</p>
+              <p class="lead">{{ "To write and talk with {assistant} from the phone." | tr }}</p>
               @if (state()!.telegram.linked) {
-                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Collegato: Hestia ti riconosce." | tr }}</p>
+                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Linked: {assistant} recognises you." | tr }}</p>
               } @else if (code()) {
-                <p class="fact">{{ "Apri il tuo bot su Telegram e scrivigli questo codice:" | tr }}</p>
+                <p class="fact">{{ "Open your bot on Telegram and send it this code:" | tr }}</p>
                 <div class="code mono">{{ code() }}</div>
-                <p class="fact"><hx-spinner /> {{ "Aspetto il tuo messaggio (vale 10 minuti)." | tr }}</p>
+                <p class="fact"><hx-spinner /> {{ "I'm waiting for your message (valid for 10 minutes)." | tr }}</p>
               } @else if (state()!.telegram.token) {
-                <p class="fact">{{ "Il bot c'è: manca solo farti riconoscere." | tr }}</p>
-                <div class="row start"><button hx-btn variant="primary" [loading]="busy()" (click)="newCode()">{{ "Mostra il codice" | tr }}</button></div>
+                <p class="fact">{{ "The bot is there: it only needs to recognise you." | tr }}</p>
+                <div class="row start"><button hx-btn variant="primary" [loading]="busy()" (click)="newCode()">{{ "Show the code" | tr }}</button></div>
               } @else {
                 <ol class="howto">
-                  <li>{{ "Su Telegram apri" | tr }} <b>&#64;BotFather</b> {{ "e scrivi" | tr }} <code>/newbot</code>.</li>
-                  <li>{{ "Scegli un nome: ti dà un token." | tr }}</li>
-                  <li>{{ "Incollalo qui." | tr }}</li>
+                  <li>{{ "On Telegram open" | tr }} <b>&#64;BotFather</b> {{ "and write" | tr }} <code>/newbot</code>.</li>
+                  <li>{{ "Choose a name: it gives you a token." | tr }}</li>
+                  <li>{{ "Paste it here." | tr }}</li>
                 </ol>
-                <hx-field  [label]="'Token del bot' | tr" [error]="formError()">
+                <hx-field  [label]="'Bot token' | tr" [error]="formError()">
                   <input class="hx-input mono" type="password" autocomplete="off" [(ngModel)]="botToken" placeholder="123456789:AA…" />
                 </hx-field>
               }
             }
 
             @case ('backup') {
-              <h1>{{ "Parola d'ordine dei backup" | tr }}</h1>
+              <h1>{{ "Backup password" | tr }}</h1>
               @if (state()!.backup.passphrase) {
-                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Già impostata." | tr }}</p>
+                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Already set." | tr }}</p>
               } @else {
-                <p class="lead">{{ "I backup sono cifrati con questa frase: salvala nel tuo password manager, senza non si aprono." | tr }}</p>
-                <hx-field  [label]="'Frase (almeno 12 caratteri)' | tr" [error]="formError()">
+                <p class="lead">{{ "Backups are encrypted with this phrase: save it in your password manager, without it they can't be opened." | tr }}</p>
+                <hx-field  [label]="'Phrase (at least 12 characters)' | tr" [error]="formError()">
                   <input class="hx-input mono" [type]="showPass() ? 'text' : 'password'" autocomplete="new-password" [(ngModel)]="passphrase" />
                 </hx-field>
                 <div class="row start">
-                  <button hx-btn variant="secondary" icon="sparkle" (click)="suggest()">{{ "Generane una" | tr }}</button>
-                  <button hx-btn variant="ghost" [icon]="showPass() ? 'eye-off' : 'eye'" (click)="showPass.set(!showPass())">{{ showPass() ? ('Nascondi' | tr) : ('Mostra' | tr) }}</button>
+                  <button hx-btn variant="secondary" icon="sparkle" (click)="suggest()">{{ "Generate one" | tr }}</button>
+                  <button hx-btn variant="ghost" [icon]="showPass() ? 'eye-off' : 'eye'" (click)="showPass.set(!showPass())">{{ showPass() ? ('Hide' | tr) : ('Show' | tr) }}</button>
                 </div>
               }
             }
 
             @case ('esterni') {
-              <h1>{{ "I tuoi servizi" | tr }}</h1>
-              <p class="lead">{{ "Se vuoi, collegali ora. Puoi farlo anche dopo dalla pagina Dispositivi." | tr }}</p>
+              <h1>{{ "Your services" | tr }}</h1>
+              <p class="lead">{{ "If you want, link them now. You can also do it later from the Devices page." | tr }}</p>
               <div class="outlets">
                 <hx-plugin-outlet module="hecate" element="hecate-connections" [ctx]="{ params: { place: 'setup' } }" />
               </div>
             }
 
             @case ('fuori') {
-              <h1>{{ "Fuori casa" | tr }}</h1>
+              <h1>{{ "Outside home" | tr }}</h1>
               @if (tunnel()?.on && tunnel()!.url) {
-                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Fatto. Anche senza il Wi-Fi di casa apri:" | tr }}</p>
+                <p class="fact"><hx-icon name="check-circle" [size]="16" tone="success" /> {{ "Done. Even without the home Wi-Fi open:" | tr }}</p>
                 <div class="urlrow">
                   <span class="code mono small">{{ tunnel()!.url }}</span>
-                  <a hx-btn variant="primary" icon="external" [href]="tunnel()!.url" target="_blank" rel="noopener">{{ "Apri" | tr }}</a>
-                  <button hx-btn variant="ghost" icon="copy" (click)="copyUrl()">{{ copied() ? ('Copiato' | tr) : ('Copia' | tr) }}</button>
+                  <a hx-btn variant="primary" icon="external" [href]="tunnel()!.url" target="_blank" rel="noopener">{{ "Open" | tr }}</a>
+                  <button hx-btn variant="ghost" icon="copy" (click)="copyUrl()">{{ copied() ? ('Copied' | tr) : ('Copy' | tr) }}</button>
                 </div>
-                <p class="note">{{ "Chiede l'accesso, come qui. Cambia quando Hestia si riavvia: il bot su Telegram ti dà sempre quello giusto." | tr }}</p>
-                <div class="row start"><button hx-btn variant="ghost" size="sm" icon="x" [loading]="busy()" (click)="switchTunnel(false)">{{ "Spegni" | tr }}</button></div>
+                <p class="note">{{ "It asks for access, like here. It changes when Hestia restarts: the bot on Telegram always gives you the right one." | tr }}</p>
+                <div class="row start"><button hx-btn variant="ghost" size="sm" icon="x" [loading]="busy()" (click)="switchTunnel(false)">{{ "Turn off" | tr }}</button></div>
               } @else if (busy() || tunnel()?.on || tunnel()?.phase === 'error') {
                 @if (tunnel()?.phase === 'error' || tunnelLate()) {
-                  <p class="fact warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ tunnel()?.phase === 'error' ? tunnel()!.detail : ('L\\'indirizzo non arriva. Di solito è la rete che blocca Cloudflare (ufficio, scuola) o internet che non va.' | tr) }}</p>
+                  <p class="fact warn"><hx-icon name="alert" [size]="15" tone="warning" /> {{ tunnel()?.phase === 'error' ? tunnel()!.detail : ('The address doesn\\'t arrive. Usually it\\'s the network blocking Cloudflare (office, school) or the internet not working.' | tr) }}</p>
                   <div class="row start">
-                    <button hx-btn variant="secondary" icon="refresh" (click)="retryTunnel()">{{ "Riprova" | tr }}</button>
-                    <button hx-btn variant="ghost" icon="x" (click)="switchTunnel(false)">{{ "Spegni" | tr }}</button>
+                    <button hx-btn variant="secondary" icon="refresh" (click)="retryTunnel()">{{ "Try again" | tr }}</button>
+                    <button hx-btn variant="ghost" icon="x" (click)="switchTunnel(false)">{{ "Turn off" | tr }}</button>
                   </div>
                 } @else {
                   <ol class="progress-list">
@@ -296,18 +296,18 @@ function store(key: string, value: string): void {
                       </li>
                     }
                   </ol>
-                  <p class="note">{{ "Puoi andare avanti: finisce da solo." | tr }}</p>
+                  <p class="note">{{ "You can go on: it finishes by itself." | tr }}</p>
                 }
               } @else {
-                <p class="lead">{{ "Per aprire Hestia dal telefono anche fuori dal Wi-Fi di casa. Senza, la usi in casa e da Telegram." | tr }}</p>
-                <p class="note">{{ "Crea un indirizzo sicuro con Cloudflare, gratis e senza account. Da lì Hestia chiede sempre l'accesso. Lo spegni quando vuoi." | tr }}</p>
-                <div class="row start"><button hx-btn variant="primary" icon="cloud" [loading]="busy()" (click)="switchTunnel(true)">{{ "Attiva" | tr }}</button></div>
+                <p class="lead">{{ "To open Hestia from the phone even outside the home Wi-Fi. Without it, you use it at home and from Telegram." | tr }}</p>
+                <p class="note">{{ "Create a secure address with Cloudflare, free and without an account. From there Hestia always asks for access. Turn it off when you want." | tr }}</p>
+                <div class="row start"><button hx-btn variant="primary" icon="cloud" [loading]="busy()" (click)="switchTunnel(true)">{{ "f::Active" | tr }}</button></div>
               }
             }
 
             @case ('pronto') {
-              <h1>{{ "Tutto pronto" | tr }}</h1>
-              <p class="lead">{{ "Tocca una riga per cambiarla." | tr }}</p>
+              <h1>{{ "All set" | tr }}</h1>
+              <p class="lead">{{ "Tap a row to change it." | tr }}</p>
               <div class="recap">
                 @for (s of recapSteps(); track s) {
                   <button type="button" class="rrow" (click)="jump(s)">
@@ -328,7 +328,7 @@ function store(key: string, value: string): void {
             } @else {
               <app-setup-chain [homeItems]="voiceLocalItems(dir.id)" [home]="voiceLocalPick()[dir.id]" (homeChange)="setVoice(voiceLocalPick, dir.id, $event)"
                                [programs]="voiceCat()?.[dir.id]?.programs || []"
-                               homeEmpty="Nessun programma per la voce trovato."
+                               [homeEmpty]="'No program for the voice found.' | tr"
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="voiceCloudRows(dir.id)" [tester]="voiceTester(dir.id)"
                                [order]="voiceOrder()[dir.id]" (orderChange)="setVoice(voiceOrder, dir.id, $event)"
@@ -359,9 +359,9 @@ function store(key: string, value: string): void {
             <p class="fact warn"><hx-icon name="alert" [size]="15" tone="danger" /> {{ formError() }}</p>
           }
           <div class="navrow">
-            @if (index() > 0) { <button hx-btn variant="ghost" icon="chevron-left" (click)="back()">{{ "Indietro" | tr }}</button> }
+            @if (index() > 0) { <button hx-btn variant="ghost" icon="chevron-left" (click)="back()">{{ "Back" | tr }}</button> }
             <span class="sp"></span>
-            @if (optional()) { <button hx-btn variant="ghost" (click)="later()">{{ "Più tardi" | tr }}</button> }
+            @if (optional()) { <button hx-btn variant="ghost" (click)="later()">{{ "Later" | tr }}</button> }
             <button hx-btn variant="primary" [loading]="busy()" [disabled]="!canNext()" (click)="next()">{{ nextLabel() }}</button>
           </div>
         </div>
@@ -512,7 +512,7 @@ export class SetupPageComponent {
   assistantGender = signal<'lei' | 'lui'>('lei');
   language = signal('it');
   readonly languages = LANGUAGES;
-  readonly genderOptions: { value: 'lei' | 'lui'; label: string }[] = [{ value: 'lei', label: tr('Una lei') }, { value: 'lui', label: tr('Un lui') }];
+  readonly genderOptions: { value: 'lei' | 'lui'; label: string }[] = [{ value: 'lei', label: tr('A woman') }, { value: 'lui', label: tr('A man') }];
 
   screen = signal<Screen>('benvenuto');
   /** The furthest screen reached in this run: the summary jumps back freely, forward only up to here. */
@@ -529,9 +529,9 @@ export class SetupPageComponent {
   /** Patience counts only while waiting for the address (the download before it can take longer). */
   tunnelLate = computed(() => this.tunnel()?.phase === 'address' && !!this.tunnelSince() && this.now() - this.tunnelSince() > TUNNEL_PATIENCE_MS);
   readonly tunnelSteps = [
-    { id: 'download', label: tr('Scarico il programma di Cloudflare (solo la prima volta)') },
-    { id: 'start', label: tr('Lo avvio') },
-    { id: 'address', label: tr('Aspetto l\'indirizzo da Cloudflare') },
+    { id: 'download', label: tr('Downloading the Cloudflare program (only the first time)') },
+    { id: 'start', label: tr('I\'ll start it') },
+    { id: 'address', label: tr('Waiting for the address from Cloudflare') },
   ];
   tunnelStep = computed(() => {
     const ph = this.tunnel()?.phase || (this.busy() ? 'start' : '');
@@ -540,8 +540,8 @@ export class SetupPageComponent {
 
   // ── Voce (Echo's blocks, the same cards as the cloud services) ──
   readonly voiceDirs = [
-    { id: 'ascolto' as const, question: tr('Come ti ascolta?'), lead: tr('Per capire quello che dici a voce.') },
-    { id: 'voce' as const, question: tr('Con che voce ti risponde?'), lead: tr('Parla nella lingua in cui le scrivi: se scrivi in inglese, risponde con una voce inglese.') },
+    { id: 'ascolto' as const, question: tr('How does it listen to you?'), lead: tr('To understand what you say by voice.') },
+    { id: 'voce' as const, question: tr('With which voice does it answer you?'), lead: tr('It speaks in the language you write in: if you write in English, it answers with an English voice.') },
   ];
   /** The voice screen open now (Ascolto or Voce): the same step, one direction each. */
   voiceDir = computed(() => this.voiceDirs.find(d => d.id === this.screen()) || null);
@@ -609,9 +609,9 @@ export class SetupPageComponent {
           this.trialState.set({ key: row.key, playing: true });
           this.player.play('setup:' + row.key, b64ToBlob(r.audio_b64, r.mime_type || 'audio/mpeg'),
             err => { if (ticket === this.trialTicket)      // never a silent «played»: say why it did not play
-              this.trialState.set({ key: row.key, text: tr("Il browser non l'ha riprodotta ({0}): riprova.", (err as Error)?.name || 'errore') }); },
+              this.trialState.set({ key: row.key, text: tr("The browser didn't play it ({0}): try again.", (err as Error)?.name || tr('error')) }); },
             () => { if (ticket === this.trialTicket) this.trialState.set(null); });
-        } else this.trialState.set({ key: row.key, text: r.detail || tr('Non ha risposto.') });
+        } else this.trialState.set({ key: row.key, text: r.detail || tr('It didn\'t answer.') });
       } catch (e) { if (ticket === this.trialTicket) this.trialState.set({ key: row.key, text: setupError(e) }); }
       return;
     }
@@ -619,11 +619,11 @@ export class SetupPageComponent {
       const got = await this.mic.stop();
       const mime = this.mic.mime;
       this.mic = null;
-      if (!got) { this.trialState.set({ key: row.key, text: tr('Troppo corto: tocca, parla qualche secondo, tocca di nuovo.') }); return; }
+      if (!got) { this.trialState.set({ key: row.key, text: tr('Too short: tap, speak for a few seconds, tap again.') }); return; }
       this.trialState.set({ key: row.key, busy: true });
       try {
         const r = await this.api.voiceHear(row.provider, row.model, await blobToB64(got.blob), mime);
-        this.trialState.set({ key: row.key, text: r.ok ? tr("Ho capito: «{0}»", r.text) : (r.detail || tr('Non ha risposto.')) });
+        this.trialState.set({ key: row.key, text: r.ok ? tr("I understood: «{0}»", r.text) : (r.detail || tr('It didn\'t answer.')) });
       } catch (e) { this.trialState.set({ key: row.key, text: setupError(e) }); }
       return;
     }
@@ -631,10 +631,10 @@ export class SetupPageComponent {
     try {
       this.mic = new MicRecorder();
       await this.mic.start();
-      this.trialState.set({ key: row.key, recording: true, text: tr('Ti ascolto: parla, poi tocca di nuovo.') });
+      this.trialState.set({ key: row.key, recording: true, text: tr('I\'m listening: speak, then tap again.') });
     } catch {
       this.mic = null;
-      this.trialState.set({ key: row.key, text: tr('Il browser non mi dà il microfono (serve il permesso, o un indirizzo https).') });
+      this.trialState.set({ key: row.key, text: tr('The browser doesn\'t give me the microphone (permission or an https address is needed).') });
     }
   }
   setVoice<T>(sig: WritableSignal<Record<VoiceDir, T>>, dir: VoiceDir, value: T) { sig.set({ ...sig(), [dir]: value }); }
@@ -649,8 +649,8 @@ export class SetupPageComponent {
       this.optionsOf(p, dir).forEach((o, i) => out.push({
         id: `${p.name}|${o.id}`, title: many ? `${this.engineName(p)} · ${o.label}` : o.label, group: many ? this.engineName(p) : '',
         lang: o.lang, langLabel: o.lang_label,
-        note: o.note || (p.state === 'ready' ? '' : tr('Lo scarico quando confermi.')),
-        tag: dir === 'voce' && p.type === 'kokoro' && i === 0 ? tr('Consigliato') : '' }));
+        note: o.note || (p.state === 'ready' ? '' : tr('I download it when you confirm.')),
+        tag: dir === 'voce' && p.type === 'kokoro' && i === 0 ? tr('Recommended') : '' }));
     }
     return out;
   }
@@ -850,10 +850,10 @@ export class SetupPageComponent {
     switch (s) {
       case 'modelli': return [this.localModel(), ...this.cloudPicked().map(n => this.cloudLabel(n))].filter(Boolean).join(', ');
       case 'memoria': { const c = this.embeddingWanted(); return c ? c.model : ''; }
-      case 'ascolto': case 'voce': return this.voiceQueued() ? tr('Scelta') : st.later.includes('voce') ? tr('Più tardi') : '';
-      case 'telegram': return st.telegram.linked ? tr('Collegato') : st.later.includes('telegram') ? tr('Più tardi') : '';
-      case 'backup': return st.backup.passphrase ? tr('Pronto') : st.later.includes('backup') ? tr('Più tardi') : '';
-      case 'fuori': return this.tunnel()?.on ? tr('Attivo') : '';
+      case 'ascolto': case 'voce': return this.voiceQueued() ? tr('Choice') : st.later.includes('voce') ? tr('Later') : '';
+      case 'telegram': return st.telegram.linked ? tr('Linked') : st.later.includes('telegram') ? tr('Later') : '';
+      case 'backup': return st.backup.passphrase ? tr('Ready') : st.later.includes('backup') ? tr('Later') : '';
+      case 'fuori': return this.tunnel()?.on ? tr('Active') : '';
       default: return '';
     }
   }
@@ -881,13 +881,13 @@ export class SetupPageComponent {
   recapText(s: Screen): string {
     const st = this.state()!;
     switch (s) {
-      case 'chi': return this.identity.ownerName() ? tr("{0} e {1}.", this.identity.ownerCall() || this.identity.ownerName(), this.identity.assistant()) : tr('Non mi hai ancora detto come ti chiami.');
-      case 'modelli': return st.brain.summary || tr('Non ancora scelti.');
-      case 'memoria': { const c = this.embeddingWanted() || this.catalog()?.embedding; return c?.model || tr('Non ancora scelto.'); }
-      case 'voce': return this.voiceQueued() ? 'Scelte.' : tr('Più tardi.');
-      case 'telegram': return st.telegram.linked ? 'Collegato.' : tr('Più tardi.');
-      case 'backup': return st.backup.passphrase ? 'Pronto.' : tr('Più tardi.');
-      case 'fuori': return this.tunnel()?.on ? (this.tunnel()!.url || 'Attivo.') : tr('Solo in casa e da Telegram.');
+      case 'chi': return this.identity.ownerName() ? tr("{0} and {1}.", this.identity.ownerCall() || this.identity.ownerName(), this.identity.assistant()) : tr('You haven\'t told me your name yet.');
+      case 'modelli': return st.brain.summary || tr('pl::Not chosen yet.');
+      case 'memoria': { const c = this.embeddingWanted() || this.catalog()?.embedding; return c?.model || tr('Not chosen yet.'); }
+      case 'voce': return this.voiceQueued() ? tr('Chosen.') : tr('Later.');
+      case 'telegram': return st.telegram.linked ? tr('Linked.') : tr('Later.');
+      case 'backup': return st.backup.passphrase ? tr('Ready.') : tr('Later.');
+      case 'fuori': return this.tunnel()?.on ? (this.tunnel()!.url || tr('Active.')) : tr('Only at home and from Telegram.');
       default: return '';
     }
   }
@@ -907,15 +907,15 @@ export class SetupPageComponent {
 
   nextLabel(): string {
     switch (this.screen()) {
-      case 'benvenuto': return tr('Iniziamo');
-      case 'memoria': return tr('Conferma');
-      case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? tr('Avanti') : tr('Collega');
-      case 'backup': return this.state()!.backup.passphrase ? tr('Avanti') : tr('Salva');
-      case 'voce': return this.voiceQueued() ? tr('Avanti') : tr('Conferma');
-      case 'ascolto': return tr('Avanti');
-      case 'fuori': return this.tunnel()?.on ? tr('Avanti') : tr('Più tardi');
-      case 'pronto': return tr('Inizia');
-      default: return tr('Avanti');
+      case 'benvenuto': return tr('Let\'s start');
+      case 'memoria': return tr('Confirm');
+      case 'telegram': return this.state()!.telegram.linked || this.code() || this.state()!.telegram.token ? tr('alt::Next') : tr('alt::Link');
+      case 'backup': return this.state()!.backup.passphrase ? tr('alt::Next') : tr('Save');
+      case 'voce': return this.voiceQueued() ? tr('alt::Next') : tr('Confirm');
+      case 'ascolto': return tr('alt::Next');
+      case 'fuori': return this.tunnel()?.on ? tr('alt::Next') : tr('Later');
+      case 'pronto': return tr('f::Start');
+      default: return tr('alt::Next');
     }
   }
 
@@ -931,7 +931,7 @@ export class SetupPageComponent {
       if (following === 'cervello') { await this.applyBrain(); return; }
       if (screen === 'voce' && !this.voiceQueued()) {
         const out = await this.api.voiceApply(this.voiceSteps('ascolto'), this.voiceSteps('voce'));
-        if (!out.ok) { this.formError.set(out.detail || tr('Non sono riuscito a salvare la scelta.')); return; }
+        if (!out.ok) { this.formError.set(out.detail || tr('I couldn\'t save the choice.')); return; }
         this.voiceQueued.set(true);
         void this.refreshDownloads();
         this.forward();   // the downloads go on by themselves, shown at the side
@@ -941,7 +941,7 @@ export class SetupPageComponent {
       if (screen === 'backup' && !this.state()!.backup.passphrase) {
         const r = await this.api.backup(this.passphrase);
         this.passphrase = '';
-        if (!r.ok) { this.formError.set(tr('Salvata, ma il servizio dei backup non è ripartito: riprova tra poco.')); }
+        if (!r.ok) { this.formError.set(tr('Saved, but the backup service didn\'t restart: try again shortly.')); }
         await this.refresh();
       }
       if (screen === 'esterni') await this.api.later('esterni').then(s => this.state.set(s)).catch(() => undefined);
@@ -986,8 +986,8 @@ export class SetupPageComponent {
       }
       if (r.name === 'ollama' && !r.models.length) {
         (this.catalog()?.recommended?.chat || []).forEach((m, i) => out.push({
-          id: `ollama|${m.model}`, title: m.model, icon: 'download', tag: i === 0 ? tr('Consigliato') : '',
-          note: tr("{0} {1} GB da scaricare: Ollama lo scarica mentre finisci il resto.", m.good, this.gb(m.size_gb)) }));
+          id: `ollama|${m.model}`, title: m.model, icon: 'download', tag: i === 0 ? tr('Recommended') : '',
+          note: tr("{0} {1} GB to download: Ollama downloads it while you finish the rest.", m.good, this.gb(m.size_gb)) }));
       }
     }
     return out;
@@ -1004,13 +1004,13 @@ export class SetupPageComponent {
     const what = [m.params, m.quant].filter(Boolean).join(' · ');
     const size = m.size_gb ? `${this.gb(m.size_gb)} GB` : '';
     const vram = Math.round(this.state()?.hardware?.vram_gb || 0);
-    const warn = m.fits ? '' : tr("Più grande della scheda video ({0} GB): funziona, ma più lento.", vram);
+    const warn = m.fits ? '' : tr("Bigger than the graphics card ({0} GB): it works, but slower.", vram);
     return [[what, size].filter(Boolean).join(', '), warn].filter(Boolean).join(' ');
   }
   runtimeText(r: Runtime): string {
-    return r.name === 'ollama' ? tr('Il più semplice: Hestia scarica da solo i modelli adatti alla tua scheda video.')
-      : r.name === 'lmstudio' ? tr('Con una finestra per cercare e scaricare i modelli. Poi attiva il server locale.')
-      : tr('Si scaricano i modelli da lì.');
+    return r.name === 'ollama' ? tr('The simplest: Hestia downloads by itself the models suited to your graphics card.')
+      : r.name === 'lmstudio' ? tr('With a window to search and download the models. Then turn on the local server.')
+      : tr('The models are downloaded from there.');
   }
   runtimeLabel(name: string): string { return (this.catalog()?.runtimes || []).find(r => r.name === name)?.label || name; }
   /** «Cerca di nuovo» / another computer added: the models and the speech programs are looked for again. */
@@ -1048,13 +1048,13 @@ export class SetupPageComponent {
     const many = this.found().length > 1;
     const out: PickItem[] = [];
     const nowHome = nowKey && this.found().some(r => r.name === (now!.provider || 'ollama'));
-    if (nowHome) out.push({ id: nowKey, title: now!.model, tag: tr('Ora'), note: many ? this.runtimeLabel(now!.provider || 'ollama') : '' });
+    if (nowHome) out.push({ id: nowKey, title: now!.model, tag: tr('alt::Now'), note: many ? this.runtimeLabel(now!.provider || 'ollama') : '' });
     for (const r of this.found()) {
       for (const m of r.embed) if (`${r.name}|${m}` !== nowKey) out.push({ id: `${r.name}|${m}`, title: m, note: many ? r.label : '', group: many ? r.label : family(m) });
       const rec = this.catalog()?.recommended?.embedding;
       if (r.name === 'ollama' && rec && !r.embed.includes(rec.model) && `ollama|${rec.model}` !== nowKey) {
-        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowHome ? '' : tr('Consigliato'),
-                   note: tr("{0} {1} GB: Ollama lo scarica mentre finisci il resto.", rec.good, this.gb(rec.size_gb)) });
+        out.push({ id: `ollama|${rec.model}`, title: rec.model, icon: 'download', tag: nowHome ? '' : tr('Recommended'),
+                   note: tr("{0} {1} GB: Ollama downloads it while you finish the rest.", rec.good, this.gb(rec.size_gb)) });
       }
     }
     return out;
@@ -1087,10 +1087,10 @@ export class SetupPageComponent {
 
   // ── Modalità: Ragionamento, Codice, Immagini use Generale's list unless one gets its own (the same step) ──
   readonly modeList = [
-    { id: 'generale', label: tr('Generale'), help: '' },
-    { id: 'potente', label: tr('Ragionamento'), help: tr('Per le domande difficili.') },
-    { id: 'codice', label: tr('Codice'), help: tr('Quando scrive o corregge codice.') },
-    { id: 'visione', label: tr('Immagini'), help: tr('Foto e documenti da guardare.') },
+    { id: 'generale', label: tr('General'), help: '' },
+    { id: 'potente', label: tr('Reasoning'), help: tr('For the hard questions.') },
+    { id: 'codice', label: tr('Code'), help: tr('When it writes or fixes code.') },
+    { id: 'visione', label: tr('Images'), help: tr('Photos and documents to look at.') },
   ];
   modeTab = signal('generale');
   /** Per mode with its own list: the same choices as Generale (local, services in order, models, «Scelti» order). */
@@ -1136,11 +1136,11 @@ export class SetupPageComponent {
   cloudLabel(name: string): string { const p = this.catalog()?.cloud.find(c => c.name === name); return p?.label || name; }
   cloudRows = computed<ServiceRow[]>(() => (this.catalog()?.cloud || []).map(p => p.type === CLAUDE_TYPE ? {
       name: p.name, label: p.label || p.name, kind: 'token' as const, keySet: !!this.state()?.claude.token || p.available,
-      note: tr('Il tuo abbonamento Claude Pro o Max.'), tokenLabel: tr('Codice dell\'abbonamento Claude'), tokenPlaceholder: 'sk-ant-oat…',
-      tokenHint: tr('Nel terminale scrivi «claude setup-token», accedi con il tuo account Claude (Pro o Max), poi incolla qui il codice che ti dà.'),
+      note: tr('Your Claude Pro or Max subscription.'), tokenLabel: tr('Claude subscription code'), tokenPlaceholder: 'sk-ant-oat…',
+      tokenHint: tr('In the terminal type «claude setup-token», sign in with your Claude account (Pro or Max), then paste here the code it gives you.'),
     } : {
       name: p.name, label: p.label || p.name, kind: 'key' as const, keySet: p.key_set, keyLink: this.keyLink(p),
-      tag: p.type === 'gemini' ? tr('Gratis') : '', note: p.type === 'gemini' ? tr('Chiave gratis da Google.') : '',
+      tag: p.type === 'gemini' ? tr('alt::Free') : '', note: p.type === 'gemini' ? tr('Free key from Google.') : '',
     }));
   /** Per cloud service: its chat models (for «Per modalità») and its memory models, read by «Prova». */
   private embedLists: Record<string, string[]> = {};
@@ -1170,8 +1170,8 @@ export class SetupPageComponent {
     const embed = r.embed || [];
     this.embedLists[name] = embed;
     const ok = r.ok && embed.length > 0;
-    return { ok, detail: ok ? tr("La chiave funziona: {0} per la memoria.", embed.length === 1 ? 'un modello' : embed.length + ' modelli')
-                            : r.ok ? tr('Questo servizio non ha modelli per la memoria.') : r.detail,
+    return { ok, detail: ok ? tr("The key works: {0} for the memory.", embed.length === 1 ? tr('one model') : tr('{0} models', embed.length))
+                            : r.ok ? tr('This service has no models for the memory.') : r.detail,
              recommended: embed.slice(0, 1), options: embed.map(m => ({ id: m, title: m, icon: 'zap', group: family(m) })) };
   };
 
@@ -1190,7 +1190,7 @@ export class SetupPageComponent {
       order: ranked(chosenKeys(local ? this.localKey() : '', cloud, models), this.cloudRank()).map(k => keyStep(k, this.localKey())),
     });
     this.cloudTokens.set({});
-    if (!out.ok) { this.formError.set(out.detail || tr('Non sono riuscito a salvare la scelta.')); return; }
+    if (!out.ok) { this.formError.set(out.detail || tr('I couldn\'t save the choice.')); return; }
     await Promise.all([this.refresh(), this.refreshDownloads(), this.api.catalog(this.hosts()).then(c => this.catalog.set(c)).catch(() => undefined)]);
     this.forward();
   }
@@ -1202,7 +1202,7 @@ export class SetupPageComponent {
     this.botToken = '';
     await this.refresh();
     if (r.ok && r.code) this.code.set(r.code);
-    else this.formError.set(r.detail || tr('Il bot non è partito: controlla il token.'));
+    else this.formError.set(r.detail || tr('The bot did not start: check the token.'));
   }
 
   async newCode() {
@@ -1247,7 +1247,7 @@ export class SetupPageComponent {
   }
 
   activeDownloads = computed(() => this.downloads().filter(d => d.state === 'in_coda' || d.state === 'in_corso').length);
-  downloadHint(): string { return this.activeDownloads() === 1 ? tr('Un download in corso: lo vedi in alto.') : tr("{0} download in corso: li vedi in alto.", this.activeDownloads()); }
+  downloadHint(): string { return this.activeDownloads() === 1 ? tr('A download in progress: you can see it at the top.') : tr("{0} downloads in progress: you can see them at the top.", this.activeDownloads()); }
   private ticks = 0;
 
   private poll() {
@@ -1270,21 +1270,21 @@ export class SetupPageComponent {
 
   downloadText(d: Download): string {
     if (d.state === 'fatto') return 'Scaricato.';
-    if (d.state === 'errore') return d.error || tr('Non sono riuscito a scaricarlo: riprovo dalla pagina Download.');
-    if (d.state === 'in_coda') return tr('In coda.');
-    if (d.state === 'in_pausa') return tr('In pausa.');
+    if (d.state === 'errore') return d.error || tr('I couldn\'t download it: I\'ll retry from the Downloads page.');
+    if (d.state === 'in_coda') return tr('Queued.');
+    if (d.state === 'in_pausa') return tr('Paused.');
     const gb = (n: number) => (n / 1e9).toFixed(1).replace('.', ',');
-    const left = d.eta_s ? tr(" · ancora {0}", d.eta_s >= 60 ? Math.round(d.eta_s / 60) + ' min' : Math.round(d.eta_s) + ' s') : '';
-    return d.size ? tr("{0} di {1} GB{2}", gb(d.done), gb(d.size), left) : tr('In corso…');
+    const left = d.eta_s ? tr(" · {0} more", d.eta_s >= 60 ? Math.round(d.eta_s / 60) + ' min' : Math.round(d.eta_s) + ' s') : '';
+    return d.size ? tr("{0} of {1} GB{2}", gb(d.done), gb(d.size), left) : tr('In progress…');
   }
 
   hardwareText(): string {
     const hw = this.state()?.hardware || {};
-    const ram = hw.ram_gb ? tr("{0} GB di memoria", Math.round(hw.ram_gb)) : '';
+    const ram = hw.ram_gb ? tr("{0} GB of memory", Math.round(hw.ram_gb)) : '';
     const vram = hw.vram_gb || 0;
-    const gpu = vram >= 12 ? tr("Scheda video da {0} GB: ottima per i modelli sul tuo computer.", Math.round(vram))
-      : vram >= 6 ? tr("Scheda video da {0} GB: va bene per i modelli medi.", Math.round(vram))
-      : tr('Nessuna scheda video adatta: il cloud sarà più veloce.');
-    return hw.ram_gb || hw.vram_gb ? [ram, gpu].filter(Boolean).join(' · ') : tr('Non so ancora com\'è fatto questo computer: ti propongo la scelta più sicura.');
+    const gpu = vram >= 12 ? tr("{0} GB graphics card: great for the models on your computer.", Math.round(vram))
+      : vram >= 6 ? tr("{0} GB graphics card: fine for medium models.", Math.round(vram))
+      : tr('No suitable graphics card: the cloud will be faster.');
+    return hw.ram_gb || hw.vram_gb ? [ram, gpu].filter(Boolean).join(' · ') : tr('I don\'t know what this computer is like yet: I suggest the safest choice.');
   }
 }

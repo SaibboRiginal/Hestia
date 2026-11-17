@@ -33,7 +33,7 @@ TIME_OF_DAY = {"morning": (time(6, 0), time(12, 0)), "midday": (time(11, 30), ti
                "any": (time(0, 0), time(23, 59))}
 SLOT_TIME = {"morning": time(8, 0), "midday": time(13, 0), "afternoon": time(16, 0), "evening": time(21, 0),
              "any": time(12, 0)}
-WEEKDAYS = ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica"]
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
 @dataclass
@@ -250,7 +250,7 @@ def _choose(n: dict, candidates: list[date], chosen: list[date], grid: dict[date
         if variant and variant.get("ok") and 0 < int(variant.get("minutes") or 0) <= minutes:
             out = _block(n, d, gaps, int(variant["minutes"]), tz, module)
             out["variant"] = {"minutes": int(variant["minutes"]), "title": variant.get("title") or "",
-                              "note": variant.get("note") or "versione corta"}
+                              "note": variant.get("note") or tr("short version")}
             if variant.get("title"):
                 out["title"] = variant["title"]
             return out
@@ -283,13 +283,13 @@ def _block(n: dict, d: date, gaps: list[tuple[datetime, datetime]], minutes: int
 
 def _why(n: dict, candidates: list[date], grid: dict[date, _Day], cfg: PlannerConfig) -> str:
     if not candidates:
-        return tr("nessun giorno possibile questa settimana")
+        return tr("no possible day this week")
     if n.get("with") and not any(_relation_ok(n, grid[d], grid) for d in candidates if d in grid):
-        return tr("nessun giorno con {0}", n['with']['tag'])
+        return tr("no day with {0}", n['with']['tag'])
     if n["kind"] == "block":
         if all(grid[d].block_count >= cfg.max_blocks_per_day for d in candidates if d in grid):
-            return tr("giorni già pieni")
+            return tr("days already full")
         if "outdoor" in (n.get("tags") or []) and any(grid[d].wet for d in candidates if d in grid):
-            return "pioggia o buio nei momenti liberi"
-        return f"mancano {n['min_minutes']}' liberi nei giorni possibili"
-    return tr("vincoli con altre cose dello stesso giorno")
+            return tr("rain or dark in the free moments")
+        return tr("{0}' of free time missing on the possible days", n['min_minutes'])
+    return tr("constraints with other things of the same day")

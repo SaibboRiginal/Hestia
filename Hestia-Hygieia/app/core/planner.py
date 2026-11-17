@@ -23,7 +23,7 @@ from .catalog import CONFLICTS, families
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 DONE_STATUSES = ("done", "partial")
-PER_LABEL = {"day": "oggi", "week": "sett.", "month": "mese"}
+PER_LABEL = {"day": "today", "week": "wk.", "month": "f::month"}   # shown through tr
 ACTIVE_STATES = ("due", "suggested")
 
 
@@ -62,14 +62,16 @@ def cadence_label(c: dict | None) -> str:
     c = norm_cadence(c)
     m = c["mode"]
     if m == "daily":
-        return tr("Ogni giorno")
+        return tr("Every day")
     if m == "as_needed":
-        return tr("Quando capita")
+        return tr("When it happens")
     if m == "fixed_days":
-        names = ["lun", "mar", "mer", "gio", "ven", "sab", "dom"]
-        return tr("Ogni ") + ", ".join(names[d] for d in c["days"]) if c["days"] else tr("Giorni fissi")
+        from hestia_common.i18n import weekday_name
+        return tr("Every ") + ", ".join(weekday_name(d)[:3] for d in c["days"]) if c["days"] else tr("Fixed days")
     t = c["times"]
-    return tr("Almeno {0} {1} a{2}", t, 'volta' if t == 1 else 'volte', 'l mese' if c['per'] == 'month' else ' settimana')
+    if c['per'] == 'month':
+        return tr("At least once a month") if t == 1 else tr("At least {0} times a month", t)
+    return tr("At least once a week") if t == 1 else tr("At least {0} times a week", t)
 
 
 def goal_state(cadence: dict | None, done_days: list[date], today: date, week_start: int = 0,
@@ -83,16 +85,16 @@ def goal_state(cadence: dict | None, done_days: list[date], today: date, week_st
             "days_since": since, "done_today": done_today}
     if mode == "daily":
         return {**base, "state": "done" if done_today else "due", "done": done_today, "times": 1, "per": "day",
-                "hint": tr("fatta oggi") if done_today else tr("da fare oggi"), "behind": not done_today}
+                "hint": tr("done today") if done_today else tr("to do today"), "behind": not done_today}
     if mode == "fixed_days":
         today_on = today.weekday() in c["days"]
         st = "done" if done_today else ("due" if today_on else "off")
         nxt = next(((today + timedelta(days=i)) for i in range(1, 8) if (today + timedelta(days=i)).weekday() in c["days"]), None)
         return {**base, "state": st, "done": done_today, "times": 1, "per": "day", "behind": st == "due",
-                "hint": tr("fatta oggi") if done_today else ("oggi" if today_on else (f"prossima {nxt.strftime('%d/%m')}" if nxt else ""))}
+                "hint": tr("done today") if done_today else ("oggi" if today_on else (tr("next {0}", nxt.strftime('%d/%m')) if nxt else ""))}
     if mode == "as_needed":
         return {**base, "state": "done" if done_today else "rest", "done": done_today, "times": 0, "per": "",
-                "hint": tr("fatta oggi") if done_today else (f"ultima {since} g fa" if since is not None else "mai fatta"),
+                "hint": tr("done today") if done_today else (tr("last {0} d ago", since) if since is not None else tr("never done")),
                 "behind": False}
     per, times = c["per"], c["times"]
     start = period_start(today, per, week_start)
@@ -112,7 +114,7 @@ def goal_state(cadence: dict | None, done_days: list[date], today: date, week_st
         st = "suggested"
     else:
         st = "wait"
-    hint = f"{done}/{times} {PER_LABEL[per]}"
+    hint = f"{done}/{times} {tr(PER_LABEL[per])}"
     return {**base, "state": st, "done": done, "times": times, "per": per, "remaining": remaining,
             "days_left": days_left, "behind": behind, "hint": hint}
 
@@ -122,7 +124,7 @@ def conflict_notes(fam_a: set[str], fam_b: set[str], custom: list[dict] | None =
     for rule in list(CONFLICTS) + list(custom or []):
         a, b = rule.get("a"), rule.get("b")
         if (a in fam_a and b in fam_b) or (b in fam_a and a in fam_b):
-            notes.append(rule.get("note") or tr("{0} e {1} non nello stesso giorno", a, b))
+            notes.append(rule.get("note") or tr("{0} and {1} not on the same day", a, b))
     return notes
 
 
@@ -163,7 +165,7 @@ class Day:
                     continue
                 p = self.products.get(s.get("product_id") or "") or {}
                 for f in self.product_families(s.get("product_id")):
-                    out.setdefault(f, p.get("name") or (r or {}).get("name") or "un prodotto")
+                    out.setdefault(f, p.get("name") or (r or {}).get("name") or tr("a product"))
         return out
 
     # ── per routine ────────────────────────────────────────────────────────
@@ -194,7 +196,7 @@ class Day:
         for pid in r.get("not_same_day_as") or []:
             other = self.routines.get(pid)
             if other:
-                out[pid] = tr("non oggi: {0}", other.get('name'))
+                out[pid] = tr("not today: {0}", other.get('name'))
         mine = self.core_families(r)
         if mine:
             for oid, other in self.routines.items():
@@ -202,10 +204,10 @@ class Day:
                     continue
                 notes = conflict_notes(mine, self.core_families(other), self.custom_conflicts)
                 if notes:
-                    out.setdefault(oid, f"non oggi: {other.get('name')} ({notes[0]})")
+                    out.setdefault(oid, tr("not today: {0} ({1})", other.get('name'), notes[0]))
         for oid, other in self.routines.items():       # symmetric explicit pairs
             if r["id"] in (other.get("not_same_day_as") or []):
-                out.setdefault(oid, f"non oggi: {other.get('name')}")
+                out.setdefault(oid, tr("not today: {0}", other.get('name')))
         return out
 
     def plan_routine(self, r: dict) -> dict:
@@ -215,7 +217,7 @@ class Day:
         g = goal_state(r.get("cadence"), days, self.day, self.week_start, done_today=len(today_logs))
         state, reason = g["state"], ""
         if r.get("status") == "paused":
-            state, reason = "paused", "in pausa"
+            state, reason = "paused", "paused"
         elif state != "done":
             done_ids = {l.get("routine_id") for l in self.today_logs}
             for oid, why in self.implicit_partners(r).items():
@@ -231,7 +233,7 @@ class Day:
                         last_dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
                         hours = (self.now - last_dt).total_seconds() / 3600
                         if hours < float(gap):
-                            state, reason = "blocked", f"fatta {int(hours)} h fa (minimo {int(gap)} h)"
+                            state, reason = "blocked", tr("done {0} h ago (minimum {1} h)", int(hours), int(gap))
                     except ValueError:
                         pass
         steps = self.plan_steps(r, today_logs[-1] if today_logs else None)
@@ -254,7 +256,7 @@ class Day:
         for s in steps:                          # paused for a while ("niente retinolo per una settimana")
             if (s.get("paused_until") or "") > today_iso:
                 until = s["paused_until"]
-                evaluated[s["id"]] = {"include": False, "state": "paused", "reason": tr("in pausa fino al {0}/{1}", until[8:10], until[5:7]),
+                evaluated[s["id"]] = {"include": False, "state": "paused", "reason": tr("paused until {0}/{1}", until[8:10], until[5:7]),
                                       "goal": None}
         # steps with their own goal first: what is already done today is a fact, then the most behind wins the conflicts
         order = {"done": -1, "due": 0, "suggested": 1, "wait": 2, "ok": 3, "off": 4, "rest": 5}
@@ -275,13 +277,13 @@ class Day:
                     include = False
                     names = [self._step_name(next((x for x in steps if x["id"] == p), None)) for p in chosen
                              if conflict_notes(fam, chosen[p], self.custom_conflicts)]
-                    reason = tr("non oggi: ") + (names[0] if names else (clash[0] if clash else "conflitto"))
+                    reason = tr("not today: ") + (names[0] if names else (clash[0] if clash else tr("conflict")))
             elif not include:
-                reason = {"ok": "obiettivo raggiunto", "wait": "fatto da poco", "off": "non è il giorno",
-                          "rest": "quando serve"}.get(g["state"], "")
+                reason = {"ok": tr("goal reached"), "wait": tr("done recently"), "off": tr("not the day"),
+                          "rest": tr("when needed")}.get(g["state"], "")
             if include:
                 chosen[s["id"]] = fam
-            evaluated[s["id"]] = {"include": include, "state": g["state"] if include or not reason.startswith("non oggi")
+            evaluated[s["id"]] = {"include": include, "state": g["state"] if include or not reason.startswith(tr("not today: "))
                                   else "blocked", "reason": reason, "goal": g}
         out = []
         for s in steps:
@@ -289,9 +291,9 @@ class Day:
             ev = evaluated.get(s["id"]) or {"include": True, "state": "always", "reason": "", "goal": None}
             warnings = []
             if p and p.get("status") in ("finished", "discarded"):
-                warnings.append(tr("{0} è finito", p.get('name')))
+                warnings.append(tr("{0} is finished", p.get('name')))
             if s.get("product_id") and not p:
-                warnings.append(tr("prodotto non trovato"))
+                warnings.append(tr("product not found"))
             if ev["include"] and not s.get("cadence"):
                 fam = self.step_families(s)
                 for other in chosen.values():

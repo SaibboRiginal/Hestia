@@ -31,7 +31,7 @@ from core import chronos_settings as CS
 from core import hermes_client
 from services import agenda
 from services import coach_planner as planner
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_chronos.coach")
 
@@ -43,7 +43,6 @@ NOTICE_WEEK = "coach.week"
 NOTICE_CHANGE = "coach.change"
 _HUB = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 _DEBOUNCE_SECONDS = 5.0
-WEEKDAYS = planner.WEEKDAYS
 _lock = threading.RLock()
 _pending: dict[str, Any] = {"timer": None, "reasons": []}
 
@@ -113,10 +112,10 @@ def _local(iso: str | None) -> datetime | None:
 def day_label(d: date, today: date | None = None) -> str:
     today = today or now().date()
     if d == today:
-        return "oggi"
+        return tr("today")
     if d == today + timedelta(days=1):
-        return "domani"
-    return WEEKDAYS[d.weekday()]
+        return tr("tomorrow")
+    return weekday_name(d.weekday())
 
 
 # ── Hub ─────────────────────────────────────────────────────────────────────
@@ -377,7 +376,7 @@ def _ensure_parent(week: str, start: date, end: date) -> None:
     try:
         agenda.get(_parent_key(week))
     except agenda.AgendaError:
-        agenda.create(title=tr("Piano della settimana"), type_="event", owner=OWNER,
+        agenda.create(title=tr("Weekly plan"), type_="event", owner=OWNER,
                       start_at=datetime.combine(start, time(0), tzinfo=tz()).isoformat(),
                       end_at=datetime.combine(end, time(0), tzinfo=tz()).isoformat(),
                       key=_parent_key(week), params={"coach_week": True, "week": week}, created_by=OWNER)
@@ -419,13 +418,13 @@ def _notify_changes(moved: list[dict], items: list[dict], before: dict, today: d
         when = _local(old.get("start_at"))
         if new:
             at = _local(new["start"])
-            lines.append(tr("{0}: da {1} {2:%H:%M} a {3}", old['title'], day_label(d, today), when, day_label(new['date'], today))
+            lines.append(tr("{0}: from {1} {2:%H:%M} to {3}", old['title'], day_label(d, today), when, day_label(new['date'], today))
                          + (f" {at:%H:%M}" if new["kind"] == "block" else ""))
         else:
-            lines.append(tr("{0} di {1}: non entra più questa settimana", old['title'], day_label(d, today)))
+            lines.append(tr("{0} of {1}: no longer fits this week", old['title'], day_label(d, today)))
     if not lines:
         return
-    _deliver(NOTICE_CHANGE, tr("Piano aggiornato"), tr("Ho cambiato il piano: ") + "; ".join(lines) + ".")
+    _deliver(NOTICE_CHANGE, tr("Plan updated"), tr("I changed the plan: ") + "; ".join(lines) + ".")
 
 
 def _deliver(key: str, title: str, text: str) -> bool:
@@ -462,7 +461,7 @@ def view(day: date | None = None, *, week_start: date | None = None) -> dict:
     days = []
     for n in range((end - start).days):
         d = start + timedelta(days=n)
-        days.append({"date": d.isoformat(), "weekday": WEEKDAYS[d.weekday()],
+        days.append({"date": d.isoformat(), "weekday": weekday_name(d.weekday()),
                      "items": [i for i in items if i["date"] == d.isoformat()]})
     busy_blocks = [{"key": i["key"], "title": i.get("title"), "start_at": i.get("start_at"), "end_at": i.get("end_at")}
                    for i in agenda.list_items(owner=OWNER) if (i.get("params") or {}).get("coach_busy")
@@ -503,33 +502,33 @@ def fixed_text(plan: dict, past: list[dict]) -> str:
         blocks = [i for i in d["items"] if i["kind"] == "block" and i["status"] == "planned"]
         if blocks:
             parts.append(d["weekday"][:3] + " " + ", ".join(f"{_local(i['start_at']):%H:%M} {i['title']}" for i in blocks))
-    text = tr("Piano della settimana: ") + ("; ".join(parts) if parts else tr("niente con un orario")) + "."
+    text = tr("Week plan: ") + ("; ".join(parts) if parts else tr("nothing with a time")) + "."
     if plan["unplaced"]:
-        text += tr(" Non entra: ") + "; ".join(f"{u['title']} ({u['reason']})" for u in plan["unplaced"][:3]) + "."
+        text += tr(" Does not fit: ") + "; ".join(f"{u['title']} ({u['reason']})" for u in plan["unplaced"][:3]) + "."
     done = [r for r in past if r.get("done") or r.get("missed")]
     if done:
-        text += " Settimana passata: " + ", ".join(f"{r.get('label')} {r.get('done')} fatti" for r in done[:3]) + "."
+        text += tr(" Last week: ") + ", ".join(tr("{0} {1} done", r.get('label'), r.get('done')) for r in done[:3]) + "."
     return text
 
 
 def _prompt(plan: dict, past: list[dict]) -> str:
     lines = ["Write the owner the message with the plan of the week, 6 lines at most, practical.",
-             "No emoji, no names of modules or systems. Format: plain text. (NON ENTRA = does not fit.)",
-             "PIANO:"]
+             "No emoji, no names of modules or systems. Format: plain text. (DOES NOT FIT = no room this week.)",
+             "PLAN:"]
     for d in plan["days"]:
         for i in d["items"]:
             when = _local(i["start_at"])
             lines.append(f"- {d['weekday']} {when:%H:%M} {i['title']} ({i['label']})"
-                         + (f" versione corta {i['minutes']}'" if i.get("variant") else ""))
+                         + (f" short version {i['minutes']}'" if i.get("variant") else ""))
     for u in plan["unplaced"]:
-        lines.append(f"NON ENTRA: {u['title']} — {u['reason']}")
+        lines.append(f"DOES NOT FIT: {u['title']} — {u['reason']}")
     for t in plan["targets"]:
-        lines.append(f"OBIETTIVO: {t['title']} {t.get('reason') or ''}")
+        lines.append(f"GOAL: {t['title']} {t.get('reason') or ''}")
     for s in plan["states"]:
         if s.get("state"):
-            lines.append(f"STATO {s['label']}: {s['state']}")
+            lines.append(f"STATE {s['label']}: {s['state']}")
     for r in past:
-        lines.append(f"SETTIMANA PASSATA {r.get('label')}: fatti {r.get('done')}, saltati {r.get('missed')}"
+        lines.append(f"LAST WEEK {r.get('label')}: done {r.get('done')}, skipped {r.get('missed')}"
                      + (f", {'; '.join(r.get('notes') or [])}" if r.get("notes") else ""))
     return "\n".join(lines)
 
@@ -556,7 +555,7 @@ def run_week(day: date | None = None) -> dict:
         text = fixed_text(plan, past)
     item = agenda.get(_parent_key(plan["week"]))
     agenda.update(item["key"], {"params": {**(item.get("params") or {}), "text": text, "reviews": past}}, by=OWNER)
-    delivered = _deliver(NOTICE_WEEK, tr("La tua settimana"), text)
+    delivered = _deliver(NOTICE_WEEK, tr("Your week"), text)
     logger.info("event=coach_week_delivered week=%s delivered=%s", plan["week"], delivered)
     return {**plan, "text": text, "delivered": delivered}
 
@@ -654,7 +653,7 @@ def add_busy(start_at: str, end_at: str, title: str = "") -> dict:
     s, e = _local(start_at), _local(end_at)
     if not s or not e or e <= s:
         raise CoachError("start_at and end_at must be ISO 8601 with end after start")
-    item = agenda.create(title=title or tr("Impegno"), type_="event", owner=OWNER, start_at=s.isoformat(),
+    item = agenda.create(title=title or tr("Appointment"), type_="event", owner=OWNER, start_at=s.isoformat(),
                          end_at=e.isoformat(), key=f"coach.busy.{uuid.uuid4().hex[:10]}",
                          params={"coach_busy": True}, created_by="user")
     schedule_replan("busy", s.date())
@@ -695,11 +694,10 @@ def week_job_rule() -> dict:
     """``chronos.coach_week``: the evening before the week starts, 18:00 (user can move or pause it)."""
     from hestia_common.agenda_client import job_rule
     day = "SU" if week_start_index() == 0 else "SA"
-    return job_rule(JOB_KEY, tr("Piano della settimana"), service="chronos", path="/api/agenda/coach/week/run",
+    return job_rule(JOB_KEY, tr("Weekly plan"), service="chronos", path="/api/agenda/coach/week/run",
                     recurrence=f"FREQ=WEEKLY;BYDAY={day};BYHOUR=18;BYMINUTE=0",
                     start_at="2026-01-04T18:00:00",
-                    description="La sera prima della settimana preparo il piano con i tuoi impegni e te lo mando. "
-                                "Sposta o metti in pausa per cambiarlo.", timeout_seconds=180)
+                    description="The evening before the week I prepare the plan with your commitments and send it to you. Move or pause to change it.", timeout_seconds=180)
 
 
 def started_at_utc() -> str:

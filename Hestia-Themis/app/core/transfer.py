@@ -25,7 +25,7 @@ def _short(value: Any) -> str:
 
 class SettingsSection(Section):
     def __init__(self, themis: Themis, module: str):
-        label = tr("Impostazioni personali") if module == "themis" else tr("Impostazioni")
+        label = tr("Personal settings") if module == "themis" else tr("Settings")
         super().__init__(module, label, icon="settings")
         self.themis = themis
         self.module = module
@@ -59,9 +59,9 @@ class SettingsSection(Section):
     def check(self, rec: dict) -> str | None:
         d = self.themis.registry.definition(rec.get("setting") or "")
         if not d:
-            return tr("impostazione non presente qui")
+            return tr("setting not present here")
         if rec.get("scope") not in SCOPES:
-            return tr("livello non importabile")
+            return tr("level not importable")
         try:
             validate(d, rec.get("value"))
             self.themis._target(d, rec.get("scope"), rec.get("scope_id") or None)

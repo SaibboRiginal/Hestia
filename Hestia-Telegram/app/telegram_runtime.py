@@ -19,9 +19,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram")
 
-BOT_DESCRIPTION = ("Il tuo assistente personale. Scrivimi come a una persona, mandami vocali, foto e file, "
-                   "oppure usa i pulsanti: Oggi, Aree, Notifiche, Impostazioni.")
-BOT_SHORT_DESCRIPTION = "Il tuo assistente personale: agenda, allenamento, spese, casa e molto altro."
+BOT_DESCRIPTION = ("Your personal assistant. Write to me like to a person, send me voice messages, photos and files, or use the buttons: Today, Areas, Notifications, Settings.")
+BOT_SHORT_DESCRIPTION = "Your personal assistant: agenda, training, expenses, home and much more."
 
 # Old prefixes from messages already in the chat.
 _OLD_PREFIXES = ("grp:", "run:", "pickarg:", "cal_", "doc_", "cancel_flow")
@@ -67,7 +66,7 @@ def _route_callback(call) -> None:
         core.bot.answer_callback_query(call.id)
     else:
         try:
-            core.bot.answer_callback_query(call.id, tr("Questo menu è vecchio"))
+            core.bot.answer_callback_query(call.id, tr("This menu is old"))
         except Exception:  # noqa: BLE001
             pass
         nav.stale(call.message.chat.id, call.message.message_id)
@@ -81,7 +80,7 @@ def on_callback(call):
     except Exception as exc:  # noqa: BLE001 — a button never leaves the spinner turning
         logger.warning("event=telegram_callback_failed data=%s error=%s", call.data, exc)
         try:
-            core.bot.answer_callback_query(call.id, tr("Non riuscito, riprova"))
+            core.bot.answer_callback_query(call.id, tr("Failed, try again"))
         except Exception:  # noqa: BLE001
             pass
 
@@ -145,7 +144,7 @@ def on_message(message):
         _end_flow_for_navigation(chat_id)
         if open_command(chat_id, name, args):
             return
-        core.bot.reply_to(message, tr("Non conosco questo comando. Scrivimi cosa ti serve, oppure tocca «Aree»."))
+        core.bot.reply_to(message, tr("I don't know this command. Write what you need, or tap «Areas»."))
         return
     if actions.on_text(chat_id, text):
         return

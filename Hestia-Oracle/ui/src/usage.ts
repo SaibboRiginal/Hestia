@@ -3,10 +3,10 @@
  * Cards per module (calls, calls/hour, tokens, cache, cost, fallbacks), calls per day, sessions (tap → their calls),
  * which chain step answered. Reads GET /api/ui/usage?group=…&days=… and /api/ui/usage/calls.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API, cost, dayLabel, ms, num } from './util';
 
-const PERIODS = [{ value: '1', label: tr('Oggi') }, { value: '7', label: tr('7 giorni') }, { value: '30', label: tr('30 giorni') }];
+const PERIODS = [{ value: '1', label: tr('Today') }, { value: '7', label: tr('7 days') }, { value: '30', label: tr('30 days') }];
 
 function pct(part: number, whole: number): string {
   return whole ? `${Math.round((100 * part) / whole)}%` : '–';
@@ -15,7 +15,7 @@ function pct(part: number, whole: number): string {
 function at(iso: string | null | undefined): string {
   if (!iso) return '–';
   const d = new Date(iso);
-  return d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export class OracleUsage extends HestiaElement {
@@ -46,7 +46,7 @@ export class OracleUsage extends HestiaElement {
   async load() {
     const q = (group: string) => this.host.api('GET', `${API}/usage`, { query: { group, days: this.days } });
     const [mod, day, ses, step] = await Promise.all([q('module'), q('day'), q('session'), q('step')]);
-    if (!mod.ok) { this.error = mod.error || tr('Uso non disponibile (Archive)'); return; }
+    if (!mod.ok) { this.error = mod.error || tr('Usage not available (Archive)'); return; }
     this.error = '';
     this.data = { modules: mod.data.rows || [], days: day.ok ? day.data.rows : [], sessions: ses.ok ? ses.data.rows : [],
                   steps: step.ok ? step.data.rows : [] };
@@ -63,24 +63,24 @@ export class OracleUsage extends HestiaElement {
     const sum = (k: string) => rows.reduce((a, r) => a + (r[k] || 0), 0);
     const calls = sum('calls');
     return html`<hxk-stat .items=${[
-      { label: tr('Chiamate'), value: num(calls), hint: tr("{0} all'ora in media", num(calls / (Number(this.days) * 24))) },
-      { label: tr('Token in / out'), value: `${num(sum('input_tokens'))} / ${num(sum('output_tokens'))}` },
-      { label: tr('Dalla cache'), value: pct(sum('cached_tokens'), sum('input_tokens')), hint: tr('Parte del prompt già in cache') },
-      { label: tr('Costo'), value: cost(sum('cost_usd')), hint: tr('Riportato dal fornitore o dai Prezzi dei modelli') },
-      { label: tr('Ripieghi'), value: num(sum('fallbacks')), hint: tr('Risposte date da un modello dopo il primo della catena') },
+      { label: tr('Calls'), value: num(calls), hint: tr("{0} per hour on average", num(calls / (Number(this.days) * 24))) },
+      { label: tr('Tokens in / out'), value: `${num(sum('input_tokens'))} / ${num(sum('output_tokens'))}` },
+      { label: tr('From the cache'), value: pct(sum('cached_tokens'), sum('input_tokens')), hint: tr('Part of the prompt already in cache') },
+      { label: tr('Cost'), value: cost(sum('cost_usd')), hint: tr('Reported by the provider or by the model Prices') },
+      { label: tr('Fallbacks'), value: num(sum('fallbacks')), hint: tr('Answers given by a model after the first of the chain') },
     ]}></hxk-stat>`;
   }
 
   private module(r: any) {
     const hours = Number(this.days) * 24;
     return html`<hxk-card heading=${r.module}>
-      <div class="kv"><span class="muted">${tr("Chiamate")}</span><span>${num(r.calls)} · ${num(r.calls / hours)}/ora</span></div>
-      <div class="kv"><span class="muted">${tr("Token in / out")}</span><span>${num(r.input_tokens)} / ${num(r.output_tokens)}</span></div>
-      <div class="kv"><span class="muted">${tr("Dalla cache")}</span><span>${pct(r.cached_tokens, r.input_tokens)}</span></div>
-      <div class="kv"><span class="muted">${tr("Prompt più grande")}</span><span>${num(r.max_input_tokens)}${r.context_window ? ` su ${num(r.context_window)}` : ''}</span></div>
-      <div class="kv"><span class="muted">${tr("Tempo medio")}</span><span>${ms(r.avg_duration_ms)}</span></div>
-      <div class="kv"><span class="muted">${tr("Costo")}</span><span>${cost(r.cost_usd)}</span></div>
-      ${r.fallbacks || r.errors ? html`<div class="kv"><span class="muted">${tr("Ripieghi · errori · quota")}</span>
+      <div class="kv"><span class="muted">${tr("Calls")}</span><span>${num(r.calls)} · ${num(r.calls / hours)}/ora</span></div>
+      <div class="kv"><span class="muted">${tr("Tokens in / out")}</span><span>${num(r.input_tokens)} / ${num(r.output_tokens)}</span></div>
+      <div class="kv"><span class="muted">${tr("From the cache")}</span><span>${pct(r.cached_tokens, r.input_tokens)}</span></div>
+      <div class="kv"><span class="muted">${tr("Largest prompt")}</span><span>${num(r.max_input_tokens)}${r.context_window ? ` su ${num(r.context_window)}` : ''}</span></div>
+      <div class="kv"><span class="muted">${tr("Average time")}</span><span>${ms(r.avg_duration_ms)}</span></div>
+      <div class="kv"><span class="muted">${tr("Cost")}</span><span>${cost(r.cost_usd)}</span></div>
+      ${r.fallbacks || r.errors ? html`<div class="kv"><span class="muted">${tr("Fallbacks · errors · quota")}</span>
         <span>${num(r.fallbacks)} · ${num(r.errors)} · ${num(r.quota)}</span></div>` : nothing}
     </hxk-card>`;
   }
@@ -88,30 +88,30 @@ export class OracleUsage extends HestiaElement {
   private daysChart() {
     const rows: any[] = this.data?.days || [];
     if (rows.length < 2) return nothing;
-    return html`<hxk-card heading=${tr("Chiamate per giorno")}>
-      <hxk-chart type="bar" unit=${tr("chiamate")} .labels=${rows.map(r => dayLabel(r.day))} .series=${[
-        { name: tr('Riuscite'), values: rows.map(r => r.ok) }, { name: tr('Non riuscite'), values: rows.map(r => r.errors) }]}></hxk-chart>
+    return html`<hxk-card heading=${tr("Calls per day")}>
+      <hxk-chart type="bar" unit=${tr("calls")} .labels=${rows.map(r => dayLabel(r.day))} .series=${[
+        { name: tr('Succeeded'), values: rows.map(r => r.ok) }, { name: tr('alt3::Failed'), values: rows.map(r => r.errors) }]}></hxk-chart>
     </hxk-card>`;
   }
 
   private sessions() {
     const rows: any[] = (this.data?.sessions || []).filter((r: any) => r.session_id).slice(0, 30);
-    return html`<hxk-card heading=${tr("Conversazioni")} subtitle=${tr("Tocca una conversazione per vedere le sue chiamate")}>
+    return html`<hxk-card heading=${tr("Conversations")} subtitle=${tr("Tap a conversation to see its calls")}>
       ${rows.length ? rows.map(r => html`<div class="row2 click" @click=${() => this.openSession(r.session_id)}>
           <div class="grow"><div class="truncate"><b>${r.client || 'chat'}</b> <span class="small muted">${r.session_id}</span></div>
-            <div class="small muted">${tr("ultima")} ${at(r.last_at)}</div></div>
-          <div class="num small"><div>${num(r.calls)} ${tr("chiamate ·")} ${cost(r.cost_usd)}</div>
-            <div class="muted">${num(r.input_tokens)} / ${num(r.output_tokens)} ${tr("token · cache")} ${pct(r.cached_tokens, r.input_tokens)}</div></div></div>`)
-        : html`<hxk-state kind="empty" text=${tr("Nessuna conversazione nel periodo.")}></hxk-state>`}
+            <div class="small muted">${tr("last")} ${at(r.last_at)}</div></div>
+          <div class="num small"><div>${num(r.calls)} ${tr("calls ·")} ${cost(r.cost_usd)}</div>
+            <div class="muted">${num(r.input_tokens)} / ${num(r.output_tokens)} ${tr("tokens · cache")} ${pct(r.cached_tokens, r.input_tokens)}</div></div></div>`)
+        : html`<hxk-state kind="empty" text=${tr("No conversation in the period.")}></hxk-state>`}
     </hxk-card>`;
   }
 
   private sessionCalls() {
     if (!this.session) return nothing;
-    return html`<hxk-card heading=${tr("Chiamate della conversazione")} subtitle=${this.session}>
-      <hxk-button slot="actions" variant="ghost" icon="x" @click=${() => { this.session = ''; this.calls = null; }}>${tr("Chiudi")}</hxk-button>
+    return html`<hxk-card heading=${tr("Calls of the conversation")} subtitle=${this.session}>
+      <hxk-button slot="actions" variant="ghost" icon="x" @click=${() => { this.session = ''; this.calls = null; }}>${tr("Close")}</hxk-button>
       ${this.calls === null ? html`<hxk-state kind="loading"></hxk-state>` : this.calls.map(c => html`<div class="row2">
-          <div class="grow"><div class="truncate"><b>${c.use_case}</b> <span class="small muted">${c.chain || ''}${c.step ? ` · passo ${c.step + 1}` : ''}</span></div>
+          <div class="grow"><div class="truncate"><b>${c.use_case}</b> <span class="small muted">${c.chain || ''}${c.step ? tr(' · step {0}', c.step + 1) : ''}</span></div>
             <div class="small muted truncate">${at(c.at)} · ${c.provider} · ${c.model}</div></div>
           <div class="num small"><div>${c.outcome === 'ok' ? `${num(c.input_tokens)} / ${num(c.output_tokens)} token` : html`<hxk-badge tone="danger">${c.outcome}</hxk-badge>`}</div>
             <div class="muted">${ms(c.duration_ms)}${c.cost_usd ? ` · ${cost(c.cost_usd)}` : ''}${c.cost_kind === 'abbonamento' ? ' abbonamento' : ''}</div></div></div>`)}
@@ -121,24 +121,24 @@ export class OracleUsage extends HestiaElement {
   private steps() {
     const rows: any[] = this.data?.steps || [];
     if (!rows.length) return nothing;
-    return html`<hxk-card heading=${tr("Chi ha risposto")} subtitle=${tr("Per uso: quale passo della catena e quante volte")}>
+    return html`<hxk-card heading=${tr("Who answered")} subtitle=${tr("By use: which step of the chain and how many times")}>
       ${rows.slice(0, 40).map(r => html`<div class="row2"><div class="grow">
-          <div class="truncate"><b>${r.use_case}</b> <span class="small muted">${r.chain || ''} · passo ${(r.step || 0) + 1}</span></div>
+          <div class="truncate"><b>${r.use_case}</b> <span class="small muted">${r.chain || ''}${tr(' · step {0}', (r.step || 0) + 1)}</span></div>
           <div class="small muted truncate">${r.provider} · ${r.model}</div></div>
-        <div class="num small"><div>${num(r.ok)} ${tr("risposte")}</div>
-          <div class="muted">${r.quota ? `${num(r.quota)} senza quota · ` : ''}${r.errors - r.quota > 0 ? `${num(r.errors - r.quota)} errori` : ''}</div></div></div>`)}
+        <div class="num small"><div>${num(r.ok)} ${tr("answers")}</div>
+          <div class="muted">${r.quota ? tr('{0} out of quota · ', num(r.quota)) : ''}${r.errors - r.quota > 0 ? tr('{0} errors', num(r.errors - r.quota)) : ''}</div></div></div>`)}
     </hxk-card>`;
   }
 
   render() {
     return html`<div class="bar">
-        <hxk-field type="enum" label=${tr("Periodo")} .options=${PERIODS} .value=${this.days}
+        <hxk-field type="enum" label=${tr("Period")} .options=${PERIODS} .value=${this.days}
           @change=${(e: CustomEvent) => { this.days = String(e.detail); this.load(); }}></hxk-field></div>
       ${this.error ? html`<hxk-state kind="error" text=${this.error} @retry=${() => this.load()}></hxk-state>`
         : !this.data ? html`<hxk-state kind="loading"></hxk-state>`
         : html`${this.totals()}
           <div class="mods" style="margin-top:12px">${this.data.modules.length ? this.data.modules.map((r: any) => this.module(r))
-            : html`<hxk-state kind="empty" text=${tr("Nessuna chiamata ai modelli nel periodo.")}></hxk-state>`}</div>
+            : html`<hxk-state kind="empty" text=${tr("No calls to the models in the period.")}></hxk-state>`}</div>
           <div class="cols"><div class="col" style="gap:16px">${this.sessionCalls()}${this.sessions()}</div>
             <div class="col" style="gap:16px">${this.daysChart()}${this.steps()}</div></div>`}`;
   }

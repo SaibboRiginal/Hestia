@@ -7,16 +7,16 @@ chat wait. The bus sits in Oracle, the only one that calls models:
 - **what waits**: one model call of a local step (``llm_providers.is_local``), not a whole turn. Between two steps
   of a long job a chat call can pass ahead. Cloud steps never wait (no GPU of ours); embeddings never wait
   (tiny, a different model, and memory search inside a chat turn must not queue behind a long generation).
-- **workers**: setting ``oracle.bus.locali_insieme`` (default 1) = how many local calls run together. Raise it the
+- **workers**: setting ``oracle.bus.local_workers`` (default 1) = how many local calls run together. Raise it the
   day the machine serves more (Ollama ``OLLAMA_NUM_PARALLEL``, llama-server ``--parallel``). Live, no restart.
-- **priority**: ``chat`` (a turn the owner started: written, spoken, a document he sent) before ``sottofondo``
+- **priority**: ``chat`` (a turn the owner started: written, spoken, a document he sent) before ``background``
   (everything else: routines, Athena, recaps, module jobs, Forge). Same priority = arrival order.
   A module call (``/api/llm/generate``) made while an owner turn is waiting for a tool is promoted to ``chat``:
   it is very likely that tool's own work (``owner_waiting``).
 - **re-entrant**: a thread that already holds a worker never waits again (no deadlock with one worker).
 
 Priority travels in a context variable: endpoints set it (``priority``), streams re-bind it around every
-``next()`` (``bind``), new threads start as ``sottofondo``. Logs: ``event=llm_bus_wait`` when a call waited.
+``next()`` (``bind``), new threads start as ``background``. Logs: ``event=llm_bus_wait`` when a call waited.
 """
 from __future__ import annotations
 
@@ -30,9 +30,9 @@ from typing import Iterator
 
 logger = logging.getLogger("hestia_oracle.llm_bus")
 
-WORKERS_KEY = "oracle.bus.locali_insieme"
+WORKERS_KEY = "oracle.bus.local_workers"
 CHAT = "chat"
-BACKGROUND = "sottofondo"
+BACKGROUND = "background"
 _RANK = {CHAT: 0, BACKGROUND: 1}
 _LOG_WAIT_MS = 500
 
@@ -60,7 +60,7 @@ def current() -> str:
 
 @contextlib.contextmanager
 def priority(level: str):
-    """Run a block with *level* (``chat`` / ``sottofondo``)."""
+    """Run a block with *level* (``chat`` / ``background``)."""
     token = _priority.set(level if level in _RANK else BACKGROUND)
     try:
         yield
@@ -82,7 +82,7 @@ def bind(stream: Iterator, level: str) -> Iterator:
 
 
 def for_origin(origin: dict | None) -> str:
-    """``chat`` for a request the owner started (``hestia_common.origin`` level ``utente``), else ``sottofondo``."""
+    """``chat`` for a request the owner started (``hestia_common.origin`` level ``utente``), else ``background``."""
     return CHAT if (origin or {}).get("level") == "utente" else BACKGROUND
 
 

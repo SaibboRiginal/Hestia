@@ -31,17 +31,17 @@ when the machine allows), the owner's turn first, background work after. The mul
 
 - `core/services/llm_bus.py`. The unit that waits is **one model call of one chain step**, not a turn: between two
   steps of a long job a chat call passes ahead.
-- **Workers**: Themis setting `oracle.bus.locali_insieme` (int, default 1, 1–16, live) «Modelli locali · risposte
+- **Workers**: Themis setting `oracle.bus.local_workers` (int, default 1, 1–16, live) «Modelli locali · risposte
   preparate insieme». Raise it only if the runtime serves more at once (Ollama `OLLAMA_NUM_PARALLEL`, llama-server
   `--parallel`).
-- **Priority** (context variable): `chat` before `sottofondo`; same priority = arrival order (ticket sequence).
+- **Priority** (context variable): `chat` before `background`; same priority = arrival order (ticket sequence).
   - `/api/chat`: `chat` when the origin level is `utente` (owner typing/speaking, external AI he connected), else
-    `sottofondo` (routines, autonomous turns). The stream re-binds it at every `next()` (`llm_bus.bind`).
+    `background` (routines, autonomous turns). The stream re-binds it at every `next()` (`llm_bus.bind`).
   - `/api/chat/document`: same rule from the client name.
   - `/api/llm/generate`: the request's origin; **promoted to `chat`** while an owner turn is waiting for its tools
     (`llm_bus.owner_waiting` around tool execution in `agent_loop`), because such a call is very likely that tool's
     work. Parallel tool threads copy the turn's context.
-  - `/api/llm/chat` (Forge), memory threads, everything else: `sottofondo` (default for new threads).
+  - `/api/llm/chat` (Forge), memory threads, everything else: `background` (default for new threads).
 - **Skips the queue**: cloud steps (no GPU of ours) and embeddings (tiny, other model; memory search inside a chat
   turn must not queue behind a long generation).
 - **Re-entrant**: a thread holding a worker never waits again (no deadlock with 1 worker, e.g. vision bridge).
@@ -54,7 +54,7 @@ when the machine allows), the owner's turn first, background work after. The mul
 ## 4. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 1. Real job for the owner: his chat is never stuck behind a background job on the one local model; ready for more workers.
 2. Owner module (R1): Oracle (the only LLM caller). No module changes.
-3. Configuration: `oracle.bus.locali_insieme` (Themis). No switch, no env.
+3. Configuration: `oracle.bus.local_workers` (Themis). No switch, no env.
 4. Push or poll: n/a (inside each call).
 5. Who confirms: nothing new.
 6. WebUI/Telegram: the setting appears in Impostazioni → Cervello (group Contesto) and Telegram settings like every
@@ -64,7 +64,7 @@ when the machine allows), the owner's turn first, background work after. The mul
    No endpoint change (swagger untouched).
 
 ## 5. Acceptance criteria
-1. With 1 worker busy, a queued `sottofondo` call and a later `chat` call: the `chat` call runs first.
+1. With 1 worker busy, a queued `background` call and a later `chat` call: the `chat` call runs first.
 2. Same priority keeps arrival order.
 3. Cloud calls and embeddings never wait for the local worker.
 4. A nested call on the thread holding the worker does not deadlock.

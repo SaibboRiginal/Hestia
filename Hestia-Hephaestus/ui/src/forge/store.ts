@@ -83,7 +83,7 @@ export class ForgeStore {
       this.tasks = await this.api.tasks();
       this.error = '';
     } catch (e) {
-      this.error = errText(e, tr('Hephaestus non raggiungibile'));
+      this.error = errText(e, tr('Hephaestus not reachable'));
     } finally {
       this.loading = false;
       this.changed();
@@ -109,7 +109,7 @@ export class ForgeStore {
       this.changed();
       await Promise.all([this.pullTranscript(seq, true), this.loadPanel(this.panel, seq)]);
     } catch (e) {
-      if (seq === this.seq) this.host.toast(errText(e, tr('Task non trovato')), 'danger');
+      if (seq === this.seq) this.host.toast(errText(e, tr('Task not found')), 'danger');
     }
     this.scheduleLive(seq);
   }
@@ -141,7 +141,7 @@ export class ForgeStore {
         if (seq === this.seq) this.logs = l;
       }
     } catch (e) {
-      if (seq === this.seq) this.host.toast(errText(e, tr('Caricamento non riuscito')), 'danger');
+      if (seq === this.seq) this.host.toast(errText(e, tr('alt::Upload failed')), 'danger');
     }
     if (seq === this.seq) this.changed();
   }
@@ -205,20 +205,20 @@ export class ForgeStore {
 
   /** Manual brake: paused = nothing starts on its own; resuming restarts nothing held. */
   async setPaused(paused: boolean) {
-    const r = await this.run(() => this.api.pause(paused), tr('Impostazione non salvata'));
+    const r = await this.run(() => this.api.pause(paused), tr('Setting not saved'));
     if (!r) return;
     if (this.status) this.status = { ...this.status, paused: r.paused };
-    const held = r.held?.length ? tr(" {0} task trattenuti restano da avviare a mano.", r.held.length) : '';
-    this.host.toast(r.paused ? tr('Sviluppo in pausa: niente parte da solo') : tr("Sviluppo ripreso.{0}", held), 'success');
+    const held = r.held?.length ? tr(" {0} held tasks are still to be started by hand.", r.held.length) : '';
+    this.host.toast(r.paused ? tr('Development paused: nothing starts on its own') : tr("Development resumed.{0}", held), 'success');
     await this.loadList(true);
   }
 
   async act(verb: 'approve' | 'reject' | 'rollback' | 'retry', body: { reason?: string; now?: boolean; engine?: string } = {}) {
     const t = this.task;
     if (!t) return;
-    const r = await this.run(() => this.api.act(t.id, verb, body), tr('Azione non riuscita'));
+    const r = await this.run(() => this.api.act(t.id, verb, body), tr('Action failed'));
     if (!r) return;
-    const labels = { approve: tr('Approvato'), reject: tr('Rifiutato'), rollback: tr('Rollback avviato'), retry: tr('Nuovo tentativo avviato') };
+    const labels = { approve: tr('Approved'), reject: tr('Rejected'), rollback: tr('Rollback started'), retry: tr('New attempt started') };
     this.host.toast(labels[verb], 'success');
     await this.loadList(true);
     const next = verb === 'retry' ? r.task.id : t.id;
@@ -227,9 +227,9 @@ export class ForgeStore {
   }
 
   async submit(body: { request: string; services?: string[]; engine?: string; workdoc?: string; parent_task?: string }) {
-    const r = await this.run(() => this.api.submit(body), tr('Invio non riuscito'));
+    const r = await this.run(() => this.api.submit(body), tr('Sending failed'));
     if (!r) return false;
-    this.host.toast(tr('Sviluppo avviato'), 'success');
+    this.host.toast(tr('Development started'), 'success');
     await this.loadList(true);
     this.onSelected(r.task.id);
     await this.select(r.task.id);
@@ -239,9 +239,9 @@ export class ForgeStore {
   async addNote(text: string) {
     const t = this.task;
     if (!t) return false;
-    const r = await this.run(() => this.api.note(t.id, text), tr('Nota non salvata'));
+    const r = await this.run(() => this.api.note(t.id, text), tr('Note not saved'));
     if (!r) return false;
-    this.host.toast(tr('Nota aggiunta: il motore la usa quando il task parte o viene riprovato'), 'success');
+    this.host.toast(tr('Note added: the engine uses it when the task starts or is retried'), 'success');
     try { const task = await this.api.task(t.id); if (this.selectedId === task.id) { this.task = task; this.changed(); } } catch { /* next poll */ }
     return true;
   }

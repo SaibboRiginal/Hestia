@@ -188,7 +188,7 @@ class Downloads:
         with self._lock:
             job = self._require(job_id)
             if job.data["state"] in ACTIVE:
-                raise DownloadError(tr("Prima ferma il download."), final=True)
+                raise DownloadError(tr("Stop the download first."), final=True)
         if job.data["source"] == "http":
             Path(job.params["dest"]).unlink(missing_ok=True)
         elif job.data["source"] in self._removers:
@@ -214,7 +214,7 @@ class Downloads:
     def _require(self, job_id: str) -> Job:
         job = self._jobs.get(job_id)
         if not job:
-            raise DownloadError(tr("Download non trovato."), final=True)
+            raise DownloadError(tr("Download not found."), final=True)
         return job
 
     # ── worker ───────────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ class Downloads:
             try:
                 job.data["attempts"] = int(job.data.get("attempts") or 0) + 1
                 if run is None:
-                    raise DownloadError(tr("Questo download non si può più riprendere."), final=True)
+                    raise DownloadError(tr("This download can no longer be resumed."), final=True)
                 run(job)
                 self._finish(job, "fatto")
                 return
@@ -261,7 +261,7 @@ class Downloads:
                 final = isinstance(exc, DownloadError) and exc.final
                 attempt = job.data["attempts"]
                 if final or attempt > len(RETRY_DELAYS):
-                    job.data["error"] = str(exc) if isinstance(exc, DownloadError) else tr("Download non riuscito.")
+                    job.data["error"] = str(exc) if isinstance(exc, DownloadError) else tr("Download failed.")
                     logger.warning("event=download_failed module=%s id=%s attempts=%s error=%s", self.module,
                                    job.id, attempt, str(exc)[:200])
                     self._finish(job, "errore")
@@ -286,7 +286,7 @@ class Downloads:
         if state == "fatto":
             logger.info("event=download_done module=%s id=%s bytes=%s", self.module, job.id, job.data.get("size"))
             if (job.data.get("size") or 0) >= NOTIFY_DONE_BYTES:
-                self._notify(job, tr("{0} è pronto.", job.data['what']), "info")
+                self._notify(job, tr("{0} is ready.", job.data['what']), "info")
         elif state == "errore":
             self._notify(job, f"{job.data['what']}: {job.data['error']}", "warning")
 
@@ -296,10 +296,10 @@ class Downloads:
         try:
             from .reminders import reminder_event
             if level != "info":
-                text += tr(" Puoi riprovare dalla pagina Download.")
+                text += tr(" You can try again from the Downloads page.")
             self.hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
                 module=self.module, domain="system", key=f"download.{self.module}.{job.id}",
-                title="Download" if level == "info" else tr("Download non riuscito"), text=text, actions=[],
+                title="alt::Download" if level == "info" else tr("Download failed"), text=text, actions=[],
                 page=self.page, level=level), timeout=8)
         except Exception as exc:
             logger.warning("[🔄] event=download_notify_failed module=%s id=%s error=%s", self.module, job.id, exc)
@@ -319,11 +319,11 @@ class Downloads:
             if resp.status_code == 416:                 # the part file is already complete
                 resp.close()
             elif resp.status_code in (401, 403):
-                raise DownloadError(tr("Il file è riservato: serve un token di Hugging Face."), final=True)
+                raise DownloadError(tr("The file is restricted: a Hugging Face token is needed."), final=True)
             elif resp.status_code == 404:
-                raise DownloadError(tr("Il file non esiste più a quell'indirizzo."), final=True)
+                raise DownloadError(tr("The file no longer exists at that address."), final=True)
             elif resp.status_code >= 400:
-                raise DownloadError(tr("Il server ha risposto {0}.", resp.status_code))
+                raise DownloadError(tr("The server answered {0}.", resp.status_code))
             else:
                 if resp.status_code == 200 and have:    # no Range support: start again
                     have = 0
@@ -340,7 +340,7 @@ class Downloads:
                             job.progress(done)
         if p.get("sha256") and file_sha256(part) != p["sha256"].lower():
             part.unlink(missing_ok=True)
-            raise DownloadError(tr("Il file scaricato è rovinato: lo riscarico."))
+            raise DownloadError(tr("The downloaded file is damaged: I download it again."))
         part.replace(dest)
 
     # ── persistence ──────────────────────────────────────────────────────────
@@ -406,7 +406,7 @@ def check_space(folder: Path, need: int, margin: int = 500_000_000) -> None:
     except OSError:
         return
     if need and free < need + margin:
-        raise DownloadError(tr("Servono {0} GB, ne hai {1}: libera spazio o scegli qualcosa di più piccolo.", gb(need), gb(free)), final=True)
+        raise DownloadError(tr("{0} GB are needed, you have {1}: free some space or choose something smaller.", gb(need), gb(free)), final=True)
 
 
 def file_sha256(path: Path) -> str:

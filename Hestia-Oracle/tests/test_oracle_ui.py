@@ -135,7 +135,7 @@ class TestUiApi:
         data = client.get("/api/ui/stats", params={"days": 3}).json()
         assert len(data["days"]) == 3 and data["today"]["calls"] == 2
         labels = {r["use_case"]: r["label"] for r in data["today_by_model"]}
-        assert labels == {"generic": "Uso generale", "claude_code": "Claude Code (Forge)"}
+        assert labels == {"generic": "General use", "claude_code": "Claude Code (Forge)"}
         assert {r["use_case"] for r in data["use_cases"]} == {"generic", "claude_code"}
         assert data["use_cases"][0]["label"]
 

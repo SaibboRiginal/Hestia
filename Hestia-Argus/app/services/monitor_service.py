@@ -72,14 +72,14 @@ def _plan_recheck(service: str, status: str, error: str | None) -> None:
     minutes = min(cap, first * 2 ** (attempt - 1))
     when = datetime.now(timezone.utc).timestamp() + minutes * 60
     _agenda.plan(
-        _repair_key(service), f"🩺 Ricontrollo {service} ({status}) — tentativo {attempt}",
+        _repair_key(service), tr("🩺 Recheck {0} ({1}) — attempt {2}", service, status, attempt),
         datetime.fromtimestamp(when, tz=timezone.utc),
         action={"service": "argus", "path": f"/api/argus/recheck/{service}", "method": "POST",
                 "body": {"trigger": "agenda"}, "timeout_seconds": 30},
-        description=f"Servizio {service} non sano: {str(error or 'unknown')[:200]}. "
-                    "Argus ricontrolla e richiede di nuovo la riparazione a Hephaestus.",
+        description=tr("Service {0} unhealthy: {1}. Argus checks again and asks Hephaestus for the repair again.",
+                       service, str(error or "unknown")[:200]),
         params={"service": service, "attempt": attempt})
-    health_history.note_action(service, "recheck_planned", f"Ricontrollo in agenda tra {minutes} min (tentativo {attempt})")
+    health_history.note_action(service, "recheck_planned", tr("Recheck planned in {0} min (attempt {1})", minutes, attempt))
 
 
 def _close_repair(service: str) -> None:
@@ -96,7 +96,7 @@ def recheck(service: str) -> dict:
         report = health_poller.poll_service(target)
         report_status, error = report.status, report.error
     health_history.record(service, report_status, error)
-    health_history.note_action(service, "recheck", tr("Ricontrollato: {0}", report_status), ok=report_status == "up")
+    health_history.note_action(service, "recheck", tr("Rechecked: {0}", report_status), ok=report_status == "up")
     if report_status == "up":
         health_history.note_recovered(service)
         _close_repair(service)
@@ -106,7 +106,7 @@ def recheck(service: str) -> dict:
             oracle_watch.observe("up")
         elif was:
             send_recovery(service)
-        return {"status": "ok", "service": service, "health": "up", "message": f"{service} risponde ✓"}
+        return {"status": "ok", "service": service, "health": "up", "message": tr("{0} answers ✓", service)}
     health_history.note_unhealthy(service, report_status, error)
     if service == oracle_watch.ORACLE:
         oracle_watch.observe(report_status if target is not None else None, error)
@@ -118,12 +118,12 @@ def recheck(service: str) -> dict:
             requested_action="auto_health_recovery", environment=cfg.get_str(cfg.REMEDIATE_ENVIRONMENT),
             dry_run=cfg.get_bool(cfg.REMEDIATE_DRY_RUN), auto_approve=False,
             metadata={"status": report_status, "error": error, "recheck_attempt": _repair_attempts.get(service, 0)})
-        health_history.note_action(service, "remediation", tr("Riparazione richiesta di nuovo a Hephaestus"), ok=ok)
+        health_history.note_action(service, "remediation", tr("Repair asked again to Hephaestus"), ok=ok)
     _plan_recheck(service, report_status, error)
     logger.info("[🔄] event=argus_recheck_still_unhealthy service=%s status=%s remediation_ok=%s next_attempt=%d",
                 service, report_status, ok, _repair_attempts.get(service, 0))
     return {"status": "ok", "service": service, "health": report_status,
-            "message": f"{service}: {report_status}" + (" · riparazione richiesta" if ok else ""),
+            "message": f"{service}: {report_status}" + (tr(" · repair requested") if ok else ""),
             "remediation_requested": ok, "remediation": response,
             "next_attempt": _repair_attempts.get(service, 0)}
 
@@ -290,14 +290,11 @@ def _check_provider_auth() -> None:
                             "entity_id": f"argus-auth-{svc_name}-{p_name}-{_ts}",
                             "payload": {
                                 "action": f"reauth_{p_name}",
-                                "_message": (
-                                    f"⚠️ <b>{p_name.title()}</b> su "
-                                    f"<b>{svc_name.title()}</b> richiede "
-                                    "riautenticazione. Usa il pulsante qui sotto."
-                                ),
+                                "_message": tr("⚠️ <b>{0}</b> on <b>{1}</b> needs to sign in again. "
+                                               "Use the button below.", p_name.title(), svc_name.title()),
                                 "_actions": [
                                     {
-                                        "text": f"🔑 Riautentica {p_name.title()}",
+                                        "text": tr("🔑 Sign in to {0} again", p_name.title()),
                                         "command": f"gateway_auth_initiate_{p_name}",
                                     }
                                 ],
@@ -356,8 +353,8 @@ def _run_once() -> None:
             with _unhealthy_lock:
                 _unhealthy[name] = report.status
             if health_history.note_unhealthy(name, report.status, report.error):
-                health_history.note_action(name, "alert", tr("Avviso a Hermes") if name != oracle_watch.ORACLE
-                                           else tr("Stato «Non disponibile» dopo l'attesa"))
+                health_history.note_action(name, "alert", tr("Notice to Hermes") if name != oracle_watch.ORACLE
+                                           else tr("«Unavailable» state after the wait"))
             if name != oracle_watch.ORACLE:
                 send_alert(
                     ServiceAlert(
@@ -389,7 +386,7 @@ def _run_once() -> None:
                 )
                 health_history.note_action(
                     name, "remediation",
-                    "Riparazione richiesta a Hephaestus" + (" (prova, dry-run)" if dry_run else ""), ok=ok)
+                    tr("Repair requested") + (tr(" (test, dry-run)") if dry_run else ""), ok=ok)
                 logger.info(
                     "event=argus_autoremediate_requested service=%s ok=%s dry_run=%s response=%s",
                     name,
@@ -443,11 +440,11 @@ def start() -> None:
                      name="argus-journal-load").start()
     if _agenda is not None and agenda_template is not None:
         _agenda.register_async([], templates=[agenda_template(
-            "recheck", tr("Ricontrolla un servizio"), service="argus", path="/api/argus/recheck/{service}",
+            "recheck", tr("Recheck a service"), service="argus", path="/api/argus/recheck/{service}",
             type="task", types=["task", "job"], icon="refresh",
-            fields={"service": {"type": "string", "label": tr("Servizio"), "in": "path", "description": tr("Nome del servizio (es. hecate)")}},
-            required=["service"], title=tr("Ricontrolla {service}"),
-            description="Argus verifica la salute del servizio all'orario scelto e avvia la riparazione se serve.")])
+            fields={"service": {"type": "string", "label": tr("Service"), "in": "path", "description": tr("Service name (e.g. hecate)")}},
+            required=["service"], title=tr("Recheck {service}"),
+            description="Argus checks the service health at the chosen time and starts the repair if needed.")])
     thread = threading.Thread(
         target=_monitor_loop,
         daemon=True,

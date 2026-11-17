@@ -99,7 +99,7 @@ def changes_from_log(tool_log: list[dict]) -> list[dict]:
             undo = {"tool": undo.strip(), "args": {"id": params["id"]} if params.get("id") else {}}
         if isinstance(undo, dict) and undo.get("tool"):
             undo = {"tool": str(undo["tool"]), "args": dict(undo.get("args") or {}),
-                    "label": str(undo.get("label") or tr("Annulla"))}
+                    "label": str(undo.get("label") or tr("Cancel"))}
         else:
             undo = None
         out.append({"tool": str(entry.get("tool") or ""), "title": str(entry.get("title") or entry.get("tool") or ""),
@@ -156,23 +156,23 @@ def emit_needs_input(missing_fields: list[str], context: str = "") -> str:
 # kind → (level, icon name, emoji, default title). Clients may restyle by kind/level/icon.
 NOTICE_KINDS: dict[str, tuple[str, str, str, str]] = {
     "memory.saved": ("success", "memory", "💾", "Ricordato"),
-    "memory.removed": ("info", "trash", "🗑️", "Dimenticato"),
-    "memory.updated": ("info", "memory", "💾", "Memoria aggiornata"),
-    "mood.saved": ("info", "smile", "🙂", "Umore segnato"),
-    "mood.removed": ("info", "trash", "🗑️", "Umore tolto"),
-    "subscription.added": ("success", "bell", "🔔", "Avviso attivato"),
-    "subscription.changed": ("info", "bell", "🔔", "Avviso modificato"),
-    "subscription.removed": ("info", "bell-off", "🔕", "Avviso disattivato"),
-    "action.done": ("success", "check", "✅", "Fatto"),
-    "action.failed": ("error", "alert", "❌", "Non riuscito"),
-    "action.needs_approval": ("warning", "alert", "✋", "Serve la tua conferma"),
+    "memory.removed": ("info", "trash", "🗑️", "alt::Forgotten"),
+    "memory.updated": ("info", "memory", "💾", "Memory updated"),
+    "mood.saved": ("info", "smile", "🙂", "Mood noted"),
+    "mood.removed": ("info", "trash", "🗑️", "Mood removed"),
+    "subscription.added": ("success", "bell", "🔔", "Alert turned on"),
+    "subscription.changed": ("info", "bell", "🔔", "Alert changed"),
+    "subscription.removed": ("info", "bell-off", "🔕", "Alert turned off"),
+    "action.done": ("success", "check", "✅", "Done"),
+    "action.failed": ("error", "alert", "❌", "alt::Failed"),
+    "action.needs_approval": ("warning", "alert", "✋", "Your confirmation is needed"),
     "agenda.planned": ("info", "calendar", "📅", "In agenda"),
-    "forge.task": ("info", "terminal", "🔨", "Sviluppo"),
-    "document.saved": ("success", "file", "📄", "Documento salvato"),
-    "goal.progress": ("info", "target", "🎯", "Obiettivo"),
+    "forge.task": ("info", "terminal", "🔨", "Development"),
+    "document.saved": ("success", "file", "📄", "Document saved"),
+    "goal.progress": ("info", "target", "🎯", "Goal"),
     "info": ("info", "info", "ℹ️", "Info"),
-    "warning": ("warning", "alert", "⚠️", "Attenzione"),
-    "error": ("error", "alert", "❌", "Errore"),
+    "warning": ("warning", "alert", "⚠️", "Warning"),
+    "error": ("error", "alert", "❌", "Error"),
 }
 
 # Legacy signal events → standard notice kinds (tool.summary is reasoning, not a notice).
@@ -235,6 +235,6 @@ def emit_tool_summary(tool_log: list[dict]) -> str:
     """
     return emit_signal(
         event="tool.summary",
-        message=tr("Riepilogo strumenti utilizzati"),
+        message=tr("Summary of the tools used"),
         data={"calls": [{k: v for k, v in e.items() if k != "result_text"} for e in tool_log]},
     )

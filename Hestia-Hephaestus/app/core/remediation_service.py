@@ -4,6 +4,8 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 from uuid import uuid4
 
 import requests
@@ -76,7 +78,7 @@ class RemediationService:
             label = f"{snapshot.get('service')}: {snapshot.get('issue')}"
             try:
                 if state == "pending_approval":
-                    self.agenda.show(key, tr("🛠️ Riparazione da approvare — {0}", label),
+                    self.agenda.show(key, tr("🛠️ Repair to approve — {0}", label),
                                      datetime.now(timezone.utc),
                                      description=f"Runbook {snapshot.get('runbook_id')}. "
                                                  f"Approva: \"approva riparazione {snapshot['task_id'][:8]}\".",
@@ -91,8 +93,7 @@ class RemediationService:
                                     "path": f"/api/hephaestus/remediate/{snapshot['task_id']}/retry",
                                     "method": "POST", "body": {"requested_by": "agenda"},
                                     "timeout_seconds": 60},
-                            description="Riparazione fallita: nuovo tentativo programmato. "
-                                        "Sposta/annulla dall'agenda di Hestia.",
+                            description=tr("Repair failed: a new attempt is scheduled. Move or cancel it from {assistant}'s agenda."),
                             params={"task_id": snapshot["task_id"], "attempt": attempts + 1})
                     else:
                         self.agenda.done(key)
@@ -448,13 +449,13 @@ class RemediationService:
                 return task
             if state in {"pending_approval", "failed"}:
                 # never ran, or failed without changes: undo = stop it (no approval wait, no agenda retry)
-                outcome: dict[str, Any] = {"status": "cancelled", "detail": tr("Riparazione fermata: non aveva cambiato nulla.")}
+                outcome: dict[str, Any] = {"status": "cancelled", "detail": tr("Repair stopped: it had not changed anything.")}
             elif state == "succeeded" and task.get("undoable"):
                 ok, payload = self._undo_on_target(task)
                 outcome = {"status": "restored" if ok else "failed", "response": payload}
             else:
                 outcome = {"status": "nothing_to_undo",
-                           "detail": tr("Questa riparazione non ha cambiato dati da ripristinare.")}
+                           "detail": tr("This repair did not change data to restore.")}
             if outcome["status"] in {"cancelled", "restored"}:
                 task["state"] = "rolled_back"
                 task["undoable"] = False

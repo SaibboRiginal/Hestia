@@ -543,7 +543,7 @@ class TestStrategistParsing:
         # Life domains reach only the «Vita» track (module signals), never the system prompt.
         assert "real_estate" not in prompt
         assert "Appartamento Milano" not in prompt
-        assert "impegni attivi" in prompt.lower()
+        assert "active commitments" in prompt.lower()
 
     def test_build_strategist_prompt_includes_observation(self):
         from core.strategist import _build_strategist_prompt

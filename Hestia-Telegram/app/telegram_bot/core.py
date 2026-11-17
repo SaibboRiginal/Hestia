@@ -379,7 +379,7 @@ def send_user_message(
                 err_text,
             )
             fallback_text = message_format.html_to_plain_text(
-                part) or tr("[contenuto non visualizzabile]")
+                part) or tr("[content that can't be shown]")
             msg = bot.send_message(
                 chat_id,
                 fallback_text,

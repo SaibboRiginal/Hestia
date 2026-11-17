@@ -54,7 +54,7 @@ export class AssistantService {
   /** Opened without an explicit packet (sidebar, Ctrl+J): the current page is still useful context. */
   guessContext(): AssistantContext {
     const page = location.pathname.split('/').filter(Boolean)[0] || 'chat';
-    const labels: Record<string, string> = { calendar: tr('Agenda di Hestia'), forge: tr('Sviluppo'), commands: tr('Comandi & MCP'), documents: tr('Documenti'), settings: tr('Impostazioni') };
+    const labels: Record<string, string> = { calendar: tr('Hestia\'s agenda'), forge: tr('Development'), commands: tr('Commands & MCP'), documents: tr('Documents'), settings: tr('Settings') };
     return { page, intent: 'ask', label: labels[page] };
   }
 

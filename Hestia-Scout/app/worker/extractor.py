@@ -301,7 +301,7 @@ def enrich_payload_from_listing(payload: dict, timeout_seconds: int = 30) -> dic
     # ── Content-based availability check ─────────────────────────────
     _html_lower = result.html.lower()
     _sold_signals = [
-        tr("non più disponibile"), "annuncio rimosso", "immobile venduto",
+        tr("no longer available"), "annuncio rimosso", "immobile venduto",
         "property sold", "no longer available", "listing removed",
         "this property is no longer", "venduta", "venduto",
     ]

@@ -33,32 +33,32 @@ export class ScoutStats extends HestiaElement {
     if (!this.s) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const s = this.s;
     return html`<div class="page">
-      <button class="back" @click=${() => this.host.navigate('case')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Case")}</button>
-      <div class="head"><h1>${tr("Statistiche case")}</h1>
-        <select aria-label=${tr("Città")} @change=${(e: Event) => { this.city = (e.target as HTMLSelectElement).value; this.load(); }}>
-          <option value="">${tr("Tutte le città")}</option>
+      <button class="back" @click=${() => this.host.navigate('case')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Houses")}</button>
+      <div class="head"><h1>${tr("House statistics")}</h1>
+        <select aria-label=${tr("City")} @change=${(e: Event) => { this.city = (e.target as HTMLSelectElement).value; this.load(); }}>
+          <option value="">${tr("All cities")}</option>
           ${s.cities.map(c => html`<option value=${c} ?selected=${c === this.city}>${c}</option>`)}
         </select>
       </div>
       <hxk-stat .items=${[
-        { label: tr('Seguite'), value: num(s.total) }, { label: tr('Nuove (7 giorni)'), value: num(s.new) },
-        { label: tr('Disponibili'), value: num(s.available) }, { label: tr('Preferite'), value: num(s.favorites) },
-        { label: tr('Prezzo medio'), value: compactEuro(s.avg_price) }, { label: '€/m² medio', value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
+        { label: tr('Followed'), value: num(s.total) }, { label: tr('alt::New (7 days)'), value: num(s.new) },
+        { label: tr('pl::Available'), value: num(s.available) }, { label: tr('Favourites'), value: num(s.favorites) },
+        { label: tr('Average price'), value: compactEuro(s.avg_price) }, { label: tr('average €/m²'), value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' },
       ]}></hxk-stat>
       <div class="two">
-        <hxk-card heading=${tr("Nuove case per settimana")}>
-          <hxk-chart type="bar" .labels=${s.weeks.map(w => w.label)} .series=${[{ name: tr('Nuove'), values: s.weeks.map(w => w.count) }]}></hxk-chart>
+        <hxk-card heading=${tr("New houses per week")}>
+          <hxk-chart type="bar" .labels=${s.weeks.map(w => w.label)} .series=${[{ name: tr('f.pl::New'), values: s.weeks.map(w => w.count) }]}></hxk-chart>
         </hxk-card>
-        <hxk-card heading=${tr("Stato degli annunci")}>
+        <hxk-card heading=${tr("Listing states")}>
           ${s.by_status.length ? html`<hxk-chart type="donut" .labels=${s.by_status.map(b => b.label)}
-              .series=${[{ name: tr('Annunci'), values: s.by_status.map(b => b.count) }]}></hxk-chart>` : html`<hxk-state kind="empty"></hxk-state>`}
+              .series=${[{ name: tr('Listings'), values: s.by_status.map(b => b.count) }]}></hxk-chart>` : html`<hxk-state kind="empty"></hxk-state>`}
         </hxk-card>
       </div>
-      ${this.city ? nothing : html`<hxk-card heading=${tr("Prezzi per città")}>
-        ${s.price_by_city.length ? html`<table><thead><tr><th>${tr("Città")}</th><th class="n">${tr("Case")}</th><th class="n">${tr("Prezzo medio")}</th><th class="n">€/m²</th></tr></thead>
+      ${this.city ? nothing : html`<hxk-card heading=${tr("Prices per city")}>
+        ${s.price_by_city.length ? html`<table><thead><tr><th>${tr("City")}</th><th class="n">${tr("Houses")}</th><th class="n">${tr("Average price")}</th><th class="n">€/m²</th></tr></thead>
           <tbody>${s.price_by_city.map(c => html`<tr class="click" @click=${() => this.host.navigate('case', { city: c.city })}>
             <td>${c.city}</td><td class="n">${c.count}</td><td class="n">${euro(c.avg_price)}</td><td class="n">${c.avg_ppm2 ? num(c.avg_ppm2) : '—'}</td></tr>`)}</tbody></table>`
-          : html`<hxk-state kind="empty" text=${tr("Le città arrivano dagli indirizzi degli annunci")}></hxk-state>`}
+          : html`<hxk-state kind="empty" text=${tr("The cities come from the addresses of the listings")}></hxk-state>`}
       </hxk-card>`}
     </div>`;
   }
@@ -76,10 +76,10 @@ export class ScoutKpiWidget extends HestiaElement {
     if (!this.s) return html`<hxk-state kind="loading"></hxk-state>`;
     const s = this.s; const wide = this.ctx.size === 'xl';
     return html`<hxk-stat .items=${[
-      { label: tr('Nuove (7 gg)'), value: num(s.new), tone: s.new ? 'success' : undefined },
-      { label: tr('Seguite'), value: num(s.total) },
-      { label: tr('Preferite'), value: num(s.favorites) },
-      ...(wide ? [{ label: tr('Prezzo medio'), value: compactEuro(s.avg_price) }, { label: '€/m² medio', value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' }] : []),
+      { label: tr('New (7 days)'), value: num(s.new), tone: s.new ? 'success' : undefined },
+      { label: tr('Followed'), value: num(s.total) },
+      { label: tr('Favourites'), value: num(s.favorites) },
+      ...(wide ? [{ label: tr('Average price'), value: compactEuro(s.avg_price) }, { label: tr('average €/m²'), value: s.avg_ppm2 ? num(s.avg_ppm2) : '—' }] : []),
     ]}></hxk-stat>`;
   }
 }
@@ -95,9 +95,9 @@ export class ScoutPricesWidget extends HestiaElement {
     if (this.error && !this.s) return stateOf(this.error, () => this.load());
     if (!this.s) return html`<hxk-state kind="loading"></hxk-state>`;
     const rows = this.s.price_by_city.filter(c => c.avg_ppm2).slice(0, this.ctx.size === 'xl' ? 10 : 6);
-    if (!rows.length) return html`<hxk-state kind="empty" text=${tr("Ancora pochi dati per città")}></hxk-state>`;
+    if (!rows.length) return html`<hxk-state kind="empty" text=${tr("Still little data per city")}></hxk-state>`;
     return html`<hxk-chart type="bar" unit="€/m²" height=${this.ctx.size === 'xl' ? 230 : 210} .labels=${rows.map(c => c.city)}
-      .series=${[{ name: '€/m² medio', values: rows.map(c => c.avg_ppm2 ?? 0) }]}></hxk-chart>`;
+      .series=${[{ name: tr('average €/m²'), values: rows.map(c => c.avg_ppm2 ?? 0) }]}></hxk-chart>`;
   }
 }
 
@@ -126,9 +126,9 @@ abstract class ListWidget extends HestiaElement {
     if (!this.items) return html`<hxk-state kind="loading"></hxk-state>`;
     if (!this.items.length) return html`<hxk-state kind="empty" text=${this.emptyText()}></hxk-state>`;
     return html`<hxk-list .items=${this.items.map(l => ({ id: l.id, title: euro(l.price) + ' · ' + l.title, subtitle: facts(l), image: l.image || undefined,
-        icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: 'preferita', tone: 'warning' } : undefined }))}
+        icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: tr('f::favourite'), tone: 'warning' } : undefined }))}
       @item-click=${(e: CustomEvent) => this.host.navigate('case/' + e.detail.id)}></hxk-list>
-      ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('case', this.openQuery())}>${tr("Altre")} ${this.total - this.items.length} →</button>` : nothing}`;
+      ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('case', this.openQuery())}>${tr("Others")} ${this.total - this.items.length} →</button>` : nothing}`;
   }
 }
 
@@ -137,12 +137,12 @@ export class ScoutNewWidget extends ListWidget {
     const days = Number(this.ctx.params?.days) || 7;
     return { days, sort: 'new', ...(this.ctx.params?.city ? { city: String(this.ctx.params.city) } : {}) };
   }
-  emptyText() { return this.ctx.params?.city ? tr("Nessuna casa nuova a {0}", this.ctx.params.city) : tr('Nessuna casa nuova in questi giorni'); }
+  emptyText() { return this.ctx.params?.city ? tr("No new house in {0}", this.ctx.params.city) : tr('No new house these days'); }
   openQuery(): Record<string, string> { return { sort: 'new', ...(this.ctx.params?.city ? { city: String(this.ctx.params.city) } : {}) }; }
 }
 
 export class ScoutFavoritesWidget extends ListWidget {
   query() { return { flag: 'favorite', sort: 'new' }; }
-  emptyText() { return tr('Nessuna preferita: tocca la stella su una casa per salvarla qui'); }
+  emptyText() { return tr('No favourites: tap the star on a house to save it here'); }
   openQuery(): Record<string, string> { return { flag: 'favorite' }; }
 }

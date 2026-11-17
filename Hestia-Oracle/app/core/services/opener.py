@@ -2,7 +2,7 @@
 
 Athena decides *when* and brings the reasons (mood, what the areas noticed, what she already wrote); Oracle, the
 only brain, writes the one or two sentences in the persona, with what it remembers of the owner. Hermes delivers.
-Nothing to say that is true → ``NIENTE`` → no message (never small talk for its own sake).
+Nothing to say that is true → ``NOTHING`` → no message (never small talk for its own sake).
 """
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ from core.services import prompt_config
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-NOTHING = "NIENTE"
+NOTHING = "NOTHING"
+_OLD_NOTHING = "NIENTE"    # answer of the old Italian prompt, still accepted
 _TAG = re.compile(r"</?[a-zA-Z][^>]*>")
 MAX_CHARS = 400
 MEMORY_MAX = 20
@@ -63,7 +64,7 @@ def build_prompt(reasons: list[str], avoid: list[str], memories: list[str], awar
         parts.append("YOU ALREADY WROTE THEM (do not repeat, do not insist):\n" + "\n".join(_lines(avoid, 6)))
     from hestia_common import identity
     language = identity.LANGUAGES[prompt_config.owner_language()]
-    parts.append(f"Your message, in {language} (their language setting), or NIENTE:")
+    parts.append(f"Your message, in {language} (their language setting), or NOTHING:")
     return "\n\n".join(parts)
 
 
@@ -72,7 +73,7 @@ def clean(answer: str) -> str:
     from core.services import reaction_marker
     _, text = reaction_marker.strip(str(answer or ""))
     text = _TAG.sub("", text).strip().strip('"«»').strip()      # plain text: every client shows it its own way
-    if not text or text.upper().rstrip(".!") == NOTHING or text.upper().startswith(NOTHING):
+    if not text or text.upper().rstrip(".!") in (NOTHING, _OLD_NOTHING) or text.upper().startswith((NOTHING, _OLD_NOTHING)):
         return ""
     return text[:MAX_CHARS].strip()
 

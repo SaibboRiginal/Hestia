@@ -25,16 +25,16 @@ import { TrPipe } from '../core/i18n';
           <div class="acts hx-fade-in" role="menu">
             <button type="button" role="menuitem" (click)="write()">
               <hx-icon name="edit" [size]="18" />
-              <span><b>{{ "Scrivi qui" | tr }}</b><i>{{ "Chiedi o fai fare qualcosa su questa pagina, senza lasciarla" | tr }}</i></span><kbd>{{ "Ctrl J" | tr }}</kbd>
+              <span><b>{{ "Write here" | tr }}</b><i>{{ "Ask or have something done on this page, without leaving it" | tr }}</i></span><kbd>{{ "Ctrl J" | tr }}</kbd>
             </button>
             <button type="button" role="menuitem" (click)="talk()">
               <hx-icon name="waveform" [size]="18" />
-              <span><b>{{ live.on ? ('Ferma Parla' | tr) : ('Parla' | tr) }}</b><i>{{ "Conversazione a voce: parli e ti risponde a voce, anche mentre cambi pagina" | tr }}</i></span>
+              <span><b>{{ live.on ? ('Stop Talk' | tr) : ('Talk' | tr) }}</b><i>{{ "Voice conversation: you speak and it answers by voice, even while you change page" | tr }}</i></span>
             </button>
           </div>
         }
         <button type="button" class="fab" [class.live]="live.on" (click)="toggle($event)" aria-haspopup="menu" [attr.aria-expanded]="open()"
-                 [attr.aria-label]="'Scrivi o parla con l\\'assistente' | tr"  [title]="'Scrivi o parla con l\\'assistente' | tr">
+                 [attr.aria-label]="'Write or talk with the assistant' | tr"  [title]="'Write or talk with the assistant' | tr">
           <hx-icon [name]="open() ? 'x' : live.on ? 'waveform' : 'sparkle'" [size]="22" />
         </button>
       </div>

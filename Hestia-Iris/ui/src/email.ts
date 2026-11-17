@@ -2,7 +2,7 @@
  * <iris-email> — «Email»: one look at the mailbox for all of Hestia (Hecate), Iris hands each module the mails it
  * subscribed to. Shows the watcher (last check, Gmail push), the subscriptions per module and the last deliveries.
  */
-import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
+import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
 const API = '/api/email';
 
@@ -10,22 +10,22 @@ function when(iso?: string | null): string {
   if (!iso) return '–';
   const d = new Date(iso);
   return d.toDateString() === new Date().toDateString()
-    ? d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString('it-IT', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    ? d.toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function every(seconds?: number): string {
   if (!seconds) return '–';
-  return seconds < 3600 ? tr("ogni {0} min", Math.round(seconds / 60)) : tr("ogni {0} h", Math.round(seconds / 3600));
+  return seconds < 3600 ? tr("every {0} min", Math.round(seconds / 60)) : tr("every {0} h", Math.round(seconds / 3600));
 }
 
 function rule(s: any): string {
   const parts: string[] = [];
   if (s.senders?.length) parts.push(`da ${s.senders.join(', ')}`);
-  if (s.subject_contains?.length) parts.push(tr("oggetto con {0}", s.subject_contains.join(' / ')));
-  if (s.labels?.length) parts.push(`etichetta ${s.labels.join(', ')}`);
-  if (s.queries?.length) parts.push(`ricerche: ${s.queries.join(' · ')}`);
-  return parts.join(' · ') || tr('nessuna regola');
+  if (s.subject_contains?.length) parts.push(tr("subject with {0}", s.subject_contains.join(' / ')));
+  if (s.labels?.length) parts.push(tr('label {0}', s.labels.join(', ')));
+  if (s.queries?.length) parts.push(tr('searches: {0}', s.queries.join(' · ')));
+  return parts.join(' · ') || tr('no rule');
 }
 
 export class IrisEmail extends HestiaElement {
@@ -52,7 +52,7 @@ export class IrisEmail extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/dispatch`);
-    if (!r.ok) { this.error = r.status === 0 ? tr('Iris non raggiungibile') : r.error || tr('Iris non raggiungibile'); return; }
+    if (!r.ok) { this.error = r.status === 0 ? tr('Iris not reachable') : r.error || tr('Iris not reachable'); return; }
     this.error = ''; this.data = r.data;
   }
 
@@ -60,11 +60,11 @@ export class IrisEmail extends HestiaElement {
     this.busy = 'check';
     const r = await this.host.api('POST', `${API}/check`);
     this.busy = '';
-    if (!r.ok) { this.host.toast(r.error || tr('Controllo non avviato'), 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.error || tr('Check not started'), 'danger'); return; }
     const d = r.data || {};
-    const text = d.status === 'ok' ? (d.new ? tr("{0} email nuove passate ai moduli", d.new) : tr('Nessuna email nuova'))
-      : d.status === 'skipped' ? tr('Gmail non collegato: ricollega Google') : d.status === 'busy' ? tr('Controllo già in corso')
-      : d.status === 'initialized' ? tr('Controllo avviato: da ora vedo le email nuove') : d.error || tr('Controllo fallito');
+    const text = d.status === 'ok' ? (d.new ? tr("{0} new emails passed to the modules", d.new) : tr('No new email'))
+      : d.status === 'skipped' ? tr('Gmail not linked: link Google again') : d.status === 'busy' ? tr('Check already running')
+      : d.status === 'initialized' ? tr('Check started: from now on I see the new emails') : d.error || tr('Check failed');
     this.host.toast(text, d.status === 'ok' || d.status === 'initialized' || d.status === 'busy' ? 'success' : 'warning');
     this.load();
   }
@@ -73,53 +73,53 @@ export class IrisEmail extends HestiaElement {
     this.busy = s.id;
     const r = await this.host.api('POST', `${API}/subscriptions/${encodeURIComponent(s.owner)}/${encodeURIComponent(s.key)}/backfill`, { body: {} });
     this.busy = '';
-    if (!r.ok || r.data?.status === 'error') { this.host.toast(r.data?.error || r.error || tr('Non riuscito'), 'danger'); return; }
-    this.host.toast(tr("{0}: {1} email trovate negli ultimi {2} giorni", s.title || s.key, r.data.found, r.data.days), 'success');
+    if (!r.ok || r.data?.status === 'error') { this.host.toast(r.data?.error || r.error || tr('alt::Failed'), 'danger'); return; }
+    this.host.toast(tr("{0}: {1} emails found in the last {2} days", s.title || s.key, r.data.found, r.data.days), 'success');
     this.load();
   }
 
   private renderWatcher(w: any) {
-    if (!w) return html`<hxk-card heading=${tr("Controllo della casella")}><hxk-state kind="offline" text=${tr("Account non raggiungibili")}></hxk-state></hxk-card>`;
+    if (!w) return html`<hxk-card heading=${tr("Mailbox check")}><hxk-state kind="offline" text=${tr("Accounts not reachable")}></hxk-state></hxk-card>`;
     const st = w.watcher || {};
     const push = w.push || {};
     const auth = st.last_error === 'gmail_not_authorized' || String(st.last_error || '').includes('Re-authorize');
-    return html`<hxk-card heading=${tr("Controllo della casella")} subtitle=${tr("Uno solo per tutta Hestia, in Hecate")}>
+    return html`<hxk-card heading=${tr("Mailbox check")} subtitle=${tr("Just one for all of Hestia, in Hecate")}>
       <div class="col" style="gap:6px">
         <div class="row wrap">
-          ${push.active ? html`<hxk-badge tone="success">${tr("Gmail push attivo")}</hxk-badge>`
-            : push.configured ? html`<hxk-badge tone="warning" title=${push.error || ''}>${tr("Gmail push configurato, non connesso")}</hxk-badge>`
-            : html`<hxk-badge tone="neutral" title=${tr("Si attiva con il setup Pub/Sub (vedi documentazione di Hecate)")}>${tr("Gmail push spento")}</hxk-badge>`}
+          ${push.active ? html`<hxk-badge tone="success">${tr("Gmail push active")}</hxk-badge>`
+            : push.configured ? html`<hxk-badge tone="warning" title=${push.error || ''}>${tr("Gmail push configured, not connected")}</hxk-badge>`
+            : html`<hxk-badge tone="neutral" title=${tr("It turns on with the Pub/Sub setup (see Hecate's documentation)")}>${tr("Gmail push off")}</hxk-badge>`}
           <hxk-badge tone="info">${every(w.interval_seconds)}</hxk-badge>
-          ${auth ? html`<hxk-badge tone="danger">${tr("Ricollega Google")}</hxk-badge>` : st.last_error ? html`<hxk-badge tone="danger" title=${st.last_error}>${tr("errore")}</hxk-badge>` : nothing}
+          ${auth ? html`<hxk-badge tone="danger">${tr("Link Google again")}</hxk-badge>` : st.last_error ? html`<hxk-badge tone="danger" title=${st.last_error}>${tr("error")}</hxk-badge>` : nothing}
         </div>
-        <div class="small muted tnum">${tr("Ultimo controllo")} ${when(st.last_check)} · riuscito ${when(st.last_ok)} · ${st.last_new ?? 0} ${tr("nuove ·")} ${st.pushed_total ?? 0} ${tr("in tutto")}</div>
+        <div class="small muted tnum">${tr("Last check")} ${when(st.last_check)} · ${tr("succeeded")} ${when(st.last_ok)} · ${st.last_new ?? 0} ${tr("new ·")} ${st.pushed_total ?? 0} ${tr("in total")}</div>
         ${st.last_error && !auth ? html`<div class="det">${st.last_error}</div>` : nothing}
       </div>
     </hxk-card>`;
   }
 
   private renderSubs(subs: any[]) {
-    return html`<hxk-card heading=${tr("Chi riceve cosa")} subtitle=${tr("Ogni modulo chiede le sue email con le sue regole")}>
-      ${!subs.length ? html`<hxk-state kind="empty" text=${tr("Nessun modulo iscritto")}></hxk-state>` : subs.map(s => html`<div class="r">
+    return html`<hxk-card heading=${tr("Who receives what")} subtitle=${tr("Each module asks for its emails with its own rules")}>
+      ${!subs.length ? html`<hxk-state kind="empty" text=${tr("No subscribed module")}></hxk-state>` : subs.map(s => html`<div class="r">
         <div class="grow col" style="gap:3px">
           <div class="row wrap"><span class="t">${s.title || s.key}</span><hxk-badge tone="accent">${s.owner}</hxk-badge>
-            ${s.last_ring === 'failed' ? html`<hxk-badge tone="warning" title=${tr("Il modulo non ha risposto: le email lo aspettano nell'archivio")}>${tr("in attesa")}</hxk-badge>` : nothing}</div>
+            ${s.last_ring === 'failed' ? html`<hxk-badge tone="warning" title=${tr("The module didn't answer: the emails wait for it in the archive")}>${tr("waiting")}</hxk-badge>` : nothing}</div>
           <div class="det">${rule(s)}</div>
-          <div class="small muted tnum">${s.delivered_total || 0} ${tr("consegnate · ultima")} ${when(s.last_delivery_at)}</div>
+          <div class="small muted tnum">${s.delivered_total || 0} ${tr("delivered · last")} ${when(s.last_delivery_at)}</div>
         </div>
         <hxk-button size="sm" variant="ghost" icon="refresh" ?loading=${this.busy === s.id} @click=${() => this.backfill(s)}
-          title=${tr("Ripassa al modulo le email degli ultimi giorni")}>${tr("Ripassa")}</hxk-button>
+          title=${tr("Pass the emails of the last days to the module again")}>${tr("Go over")}</hxk-button>
       </div>`)}
     </hxk-card>`;
   }
 
   private renderLog(rows: any[]) {
-    return html`<hxk-card heading=${tr("Ultime consegne")}>
-      ${!rows.length ? html`<hxk-state kind="empty" text=${tr("Ancora nessuna consegna da quando Iris è partito")}></hxk-state>` : rows.map(d => html`<div class="r">
+    return html`<hxk-card heading=${tr("Latest deliveries")}>
+      ${!rows.length ? html`<hxk-state kind="empty" text=${tr("No delivery since Iris started")}></hxk-state>` : rows.map(d => html`<div class="r">
         <div class="grow col" style="gap:3px">
           <div class="row wrap"><span class="t">${d.count} → ${d.owner}</span>
-            ${d.ring_ok === false ? html`<hxk-badge tone="warning">${tr("modulo non raggiungibile")}</hxk-badge>` : nothing}
-            ${d.source === 'backfill' ? html`<hxk-badge tone="neutral">${tr("ripassate")}</hxk-badge>` : nothing}</div>
+            ${d.ring_ok === false ? html`<hxk-badge tone="warning">${tr("module unreachable")}</hxk-badge>` : nothing}
+            ${d.source === 'backfill' ? html`<hxk-badge tone="neutral">${tr("reviewed")}</hxk-badge>` : nothing}</div>
           ${d.subjects?.length ? html`<div class="det">${d.subjects.join(' · ')}</div>` : nothing}
         </div>
         <span class="small muted tnum">${when(d.at)}</span>
@@ -131,14 +131,14 @@ export class IrisEmail extends HestiaElement {
     if (this.error) return html`<div class="page"><h1>${tr("Email")}</h1><hxk-state kind="offline" text=${this.error}></hxk-state></div>`;
     const d = this.data;
     return html`<div class="page">
-      <div class="head"><h1>${tr("Email")}</h1><span class="sub">${tr("Le email arrivano ai moduli da sole: niente controlli per modulo")}</span>
+      <div class="head"><h1>${tr("Email")}</h1><span class="sub">${tr("Emails reach the modules by themselves: no checks per module")}</span>
         <span class="grow"></span>
-        <hxk-button icon="refresh" ?loading=${this.busy === 'check'} @click=${() => this.check()}>${tr("Controlla ora")}</hxk-button></div>
+        <hxk-button icon="refresh" ?loading=${this.busy === 'check'} @click=${() => this.check()}>${tr("alt2::Check now")}</hxk-button></div>
       ${!d ? html`<hxk-state kind="loading"></hxk-state>` : html`
         <hxk-stat .items=${[
-          { label: tr('Moduli iscritti'), value: new Set((d.subscriptions || []).map((s: any) => s.owner)).size },
-          { label: tr('Email viste'), value: d.stats?.incoming_messages ?? 0 },
-          { label: tr('Non per nessuno'), value: d.stats?.unmatched ?? 0 },
+          { label: tr('Subscribed modules'), value: new Set((d.subscriptions || []).map((s: any) => s.owner)).size },
+          { label: tr('Emails seen'), value: d.stats?.incoming_messages ?? 0 },
+          { label: tr('Not for anyone'), value: d.stats?.unmatched ?? 0 },
         ]}></hxk-stat>
         ${this.renderWatcher(d.watcher)}
         ${this.renderSubs(d.subscriptions || [])}

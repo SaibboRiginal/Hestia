@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from . import git_ops
+from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 _REF = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/@^~{}-]{0,200}$")
 _SHA = re.compile(r"^[0-9a-fA-F]{4,40}$")
@@ -49,7 +50,7 @@ def _secret(path: str) -> bool:
 
 
 def _clip(text: str, limit: int) -> tuple[str, bool]:
-    return (text, False) if len(text) <= limit else (text[:limit] + "\n... [troncato]", True)
+    return (text, False) if len(text) <= limit else (text[:limit] + tr("\n... [truncated]"), True)
 
 
 def parse_numstat(out: str) -> list[dict[str, Any]]:

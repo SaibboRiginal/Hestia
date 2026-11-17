@@ -84,11 +84,11 @@ export class ChatsService {
 
   /** «Elimina» from any list of conversations: asks first, then tells how it went. */
   async confirmRemove(c: ChatSummary): Promise<boolean> {
-    const ok = await this.dialogs.confirm(tr('Eliminare la conversazione?'),
-      tr("«{0}» viene eliminata per sempre con tutti i suoi messaggi. Quello che l'assistente ha imparato su di te resta.", c.title), tr('Elimina'), true);
+    const ok = await this.dialogs.confirm(tr('Delete the conversation?'),
+      tr("«{0}» is deleted forever with all its messages. What the assistant learned about you stays.", c.title), tr('Delete'), true);
     if (!ok) return false;
-    if (!(await this.remove(c.session_id))) { this.toasts.error('Non eliminata: riprova tra poco'); return false; }
-    this.toasts.success(tr('Conversazione eliminata'));
+    if (!(await this.remove(c.session_id))) { this.toasts.error(tr('Not deleted: try again shortly')); return false; }
+    this.toasts.success(tr('Conversation deleted'));
     return true;
   }
 

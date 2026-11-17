@@ -71,26 +71,26 @@ try:
                 },
             },
             handler=lambda **kw: {"status": "ok", "tool": "sync_calendar", "params": kw},
-            title="Sincronizza calendario", method="POST", path="/api/ingest/calendar/trigger",
+            title="Sync calendar", method="POST", path="/api/ingest/calendar/trigger",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 ("Confirm the calendar sync: how many events were found for each provider (Google, Outlook). Be "
                  "brief.")
             ),
             telegram_visible=True, telegram_group="giornata",
-                telegram={"section": "Calendario"}),
+                telegram={"section": "Calendar"}),
         MCPTool(
             name="gateway_auth_status",
             description="Check which providers (Google, Outlook) are signed in and active",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_status", "params": kw},
-            title="Account collegati", method="GET", path="/api/gateway/auth/status",
+            title="Linked accounts", method="GET", path="/api/gateway/auth/status",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 "List the configured providers and their sign-in state. Be direct."
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Account collegati"}),
+                telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_verify",
             description=(
@@ -100,24 +100,22 @@ try:
             ),
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_verify", "params": kw},
-            title="Verifica account collegati",
+            title="Check linked accounts",
             method="POST",
             path="/api/gateway/auth/verify",
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt=(
-                ("List the state of each provider and say clearly whether notifications were sent for the broken "
-                 "ones. If Google is not signed in, remind the user to use the 'Riautentica Google' button in the "
-                 "notification they received.")
+                ("List the state of each provider and say clearly whether notifications were sent for the broken ones. If Google is not signed in, remind the user to use the button to sign in to Google again in the notification they received.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Account collegati"}),
+                telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_initiate_google",
             description="Start the OAuth flow for Google Calendar",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_initiate_google", "params": kw},
-            title="Collega Google", method="POST", path="/api/gateway/auth/initiate/google",
+            title="Link Google", method="POST", path="/api/gateway/auth/initiate/google",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 ("Show the auth_url link (clickable). If mode=device_code show verification_url and user_code "
@@ -127,7 +125,7 @@ try:
                  "the address bar and paste it here in chat.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Account collegati", "primary": 4}),
+                telegram={"section": "Linked accounts", "primary": 4}),
         MCPTool(
             name="gateway_auth_complete_google",
             description=(
@@ -142,26 +140,26 @@ try:
                 "required": ["code"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_complete_google", "params": kw},
-            title="Completa collegamento Google", method="POST", path="/api/gateway/auth/complete/google",
+            title="Complete Google linking", method="POST", path="/api/gateway/auth/complete/google",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 "If status=authorized confirm Google Calendar is linked. Otherwise report error and hint briefly."
             ),
             telegram_visible=False, telegram_group="sistema",
-                telegram={"section": "Avanzate"}),
+                telegram={"section": "Advanced"}),
         MCPTool(
             name="gateway_auth_initiate_microsoft",
             description="Start the device-code OAuth flow for Outlook/Microsoft",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_initiate_microsoft", "params": kw},
-            title="Collega Outlook", method="POST", path="/api/gateway/auth/initiate/microsoft",
+            title="Link Outlook", method="POST", path="/api/gateway/auth/initiate/microsoft",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 ("Show the user the Microsoft device code and verification URL. Ask them to open the URL and "
                  "enter the code. Then use GET /api/gateway/auth/poll/microsoft to check completion.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Account collegati"}),
+                telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_poll",
             description="Check whether the user completed the OAuth flow",
@@ -173,44 +171,43 @@ try:
                 "required": ["provider"],
             },
             handler=lambda **kw: {"status": "ok", "tool": "gateway_auth_poll", "params": kw},
-            title="Controlla collegamento", method="GET", path="/api/gateway/auth/poll/{provider}",
+            title="Check link", method="GET", path="/api/gateway/auth/poll/{provider}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 ("Tell the user whether the Google/Microsoft sign-in completed or is still pending. If completed, "
                  "say Calendar and Gmail now work.")
             ),
             telegram_visible=True, telegram_group="sistema",
-                telegram={"section": "Avanzate"}),
+                telegram={"section": "Advanced"}),
         MCPTool(
             name="weather_now",
-            description=(("Weather now and today in a place: temperature, feels like, conditions, wind, hours of rain. "
-                          "place: name of a saved place (casa, lavoro, palestra…), address or city; empty = Casa.")),
+            description=(("Weather now and today in a place: temperature, feels like, conditions, wind, hours of rain. place: name of a saved place (home, work, gym…), address or city; empty = home.")),
             parameters={"type": "object", "properties": {
-                "place": {"type": "string", "description": "Saved place, address or city (empty = Casa)"}}},
+                "place": {"type": "string", "description": "Saved place, address or city (empty = home)"}}},
             handler=lambda **kw: {"status": "ok", "tool": "weather_now", "params": kw},
-            title="Meteo adesso", method="GET", path="/api/gateway/weather/now",
+            title="Weather now", method="GET", path="/api/gateway/weather/now",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Answer in one or two sentences: place, temperature, conditions and whether it will rain today "
                               "(with hours). If status is needs_place or place_not_found explain what is needed.")),
             telegram_visible=True, telegram_group="giornata",
-                telegram={"section": "Meteo", "primary": 2, "label": "Meteo"}),
+                telegram={"section": "Weather", "primary": 2, "label": "Weather"}),
         MCPTool(
             name="weather_forecast",
             description=(("Weather forecast by day (up to 16 days ahead): min/max, conditions, chance and hours of rain, "
                           "wind, sunrise/sunset. date_from/date_to YYYY-MM-DD (empty = today + 2 days); hourly=true adds "
                           "the hours. place as in weather_now.")),
             parameters={"type": "object", "properties": {
-                "place": {"type": "string", "description": "Saved place, address or city (empty = Casa)"},
+                "place": {"type": "string", "description": "Saved place, address or city (empty = home)"},
                 "date_from": {"type": "string", "description": "First day YYYY-MM-DD"},
                 "date_to": {"type": "string", "description": "Last day YYYY-MM-DD"},
                 "hourly": {"type": "boolean", "description": "Include the hours"}}},
             handler=lambda **kw: {"status": "ok", "tool": "weather_forecast", "params": kw},
-            title="Previsioni meteo", method="GET", path="/api/gateway/weather/forecast",
+            title="Weather forecast", method="GET", path="/api/gateway/weather/forecast",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Summarise the forecast day by day, briefly (min–max, conditions, rain with hours). If status is "
                               "not ok explain what is needed.")),
             telegram_visible=True, telegram_group="giornata",
-                telegram={"section": "Meteo", "label": "Previsioni"}),
+                telegram={"section": "Weather", "label": "alt::Forecast"}),
         *devices_api.tools(MCPTool),
     ]
     app.include_router(create_mcp_router(_hecate_mcp_tools, service_name="hecate"))
@@ -225,13 +222,12 @@ app.include_router(devices_api.router)
 # ── WebUI plugin «Dispositivi» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
 from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
 UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
-ui = PluginClient("hecate", title="Account e dispositivi", icon="link", color="teal", kind="core", dist=UI_DIST,
-                  description="Gli account e i dispositivi collegati: calendario, mail, meteo, orologio, telefono.",
+ui = PluginClient("hecate", title="Accounts and devices", icon="link", color="teal", kind="core", dist=UI_DIST,
+                  description="The linked accounts and devices: calendar, mail, weather, watch, phone.",
                   version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
-         pages=[plugin_page("dispositivi", "Dispositivi", element="hecate-devices", icon="pulse", order=105,
-                            help="L'orologio Garmin (sonno e attività ogni mattina) e il telefono Android (a casa, in "
-                                 "carica, notifiche delle app scelte): collegali e guarda l'ultimo dato arrivato.")])
+         pages=[plugin_page("dispositivi", "Devices", element="hecate-devices", icon="pulse", order=105,
+                            help="The Garmin watch (sleep and activities every morning) and the Android phone (at home, charging, notifications of the chosen apps): link them and see the latest data received.")])
 app.include_router(ui.router())
 
 vault = ArchiveClient()
@@ -319,7 +315,7 @@ def _check_auth_and_notify() -> None:
     Hermes deduplicates duplicate notifications.
     """
     _reauth_actions = [
-        {"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"},
+        {"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"},
     ]
 
     # 1) Calendar provider check
@@ -330,7 +326,7 @@ def _check_auth_and_notify() -> None:
         _notify_action_required(
             "reauth_google_calendar",
             (
-                tr("⚠️ <b>Google Calendar</b> non è autenticato.\n\n{0}\n\nUsa il pulsante qui sotto per riautenticarti.", reason)
+                tr("⚠️ <b>Google Calendar</b> is not signed in.\n\n{0}\n\nUse the button below to sign in again.", reason)
             ),
             actions=_reauth_actions,
         )
@@ -342,7 +338,7 @@ def _check_auth_and_notify() -> None:
         _notify_action_required(
             "reauth_google_gmail",
             (
-                tr("⚠️ <b>Gmail</b> non è accessibile.\n\n{0}\n\nUsa il pulsante qui sotto per riautenticarti con lo scope gmail.readonly.", mail_error)
+                tr("⚠️ <b>Gmail</b> is not accessible.\n\n{0}\n\nUse the button below to sign in again with the gmail.readonly scope.", mail_error)
             ),
             actions=_reauth_actions,
         )
@@ -959,7 +955,7 @@ def gateway_calendar_ensure(body: dict):
     target = _calendar_registry.get(provider_name)
     if target is None:
         return {"status": "unavailable", "provider": provider_name, "name": name,
-                "error": tr("{0} non collegato", provider_name)}
+                "error": tr("{0} not linked", provider_name)}
     try:
         calendar_id = target.ensure_calendar(name)
     except NotImplementedError as exc:
@@ -988,7 +984,7 @@ def _recap_piece(day, nxt) -> dict:
     """Daily recap piece: tomorrow's weather at Casa (``hestia_common.recap`` contract)."""
     facts = recap_facts(weather, nxt.isoformat())
     icon = facts.pop("icon", "cloud-sun")
-    return recap_contract.piece("hecate", tr("Meteo"), icon=icon, emoji="🌦️", order=5, **facts)
+    return recap_contract.piece("hecate", tr("Weather"), icon=icon, emoji="🌦️", order=5, **facts)
 
 
 app.include_router(recap_contract.recap_router(
@@ -1038,7 +1034,7 @@ def gateway_weather_places():
                         for r in rows]}
 
 
-_REAUTH_ACTIONS = [{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}]
+_REAUTH_ACTIONS = [{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}]
 
 
 class MailSendRequest(BaseModel):
@@ -1059,7 +1055,7 @@ def _parse_since(since: str | None) -> datetime | None:
 def _mail_unavailable(exc: MailUnavailable, q: str = "") -> dict:
     if exc.auth_required:
         _notify_action_required(
-            "reauth_google_gmail", tr("⚠️ <b>Gmail</b> non accessibile: {0}.", exc), actions=_REAUTH_ACTIONS)
+            "reauth_google_gmail", tr("⚠️ <b>Gmail</b> not accessible: {0}.", exc), actions=_REAUTH_ACTIONS)
     return {"status": "error", "query": q, "count": 0, "messages": [], "error": str(exc),
             "action_required": "reauth_google" if exc.auth_required else None}
 
@@ -1225,16 +1221,14 @@ def _mail_watch_seconds() -> int:
 def _mail_agenda_rules() -> list[dict]:
     minutes = max(1, _mail_watch_seconds() // 60)
     rules = [job_rule(
-        MAIL_WATCH_JOB, tr("Controlla le email nuove"), service="hecate", path="/api/gateway/mail/watch/run",
+        MAIL_WATCH_JOB, "Check new emails", service="hecate", path="/api/gateway/mail/watch/run",
         body={"trigger": "agenda"}, recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
-        description="Un solo controllo leggero della casella per tutta Hestia: le email nuove vanno a Iris, "
-                    "che le passa ai moduli iscritti (Scout, Spese…). Con Gmail push attivo è solo una rete "
-                    "di sicurezza.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
+        description="One light mailbox check for all of Hestia: new emails go to Iris, which passes them to the subscribed modules (Scout, Expenses…). With Gmail push on it is only a safety net.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
     if gmail_pubsub.configured():
         rules.append(job_rule(
-            MAIL_RENEW_JOB, tr("Rinnova l'avviso di Gmail"), service="hecate",
+            MAIL_RENEW_JOB, "Renew the Gmail watch", service="hecate",
             path="/api/gateway/mail/watch/renew", body={}, recurrence="FREQ=DAILY",
-            start_at="2026-01-01T04:10:00", description="Gmail push scade dopo 7 giorni: lo rinnovo ogni giorno.",
+            start_at="2026-01-01T04:10:00", description="Gmail push expires after 7 days: I renew it every day.",
             timeout_seconds=30))
     return rules
 
@@ -1389,16 +1383,16 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
         msg = _html.escape(str(detail.get("error", "")))
         hint = _html.escape(str(detail.get("hint", "")))
         return HTMLResponse(
-            _OAUTH_CALLBACK_HTML.format(icon="❌", title=tr("Autorizzazione non riuscita"),
+            _OAUTH_CALLBACK_HTML.format(icon="❌", title=tr("Authorization failed"),
                                         detail=f"{msg}<br><br>{hint}"),
             status_code=exc.status_code)
     if result["status"] == "authorized":
         scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "nessuno"
         return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
-            icon="✅", title=tr("Autorizzazione completata!"),
-            detail=tr("Google è connesso a Hestia (scope: {0}). Puoi chiudere questa pagina e tornare su Telegram.", _html.escape(scopes))))
+            icon="✅", title=tr("Authorization completed!"),
+            detail=tr("Google is connected to Hestia (scope: {0}). You can close this page and go back to Telegram.", _html.escape(scopes))))
     return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
-        icon="⚠️", title=tr("Token salvato, provider non attivo"),
+        icon="⚠️", title=tr("Token saved, provider not active"),
         detail=_html.escape(str(result.get("unavailable")))))
 
 
@@ -1553,10 +1547,10 @@ def _initiate_google_redirect_flow() -> dict:
                                "redirect_uri": redirect}
     if public:
         instructions = (
-            tr("Apri il link da qualsiasi dispositivo (telefono, PC) e concedi l'accesso a Calendar e Gmail: il ritorno passa dal tunnel pubblico e l'autenticazione si completa da sola (riceverai conferma su Telegram)."))
+            tr("Open the link from any device (phone, PC) and grant access to Calendar and Gmail: the return goes through the public tunnel and the sign-in completes by itself (you'll get a confirmation on Telegram)."))
     else:
         instructions = (
-            tr("DA PC (dove gira Hestia): apri il link, concedi l'accesso — si completa da solo.\nDA TELEFONO: apri il link, concedi l'accesso; la pagina finale (localhost) NON si carica: è normale. Copia l'URL intero dalla barra degli indirizzi (o solo il valore di code=) e incollalo qui in chat.\nPer completare da telefono senza copia-incolla avvia cloudflare-tunnel.bat."))
+            tr("FROM PC (where Hestia runs): open the link, grant access — it completes by itself.\nFROM PHONE: open the link, grant access; the final page (localhost) does NOT load: that's normal. Copy the whole URL from the address bar (or just the value of code=) and paste it here in chat.\nTo complete from the phone without copy-paste start cloudflare-tunnel.bat."))
     logger.info("event=google_oauth_redirect_initiated redirect_uri=%s public=%s", redirect, public)
     return {
         "status": "initiated",
@@ -1624,7 +1618,7 @@ def _initiate_google_device_flow() -> dict:
         "verification_url": verification_url,
         "expires_in": expires_in,
         "instructions": (
-            tr("1. Apri {0} sul tuo telefono o computer\n2. Inserisci questo codice: {1}\n3. Concedi l'accesso a Calendar e Gmail\n4. Hestia completa da sola (o usa 'Verifica completamento').", verification_url, user_code)
+            tr("1. Open {0} on your phone or computer\n2. Enter this code: {1}\n3. Grant access to Calendar and Gmail\n4. Hestia completes by itself (or use 'Check completion').", verification_url, user_code)
         ),
     }
 
@@ -1695,8 +1689,8 @@ def _start_google_device_auto_poll() -> None:
             if status == "error":
                 _notify_action_required(
                     "google_reauth_failed",
-                    tr("❌ <b>Autenticazione Google fallita:</b> {0}\n\nRiprova con il pulsante qui sotto.", result.get('error', 'unknown')),
-                    actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
+                    tr("❌ <b>Google sign-in failed:</b> {0}\n\nTry again with the button below.", result.get('error', 'unknown')),
+                    actions=[{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}],
                 )
                 return
             if result.get("error") == "slow_down":
@@ -1707,8 +1701,8 @@ def _start_google_device_auto_poll() -> None:
         logger.warning("event=google_auto_poll_timeout")
         _notify_action_required(
             "google_reauth_timeout",
-            tr("⏰ <b>Autenticazione Google scaduta.</b>\n\nRiavviala con il pulsante qui sotto."),
-            actions=[{"text": "🔑 Riautentica Google", "command": "gateway_auth_initiate_google"}],
+            tr("⏰ <b>Google sign-in expired.</b>\n\nRestart it with the button below."),
+            actions=[{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}],
         )
 
     threading.Thread(target=_auto_poller, daemon=True, name="google-auto-poll").start()
@@ -1731,9 +1725,9 @@ def _apply_google_token(token_data: dict) -> dict:
         gmail_ok = "https://www.googleapis.com/auth/gmail.readonly" in granted
         _notify_action_required(
             "google_reauth_complete",
-            tr("✅ <b>Google</b> è connesso a Hestia.\n\n")
+            tr("✅ <b>Google</b> is connected to Hestia.\n\n")
             + ("Calendar e Gmail operativi." if gmail_ok
-               else tr("Calendar operativo. Gmail NON autorizzato: riautentica concedendo la lettura email.")),
+               else tr("Calendar working. Gmail NOT authorized: sign in again granting email reading.")),
         )
     return {
         "status": "authorized" if ok else "token_saved_provider_unavailable",
@@ -1741,7 +1735,7 @@ def _apply_google_token(token_data: dict) -> dict:
         "granted_scopes": granted,
         "active_providers": active,
         "unavailable": refreshed.get("unavailable", {}),
-        "note": tr("Token salvato in data/google_token.json: sopravvive ai riavvii del container."),
+        "note": tr("Token saved in data/google_token.json: it survives container restarts."),
     }
 
 
@@ -1874,7 +1868,7 @@ def _google_words(fn):
             d = exc.detail
             if isinstance(d, dict):
                 d = " ".join(str(d.get(k) or "") for k in ("error", "hint")).strip()
-            raise connections.ConnectError(str(d or tr("Google non ha accettato."))[:300])
+            raise connections.ConnectError(str(d or tr("Google did not accept."))[:300])
     return run
 
 

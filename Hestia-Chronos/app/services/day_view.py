@@ -63,9 +63,9 @@ def busy(start: datetime, end: datetime) -> list[tuple[datetime, datetime, str]]
 
 
 def _event_line(r: dict) -> str:
-    title = str(r.get("title") or tr("Impegno")).strip()
+    title = str(r.get("title") or tr("Appointment")).strip()
     if r.get("all_day"):
-        return tr("{0} (tutto il giorno)", title)
+        return tr("{0} (all day)", title)
     return f"{r['_start'].strftime('%H:%M')} {title}"
 
 
@@ -75,7 +75,7 @@ def _bounds(d: date) -> tuple[datetime, datetime]:
 
 
 def _cap(lines: list[str]) -> list[str]:
-    return lines if len(lines) <= _MAX_LINES else lines[:_MAX_LINES - 1] + [f"e altri {len(lines) - _MAX_LINES + 1}"]
+    return lines if len(lines) <= _MAX_LINES else lines[:_MAX_LINES - 1] + [tr("and {0} more", len(lines) - _MAX_LINES + 1)]
 
 
 def recap(day: date, nxt: date) -> dict:
@@ -88,7 +88,7 @@ def recap(day: date, nxt: date) -> dict:
 
     events = user_events(d0, d1)
     if events:
-        done.append({"text": tr("Impegni: ") + ", ".join(_cap([_event_line(r) for r in events]))})
+        done.append({"text": tr("Appointments: ") + ", ".join(_cap([_event_line(r) for r in events]))})
 
     tasks_done, tasks_skipped, failed = [], [], []
     for o in A.agenda(d0, d1, include_done=True):
@@ -103,11 +103,11 @@ def recap(day: date, nxt: date) -> dict:
         elif o["type"] == "job" and (o.get("run") or {}).get("ok") is False:
             failed.append(o["title"])
     if tasks_done:
-        done.append({"text": tr("Fatto: ") + ", ".join(_cap(list(dict.fromkeys(tasks_done)))), "tone": "success"})
+        done.append({"text": tr("alt::Done: ") + ", ".join(_cap(list(dict.fromkeys(tasks_done)))), "tone": "success"})
     if tasks_skipped:
-        missed.append({"text": tr("Saltato: ") + ", ".join(_cap(list(dict.fromkeys(tasks_skipped)))), "tone": "warning"})
+        missed.append({"text": tr("alt2::Skipped: ") + ", ".join(_cap(list(dict.fromkeys(tasks_skipped)))), "tone": "warning"})
     if failed:
-        missed.append({"text": tr("Non riuscito: ") + ", ".join(_cap(list(dict.fromkeys(failed)))), "tone": "danger"})
+        missed.append({"text": tr("Failed: ") + ", ".join(_cap(list(dict.fromkeys(failed)))), "tone": "danger"})
 
     for r in user_events(n0, n1):
         upcoming.append({"text": _event_line(r), "at": r["_start"].isoformat()})

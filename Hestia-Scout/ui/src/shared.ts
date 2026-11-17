@@ -1,4 +1,4 @@
-import { css, html, tr } from '@hestia/webui-sdk';
+import { css, html, locale, tr } from '@hestia/webui-sdk';
 
 export interface Listing {
   id: string; url: string; title: string; address: string; city: string;
@@ -22,10 +22,10 @@ export interface Stats {
   cities: string[];
 }
 
-const nf = new Intl.NumberFormat('it-IT');
+const nf = new Intl.NumberFormat(locale());
 export const euro = (n: number | null | undefined) => n ? `€ ${nf.format(n)}` : '—';
 export const compactEuro = (n: number | null | undefined) =>
-  n ? `€ ${new Intl.NumberFormat('it-IT', { notation: 'compact', maximumFractionDigits: 1 }).format(n)}` : '—';
+  n ? `€ ${new Intl.NumberFormat(locale(), { notation: 'compact', maximumFractionDigits: 1 }).format(n)}` : '—';
 export const num = (n: number | null | undefined) => (n || n === 0) ? nf.format(n) : '—';
 
 export const statusTone = (s: string) =>
@@ -34,12 +34,12 @@ export const statusTone = (s: string) =>
 export function ago(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso); const days = Math.floor((Date.now() - d.getTime()) / 86_400_000);
-  if (days <= 0) return 'oggi'; if (days === 1) return 'ieri'; if (days < 7) return tr("{0} giorni fa", days);
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  if (days <= 0) return tr('today'); if (days === 1) return tr('yesterday'); if (days < 7) return tr("{0} days ago", days);
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
 }
 
 export function facts(l: Listing): string {
-  return [l.surface_m2 ? `${num(l.surface_m2)} m²` : '', l.rooms ? `${l.rooms} ${Number(l.rooms) === 1 ? 'locale' : 'locali'}` : '', l.city].filter(Boolean).join(' · ');
+  return [l.surface_m2 ? `${num(l.surface_m2)} m²` : '', l.rooms ? (Number(l.rooms) === 1 ? tr('1 room') : tr('{0} rooms', l.rooms)) : '', l.city].filter(Boolean).join(' · ');
 }
 
 /** Photo with a calm fallback (listing CDNs block hotlinks now and then). */

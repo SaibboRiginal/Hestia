@@ -466,7 +466,7 @@ def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
     assert groq["needs_key"] and not groq["key"] and groq["models"] == []      # no key: nothing to list yet
     speak = cat["voce"]["providers"]
     assert speak[0]["type"] == "kokoro" and speak[0]["voices"]
-    assert "naturale" in speak[0]["note"] and any("sintetizzatore" in p["note"] for p in speak)   # Kokoro vs Piper
+    assert "natural" in speak[0]["note"] and any("synthesi" in p["note"] for p in speak)   # Kokoro vs Piper
     assert cat["ascolto"]["current"]["provider"] == "whisper-locale"
 
 
@@ -571,3 +571,24 @@ def test_mute_voice_is_an_error_not_a_silent_play(world):
     out = world["echo"].setup_preview({"provider": "due", "voice": "v9"})
     assert out["ok"] is False and "muto" in out["detail"]
     assert audio.peak(tone(0.3)) > 0.25 and audio.peak(b"not a wav") == 0.0
+
+
+# ── The chosen name in the voice (docs/work/2026-11-16-nome-ovunque) ─────────────────────────────────────────
+
+@pytest.mark.unit
+def test_sample_says_the_chosen_name_and_gender():
+    from app.core import lang
+    assert lang.sample("it") == "Ciao, sono Hestia. Questa è la mia voce."
+    assert lang.sample("ja").startswith("こんにちは、ヘスティアです")            # default name in its own script
+    leo = {"assistant": "Leo", "gender": "lui"}
+    assert lang.sample("pt", leo) == "Olá, eu sou o Leo. Esta é a minha voz."
+    assert lang.sample("ja", leo).startswith("こんにちは、Leoです") and lang.sample("xx", leo).startswith("Ciao, sono Leo")
+
+
+@pytest.mark.unit
+def test_recognition_hint_knows_her_name_and_yours():
+    from app.core.service import _with_names
+    ident = {"assistant": "Leo", "owner": "Marko"}
+    assert _with_names("", ident) == "Leo, Marko."
+    assert _with_names("Hercules, Roma.", ident) == "Leo, Marko, Hercules, Roma."
+    assert _with_names("leo, Roma.", {"assistant": "Leo", "owner": ""}) == "leo, Roma."     # already there

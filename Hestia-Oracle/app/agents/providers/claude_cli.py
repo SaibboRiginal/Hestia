@@ -32,16 +32,16 @@ _TOOL_PROTOCOL = (
 
 class ClaudeCliProvider(LLMProvider):
     TYPE = "claude_cli"
-    LABEL = "Claude (abbonamento)"
+    LABEL = "Claude (subscription)"
     CONTEXT_WINDOW = 200_000
-    BILLING = "Abbonamento Claude · limiti condivisi con Forge"
+    BILLING = "Claude subscription · limits shared with Forge"
     CONFIG_FIELDS = (
-        {"key": "bin", "type": "string", "label": "Comando claude", "default": "claude"},
-        {"key": "authed", "type": "bool", "label": "Login abbonamento presente", "default": False},
-        {"key": "env", "type": "object", "label": "Ambiente del processo", "default": None},
-        {"key": "effort_by_mode", "type": "object", "label": "Ragionamento per modalità",
+        {"key": "bin", "type": "string", "label": "claude command", "default": "claude"},
+        {"key": "authed", "type": "bool", "label": "Subscription login present", "default": False},
+        {"key": "env", "type": "object", "label": "Process environment", "default": None},
+        {"key": "effort_by_mode", "type": "object", "label": "Reasoning per mode",
          "default": {"fast": "low", "normal": "medium", "deep": "high"}},
-        {"key": "timeout_sec", "type": "int", "label": "Timeout (secondi)", "default": 300},
+        {"key": "timeout_sec", "type": "int", "label": "Timeout (seconds)", "default": 300},
     )
     CAPABILITIES = frozenset({"chat", "tools", "thinking"})
     MODELS = ("haiku", "sonnet", "opus", "claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5")

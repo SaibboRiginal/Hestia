@@ -29,7 +29,7 @@ def _wait_queued(n: int, timeout: float = 3.0):
     end = time.monotonic() + timeout
     while time.monotonic() < end:
         st = llm_bus.status()["waiting"]
-        if st["chat"] + st["sottofondo"] >= n:
+        if st["chat"] + st["background"] >= n:
             return
         time.sleep(0.01)
     raise AssertionError("calls never queued")
@@ -186,8 +186,8 @@ def test_chain_agent_takes_a_slot_for_local_steps_but_not_for_embeddings(monkeyp
     monkeypatch.setattr(agent, "_answered", lambda *a: None)
     monkeypatch.setattr(agent, "_usage", lambda *a: _Slot("usage"))
     taken.clear()
-    assert agent.ask("ciao") == "ok"
+    assert agent.ask("hi") == "ok"
     assert taken == ["usage", "loc"]
     taken.clear()
-    assert agent.embed("ciao") == [0.1]
+    assert agent.embed("hi") == [0.1]
     assert taken == ["usage"]

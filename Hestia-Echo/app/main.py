@@ -61,65 +61,56 @@ TZ = os.getenv("TZ") or "Europe/Rome"
 API = "/api/voice"
 
 # ── settings (Themis) ────────────────────────────────────────────────────────
-MODES = [("interna", "Interna: catene di Echo"), ("esterna", "Esterna: un motore voce fa tutto, Echo fa da porta")]
-FALLBACKS = [("interna", "Torna alle catene interne"), ("nessuno", "Nessuno: dimmi che non va")]
-LANGUAGES = [("auto", "Segui la conversazione"), ("it", "Italiano"), ("en", "Inglese"), ("es", "Spagnolo"),
-             ("fr", "Francese"), ("de", "Tedesco")]
+MODES = [("interna", "Internal: Echo chains"), ("esterna", "External: one voice engine does everything, Echo is the door")]
+FALLBACKS = [("interna", "Back to the internal chains"), ("nessuno", "None: tell me it's not working")]
+LANGUAGES = [("auto", "Follow the conversation"), ("it", "Italiano"), ("en", "alt::English"), ("es", "Spanish"),
+             ("fr", "French"), ("de", "German")]
 
 settings = SettingsClient("echo").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
-    setting(PROVIDERS_KEY, "Fornitori della voce", "object", DEFAULT_PROVIDERS, group="Voce", order=0,
+    setting(PROVIDERS_KEY, "Voice providers", "object", DEFAULT_PROVIDERS, group="Voice", order=0,
             editor="voice_providers",
-            help="Dove stanno i motori della voce: nome, standard (Whisper locale, Piper, Kokoro, compatibile OpenAI, "
-                 "Google, ElevenLabs, Wyoming), indirizzo e opzioni. La chiave sta solo nel file .env come "
-                 "ECHO_KEY_<NOME>."),
-    setting(CHAINS_KEY, "Catene di ascolto e voce", "object", DEFAULT_CHAINS, group="Voce", order=1,
+            help="Where the voice engines are: name, standard (local Whisper, Piper, Kokoro, OpenAI compatible, Google, ElevenLabs, Wyoming), address and options. The key lives only in the .env file as ECHO_KEY_<NAME>."),
+    setting(CHAINS_KEY, "Listening and voice chains", "object", DEFAULT_CHAINS, group="Voice", order=1,
             editor="voice_chains",
-            help="Liste ordinate fornitore/modello o voce, ognuna di ascolto o di voce: se un passo non va o finisce "
-                 "la quota passo al successivo."),
-    setting(USECASES_KEY, "Usi della voce", "object", {}, group="Voce", order=2, editor="voice_usecases",
-            help="Per ogni uso dichiarato (vocali di Telegram, dettatura, risposte lette…): catena e modalità. "
-                 "Vuoto = la scelta suggerita."),
-    setting(MODE_KEY, "Modalità della voce", "enum", "interna", group="Voce", order=3, options=MODES,
-            help="Interna: Echo usa le sue catene. Esterna: Echo passa tutto a un motore voce (tuo o nel cloud) e "
-                 "fa solo da porta. Ogni uso può scegliere la sua."),
-    setting(EXTERNAL_KEY, "Motore esterno", "enum", "", group="Voce", order=4, options_source=f"{API}/providers/options",
+            help="Ordered provider/model or voice lists, each for listening or for voice: if a step fails or runs out of quota I move to the next."),
+    setting(USECASES_KEY, "Voice uses", "object", {}, group="Voice", order=2, editor="voice_usecases",
+            help="For each declared use (Telegram voice messages, dictation, answers read aloud…): chain and mode. Empty = the suggested choice."),
+    setting(MODE_KEY, "Voice mode", "enum", "interna", group="Voice", order=3, options=MODES,
+            help="Internal: Echo uses its chains. External: Echo passes everything to a voice engine (yours or in the cloud) and is only the door. Each use can choose its own."),
+    setting(EXTERNAL_KEY, "External engine", "enum", "", group="Voice", order=4, options_source=f"{API}/providers/options",
             depends_on={"key": MODE_KEY, "equals": "esterna"}),
-    setting(EXTERNAL_MODEL_KEY, "Modello o voce del motore esterno", "string", "", group="Voce", order=5,
-            depends_on={"key": MODE_KEY, "equals": "esterna"}, help="Vuoto = quello predefinito del motore."),
-    setting(FALLBACK_KEY, "Se il motore esterno non risponde", "enum", "interna", group="Voce", order=6,
+    setting(EXTERNAL_MODEL_KEY, "External engine model or voice", "string", "", group="Voice", order=5,
+            depends_on={"key": MODE_KEY, "equals": "esterna"}, help="Empty = the engine's default."),
+    setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "interna", group="Voice", order=6,
             options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
-    setting("echo.language", "Lingua", "enum", "auto", group="Voce", order=7, options=LANGUAGES),
-    setting("echo.voce.max_chars", "Lettura massima", "int", 1200, group="Voce", order=8, min=200, max=10000,
-            unit="caratteri", help="Oltre, la voce legge l'inizio e dice che il resto è nel testo."),
-    setting("echo.ascolto.max_seconds", "Audio più lungo accettato", "int", 600, group="Voce", order=9, min=30,
+    setting("echo.language", "Language", "enum", "auto", group="Voice", order=7, options=LANGUAGES),
+    setting("echo.voce.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
+            unit="characters", help="Beyond it, the voice reads the start and says the rest is in the text."),
+    setting("echo.ascolto.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
             max=7200, unit="s", advanced=True),
-    setting("echo.live.silence_ms", "Pausa che chiude il turno dal vivo", "int", 1250, group="Voce", order=10,
-            min=300, max=5000, unit="ms", help="In modalità live: quanto silenzio vuol dire «ho finito di parlare»."),
-    setting(COOLDOWN_KEY, "Pausa di un motore senza quota", "int", 60, group="Voce", order=11, min=1, max=1440,
-            unit="min", advanced=True, help="Quando il fornitore non dice quando si ricarica la quota."),
-    setting("echo.audio.space_mb", "Spazio per gli audio", "int", 2048, group="Audio conservati", order=20, min=100,
+    setting("echo.live.silence_ms", "Pause that ends the live turn", "int", 1250, group="Voice", order=10,
+            min=300, max=5000, unit="ms", help="In live mode: how much silence means «I'm done talking»."),
+    setting(COOLDOWN_KEY, "Pause of an engine without quota", "int", 60, group="Voice", order=11, min=1, max=1440,
+            unit="min", advanced=True, help="When the provider does not say when the quota refills."),
+    setting("echo.audio.space_mb", "Space for audio", "int", 2048, group="Audio kept", order=20, min=100,
             max=200000, unit="MB",
-            help="Oltre, tolgo prima gli audio generati più vecchi (si rifanno dal testo). Le tue registrazioni non "
-                 "le tolgo mai: se da sole superano il limite ti avviso."),
-    setting("echo.audio.generated_days", "Giorni per gli audio generati", "int", 30, group="Audio conservati",
-            order=21, min=1, max=3650, unit="giorni",
-            help="Dopo l'ultimo ascolto. Riascoltando si rigenerano dal testo."),
+            help="Beyond it, I first remove the oldest generated audio (it is remade from the text). I never remove your recordings: if they alone exceed the limit I tell you."),
+    setting("echo.audio.generated_days", "Days for generated audio", "int", 30, group="Audio kept",
+            order=21, min=1, max=3650, unit="days",
+            help="After the last listen. Listening again regenerates them from the text."),
     # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
-    setting("echo.impronta.soglia", "Quanto deve somigliare alla tua voce", "float", 0.45, group="La tua voce",
+    setting("echo.impronta.soglia", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
-            help="Con la tua impronta registrata, le voci sotto questa somiglianza (TV, altre persone) diventano "
-                 "silenzio prima dell'ascolto. Più alto = più severo."),
-    setting("echo.impronta.usi", "Dove riconosco solo la tua voce", "list", ["webui.live.ascolto"],
-            group="La tua voce", order=41,
-            help="Usi della voce dove filtro le altre voci (es. webui.live.ascolto, telegram.vocale). "
-                 "Senza impronta registrata non filtro nulla."),
-    setting("echo.dizionario.conferme", "Correzioni per imparare una parola", "int", 2, group="La tua voce",
-            order=42, min=1, max=10, unit="volte",
-            help="Dopo quante tue correzioni una parola entra nel dizionario che passo al riconoscimento."),
-    setting("echo.pricing", "Prezzi", "object", {}, group="Voce", order=30, advanced=True,
-            help="«fornitore/modello» → {minute: € al minuto ascoltato, mchars: € per milione di caratteri letti}, "
-                 "per il pannello Uso."),
+            help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
+    setting("echo.impronta.usi", "Where I recognise only your voice", "list", ["webui.live.ascolto"],
+            group="Your voice", order=41,
+            help="Voice uses where I filter other voices (e.g. webui.live.ascolto, telegram.vocale). Without a recorded voiceprint I filter nothing."),
+    setting("echo.dizionario.conferme", "Corrections to learn a word", "int", 2, group="Your voice",
+            order=42, min=1, max=10, unit="times",
+            help="After how many of your corrections a word enters the dictionary I pass to recognition."),
+    setting("echo.pricing", "Prices", "object", {}, group="Voice", order=30, advanced=True,
+            help="«provider/model» → {minute: € per minute listened, mchars: € per million characters read}, for the Usage panel."),
 ])
 
 hub = Hub(HUB_API_URL)
@@ -172,12 +163,12 @@ async def _not_found(_: Request, exc: NotFound):
 
 @app.exception_handler(ChainExhausted)
 async def _exhausted(_: Request, exc: ChainExhausted):
-    return JSONResponse(status_code=503, content={"detail": tr("nessun motore disponibile: {0}", exc)})
+    return JSONResponse(status_code=503, content={"detail": tr("no engine available: {0}", exc)})
 
 
 @app.exception_handler(HubError)
 async def _store_down(_: Request, exc: HubError):
-    return JSONResponse(status_code=503, content={"detail": tr("archivio non raggiungibile, riprova tra poco")})
+    return JSONResponse(status_code=503, content={"detail": tr("archive not reachable, try again shortly")})
 
 
 @app.get("/health")
@@ -278,19 +269,19 @@ def blocks_write(part: str, body: dict = Body(...)):
     key = _PARTS.get(part)
     value = body.get("value")
     if not key:
-        raise NotFound("parte sconosciuta: providers, chains o usecases")
+        raise NotFound(tr("unknown part: providers, chains or usecases"))
     if not isinstance(value, dict) or any(not isinstance(v, dict) for v in value.values()):
-        raise Invalid(tr("serve un oggetto nome → impostazioni"))
+        raise Invalid(tr("an object name → settings is needed"))
     if part == "providers":
         bad = [n for n, p in value.items() if p.get("type") not in STANDARDS]
         if bad or not value:
-            raise Invalid(tr("standard sconosciuto per: {0}", ', '.join(bad) or 'nessun fornitore'))
+            raise Invalid(tr("unknown standard for: {0}", ', '.join(bad) or tr('no provider')))
     elif part == "chains":
         if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
                             for c in value.values()):
-            raise Invalid(tr("ogni catena vuole una direzione (ascolto o voce) e una lista di passi"))
-    if not settings.put(key, value, actor="user", reason="WebUI Voce"):
-        raise HTTPException(status_code=502, detail=tr("Le impostazioni non hanno accettato la modifica"))
+            raise Invalid(tr("each chain needs a direction (listening or voice) and a list of steps"))
+    if not settings.put(key, value, actor="user", reason=tr("WebUI Voice")):
+        raise HTTPException(status_code=502, detail=tr("The settings did not accept the change"))
     return {"status": "ok", "key": key}
 
 
@@ -350,7 +341,7 @@ def audio_for(ref_id: str, format: str = ""):
     """Kept audio of a message or notification (an old voice note plays the original)."""
     row = keep.find(ref_id)
     if row is None:
-        raise NotFound(tr("nessun audio per questo messaggio"))
+        raise NotFound(tr("no audio for this message"))
     keep.touch(row)
     return {**audio_get(row["id"], format), **(row.get("data") or {})}
 
@@ -359,7 +350,7 @@ def audio_for(ref_id: str, format: str = ""):
 def audio_delete(blob_id: str):
     rows = [r for r in keep.list("", 20000) if r["id"] == blob_id]
     if not rows:
-        raise NotFound(tr("audio non trovato"))
+        raise NotFound(tr("audio not found"))
     keep.delete(rows[0])
     return {"status": "deleted", "blob_id": blob_id}
 
@@ -368,7 +359,7 @@ def audio_delete(blob_id: str):
 def audio_forget(notification_id: str = "", message_id: str = ""):
     """A notification (or message) was removed: its regenerable audio goes with it."""
     if not (notification_id or message_id):
-        raise Invalid("serve notification_id o message_id")
+        raise Invalid(tr("notification_id or message_id needed"))
     return {"removed": keep.forget(notification_id=notification_id, message_id=message_id)}
 
 
@@ -390,7 +381,7 @@ def dictionary_list():
 def dictionary_add(body: dict = Body(...)):
     try:
         return {"status": "ok", "word": dictionary.add(str(body.get("word") or ""), source="manual"),
-                "message": tr("Parola aggiunta")}
+                "message": tr("Word added")}
     except ValueError as exc:
         raise Invalid(str(exc))
 
@@ -398,8 +389,8 @@ def dictionary_add(body: dict = Body(...)):
 @app.delete(API + "/dictionary/{word}")
 def dictionary_remove(word: str):
     if not dictionary.remove(word):
-        raise NotFound(tr("parola non nel dizionario"))
-    return {"status": "ok", "message": tr("Parola tolta")}
+        raise NotFound(tr("word not in the dictionary"))
+    return {"status": "ok", "message": tr("Word removed")}
 
 
 @app.post(f"{API}/dictionary/learn")
@@ -412,7 +403,7 @@ def _audio_body(body: dict) -> tuple[bytes, str]:
     f = body.get("audio") if isinstance(body.get("audio"), dict) else {}
     raw = base64.b64decode(str(body.get("audio_b64") or f.get("data_b64") or "").split(",", 1)[-1] or b"")
     if not raw:
-        raise Invalid("audio vuoto")
+        raise Invalid(tr("empty audio"))
     return raw, str(body.get("mime_type") or f.get("mime") or "audio/ogg").split(";")[0].strip().lower()
 
 
@@ -428,11 +419,11 @@ def voiceprint_enroll(body: dict = Body(...)):
     try:
         pcm = audio.to_pcm16k(raw, mime)
     except audio.AudioError as exc:
-        raise Invalid(tr("audio non leggibile: {0}", exc))
+        raise Invalid(tr("audio not readable: {0}", exc))
     blob = None
     try:
         blob = keep.save("recording", audio.keep_encode(raw), audio.KEEP_MIME,
-                         {"use_case": "echo.impronta", "text": tr("impronta della voce")})
+                         {"use_case": "echo.impronta", "text": tr("voice print")})
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=voiceprint_recording_not_kept error=%s", exc)
     try:
@@ -441,30 +432,28 @@ def voiceprint_enroll(body: dict = Body(...)):
         raise Invalid(str(exc))
     except Exception as exc:  # noqa: BLE001 — engine not available
         logger.warning("[🔄] event=voiceprint_engine_unavailable error=%s", exc)
-        raise HTTPException(status_code=503, detail=tr("riconoscimento della voce non disponibile ora"))
-    return {**out, "status": "ok", "message": tr("Impronta della voce salvata")}
+        raise HTTPException(status_code=503, detail=tr("voice recognition not available now"))
+    return {**out, "status": "ok", "message": tr("Voice print saved")}
 
 
 @app.delete(f"{API}/voiceprint")
 def voiceprint_forget():
-    return {**voiceprint.forget(), "status": "ok", "message": tr("Impronta tolta: ascolto tutte le voci")}
+    return {**voiceprint.forget(), "status": "ok", "message": tr("Voice print removed: I listen to every voice")}
 
 
 def _agenda_rules() -> list[dict]:
-    return [job_rule("echo.audio_cleanup", tr("Voce: pulizia degli audio"), service="echo", path=f"{API}/audio/cleanup",
+    return [job_rule("echo.audio_cleanup", "Voice: audio cleanup", service="echo", path=f"{API}/audio/cleanup",
                      recurrence="FREQ=DAILY", start_at="2026-01-01T04:30:00", tz=TZ,
-                     description="Toglie gli audio generati non ascoltati da tempo e tiene lo spazio sotto il limite. "
-                                 "Le registrazioni non si toccano.")]
+                     description="Removes generated audio not listened to for a long time and keeps the space under the limit. Recordings are never touched.")]
 
 
 # ── plugin (UI bundle, core) ─────────────────────────────────────────────────
-ui = PluginClient("echo", title="Voce", icon="mic", color="teal", kind="core", dist=UI_DIST,
-                  description="Ascolto e voce di Hestia: fornitori, catene, usi, prove, uso e audio conservati.",
+ui = PluginClient("echo", title="Voice", icon="mic", color="teal", kind="core", dist=UI_DIST,
+                  description="{assistant}'s listening and voice: providers, chains, uses, tests, usage and stored audio.",
                   version=SERVICE_VERSION)
 ui.webui(entry="echo.js", api_prefix=f"{API}/",
-         pages=[page("voce", "Voce", element="echo-voice", icon="mic", order=125,
-                     help="Come Hestia ascolta e parla: fornitori, catene di ascolto e di voce, usi di ogni modulo, "
-                          "modalità esterna, prova del microfono e delle voci, uso e costi, le tue registrazioni.")])
+         pages=[page("voce", "Voice", element="echo-voice", icon="mic", order=125,
+                     help="How {assistant} listens and speaks: providers, listening and voice chains, uses of every module, external mode, microphone and voice test, usage and costs, your recordings.")])
 # ── MCP tools (assistant, Telegram, WebUI): your voice ───────────────────────
 from hestia_common.mcp_helpers import MCPTool, create_mcp_router  # noqa: E402
 
@@ -475,31 +464,30 @@ def _t(name, title, description, method, path, props=None, required=None, label=
                    handler=lambda **_kw: {"status": "ok"}, method=method, path=path,
                    clients=["telegram", "ui"], response_mode="oracle_natural",
                    telegram_visible=True, telegram_group="sistema",
-                   telegram={"section": tr("Voce"), **({"label": label} if label else {})})
+                   telegram={"section": tr("Voice"), **({"label": label} if label else {})})
 
 
 _echo_tools = [
-    _t("voce_download", "Download della voce", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="Download"),
-    _t("voce_scarica", "Scarica le voci", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
-                                           "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Scarica voci"),
-    _t("voce_dizionario", "Dizionario della voce", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
+    _t("voce_download", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
+    _t("voce_scarica", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
+                                           "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Download voices"),
+    _t("voce_dizionario", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
                                                     "their corrections."), "GET", f"{API}/dictionary",
-       label="Dizionario"),
-    _t("voce_parola", "Aggiungi una parola", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
+       label="Dictionary"),
+    _t("voce_parola", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
        {"word": {"type": "string", "description": "The word, spelled right"}}, ["word"]),
-    _t("voce_parola_togli", "Togli una parola", "Remove a word from the voice dictionary.", "DELETE",
+    _t("voce_parola_togli", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
        API + "/dictionary/{word}", {"word": {"type": "string", "description": "The word to remove"}}, ["word"]),
-    _t("voce_correzione", "Correggi una trascrizione", ("When the user corrects a badly transcribed voice message («volevo dire …»): text heard and "
-                                                        "right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
+    _t("voce_correzione", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
        {"heard": {"type": "string", "description": "What was transcribed"},
         "corrected": {"type": "string", "description": "The right text"}}, ["heard", "corrected"]),
-    _t("voce_impronta", "La tua voce", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
+    _t("voce_impronta", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
        f"{API}/voiceprint"),
-    _t("voce_impronta_registra", "Registra la tua voce", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
+    _t("voce_impronta_registra", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
                                                           "their messages where they chose so."), "POST", f"{API}/voiceprint",
        {"audio": {"type": "string", "contentMediaType": "audio/*",
                   "description": "A voice message of at least 10 seconds where the user speaks"}}, ["audio"]),
-    _t("voce_impronta_togli", "Togli l'impronta della voce", "Forget the user's voiceprint: listen to every voice.",
+    _t("voce_impronta_togli", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
        "DELETE", f"{API}/voiceprint"),
 ]
 app.include_router(create_mcp_router(_echo_tools, service_name="echo"))

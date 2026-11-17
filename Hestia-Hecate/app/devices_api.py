@@ -73,14 +73,14 @@ def _hermes(event: dict) -> bool:
 
 def _ask_secret(step: str) -> bool:
     """Hermes secret form: email + password, or the two-step code. Hecate receives the values, never Hermes."""
-    fields = ([{"name": "code", "label": tr("Codice ricevuto da Garmin"), "type": "text"}] if step == "code" else
-              [{"name": "email", "label": tr("Email di Garmin Connect"), "type": "text"},
+    fields = ([{"name": "code", "label": tr("Code received from Garmin"), "type": "text"}] if step == "code" else
+              [{"name": "email", "label": tr("Garmin Connect email"), "type": "text"},
                {"name": "password", "label": "Password", "type": "password"}])
-    message = (tr("Garmin ti ha mandato un codice: scrivilo qui.") if step == "code" else
-               tr("Inserisci l'accesso a Garmin Connect: lo uso una volta sola per collegare l'orologio, la password non viene salvata."))
+    message = (tr("Garmin sent you a code: type it here.") if step == "code" else
+               tr("Enter your Garmin Connect access: I use it only once to link the watch, the password is not saved."))
     return _hermes({"event_type": "service.action_required", "domain": "system", "entity_id": f"hecate-garmin-{step}",
                     "payload": {"kind": "hecate.garmin.login", "service": "hecate", "source": "hecate",
-                                "_source": "hecate", "_title": tr("Collega Garmin"), "_message": message, "level": "info",
+                                "_source": "hecate", "_title": tr("Link Garmin"), "_message": message, "level": "info",
                                 "target": "owner", "replaces": "hecate.garmin.login", "icon": "watch", "tone": "info",
                                 "_secret": {"service": "hecate", "path": LOGIN_PATH, "fields": fields}}})
 
@@ -96,7 +96,7 @@ def garmin_connect():
     """«Collega Garmin»: a secret form reaches the owner (WebUI / Telegram Mini App)."""
     sent = _ask_secret("login")
     return {"status": "asked" if sent else "error",
-            "message": tr("Ti ho mandato il modulo per collegare Garmin.") if sent else tr("Non riesco a mandarti il modulo.")}
+            "message": tr("I sent you the form to link Garmin.") if sent else tr("I can't send you the form.")}
 
 
 @router.post(LOGIN_PATH)
@@ -119,11 +119,11 @@ def garmin_login(body: dict = Body(...)):
         raise HTTPException(status_code=422, detail=garmin.explain(exc))
     if out["status"] == "needs_code":
         if direct:
-            return {**out, "message": tr("Garmin ti ha mandato un codice: scrivilo qui.")}
+            return {**out, "message": tr("Garmin sent you a code: type it here.")}
         _ask_secret("code")
-        return {**out, "message": tr("Serve il codice che Garmin ti ha mandato: ti ho mandato il modulo.")}
+        return {**out, "message": tr("The code Garmin sent you is needed: I sent you the form.")}
     threading.Thread(target=lambda: garmin_sync({"days": 2}), daemon=True, name="garmin-first-sync").start()
-    return {**out, "message": tr("Garmin collegato: leggo sonno e attività ogni mattina.")}
+    return {**out, "message": tr("Garmin linked: I read sleep and activity every morning.")}
 
 
 @router.delete("/api/gateway/garmin")
@@ -136,7 +136,7 @@ def garmin_day(day: str = ""):
     try:
         d = date.fromisoformat(day) if day else _today()
     except ValueError:
-        raise HTTPException(status_code=422, detail="giorno YYYY-MM-DD")
+        raise HTTPException(status_code=422, detail=tr("day YYYY-MM-DD"))
     try:
         return garmin.day(d)
     except GarminError as exc:
@@ -167,7 +167,7 @@ def garmin_sync(body: dict = Body(default={})):
     except Exception as exc:  # noqa: BLE001
         garmin.last_error = type(exc).__name__
         logger.warning("[🔄] event=garmin_sync_failed error=%s fallback=next_job", exc)
-        return {"status": "error", "detail": tr("Garmin non risponde")}
+        return {"status": "error", "detail": tr("Garmin does not answer")}
     garmin.last_error = ""
     garmin.last_sync = {"at": datetime.now(timezone.utc).isoformat(), "days": [p["date"] for p in pushed]}
     logger.info("event=garmin_synced days=%d", len(pushed))
@@ -176,10 +176,9 @@ def garmin_sync(body: dict = Body(default={})):
 
 def agenda_rules() -> list[dict]:
     from hestia_common.agenda_client import job_rule
-    return [job_rule(GARMIN_JOB, tr("Garmin: sonno e attività"), service="hecate", path="/api/gateway/garmin/sync",
+    return [job_rule(GARMIN_JOB, "Garmin: sleep and activity", service="hecate", path="/api/gateway/garmin/sync",
                      body={"days": 2}, recurrence="FREQ=DAILY", start_at="2026-01-01T09:30:00", tz=TZ,
-                     description="Legge dall'orologio la notte e le attività di ieri e oggi e le passa ad "
-                                 "allenamento e cura di sé. Senza Garmin collegato non fa niente.",
+                     description="Reads last night and yesterday's and today's activities from the watch and passes them to training and self care. Without Garmin linked it does nothing.",
                      timeout_seconds=120)]
 
 
@@ -203,10 +202,10 @@ def phone_push(body: dict = Body(...), x_hestia_phone_token: str = Header(defaul
     """Webhook of the phone (Tasker, MacroDroid…): ``{type: state|notification, …}``."""
     secret = os.getenv("HECATE_PHONE_TOKEN", "")
     if not secret:
-        raise HTTPException(status_code=503, detail=tr("telefono non configurato (HECATE_PHONE_TOKEN)"))
+        raise HTTPException(status_code=503, detail=tr("phone not configured (HECATE_PHONE_TOKEN)"))
     if not hmac.compare_digest(str(x_hestia_phone_token or ""), secret):
         logger.warning("event=phone_push_refused reason=token")
-        raise HTTPException(status_code=401, detail=tr("token non valido"))
+        raise HTTPException(status_code=401, detail=tr("invalid token"))
     at = str(body.get("at") or datetime.now(timezone.utc).isoformat())
     kind = str(body.get("type") or "state")
     if kind == "notification":
@@ -244,8 +243,8 @@ def phone_status():
 
 # presence: a data-defined overlay so the state line says it (no effect: being out never loosens anything)
 PRESENCE_STATES = {"away_from_home": {
-    "kind": "overlay", "priority": 20, "label": "Fuori casa", "icon": "map-pin", "tone": "muted",
-    "help": "Il telefono (Wi-Fi di casa non connesso) o la casa dicono che non sei a casa.",
+    "kind": "overlay", "priority": 20, "label": "Outside home", "icon": "map-pin", "tone": "muted",
+    "help": "The phone (home Wi-Fi not connected) or the house say you are not at home.",
     # «==» needs the signal to exist: no phone and no house connected → never «Fuori casa»
     "when": [[{"signal": "phone.home", "op": "==", "value": False}],
              [{"signal": "home.present", "op": "==", "value": False}]], "effects": {}}}
@@ -266,18 +265,18 @@ def tools(MCPTool) -> list:
                        parameters={"type": "object", "properties": props or {}, "required": required or []},
                        handler=lambda **kw: {"status": "ok", "tool": name, "params": kw}, method=method, path=path,
                        clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="sistema",
-                       telegram={"section": tr("Dispositivi"), **({"label": label} if label else {})})
+                       telegram={"section": tr("Devices"), **({"label": label} if label else {})})
     return [
         t("garmin_stato", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
           "/api/gateway/garmin/status", label="Garmin"),
-        t("garmin_collega", "Collega Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
-        t("garmin_sincronizza", "Leggi Garmin ora", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
+        t("garmin_collega", "Link Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
+        t("garmin_sincronizza", "Read Garmin now", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
                                                      "them to training and self care."), "POST", "/api/gateway/garmin/sync",
           {"days": {"type": "integer", "minimum": 1, "maximum": 14}}),
-        t("garmin_giorno", "Dati Garmin di un giorno", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
+        t("garmin_giorno", "Garmin data of one day", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
                                                         "YYYY-MM-DD, empty = today)."), "GET", "/api/gateway/garmin/day",
-          {"day": {"type": "string", "format": "date", "title": "Giorno"}}),
-        t("garmin_scollega", "Scollega Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
+          {"day": {"type": "string", "format": "date", "title": "Day"}}),
+        t("garmin_scollega", "Disconnect Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
           "/api/gateway/garmin"),
-        t("telefono_stato", "Telefono", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Telefono"),
+        t("telefono_stato", "Phone", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Phone"),
     ]

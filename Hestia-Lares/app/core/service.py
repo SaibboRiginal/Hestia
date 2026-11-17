@@ -22,11 +22,11 @@ DOMAINS = ("light", "switch", "cover", "climate", "fan", "media_player", "lock",
            "binary_sensor", "person")
 COMMANDS = {"on": "turn_on", "off": "turn_off", "toggle": "toggle", "open": "open_cover", "close": "close_cover",
             "lock": "lock", "unlock": "unlock"}
-LABELS = {"light": "Luci", "switch": "Prese", "cover": "Tapparelle", "climate": "Clima", "fan": "Ventilatori",
-          "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Azioni", "sensor": "Sensori",
-          "binary_sensor": "Sensori", "person": "Persone"}
-STATE_IT = {"on": "acceso", "off": "spento", "open": "aperta", "closed": "chiusa", "locked": "chiusa",
-            "unlocked": "aperta", "home": "a casa", "not_home": "fuori", "unavailable": "non raggiungibile"}
+LABELS = {"light": "Lights", "switch": "Prese", "cover": "Shutters", "climate": "Climate", "fan": "Ventilatori",
+          "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Actions", "sensor": "Sensori",
+          "binary_sensor": "Sensori", "person": "People"}
+STATE_WORDS = {"on": "on", "off": "off", "open": "f::open", "closed": "f::closed", "locked": "f::closed",
+               "unlocked": "f::open", "home": "at home", "not_home": "away", "unavailable": "unreachable"}   # through tr
 
 
 def slim(s: dict) -> dict:
@@ -74,7 +74,7 @@ class Home:
 
     def _ensure(self) -> None:
         if not self.ha.configured:
-            raise Invalid(tr("la casa non è collegata: servono indirizzo e token di Home Assistant nel file .env"))
+            raise Invalid(tr("the home is not linked: the Home Assistant address and token are needed in the .env file"))
         if not self.entities:
             try:
                 self.load()
@@ -99,8 +99,8 @@ class Home:
         if len(hits) == 1:
             return hits[0]
         if not hits:
-            raise NotFound(tr("in casa non trovo «{0}»", ref))
-        raise Invalid(tr("più dispositivi corrispondono: ") + ", ".join(h["name"] for h in hits[:6]))
+            raise NotFound(tr("at home I can't find «{0}»", ref))
+        raise Invalid(tr("several devices match: ") + ", ".join(h["name"] for h in hits[:6]))
 
     def status(self) -> dict:
         if not self.ha.configured:
@@ -123,7 +123,7 @@ class Home:
     # ── commands ────────────────────────────────────────────────────────────
     def command(self, ref: str, command: str, value: Any = None) -> dict:
         if command not in COMMANDS:
-            raise Invalid("comando: " + ", ".join(COMMANDS))
+            raise Invalid(tr("command: ") + ", ".join(COMMANDS))
         e = self.find(ref, ("light", "switch", "cover", "climate", "fan", "media_player", "lock", "scene", "script"))
         domain, service = e["domain"], COMMANDS[command]
         data: dict[str, Any] = {"entity_id": e["id"]}
@@ -134,7 +134,7 @@ class Home:
         elif domain == "climate" and value not in (None, ""):
             service, data["temperature"] = "set_temperature", float(value)
         elif domain in ("switch", "fan", "media_player") and command in ("open", "close", "lock", "unlock"):
-            raise Invalid(f"{e['name']}: usa on, off o toggle")
+            raise Invalid(tr("{0}: use on, off or toggle", e['name']))
         try:
             self.ha.call(domain, service, data)
         except HAError as exc:
@@ -154,7 +154,7 @@ class Home:
     def add_favorite(self, entity: str, label: str = "", room: str = "", command: str = "toggle") -> dict:
         e = self.find(entity)
         if command not in COMMANDS:
-            raise Invalid("comando: " + ", ".join(COMMANDS))
+            raise Invalid(tr("command: ") + ", ".join(COMMANDS))
         fid = new_id("f")
         data = {"entity_id": e["id"], "label": (label or e["name"])[:60], "room": room[:40], "command": command,
                 "at": now_iso()}
@@ -164,16 +164,16 @@ class Home:
     def run_favorite(self, fid: str) -> dict:
         f = self.store.data("favorite", fid)
         if not f:
-            raise NotFound(tr("azione rapida non trovata"))
+            raise NotFound(tr("quick action not found"))
         return self.command(f["entity_id"], f.get("command") or "toggle")
 
     def delete_favorite(self, fid: str) -> dict:
         if not self.store.delete("favorite", fid):
-            raise NotFound(tr("azione rapida non trovata"))
+            raise NotFound(tr("quick action not found"))
         return {"deleted": True}
 
     @staticmethod
     def say(e: dict) -> str:
         if e["domain"] == "sensor":
             return f"{e['state']}{e['unit']}"
-        return STATE_IT.get(str(e["state"]), str(e["state"]))
+        return tr(STATE_WORDS.get(str(e["state"]), str(e["state"])))

@@ -35,10 +35,10 @@ class DeployPlan:
     def summary(self) -> str:
         parts = []
         if self.restart or self.restart_self:
-            parts.append("riavvio: " + ", ".join(self.restart + (["hephaestus"] if self.restart_self else [])))
+            parts.append(tr("restart: ") + ", ".join(self.restart + (["hephaestus"] if self.restart_self else [])))
         if self.rebuild:
-            parts.append(tr("da ricostruire a mano: ") + ", ".join(self.rebuild))
-        return "; ".join(parts) or tr("nessun servizio da riavviare")
+            parts.append(tr("to rebuild by hand: ") + ", ".join(self.rebuild))
+        return "; ".join(parts) or tr("no service to restart")
 
 
 def all_services(repo: Path) -> list[str]:

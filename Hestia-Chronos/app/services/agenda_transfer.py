@@ -13,7 +13,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 FIELDS = ("type", "owner", "title", "description", "start_at", "end_at", "recurrence", "tz", "status", "action",
           "params", "skips", "overrides", "parent", "created_by", "user_modified")
-TYPE_LABELS = {"event": "Evento", "task": "Attività", "job": "Regola ricorrente", "window": "Finestra"}
+TYPE_LABELS = {"event": "Event", "task": "Activity", "job": "Recurring rule", "window": "Window"}
 
 
 def _mine(item: dict) -> bool:
@@ -23,7 +23,7 @@ def _mine(item: dict) -> bool:
 class AgendaSection(Section):
     def __init__(self):
         super().__init__("agenda", tr("Agenda"), icon="calendar",
-                         help=tr("Le voci create da te e le regole dei moduli che hai cambiato (orari, pause, annullate)."))
+                         help=tr("The items you created and the module rules you changed (times, pauses, cancelled)."))
 
     def records(self, *, deleted: bool = False) -> list[dict]:
         out = []

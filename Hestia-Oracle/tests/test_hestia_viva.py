@@ -300,3 +300,71 @@ def test_opener_endpoint_writes_or_stays_silent(client):
         assert http.post("/api/chat/opener", json={}).json()["text"] == ""
     with patch.object(main, "_no_usable_model", return_value=True):
         assert http.post("/api/chat/opener", json={}).status_code == 503
+
+
+# ── Her first message stays in the conversation; transcripts use her name (docs/work/2026-11-16-nome-ovunque) ──
+
+class _Hub:
+    def __init__(self, items):
+        self.items = items
+
+    def route_to_service(self, service, path, method, **kw):
+        assert (service, path) == ("hermes", "api/notifications")
+        return True, {"items": self.items}
+
+
+def _archive(sessions, history=None):
+    calls = []
+
+    def route(method, endpoint, body=None, query=None):
+        calls.append((method, endpoint, body))
+        if endpoint == "/chat/sessions/list":
+            return sessions
+        if endpoint.startswith("/chat/history/"):
+            return history or []
+        return {"id": 1}
+    return route, calls
+
+
+@pytest.mark.unit
+def test_opener_is_saved_in_the_conversation_he_answers_once():
+    from core.services import opener_history
+    now = datetime(2026, 11, 16, 12, tzinfo=timezone.utc)
+    wrote = (now - timedelta(days=1)).isoformat()
+    hub = _Hub([{"kind": "athena.talk", "message": "Com'è andato il colloquio?", "created_at": wrote},
+                {"kind": "reminder", "message": "Palestra", "created_at": now.isoformat()}])
+    route, calls = _archive({"items": [{"session_id": "old", "last_at": (now - timedelta(days=2)).isoformat()}]})
+    assert opener_history.absorb(hub, route, "s1", now) is True
+    saved = calls[-1]
+    assert saved[:2] == ("POST", "/chat/history")
+    assert saved[2] == {"session_id": "s1", "role": "assistant", "content": "Com'è andato il colloquio?",
+                        "timestamp": wrote}
+    # a conversation written after it (he already answered somewhere) → not again
+    route, calls = _archive({"items": [{"session_id": "s1", "last_at": now.isoformat()}]})
+    assert opener_history.absorb(hub, route, "s2", now) is False and calls[-1][0] == "GET"
+    # Archive unreachable → never risk saving it twice
+    route, calls = _archive(None)
+    assert opener_history.absorb(hub, route, "s2", now) is False
+    # older than MAX_DAYS → left alone
+    old = _Hub([{"kind": "athena.talk", "message": "x", "created_at": (now - timedelta(days=5)).isoformat()}])
+    assert opener_history.absorb(old, _archive({"items": []})[0], "s1", now) is False
+
+
+@pytest.mark.unit
+def test_opener_already_in_this_conversation_is_not_duplicated():
+    from core.services import opener_history
+    now = datetime(2026, 11, 16, 12, tzinfo=timezone.utc)
+    hub = _Hub([{"kind": "athena.talk", "message": "Ciao!", "created_at": (now - timedelta(hours=1)).isoformat()}])
+    route, calls = _archive({"items": []}, history=[{"role": "assistant", "content": "Ciao!"}])
+    assert opener_history.absorb(hub, route, "s1", now) is False
+    assert all(c[0] == "GET" for c in calls)
+
+
+@pytest.mark.unit
+def test_transcripts_mark_her_turns_with_her_name(ident):
+    from core.services.context_builder import ContextBuilder
+    ident(assistant_name="Leo")
+    assert prompt_config.assistant_label() == "Leo"
+    text = ContextBuilder().build_compaction_prompt([{"role": "user", "content": "ciao"},
+                                                    {"role": "assistant", "content": "eccomi"}])
+    assert "Leo: eccomi" in text and "Hestia:" not in text

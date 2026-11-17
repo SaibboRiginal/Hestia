@@ -14,10 +14,10 @@ import { TrPipe } from '../../core/i18n';
   template: `
     @switch (state()) {
       @case ('loading') { <div class="st"><hx-spinner [size]="18" /></div> }
-      @case ('offline') { <div class="st"><hx-icon name="offline" [size]="20" /><span>{{ "Non raggiungibile in questo momento" | tr }}</span>
-        <button class="retry" (click)="mount(true)">{{ "Riprova" | tr }}</button></div> }
-      @case ('error') { <div class="st"><hx-icon name="alert" [size]="20" /><span>{{ "Non disponibile in questo momento" | tr }}</span>
-        <button class="retry" (click)="mount(true)">{{ "Riprova" | tr }}</button></div> }
+      @case ('offline') { <div class="st"><hx-icon name="offline" [size]="20" /><span>{{ "Not reachable at the moment" | tr }}</span>
+        <button class="retry" (click)="mount(true)">{{ "Try again" | tr }}</button></div> }
+      @case ('error') { <div class="st"><hx-icon name="alert" [size]="20" /><span>{{ "Not available at the moment" | tr }}</span>
+        <button class="retry" (click)="mount(true)">{{ "Try again" | tr }}</button></div> }
     }
     <div #slot class="slot" [hidden]="state() !== 'ready'"></div>`,
   styles: [`

@@ -52,13 +52,14 @@ from .hermes_settings import (ACTIVE_CLIENT_MINUTES, DELIVERY_MAX_ATTEMPTS, PEND
 from hestia_common.presence_client import PresenceClient   # path set up by hermes_settings
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import usecase as voice_usecase
+from hestia_common.i18n import month_name, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hermes.notifications")
 
 CHANNEL = "notification"
 VOICE_USECASE = "hermes.notifica"
-VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Notifiche a voce", direction="voce",
-                                help="Le notifiche che un modulo vuole anche a voce (impostazione del modulo).")]
+VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Voice notifications", direction="voce",
+                                help="Notifications a module also wants spoken (module setting).")]
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
 ANSWERABLE_STATES = ["created", "queued", "delivered", "seen", "failed"]
 CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
@@ -66,7 +67,6 @@ CLOSED_STATES = ["answered", "dismissed", "expired", "superseded", "dead"]
 LISTED_STATES = UNREAD_STATES + ["seen", "answered", "dismissed", "expired", "dead"]
 # ``closes`` decisions that end a repeat chain (the next reminder starts from zero).
 RESOLVING_DECISIONS = {"done", "resolved"}
-_MONTHS = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]
 # Messages already seen/handled are retracted from transient client surfaces
 # (Telegram chat) after the setting hermes.retract.after (hours); the inbox keeps
 # them. Telegram lets a bot delete its own messages only within 48 h, hence the window.
@@ -117,14 +117,14 @@ def public_link(raw: Any) -> dict[str, Any] | None:
 
 def public_repeat(repeat: Any) -> dict[str, Any] | None:
     """Client-facing counter of a repeat chain, only from the second occurrence on.
-    ``text`` is short Italian, ready to show or read aloud: «Saltato 3 volte · dal 12 ott»."""
+    ``text`` is short, in the owner's language, ready to show or read aloud: «Skipped 3 times · since 12 Oct»."""
     if not isinstance(repeat, dict) or int(repeat.get("count") or 1) <= 1:
         return None
     skipped = int(repeat.get("skipped") or 0)
-    text = f"Saltato {skipped} volt{'a' if skipped == 1 else 'e'}"
+    text = tr("Skipped once") if skipped == 1 else tr("Skipped {0} times", skipped)
     since = _parse_ts(repeat.get("since"))
     if since:
-        text += f" · dal {since.day} {_MONTHS[since.month - 1]}"
+        text += tr(" · since {0} {1}", since.day, month_name(since.month)[:3])
     return {"count": int(repeat["count"]), "skipped": skipped, "since": repeat.get("since"), "text": text}
 
 
@@ -203,7 +203,7 @@ def normalize_question(raw: Any) -> dict[str, Any] | None:
             options.append({"value": value[:80], "label": label[:60]})
     options = options[:8]
     if kind == "confirm" and not options:
-        options = [{"value": "si", "label": "Sì"}, {"value": "no", "label": "No"}]
+        options = [{"value": "si", "label": "Yes"}, {"value": "no", "label": "No"}]
     if kind in ("single_choice", "multi_choice") and len(options) < 2:
         return None
     if kind == "free_text":
@@ -640,7 +640,7 @@ class NotificationCenter:
                                     trace_id=notification_id)
         if code == 409:
             return self._finish(notification_id, answer, "already_handled",
-                                _outcome_text(payload, "Già gestita"), http=409)
+                                _outcome_text(payload, "Already handled"), http=409)
         if 200 <= code < 300:
             return self._finish(notification_id, answer, "done",
                                 _outcome_text(payload, f"{action.get('label')} ✓"),
@@ -652,7 +652,7 @@ class NotificationCenter:
             detail=f"action failed: {code}")
         logger.warning("[🔄] event=notification_action_failed notification_id=%s service=%s status=%s",
                        notification_id, action.get("service"), code)
-        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+        return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def submit_secret(self, notification_id: str, values: dict[str, Any], client: str) -> tuple[int, dict[str, Any]]:
         """Cindy 4: the owner's values go to the module that asked, through the Hub. Never stored, never logged
@@ -667,7 +667,7 @@ class NotificationCenter:
         clean = {n: str(values.get(n)) for n in names if values.get(n) not in (None, "")}
         if len(clean) != len(names):
             return 400, {"status": "missing_fields", "fields": [n for n in names if n not in clean]}
-        answer = {"action_id": "secret", "label": "Inviato", "by": client, "at": _now(), "status": "pending"}
+        answer = {"action_id": "secret", "label": "Sent", "by": client, "at": _now(), "status": "pending"}
         status, current = self.archive.patch_outbound_event(
             notification_id, "answered", only_if_states=ANSWERABLE_STATES,
             payload_merge={"answer": answer}, detail=f"secret form sent by {client}")
@@ -681,11 +681,11 @@ class NotificationCenter:
         logger.info("event=notification_secret_forwarded notification_id=%s service=%s fields=%s status=%s",
                     notification_id, secret["service"], ",".join(names), code)
         if 200 <= code < 300:
-            return self._finish(notification_id, answer, "done", _outcome_text(payload, "Ricevuto"))
+            return self._finish(notification_id, answer, "done", _outcome_text(payload, tr("Received")))
         self.archive.patch_outbound_event(
             notification_id, "seen", only_if_states=["answered"],
             payload_merge={"answer": {**answer, "status": "error"}}, detail=f"secret form failed: {code}")
-        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+        return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def reply(self, notification_id: str, answer: Any, client: str) -> tuple[int, dict[str, Any]]:
         """The owner's answer to a notification question: first answer wins, forwarded to the module that asked."""
@@ -722,7 +722,7 @@ class NotificationCenter:
         logger.info("event=notification_question_answered notification_id=%s client=%s kind=%s service=%s status=%s",
                     notification_id, client, question["kind"], question["service"], code)
         if code == 409:
-            return self._finish(notification_id, claim, "already_handled", _outcome_text(payload, "Già gestita"),
+            return self._finish(notification_id, claim, "already_handled", _outcome_text(payload, "Already handled"),
                                 http=409)
         if 200 <= code < 300:
             return self._finish(notification_id, claim, "done", _outcome_text(payload, shown[:120]))
@@ -731,7 +731,7 @@ class NotificationCenter:
             payload_merge={"answer": {**claim, "status": "error"}}, detail=f"question reply failed: {code}")
         logger.warning("[🔄] event=notification_question_failed notification_id=%s service=%s status=%s",
                        notification_id, question["service"], code)
-        return 502, {"status": "error", "detail": _outcome_text(payload, f"errore {code}")}
+        return 502, {"status": "error", "detail": _outcome_text(payload, tr("error {0}", code))}
 
     def remind_pending(self, now: datetime | None = None) -> dict[str, int]:
         """Cindy 5: one grouped reminder for what still waits for an answer after ``hermes.attesa.richiamo_ore``;
@@ -758,10 +758,10 @@ class NotificationCenter:
         import html
         lines = [f"• {html.escape(v['title'] or v['message'][:80])}" for _, v in due[:8]]
         more = len(due) - len(lines)
-        message = ("Aspettano ancora una tua risposta:\n" + "\n".join(lines)
-                   + (f"\n…e altre {more}." if more > 0 else ""))
+        message = (tr("Still waiting for your answer:\n") + "\n".join(lines)
+                   + (tr("\n…and {0} more.", more) if more > 0 else ""))
         self.publish(message=message, event_type="assistant.pending_reminder", domain="assistant",
-                     title=f"Da decidere: {len(due)}", level="info", source="hermes",
+                     title=tr("To decide: {0}", len(due)), level="info", source="hermes",
                      replaces="hermes.pending_reminder",
                      link={"module": "hermes", "page": "notifiche", "params": {"filter": "pending"}})
         logger.info("event=notification_pending_reminded count=%d", len(due))
@@ -871,14 +871,14 @@ class NotificationCenter:
         done, missed = [], []
         if todays:
             important = [v["title"] for v in todays if v["level"] in ("warning", "error") and v["title"]]
-            text = f"{len(todays)} notific{'a' if len(todays) == 1 else 'he'}"
+            text = tr("1 notification") if len(todays) == 1 else tr("{0} notifications", len(todays))
             if important:
-                text += " · importanti: " + ", ".join(dict.fromkeys(important[:3]))
+                text += tr(" · important: ") + ", ".join(dict.fromkeys(important[:3]))
             done.append({"text": text})
         waiting = [v["title"] or v["message"][:60] for v in views if v["pending"]]
         if waiting:
-            missed.append({"text": "In attesa di una tua risposta: " + ", ".join(dict.fromkeys(waiting[:4]))
-                                   + (f" e altre {len(waiting) - 4}" if len(waiting) > 4 else ""),
+            missed.append({"text": tr("Waiting for your answer: ") + ", ".join(dict.fromkeys(waiting[:4]))
+                                   + (tr(" and {0} more", len(waiting) - 4) if len(waiting) > 4 else ""),
                            "tone": "warning"})
         return {"done": done, "missed": missed}
 
@@ -958,10 +958,11 @@ class NotificationCenter:
                 source = spec.get("source") or ""
                 lines.append(f"• {html.escape(str(title))}" + (f" <i>({html.escape(str(source))})</i>" if source else ""))
             more = len(unread) - len(lines)
-            message = (f"<b>{len(unread)} notific{'a' if len(unread) == 1 else 'he'}</b> mentre riposavo:\n"
-                       + "\n".join(lines) + (f"\n…e altre {more} nella posta." if more > 0 else ""))
+            message = ((tr("<b>1 notification</b> while I was resting:\n") if len(unread) == 1
+                        else tr("<b>{0} notifications</b> while I was resting:\n", len(unread)))
+                       + "\n".join(lines) + (tr("\n…and {0} more in the inbox.", more) if more > 0 else ""))
             self.publish(message=message, event_type="assistant.digest", domain="assistant",
-                         title="Mentre riposavo", level="info", source="hermes",
+                         title=tr("While I was resting"), level="info", source="hermes",
                          event_payload={"_urgent": True, "count": len(unread)})
         logger.info("event=notification_held_released released=%d digest=%d level=%s",
                     len(released), len(unread), level)

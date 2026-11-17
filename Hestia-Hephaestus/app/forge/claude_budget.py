@@ -105,16 +105,16 @@ class ClaudeBudget:
         used_tonight = self.state.night_starts.get(night_key, 0)
 
         if self.state.blocked_until and now < datetime.fromisoformat(self.state.blocked_until):
-            phase, allowed, reason = "exhausted", False, tr("quota esaurita: attendo il reset settimanale")
+            phase, allowed, reason = "exhausted", False, tr("quota used up: waiting for the weekly reset")
         elif hours_left <= self.schedule.final_hours:
-            phase, allowed, reason = "final", True, tr("ultime ore prima del reset: uso tutto il residuo")
+            phase, allowed, reason = "final", True, tr("last hours before the reset: I use all the remainder")
         elif hours_left <= self.schedule.window_hours and in_night:
             allowed = used_tonight < self.schedule.night_max_tasks
             phase = "night"
-            reason = ("finestra notturna" if allowed
-                      else f"tetto notturno raggiunto ({used_tonight}/{self.schedule.night_max_tasks})")
+            reason = (tr("night window") if allowed
+                      else tr("night cap reached ({0}/{1})", used_tonight, self.schedule.night_max_tasks))
         else:
-            phase, allowed, reason = "closed", False, tr("fuori finestra (notti prima del reset)")
+            phase, allowed, reason = "closed", False, tr("outside the window (nights before the reset)")
         return {
             "phase": phase, "allowed": allowed, "reason": reason,
             "next_reset": reset.isoformat(), "hours_to_reset": round(hours_left, 1),

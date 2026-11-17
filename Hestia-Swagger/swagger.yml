@@ -4298,7 +4298,7 @@ paths:
     post:
       tags: [Oracle]
       summary: Plain generation for services along a use case's chain (no classifier, no tools)
-      description: "A local chain step waits in Oracle's LLM bus (oracle.bus.locali_insieme workers). Priority from X-Hestia-Origin: level utente = chat, else sottofondo; promoted to chat while an owner turn waits for its tools. Cloud steps never wait."
+      description: "A local chain step waits in Oracle's LLM bus (oracle.bus.local_workers workers). Priority from X-Hestia-Origin: level utente = chat, else background; promoted to chat while an owner turn waits for its tools. Cloud steps never wait."
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -9139,10 +9139,11 @@ paths:
   /api/settings/i18n:
     get:
       tags: [Themis]
-      summary: Fixed texts for the WebUI and plugins in a language (Italian source → translation)
+      summary: Fixed texts for the WebUI and plugins in a language (English source → translation)
       description: >-
-        messages = locales/<lang>/messages.json with the English catalog merged under it; Italian returns an empty map
-        (the source texts are Italian). No lang = the personal setting themis.personal.language.
+        messages = locales/<lang>/messages.json (English source text → that language, today only it); English and a
+        language without a catalog return an empty map (the source texts are English). No lang = the personal
+        setting themis.personal.language.
       servers:
         - url: http://localhost:19016
       parameters:
@@ -12837,7 +12838,7 @@ paths:
       tags: [WebUI]
       summary: Fixed texts of the site in the owner's language (no token required to call it)
       description: >-
-        Themis /api/settings/i18n through Hub. Themis unreachable → {language: it, messages: {}} (Italian source texts).
+        Themis /api/settings/i18n through Hub. Themis unreachable → {language: en, messages: {}} (the English source texts).
       servers:
         - url: http://localhost:19015
       responses:

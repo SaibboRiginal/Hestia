@@ -18,7 +18,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.menu")
 
-OTHER_SECTION = "Altre azioni"
+OTHER_SECTION = "More actions"
 
 
 @dataclass

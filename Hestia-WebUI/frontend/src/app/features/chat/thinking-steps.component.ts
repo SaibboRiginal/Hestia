@@ -77,20 +77,20 @@ export class ThinkingStepsComponent {
   private readonly tools = computed(() => this.steps().filter(x => x.type === 'tool_call').length);
 
   readonly title = computed(() => this.thought()
-    ? (this.live() ? tr('Sto ragionando…') : tr('Ragionamento'))
-    : (this.live() ? tr('Uso gli strumenti…') : tr('Strumenti usati')));
+    ? (this.live() ? tr('alt2::Thinking…') : tr('Reasoning'))
+    : (this.live() ? tr('Using tools…') : tr('Tools used')));
 
   summary = computed(() => {
     const n = this.thought(), tools = this.tools();
     if (!n) return tools ? `· ${tools}` : '';
-    return `· ${n} ${n === 1 ? 'passo' : 'passi'}${tools ? ` · ${tools} ${tools === 1 ? 'strumento' : 'strumenti'}` : ''}`;
+    return `· ${n === 1 ? tr('1 step') : tr('{0} steps', n)}${tools ? ` · ${tools === 1 ? tr('1 tool') : tr('{0} tools', tools)}` : ''}`;
   });
 
   label(s: ThinkingStep): string {
-    if (s.type === 'tool_call') return tr("Uso {0}", s.tool);
+    if (s.type === 'tool_call') return tr("Usage {0}", s.tool);
     if (s.type === 'tool_result') {
       const n = s.metadata?.result_count, ms = s.metadata?.duration_ms;
-      return `${s.tool}: ${s.metadata?.ok ? 'ok' : 'errore'}${n ? ` · ${n} risultati` : ''}${ms ? ` · ${ms} ms` : ''}`;
+      return `${s.tool}: ${s.metadata?.ok ? 'ok' : tr('error')}${n ? tr(' · {0} results', n) : ''}${ms ? ` · ${ms} ms` : ''}`;
     }
     const text = s.content || '';
     return this.full() ? text : text.split('\n')[0].slice(0, 300);
