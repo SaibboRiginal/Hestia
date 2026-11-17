@@ -37,7 +37,7 @@ CLIENT_KEY = {"webui": "ui", "telegram": "telegram", "mcp": "mcp"}      # MCPToo
 IDEAS_USE = "metis.now"
 KEEP_DAYS = 180
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
-_SKIP = re.compile(r"(_delete|_elimina|_remove|_rimuovi|_annulla|_conferma|_off|_on)$")
+_SKIP = re.compile(r"(_delete|_remove|_cancel|_confirm|_off|_on)$")
 
 
 class Usage:

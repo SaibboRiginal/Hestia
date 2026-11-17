@@ -22,6 +22,8 @@ import hashlib
 import json
 import logging
 import re
+
+from hestia_common.i18n import word_regex
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -35,9 +37,7 @@ STORE = "api/dataset-store"
 REPHRASE_SECONDS = 180          # a new message this soon and this similar = the previous answer missed
 REPHRASE_RATIO = 0.6
 _META_TTL = 60.0
-_CORRECTION = re.compile(
-    r"^\s*(no+\b|non (è|e'|era) (quello|così|cosi|giusto)|intendevo|ho detto|sbagliat|hai sbagliato|ma no\b|"
-    r"non hai capito|non ti ho chiesto|veramente\b)", re.IGNORECASE)
+_CORRECTION = word_regex(r"^\s*(?:{0})", "metis.correction")
 
 
 def toolset_ref(tools: list[dict]) -> str:

@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
 
 import requests
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language; owner words per language
 
 logger = logging.getLogger("hestia_common.module_kit")
 
@@ -324,7 +324,7 @@ def coerce(tool) -> Callable[..., Any]:
                 except ValueError:
                     pass
             elif typ == "boolean":
-                kw[k] = v.lower() in ("1", "true", "si", "sì", "yes")
+                kw[k] = v.lower() in word_set("common.yes_word")
             elif typ == "array":
                 kw[k] = [x.strip() for x in v.split(",") if x.strip()]
         try:

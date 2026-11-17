@@ -1,0 +1,515 @@
+{
+ "_about": "Words people write, per list (regex fragments): read with hestia_common.i18n.words/alt/word_regex. docs/LANGUAGES.md",
+ "common.no": [
+  "annulla",
+  "lascia stare",
+  "lascia perdere"
+ ],
+ "common.yes": [
+  "s[iì]",
+  "va bene",
+  "vai",
+  "procedi",
+  "fallo",
+  "confermo",
+  "certo",
+  "d'accordo",
+  "perfetto"
+ ],
+ "common.yes_word": [
+  "si",
+  "sì",
+  "conferma",
+  "vai",
+  "certo"
+ ],
+ "control.hint": [
+  "avvis",
+  "promemori",
+  "ricord(?:a|ami|armi)",
+  "sollecit",
+  "insist",
+  "silenz",
+  "zitt",
+  "non\\s+scriv",
+  "non\\s+chieder",
+  "smetti",
+  "basta\\s+(?:con|di|mandar|scriver)",
+  "di\\s+notte",
+  "orari",
+  "proattiv",
+  "di\\s+(?:più|meno)\\s+spesso",
+  "ogni\\s+tanto",
+  "\\b(?:alle|dalle|fino\\s+alle)\\s+\\d"
+ ],
+ "goal.stop": [
+  "ferma",
+  "fermati",
+  "basta",
+  "annulla"
+ ],
+ "goal.word": [
+  "obiettivo"
+ ],
+ "memory.fact_stop": [
+  "utente",
+  "l'utente",
+  "che",
+  "con",
+  "per",
+  "una",
+  "uno",
+  "del",
+  "della",
+  "dello",
+  "dei",
+  "delle",
+  "alla",
+  "alle",
+  "allo",
+  "dalla",
+  "dalle",
+  "dal",
+  "nel",
+  "nella",
+  "sul",
+  "sulla",
+  "come",
+  "suo",
+  "sua",
+  "suoi",
+  "sue",
+  "mio",
+  "mia",
+  "miei",
+  "mie",
+  "sono",
+  "essere",
+  "di",
+  "solito",
+  "anche",
+  "molto"
+ ],
+ "memory.forget": [
+  "cancella",
+  "rimuovi",
+  "elimina",
+  "dimentica",
+  "togli"
+ ],
+ "memory.noise": [
+  "ciao",
+  "ehi",
+  "ehy",
+  "hola",
+  "grazie",
+  "prova",
+  "provo",
+  "si",
+  "sì",
+  "va bene",
+  "perfetto",
+  "buongiorno",
+  "buonasera",
+  "buonanotte",
+  "bene",
+  "ottimo",
+  "capito",
+  "chiaro",
+  "daje",
+  "ahah",
+  "ok grazie"
+ ],
+ "memory.notify": [
+  "avvisami",
+  "notifica",
+  "notifiche",
+  "fammi sapere",
+  "voglio essere avvisato",
+  "voglio essere avvisata",
+  "mandami",
+  "inviami",
+  "attiva notifica",
+  "attiva notifiche",
+  "seguimi",
+  "monitorare"
+ ],
+ "memory.preference": [
+  "preferisco",
+  "mi piace",
+  "non mi piace",
+  "vorrei",
+  "voglio",
+  "cerco",
+  "evita",
+  "evitare",
+  "odio",
+  "amo",
+  "interessa",
+  "zona",
+  "stanze",
+  "metri"
+ ],
+ "memory.remember": [
+  "ricorda",
+  "ricordati",
+  "tieni a mente",
+  "segnati",
+  "memorizza",
+  "non dimenticare",
+  "da ora in poi",
+  "d'ora in poi",
+  "sempre ",
+  "mai più"
+ ],
+ "memory.remind_me": [
+  "ricordami"
+ ],
+ "memory.self": [
+  "io",
+  "mi chiamo",
+  "mio",
+  "mia",
+  "miei",
+  "mie",
+  "sono (?:un|una|nato|nata|di|allergic\\w*|vegan\\w*|vegetarian\\w*)",
+  "ho (?:un|una|due|tre|quattro|\\d+)",
+  "abito",
+  "vivo a",
+  "lavoro (?:come|a|in|da|per)",
+  "studio",
+  "preferisco",
+  "odio",
+  "amo",
+  "mia moglie",
+  "mio marito",
+  "mio figlio",
+  "mia figlia",
+  "la mia",
+  "il mio"
+ ],
+ "memory.write": [
+  "salva",
+  "ricorda",
+  "memorizza",
+  "cancella",
+  "elimina",
+  "rimuovi",
+  "dimentica",
+  "aggiungi",
+  "crea",
+  "imposta",
+  "modifica",
+  "cambia",
+  "sposta",
+  "annulla",
+  "attiva",
+  "disattiva",
+  "avvisami",
+  "notificami",
+  "prenota",
+  "programma",
+  "pianifica",
+  "invia",
+  "manda",
+  "segna",
+  "registr",
+  "inserisci",
+  "metti",
+  "annota",
+  "aggiorna",
+  "fissa",
+  "spunta",
+  "carica",
+  "togli",
+  "sviluppa"
+ ],
+ "metis.correction": [
+  "non (?:è|e'|era) (?:quello|così|cosi|giusto)",
+  "intendevo",
+  "ho detto",
+  "sbagliat",
+  "hai sbagliato",
+  "ma no\\b",
+  "non hai capito",
+  "non ti ho chiesto",
+  "veramente\\b"
+ ],
+ "mood.adverb": [
+  "proprio",
+  "davvero",
+  "molto",
+  "un po'?",
+  "abbastanza",
+  "così",
+  "troppo"
+ ],
+ "mood.angry": [
+  "arrabbiat[oa]",
+  "incazzat[oa]",
+  "furios[oa]",
+  "furibond[oa]"
+ ],
+ "mood.anxious": [
+  "ansios[oa]",
+  "in ansia",
+  "preoccupat[oa]",
+  "stressat[oa]",
+  "stressatissim[oa]",
+  "in panico"
+ ],
+ "mood.bored": [
+  "annoiat[oa]",
+  "apatic[oa]"
+ ],
+ "mood.but": [
+  "ma",
+  "però",
+  "e poi"
+ ],
+ "mood.calm": [
+  "seren[oa]",
+  "tranquill[oa]",
+  "rilassat[oa]",
+  "in pace"
+ ],
+ "mood.charged": [
+  "caric[oa]",
+  "gasat[oa]",
+  "in forma",
+  "spacco"
+ ],
+ "mood.charged_high": [
+  "carichissim[oa]",
+  "gasatissim[oa]",
+  "pien[oa] di energia"
+ ],
+ "mood.continue_prefix": [
+  "sono"
+ ],
+ "mood.day_1": [
+  "(?:che |una )?giornata (?:di merda|schifosa|orribile)"
+ ],
+ "mood.day_2": [
+  "(?:che |una )?giornata (?:storta|no)"
+ ],
+ "mood.day_4": [
+  "(?:che |una )?giornata (?:tranquilla|leggera)"
+ ],
+ "mood.day_5": [
+  "(?:che |una )?giornata (?:ottima|fantastica|splendida|bellissima|top|perfetta)"
+ ],
+ "mood.day_tired": [
+  "(?:che |una )?giornata (?:pesante|dura|infinita)"
+ ],
+ "mood.down": [
+  "giù",
+  "giu",
+  "demoralizzat[oa]",
+  "di cattivo umore",
+  "scoraggiat[oa]",
+  "male"
+ ],
+ "mood.down_low": [
+  "malissimo",
+  "uno schifo",
+  "di merda",
+  "a terra",
+  "uno straccio"
+ ],
+ "mood.first_person": [
+  "sono",
+  "son",
+  "mi sento",
+  "sto",
+  "mi sono",
+  "mi trovo",
+  "oggi",
+  "stamattina",
+  "stasera",
+  "stanotte",
+  "ultimamente",
+  "in questi giorni",
+  "da qualche giorno",
+  "che giornata",
+  "giornata",
+  "spacco",
+  "ho (?:la febbre|mal di \\w+|l'influenza)",
+  "che"
+ ],
+ "mood.good_words": [
+  "bene",
+  "benissimo",
+  "in forma",
+  "alla grande"
+ ],
+ "mood.happy": [
+  "felice",
+  "content[oa]",
+  "allegr[oa]",
+  "di buon umore",
+  "soddisfatt[oa]",
+  "bene"
+ ],
+ "mood.happy_high": [
+  "felicissim[oa]",
+  "alla grande",
+  "benissimo",
+  "al settimo cielo",
+  "da dio"
+ ],
+ "mood.motivated": [
+  "motivat[oa]",
+  "carico di voglia",
+  "ispirat[oa]"
+ ],
+ "mood.needs_verb": [
+  "bene",
+  "male",
+  "benissimo",
+  "malissimo",
+  "normale",
+  "insomma",
+  "così così",
+  "cosi cosi",
+  "teso",
+  "tesa",
+  "a terra",
+  "da dio",
+  "cotto",
+  "cotta",
+  "giu"
+ ],
+ "mood.negation": [
+  "non",
+  "mai",
+  "né",
+  "nemmeno",
+  "neanche",
+  "per niente"
+ ],
+ "mood.nervous": [
+  "nervos[oa]",
+  "irritat[oa]",
+  "agitat[oa]",
+  "teso",
+  "tesa",
+  "sotto pressione"
+ ],
+ "mood.not_now": [
+  "ieri",
+  "l'altro ieri",
+  "la settimana scorsa",
+  "ero",
+  "fossi",
+  "sarei",
+  "sarò",
+  "sarai"
+ ],
+ "mood.not_now_start": [
+  "perch[eé]",
+  "come mai",
+  "se",
+  "quando",
+  "anche se",
+  "nel caso",
+  "qualora",
+  "chi",
+  "cosa"
+ ],
+ "mood.sad": [
+  "triste",
+  "depress[oa]",
+  "abbattut[oa]",
+  "malinconic[oa]",
+  "giù di morale"
+ ],
+ "mood.sick": [
+  "malat[oa]",
+  "influenzat[oa]",
+  "raffreddat[oa]",
+  "con la febbre",
+  "ho la febbre",
+  "ho mal di testa",
+  "ho l'influenza"
+ ],
+ "mood.so_so": [
+  "così così",
+  "cosi cosi",
+  "insomma",
+  "normale"
+ ],
+ "mood.subject_verb": [
+  "sto",
+  "mi sento",
+  "sono",
+  "son",
+  "mi sono sentit[oa]"
+ ],
+ "mood.third_person": [
+  "è",
+  "e'",
+  "sei",
+  "siamo",
+  "siete",
+  "era",
+  "erano",
+  "sembra",
+  "sembri"
+ ],
+ "mood.tired": [
+  "stanc[oa]",
+  "assonnat[oa]",
+  "senza energi[ae]",
+  "scaric[oa]"
+ ],
+ "mood.tired_heavy": [
+  "stanc[oa] mort[oa]",
+  "distrutt[oa]",
+  "esaust[oa]",
+  "sfinit[oa]",
+  "a pezzi",
+  "cott[oa]",
+  "spompat[oa]",
+  "stanchissim[oa]"
+ ],
+ "mood.undo": [
+  "non (?:lo |l')?(?:segnare|segnarlo|registrare|registrarlo|salvare|salvarlo|scriverlo)",
+  "togli(?:lo)? (?:l'umore|dall'umore|quello che ho detto)",
+  "cancella (?:l'umore|l'ultimo umore)",
+  "non (?:segnare|registrare) l'umore",
+  "non è vero,? (?:sto bene|non sono)"
+ ],
+ "oracle.advice": [
+  "consigli",
+  "consiglia",
+  "suggerisci",
+  "suggerimento",
+  "cosa ne pensi",
+  "che ne dici"
+ ],
+ "oracle.build_ask": [
+  "sviluppa",
+  "implementa",
+  "programma",
+  "costruisci",
+  "crea(?:mi)? (?:un|una) (?:comando|modulo|funzione|strumento|plugin)",
+  "aggiungi (?:a|in) hestia"
+ ],
+ "oracle.claimed_action": [
+  "(?<!non )\\b(?:ho|abbiamo)\\s+(?:gi[àa]\\s+)?(?:registrat|salvat|annotat|segnat|impostat|creat|aggiunt|rimoss|cancellat|eliminat|spostat|ridott|programmat|memorizzat|attivat|disattivat)\\w*",
+  "\\b(?:registro|annoto|riduco|sposto|cancello|elimino|imposto|programmo|memorizzo)\\s+(?:la|il|lo|gli|le|i|per|tutt|ogni)\\b"
+ ],
+ "oracle.delete_ask": [
+  "cancell",
+  "elimin",
+  "togli",
+  "rimuov",
+  "annull",
+  "disdic",
+  "scollega",
+  "smetti",
+  "basta",
+  "dimentic"
+ ]
+}

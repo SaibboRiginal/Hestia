@@ -178,3 +178,42 @@ def localize(payload: Any, lang: str | None = None) -> Any:
             return text(node)
         return node
     return walk(payload)
+
+
+# ── words people write (catalog ``words``: ``{list key: [regex fragments]}``, one file per language) ───────────
+# Parsers of what the owner writes (yes/no, «delete», dates, moods, bank mails…) never hold a language in the code:
+# they name a list (``"oracle.delete_ask"``) and read it from every ``locales/<lang>/words.json``, so the owner is
+# understood in any language that has a file, whatever «Lingua» says. Entries are regex fragments (``"elimin"``,
+# ``"gi[àa]"``); a new language is one new file.
+@lru_cache(maxsize=1)
+def _languages() -> tuple[str, ...]:
+    return tuple(sorted(p.name for p in LOCALES.iterdir() if (p / "words.json").is_file()))
+
+
+@lru_cache(maxsize=512)
+def words(key: str) -> tuple[str, ...]:
+    """Every entry of the list ``key`` in every language with a ``words.json`` (English first, no duplicates)."""
+    out: list[str] = []
+    for code in sorted(_languages(), key=lambda c: c != SOURCE):
+        for w in catalog("words", code).get(key) or []:
+            if isinstance(w, str) and w and w not in out:
+                out.append(w)
+    return tuple(out)
+
+
+def alt(key: str) -> str:
+    """The entries of ``key`` as one regex alternation (``a|b|c``), longest first; ``(?!)`` when empty."""
+    items = sorted(words(key), key=len, reverse=True)
+    return "|".join(items) if items else "(?!)"
+
+
+@lru_cache(maxsize=512)
+def word_regex(template: str, *keys: str, flags: int = re.IGNORECASE) -> "re.Pattern[str]":
+    """A compiled regex where ``{0}``, ``{1}``… in ``template`` are the alternations of ``keys``:
+    ``word_regex(r"\\b(?:{0})\\w*", "oracle.delete_ask")``."""
+    return re.compile(template.format(*(alt(k) for k in keys)), flags)
+
+
+def word_set(key: str) -> frozenset[str]:
+    """The entries of ``key`` as plain lower-case words (lists of whole words, not fragments)."""
+    return frozenset(w.lower() for w in words(key))

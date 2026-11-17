@@ -23,9 +23,8 @@ from typing import Any
 from zoneinfo import ZoneInfo
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
-_DAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
-         "lun": 0, "mar": 1, "mer": 2, "gio": 3, "ven": 4, "sab": 5, "dom": 6}
-_LIMIT_PATTERN = re.compile(r"usage limit|limit reached|rate.?limit|quota|limite di utilizzo", re.I)
+_DAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}   # Claude CLI output (English)
+_LIMIT_PATTERN = re.compile(r"usage limit|limit reached|rate.?limit|quota", re.I)
 
 
 def _parse_hhmm(text: str) -> time:

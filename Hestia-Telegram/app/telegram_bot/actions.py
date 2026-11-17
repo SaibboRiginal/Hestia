@@ -18,10 +18,11 @@ from telegram_bot import catalog, core, inputs, store, ui, usage
 from telegram_bot.menu import model
 from telegram_bot.render import Rendered, render
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import word_set
 
 logger = logging.getLogger("hestia_telegram.actions")
 
-_DELETE = re.compile(r"(delete|elimina|remove|rimuovi)", re.I)
+_DELETE = re.compile(r"(delete|remove)", re.I)   # tool names (English)
 _TECH = re.compile(r"(error|exception|traceback|http|\{|\[|=|_id\b|errno|refused|timeout)", re.I)
 
 
@@ -348,10 +349,10 @@ def on_text(chat_id, text: str) -> bool:
         return False
     if flow["mode"] == "confirm":
         low = text.strip().casefold()
-        if low in (tr("yes"), "si", "ok", "conferma", "vai", "yes"):
+        if low in word_set("common.yes_word") | {tr("yes").casefold()}:
             _run(chat_id, flow, tool)
             return True
-        if low in ("no", "annulla", "lascia stare"):
+        if low in word_set("common.no") | {tr("no").casefold()}:
             cancel(chat_id)
             return True
         return _offer_quit(chat_id, flow, tool, text)

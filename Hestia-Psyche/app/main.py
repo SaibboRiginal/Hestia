@@ -29,7 +29,7 @@ from hestia_common.settings_client import setting
 from hestia_common.signals_client import Signals, signals_rule
 from hestia_common.transfer import StoreSection, Transfer
 
-from .core.service import CAUSES, LABELS, MOOD_WORDS, Psyche, mood_word
+from .core.service import CAUSES, LABELS, MOOD_WORDS, Psyche, label_text, mood_word
 
 API = "/api/mood"
 DOMAIN = "mood"
@@ -155,7 +155,7 @@ def _line(r: dict) -> list[str]:
     if r.get("energy"):
         meta.append(tr("energy {0}/5", r['energy']))
     if r.get("labels"):
-        meta.append(", ".join(r["labels"][:3]))
+        meta.append(", ".join(label_text(l) for l in r["labels"][:3]))
     return meta
 
 
@@ -191,7 +191,7 @@ def _history(days: int = 30) -> dict:
     return {"days": h["days"], "stats": st,
             "display": display(tr("Mood, last {0} days", days), subtitle=sub,
                                items=[item(f"{d['date'][8:10]}/{d['date'][5:7]}", [f"{d['mood']}/5 {d['mood_word']}",
-                                                                                 ", ".join(d["labels"][:3])],
+                                                                                 ", ".join(label_text(l) for l in d["labels"][:3])],
                                            tone=_tone(d["mood"])) for d in reversed(h["days"][-20:])],
                                lines=[] if h["days"] else [tr("No data in this period.")])}
 

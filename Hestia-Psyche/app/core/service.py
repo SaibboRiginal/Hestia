@@ -21,13 +21,24 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_psyche.service")
 
 KIND = "mood"
-LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "giù",
-          "arrabbiato", "malato")
-CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
+# Stored values (English); people read them through tr (catalog «mood::…» / «cause::…»).
+LABELS = ("tired", "charged", "calm", "happy", "motivated", "bored", "nervous", "anxious", "sad", "down",
+          "angry", "sick")
+CAUSES = ("work", "sleep", "people", "health", "sport", "money", "home", "free_time", "weather")
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
 MOOD_WORDS = {1: "mood::very low", 2: "mood::low", 3: "mood::so-so", 4: "mood::good", 5: "mood::great"}   # shown through tr
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 QUOTE_MAX = 200
+
+
+def label_text(label: str) -> str:
+    """A stored mood label (``tired``) in the owner's language."""
+    return tr(f"mood::{label}")
+
+
+def cause_text(cause: str) -> str:
+    """A stored cause (``free_time``) in the owner's language."""
+    return tr(f"cause::{cause}")
 NOTE_MAX = 1000
 
 
@@ -283,7 +294,7 @@ class Psyche:
                 out["weekdays"] = {WEEKDAYS[k]: round(v, 2) for k, v in sorted(wd.items())}
         labels = Counter(l for d in recent for l in d["labels"])
         if labels:
-            top = [f"{l} ({n})" for l, n in labels.most_common(3)]
+            top = [f"{label_text(l)} ({n})" for l, n in labels.most_common(3)]
             s.append(tr("The most frequent words: ") + ", ".join(top) + ".")
         bad_causes = Counter(c for d in recent if d["mood"] <= 2 for c in d["causes"])
         if bad_causes:
@@ -351,7 +362,7 @@ class Psyche:
         s = self.summary(rows)
         done = []
         if s:
-            extra = ", ".join(s["labels"][:3])
+            extra = ", ".join(label_text(l) for l in s["labels"][:3])
             done.append({"text": tr("Mood {0}/5 · {1}", s['mood'], s['mood_word']) + (f" · {extra}" if extra else ""),
                          "tone": "success" if s["mood"] >= 4 else "warning" if s["mood"] <= 2 else ""})
         recent = self.days(14, day)

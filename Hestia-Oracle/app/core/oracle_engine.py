@@ -12,6 +12,8 @@ import json
 import logging
 import os
 import re
+
+from hestia_common.i18n import word_regex
 from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from importlib import import_module
@@ -79,12 +81,9 @@ TaskLifecycleStore = _resolve_task_lifecycle_store()
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 _STARTUP_TS = time.time()
 
-# A quick answer (no tools) that says it did or will do something: «ho registrato», «riduco gli impegni».
-_CLAIMED_ACTION = re.compile(
-    r"(?<!non )\b(?:ho|abbiamo)\s+(?:gi[àa]\s+)?(?:registrat|salvat|annotat|segnat|impostat|creat|aggiunt|rimoss|cancellat|"
-    r"eliminat|spostat|ridott|programmat|memorizzat|attivat|disattivat)\w*"
-    r"|\b(?:registro|annoto|riduco|sposto|cancello|elimino|imposto|programmo|memorizzo)\s+(?:la|il|lo|gli|le|i|per|"
-    r"tutt|ogni)\b", re.IGNORECASE)
+# A quick answer (no tools) that says it did or will do something («I've logged it», «I'll reduce the commitments»),
+# in every language with a words file.
+_CLAIMED_ACTION = word_regex(r"(?:{0})", "oracle.claimed_action")
 
 # Tools every turn keeps whatever its domain: reminders, routines and asking the user back.
 _ALWAYS_TOOLS = frozenset({"agenda_assistant_add", "routine_create", "ask_user", "module_manual"})

@@ -123,7 +123,7 @@ def _parse_candidates(raw: str) -> list[dict[str, str]]:
         return []
 
     text = raw.strip()
-    if "NO_ACTION" in text.upper() or "NESSUNA_AZIONE" in text.upper():
+    if "NO_ACTION" in text.upper():
         return []
 
     candidates: list[dict[str, str]] = []

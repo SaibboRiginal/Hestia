@@ -11,6 +11,8 @@ import json
 import logging
 import re
 
+from hestia_common.i18n import word_regex
+
 from core.services import prompt_config
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
@@ -25,12 +27,8 @@ _DEFAULT_CATEGORIES = ["alerts", "tasks", "reminders", "insights"]
 
 # Deterministic gate before the extraction LLM call (docs/work/2026-11-06-hestia-viva F2): only a message that talks
 # about how/when the assistant writes, reminds or asks can change a control. Everything else skips the call, so the
-# GPU is free for the next turn. Italian + English stems, lowercase.
-_CONTROL_HINT = re.compile(
-    r"notific|avvis|promemori|ricord(?:a|ami|armi)|sollecit|insist|disturb|silenz|zitt|non\s+scriv|"
-    r"non\s+chieder|smetti|basta\s+(?:con|di|mandar|scriver)|di\s+notte|orari|quiet|proattiv|"
-    r"di\s+(?:più|meno)\s+spesso|ogni\s+tanto|remind|notif|stop\s+(?:asking|sending)|don'?t\s+ask|"
-    r"\b(?:alle|dalle|fino\s+alle)\s+\d", re.IGNORECASE)
+# GPU is free for the next turn. Stems of every language with a words file ("control.hint").
+_CONTROL_HINT = word_regex("{0}", "control.hint")
 
 
 def looks_like_control(user_message: str) -> bool:

@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import logging
 import re
+
+from hestia_common.i18n import word_regex
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -22,9 +24,8 @@ logger = logging.getLogger("hestia_oracle.conversation_goal")
 TOTAL_ROUNDS = "oracle.goal.rounds"
 ROUNDS_PER_ANSWER = "oracle.goal.rounds_per_answer"
 _STORE = "api/oracle-store/records"
-_PREFIX = re.compile(r"^\s*(obiettivo|goal)\s*:\s*(.+)$", re.IGNORECASE | re.DOTALL)
-_STOP = re.compile(r"\b(ferma|stop|basta|annulla)\b.*\bobiettivo\b|\bobiettivo\b.*\b(fermati|stop|basta)\b",
-                   re.IGNORECASE)
+_PREFIX = word_regex(r"^\s*(?:{0})\s*:\s*(.+)$", "goal.word", flags=re.IGNORECASE | re.DOTALL)
+_STOP = word_regex(r"\b(?:{1})\b.*\b(?:{0})\b|\b(?:{0})\b.*\b(?:{1})\b", "goal.word", "goal.stop")
 
 _cache: dict[str, dict | None] = {}
 
@@ -36,7 +37,7 @@ def _now() -> str:
 def parse_prefix(message: str) -> str:
     """«obiettivo: X» at the start of a message → X (the goal), else ""."""
     m = _PREFIX.match(message or "")
-    return m.group(2).strip()[:500] if m else ""
+    return m.group(1).strip()[:500] if m else ""
 
 
 def is_stop(message: str) -> bool:
