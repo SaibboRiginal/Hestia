@@ -2295,11 +2295,13 @@ class OracleEngine:
         _owned_domains: list[str] = []
         _unowned_domains: list[str] = []
 
+        _domain_owner: dict[str, str] = {}
         for domain in domains:
             owners = self._module_registry.get_domain_owners(domain)
             if owners:
                 _relevant_services.update(owners)
                 _owned_domains.append(domain)
+                _domain_owner[domain] = str(sorted(owners)[0]).lower()
             else:
                 _unowned_domains.append(domain)
 
@@ -2356,6 +2358,7 @@ class OracleEngine:
                     "required": [],
                 },
                 handler=_domain_search_handler,
+                service=_domain_owner.get(domain, ""),
             ))
 
         # Document chunk search tool
@@ -2437,6 +2440,7 @@ class OracleEngine:
                 writes=bool(cmd.get("writes")),
                 title=str(cmd.get("title") or cmd_name),
                 method=str(cmd.get("method") or "GET").upper(),
+                service=cmd_service.lower(),
             ))
 
         if _filtered_cmds:
