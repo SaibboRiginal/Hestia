@@ -61,10 +61,10 @@ domain `fitness`); texts say «Allenamento» things, never the module name. No L
 
 | Key | Kind · severity | When | Page |
 |---|---|---|---|
-| `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `esercizi/<id>` |
+| `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `exercises/<id>` |
 | `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `allenamento` |
 | `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `allenamento` |
-| `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `esercizi/<id>` |
+| `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `exercises/<id>` |
 | `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progressi` |
 
 Weekly metrics (last 12 ISO weeks, current included; weeks before the first workout left out): `fitness.sessions`
@@ -87,7 +87,7 @@ Sends only when enabled, a goal is behind, nothing done or skipped today, no liv
 Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Favourites star (warning), streaks flame, records trophy, rest timer; energy 1–5 as numbers (1 with battery-low).
 
 Bundle `ui/src/index.ts` → `/ui/webui/hercules.js` (built in the Dockerfile). Pages: allenamento (today / live),
-schede, schede/:id, esercizi, esercizi/:id, storico, storico/:id, progressi, corpo. Widgets: prossimo (name always visible; exercise list only in size l), settimana,
+schede, plans/:id, esercizi, exercises/:id, storico, history/:id, progressi, corpo. Widgets: prossimo (name always visible; exercise list only in size l), settimana,
 fatto, record, esercizio, muscoli, peso, live (settimana also shows «Corsa 1/2» per open intention). Quick actions:
 fatto (one tap per template, undo), inizia, peso, corsa («Ho corso», km optional, undo), salta.
 A UI change needs `up-all.bat --build hercules`.

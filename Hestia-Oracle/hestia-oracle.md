@@ -34,12 +34,12 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   2.5-flash-lite in 2026-10). Gemini native tools send each tool's JSON Schema as `parameters_json_schema` (the
   OpenAPI-subset `parameters` refused `contentMediaType` and arrays without `items`, failing the whole call).
   Code: `core/services/llm_chains.py`.
-- **Use cases** `oracle.usecases` = `{use case: {chain, mode, thinking}}` overrides. Oracle's own: `oracle.generale`
-  (chat, classify, tools, memory, format), `oracle.ragionamento`, `oracle.codice`, `oracle.documenti` (vision),
+- **Use cases** `oracle.usecases` = `{use case: {chain, mode, thinking}}` overrides. Oracle's own: `oracle.general`
+  (chat, classify, tools, memory, format), `oracle.reasoning`, `oracle.codice`, `oracle.documents` (vision),
   `oracle.embedding`. Modules **declare** theirs in the Hub registration (`capabilities.llm_usecases`, helper
-  `hestia_common.oracle_usecases`): `scout.annunci`, `athena.strategia`, `athena.revisione`, `argus.analisi`,
-  `chronos.agenda`, `wardrobe.foto`, `forge.codice`… with a suggested chain; Marko picks chain/mode/thinking in one
-  place. A use case nobody declared runs like `oracle.generale` and is listed as «non dichiarato».
+  `hestia_common.oracle_usecases`): `scout.listings`, `athena.strategy`, `athena.review`, `argus.analysis`,
+  `chronos.agenda`, `wardrobe.photo`, `forge.codice`… with a suggested chain; Marko picks chain/mode/thinking in one
+  place. A use case nobody declared runs like `oracle.general` and is listed as «non dichiarato».
 - `ChainAgent` (same interface as `UniversalAgent`) walks the chain at every call, reading settings live (no restart,
   no reconfigure); `AgentFactory.create()` builds one per Oracle use case (`generic`, `reasoning`, `code`,
   `documents`, `embedding` slots). Streams fall back only before the first token.
@@ -118,7 +118,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 - **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today
   (Psyche `/api/mood/today`), the last notifications sent today (Hermes `/api/notifications`), the last things he
   opened or started (Metis `/api/metis/usage/recent`); read in parallel through Hub, 2 s each, cached 60 s; a source
-  down leaves its line out (`[🔄] event=awareness_source_*`). Items per line: `oracle.chat.consapevolezza_righe`
+  down leaves its line out (`[🔄] event=awareness_source_*`). Items per line: `oracle.chat.awareness_lines`
   (3; 0 = none).
   A fourth line, when she wrote first today (Hermes item `kind: athena.talk`): the whole sentence, so his answer
   in any chat has its context; those items are left out of the notifications line.
@@ -197,7 +197,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 ### Audio in documents → Echo (`core/document/transcription.py`, 2026-10-20)
 Oracle has no speech engine (WhisperX removed, dossier `docs/work/2026-10-20-modulo-voce`). When an audio/video
 file needs a transcript (archiving, or a model that does not take audio natively) Oracle asks Echo through the Hub
-(`hestia_common.voice_client`, use `oracle.documenti`, chain `ascolto-preciso`, declared in `voice_usecases`).
+(`hestia_common.voice_client`, use `oracle.documents`, chain `listening-precise`, declared in `voice_usecases`).
 Echo down or nothing heard → `[🔄]` and the file is analysed/archived without transcript.
 
 ### Chat attachment hand-off to modules (`core/document/handoff.py`, 2026-10-19)
@@ -238,10 +238,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 
 ### Turn safety, origin and goal (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
 - **Loop guard** (`core/services/loop_guard.py`, Cindy 1): before the turn cap, the loop stops when the same call
-  (tool + arguments) repeats `oracle.agent.giri.ripetizioni` times in a row, on A-B-A-B ping-pong or on a sequence of
-  3-4 calls repeated 3 times inside `oracle.agent.giri.finestra` calls. A repeat made at least
-  `oracle.agent.giri.attesa_secondi` after the previous one is a real wait, not a loop. On a suspicion the light use
-  case `oracle.controllo_giri` says «aspetta» or «gira» (at most `oracle.agent.giri.verifiche` checks per answer; a
+  (tool + arguments) repeats `oracle.agent.rounds.repeats` times in a row, on A-B-A-B ping-pong or on a sequence of
+  3-4 calls repeated 3 times inside `oracle.agent.rounds.window` calls. A repeat made at least
+  `oracle.agent.rounds.wait_seconds` after the previous one is a real wait, not a loop. On a suspicion the light use
+  case `oracle.check_rounds` says «aspetta» or «gira» (at most `oracle.agent.rounds.checks` checks per answer; a
   failure = stop). Stop = one last turn without tools, the model answers with what it has.
 - **Truth about writes** (real-model bench, 2026-10-30, `docs/work/2026-10-30-ai-vera-gemini`): a write tool whose
   every call failed puts «AZIONI NON RIUSCITE: <title>…» in the next prompt (the model must say it did not work);
@@ -252,10 +252,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   a tool call. Module tools keep their own JSON Schema (enums, array items) instead of a flattened copy.
   A near-miss tool name (`memory:save`, `memory_save` → `memory.save`) runs the one manifest tool it matches; the very
   same call (tool + arguments) that already failed in the loop is not run again («GIÀ FALLITO»). A write tool whose
-  result says `unchanged` / `already_known` (a read call of a read-or-write tool like `cibo_dieta`, a known fact)
+  result says `unchanged` / `already_known` (a read call of a read-or-write tool like `food_diet`, a known fact)
   is no «Fatto» and no change. Analyst rules 10–12: write tools only when the user asks or tells something to
   record (a question or advice reads only), never «fatto» without a successful tool, memory in third person and
-  «dimentica» = `memory.search` + `memory.forget`; rule 13: a one-off «ricordami» goes to `agenda_assistente_aggiungi`
+  «dimentica» = `memory.search` + `memory.forget`; rule 13: a one-off «ricordami» goes to `agenda_assistant_add`
   (works with no calendar linked), a repeated one to `routine_create`. Quick chat has no tools and never claims an action: an answer
   matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
   `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
@@ -265,12 +265,12 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   and `forge_develop` excepted); once a module stored what the user said, `memory.save` does not copy it unless the
   user said «ricorda» (answer `already_known`, no notice); delete/cancel tools need the user's own words for it;
   `forge_develop` needs an explicit build ask or a «sì» to the proposal (else «chiedi con ask_user»); at most 6
-  writes per turn. On a question a write tool called with no values passes (a read, e.g. `cibo_dieta`). A refused
+  writes per turn. On a question a write tool called with no values passes (a read, e.g. `food_diet`). A refused
   call returns `BLOCCATO: …` to the model and is `refused` in the tool log: no «Non riuscito» notice, no failed-write
   note. An empty streamed final answer gets one plain ask, then the turn's text (never an empty reply).
 - **Tools per turn** (small-model bench, 2026-10-30): when the classifier is sure (confidence ≥ the quick-chat
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
-  (`agenda_assistente_aggiungi`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
+  (`agenda_assistant_add`, `routine_create`, `ask_user`, `module_manual`) and Oracle's own memory/document tools;
   unsure or unknown domain → every domain. Every tool of every module was ~250 tools / 30k tokens per call, more
   than a small local model's context (8192 on a bare Ollama): Ollama cut the start of the prompt (rules
   and tools).
@@ -290,7 +290,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   tool through Hestia-MCP.
 - **Goal of a conversation** (Cindy 23, `core/services/conversation_goal.py`): «obiettivo: …» at the start of a
   message (or tool `goal_set`) fixes a goal; after each answer to the owner the loop works on it for
-  `oracle.obiettivo.giri_per_risposta` rounds (at most `oracle.obiettivo.giri` in all), emits `goal.progress`
+  `oracle.goal.rounds_per_answer` rounds (at most `oracle.goal.rounds` in all), emits `goal.progress`
   notices and appends a short «Obiettivo (giro n/N)» line. «ferma l'obiettivo» or `goal_stop` ends it, the model
   closes it with `goal_done`. Stored in Archive `oracle-store` kind `goal`. Only `utente` turns run rounds.
 - **Module index** (Cindy 30): modules declare `capabilities.when_to_use` (one line) and `capabilities.manual` in
@@ -300,7 +300,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   allows ```` ```hestia-ui ```` blocks (card, stat, table, list, chart, checklist, button); Telegram turns them into
   plain text and reply buttons.
 - **Vision bridge** (Cindy 16): an image sent to a chain step whose model has no vision is first described by the
-  use case `oracle.descrivi_immagine` (chain `visione`), then the text model answers with that description.
+  use case `oracle.describe_image` (chain `visione`), then the text model answers with that description.
 
 ### Visible Thinking
 - The agent loop emits **thinking** NDJSON events (`type: "thinking"`) for real-time visibility:
@@ -363,7 +363,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `POST` | `/api/chat/document` | Send a file + optional message, receive NDJSON stream |
 | `POST` | `/api/format` | Format a structured payload into human-readable text |
 | `POST` | `/api/subscriptions/compile` | Compile a notification subscription from natural language |
-| `POST` | `/api/llm/generate` | Plain generation for services `{prompt, use_case?}` — the use case's chain (default `oracle.generale`; esterna → external agent one shot) → `{response, model, provider, use_case, chain}`; every step failing → 503 |
+| `POST` | `/api/llm/generate` | Plain generation for services `{prompt, use_case?}` — the use case's chain (default `oracle.general`; esterna → external agent one shot) → `{response, model, provider, use_case, chain}`; every step failing → 503 |
 | `GET` | `/api/llm/models?provider=` | Model choices of a named provider (Ollama installed models, Gemini curated list, Anthropic Models API, OpenAI-compatible `/models`, Claude CLI haiku/sonnet/opus) → `{options:[{value,label}]}` |
 | `GET` | `/api/llm/providers` | Named providers: type, address, `key_env`, `key_set`, available, exhausted models (never a key) |
 | `GET` | `/api/llm/chains` | Chains with each step's state (available, out of quota until) |
@@ -388,7 +388,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `GET` | `/api/ui/usage` · `/api/ui/usage/calls` | Tab Uso: same as `/api/llm/usage` · `/api/llm/usage/calls` |
 | `GET` | `/api/ui/documents?limit=&domain=&permanent=` | Documenti page: documents from Archive (via Hub) `{documents, count, domains}`; Archive down → 502 |
 | `GET` | `/api/ui/documents/search?query=&limit=` | Semantic search over passages (same as the chat, threshold `oracle.documents.search_threshold`) |
-| `POST` | `/api/ui/documents` | Add a file `{name, mime, data_b64}` → `{status: ingesting, document_id}`; archiving (extract → chunks → embeddings → Archive) runs in background, session `webui-documenti`; 415 type, 413 too big |
+| `POST` | `/api/ui/documents` | Add a file `{name, mime, data_b64}` → `{status: ingesting, document_id}`; archiving (extract → chunks → embeddings → Archive) runs in background, session `webui-documents`; 415 type, 413 too big |
 | `PATCH` | `/api/ui/documents/{id}/permanent` | `{is_permanent}`: keep for good (never pruned) or temporary |
 | `DELETE` | `/api/ui/documents/{id}` | Delete document and passages (404 unknown) |
 | `GET` | `/api/ui/chats` · `/api/ui/chats/tags` | WebUI history sidebar: conversations (`q`, `tag`, `since`, `until`, `pinned`, `limit`, `offset`, pinned first) · tags in use; 502 Archive down |
@@ -463,7 +463,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."},"trace_id":"..."}` — terminal answer event (`origin` only when the turn was not started by the owner's client; `trace_id` names the turn: clients send it back as `interaction_id` with a 👍/👎).
 - `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
-- `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
+- `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistant*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
   Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404. A new owner turn in the session (origin `utente`, not a queued batch) closes its open `ask_user` questions (`engine.close_open_questions`, here and in Archive): an answer spoken in live voice or typed instead of tapping the card is the message itself, so a reload does not draw the card again and a late tap gets 404 (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A routine turn's questions reach the owner as Hermes notifications that ask (Chronos `routines.py`).
 
@@ -496,8 +496,8 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 |---|---|
 | Modelli | `oracle.providers`, `oracle.chains`, `oracle.usecases` (object, editor Cervello → Modelli), `oracle.quota.cooldown_minutes` (60), `oracle.brain.mode` (interna), `.agent` (claude), `.model` (sonnet), `.fallback` (interna) |
 | Uso | `oracle.usage.retention_days` (90), `oracle.pricing` (`{"provider/model": {in, out, cached}}` $ per Mtok, `{}`) |
-| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8); loop guard `oracle.agent.giri.{ripetizioni 4, finestra 12, attesa_secondi 30, verifiche 3}`; goal `oracle.obiettivo.giri` (8), `.giri_per_risposta` (3) |
-| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.chat.consapevolezza_righe` (3); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…); `oracle.provider.llamacpp.slots` (3) |
+| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8); loop guard `oracle.agent.giri.{ripetizioni 4, finestra 12, attesa_secondi 30, verifiche 3}`; goal `oracle.goal.rounds` (8), `.giri_per_risposta` (3) |
+| Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.chat.awareness_lines` (3); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…); `oracle.provider.llamacpp.slots` (3) |
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
 | Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
 | Domande | `oracle.ask.timeout` (24 h, 1–720): how long a question of the assistant stays open |
@@ -698,7 +698,7 @@ small `/api/ui/*` views instead of calling them directly). The Hub registration 
 | Kind | Id | What |
 |---|---|---|
 | page (order 120) | `cervello` → `<oracle-brain>` | Tabs **Attività** · **Uso** (`<oracle-usage>`: rows from Archive per module — calls, calls/hour, tokens, cache %, largest prompt vs window, avg time, cost, fallbacks/errors/quota —, calls per day, conversations → their calls, which chain step answered) · **Modelli** (`<oracle-models>`: use cases by module → chain/mode/thinking, chains with steps ↑↓, model picker, quota badge + «Riprova adesso», providers with standard, address and key status; saves through Themis). Attività: KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
-| widget | `uso-oggi` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
+| widget | `usage-today` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
 | page (order 121) | `documenti` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle non raggiungibile» |
 
 Data sources of the Attività tab (all in memory, reset when Oracle restarts — an inside view, not an audit log; the
@@ -773,8 +773,8 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at
   `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per
   model; a model Ollama already has (also one made from a Modelfile, which is on no registry) is answered «fatto»
-  without a job; a missing model or a full disk is a final error in plain words. Tools `modelli_download`,
-  `modelli_scarica` (Telegram «Download»).
+  without a job; a missing model or a full disk is a final error in plain words. Tools `models_downloads`,
+  `models_download` (Telegram «Download»).
 - `GET /api/llm/setup/machine` → `{address, label}` and `POST /api/llm/setup/machine {address, name}` (2026-10-31,
   page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
   «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own

@@ -59,7 +59,7 @@ Turn safety (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`): whoever cal
 owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomo:<module>`, `hestia_common.origin`); write tools
 return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Annulla»; register
 `capabilities.when_to_use` + `manual` so the assistant knows when to use your module; text sent to a cloud model or
-a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.md` before designing.
+a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` before designing.
 
 ## 3. LLM access (Oracle only)
 
@@ -90,7 +90,7 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.m
 - Notifications in voice: module setting `<module>.notifiche.voce` (`reminders.voice_setting`) + `reminder_event(voice=)`
   → payload `_voice` → Hermes adds the audio as an `update`.
 - Live («Parla», Telegram `/voce`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
-- «La tua voce» (W4): voiceprint filter (`echo.impronta.*`, other voices → silence before any engine) and personal
+- «La tua voce» (W4): voiceprint filter (`echo.voiceprint.*`, other voices → silence before any engine) and personal
   dictionary (hint to every engine, learns from `/api/voice/dictionary/learn`) live inside Echo; callers change nothing.
 
 ## 4. Forge (self-development) — how a change ships

@@ -8,10 +8,10 @@ provider or a model.
 
     from hestia_common.oracle_usecases import usecase, capabilities as llm_capabilities
 
-    LLM_USECASES = [usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
+    LLM_USECASES = [usecase("scout.listings", "Scout · lettura annunci", chain="veloce",
                             help="Estrae i dati degli annunci dalle mail.")]
     payload["capabilities"].update(llm_capabilities(LLM_USECASES))
-    ... json={"prompt": prompt, "use_case": "scout.annunci"}
+    ... json={"prompt": prompt, "use_case": "scout.listings"}
 """
 from __future__ import annotations
 

@@ -168,7 +168,7 @@ def forget(session_id: str) -> None:
 # ── turns ────────────────────────────────────────────────────────────────────
 
 def run_turn(*, session_id: str, user_message: str, system_prompt: str, primer: str, tools: list,
-             use_case: str = "oracle.generale") -> tuple[str, list[dict]]:
+             use_case: str = "oracle.general") -> tuple[str, list[dict]]:
     """One chat turn by the external agent with Hestia's tools. Returns (answer, tool log)."""
     cfg = brain()
     adapter = _ADAPTERS.get(cfg["agent"])
@@ -190,7 +190,7 @@ def run_turn(*, session_id: str, user_message: str, system_prompt: str, primer: 
     return result["text"], log
 
 
-def ask(prompt: str, system: str = "", use_case: str = "oracle.generale") -> str:
+def ask(prompt: str, system: str = "", use_case: str = "oracle.general") -> str:
     """One shot without tools (``/api/llm/generate`` of a use case in esterna)."""
     cfg = brain()
     adapter = _ADAPTERS.get(cfg["agent"])

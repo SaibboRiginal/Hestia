@@ -6,7 +6,7 @@ or send text and get bytes. Failures return ``None`` so every caller keeps its o
     voice = VoiceClient(HUB_API_URL)
     heard = voice.transcribe(ogg_bytes, "audio/ogg", use_case="telegram.vocale",
                              keep={"kind": "recording", "session_id": sid, "message_id": mid, "client": "telegram"})
-    spoken = voice.speak(text, use_case="telegram.risposta", fmt="ogg_opus",
+    spoken = voice.speak(text, use_case="telegram.answer", fmt="ogg_opus",
                          keep={"kind": "generated", "message_id": mid})
     if spoken: send_voice(spoken["audio"])
 """

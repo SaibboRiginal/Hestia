@@ -122,7 +122,7 @@ def test_chat_born_proposal_targets_client_layer_and_returns_confirm():
     themis.register("webui", list(webui._defs.values()), [], {})
     emitted = []
     themis._emit = lambda kind, entity_id, payload: emitted.append((kind, payload))
-    value = {"dashboards": [{"id": "casa", "title": "Casa", "items": [{"widget": "scout.nuove", "size": "l"}]}]}
+    value = {"dashboards": [{"id": "casa", "title": "Casa", "items": [{"widget": "scout.new", "size": "l"}]}]}
     p = themis.propose("webui.dashboards", value, proposer="oracle", reason="come chiesto",
                        origin={"client": "webui", "session_id": "s1"})
     assert p["status"] == "pending" and p["scope"] == "client" and p["scope_id"] == "webui"

@@ -151,11 +151,11 @@ def importa(chat_id, args):
         *_lines(reports, _labels(available)),
         ui.note(tr("Merge: adds and updates, deletes nothing. First I send you a copy of how it is now."))],
         subtitle=tr("file of {0}", str(data.get('exported_at') or '')[:10])),
-        actions=[Action(tr("Import"), "importa_conferma", {"token": token}, style="primary"),
-                 Action(tr("Cancel"), "importa_annulla", {"token": token})])
+        actions=[Action(tr("Import"), "import_confirm", {"token": token}, style="primary"),
+                 Action(tr("Cancel"), "import_cancel", {"token": token})])
 
 
-def importa_conferma(chat_id, args):
+def import_confirm(chat_id, args):
     p = _pending.pop(str(args.get("token") or ""), None)
     if not p or p["chat_id"] != str(chat_id):
         raise TransferError(tr("This preview has expired: send me the file again."))
@@ -169,7 +169,7 @@ def importa_conferma(chat_id, args):
                     document=(f"hestia-prima-{datetime.now().strftime('%Y-%m-%d-%H%M')}.hestia", encode(before)))
 
 
-def importa_annulla(chat_id, args):
+def import_cancel(chat_id, args):
     _pending.pop(str(args.get("token") or ""), None)
     return Rendered(ui.outcome(tr("Import cancelled")))
 
@@ -187,14 +187,14 @@ def ripristina(chat_id, args):
         when = str(b.get("created_at") or "")[:16].replace("T", " ")
         meta = [f"{int(b.get('size') or 0) / 1048576:.0f} MB"] + (["verificato"] if b.get("verified_at") else [])
         lines.append(ui.item(when, meta))
-        actions.append(Action(tr("Restore {0}", when[:10]), "ripristina_conferma", {"file_id": str(b["id"])},
+        actions.append(Action(tr("Restore {0}", when[:10]), "restore_confirm", {"file_id": str(b["id"])},
                               style="danger"))
     return Rendered(ui.card(tr("Restore a backup"), [*lines, ui.note(
         tr("All data goes back to how it was at that moment; today's can be brought back with «Undo restore»."))]),
         actions=actions)
 
 
-def ripristina_conferma(chat_id, args):
+def restore_confirm(chat_id, args):
     ok, out = catalog.route("archive", "api/backup/restore", "POST",
                             body={"file_id": str(args.get("file_id") or ""), "confirm": True}, timeout=30)
     if not ok:
@@ -204,11 +204,11 @@ def ripristina_conferma(chat_id, args):
     logger.info("event=telegram_backup_restore_started")
     return Rendered(ui.outcome(tr("Restore started")) + "\n" + ui.note(
         tr("It takes a few minutes: I'll tell you when it's done.")),
-        actions=[Action(tr("Backup status"), "backup_status"), Action(tr("Undo restore"), "ripristina_annulla",
+        actions=[Action(tr("Backup status"), "backup_status"), Action(tr("Undo restore"), "restore_cancel",
                                                                      style="danger")])
 
 
-def ripristina_annulla(chat_id, args):
+def restore_cancel(chat_id, args):
     ok, out = catalog.route("archive", "api/backup/undo", "POST", body={"confirm": True}, timeout=30)
     if not ok:
         raise TransferError(tr("There is no restore to undo.") if "nothing_to_undo" in str(out)
@@ -226,18 +226,18 @@ def tools() -> list[catalog.Tool]:
           schema={"type": "object", "required": ["file"], "properties": {"file": {
               "type": "string", "contentMediaType": "application/octet-stream", "title": "The .hestia file"}}},
           handler=importa),
-        T("importa_conferma", "Confirm import", "", group="sistema", hints={"section": "interno"},
+        T("import_confirm", "Confirm import", "", group="sistema", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
-          writes=True, handler=importa_conferma),
-        T("importa_annulla", "Cancel import", "", group="sistema", hints={"section": "interno"},
+          writes=True, handler=import_confirm),
+        T("import_cancel", "Cancel import", "", group="sistema", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
-          handler=importa_annulla),
+          handler=import_cancel),
         T("ripristina", "Restore a backup", "Brings all data back to a backup on Google Drive", group="sistema",
           hints={"section": "Data and backups"}, handler=ripristina),
-        T("ripristina_conferma", "f::Restore", "", group="sistema", hints={"section": "interno"},
+        T("restore_confirm", "f::Restore", "", group="sistema", hints={"section": "interno"},
           schema={"type": "object", "properties": {"file_id": {"type": "string"}}, "required": ["file_id"]},
-          writes=True, destructive=True, handler=ripristina_conferma),
-        T("ripristina_annulla", "Undo restore", "Back to the data before the last restore",
+          writes=True, destructive=True, handler=restore_confirm),
+        T("restore_cancel", "Undo restore", "Back to the data before the last restore",
           group="sistema", hints={"section": "Data and backups"}, writes=True, destructive=True,
-          handler=ripristina_annulla),
+          handler=restore_cancel),
     ]

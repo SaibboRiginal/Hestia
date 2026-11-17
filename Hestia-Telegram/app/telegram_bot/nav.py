@@ -2,8 +2,8 @@
 Notifiche, Impostazioni. One live navigation message per chat, edited in place; opening a new one collapses the old.
 
 Callback data (≤ 64 bytes, short ids from ``store``):
-``n:oggi`` · ``n:aree`` · ``n:a:<area>`` · ``n:all:<area>:<page>`` · ``n:s:<area>:<section>:<page>`` · ``n:ntf`` ·
-``n:nd:<id>`` · ``n:imp`` · ``n:voce`` · ``t:<tool id>`` (run an action, ``actions``) · ``x:noop``.
+``n:today`` · ``n:areas`` · ``n:a:<area>`` · ``n:all:<area>:<page>`` · ``n:s:<area>:<section>:<page>`` · ``n:ntf`` ·
+``n:nd:<id>`` · ``n:imp`` · ``n:voice`` · ``t:<tool id>`` (run an action, ``actions``) · ``x:noop``.
 """
 from __future__ import annotations
 
@@ -164,7 +164,7 @@ def oggi(chat_id, message_id: int | None = None) -> None:
     else:
         buttons = [ui.button(menu.label(n), f"t:{store.sid(n)}") for n in menu.today.get("actions") or []
                    if catalog.get(n)]
-    rows = ui.grid(buttons) + [[ui.button(tr("Refresh"), "n:oggi")]]
+    rows = ui.grid(buttons) + [[ui.button(tr("Refresh"), "n:today")]]
     place(chat_id, "\n\n".join(parts), ui.keyboard(rows), message_id)
 
 
@@ -205,7 +205,7 @@ def area(chat_id, key: str, message_id: int | None = None) -> None:
     rows = ui.grid(primary)
     if len(a.names) > len(primary):
         rows.append([ui.button(tr("All actions ›"), f"n:all:{a.key}:0")])
-    rows.append([ui.button(tr("‹ Areas"), "n:aree")])
+    rows.append([ui.button(tr("‹ Areas"), "n:areas")])
     place(chat_id, ui.card(a.label, lines, marker=a.emoji), ui.keyboard(rows), message_id)
 
 
@@ -275,7 +275,7 @@ def notifiche(chat_id, message_id: int | None = None) -> None:
         lines.append(ui.note(tr("Nothing new.")))
     menu = model.current()
     if menu.area("notifiche"):
-        rows.append([ui.button(tr("Automatic alerts ›"), "n:a:notifiche")])
+        rows.append([ui.button(tr("Automatic alerts ›"), "n:a:notifications")])
     rows.append([ui.button(tr("Refresh"), "n:ntf")])
     place(chat_id, ui.card(tr("Notifications"), lines, marker=_emoji(menu, "notifiche")), ui.keyboard(rows), message_id)
 
@@ -310,7 +310,7 @@ def impostazioni(chat_id, message_id: int | None = None) -> None:
     voice = tr("yes") if voice_service.is_live(chat_id) else "no"
     rows = [
         [ui.button(tr("Chat"), "set:menu"), ui.button(tr("Menu"), "m:root")],
-        [ui.button(tr("Voice replies: {0}", voice), "n:voce")],
+        [ui.button(tr("Voice replies: {0}", voice), "n:voice")],
     ]
     if catalog.get("settings_search"):
         rows.append([ui.button(tr("All settings"), f"t:{store.sid('settings_search')}")])

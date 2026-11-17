@@ -244,8 +244,8 @@ they are not env vars. All apply **live** (read at use time).
 | `hecate.mail.watch_interval` | int (s) | `900` | Default recurrence of agenda job `hecate.mail_watch` (min 60) |
 | `hecate.mail.safety_interval` | int (s, advanced) | `21600` | Recurrence of `hecate.mail_watch` when Gmail Pub/Sub push is configured (safety net) |
 | `hecate.weather.cache_minutes` | int (min, advanced) | `30` | Forecast cache per place; a stale copy answers when Open-Meteo is down |
-| `hecate.telefono.wifi_casa` | list | `[]` | Home Wi-Fi names: the phone on one of them = «a casa» (empty = the phone sends `home`) |
-| `hecate.telefono.app` | list | `[]` | Apps whose phone notifications are passed on (feed `phone.notification`); empty = every app the phone sends |
+| `hecate.phone.home_wifi` | list | `[]` | Home Wi-Fi names: the phone on one of them = «a casa» (empty = the phone sends `home`) |
+| `hecate.phone.app` | list | `[]` | Apps whose phone notifications are passed on (feed `phone.notification`); empty = every app the phone sends |
 | `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
 
 Hecate also follows the personal setting `themis.personal.places` (Casa, Lavoro, Palestra…: name, address, kind,
@@ -336,7 +336,7 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
 
 - **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» in the Dispositivi page opens the form right in the
   card (email, password, then the two-step code there too: `POST /api/gateway/garmin/login {direct: true, values}`),
-  so there is no notification to chase; from Telegram or the assistant (tool `garmin_collega`) a Hermes secret form
+  so there is no notification to chase; from Telegram or the assistant (tool `garmin_link`) a Hermes secret form
   is sent instead. The password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
   signal `wearable.woke_at`. A missing part (e.g. HRV on an older watch) is skipped, the day stays.
   Login uses `garminconnect ≥ 0.3.20` (its own Garmin login; the old `garth` one stopped working when Garmin
@@ -348,9 +348,9 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Fuori casa», no
   effect; it is on when `phone.home` **or** the house signal `home.present` from Lares is explicitly false — a source
   that never sent anything does not count, fixed in W5) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
-  "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.telefono.app`.
-- Tools (Telegram + WebUI, section «Dispositivi»): `garmin_stato`, `garmin_collega`, `garmin_sincronizza`,
-  `garmin_giorno`, `garmin_scollega`, `telefono_stato`. Tests: `tests/test_devices.py`.
+  "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.phone.app`.
+- Tools (Telegram + WebUI, section «Dispositivi»): `garmin_status`, `garmin_link`, `garmin_sync`,
+  `garmin_day`, `garmin_unlink`, `phone_status`. Tests: `tests/test_devices.py`.
 - WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `dispositivi` →
   `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (form in the card, code included), «Leggi adesso», «Scollega»,
   last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built

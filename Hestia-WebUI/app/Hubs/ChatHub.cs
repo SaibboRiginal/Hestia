@@ -151,7 +151,7 @@ public class ChatHub : Hub
             // "Crea con Hestia": the user opened the assistant from a page; act on it with tools.
             if (pageContext.Length > 2000) pageContext = pageContext[..2000];
             clientInstructions += "\nPannello Crea con Hestia. Contesto pagina: " + pageContext +
-                "\nAgisci con gli strumenti (agenda_assistente_*, comandi). Conferma breve cosa hai creato/modificato." +
+                "\nAgisci con gli strumenti (agenda_assistant_*, comandi). Conferma breve cosa hai creato/modificato." +
                 "\nSe nessuno strumento può farlo: proponi uno sviluppo (forge_develop) e chiedi conferma.";
             _logger.LogInformation("event=assistant_drawer_turn connection={Conn} context_len={Len}",
                 Context.ConnectionId, pageContext.Length);

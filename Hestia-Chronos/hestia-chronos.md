@@ -274,10 +274,10 @@ children (`by=cascade:<key>`, recursive); a child that fails (tick after `max_at
 user cancels marks the parent (`last_result` + run log entry `by=link:<child>`; a one-off parent becomes
 `failed`, a recurring one keeps running). Forge links its task mirror `forge.task.<id>` to `agenda_parent`.
 
-`ref` = numeric id or stable key. MCP tools: `agenda_assistente`, `agenda_assistente_aggiungi` (`parent`),
-`agenda_assistente_sposta`, `agenda_assistente_sposta_occorrenza`, `agenda_assistente_salta`,
-`agenda_assistente_ripristina`, `agenda_assistente_annulla`, `agenda_assistente_esegui`,
-`agenda_assistente_modelli`, `agenda_assistente_da_modello`, `agenda_assistente_collega`. Standard activities: `agenda_standard`, `agenda_standard_ripristina` (Telegram, WebUI). Oracle turns a
+`ref` = numeric id or stable key. MCP tools: `agenda_assistant`, `agenda_assistant_add` (`parent`),
+`agenda_assistant_move`, `agenda_assistant_move_occurrence`, `agenda_assistant_skip`,
+`agenda_assistant_restore`, `agenda_assistant_cancel`, `agenda_assistant_run`,
+`agenda_assistant_templates`, `agenda_assistant_from_template`, `agenda_assistant_link`. Standard activities: `agenda_standard`, `agenda_standard_restore` (Telegram, WebUI). Oracle turns a
 successful write of these into an `agenda.planned` notice (calendar pages reload live).
 
 ### Flexible activities (`params.flex`, dossier `docs/work/2026-10-20-recap-giornaliero` §3.8)

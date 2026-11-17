@@ -99,12 +99,12 @@ def test_pause_then_resume(tmp_path, monkeypatch):
     d = dl.Downloads("t")
     d.file("f", "File", "http://x/f", tmp_path / "o")
     for _ in range(100):
-        if d.get("f")["state"] == "in_corso":
+        if d.get("f")["state"] == "running":
             break
         threading.Event().wait(0.02)
-    assert d.pause("f")["state"] == "in_pausa"
+    assert d.pause("f")["state"] == "paused"
     gate.set()
-    assert d.wait("f", 10)["state"] == "in_pausa"
+    assert d.wait("f", 10)["state"] == "paused"
     d.resume("f")
     assert d.wait("f", 10)["state"] == "fatto"
     assert (tmp_path / "o").read_bytes() == BLOB
@@ -137,7 +137,7 @@ def test_custom_source_and_restart_comes_back_paused(tmp_path):
     assert started.wait(5)
     assert d.get("m")["done"] == 5
     again = dl.Downloads("t", state_path=tmp_path / "s.json")      # a restart while it runs
-    assert again.get("m")["state"] == "in_pausa"
+    assert again.get("m")["state"] == "paused"
     release.set()
     assert d.wait("m", 5)["state"] == "fatto"
 

@@ -87,7 +87,7 @@ _CLAIMED_ACTION = re.compile(
     r"tutt|ogni)\b", re.IGNORECASE)
 
 # Tools every turn keeps whatever its domain: reminders, routines and asking the user back.
-_ALWAYS_TOOLS = frozenset({"agenda_assistente_aggiungi", "routine_create", "ask_user", "module_manual"})
+_ALWAYS_TOOLS = frozenset({"agenda_assistant_add", "routine_create", "ask_user", "module_manual"})
 
 def _turn_tool_domains(available_domains: list[str], intent) -> list[str]:
     """Domains whose tools the agent gets this turn: the classified ones (+ ``_ALWAYS_TOOLS``) when the classifier
@@ -1411,7 +1411,7 @@ class OracleEngine:
                 # Agenda / Forge effects get their own kind so clients refresh calendar / Sviluppo.
                 if entry.get("ok") and entry.get("confirm"):
                     kind = "action.needs_approval"   # a proposal (Themis): nothing is done until the user confirms
-                elif entry.get("ok") and "agenda_assistente" in tname:
+                elif entry.get("ok") and "agenda_assistant" in tname:
                     kind = "agenda.planned"
                 elif entry.get("ok") and "forge_develop" in tname:
                     kind = "forge.task"

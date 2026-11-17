@@ -120,16 +120,16 @@ def world(engine, monkeypatch):
                             {"provider": "due", "model": "m2"}]},
                         "voce": {"label": "V", "direction": "voce", "steps": [
                             {"provider": "uno", "voice": "v1"}, {"provider": "due", "voice": "v2"}]},
-                        "solo-due": {"label": "D", "direction": "ascolto", "steps": [{"provider": "due", "model": "x"}]}},
+                        "only-two": {"label": "D", "direction": "ascolto", "steps": [{"provider": "due", "model": "x"}]}},
         "echo.usecases": {}, "echo.mode": "interna", "echo.external.provider": "fuori",
-        "echo.external.fallback": "interna", "echo.language": "it", "echo.voce.max_chars": 1200,
-        "echo.ascolto.max_seconds": 600, "echo.audio.space_mb": 2048, "echo.audio.generated_days": 30,
+        "echo.external.fallback": "interna", "echo.language": "it", "echo.voice.max_chars": 1200,
+        "echo.listening.max_seconds": 600, "echo.audio.space_mb": 2048, "echo.audio.generated_days": 30,
         "echo.chains.cooldown": 60, "echo.pricing": {"uno/m1": {"minute": 0.5}},
     }
     monkeypatch.delenv(key_env("chiuso"), raising=False)
     get = lambda k, d=None: values.get(k, d)  # noqa: E731
     registry = [{"name": "telegram", "capabilities": {"voice_usecases": [
-        {"id": "telegram.vocale", "label": "Vocali", "direction": "ascolto", "chain": "solo-due"}]}}]
+        {"id": "telegram.vocale", "label": "Vocali", "direction": "ascolto", "chain": "only-two"}]}}]
     arch = FakeArchive()
     notes = []
     blocks = Blocks(get, lambda: registry)
@@ -230,14 +230,14 @@ def test_chain_exhausted(world):
 
 def test_usecases_declared_by_callers_and_overrides(world):
     b = world["blocks"]
-    assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "solo-due"
+    assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "only-two"
     world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "ascolto"}}
     assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "ascolto"
     world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "voce"}}      # wrong direction → default
     assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "ascolto"
-    b.usecase_config("nuovo.uso", "voce")
+    b.usecase_config("new.use", "voce")
     rows = {r["id"]: r for r in b.describe_usecases()}
-    assert rows["nuovo.uso"]["undeclared"] and rows["telegram.vocale"]["module"] == "telegram"
+    assert rows["new.use"]["undeclared"] and rows["telegram.vocale"]["module"] == "telegram"
 
 
 def test_external_mode_proxies_and_falls_back(world):
@@ -278,7 +278,7 @@ def test_transcribe_wav_records_usage(world):
 def test_transcribe_rejects_empty_and_long(world):
     with pytest.raises(Invalid):
         world["echo"].transcribe({"audio_b64": "", "mime_type": "audio/wav"})
-    world["values"]["echo.ascolto.max_seconds"] = 1
+    world["values"]["echo.listening.max_seconds"] = 1
     with pytest.raises(Invalid):
         world["echo"].transcribe({"audio_b64": b64(tone(2)), "mime_type": "audio/wav"})
 
@@ -308,7 +308,7 @@ def test_speak_cleans_text_encodes_and_reuses_kept_audio(world):
 
 @needs_ffmpeg
 def test_speak_long_text_says_the_rest_is_written(world):
-    world["values"]["echo.voce.max_chars"] = 200
+    world["values"]["echo.voice.max_chars"] = 200
     world["echo"].speak({"text": "Una frase di prova abbastanza lunga. " * 20, "format": "wav"})
     assert world["engine"].calls[-1][3].endswith("Il resto è nel testo.")
 
@@ -329,7 +329,7 @@ def test_listen_stream_partials_silence_and_end(world):
 
 @needs_ffmpeg
 def test_say_stream_speaks_sentence_by_sentence_and_keeps_whole(world):
-    sid = world["echo"].say_open({"use_case": "webui.risposta", "format": "mp3",
+    sid = world["echo"].say_open({"use_case": "webui.answer", "format": "mp3",
                                   "keep": {"kind": "generated", "message_id": "r1"}})["stream_id"]
     assert world["echo"].say_text(sid, {"delta": "Ciao Marko, oggi"})["blocks"] == []
     blocks = world["echo"].say_text(sid, {"delta": " hai dormito male. Domani"})["blocks"]
@@ -437,7 +437,7 @@ def test_voice_setup_plan_puts_the_choice_first_and_keeps_the_rest():
     assert [s["provider"] for s in out["ascolto"]["steps"]] == ["groq", "whisper-locale"]
     assert out["ascolto"]["steps"][0]["model"] == "whisper-large-v3-turbo"
     assert [s["provider"] for s in out["voce"]["steps"]] == ["piper", "kokoro"]
-    assert out["voce-naturale"] == DEFAULT_CHAINS["voce-naturale"]         # chains the setup does not show stay
+    assert out["voice-natural"] == DEFAULT_CHAINS["voice-natural"]         # chains the setup does not show stay
     assert voice_setup.plan(DEFAULT_CHAINS, None, None)["voce"] == DEFAULT_CHAINS["voce"]
 
 

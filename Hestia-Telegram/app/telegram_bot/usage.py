@@ -25,6 +25,6 @@ def tap(ref: str, kind: str = "tool", label: str = "") -> None:
 
 def adesso(limit: int = 4) -> list[dict]:
     """«Adesso» items for the Oggi card ([] when Metis is away: the card keeps its fixed buttons)."""
-    ok, payload = catalog.route("metis", "api/metis/adesso", query={"client": "telegram", "limit": limit}, timeout=6)
+    ok, payload = catalog.route("metis", "api/metis/now", query={"client": "telegram", "limit": limit}, timeout=6)
     items = payload.get("items") if ok and isinstance(payload, dict) else None
     return [i for i in items or [] if isinstance(i, dict) and i.get("tool")]

@@ -19,7 +19,7 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   so the chain moves on. A program at home (Chatterbox…) gets `language` in the OpenAI request. Listening with
   `auto` lets Whisper recognise the language. A `say` stream fixes the language on its first long sentence.
   Before speaking, the text is made speakable (markdown, links, code and emoji dropped; very long texts cut at
-  `echo.voce.max_chars` with «il resto è nel testo»).
+  `echo.voice.max_chars` with «il resto è nel testo»).
 - **Streams in blocks**: `listen` (microphone in chunks → partial text, trailing silence for the end of a turn) and
   `say` (text while it is written → audio sentence by sentence). Live mode on every client is Oracle (the same chat,
   the same models) + Echo. **No external live service** (no OpenAI Realtime, no Gemini Live): Marko's decision.
@@ -39,7 +39,7 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
 - **Chains** `echo.chains`: name → `{label, direction: ascolto|voce, steps[{provider, model, voice, options}]}`.
   The first ready step is used; a step out of quota (429) is skipped until its reset (`Retry-After` or
   `echo.chains.cooldown`), «Riprova adesso» clears it. Defaults: `ascolto` (Whisper locale small → Groq
-  whisper-large-v3-turbo), `ascolto-preciso`, `voce` (Kokoro if_sara → Piper it_IT-paola-medium), `voce-naturale`.
+  whisper-large-v3-turbo), `listening-precise`, `voce` (Kokoro if_sara → Piper it_IT-paola-medium), `voice-natural`.
 - **Uses** `echo.usecases`: every module declares its uses in Hub capabilities `voice_usecases`
   (`hestia_common.voice_usecases.usecase(id, label, direction=, chain=, help=, mode=)`); the page chooses chain and
   mode per use. Undeclared uses still work on the default chain of their direction and are listed as «non dichiarato».
@@ -47,9 +47,9 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   + `echo.external.model`; Echo is only the door: cuts blocks, keeps audio, counts use). If the external engine fails:
   `echo.external.fallback` = `interna` (back to the chains) or `nessuno` (say it does not work). Each use may override.
 
-Declared uses today: `echo.prova.*` (page «Prova»), `oracle.documenti` (audio in documents, chain `ascolto-preciso`),
-`telegram.vocale`, `telegram.risposta`, `webui.vocale`, `webui.ascolta`, `webui.live.ascolto`, `webui.live.voce`,
-`hermes.notifica`.
+Declared uses today: `echo.prova.*` (page «Prova»), `oracle.documents` (audio in documents, chain `listening-precise`),
+`telegram.vocale`, `telegram.answer`, `webui.vocale`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
+`hermes.notification`.
 
 ## Keeping audio (Archive)
 
@@ -71,24 +71,24 @@ The same text for the same message is never generated twice (`text_hash`).
 
 Each module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`; on for
 Hercules, Hygieia, Wardrobe; off for Plutus and Scout). The event carries `_voice`; Hermes publishes the written
-notification first, then asks Echo (use `hermes.notifica`) and sends an `update` with `voice`: Telegram sends a voice
+notification first, then asks Echo (use `hermes.notification`) and sends an `update` with `voice`: Telegram sends a voice
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
 never changes.
 
 ## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-tutto-brainstorm-cindy`)
 
 - **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voce», Telegram «Registra la
-  mia voce», tool `voce_impronta_registra`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
+  mia voce», tool `voiceprint_record`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
   ResNet34 ONNX, downloaded on first use into `ECHO_MODELS_DIR/speaker`) in `echo-store` (`kind=voiceprint`) and the
-  recording as a kept `recording`. On the uses in `echo.impronta.usi` (default the WebUI live listening) every 1.5 s
-  window of speech under `echo.impronta.soglia` (cosine, 0.45) becomes silence **before** transcription and before
+  recording as a kept `recording`. On the uses in `echo.voiceprint.uses` (default the WebUI live listening) every 1.5 s
+  window of speech under `echo.voiceprint.threshold` (cosine, 0.45) becomes silence **before** transcription and before
   the live end-of-turn check: the TV or other people neither enter the message nor keep a turn open. All windows
   muted → «non ho sentito la tua voce». No voiceprint = no filter; engine missing → audio unchanged (`[🔄]`).
 - **End of turn**: live mode closes a turn after `echo.live.silence_ms` (1250 ms) of real silence of the owner.
 - **Personal dictionary** (Cindy 17, `app/core/dictionary.py`): names and terms passed to every listening engine as
   a hint (Whisper `initial_prompt`, OpenAI `prompt`, ≤ 80 words). Words added by hand are confirmed at once; a
-  correction of a transcript (`POST /dictionary/learn`, tool `voce_correzione`) makes the new words candidates,
-  confirmed after `echo.dizionario.conferme` (2) corrections. Rows `kind=word` (id = normalised word).
+  correction of a transcript (`POST /dictionary/learn`, tool `voice_correction`) makes the new words candidates,
+  confirmed after `echo.dictionary.confirmations` (2) corrections. Rows `kind=word` (id = normalised word).
   The hint always starts with the assistant's chosen name and the owner's name (personal settings), so a new
   name is written right from the first word; the setup «Ascolta» says «Ciao, sono <name>» in the voice's language
   (`lang.sample`, dossier `docs/work/2026-11-16-nome-ovunque`).
@@ -112,10 +112,10 @@ never changes.
 ## Settings (Themis, `echo.*`)
 
 `echo.providers`, `echo.chains`, `echo.usecases`, `echo.mode`, `echo.external.provider`, `echo.external.model`,
-`echo.external.fallback`, `echo.language` (auto = follow the conversation), `echo.voce.max_chars` (1200), `echo.ascolto.max_seconds` (600),
+`echo.external.fallback`, `echo.language` (auto = follow the conversation), `echo.voice.max_chars` (1200), `echo.listening.max_seconds` (600),
 `echo.live.silence_ms` (1250), `echo.chains.cooldown` (60 min), `echo.audio.space_mb` (2048),
-`echo.audio.generated_days` (30), `echo.pricing`; group «La tua voce»: `echo.impronta.soglia` (0.45),
-`echo.impronta.usi` (`["webui.live.ascolto"]`), `echo.dizionario.conferme` (2).
+`echo.audio.generated_days` (30), `echo.pricing`; group «La tua voce»: `echo.voiceprint.threshold` (0.45),
+`echo.voiceprint.uses` (`["webui.live.listening"]`), `echo.dictionary.confirmations` (2).
 
 ## API (via Hub `/route/echo/...`, prefix `/api/voice`)
 
@@ -172,8 +172,8 @@ silence, seq dedupe, sentence blocks), keeping (reuse, cleanup, space rule, warn
 `test_your_voice.py`: dictionary (add, learn to confirmation, hint in the engine options), voiceprint (enroll,
 other voices muted, live cache, unchanged without print or engine).
 
-MCP tools (Telegram + WebUI, section «Voce»): `voce_dizionario`, `voce_parola`, `voce_parola_togli`,
-`voce_correzione`, `voce_impronta`, `voce_impronta_registra` (a voice note), `voce_impronta_togli`.
+MCP tools (Telegram + WebUI, section «Voce»): `voice_dictionary`, `voice_word`, `voice_word_remove`,
+`voice_correction`, `voiceprint`, `voiceprint_record` (a voice note), `voiceprint_remove`.
 Echo's Hub capabilities declare `owns_tool_domains: ["voice"]`, so Oracle's domain gate keeps these tools in chat
 (without it they never reached the assistant; found on the real-model bench, 2026-10-30).
 

@@ -44,7 +44,7 @@ export class WardrobePieces extends WardrobeElement {
     if (this.fixedKind && !data.kind) data.kind = this.fixedKind;
     const r = await call(this.host, 'POST', '/pieces', { ...data, ...(up ? { photo: up } : {}) });
     if (!r.ok) return;
-    this.host.toast(tr('«{0}» added', r.data.name), 'success', { label: tr('Open'), run: () => this.host.navigate('capi/' + r.data.id) });
+    this.host.toast(tr('«{0}» added', r.data.name), 'success', { label: tr('Open'), run: () => this.host.navigate('items/' + r.data.id) });
     if (again) (this.renderRoot.querySelector('wardrobe-piece-form') as any)?.reset();
     else this.adding = false;
     this.load();
@@ -92,7 +92,7 @@ export class WardrobePieces extends WardrobeElement {
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty"
           text=${this.q || Object.values(this.f).some(v => v && v !== 'recent') ? tr('No item with these filters.') : tr('Still empty: «Add» and take a photo, it takes a few seconds.')}></hxk-state>` : html`
         <div class="tiles">${items.map(p => html`<div class="tile" data-sel=${this.sel.includes(p.id)}
-            @click=${() => (this.selecting ? this.toggleSel(p.id) : this.host.navigate('capi/' + p.id))}>
+            @click=${() => (this.selecting ? this.toggleSel(p.id) : this.host.navigate('items/' + p.id))}>
           <div class="ph">${img(this.host, p.photos?.[0], p.name)}</div>
           ${p.status !== 'active' ? html`<hxk-badge class="badge" tone=${STATUS_TONE[p.status] || 'neutral'}>${p.status_label}</hxk-badge>` : nothing}
           ${this.selecting && this.sel.includes(p.id) ? html`<span class="check"><hxk-icon name="check" size="14"></hxk-icon></span>` : p.favorite ? html`<span class="fav"><hxk-icon name="star" size=${13} tone="warning"></hxk-icon></span>` : nothing}

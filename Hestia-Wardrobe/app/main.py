@@ -443,7 +443,7 @@ def quick_undo(id: str, date: str = ""):
 # ── notifications through Hermes (agenda jobs; both off by default) ──────────
 def _notify(key: str, title: str, text: str, actions: list[dict], *, replaces: bool, page: str = "") -> None:
     body = reminder_event(module="wardrobe", domain="wardrobe", key=key, title=title, text=text, actions=actions,
-                          page=page, voice=bool(settings.get("wardrobe.notifiche.voce", True)))
+                          page=page, voice=bool(settings.get("wardrobe.notifications.voice", True)))
     if not replaces:                                   # a one-off question (delete), not a reminder thread
         body["payload"].pop("replaces", None)
     hub.ok("hermes", "POST", "api/events/ingest", body=body, timeout=8)
@@ -526,20 +526,20 @@ ui.webui(
     entry="wardrobe.js", api_prefix=f"{API}/",
     pages=[page("capi", "Wardrobe", element="wardrobe-pieces", icon="shirt", order=50,
                 help="All your items with photos, filters and search."),
-           page("capi/:id", "Item", element="wardrobe-piece", detail=True, parent="capi"),
+           page("items/:id", "Item", element="wardrobe-piece", detail=True, parent="capi"),
            page("accessori", "Accessories", element="wardrobe-accessories", icon="tag", order=51, parent="capi"),
            page("outfit", "Outfit", element="wardrobe-outfits", icon="grid", order=52, parent="capi"),
            page("outfit/:id", "Outfit", element="wardrobe-outfit", detail=True, parent="capi"),
-           page("cosa-mi-metto", "What should I wear", element="wardrobe-suggest", icon="sparkle", order=53, parent="capi"),
+           page("what-to-wear", "What should I wear", element="wardrobe-suggest", icon="sparkle", order=53, parent="capi"),
            page("statistiche", "Statistics", element="wardrobe-stats", icon="chart", order=54, parent="capi"),
            page("liste", "Suitcases and lists", element="wardrobe-collections", icon="list", order=55, parent="capi"),
-           page("liste/:id", "alt::List", element="wardrobe-collection", detail=True, parent="capi"),
+           page("lists/:id", "alt::List", element="wardrobe-collection", detail=True, parent="capi"),
            page("vocabolari", "Vocabularies", element="wardrobe-vocab", icon="settings", order=56, parent="capi")],
     widgets=[widget("oggi", "Wearing today", element="wardrobe-today-widget", sizes=["m", "l"], auto=True,
                     open_page="outfit", icon="shirt",
                     params={"occasion": {"type": "string", "label": "Occasion (e.g. office)"}}),
              widget("suggerito", "Today's outfit", element="wardrobe-suggest-widget", sizes=["m", "l"],
-                    open_page="cosa-mi-metto", icon="sparkle",
+                    open_page="what-to-wear", icon="sparkle",
                     params={"occasion": {"type": "string", "label": "Occasion"}}),
              widget("lavanderia", "In the laundry", element="wardrobe-laundry-widget", sizes=["s", "m"], open_page="capi",
                     icon="refresh"),
@@ -849,7 +849,7 @@ try:
         return run
 
     for _tool in _tools:
-        _tool.path = f"{API}/tools/{_tool.name.removeprefix('guardaroba_')}"
+        _tool.path = f"{API}/tools/{_tool.name.removeprefix('wardrobe_')}"
         _tool.method = "POST" if _tool.method != "GET" else "GET"
         _tool.handler = _coerced(_tool)
     app.include_router(create_mcp_router(_tools, service_name="wardrobe"))
@@ -865,7 +865,7 @@ except NameError:
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 # LLM use cases: the chain (it must see images) is chosen in Oracle → Cervello → Modelli.
-LLM_USECASES = [llm_usecase("wardrobe.foto", "Wardrobe · item photos", chain="visione",
+LLM_USECASES = [llm_usecase("wardrobe.photo", "Wardrobe · item photos", chain="visione",
                             help="Describes the photo of a new item (name, category, colours, style).")]
 
 

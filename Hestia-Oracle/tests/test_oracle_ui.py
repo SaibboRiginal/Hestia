@@ -119,8 +119,8 @@ class TestUiApi:
         pages = {p["id"]: p for p in web["page"]}
         assert pages["cervello"]["element"] == "oracle-brain" and pages["cervello"]["order"] == 120
         widgets = {w["id"]: w for w in web["widget"]}
-        assert widgets["uso-oggi"]["element"] == "oracle-usage-widget"
-        assert widgets["uso-oggi"]["open_page"] == "cervello"
+        assert widgets["usage-today"]["element"] == "oracle-usage-widget"
+        assert widgets["usage-today"]["open_page"] == "cervello"
 
     def test_activity(self, client):
         activity_log.record_turn(session_id="s", mode="auto", route="agent", model="m", provider="p",
@@ -163,7 +163,7 @@ class TestModelsTab:
         out = client.get("/api/ui/models").json()
         assert "sk-secret" not in str(out)
         assert {"providers", "types", "chains", "usecases", "modes"} <= set(out)
-        assert any(u["id"] == "oracle.generale" for u in out["usecases"])
+        assert any(u["id"] == "oracle.general" for u in out["usecases"])
 
     def test_write_goes_through_themis_and_validates(self, client, monkeypatch):
         from core.services import oracle_settings

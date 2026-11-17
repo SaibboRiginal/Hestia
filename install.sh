@@ -146,7 +146,7 @@ detect_os() {
   case "$(uname -s)" in
     Linux)  OS=linux ;;
     Darwin) OS=mac ;;
-    *) fail "$(t "this installer is for Linux and macOS. On Windows use Installa-Hestia.cmd (or install.ps1)." "questo installer è per Linux e macOS. Su Windows usa Installa-Hestia.cmd (o install.ps1).")" ;;
+    *) fail "$(t "this installer is for Linux and macOS. On Windows use Install-Hestia.cmd (or install.ps1)." "questo installer è per Linux e macOS. Su Windows usa Install-Hestia.cmd (o install.ps1).")" ;;
   esac
   if [ "$(id -u)" != 0 ]; then
     has sudo || [ "$OS" = mac ] || fail "$(t "'sudo' is needed (or run as root)." "serve 'sudo' (o lancia come root).")"

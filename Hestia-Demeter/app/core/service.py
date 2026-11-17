@@ -1,7 +1,7 @@
 """Demeter — nutrition («Alimentazione», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A5).
 
 The diet (daily kcal and protein targets, rules in plain words), the meals Marko logs (text; kcal and protein when they are
-known, otherwise an estimate the assistant writes later through Oracle use case ``demeter.stima``, marked as
+known, otherwise an estimate the assistant writes later through Oracle use case ``demeter.estimate``, marked as
 such) and the supplements taken (dose, part of the day, weekdays, only on training days) with the intakes.
 Demeter is a coach of the weekly plan: every active supplement is a ``slot`` need; the plan puts it in the right
 part of the day (and next to the workout when it is taken only on training days). Hygieia keeps the products in the
@@ -24,7 +24,7 @@ logger = logging.getLogger("hestia_demeter.service")
 SLOTS = {"colazione": "Breakfast", "pranzo": "Lunch", "cena": "Dinner", "spuntino": "Snack"}
 TIMES = {"morning": "in the morning", "midday": "at lunch", "afternoon": "in the afternoon", "evening": "in the evening",
          "any": "whenever you like"}
-ESTIMATE_USE = "demeter.stima"
+ESTIMATE_USE = "demeter.estimate"
 
 
 def guess_slot(at: datetime) -> str:

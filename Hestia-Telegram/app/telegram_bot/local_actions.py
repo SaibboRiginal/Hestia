@@ -48,7 +48,7 @@ def _voce(chat_id, args, on: bool | None = None):
     text = (tr("I also answer your voice messages aloud.") if value
             else tr("I answer only in text; under each answer there is «Listen»."))
     return Rendered(ui.card(tr("Voice replies: ") + (tr("yes") if value else "no"), [ui.esc(text)]),
-                    rows=[[ui.button(tr("Turn off") if value else tr("Turn on"), "n:voce")]])
+                    rows=[[ui.button(tr("Turn off") if value else tr("Turn on"), "n:voice")]])
 
 
 def _aiuto(chat_id, args):
@@ -65,7 +65,7 @@ def _aiuto(chat_id, args):
     shortcuts = "\n".join(f"/{t.command} — {ui.esc(menu.label(t.name))}"
                           for t in sorted(catalog.all_tools(), key=lambda t: t.command) if t.name in menu.tool_area)
     return Rendered(ui.card(tr("How to use it"), lines, detail=tr("<b>Shortcuts to type</b>\n{0}", shortcuts)),
-                    rows=[[ui.button(tr("Areas"), "n:aree"), ui.button(tr("Settings"), "n:imp")]])
+                    rows=[[ui.button(tr("Areas"), "n:areas"), ui.button(tr("Settings"), "n:imp")]])
 
 
 # ── WebUI access (Telegram → WebUI admin API: the one guarded exception to Hub-only) ──
@@ -151,10 +151,10 @@ def _documenti(chat_id, args):
         title = d.get("title") or d.get("filename") or tr("Document")
         meta = ["fisso" if d.get("is_permanent") else "", str(d.get("created_at") or "")[:10]]
         lines.append(ui.item(title, [m for m in meta if m]))
-        actions.append(Action(tr("Delete {0}", ui.label(title, 14)), "documento_elimina",
+        actions.append(Action(tr("Delete {0}", ui.label(title, 14)), "document_delete",
                               {"document_id": str(d.get("document_id"))}))
         if not d.get("is_permanent"):
-            actions.append(Action(tr("Keep {0}", ui.label(title, 14)), "documento_fissa",
+            actions.append(Action(tr("Keep {0}", ui.label(title, 14)), "document_pin",
                                   {"document_id": str(d.get("document_id"))}))
     return Rendered(ui.card(tr("Saved documents"), lines, subtitle=tr("{0} in memory", len(docs))), actions=actions[:12])
 
@@ -212,7 +212,7 @@ def _nuovo_avviso(chat_id, args):
         raise ActionError(tr("I couldn't create the alert, try again shortly."))
     text = str((payload or {}).get("message") or tr("Alert created.")) if isinstance(payload, dict) else tr("Alert created.")
     return Rendered(ui.outcome(tr("Automatic alert")) + "\n" + ui.esc(ui.strip_emoji(text)),
-                    actions=[Action(tr("Active alerts"), "notifiche_attive")])
+                    actions=[Action(tr("Active alerts"), "notifications_active")])
 
 
 def _pausa_voto(chat_id, args):
@@ -230,9 +230,9 @@ def tools() -> list[catalog.Tool]:
           hints={"section": "Chat"}, writes=True, handler=_nuova),
         T("voce", "Voice replies", "Turns voice replies to voice messages on or off", group="sistema",
           hints={"section": "Chat"}, handler=_voce),
-        T("voce_on", "Turn on voice replies", "", group="sistema", hints={"section": "interno"},
+        T("voice_on", "Turn on voice replies", "", group="sistema", hints={"section": "interno"},
           handler=lambda c, a: _voce(c, a, on=True)),
-        T("voce_off", "Turn off voice replies", "", group="sistema", hints={"section": "interno"},
+        T("voice_off", "Turn off voice replies", "", group="sistema", hints={"section": "interno"},
           handler=lambda c, a: _voce(c, a, on=False)),
         T("aiuto", "How to use it", "Quick guide and shortcuts", group="sistema", hints={"section": "Chat"},
           handler=_aiuto),
@@ -245,29 +245,29 @@ def tools() -> list[catalog.Tool]:
           hints={"section": "Web page"}, writes=True, destructive=True, handler=_webui_revoke),
         T("documenti", "Saved documents", "The files you sent me that I remember", group="memoria",
           hints={"section": "Documents", "primary": 4}, handler=_documenti),
-        T("documento_fissa", "Keep a document", "", group="memoria", hints={"section": "Documents"},
+        T("document_pin", "Keep a document", "", group="memoria", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
           handler=_documento_fissa),
-        T("documento_elimina", "Delete a document", "", group="memoria", hints={"section": "Documents"},
+        T("document_delete", "Delete a document", "", group="memoria", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
           destructive=True, handler=_documento_elimina),
-        T("nuovo_promemoria", "New reminder", "I'll remind you at the right time", group="giornata",
+        T("new_reminder", "New reminder", "I'll remind you at the right time", group="giornata",
           hints={"section": "Reminders and tasks", "primary": 5},
           schema=_schema({"title": {**S, "title": "About what"}, "start_at": dt,
                           "note": {**S, "title": "Note"}}, ["title", "start_at"]),
           writes=True, handler=_nuovo_promemoria),
-        T("nuova_attivita", "New task", "Something to do, with or without a deadline", group="giornata",
+        T("new_activity", "New task", "Something to do, with or without a deadline", group="giornata",
           hints={"section": "Reminders and tasks"},
           schema=_schema({"title": {**S, "title": "What"}, "due": {"type": "string", "format": "date",
                                                                    "title": "By when"},
                           "note": {**S, "title": "Note"}}, ["title"]),
           writes=True, handler=_nuova_attivita),
-        T("nuovo_avviso", "New automatic alert", "Tell me what to keep an eye on and when to alert you",
+        T("new_alert", "New automatic alert", "Tell me what to keep an eye on and when to alert you",
           group="notifiche", hints={"section": "Automatic alerts", "primary": 1},
           schema=_schema({"request": {**S, "title": "What should I keep an eye on?",
                                       "examples": ["houses in Udine under €150,000"]}}, ["request"]),
           writes=True, handler=_nuovo_avviso),
-        T("pausa_voto", "No more rating requests", "For a few days I won't ask you to rate answers",
+        T("rating_paused", "No more rating requests", "For a few days I won't ask you to rate answers",
           group="sistema", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
         *transfer_tools(),
     ]

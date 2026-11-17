@@ -52,7 +52,7 @@ export class HerculesTemplates extends LocalPage {
 
   private create() {
     const t = this.L.put('template', uuid(), { name: tr('New plan'), favorite: false, items: [], folder: '', notes: '', color: '', position: this.L.templates().length, archived: false, revision: 0 });
-    this.host.navigate('schede/' + t.id, { nuova: '1' });
+    this.host.navigate('plans/' + t.id, { nuova: '1' });
   }
 
   private program(): any | null { return this.L.list('program').find(p => p.active) || null; }
@@ -93,7 +93,7 @@ export class HerculesTemplates extends LocalPage {
         (t.items || []).forEach((i: any) => (exs.get(i.exercise_id)?.primary_muscles || []).forEach((m: string) => muscles.add(m)));
         const groups = Object.entries(GROUP_LABEL).filter(([g]) => GROUPS[g].some(m => muscles.has(m))).map(([, l]) => l);
         return html`<hxk-card clickable heading=${t.name} subtitle=${tr("{0} · last {1}", plural((t.items || []).length, 'exercise', 'exercises'), relDays(last?.started_at))}
-            @click=${() => this.host.navigate('schede/' + t.id)}>
+            @click=${() => this.host.navigate('plans/' + t.id)}>
           ${t.favorite ? html`<hxk-icon slot="actions" name="star" size=${14} tone="warning" title=${tr("f::Favourite")}></hxk-icon>` : nothing}
           <div class="tpl"><div class="small muted truncate">${(t.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ') || tr('Empty')}</div>
             ${groups.length ? html`<div class="chips">${groups.map(g => html`<span class="pill">${g}</span>`)}</div>` : nothing}</div>

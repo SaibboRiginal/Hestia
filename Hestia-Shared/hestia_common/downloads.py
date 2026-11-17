@@ -9,8 +9,8 @@ door, so the WebUI page «Download» can show them all through the Hub.
     app.include_router(downloads.router())                       # GET /api/downloads, POST /api/downloads/<id>/<op>
     caps.update(downloads.capabilities())                        # Hub registration → the WebUI finds it
 
-Job: ``{id, what, source, size, done, speed, eta_s, state, error, module, updated_at}``; states ``in_coda ·
-in_corso · in_pausa · fatto · errore``. Built-in source ``http``: resumes from the ``.part`` file (HTTP Range),
+Job: ``{id, what, source, size, done, speed, eta_s, state, error, module, updated_at}``; states ``queued ·
+running · paused · fatto · errore``. Built-in source ``http``: resumes from the ``.part`` file (HTTP Range),
 checks the free disk **before** starting, verifies an optional sha256, retries 3 times (2/4/8 s). Jobs survive a
 restart (``state_path``): one that was running comes back paused («Riprendi»). Finished big downloads and every
 failure go to Notifiche through Hermes (the only one who writes to the user).
@@ -29,7 +29,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_common.downloads")
 
-ACTIVE = ("in_coda", "in_corso")
+ACTIVE = ("queued", "running")
 RETRY_DELAYS = (2, 4, 8)
 NOTIFY_DONE_BYTES = 200_000_000      # a finished download is worth a notice only when it was a long wait
 CHUNK = 1 << 20
@@ -125,7 +125,7 @@ class Downloads:
                 return dict(job.data)
             data = {"id": job_id, "what": what, "source": source, "params": dict(params or {}),
                     "module": self.module, "size": int(size_hint or 0), "done": 0, "speed": 0, "eta_s": None,
-                    "state": "in_coda", "error": "", "attempts": 0, "updated_at": time.time()}
+                    "state": "queued", "error": "", "attempts": 0, "updated_at": time.time()}
             self._jobs[job_id] = Job(data, self)
             self._enqueue(job_id)
         logger.info("event=download_queued module=%s id=%s source=%s", self.module, job_id, source)
@@ -160,7 +160,7 @@ class Downloads:
             return self._public(job.data) if job else None
 
     def pause(self, job_id: str) -> dict[str, Any]:
-        return self._stop_job(job_id, "in_pausa")
+        return self._stop_job(job_id, "paused")
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         """Stop and forget the job; a partial file is deleted."""
@@ -176,8 +176,8 @@ class Downloads:
     def resume(self, job_id: str) -> dict[str, Any]:
         with self._lock:
             job = self._require(job_id)
-            if job.data["state"] in ("in_pausa", "errore"):
-                job.data.update(state="in_coda", error="", attempts=0)
+            if job.data["state"] in ("paused", "errore"):
+                job.data.update(state="queued", error="", attempts=0)
                 self._enqueue(job_id)      # a run still stopping ends on its own stop flag; the next one gets a new one
             return self._public(job.data)
 
@@ -228,8 +228,8 @@ class Downloads:
         with self._lock:
             while self._queue:
                 job = self._jobs.get(self._queue.pop(0))
-                if job and job.data["state"] == "in_coda":
-                    job.data["state"] = "in_corso"
+                if job and job.data["state"] == "queued":
+                    job.data["state"] = "running"
                     job._stop = threading.Event()
                     return job
             self._wake.clear()
@@ -354,7 +354,7 @@ class Downloads:
             return
         for data in rows if isinstance(rows, list) else []:
             if data.get("state") in ACTIVE:              # interrupted by a restart: the user resumes it
-                data.update(state="in_pausa", speed=0, eta_s=None)
+                data.update(state="paused", speed=0, eta_s=None)
             self._jobs[data["id"]] = Job(data, self)
 
     def _save(self) -> None:

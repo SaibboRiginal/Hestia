@@ -124,7 +124,7 @@ _oracle_mcp_tools = [
                 telegram={"section": "Chat"}),
     # ── downloads of the brain's models (docs/work/2026-10-30-setup-un-click §4.3) ──
     MCPTool(
-        name="modelli_download", description=("The brain's model downloads: what is downloading, done or failed, "
+        name="models_downloads", description=("The brain's model downloads: what is downloading, done or failed, "
                                               "with progress and time left."),
         parameters={"type": "object", "properties": {}},
         handler=lambda **_kw: {"downloads": _llm_setup.pulls()},
@@ -132,7 +132,7 @@ _oracle_mcp_tools = [
         clients=["ui", "telegram"], response_mode="oracle_natural",
         telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Models"}),
     MCPTool(
-        name="modelli_scarica", description=("Download (or retry, or resume) a local model for the brain, by its "
+        name="models_download", description=("Download (or retry, or resume) a local model for the brain, by its "
                                              "Ollama name, e.g. qwen3:8b. It runs in the background."),
         parameters={"type": "object", "properties": {"model": {"type": "string", "description": "Ollama model name"}},
                     "required": ["model"]},
@@ -235,7 +235,7 @@ ui.webui(entry="oracle.js", api_prefix="/api/ui/",
                      help="The files you shared with {assistant} (in chat or from here): search them like the chat does, add new ones, keep them forever or delete them."),
                 page("memoria", "Memory", element="oracle-memory", icon="bookmark", order=122,
                      help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to Hestia. Search, filter by origin, forget.")],
-         widgets=[widget("uso-oggi", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
+         widgets=[widget("usage-today", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
                          size="m", open_page="cervello", icon="chart",
                          help="Today's calls, tokens and cost, per model.")])
 app.include_router(ui.router())
@@ -1581,7 +1581,7 @@ def llm_code_endpoint(req: CodeTaskRequest):
 @app.post("/api/llm/generate")
 def llm_generate_endpoint(req: dict):
     """
-    Plain generation for services: {"prompt": "...", "use_case": "scout.annunci", "voice": false}.
+    Plain generation for services: {"prompt": "...", "use_case": "scout.listings", "voice": false}.
     ``voice: true`` = the text is for the owner: Oracle speaks as the assistant (same identity, style and language
     rule as the chat), the module sends only the data and what to say. Default false: a plain tool call.
     ``use_case`` (declared by the module in its Hub registration) picks the chain (setting oracle.usecases,

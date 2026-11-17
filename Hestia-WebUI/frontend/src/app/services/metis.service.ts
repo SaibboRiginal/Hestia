@@ -3,9 +3,9 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import { PluginsService } from '../features/plugins/plugins.service';
 
-/** One suggestion of the «Adesso» row (GET /api/metis/adesso). */
+/** One suggestion of the «Adesso» row (GET /api/metis/now). */
 export interface AdessoItem { tool: string; title: string; module: string; args: Record<string, unknown>; reason: string; source: string; }
-/** One feature of «Scopri» (GET /api/metis/scopri). */
+/** One feature of «Scopri» (GET /api/metis/discover). */
 export interface ScopriItem { tool: string; title: string; description: string; module: string; uses: number; reason: string;
   area?: string; area_label?: string; area_icon?: string; area_order?: number; }
 
@@ -70,13 +70,13 @@ export class MetisService {
 
   async loadAdesso(): Promise<void> {
     if (!this.plugins.modules().has('metis')) { this.adesso.set([]); this.adessoLoaded.set(true); return; }
-    const r = await this.plugins.call<{ items?: AdessoItem[] }>('metis', 'GET', '/api/metis/adesso', { query: { client: 'webui' } });
+    const r = await this.plugins.call<{ items?: AdessoItem[] }>('metis', 'GET', '/api/metis/now', { query: { client: 'webui' } });
     if (r.ok) this.adesso.set((r.data?.items ?? []).slice(0, 6));
     this.adessoLoaded.set(true);
   }
 
   async scopri(): Promise<{ ok: boolean; items: ScopriItem[]; total: number; tools: number }> {
-    const r = await this.plugins.call<{ items?: ScopriItem[]; total?: number; tools?: number }>('metis', 'GET', '/api/metis/scopri', { query: { client: 'webui', limit: 50 } });
+    const r = await this.plugins.call<{ items?: ScopriItem[]; total?: number; tools?: number }>('metis', 'GET', '/api/metis/discover', { query: { client: 'webui', limit: 50 } });
     return { ok: r.ok, items: r.data?.items ?? [], total: r.data?.total ?? 0, tools: r.data?.tools ?? 0 };
   }
 

@@ -483,8 +483,8 @@ def test_signals_budget_week_subscription_review(pl):
         pl.add_tx({"amount": -3, "merchant": f"Boh {i}", "date": today.isoformat(), "status": "to_review"})
     sigs, mets = pl.signals()
     by = {s["key"]: s for s in sigs}
-    assert by["budget_pace:ristoranti"]["severity"] == "alta" and by["budget_pace:ristoranti"]["page"] == "budget"
-    assert by["budget_pace:spesa"]["severity"] == "attenzione"
+    assert by["budget_pace:restaurants"]["severity"] == "alta" and by["budget_pace:restaurants"]["page"] == "budget"
+    assert by["budget_pace:expense"]["severity"] == "attenzione"
     assert by["unusual_week"]["severity"] == "attenzione" and by["unusual_week"]["metrics"]["median_8w"] == 50
     assert any(k.startswith("new_subscription:rec_") for k in by)
     assert by["to_review"]["metrics"]["count"] == 5
@@ -493,9 +493,9 @@ def test_signals_budget_week_subscription_review(pl):
     assert len(spent) == 12 and spent[-1]["week"] == "2026-W42" and spent[-1]["label"] == "Spesa settimanale"
     assert spent[-1]["value"] == round(200 + 9.99 + 5 * 3, 4)
     names = {m["name"] for m in mets}
-    assert "finance.spent.ristoranti" in names and len(names) <= 5
-    assert next(m for m in mets if m["name"] == "finance.spent.ristoranti")["label"] == "Ristoranti e bar"
-    assert all(m["name"] != "finance.spent.entrate" for m in mets)          # expenses only
+    assert "finance.spent.restaurants" in names and len(names) <= 5
+    assert next(m for m in mets if m["name"] == "finance.spent.restaurants")["label"] == "Ristoranti e bar"
+    assert all(m["name"] != "finance.spent.income" for m in mets)          # expenses only
 
 
 def test_signals_quiet_when_nothing_to_say(pl):
@@ -515,7 +515,7 @@ def test_topic_details(pl):
     pl.add_tx({"amount": 200, "merchant": "Pizzeria Esempio", "date": today.isoformat()})
     pl.set_budget("ristoranti", 150)
     pl.set_budget("total", 300)
-    t = pl.topic_text("budget_pace:ristoranti")
+    t = pl.topic_text("budget_pace:restaurants")
     assert "Ristoranti" in t and "200/150" in t and "Pizzeria Esempio" in t
     assert "Budget mese" in pl.topic_text("budget_pace:month")
     w = pl.topic_text("unusual_week")
@@ -531,7 +531,7 @@ def test_api_context_topic_and_signals_run(api, monkeypatch):
     c.put("/api/finance/budgets/ristoranti", json={"amount": 100})
     normal = c.get("/api/module/context").json()
     assert set(normal) == {"module", "domain", "updated_at", "text"} and normal["text"].startswith("Spese ")
-    detail = c.get("/api/module/context", params={"topic": "budget_pace:ristoranti", "budget": 300}).json()
+    detail = c.get("/api/module/context", params={"topic": "budget_pace:restaurants", "budget": 300}).json()
     assert "120/100" in detail["text"] and detail["domain"] == "finance"
     assert c.get("/api/module/context", params={"topic": "boh"}).json()["text"] == normal["text"]
     # /signals/run → evaluate + sync through the (mocked) signals-store transport
@@ -546,7 +546,7 @@ def test_api_context_topic_and_signals_run(api, monkeypatch):
     out = c.post("/api/finance/signals/run").json()
     assert out["signals"] >= 1 and out["metrics"] >= 12 and out["written"] == out["signals"] + out["metrics"]
     put = [b for m, _, b in calls if m == "PUT"][0]
-    assert any(r["id"] == "plutus:budget_pace:ristoranti" for r in put["rows"])
+    assert any(r["id"] == "plutus:budget_pace:restaurants" for r in put["rows"])
     job = next(r for r in main._agenda_rules() if r["key"] == "plutus.signals")
     assert "/api/finance/signals/run" in str(job)
 
@@ -562,7 +562,7 @@ def test_coach_budget_targets_and_review_block(pl):
     pl.set_budget("spesa", 100)
     pl.add_tx({"amount": 40, "merchant": "Lidl"})
     needs = coach.needs(start, start + timedelta(days=7))["needs"]
-    t = next(n for n in needs if n["id"] == "finance.budget.spesa")
+    t = next(n for n in needs if n["id"] == "finance.budget.expense")
     assert t["kind"] == "target" and t["progress"] == 0.4 and 0 < t["value"] <= 60 and validate_need(t)
     SETTINGS["plutus.coach.review_threshold"] = 2
     for i in range(2):

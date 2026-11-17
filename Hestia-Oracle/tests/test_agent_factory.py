@@ -105,8 +105,8 @@ class TestAgentFactory:
         assert isinstance(bundle, AgentBundle)
         assert {(slot, getattr(bundle, slot).use_case) for slot in
                 ("generic", "reasoning", "code", "documents", "embedding")} == {
-            ("generic", "oracle.generale"), ("reasoning", "oracle.ragionamento"), ("code", "oracle.codice"),
-            ("documents", "oracle.documenti"), ("embedding", "oracle.embedding")}
+            ("generic", "oracle.general"), ("reasoning", "oracle.reasoning"), ("code", "oracle.codice"),
+            ("documents", "oracle.documents"), ("embedding", "oracle.embedding")}
         assert all(isinstance(getattr(bundle, s), ChainAgent) for s in ("generic", "embedding"))
 
     def test_generic_model_name_is_first_usable_step(self, monkeypatch):

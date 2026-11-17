@@ -28,7 +28,7 @@ USER_CLIENTS = {"telegram", "webui", "ui", "web", "mcp", "voice", "cli"}
 
 
 def headers(kind: str, ref: str = "", label: str = "") -> dict[str, str]:
-    """Headers a caller puts in the Hub envelope: ``headers("routine", "lunedi-annunci", "Annunci del lunedì")``."""
+    """Headers a caller puts in the Hub envelope: ``headers("routine", "monday-listings", "Annunci del lunedì")``."""
     out = {HEADER: f"{kind}:{ref}" if ref else kind}
     if label:
         out[LABEL_HEADER] = label[:80]

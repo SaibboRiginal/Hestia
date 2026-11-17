@@ -63,11 +63,11 @@ def fake(monkeypatch):
 @pytest.mark.unit
 class TestMode:
     def test_global_and_per_use_case(self, monkeypatch):
-        assert external_agent.mode_for("oracle.generale") == "interna"
+        assert external_agent.mode_for("oracle.general") == "interna"
         _set(monkeypatch, oracle_settings.BRAIN_MODE, "esterna")
-        assert external_agent.mode_for("oracle.generale") == "esterna"
-        _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.annunci": {"mode": "interna"}})
-        assert external_agent.mode_for("scout.annunci") == "interna"
+        assert external_agent.mode_for("oracle.general") == "esterna"
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.listings": {"mode": "interna"}})
+        assert external_agent.mode_for("scout.listings") == "interna"
 
 
 @pytest.mark.unit
@@ -86,7 +86,7 @@ class TestTurn:
         assert fake.runs[1]["resume"] == "agent-s1" and fake.runs[1]["prompt"] == "e domani?"
         row = llm_usage.captured[-1]
         assert (row["chain"], row["provider"], row["input_tokens"], row["cost_kind"]) == (
-            "agente:claude", "claude", 50, "abbonamento")
+            "agent:claude", "claude", 50, "abbonamento")
 
     def test_internal_turn_invalidates_cache(self, fake):
         tool, _ = _tool()

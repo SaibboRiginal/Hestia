@@ -67,7 +67,7 @@ def test_pet_pictures_by_push(ap):
     look.set_choice("webui", pet=pet["id"])
     assert look.now()["pet"]["images"] == {"happy": "b9"}
     look.generate("profile", "natale")
-    look.image_done({"ref": "profile:natale:background", "status": "done", "blob_ids": ["b10"]})
+    look.image_done({"ref": "profile:christmas:background", "status": "done", "blob_ids": ["b10"]})
     assert look.profile("natale")["background"] == "b10" and look.profile("natale")["builtin"] is True
 
 

@@ -9,7 +9,7 @@ import { AssistantService } from '../../services/assistant.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { QuickStripComponent } from './quick-strip.component';
-import { AdessoRowComponent } from './adesso-row.component';
+import { AdessoRowComponent } from './now-row.component';
 import { SetupCardComponent } from '../setup/setup-card.component';
 import { PluginsService, SIZE_SPAN } from './plugins.service';
 import { Dashboard, DashboardItem, PluginWidget, WidgetSize } from './plugins.types';
@@ -57,7 +57,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium')
     }
 
     <div class="body">
-      @if (isHome() && !editing()) { <hx-setup-card /><hx-adesso-row /><hx-quick-strip /> }
+      @if (isHome() && !editing()) { <hx-setup-card /><hx-now-row /><hx-quick-strip /> }
 
       @if (!plugins.catalog() && !plugins.catalogError()) {
         <div class="center"><hx-spinner /></div>

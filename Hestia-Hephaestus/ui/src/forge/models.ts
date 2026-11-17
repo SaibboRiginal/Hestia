@@ -31,7 +31,7 @@ export interface ForgeTask {
 
 /** Independent automatic review before the diff reaches you (Cindy 3): only issues with evidence. */
 export interface ForgeReviewIssue { priority: 'alta' | 'media' | 'bassa'; file: string; problem: string; evidence: string; }
-export interface ForgeReview { verdict: 'ok' | 'problemi' | 'non_disponibile'; issues: ForgeReviewIssue[]; blocking: number;
+export interface ForgeReview { verdict: 'ok' | 'problemi' | 'unavailable'; issues: ForgeReviewIssue[]; blocking: number;
   rounds?: number; first?: ForgeReviewIssue[]; }
 
 export type TranscriptKind = 'user' | 'text' | 'thinking' | 'tool_use' | 'tool_result' | 'system' | 'result' | 'error';

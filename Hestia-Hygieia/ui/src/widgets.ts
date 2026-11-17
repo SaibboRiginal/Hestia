@@ -97,7 +97,7 @@ export class HygieiaAlertsWidget extends Widget {
     return html`<div class="w">
       <div class="between click" @click=${() => this.host.navigate('spesa')}><span class="small muted">${tr("Products")}</span>
         ${this.shop ? html`<span class="pill">${icon('cart', 12, 'info')} ${this.shop} ${tr("to buy")}</span>` : nothing}</div>
-      ${this.items.length ? html`<div class="list">${this.items.slice(0, max).map(a => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('prodotti/' + a.product_id)}>
+      ${this.items.length ? html`<div class="list">${this.items.slice(0, max).map(a => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('products/' + a.product_id)}>
         <span>${alertIcon(a)}</span><span class="grow truncate small">${a.text}</span></div>`)}</div>`
         : html`<div class="muted small">${tr("Nothing expiring or running out.")}</div>`}
     </div>`;

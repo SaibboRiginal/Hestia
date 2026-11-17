@@ -26,7 +26,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Lares | Domain (House) | Yes (devices, quick actions) | Yes (Home Assistant, `LARES_HA_URL`/`LARES_HA_TOKEN`) | The only caller of Home Assistant; websocket push of state changes; presence signal `home.present` |
 | Hera | Domain (People) | Yes (cards, gifts, contacts) | No | Dates as Chronos special events (stable keys), gift ideas on `special_moment`, agenda + Hermes |
 | Demeter | Domain (Nutrition) | Yes (diet, meals, supplements) | No | Coach of the weekly plan (tag `coach`), kcal estimates through Oracle, Archive `food-store` |
-| Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `documento_crea`, file under the Telegram card |
+| Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `document_create`, file under the Telegram card |
 | Kairos | Domain (Deadlines) | Yes (recurrence, advice, proposals) | No | Mail push (Iris) → proposals confirmed via Hermes, calendar mirror (agenda events), daily notices |
 | Psyche | Domain (Mood) | Yes (summaries, insights, signals) | No | Oracle quiet capture from chat (capability `mood_capture_endpoint`, no confirmation), recap piece, evening check-in via agenda + Hermes, weekly metrics for Athena |
 | Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
@@ -261,14 +261,14 @@ flowchart LR
    «Lascia così». Registered jobs: `chronos.special.daily`, `chronos.smart_calendar`, `hermes.notifications.remind_pending`.
 
 ### Notification delivery details (same dossier, W2)
-- Hermes rings only the client the owner used in the last `hermes.consegna.client_attivo_minuti` (Chronos presence);
+- Hermes rings only the client the owner used in the last `hermes.delivery.client_active_minutes` (Chronos presence);
   the others get the notification silent. When the WebUI rings, subscribed browsers also get a Web Push (`hermes-store`).
 - Secret form: module event `_secret` → client form → Hermes `/api/notifications/{id}/secret` → Hub → the module.
   Hermes never stores or logs the values.
 
 ### Forge review, team and limit flow (same dossier, W3)
-- Task run → tests → `reviewing`: Oracle `/api/llm/generate` (`forge.revisione`, evidence only) → blocking issues
-  back to the engine once → `awaiting_review` with the review card. ≥ N services: `forge.piano` pieces first.
+- Task run → tests → `reviewing`: Oracle `/api/llm/generate` (`forge.review`, evidence only) → blocking issues
+  back to the engine once → `awaiting_review` with the review card. ≥ N services: `forge.plan` pieces first.
 - Claude limit → partial commit `refs/forge/resume/<id>` → `waiting_limit` → agenda one-off `forge.resume.<id>` at the
   reset → Chronos → Hub → `POST /api/hephaestus/forge/tasks/{id}/resume`.
 
@@ -282,7 +282,7 @@ flowchart LR
 ### LLM access rule
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate` (`voice: true` for a text to
 the owner: Oracle adds who speaks and the personal «Lingua»), Forge and Wardrobe use
-`/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.annunci`, `athena.strategia`,
+`/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.listings`, `athena.strategy`,
 `forge.codice`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
 Oracle maps each use case to a named chain of provider/model steps (quota skip) and a brain mode (interna / esterna =
 Claude Code or Codex with Hestia's tools over MCP), all chosen in Oracle → Cervello → Modelli, never env in the caller.
@@ -316,7 +316,7 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v3).
    the daily agenda job `<module>.signals` → `hestia_common.signals_client` → Archive `/api/signals-store` (signals +
    weekly metrics, via Hub).
 2. Window `athena.reflection` (daily 18–20): Athena reads the store, links weekly series of different areas (Pearson),
-   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.riflessione`),
+   asks the modules for details (`GET /api/module/context?topic=` via Hub), one Oracle call (`athena.reflection`),
    relevance gate.
 3. Accepted observations are stored (signals-store, `ref_id=athena`) and served as Athena's recap piece
    (`GET /api/module/recap`, «Da tenere d'occhio»); no Hermes notice. Setting ideas → Themis proposal.
@@ -369,7 +369,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 
 ### Download flow (page «Download», `hestia_common.downloads`)
 1. WebUI `/api/webui/downloads` → Hub registry (capability `downloads`) → each module `GET /api/downloads` via Hub.
-2. Oracle: setup or tool `modelli_scarica` → job source `ollama` → Ollama `/api/pull` stream. Echo: `/api/voice/
+2. Oracle: setup or tool `models_download` → job source `ollama` → Ollama `/api/pull` stream. Echo: `/api/voice/
    models/prefetch` or first use → source `http` (Range resume) / `whisper`.
 3. Buttons → WebUI `POST /api/webui/downloads/{module}/{op}` → module `/api/downloads/{id}/{op}`. Failure or big
    finished download → Hermes `/api/events/ingest` → Notifiche.
@@ -409,12 +409,12 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 3. Live («Parla», Telegram `/voce`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
    chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.
 4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
-   Echo `speak` (use `hermes.notifica`, kept with the notification) → `update` with `voice` to the clients.
-5. Audio inside a document → Oracle → Echo (use `oracle.documenti`); Oracle has no speech engine.
-6. Before any engine (W4): Echo voiceprint filter (uses in `echo.impronta.usi`: other voices → silence, also before
+   Echo `speak` (use `hermes.notification`, kept with the notification) → `update` with `voice` to the clients.
+5. Audio inside a document → Oracle → Echo (use `oracle.documents`); Oracle has no speech engine.
+6. Before any engine (W4): Echo voiceprint filter (uses in `echo.voiceprint.uses`: other voices → silence, also before
    the live end-of-turn check) + personal dictionary hint; a correction (`/dictionary/learn`) teaches new words.
 7. Spoken diary (W4 B9): evening recap → button «Racconta la giornata» (Hygieia piece action, `command`) → Telegram
-   asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diario`) → diary
+   asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diary`) → diary
    «giornata» → reflection signal `diario`.
 
 ### Device feed flow (same dossier, W4)
@@ -450,14 +450,14 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    state «Fuori casa» (declared by Hecate with `phone.home`). Commands: tool → Lares → HA REST service.
 4. Images: tool or module → Apollo job → ComfyUI `/prompt` + websocket → `/history` + `/view` → Archive blobs →
    `callback` push (e.g. Aphrodite) or Hermes notice; tool answers carry `display.files` → Telegram photo.
-5. Documents: tool `documento_crea` → Calliope renders, reopens and checks → Archive blob → `display.files` →
+5. Documents: tool `document_create` → Calliope renders, reopens and checks → Archive blob → `display.files` →
    Telegram document.
 6. Nutrition: Demeter `/api/coach/needs` (supplements as slots, «with workout») → Chronos weekly plan; intake →
-   `coach.done`; meal without numbers → Oracle `demeter.stima` in the background.
+   `coach.done`; meal without numbers → Oracle `demeter.estimate` in the background.
 
 ### Texts for people and look (dossier `docs/work/2026-10-29-revisione-e-test-frontend` v2)
 1. Tool `summary` (MCPTool) → module `tools/list` → Hub catalog (`summary`, `telegram_group`) → Hestia-MCP
-   `/api/mcp/ui/tools` and Metis `/api/metis/scopri` add `area*` + text for people (`hestia_common.areas`) →
+   `/api/mcp/ui/tools` and Metis `/api/metis/discover` add `area*` + text for people (`hestia_common.areas`) →
    WebUI «Comandi» and «Scopri» group by area; Telegram's menus use the same `AREAS`.
 2. Look: Impostazioni → Aspetto → ThemeService (theme × style × knobs, localStorage) → tokens and
    `data-style/glass/motion` on `<html>` → Angular pages and plugin shadow roots (tokens inherit).

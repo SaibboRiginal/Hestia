@@ -251,7 +251,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "api_prefix": "/api",
         "commands": [
             {
-                "command": "preferenze_attive",
+                "command": "preferences_active",
                 "title": "Active preferences",
                 "telegram_group": "memoria",
                 "telegram": {"section": "Notes and preferences"},
@@ -263,7 +263,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "List the active preferences briefly, grouped by domain, in natural language.",
             },
             {
-                "command": "notifiche_attive",
+                "command": "notifications_active",
                 "title": "Automatic alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts", "label": "Automatic alerts"},
@@ -274,7 +274,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_mode": "raw_json",
             },
             {
-                "command": "avvisi_recenti",
+                "command": "alerts_recent",
                 "title": "Recent notices",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts"},
@@ -287,7 +287,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Recent notices timeline: for each the item's full title, key payload details, 24h date/time, delivered yes/no. Link on the title, never 'Open'. Concise.",
             },
             {
-                "command": "notifica_disattiva",
+                "command": "notification_disable",
                 "title": "Turn off a notice",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts"},
@@ -311,7 +311,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm clearly that the notification is off.",
             },
             {
-                "command": "notifica_attiva",
+                "command": "notification_enable",
                 "title": "Turn a notice back on",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts"},
@@ -336,7 +336,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             # ── Calendar reminder subscriptions ───────────────────────────────
             {
-                "command": "iscriviti_calendario",
+                "command": "calendar_subscribe",
                 "title": "Turn on calendar reminders",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},
@@ -357,7 +357,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm briefly that calendar reminders are on.",
             },
             {
-                "command": "disiscriviti_calendario",
+                "command": "calendar_unsubscribe",
                 "title": "Turn off calendar reminders",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},
@@ -371,7 +371,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             # ── System health alert subscriptions ─────────────────────────────
             {
-                "command": "iscriviti_sistema",
+                "command": "system_subscribe",
                 "title": "Turn on system alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},
@@ -392,7 +392,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm briefly that system alerts are on.",
             },
             {
-                "command": "disiscriviti_sistema",
+                "command": "system_unsubscribe",
                 "title": "Turn off system alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},

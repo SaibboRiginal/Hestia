@@ -116,7 +116,7 @@ export class MetisImprovement extends HestiaElement {
 
   private async exportNow(clear: boolean) {
     this.busy = clear ? 'export-clear' : 'export';
-    const r = await this.host.api('POST', `${API}/export`, { body: { in_chiaro: clear } });
+    const r = await this.host.api('POST', `${API}/export`, { body: { plain: clear } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('Export failed'), 'danger'); return; }
     await this.download(r.data.id);

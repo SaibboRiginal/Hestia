@@ -72,7 +72,7 @@ def test_weekly_metrics_twelve_weeks_and_journal(cared):
     weeks = last_weeks(12, cared.today())
     assert sorted(adherence) == weeks
     assert adherence[weeks[0]]["value"] == 100 and adherence[weeks[0]]["label"] == "Routine rispettate %"
-    journal = [m for m in metrics if m["name"] == "selfcare.journal.viso.brufoli"]
+    journal = [m for m in metrics if m["name"] == "selfcare.journal.face.pimples"]
     assert len(journal) == 2                                          # only weeks with entries
     assert {m["value"] for m in journal} == {3.0, 5.0} and journal[0]["label"] == "Diario Viso · Brufoli"
 

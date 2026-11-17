@@ -116,7 +116,7 @@ def test_reviewer_unreachable_never_blocks(monkeypatch):
     r = forge_review.ForgeReviewer("http://hub/api")
     monkeypatch.setattr(r, "_generate", lambda uc, prompt: None)
     out = r.review(request="r", acceptance="a", diff="d", tests="t", summary="s")
-    assert out == {"verdict": "non_disponibile", "issues": [], "blocking": 0}
+    assert out == {"verdict": "unavailable", "issues": [], "blocking": 0}
     assert "non disponibile" in forge_review.card(out)
 
 

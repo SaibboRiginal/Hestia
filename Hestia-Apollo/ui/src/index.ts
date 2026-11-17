@@ -69,7 +69,7 @@ export class ApolloImages extends HestiaElement {
             ${Object.entries(s.purposes as Record<string, string>).map(([k, v]) => html`<option value=${k} ?selected=${k === this.purpose}>${v}</option>`)}</select>
           <hxk-button variant="primary" icon="sparkle" ?loading=${this.busy} @click=${() => this.create()}>${tr("Create")}</hxk-button></div>
       </div>
-      ${this.jobs.length ? html`<div class="grid" style="--min: 160px">${this.jobs.map(j => html`<div class="thumb" @click=${() => this.host.navigate('lavoro/' + j.id)}>
+      ${this.jobs.length ? html`<div class="grid" style="--min: 160px">${this.jobs.map(j => html`<div class="thumb" @click=${() => this.host.navigate('job/' + j.id)}>
           ${j.status === 'done' && j.blob_ids?.length ? html`<img loading="lazy" src=${this.host.image(`${API}/jobs/${j.id}/image/0`)} alt="">` : html`<hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge>`}
           <div class="cap truncate">${j.prompt}</div></div>`)}</div>`
         : html`<hxk-state kind="empty" text=${tr("No image yet.")}></hxk-state>`}

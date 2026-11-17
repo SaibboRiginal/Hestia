@@ -1,4 +1,4 @@
-# Hestia installer for Windows 10/11 (PowerShell 5.1+). Double-click Installa-Hestia.cmd, or in PowerShell:
+# Hestia installer for Windows 10/11 (PowerShell 5.1+). Double-click Install-Hestia.cmd, or in PowerShell:
 #   irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
 #   & ([scriptblock]::Create((irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1))) -Dir D:\Hestia
 #   ... -Join 123456 -Central 192.168.1.10     this PC becomes a satellite of the central one (code: Sistema -> Macchine)
@@ -620,7 +620,7 @@ function Complete-Install {
     Write-Host ''
     Ok (T "Hestia is ready: $WebUiUrl (the guided setup is at $SetupUrl)" "Hestia ~e pronta: $WebUiUrl (il setup guidato ~e su $SetupUrl)")
     foreach ($n in $script:Notes) { Write-Host (Expand-Text "         - $n") }
-    Write-Host (T '         To update or repair: run this same command again (or Installa-Hestia.cmd).' '         Per aggiornare o riparare: rilancia questo stesso comando (o Installa-Hestia.cmd).')
+    Write-Host (T '         To update or repair: run this same command again (or Install-Hestia.cmd).' '         Per aggiornare o riparare: rilancia questo stesso comando (o Install-Hestia.cmd).')
     Write-Log "install_done version=$(if ($script:VersionTag) { $script:VersionTag } else { 'dev' }) notes=$($script:Notes.Count)"
 }
 

@@ -68,7 +68,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "4. Automatic alerts and notifications: you CAN (subscriptions). Never say you cannot.\n"
         "5. Memory: memory.save only new lasting facts, third person; reminders and routines go to their own "
         "tools. 'Forget X' -> memory.search, then memory.forget by id.\n"
-        "6. 'Remind me' once -> agenda_assistente_aggiungi (works without a linked calendar); repeated -> "
+        "6. 'Remind me' once -> agenda_assistant_add (works without a linked calendar); repeated -> "
         "routine_create. Calendar event only if they talk about an appointment or the calendar.\n"
         "7. Many records -> summarise, show the best. Context records only if relevant. Always apply the "
         "owner's preferences."

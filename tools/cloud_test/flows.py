@@ -322,7 +322,7 @@ def flow_hygieia(ctx: dict) -> None:
         ret = api(M, "POST", f"{P}/products", {"name": f"Banco Siero retinolo {RUN}", "brand": "Banco", "areas": ["viso"],
                                                "category": "siero", "actives": ["retinolo"], "status": "in_use"})
         aha = api(M, "POST", f"{P}/products", {"name": f"Banco Tonico glicolico {RUN}", "brand": "Banco", "areas": ["viso"],
-                                               "category": "tonico", "actives": ["aha_glicolico"], "status": "in_use"})
+                                               "category": "tonico", "actives": ["aha_glycolic"], "status": "in_use"})
         ctx.update(cleanser=cleanser["id"], retinol=ret["id"], aha=aha["id"])
         return f"3 prodotti; il primo salvato in {secs:.1f} s con apertura oggi e PAO 12 mesi"
     step(A, "Aggiungi prodotti (detergente con PAO, retinolo, AHA)")(products)
@@ -813,7 +813,7 @@ def flow_mcp(ctx: dict) -> None:
 
 PAGES = ["/home", "/p/hercules/allenamento", "/p/hercules/schede", "/p/hercules/storico", "/p/hercules/progressi",
          "/p/hercules/corpo", "/p/hygieia/oggi", "/p/hygieia/routine", "/p/hygieia/prodotti", "/p/hygieia/statistiche",
-         "/p/hygieia/spesa", "/p/wardrobe/capi", "/p/wardrobe/outfit", "/p/wardrobe/cosa-mi-metto",
+         "/p/hygieia/spesa", "/p/wardrobe/capi", "/p/wardrobe/outfit", "/p/wardrobe/what-to-wear",
          "/p/wardrobe/statistiche", "/p/wardrobe/liste", "/p/hermes/notifiche", "/p/hermes/consegne",
          "/p/chronos/agenda", "/p/chronos/esecuzioni", "/p/mcp/accessi", "/p/themis/registro", "/settings"]
 
@@ -1156,11 +1156,11 @@ def flow_vita(ctx: dict) -> None:
     step(A, "Casa: stato di Home Assistant (non collegato sul banco)")(lares)
 
     def by_chat():
-        r = chat('#tool scadenze_list {}')
-        t = next((x for x in r["tools"] if x["tool"] == "scadenze_list"), None)
+        r = chat('#tool deadlines_list {}')
+        t = next((x for x in r["tools"] if x["tool"] == "deadlines_list"), None)
         need(t and t["ok"] is not False, f"lo strumento non è stato chiamato: {[x['tool'] for x in r['tools']]}")
-        need("Banco bollo" in (t["preview"] or "") or "Scadenze" in (t["preview"] or ""), f"anteprima: {str(t)[:200]}")
-        return "chat → scadenze_list (stesso strumento che usa Telegram) ok"
+        need("Banco bollo" in (t["preview"] or "") or "Scadenze" in (t["preview"] or ""), f"preview: {str(t)[:200]}")
+        return "chat → deadlines_list (stesso strumento che usa Telegram) ok"
     step(A, "Chat: l'assistente usa gli strumenti dei moduli nuovi")(by_chat)
 
 
@@ -1170,10 +1170,10 @@ def flow_shell(ctx: dict) -> None:
     def taps_and_adesso():
         at = datetime.now().isoformat(timespec="seconds")
         api("metis", "POST", "api/metis/usage", {"taps": [
-            {"client": "webui", "kind": "tool", "ref": "scadenze_list", "label": "Scadenze", "at": at},
+            {"client": "webui", "kind": "tool", "ref": "deadlines_list", "label": "Scadenze", "at": at},
             {"client": "webui", "kind": "page", "ref": "/p/kairos/scadenze", "label": "Scadenze", "at": at}]})
-        a = api("metis", "GET", "api/metis/adesso", query={"client": "webui"})
-        s = api("metis", "GET", "api/metis/scopri", query={"limit": 20})
+        a = api("metis", "GET", "api/metis/now", query={"client": "webui"})
+        s = api("metis", "GET", "api/metis/discover", query={"limit": 20})
         na, ns = len(a.get("items") or []), len(s.get("items") or [])
         need(ns, f"«Scopri» vuoto: {str(s)[:200]}")
         return f"tap registrati; Adesso {na} proposte, Scopri {ns} idee"

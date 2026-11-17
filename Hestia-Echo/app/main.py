@@ -85,9 +85,9 @@ settings.declare([
     setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "interna", group="Voice", order=6,
             options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
     setting("echo.language", "Language", "enum", "auto", group="Voice", order=7, options=LANGUAGES),
-    setting("echo.voce.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
+    setting("echo.voice.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
             unit="characters", help="Beyond it, the voice reads the start and says the rest is in the text."),
-    setting("echo.ascolto.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
+    setting("echo.listening.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
             max=7200, unit="s", advanced=True),
     setting("echo.live.silence_ms", "Pause that ends the live turn", "int", 1250, group="Voice", order=10,
             min=300, max=5000, unit="ms", help="In live mode: how much silence means «I'm done talking»."),
@@ -100,13 +100,13 @@ settings.declare([
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
     # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
-    setting("echo.impronta.soglia", "How much it must resemble your voice", "float", 0.45, group="Your voice",
+    setting("echo.voiceprint.threshold", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
-    setting("echo.impronta.usi", "Where I recognise only your voice", "list", ["webui.live.ascolto"],
+    setting("echo.voiceprint.uses", "Where I recognise only your voice", "list", ["webui.live.listening"],
             group="Your voice", order=41,
-            help="Voice uses where I filter other voices (e.g. webui.live.ascolto, telegram.vocale). Without a recorded voiceprint I filter nothing."),
-    setting("echo.dizionario.conferme", "Corrections to learn a word", "int", 2, group="Your voice",
+            help="Voice uses where I filter other voices (e.g. webui.live.listening, telegram.vocale). Without a recorded voiceprint I filter nothing."),
+    setting("echo.dictionary.confirmations", "Corrections to learn a word", "int", 2, group="Your voice",
             order=42, min=1, max=10, unit="times",
             help="After how many of your corrections a word enters the dictionary I pass to recognition."),
     setting("echo.pricing", "Prices", "object", {}, group="Voice", order=30, advanced=True,
@@ -311,7 +311,7 @@ def usage(days: int = 30):
 def live_config():
     """What a client needs for live mode («Parla», /live): the pause that closes a turn."""
     return {"silence_ms": int(settings.get("echo.live.silence_ms", 1250) or 1250), "language": echo.language(),
-            "voiceprint": voiceprint.applies("webui.live.ascolto")}
+            "voiceprint": voiceprint.applies("webui.live.listening")}
 
 
 @app.get(f"{API}/recent")
@@ -423,7 +423,7 @@ def voiceprint_enroll(body: dict = Body(...)):
     blob = None
     try:
         blob = keep.save("recording", audio.keep_encode(raw), audio.KEEP_MIME,
-                         {"use_case": "echo.impronta", "text": tr("voice print")})
+                         {"use_case": "echo.voiceprint", "text": tr("voice print")})
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=voiceprint_recording_not_kept error=%s", exc)
     try:
@@ -468,26 +468,26 @@ def _t(name, title, description, method, path, props=None, required=None, label=
 
 
 _echo_tools = [
-    _t("voce_download", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
-    _t("voce_scarica", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
+    _t("voice_downloads", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
+    _t("voice_download", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
                                            "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Download voices"),
-    _t("voce_dizionario", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
+    _t("voice_dictionary", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
                                                     "their corrections."), "GET", f"{API}/dictionary",
        label="Dictionary"),
-    _t("voce_parola", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
+    _t("voice_word", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
        {"word": {"type": "string", "description": "The word, spelled right"}}, ["word"]),
-    _t("voce_parola_togli", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
+    _t("voice_word_remove", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
        API + "/dictionary/{word}", {"word": {"type": "string", "description": "The word to remove"}}, ["word"]),
-    _t("voce_correzione", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
+    _t("voice_correction", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
        {"heard": {"type": "string", "description": "What was transcribed"},
         "corrected": {"type": "string", "description": "The right text"}}, ["heard", "corrected"]),
-    _t("voce_impronta", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
+    _t("voiceprint", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
        f"{API}/voiceprint"),
-    _t("voce_impronta_registra", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
+    _t("voiceprint_record", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
                                                           "their messages where they chose so."), "POST", f"{API}/voiceprint",
        {"audio": {"type": "string", "contentMediaType": "audio/*",
                   "description": "A voice message of at least 10 seconds where the user speaks"}}, ["audio"]),
-    _t("voce_impronta_togli", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
+    _t("voiceprint_remove", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
        "DELETE", f"{API}/voiceprint"),
 ]
 app.include_router(create_mcp_router(_echo_tools, service_name="echo"))

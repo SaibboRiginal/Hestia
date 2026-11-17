@@ -2,8 +2,8 @@
 
 The owner records ~10 s of speech once (page «Voce» or Telegram «Registra la mia voce»): Echo computes a speaker
 embedding and keeps it in Archive (``echo-store`` row ``kind=voiceprint``, the recording as a kept ``recording``).
-From then on, on the uses listed in ``echo.impronta.usi`` (live mode, voice notes), every 1.5 s window of speech
-that does not sound like the owner (cosine similarity under ``echo.impronta.soglia``) becomes silence **before**
+From then on, on the uses listed in ``echo.voiceprint.uses`` (live mode, voice notes), every 1.5 s window of speech
+that does not sound like the owner (cosine similarity under ``echo.voiceprint.threshold``) becomes silence **before**
 transcription: the TV or other people do not end up in the message and do not keep a live turn open.
 No switch: no voiceprint = no filter. The engine (WeSpeaker ResNet34, ONNX, downloaded on first use into
 ``ECHO_MODELS_DIR/speaker``) is optional: when it cannot load the audio passes unchanged (``[🔄]`` log).
@@ -121,7 +121,7 @@ class SpeakerEngine:
                 if not path.exists():
                     from .standards import EngineError, fetch
                     try:
-                        fetch("impronta:resnet34", tr("Recognise your voice"), MODEL_URL, path, 27)
+                        fetch("voiceprint:resnet34", tr("Recognise your voice"), MODEL_URL, path, 27)
                     except EngineError as exc:
                         raise VoiceprintError(tr("voice model download: {0}", exc))
                     logger.info("event=voiceprint_model_downloaded")
@@ -158,12 +158,12 @@ class Voiceprint:
 
     def threshold(self) -> float:
         try:
-            return float(self.get("echo.impronta.soglia", 0.45))
+            return float(self.get("echo.voiceprint.threshold", 0.45))
         except (TypeError, ValueError):
             return 0.45
 
     def uses(self) -> list[str]:
-        raw = self.get("echo.impronta.usi", []) or []
+        raw = self.get("echo.voiceprint.uses", []) or []
         return [str(u) for u in raw] if isinstance(raw, list) else [u.strip() for u in str(raw).split(",") if u.strip()]
 
     def enroll(self, wav16k: bytes, recording_blob: str | None = None) -> dict:

@@ -113,4 +113,4 @@ def test_endpoints_and_tools(monkeypatch):
     assert c.post("/api/deadlines/tools/consiglio", json={"deadline": "Assicurazione"}).status_code in (200, 404)
     assert c.get("/api/deadlines/categories").json()["recurrences"][0] == "none"
     reg = main.kit.registration()
-    assert reg["capabilities"]["llm_usecases"][0]["id"] == "kairos.consiglio"
+    assert reg["capabilities"]["llm_usecases"][0]["id"] == "kairos.advice"

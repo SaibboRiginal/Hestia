@@ -94,7 +94,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   (`goto`, `fill`, `click`, `press`, `wait`) and fields to extract (selector, `attr`, `all`, `required`, `limit`).
   Validated at load; a malformed file is skipped with a warning.
 - Run in the same persistent Edge as fetches (`fetcher.run_in_edge`): no model reads the page at every step. Tool
-  `atlas_ricetta(name?, params?)` (no name → list); modules call `POST /api/route/atlas/api/recipes/<name>/run`
+  `atlas_recipe(name?, params?)` (no name → list); modules call `POST /api/route/atlas/api/recipes/<name>/run`
   `{"params": {...}, "timeout_seconds": 30}`.
 - A step that fails or a required field that comes back empty → answer `status: broken` and the log
   `event=atlas_recipe_broken` (WARNING): Argus alerts on it and, when it repeats, proposes the fix to Forge.

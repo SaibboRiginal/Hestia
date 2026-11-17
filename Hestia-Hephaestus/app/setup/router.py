@@ -125,13 +125,13 @@ NOTES_PROMPT = ("Rewrite each line of what is new in this update for the owner: 
 
 
 def notes_translator(hub_api_url: str):
-    """What's new of an update, in the owner's language (Oracle use case ``hephaestus.aggiornamenti``, ``voice``:
+    """What's new of an update, in the owner's language (Oracle use case ``hephaestus.updates``, ``voice``:
     Oracle adds who speaks and the language setting)."""
     def translate(notes: list[str]) -> list[str] | None:
         resp = requests.post(f"{hub_api_url}/route/oracle/api/llm/generate",
                              json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 90,
                                    "body": {"prompt": NOTES_PROMPT.replace("{lines}", "\n".join(notes)),
-                                            "use_case": "hephaestus.aggiornamenti", "voice": True}}, timeout=95)
+                                            "use_case": "hephaestus.updates", "voice": True}}, timeout=95)
         routed = resp.json() if resp.content else {}
         if resp.status_code != 200 or int(routed.get("status_code", 500)) >= 400:
             return None

@@ -39,7 +39,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 - **Privacy**: everything stays in Archive. A conversation with `training_off` (WebUI history «Non usare per
   l'allenamento», tool `chat_tag`) is never stored and its rows are dropped; deleting a conversation drops them too
   (`DELETE /api/metis/traces?session_id=`, tombstones with empty data). Archive meta unknown → the trace is skipped.
-- Retention: setting `metis.traces.keep_days` (365), pruned by the agenda jobs `metis.adesso.*` with the taps.
+- Retention: setting `metis.traces.keep_days` (365), pruned by the agenda jobs `metis.now.*` with the taps.
 - `GET /api/metis/traces/status` (counts), `GET /api/metis/traces/recent` (short list, no prompts).
 - Phase **D2 «Correggi»** (`core/review.py`): agenda job `metis.dataset.review` (seed 02:30, move it in the agenda)
   → `POST /api/metis/review/run` re-reads the next `metis.review.batch` turns older than 30 min (where the last run
@@ -50,9 +50,9 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   teacher answers JSON `verdict keep|fix|drop, confidence, answer, remove_steps, reasons (R1–R8), needs_owner`; it may
   drop wrong tool calls and rewrite the answer, never invent a tool result. Kind `review` (id = trace, `ref_id` =
   status): `accepted` when confidence ≥ `metis.review.auto_accept` (0.85), no `needs_owner` and no 👎 with words;
-  otherwise `pending` → **«Da rivedere»** (WebUI Miglioramento, Telegram `metis_rivedi`): Accetta, Correggi io (your
+  otherwise `pending` → **«Da rivedere»** (WebUI Miglioramento, Telegram `metis_review`): Accetta, Correggi io (your
   answer, status `edited`), Scarta (`rejected`). Teacher away or unusable answer → the run stops there (`[🔄]`).
-- Phase **D3 «Esporta»** (`core/export.py`): `POST /api/metis/export {in_chiaro, include_unreviewed}` builds a zip
+- Phase **D3 «Esporta»** (`core/export.py`): `POST /api/metis/export {plain, include_unreviewed}` builds a zip
   with `sft.jsonl` (OpenAI `messages` with `tool_calls` / `tool` roles + `tools` schemas of the turn), `dpo.jsonl`
   (`prompt`, `chosen` = corrected answer, `rejected` = original), `eval.jsonl` (~10% of the conversations, split by
   session, never also in sft) and `card.json` (counts, routes, models, dates, masked). Only turns the review kept or
@@ -60,7 +60,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   answer. The owner picks at each export: **oscurato** (default, the same masking as the review: Persone names,
   e-mails, phones, IBAN, addresses; Hera away → refused, never half masked) or **in chiaro**. The zip is an Archive
   blob (owner `metis`), the export a dataset-store row kind `export`; download from Miglioramento («Scarica
-  oscurato» / «Scarica in chiaro» + the last five) or Telegram `metis_dataset_esporta` (file under the card).
+  oscurato» / «Scarica in chiaro» + the last five) or Telegram `metis_dataset_export` (file under the card).
 
 ### Benchmark Evaluation
 - Runs held-out eval comparing candidate model vs baseline
@@ -80,17 +80,17 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 - **Taps**: clients push what the owner starts (`POST /api/metis/usage`, Telegram in the background at every action
   start; the WebUI in wave 7). Rows in Archive `metis-store` (kind `tap`: client, kind tool|page|action, ref, weekday,
   hour). Kept 180 days. Only the owner's own taps; nothing leaves Hestia.
-- **Adesso** (`GET /api/metis/adesso?client=`, tool `metis_adesso`): no model at read time. In order: agenda items of
+- **Adesso** (`GET /api/metis/now?client=`, tool `metis_now`): no model at read time. In order: agenda items of
   the next 3 hours whose `params.tool` names a tool; up to 3 habits (score per tool = recency decay of 21 days ×
   same hour ±1 × same weekday / same kind of day) or recent tools; then up to 3 **ideas**. Each item has its reason
   («Di solito il lunedì a quest'ora», «In agenda alle 18:00: …», «Usata di recente», the idea's own words). Only
   tools of the Hub catalog (`GET {HUB}/discovery/catalog?type=tool`, cached 10 min, last one kept if Hub is away)
   that the client can run; delete/cancel tools never appear.
-- **Ideas**: agenda jobs `metis.adesso.0700`, `.1230`, `.1800` (seeds: move them in the agenda) call
-  `POST /api/metis/adesso/refresh`: Oracle use case `metis.adesso` (chain veloce) picks 3 tools different from the
+- **Ideas**: agenda jobs `metis.now.0700`, `.1230`, `.1800` (seeds: move them in the agenda) call
+  `POST /api/metis/now/refresh`: Oracle use case `metis.now` (chain veloce) picks 3 tools different from the
   habits, better if little used; the answer is validated against the catalog, kept 8 hours per client. Model away →
   `[🔄]` habits only. The same job prunes old taps.
-- **Scopri** (`GET /api/metis/scopri?client=`, tool `metis_scopri`): catalog tools used at most twice in 90 days,
+- **Scopri** (`GET /api/metis/discover?client=`, tool `metis_discover`): catalog tools used at most twice in 90 days,
   one per module first, with what they do.
 - Telegram: the Oggi card shows «Adesso» (reason + one button each) instead of its fixed actions when Metis has
   something; `/adesso` and `/scopri` open the two tools.
@@ -104,10 +104,10 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `metis_dataset_status` | Show dataset statistics |
 | `metis_benchmark_run` | Evaluate candidate model vs baseline |
 | `metis_loRA_train` | Orchestrate LoRA fine-tuning run |
-| `metis_adesso` | «Adesso» card: what fits now, each with why and a button |
-| `metis_scopri` | «Scopri» card: features never or rarely used |
-| `metis_rivedi` | «Da rivedere»: the next nightly correction waiting for the owner, Accetta / Correggi io / Scarta |
-| `metis_rivedi_decidi` | `trace_id`, `decision` accept / reject / edit, `answer` (edit); returns the next card |
+| `metis_now` | «Adesso» card: what fits now, each with why and a button |
+| `metis_discover` | «Scopri» card: features never or rarely used |
+| `metis_review` | «Da rivedere»: the next nightly correction waiting for the owner, Accetta / Correggi io / Scarta |
+| `metis_review_decide` | `trace_id`, `decision` accept / reject / edit, `answer` (edit); returns the next card |
 
 ## API Endpoints
 
@@ -121,8 +121,8 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `POST` | `/api/metis/usage` | Taps `{taps:[{client, kind, ref, label?, at?}]}` (422 if none valid) |
 | `GET` | `/api/metis/usage/stats` | Taps by client, top tools |
 | `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-viva`) |
-| `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
-| `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
+| `GET` | `/api/metis/now` · `/api/metis/discover` | Adesso and Scopri lists (`client`, `limit`) |
+| `POST` | `/api/metis/now/refresh` | Agenda job: new ideas + prune |
 | `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |
 | `POST` | `/api/metis/traces` | Oracle pushes one chat turn trace (422 if trace_id/session_id/user/answer missing; skipped when the chat is `training_off`) |
 | `DELETE` | `/api/metis/traces?session_id=` | Drop a conversation's traces and signals |
@@ -131,9 +131,9 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/review/pending` | «Da rivedere» (`limit`): `{items[{trace_id, user, answer, fixed, remove, reasons, confidence, needs_owner}], pending, reviews}` |
 | `POST` | `/api/metis/review/{trace_id}` | Owner decision `{decision: accept|reject|edit, answer?}` |
 | `GET`/`POST` | `/api/metis/tools/rivedi` · `/tools/rivedi_decidi` | The two tools (display card) |
-| `POST` | `/api/metis/export` | Build the training zip `{in_chiaro?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
+| `POST` | `/api/metis/export` | Build the training zip `{plain?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
 | `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
-| `POST` | `/api/metis/tools/dataset_esporta` | Tool `metis_dataset_esporta` (card with the file) |
+| `POST` | `/api/metis/tools/dataset_esporta` | Tool `metis_dataset_export` (card with the file) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
@@ -142,8 +142,8 @@ Feedback filters (`limit`, `quality_label`, `since`) are now forwarded to Archiv
 (they were appended to the URL and dropped).
 
 `metis_benchmark_run` returns `status: not_implemented` (honest placeholder, no LLM call).
-Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `oracle.generale` use case
-(first usable step of its chain), read via Hub from Oracle `GET /api/llm/usecases/oracle.generale`; Oracle unreachable →
+Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle uses now for the `oracle.general` use case
+(first usable step of its chain), read via Hub from Oracle `GET /api/llm/usecases/oracle.general`; Oracle unreachable →
 `[🔄]` fallback to the first step of Oracle's default «veloce» chain, `gemma4:e4b`. Metis never picks models itself (Oracle owns them).
 `metis_loRA_train` really launches `METIS_TRAINING_SCRIPT --dataset <jsonl> --base_model <m> --adapter_name <a>`
 (dataset + log in `METIS_DATA_DIR`, default `/code/data` = `Hestia-Metis/data` volume); it used to report "triggered" without starting anything.

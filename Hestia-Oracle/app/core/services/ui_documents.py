@@ -18,7 +18,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_oracle.ui_documents")
 
-SESSION = "webui-documenti"   # Archive needs a session id: documents added from the page share this one
+SESSION = "webui-documents"   # Archive needs a session id: documents added from the page share this one
 _ACCEPTED_PREFIXES = ("image/", "audio/", "video/", "text/")
 _ACCEPTED = {
     "application/pdf", "application/json", "application/xml", "application/yaml", "application/x-yaml",

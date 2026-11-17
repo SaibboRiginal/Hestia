@@ -86,7 +86,7 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
         best = progression.fmt_kg(s["best"]) + (" kg" if s["metric"] == "best_e1rm" else "")
         out.append(signal(f"stall:{s['exercise_id']}", tr("{0} stuck for {1} sessions: {2} does not go past {3}", s['exercise'], s['exposures'], what, best), kind="trend", severity="attenzione",
                           metrics={"exposures": s["exposures"], "best": s["best"], "recent": s["recent"]},
-                          page=f"esercizi/{s['exercise_id']}"))
+                          page=f"exercises/{s['exercise_id']}"))
     low = low_checkins(h, today)
     if len(low) >= DELOAD_CHECKINS:
         out.append(signal("deload", tr("Low energy {0} times in 7 days: consider a deload week", len(low)),
@@ -104,7 +104,7 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
         out.append(signal(f"pr:{pr['exercise_id']}", tr("New record {0}: {1} {2}", pr['exercise'], pr['label'], progression.fmt_kg(pr['value'])), kind="milestone", severity="info", ttl_days=PR_DAYS,
                           metrics={"value": pr["value"], "previous": pr.get("previous") or 0},
                           period=(local_date(pr.get("date"), h.tz) or today).isoformat(),
-                          page=f"esercizi/{pr['exercise_id']}"))
+                          page=f"exercises/{pr['exercise_id']}"))
     for g in h.goals():
         p = g["progress"]
         if p["per"] == "week" and p["behind"] and p["days_left"] <= 2:

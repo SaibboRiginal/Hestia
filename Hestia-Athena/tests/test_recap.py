@@ -105,7 +105,7 @@ def test_compose_writes_with_oracle_delivers_and_stores():
     assert hermes["payload"]["_link"] == {"module": "athena", "page": "recap"}
     assert hermes["payload"]["level"] == "info" and hermes["payload"]["target"] == "owner"
     archive = next(j for s, j in hub.calls if s == "archive")["body"]
-    assert archive["domain"] == "recap" and archive["entity_id"] == "athena-recap-2026-10-20-sera"
+    assert archive["domain"] == "recap" and archive["entity_id"] == "athena-recap-2026-10-20-evening"
 
 
 def test_oracle_down_falls_back_to_template():
@@ -155,9 +155,9 @@ def test_has_content():
 def test_piece_actions_ride_under_the_recap():
     """B9: a module piece (even an empty one) can ask for a button under the recap; ids unique per module."""
     pieces = [{"module": "hygieia", "empty": True, "actions": [{"label": "Racconta la giornata",
-                                                                "command": "selfcare_diario_voce"}]},
+                                                                "command": "selfcare_diary_voice"}]},
               {"module": "hercules", "title": "Allenamento", "done": [{"text": "Push A"}]}]
-    assert piece_actions(pieces) == [{"label": "Racconta la giornata", "command": "selfcare_diario_voce",
+    assert piece_actions(pieces) == [{"label": "Racconta la giornata", "command": "selfcare_diary_voice",
                                       "id": "hygieia0"}]
     assert has_content(pieces)
     assert "Racconta" not in template_text(pieces, "sera", date(2026, 10, 29), date(2026, 10, 30))

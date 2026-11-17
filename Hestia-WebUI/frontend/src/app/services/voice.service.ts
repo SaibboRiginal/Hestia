@@ -125,7 +125,7 @@ export class VoiceService {
 
   /** Dictation (W7, brainstorm C12): the text only, to read again before sending; nothing is kept. */
   async dictate(blob: Blob, mime: string): Promise<Heard> {
-    return this.post<Heard>('transcribe', { audio_b64: await blobToB64(blob), mime_type: mime, use_case: 'webui.dettatura' });
+    return this.post<Heard>('transcribe', { audio_b64: await blobToB64(blob), mime_type: mime, use_case: 'webui.dictation' });
   }
 
   /** «Ascolta»: play/stop the reading of a reply (the kept one when it exists). */
@@ -136,7 +136,7 @@ export class VoiceService {
     if (!text) return;
     this.loading.set(messageId);
     try {
-      const out = await this.post<any>('speak', { text, format: PLAY_FORMAT, use_case: 'webui.ascolta',
+      const out = await this.post<any>('speak', { text, format: PLAY_FORMAT, use_case: 'webui.listen',
                                                  keep: { kind: 'generated', message_id: messageId } });
       if (this.loading() !== messageId) return;          // stopped meanwhile
       if (!out?.audio_b64) throw { status: 502 };

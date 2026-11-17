@@ -30,12 +30,12 @@
 
 ## Tools (Telegram area «Immagini e aspetto»)
 
-`immagine_crea` (waits up to 60 s, then says it will notify), `immagine_stato`, `immagine_lista`, `immagine_flussi`.
+`image_create` (waits up to 60 s, then says it will notify), `image_status`, `image_list`, `image_flows`.
 Images reach Telegram as photos through `display.files`.
 
 ## WebUI plugin
 
-Pages **Immagini** (`apollo-images`: new image, grid of the jobs, refreshed every 4 s while one is queued or running), **Immagine** (`lavoro/:id`) and **Flussi** (`apollo-flows`: upload the ComfyUI API JSON per purpose, default flow). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Immagini** (`apollo-images`: new image, grid of the jobs, refreshed every 4 s while one is queued or running), **Immagine** (`job/:id`) and **Flussi** (`apollo-flows`: upload the ComfyUI API JSON per purpose, default flow). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

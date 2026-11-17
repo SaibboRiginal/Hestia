@@ -22,7 +22,7 @@ is archived for audit and client display.
    within `repeat_days` is skipped (dedup on `topic_key`).
 4. **Details**: `GET route/<module>/api/module/context?topic=<key>&budget=<detail_budget>` per signal topic; the
    normal context line of both modules for a link.
-5. **Think**: one Oracle call, use case `athena.riflessione` (chain `potente`), caveman prompt, same `AZIONE/TIPO/…`
+5. **Think**: one Oracle call, use case `athena.reflection` (chain `potente`), caveman prompt, same `AZIONE/TIPO/…`
    format plus `TEMA: T<n>`; kinds `observation` | `setting`.
 6. **Gate** (same score and threshold). Accepted observations → Archive `signals-store` (`kind=observation`,
    `ref_id=athena`, `day`, `title`, `text`, `domains`, `topic_key`, `link`, `page`, `score`), outcome `observed`,
@@ -332,8 +332,8 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
 | `ATHENA_UI_DIST` | `/ui/dist` | WebUI bundle folder (set in the Dockerfile, infrastructure) |
 
-Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategia`
-(strategist + memory consolidation), `athena.riflessione` (life reflection) or `athena.revisione` (answer audit), both declared in its Hub registration
+Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategy`
+(strategist + memory consolidation), `athena.reflection` (life reflection) or `athena.review` (answer audit), both declared in its Hub registration
 (`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `potente`).
 
 ## Resource-conscious design
@@ -407,7 +407,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 - **Learning log + undo** (Cindy 18, `app/core/learning.py`): every change to memory (add, retire, reinforce, decay,
   merge) is a row of Archive `/api/athena-store` (kind `learning`, `before`/`after`, `quote`). «Annulla» restores
   `before` only while the memory is still as the assistant left it (an owner edit wins → 409 `changed_since`).
-- **«Rivedi cosa sai di me»**: exact duplicates without a model, then one call (`athena.strategia`) for
+- **«Rivedi cosa sai di me»**: exact duplicates without a model, then one call (`athena.strategy`) for
   contradictions, near duplicates, stale facts → proposals (kind `memory_proposal`) as Hermes cards «Memoria ·
   Doppione/Contraddizione/Forse vecchia» with «Applica» / «Lascia». Nothing changes without the owner.
 - **Docs follow code** (Cindy 29, `app/core/docs_check.py`): monthly agenda job `athena.docs_check` (day 1, 04:30)
@@ -415,7 +415,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   and `Hestia-Swagger/swagger.yml` (read via Forge's repo browser); one Forge proposal per module (source athena).
 - API: `GET /api/athena/learning` · `POST /api/athena/learning/{entry_id}/undo` · `POST /api/athena/memory/review` ·
   `POST /api/athena/memory/proposals/{pid}/apply|dismiss` · `POST /api/athena/docs/check`.
-  Tools: `memory_rivedi`, `memory_learning`, `memory_learning_undo`, `memory_proposals`, `memory_proposal_apply`,
+  Tools: `memory_review`, `memory_learning`, `memory_learning_undo`, `memory_proposals`, `memory_proposal_apply`,
   `memory_proposal_dismiss`, `docs_check`; `athena_thinking`, `athena_signals`, `athena_commitments` and
   `athena_commitment_resolve` (`status` resolved | dismissed) are on Telegram too (parity, `docs/work/2026-10-30-cose-aperte`).
 

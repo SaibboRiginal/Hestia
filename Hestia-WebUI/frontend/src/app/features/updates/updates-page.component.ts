@@ -8,7 +8,7 @@ import { locale, tr, TrPipe } from '../../core/i18n';
 
 interface Version { version: string; tag: string; commit: string; label: string; }
 interface Available { ref: string; label: string; notes?: string[]; major?: boolean; commits?: number; }
-interface Job { state: 'idle' | 'in_corso' | 'fatto' | 'errore'; step?: string; detail?: string; target?: string; }
+interface Job { state: 'idle' | 'running' | 'fatto' | 'errore'; step?: string; detail?: string; target?: string; }
 interface HistoryRow { at: number; from: string; to: string; ok: boolean; back: boolean; detail: string; }
 export interface UpdateStatus {
   installed: Version; channel: 'stabile' | 'novita'; available: Available | null; checked_at: number | null;
@@ -44,7 +44,7 @@ export interface UpdateStatus {
           </div>
         </section>
 
-        @if (job().state === 'in_corso') {
+        @if (job().state === 'running') {
           <section class="card hx-card">
             <div class="now"><hx-spinner /><div><b>{{ "Updating…" | tr }}</b><small>{{ job().step || ('Preparing' | tr) }}{{ ". Nothing to do: if something doesn't answer I go back to the previous version by myself." | tr }}</small></div></div>
           </section>
@@ -86,7 +86,7 @@ export interface UpdateStatus {
               </li>
             }
           </ul>
-          @if (st()!.previous && job().state !== 'in_corso') {
+          @if (st()!.previous && job().state !== 'running') {
             <div class="row"><button hx-btn size="sm" variant="ghost" icon="undo" [loading]="busy() === 'back'" (click)="back()">{{ "Back to the previous version" | tr }}</button></div>
           }
         }
@@ -132,7 +132,7 @@ export class UpdatesPageComponent {
     let tick = 0;
     const timer = setInterval(() => {
       tick++;
-      if (this.job().state === 'in_corso' || tick % 10 === 0) void this.load();
+      if (this.job().state === 'running' || tick % 10 === 0) void this.load();
     }, 3000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }

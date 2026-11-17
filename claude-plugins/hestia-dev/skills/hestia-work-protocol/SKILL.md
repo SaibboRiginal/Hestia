@@ -3,7 +3,7 @@ name: hestia-work-protocol
 description: Use for any task in the Hestia repo (new feature, fix, refactor, docs) — the mandatory dossier, changelog, docs-follow-code and precheck steps.
 ---
 
-Source of truth: `CLAUDE.md` at the repo root and `docs/REGOLE-DI-MARKO.md`. Read them first; this is the checklist.
+Source of truth: `CLAUDE.md` at the repo root and `docs/MARKO-RULES.md`. Read them first; this is the checklist.
 
 1. Dossier `docs/work/<YYYY-MM-DD>-<slug>/`. Exists → read `PROGRESS.md`, continue from the first open box.
 2. `SPEC.md` from `docs/work/SPEC-TEMPLATE.md` **before code**: Version, Source, Status, goal, scope, acceptance,

@@ -95,7 +95,7 @@ export class HygieiaStats extends HestiaElement {
     for (const t of items) (months[t.date.slice(0, 7)] ||= []).push(t);
     return html`${Object.entries(months).map(([mo, list]) => html`<h3 class="month">${new Date(mo + '-15').toLocaleDateString(locale(), { month: 'long', year: 'numeric' })}</h3>
       <div class="card list">${list.map(t => html`<div class="tl ${t.product_id || t.routine_id ? 'click' : ''}"
-        @click=${() => t.product_id ? this.host.navigate('prodotti/' + t.product_id) : t.routine_id ? this.host.navigate('routine/' + t.routine_id) : null}>
+        @click=${() => t.product_id ? this.host.navigate('products/' + t.product_id) : t.routine_id ? this.host.navigate('routine/' + t.routine_id) : null}>
         <span>${eventIcon(t.type)}</span><span class="muted tnum" style="min-width:60px">${dayLabel(t.date, false)}</span>
         <div class="grow"><b>${t.title}</b>${t.text ? html`<span class="muted"> — ${t.text}</span>` : nothing}</div></div>`)}</div>`)}`;
   }
@@ -109,7 +109,7 @@ export class HygieiaStats extends HestiaElement {
         ${p.routines.length ? p.routines.map((r: any) => html`<div><b>${r.name}</b> <span class="small muted">v${r.version}</span><div class="small">${r.steps.join(' → ') || '—'}</div></div>`)
           : html`<div class="empty">${tr("No routine on that date.")}</div>`}
         <h3>${tr("Opened products")}</h3>
-        ${p.products.length ? html`<div class="chips">${p.products.map((x: any) => html`<span class="pill click" @click=${() => this.host.navigate('prodotti/' + x.id)}>${productName(x)}</span>`)}</div>`
+        ${p.products.length ? html`<div class="chips">${p.products.map((x: any) => html`<span class="pill click" @click=${() => this.host.navigate('products/' + x.id)}>${productName(x)}</span>`)}</div>`
           : html`<div class="empty">${tr("None.")}</div>`}
         ${p.journal.length ? html`<h3>${tr("Diary (± 7 days)")}</h3>${p.journal.map((j: any) => html`<div class="small"><span class="muted">${dayLabel(j.date, false)}</span> · ${j.area}: ${Object.entries(j.scores || {}).map(([k, v]) => `${k} ${v}`).join(', ')}${j.note ? ' — ' + j.note : ''}</div>`)}` : nothing}`}
     </div>`;
@@ -141,7 +141,7 @@ export class HygieiaShopping extends HestiaElement {
   private section(title: string, items: any[], how: 'stock' | 'repurchase', empty: string) {
     return html`<div class="card col"><h2>${title} ${items.length ? html`<span class="muted">${items.length}</span>` : nothing}</h2>
       ${items.length ? html`<div class="list">${items.map(p => html`<div class="li">
-        <div class="grow click" @click=${() => this.host.navigate('prodotti/' + p.id)}><div class="truncate"><b>${p.name}</b>${p.brand ? html`<span class="muted"> · ${p.brand}</span>` : nothing}</div>
+        <div class="grow click" @click=${() => this.host.navigate('products/' + p.id)}><div class="truncate"><b>${p.name}</b>${p.brand ? html`<span class="muted"> · ${p.brand}</span>` : nothing}</div>
           <div class="small muted truncate">${[p.why, p.price ? money(p.price, p.currency) : '', p.shop].filter(Boolean).join(' · ')}</div></div>
         <hxk-badge tone=${STATUS_TONE[p.status] || 'neutral'}>${p.status_label}</hxk-badge>
         <hxk-button size="sm" icon="check" @click=${() => this.bought(p, how)}>${tr("Bought")}</hxk-button></div>`)}</div>` : html`<div class="empty">${empty}</div>`}</div>`;

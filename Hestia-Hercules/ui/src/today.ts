@@ -448,7 +448,7 @@ export class HerculesToday extends HestiaElement {
       ${this.renderCheckin(t)}
 
       ${others.length ? html`<div class="card col"><h3>${tr("Other plans")}</h3><div class="list">
-        ${others.map(o => html`<div class="li" @click=${() => this.host.navigate('schede/' + o.id)}>
+        ${others.map(o => html`<div class="li" @click=${() => this.host.navigate('plans/' + o.id)}>
           <div class="grow"><div class="truncate">${o.favorite ? html`<hxk-icon name="star" size=${13} tone="warning"></hxk-icon> ` : ''}${o.name}</div>
             <div class="small muted truncate">${(o.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ')}</div></div>
           <hxk-button size="sm" icon="play" @click=${(e: Event) => { e.stopPropagation(); this.start(o); }}>${tr("f::Start")}</hxk-button></div>`)}
@@ -544,7 +544,7 @@ export class HerculesToday extends HestiaElement {
     return html`<div class="card block ${b.skipped ? 'skipped' : ''}">
       <div class="bh">
         <div class="grow">
-          <div class="name truncate" @click=${() => this.host.navigate('esercizi/' + b.exercise_id)}>${ex?.name || tr('Exercise')}</div>
+          <div class="name truncate" @click=${() => this.host.navigate('exercises/' + b.exercise_id)}>${ex?.name || tr('Exercise')}</div>
           <div class="small muted truncate">${muscleText(ex)}${prev ? tr(" · last time {0}", prev.sets.map((s: any) => setLabel(s, kind)).slice(0, 4).join(', ')) : ''}</div>
           ${sug?.reason && sug.action !== 'plan' ? html`<div class="reason">${sug.reason}</div>` : nothing}
         </div>
@@ -637,7 +637,7 @@ export class HerculesToday extends HestiaElement {
       <h3>${tr("How did it go?")}</h3>
       <div class="chips">${Object.entries(FEEDBACK_TAGS).map(([k, v]) => html`<button class="chip" @click=${() => this.feedback(r.id, k)}>${v}</button>`)}</div>
       <div class="row wrap">
-        <hxk-button variant="primary" @click=${() => this.host.navigate('storico/' + r.id)}>${tr("See details")}</hxk-button>
+        <hxk-button variant="primary" @click=${() => this.host.navigate('history/' + r.id)}>${tr("See details")}</hxk-button>
         <hxk-button variant="ghost" icon="heart" @click=${() => this.talk({ session_id: r.id })}>${tr("Comment it with the assistant")}</hxk-button>
         <hxk-button variant="ghost" @click=${() => (this.result = null)}>${tr("Close")}</hxk-button>
       </div></div>`;

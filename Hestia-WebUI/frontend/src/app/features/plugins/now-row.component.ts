@@ -12,7 +12,7 @@ const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat
  * more) and is remembered, so the row learns. Hidden when there is nothing to suggest.
  */
 @Component({
-  selector: 'hx-adesso-row',
+  selector: 'hx-now-row',
   imports: [TrPipe, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -48,7 +48,7 @@ const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat
 export class AdessoRowComponent implements OnInit {
   private metis = inject(MetisService);
   private plugins = inject(PluginsService);
-  readonly items = computed(() => this.metis.adesso());
+  readonly items = computed(() => this.metis.now());
 
   constructor() {
     // The catalog arrives after the first paint: read again once Metis is known.

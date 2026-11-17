@@ -13,7 +13,7 @@ do not depend on the model (bench with real and small models, 2026-10-30, docs/w
 
 A refused call returns ``(False, "BLOCKED: …")``: the model reads why and answers the user. The tool log marks
 it ``refused``: no «Non riuscito» notice to the user, nothing was tried. On a question a write tool called with no
-values passes: on read-or-write tools (cibo_dieta) that is a read.
+values passes: on read-or-write tools (food_diet) that is a read.
 """
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ class TurnGuards:
                     "confirm) and call forge_develop only after yes.")
         if name in PROPOSE_ONLY:
             return None
-        if self.question and _has_values(params):   # a write tool with no values only reads (cibo_dieta)
+        if self.question and _has_values(params):   # a write tool with no values only reads (food_diet)
             return ("BLOCKED: the user asked a question or advice, not to save or change "
                     "anything. Answer without writing.")
         if _DESTRUCTIVE_NAME.search(name) and name != "memory.forget" and not self.delete_ok:

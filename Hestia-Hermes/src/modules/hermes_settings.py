@@ -24,9 +24,9 @@ BATCH_WINDOW = "hermes.batch.window"
 BATCH_MAX_ATTEMPTS = "hermes.batch.max_attempts"
 RETRACT_AFTER = "hermes.retract.after"
 REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
-PENDING_REMIND_HOURS = "hermes.attesa.richiamo_ore"
-ACTIVE_CLIENT_MINUTES = "hermes.consegna.client_attivo_minuti"
-NOTIFICATION_STYLE = "hermes.notifiche.stile"
+PENDING_REMIND_HOURS = "hermes.wait.recall_hours"
+ACTIVE_CLIENT_MINUTES = "hermes.delivery.client_active_minutes"
+NOTIFICATION_STYLE = "hermes.notifications.style"
 STYLES = [("scheda", "Workout plan"), ("frase", "Hestia's sentence")]
 
 settings = SettingsClient("hermes")

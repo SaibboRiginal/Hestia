@@ -27,7 +27,7 @@ def test_area_from_group_alias_or_module():
 
 
 def test_comandi_command_carries_area_and_summary():
-    tool = {"name": "scadenze_list", "title": "Scadenze", "description": "Le scadenze aperte (days; status).",
+    tool = {"name": "deadlines_list", "title": "Scadenze", "description": "Le scadenze aperte (days; status).",
             "_meta": {"hestia": {"service": "kairos", "telegram_group": "scadenze"}}}
     cmd = as_command(tool)
     assert (cmd["area_label"], cmd["summary"]) == ("Deadlines", "Le scadenze aperte.")

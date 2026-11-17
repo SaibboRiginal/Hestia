@@ -301,10 +301,10 @@ class TestOracleLlmGenerateEndpoint:
             "veloce": {"steps": [{"provider": "ollama", "model": "local"}]},
             "annunci": {"steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
                                   {"provider": "gemini", "model": "gemini-2.5-flash-lite"}]}},
-            {"scout.annunci": {"chain": "annunci"}})
+            {"scout.listings": {"chain": "annunci"}})
         asked = self._fake_agents(monkeypatch, quota={"gemini-2.5-flash"})
 
-        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout.annunci"})
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout.listings"})
 
         assert resp.status_code == 200
         assert resp.json()["model"] == "gemini-2.5-flash-lite" and resp.json()["chain"] == "annunci"
@@ -316,11 +316,11 @@ class TestOracleLlmGenerateEndpoint:
         self._chains(monkeypatch, {
             "veloce": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "ollama", "model": "l"}]},
             "potente": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "gemini", "model": "pro"}]}},
-            {"athena.strategia": {"chain": "potente"}})
+            {"athena.strategy": {"chain": "potente"}})
         asked = self._fake_agents(monkeypatch, quota={"flash"})
 
         assert client.post("/api/llm/generate", json={"prompt": "x"}).json()["model"] == "l"
-        assert client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena.strategia"}
+        assert client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena.strategy"}
                            ).json()["model"] == "pro"
         assert asked.count(("gemini", "flash")) == 1          # second chain skipped it
         assert llm_chains.exhausted_until("gemini", "flash") > 0
@@ -330,11 +330,11 @@ class TestOracleLlmGenerateEndpoint:
         self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "ollama", "model": "local"}]}})
         self._fake_agents(monkeypatch)
 
-        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "hercules.pianifica"})
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "hercules.plan"})
 
         assert resp.status_code == 200 and resp.json()["model"] == "local"
         listed = client.get("/api/llm/usecases").json()["usecases"]
-        row = next(r for r in listed if r["id"] == "hercules.pianifica")
+        row = next(r for r in listed if r["id"] == "hercules.plan")
         assert row["undeclared"] and row["effective_chain"] == "veloce"
 
     def test_openai_compatible_step_needs_no_key(self, oracle_client, monkeypatch):

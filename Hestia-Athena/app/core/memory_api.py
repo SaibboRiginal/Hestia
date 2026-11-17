@@ -109,7 +109,7 @@ def mcp_tools() -> list:
                        telegram_group=group, telegram={"section": section, **({"label": label} if label else {})})
 
     return [
-        tool("memory_rivedi", ("«Review what you know about me»: look for duplicates, contradictions and old things in the memory and propose them (the user confirms each). It deletes nothing by itself."), "POST",
+        tool("memory_review", ("«Review what you know about me»: look for duplicates, contradictions and old things in the memory and propose them (the user confirms each). It deletes nothing by itself."), "POST",
              "/api/athena/memory/review", "Review what you know about me", label="Review memory"),
         tool("memory_learning", ("What the assistant learned recently (memories added, removed, reinforced), with the user's "
                                  "exact words each one comes from."), "GET", "/api/athena/learning",

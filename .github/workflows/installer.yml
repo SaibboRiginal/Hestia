@@ -9,7 +9,7 @@ on:
     paths:
       - "install.sh"
       - "install.ps1"
-      - "Installa-Hestia.cmd"
+      - "Install-Hestia.cmd"
       - "up-all.sh"
       - "tools/init_env.py"
       - "tools/release/**"
@@ -110,7 +110,7 @@ jobs:
       - name: Launcher is CRLF
         shell: bash
         run: |
-          file Installa-Hestia.cmd | grep -q CRLF
+          file Install-Hestia.cmd | grep -q CRLF
 
   real-linux:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.real_run }}

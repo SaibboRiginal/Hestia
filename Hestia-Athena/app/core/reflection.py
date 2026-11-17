@@ -7,7 +7,7 @@ Archive ``signals-store``). This track reads ONLY those, never the raw data:
 2. link series of different domains (Pearson at lag 0 and 1 week, closed weeks only) — numbers, not the model;
 3. choose a few topics (strongest links, ``alta``/``attenzione`` signals), skipping what was said recently;
 4. ask the owning module for details (``/api/module/context?topic=``);
-5. one Oracle call (use case ``athena.riflessione``) → observations / one setting proposal;
+5. one Oracle call (use case ``athena.reflection``) → observations / one setting proposal;
 6. the runtime gates them; accepted observations are stored (``kind=observation``, ``ref_id=athena``) and reach
    Marko only inside the evening recap («Da tenere d'occhio», ``recap_piece``). Nothing is sent to Hermes.
 
@@ -35,7 +35,7 @@ iso_week = import_shared_symbol("hestia_common.signals_client", "iso_week")
 
 logger = logging.getLogger("hestia_athena.reflection")
 
-USE_CASE = "athena.riflessione"
+USE_CASE = "athena.reflection"
 SEVERITY_RANK = {"alta": 0, "attenzione": 1, "info": 2}
 DOMAIN_WORDS = {"fitness": "Training", "selfcare": "Self care", "finance": "Expenses", "wardrobe": "Wardrobe",
                 "real_estate": "Houses", "cognition": "Hestia"}

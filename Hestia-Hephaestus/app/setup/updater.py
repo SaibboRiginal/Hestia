@@ -214,7 +214,7 @@ class Updater:
             ref = data.get("previous") or ""
         if not ref:
             raise UpdateRefused(tr("There is no version to install: you already have the latest."))
-        self._patch(job={"state": "in_corso", "step": tr("Preparing"), "target": ref, "started_at": time.time()})
+        self._patch(job={"state": "running", "step": tr("Preparing"), "target": ref, "started_at": time.time()})
         self._thread = threading.Thread(target=self._run, args=(ref, back), daemon=True, name="hestia-update")
         self._thread.start()
         return self.status()

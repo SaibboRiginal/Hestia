@@ -3,14 +3,14 @@
  "agenda": {
   "summary": "Shows the agenda events of the next 7 days."
  },
- "agenda_assistente": {
+ "agenda_assistant": {
   "summary": "Hestia's own agenda: what the assistant and its modules have planned — windows, periodic jobs, repair tasks, events.",
   "params": {
    "days": "days ahead (default 7)",
    "owner": "module: hephaestus, scout, athena..."
   }
  },
- "agenda_assistente_aggiungi": {
+ "agenda_assistant_add": {
   "summary": "Adds an event/task/window/job to Hestia's agenda.",
   "params": {
    "title": "title",
@@ -21,20 +21,20 @@
    "parent": "linked item key (cascade cancel)"
   }
  },
- "agenda_assistente_annulla": {
+ "agenda_assistant_cancel": {
   "summary": "Cancels an entry of Hestia's agenda for good.",
   "params": {
    "ref": "item id or key"
   }
  },
- "agenda_assistente_collega": {
+ "agenda_assistant_link": {
   "summary": "Links an entry to a parent entry: cancelling the parent cancels the child, the child's error marks the parent.",
   "params": {
    "ref": "child item id or key",
    "parent": "parent key (empty = unlink)"
   }
  },
- "agenda_assistente_da_modello": {
+ "agenda_assistant_from_template": {
   "summary": "Creates an entry of Hestia's agenda from a module template.",
   "params": {
    "owner": "model module",
@@ -45,30 +45,30 @@
    "recurrence": "RRULE if recurring"
   }
  },
- "agenda_assistente_esegui": {
+ "agenda_assistant_run": {
   "summary": "Runs the action of a job/task of Hestia's agenda now.",
   "params": {
    "ref": "item id or key"
   }
  },
- "agenda_assistente_modelli": {
+ "agenda_assistant_templates": {
   "summary": "Templates the modules offer to create entries."
  },
- "agenda_assistente_ripristina": {
+ "agenda_assistant_restore": {
   "summary": "Restores a skipped occurrence of an entry of Hestia's agenda.",
   "params": {
    "ref": "item id or key",
    "occurrence": "skipped ISO occurrence"
   }
  },
- "agenda_assistente_salta": {
+ "agenda_assistant_skip": {
   "summary": "Skips the next occurrence of an entry of Hestia's agenda, without deleting the rule.",
   "params": {
    "ref": "item id or key",
    "occurrence": "ISO occurrence (empty = next)"
   }
  },
- "agenda_assistente_sposta": {
+ "agenda_assistant_move": {
   "summary": "Moves/changes an entry of Hestia's agenda.",
   "params": {
    "ref": "item id or key",
@@ -77,7 +77,7 @@
    "recurrence": "new RRULE"
   }
  },
- "agenda_assistente_sposta_occorrenza": {
+ "agenda_assistant_move_occurrence": {
   "summary": "Moves only one occurrence of a recurring entry; reset=true brings it back to the original time.",
   "params": {
    "ref": "item id or key",
@@ -93,7 +93,7 @@
    "owner": "only the activities of this area (empty = all)"
   }
  },
- "agenda_standard_ripristina": {
+ "agenda_standard_restore": {
   "summary": "Puts a standard task back as its module planned it.",
   "params": {
    "key": "key of the standard activity"
@@ -102,31 +102,31 @@
  "agenda_today": {
   "summary": "Shows today's events."
  },
- "aggiornamenti_indietro": {
+ "updates_rollback": {
   "summary": "Goes back to the Hestia version before the last update."
  },
- "aggiornamenti_installa": {
+ "updates_install": {
   "summary": "Installs the new Hestia version; only on explicit request."
  },
- "aggiornamenti_stato": {
+ "updates_status": {
   "summary": "Installed Hestia version, whether there is a new one and what it brings."
  },
- "aspetto_adesso": {
+ "look_now": {
   "summary": "What the site looks like now and why."
  },
- "aspetto_animale": {
+ "look_pet": {
   "summary": "Creates a companion pet and asks for its images."
  },
- "aspetto_animali": {
+ "look_pets": {
   "summary": "The pets created."
  },
- "aspetto_genera": {
+ "look_generate": {
   "summary": "Ask for the images again: target profile or pet; ref = profile key or pet id/name."
  },
- "aspetto_prossimi": {
+ "look_next": {
   "summary": "The themes of the next days."
  },
- "aspetto_scelta": {
+ "look_choice": {
   "summary": "For a client: auto=false turns themes off, true turns them back on; pet = pet id or name, empty for none."
  },
  "assistant_profile": {
@@ -157,7 +157,7 @@
    "limit": "How many cycles (default 10, newest first)"
   }
  },
- "atlas_ricetta": {
+ "atlas_recipe": {
   "summary": "Uses a recipe for a site: recipe + parameters → extracted fields.",
   "params": {
    "name": "Recipe name (e.g. duckduckgo, page)",
@@ -203,22 +203,22 @@
    "updates": "Fields to update"
   }
  },
- "casa_comando": {
+ "home_command": {
   "summary": "Commands a device: command on|off|toggle|open|close|lock|unlock; value = brightness % for lights or degrees for climate."
  },
- "casa_preferito": {
+ "home_favorite": {
   "summary": "Saves a quick action: device, label, room, command."
  },
- "casa_preferito_elimina": {
+ "home_favorite_delete": {
   "summary": "Deletes a quick action."
  },
- "casa_preferito_esegui": {
+ "home_favorite_run": {
   "summary": "Runs a saved quick action."
  },
- "casa_scena": {
+ "home_scene": {
   "summary": "Runs a Home Assistant scene or action."
  },
- "casa_stato": {
+ "home_status": {
   "summary": "How the home is now: lights on, temperatures, open doors/windows, quick actions."
  },
  "chronos_reconcile": {
@@ -228,31 +228,31 @@
    "requested_action": "Optional action: reconcile_calendar|sync|notify|full"
   }
  },
- "cibo_dieta": {
+ "food_diet": {
   "summary": "The diet: with no arguments it shows it; kcal, protein, rules and notes change it."
  },
- "cibo_integratore": {
+ "food_supplement": {
   "summary": "Add or change a supplement: name, dose, time_of_day morning|midday|afternoon|evening|any, days, training_days_only, with_food, status active|paused."
  },
- "cibo_integratore_elimina": {
+ "food_supplement_delete": {
   "summary": "Deletes a supplement."
  },
- "cibo_integratori": {
+ "food_supplements": {
   "summary": "The supplements the user takes."
  },
- "cibo_oggi": {
+ "food_today": {
   "summary": "Today's summary: meals, kcal and protein against the diet, supplements."
  },
- "cibo_pasti": {
+ "food_meals": {
   "summary": "Meals of the last days."
  },
- "cibo_pasto": {
+ "food_meal": {
   "summary": "Logs a meal: text, slot breakfast|lunch|dinner|snack, kcal and protein if known."
  },
- "cibo_pasto_elimina": {
+ "food_meal_delete": {
   "summary": "Deletes a logged meal."
  },
- "cibo_preso": {
+ "food_taken": {
   "summary": "Marks a supplement as taken."
  },
  "coach_add_busy": {
@@ -318,19 +318,19 @@
  "docs_check": {
   "summary": "Checks whether the repo docs follow the code and proposes the fixes to development."
  },
- "documento_crea": {
+ "document_create": {
   "summary": "Creates a PDF, Word or Excel: title, html, format pdf|docx|xlsx, theme classico|moderno|sobrio, must_contain.",
   "params": {
    "html": "content in simple HTML"
   }
  },
- "documento_creati": {
+ "document_created_list": {
   "summary": "The documents created recently."
  },
- "documento_creato_elimina": {
+ "document_created_delete": {
   "summary": "Deletes a created document."
  },
- "documento_creato_invia": {
+ "document_created_send": {
   "summary": "Sends the file of a created document again."
  },
  "documents.search": {
@@ -573,25 +573,25 @@
    "limit": "Maximum number of tasks (default 50)"
   }
  },
- "fuori_casa_attiva": {
+ "away_enable": {
   "summary": "Turns on or off the address to use Hestia from outside home; only on the user's explicit request."
  },
- "fuori_casa_stato": {
+ "away_status": {
   "summary": "Is Hestia reachable from outside home?"
  },
- "garmin_collega": {
+ "garmin_link": {
   "summary": "Sends the user the form to link Garmin Connect."
  },
- "garmin_giorno": {
+ "garmin_day": {
   "summary": "Sleep, steps, resting heart rate, body battery, hrv, readiness and activities of a day."
  },
- "garmin_scollega": {
+ "garmin_unlink": {
   "summary": "Removes access to Garmin."
  },
- "garmin_sincronizza": {
+ "garmin_sync": {
   "summary": "Reads sleep, steps, heart rate and activities of the last days now and passes them to training and self care."
  },
- "garmin_stato": {
+ "garmin_status": {
   "summary": "Whether the Garmin watch is linked and when I last read the data."
  },
  "gateway_auth_complete_google": {
@@ -649,13 +649,13 @@
  "hephaestus_tasks": {
   "summary": "List of recent remediation tasks."
  },
- "immagine_flussi": {
+ "image_flows": {
   "summary": "The uploaded workflows and whether the generator is linked."
  },
- "immagine_lista": {
+ "image_list": {
   "summary": "The latest images requested."
  },
- "immagine_stato": {
+ "image_status": {
   "summary": "State of a requested image."
  },
  "iris_reconcile": {
@@ -664,16 +664,16 @@
    "dry_run": "If true only simulates without changes"
   }
  },
- "macchine_cervello": {
+ "machines_brain": {
   "summary": "Run the local models on a satellite's graphics card; empty address = back on this one."
  },
- "macchine_codice": {
+ "machines_code": {
   "summary": "A link code to add a satellite: it is typed in the other machine's installation."
  },
- "macchine_elenco": {
+ "machines_list": {
   "summary": "Hestia's machines: this one and the satellites, on or off, with the modules running there."
  },
- "macchine_scollega": {
+ "machines_unlink": {
   "summary": "Unlinks a satellite: its modules leave."
  },
  "memory_learning": {
@@ -697,10 +697,10 @@
  "memory_recall": {
   "summary": "What Hestia already knows about the user on a topic, so your answer and Hestia's memory agree."
  },
- "memory_rivedi": {
+ "memory_review": {
   "summary": "«Review what you know about me»: looks for duplicates, contradictions and old things in memory and proposes them."
  },
- "metis_adesso": {
+ "metis_now": {
   "summary": "What you need now: actions you usually use at this time, those in the agenda in the next hours and some ideas of the assistant, each with the reason.",
   "params": {
    "client": "Where you show them"
@@ -712,10 +712,10 @@
  "metis_dataset_build": {
   "summary": "Build a cleaned, deduplicated, balanced dataset from graded feedback records."
  },
- "metis_dataset_esporta": {
+ "metis_dataset_export": {
   "summary": "Exports the training dataset to download.",
   "params": {
-   "in_chiaro": "true = real data, false = masked (default)",
+   "plain": "true = real data, false = masked (default)",
    "include_unreviewed": "true = also shifts not yet reviewed"
   }
  },
@@ -731,26 +731,26 @@
    "schedule": "now = right away; window = in the agenda's night window; auto = right away if the user asks"
   }
  },
- "metis_rivedi": {
+ "metis_review": {
   "summary": "The night corrections of answers waiting for you before entering the training dataset."
  },
- "metis_rivedi_decidi": {
+ "metis_review_decide": {
   "summary": "Decide a correction of the training dataset: accept, reject, edit.",
   "params": {
    "trace_id": "Shift to decide",
    "answer": "With edit: the right answer"
   }
  },
- "metis_scopri": {
+ "metis_discover": {
   "summary": "Hestia features you have never or hardly used, with what they do and a button to try them.",
   "params": {
    "client": "Where you show them"
   }
  },
- "modelli_download": {
+ "models_downloads": {
   "summary": "The brain's model downloads: what is downloading, done or failed, with progress and time left."
  },
- "modelli_scarica": {
+ "models_download": {
   "summary": "Download a local model for the brain, by its Ollama name, e.g."
  },
  "nondisturbare": {
@@ -833,28 +833,28 @@
  "routine_templates": {
   "summary": "The ready routine templates."
  },
- "scadenze_add": {
+ "deadlines_add": {
   "summary": "New deadline: title, due yyyy-mm-dd, category, amount €, recurrence, lead_days of notice."
  },
- "scadenze_consiglio": {
+ "deadlines_advice": {
   "summary": "A practical tip on this deadline."
  },
- "scadenze_delete": {
+ "deadlines_delete": {
   "summary": "Deletes a deadline."
  },
- "scadenze_done": {
+ "deadlines_done": {
   "summary": "Marks paid/done: recurring ones move to the next date."
  },
- "scadenze_get": {
+ "deadlines_get": {
   "summary": "A deadline with tip and amount."
  },
- "scadenze_list": {
+ "deadlines_list": {
   "summary": "The open deadlines."
  },
- "scadenze_snooze": {
+ "deadlines_snooze": {
   "summary": "Postpones the notice by a few days."
  },
- "scadenze_update": {
+ "deadlines_update": {
   "summary": "Changes a deadline."
  },
  "scout.search": {
@@ -872,7 +872,7 @@
  "selfcare_check": {
   "summary": "Compatibility of the actives: of a routine, or of a product / list of actives against those in use."
  },
- "selfcare_diario_voce": {
+ "selfcare_diary_voice": {
   "summary": "Spoken diary: the user tells about the day with a voice message; it is transcribed and saved in the diary."
  },
  "selfcare_journal_add": {
@@ -991,47 +991,47 @@
  "system_status": {
   "summary": "Shows the health of all Hestia services."
  },
- "telefono_stato": {
+ "phone_status": {
   "summary": "Last state sent by the phone and whether the link is set up."
  },
- "voce_correzione": {
+ "voice_correction": {
   "summary": "When the user corrects a badly transcribed voice message: heard text and right text; new words enter the dictionary after a few corrections.",
   "params": {
    "heard": "What I had transcribed",
    "corrected": "The right text"
   }
  },
- "voce_dizionario": {
+ "voice_dictionary": {
   "summary": "Your words I pass to voice recognition, and those I am learning from your corrections."
  },
- "voce_download": {
+ "voice_downloads": {
   "summary": "The voices and listening I am downloading or have downloaded, with progress."
  },
- "voce_impronta": {
+ "voiceprint": {
   "summary": "Whether I have your voiceprint and where I recognise only you."
  },
- "voce_impronta_registra": {
+ "voiceprint_record": {
   "summary": "Record at least 10 seconds of your voice: then other voices don't end up in your messages where you chose so.",
   "params": {
    "audio": "A voice message of at least 10 seconds where you speak"
   }
  },
- "voce_impronta_togli": {
+ "voiceprint_remove": {
   "summary": "Forget your voiceprint: I listen to all voices."
  },
- "voce_parola": {
+ "voice_word": {
   "summary": "Add a word to the voice dictionary.",
   "params": {
    "word": "The word, spelled right"
   }
  },
- "voce_parola_togli": {
+ "voice_word_remove": {
   "summary": "Remove a word from the voice dictionary.",
   "params": {
    "word": "The word to remove"
   }
  },
- "voce_scarica": {
+ "voice_download": {
   "summary": "Download now the local voices and listening of the chains in use, so the first sentence doesn't wait."
  },
  "wardrobe_add": {
@@ -1088,31 +1088,31 @@
  "web_search": {
   "summary": "Search the web via DuckDuckGo Instant Answer api."
  },
- "preferenze_attive": {
+ "preferences_active": {
   "summary": "Show the user's active preferences"
  },
- "notifiche_attive": {
+ "notifications_active": {
   "summary": "Show the active automatic notifications"
  },
- "avvisi_recenti": {
+ "alerts_recent": {
   "summary": "Show the latest notices sent"
  },
- "notifica_disattiva": {
+ "notification_disable": {
   "summary": "Turn off a notification by subscription_id"
  },
- "notifica_attiva": {
+ "notification_enable": {
   "summary": "Turn a notification back on by subscription_id"
  },
- "iscriviti_calendario": {
+ "calendar_subscribe": {
   "summary": "Get automatic reminders for calendar events"
  },
- "disiscriviti_calendario": {
+ "calendar_unsubscribe": {
   "summary": "Stop automatic calendar reminders"
  },
- "iscriviti_sistema": {
+ "system_subscribe": {
   "summary": "Get notifications about the services' status"
  },
- "disiscriviti_sistema": {
+ "system_unsubscribe": {
   "summary": "Stop notifications about the services' status"
  },
  "archive_reconcile": {

@@ -30,8 +30,8 @@ who is at home
 
 ## Tools (Telegram area «Casa»)
 
-`casa_stato`, `casa_dispositivi`, `casa_comando` (undo = the opposite command), `casa_scena`, `casa_preferito`,
-`casa_preferito_esegui`, `casa_preferito_elimina`.
+`home_status`, `home_devices`, `home_command` (undo = the opposite command), `home_scene`, `home_favorite`,
+`home_favorite_run`, `home_favorite_delete`.
 
 ## WebUI plugin
 

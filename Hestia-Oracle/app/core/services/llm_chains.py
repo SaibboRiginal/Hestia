@@ -5,11 +5,11 @@ A **chain** is a named, reusable ordered list of ``provider/model`` steps, like 
 ``RESOURCE_EXHAUSTED``, usage limit…) is marked *exhausted until* its reset and skipped by **every** chain until
 then; other errors (timeout, 5xx) move to the next step for this call only.
 
-A **use case** is what a call is for: Oracle's own (``oracle.generale``, ``oracle.ragionamento``…) and the ones
+A **use case** is what a call is for: Oracle's own (``oracle.general``, ``oracle.reasoning``…) and the ones
 each module declares in its Hub registration (``capabilities.llm_usecases``, see
-``hestia_common.oracle_usecases``), e.g. ``scout.annunci``. Each points to a chain; Marko's overrides are the
+``hestia_common.oracle_usecases``), e.g. ``scout.listings``. Each points to a chain; Marko's overrides are the
 setting ``oracle.usecases`` (``{use_case: {chain, mode, thinking}}``). An undeclared use case runs like
-``oracle.generale`` and is listed too.
+``oracle.general`` and is listed too.
 """
 from __future__ import annotations
 
@@ -52,27 +52,27 @@ DEFAULT_CHAINS: dict[str, dict] = {
         _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest")]},
 }
 EMBEDDING_CHAIN = "embedding"
-DESCRIBE_USECASE = "oracle.descrivi_immagine"
+DESCRIBE_USECASE = "oracle.describe_image"
 DESCRIBE_PROMPT = ("Describe this image for someone who cannot see it: what is in it, readable text "
                    "(transcribe it as written), numbers, colours and useful details. No comments.")
 
 # Oracle's own use cases: id → (label, chain, thinking, help). Internal slot names (AgentBundle) in SLOTS.
 ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
-    "oracle.generale": ("General use", "veloce", "auto",
+    "oracle.general": ("General use", "veloce", "auto",
                         "Chat, classification, tool choice, memory."),
-    "oracle.ragionamento": ("Reasoning", "potente", "true", "Long analyses and complex reasoning."),
+    "oracle.reasoning": ("Reasoning", "potente", "true", "Long analyses and complex reasoning."),
     "oracle.codice": ("Code", "codice", "auto", "Code generation and fixing in chat."),
-    "oracle.documenti": ("Documents and images", "visione", "false", "Reading documents, images and audio."),
-    "oracle.descrivi_immagine": ("Image description", "visione", "false",
+    "oracle.documents": ("Documents and images", "visione", "false", "Reading documents, images and audio."),
+    "oracle.describe_image": ("Image description", "visione", "false",
                                  "When the answering model can't see images, a model that sees them describes them first."),
-    "oracle.controllo_giri": ("Idle-loop check", "veloce", "false",
+    "oracle.check_rounds": ("Idle-loop check", "veloce", "false",
                               "When the assistant repeats the same calls: a quick look to understand whether it is waiting or looping."),
     "oracle.embedding": ("Embedding (search)", "embedding", "false",
                          "Vectors for memory and documents. Changing it makes the vectors already saved different."),
 }
-SLOTS = {"generic": "oracle.generale", "reasoning": "oracle.ragionamento", "code": "oracle.codice",
-         "documents": "oracle.documenti", "embedding": "oracle.embedding"}
-GENERAL = "oracle.generale"
+SLOTS = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.codice",
+         "documents": "oracle.documents", "embedding": "oracle.embedding"}
+GENERAL = "oracle.general"
 MODES = [("segui", "Like the Brain"), ("interna", "Internal"), ("esterna", "External")]
 
 # ── Quota state (memory: a restart costs at most one extra 429 per pair) ────────
@@ -494,7 +494,7 @@ class ChainAgent:
                             *args, **kwargs) -> str:
         """Attachments along the chain. Vision bridge (Cindy 16): an image never goes to a step whose model is
         text-only (``oracle.documents.vision_models``): that step gets a description made by the ``visione`` chain
-        (use case ``oracle.descrivi_immagine``) instead. Steps that see images are untouched."""
+        (use case ``oracle.describe_image``) instead. Steps that see images are untouched."""
         if not str(mime_type or "").startswith("image/"):
             return self._call("ask_with_attachment", file_bytes, mime_type, user_message, *args, **kwargs)
         from core.document import capabilities

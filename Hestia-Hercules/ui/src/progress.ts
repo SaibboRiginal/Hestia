@@ -88,7 +88,7 @@ export class HerculesProgress extends LocalPage {
         <div class="heat">${days.map(d => { const c = hm.get(d) || 0; return html`<i class=${c >= 2 ? 'l2' : c ? 'l1' : ''} title=${`${dayLabel(d, false)}${c ? ` · ${c}` : ''}`}></i>`; })}</div></div>
 
       <div class="card col"><h3>${tr("Recent records")}</h3>
-        ${prs.length ? html`<div class="list">${prs.map(p => html`<div class="li" @click=${() => p.exercise_id && this.host.navigate('esercizi/' + p.exercise_id)}>
+        ${prs.length ? html`<div class="list">${prs.map(p => html`<div class="li" @click=${() => p.exercise_id && this.host.navigate('exercises/' + p.exercise_id)}>
           <hxk-badge tone="success">PR</hxk-badge><div class="grow"><div class="truncate">${p.exercise}</div><div class="small muted">${p.label} · ${dayLabel(p.date || '', false)}</div></div>
           <div class="tnum">${kg(p.value)}${p.previous ? html`<div class="small muted">${tr("before")} ${kg(p.previous)}</div>` : nothing}</div></div>`)}</div>`
           : html`<div class="empty">${tr("No record in the last 30 days. Keep going and they'll come.")}</div>`}</div>

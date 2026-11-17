@@ -37,11 +37,11 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 - **Bottom keyboard** (always there): Oggi · Aree · Notifiche · Impostazioni. Tapping a key during a guided action
   leaves it.
 - **`/` menu** (10): `oggi`, `aree`, `adesso`, `scopri`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`,
-  `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_adesso`, `metis_scopri`). Old names keep
+  `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
   working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
 - **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
-  `GET /api/metis/adesso?client=telegram`, each with its reason and a button; the fixed «Oggi» actions when Metis has
+  `GET /api/metis/now?client=telegram`, each with its reason and a button; the fixed «Oggi» actions when Metis has
   nothing or is away), Aree (17 areas + «Usate
   spesso»), area card (summary tool + primary actions + «Tutte le azioni» by section, «Avanzate» last). One live
   navigation message edited in place; an old message's buttons answer «Questo menu è vecchio» and open a fresh one.
@@ -92,10 +92,10 @@ A tool result is drawn by Telegram, never sent to Oracle for formatting:
 ## Local actions (`local_actions.py`)
 
 Actions that belong to the client itself, declared like tools (`T(name, title, description, …)`, checked by
-`check_command_contracts`): `nuova` (new conversation: Oracle `DELETE /api/chat/{session}`), `voce` / `voce_on` /
-`voce_off`, `aiuto`, `webui_token` / `webui_status` / `webui_revoke`, `documenti` / `documento_fissa` /
-`documento_elimina`, `nuovo_promemoria` / `nuova_attivita` (Archive calendar items), `nuovo_avviso` (Oracle
-subscription compile), `pausa_voto`.
+`check_command_contracts`): `nuova` (new conversation: Oracle `DELETE /api/chat/{session}`), `voce` / `voice_on` /
+`voice_off`, `aiuto`, `webui_token` / `webui_status` / `webui_revoke`, `documenti` / `document_pin` /
+`document_delete`, `new_reminder` / `new_activity` (Archive calendar items), `new_alert` (Oracle
+subscription compile), `rating_paused`.
 
 ## Chat (`services/chat_service.py`, `reply_renderer.py`)
 
@@ -115,7 +115,7 @@ subscription compile), `pausa_voto`.
 - A voice note is transcribed by Echo (use `telegram.vocale`) and shown as «*testo*», then handled like the same
   sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
   puoi scrivermelo?» (`[🔄]`).
-- «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.risposta`), kept so a second tap does not regenerate.
+- «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.answer`), kept so a second tap does not regenerate.
 - `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
   With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
 - **She wrote first** (dossier `docs/work/2026-11-12-identita-e-proattivita`): a notification whose payload has

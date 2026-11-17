@@ -28,7 +28,7 @@ export class WardrobeTodayWidget extends Widget {
       <hxk-quicklog .host=${this.host} ?compact=${this.size === 's'} source=${`${API}/quick/outfits`} .action=${action}
         @logged=${() => this.reload(true)}></hxk-quicklog>
       <div class="row small"><button class="link" @click=${() => this.host.navigate('outfit')}>${tr("All outfits")}</button><span class="grow"></span>
-        <button class="link" @click=${() => this.host.navigate('cosa-mi-metto', this.ctx?.params?.occasion ? { occasione: this.ctx.params.occasion } : undefined)}>${tr("What do I wear?")}</button></div>
+        <button class="link" @click=${() => this.host.navigate('what-to-wear', this.ctx?.params?.occasion ? { occasione: this.ctx.params.occasion } : undefined)}>${tr("What do I wear?")}</button></div>
     </div>`;
   }
 }
@@ -54,11 +54,11 @@ export class WardrobeSuggestWidget extends Widget {
     if (!s) return html`<div class="w"><span class="muted small">${res?.hint || tr('No idea for now.')}</span>
       <div><hxk-button size="sm" icon="plus" @click=${() => this.host.navigate('capi', { nuovo: '1' })}>${tr("Add items")}</hxk-button></div></div>`;
     return html`<div class="w">
-      <div class="click" @click=${() => this.host.navigate('cosa-mi-metto')}><b class="truncate">${s.saved ? s.name : tr('Idea for today')}</b>
+      <div class="click" @click=${() => this.host.navigate('what-to-wear')}><b class="truncate">${s.saved ? s.name : tr('Idea for today')}</b>
         <div class="strip" style="margin-top:6px">${s.pieces.slice(0, this.size === 'l' ? 7 : 4).map((p: any) => html`<span class="thumb" title=${p.name}>${img(this.host, p.photo, p.name)}</span>`)}</div></div>
       <div class="reasons">${s.reasons.slice(0, this.size === 'l' ? 4 : 2).map((r: string) => html`<span class="pill">${r}</span>`)}</div>
       <div class="row"><hxk-button size="sm" variant="primary" icon="check" @click=${() => this.wear(s)}>${tr("I'm wearing this")}</hxk-button>
-        <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.host.navigate('cosa-mi-metto')}>${tr("Others")}</hxk-button></div>
+        <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.host.navigate('what-to-wear')}>${tr("Others")}</hxk-button></div>
     </div>`;
   }
 }
@@ -102,7 +102,7 @@ export class WardrobeForgottenWidget extends Widget {
     if (!items.length) return html`<div class="w"><span class="muted">${tr("No forgotten item.")}</span></div>`;
     return html`<div class="w">
       <span class="small muted">${plural(items.length, 'garment', 'garments')} ${tr("not worn for a long time: wear them again or consider giving them away.")}</span>
-      <div class="list">${items.slice(0, this.size === 'l' ? 6 : 3).map(f => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
+      <div class="list">${items.slice(0, this.size === 'l' ? 6 : 3).map(f => html`<div class="li" @click=${() => this.host.navigate('items/' + f.id)}>
         <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span><span class="small muted">${f.last_worn ? relDays(f.last_worn) : tr('never')}</span></div>`)}</div>
     </div>`;
   }
@@ -144,7 +144,7 @@ export class WardrobeRecentWidget extends Widget {
     if (!items.length) return html`<div class="w"><span class="muted small">${tr("No outfit noted: it's done from Home with one tap, whenever you want.")}</span></div>`;
     return html`<div class="w"><div class="list">${items.slice(0, this.size === 'l' ? 8 : 4).map(w => {
       const o = w.outfit_id ? this.outfits?.get(w.outfit_id) : null;
-      return html`<div class="li" @click=${() => this.host.navigate(o ? 'outfit/' + o.id : 'capi/' + w.pieces?.[0]?.id)}>
+      return html`<div class="li" @click=${() => this.host.navigate(o ? 'outfit/' + o.id : 'items/' + w.pieces?.[0]?.id)}>
         <span class="thumb">${o ? collage(this.host, o) : img(this.host, w.pieces?.[0]?.photo, '')}</span>
         <span class="grow truncate">${w.outfit_name || w.pieces.map((p: any) => p.name).join(' + ')}</span><span class="small muted">${dayLabel(w.date)}</span></div>`; })}</div></div>`;
   }

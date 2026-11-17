@@ -31,7 +31,7 @@
 
 ## Tools (Telegram area «Immagini e aspetto»)
 
-`aspetto_adesso`, `aspetto_scelta`, `aspetto_prossimi`, `aspetto_animale`, `aspetto_animali`, `aspetto_genera`.
+`look_now`, `look_choice`, `look_next`, `look_pet`, `look_pets`, `look_generate`.
 
 ## WebUI plugin
 

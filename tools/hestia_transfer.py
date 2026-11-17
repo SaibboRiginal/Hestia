@@ -149,7 +149,7 @@ def main() -> None:
         print(f"scritto {args.output}")
         return
     data = read_file(args.file)
-    print("anteprima:")
+    print("preview:")
     run_import(hub, data, args.mode, True, args.select)
     if args.cmd == "preview":
         return

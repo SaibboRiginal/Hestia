@@ -293,7 +293,7 @@ _atlas_mcp_tools = [
         telegram_visible=False, telegram_group="memoria",
                 telegram={"section": "Web", "primary": 4}),
     MCPTool(
-        name="atlas_ricetta",
+        name="atlas_recipe",
         description=(("Use a recipe for a site (steps already written, no page exploration): recipe + parameters → "
                       "extracted fields. Without a name it lists the available recipes.")),
         parameters={

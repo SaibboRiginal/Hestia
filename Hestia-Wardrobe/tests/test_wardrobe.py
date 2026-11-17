@@ -301,7 +301,7 @@ def test_mcp_tools_and_manifest():
     assert manifest["module"] == "wardrobe"
     webui = manifest["clients"]["webui"]
     assert any(q["id"] == "indossato" for q in webui.get("quick_action") or [])
-    assert {"capi", "outfit", "cosa-mi-metto"} <= {p["id"] for p in webui["page"]}
+    assert {"capi", "outfit", "what-to-wear"} <= {p["id"] for p in webui["page"]}
 
 
 @pytest.mark.unit

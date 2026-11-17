@@ -68,7 +68,7 @@ export class CommandPaletteComponent {
   private readonly entries = computed<Entry[]>(() => {
     const mod = (m: string) => this.plugins.modules().get(m)?.title ?? m;
     return [
-      ...this.metis.adesso().map(a => ({ id: 'now:' + a.tool + a.title, label: a.title, hint: a.reason || mod(a.module), icon: 'zap',
+      ...this.metis.now().map(a => ({ id: 'now:' + a.tool + a.title, label: a.title, hint: a.reason || mod(a.module), icon: 'zap',
         group: tr('Now'), run: () => this.metis.open(a.tool, a.args ?? {}, a.title) })),
       ...this.qa.sorted().map(c => ({ id: 'qa:' + c.key, label: c.label, hint: [c.hint, mod(c.action.module)].filter(Boolean).join(' · '),
         icon: c.state === 'done' ? 'check' : c.icon || 'zap', group: tr('Quick actions'), run: () => void this.qa.run(c) })),

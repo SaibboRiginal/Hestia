@@ -124,8 +124,8 @@ export class HephaestusTaskPanel extends LitElement {
   private review(t: ForgeTask) {
     const r = t.review;
     if (!r) return nothing;
-    const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'non_disponibile' ? 'neutral' : r.blocking ? 'danger' : 'warning';
-    const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'non_disponibile' ? tr('Not available now')
+    const tone = r.verdict === 'ok' ? 'success' : r.verdict === 'unavailable' ? 'neutral' : r.blocking ? 'danger' : 'warning';
+    const head = r.verdict === 'ok' ? tr('No problem found') : r.verdict === 'unavailable' ? tr('Not available now')
       : `${r.issues.length === 1 ? tr('1 point') : tr('{0} points', r.issues.length)}${r.blocking ? tr(', {0} important', r.blocking) : ''}`;
     const ptone: Record<string, string> = { alta: 'danger', media: 'warning', bassa: 'neutral' };
     return html`<h4>${tr("Automatic review")}</h4>

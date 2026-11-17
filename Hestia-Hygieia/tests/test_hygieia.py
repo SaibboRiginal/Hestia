@@ -56,7 +56,7 @@ def hy():
 def _evening(h):
     cl = h.save_product({"name": "Detergente", "brand": "CeraVe", "category": "detergente"})
     ret = h.save_product({"name": "Retinolo 0.3", "brand": "TO", "actives": ["retinolo"]})
-    aha = h.save_product({"name": "Tonico glicolico", "actives": [{"name": "aha_glicolico", "percent": 7}]})
+    aha = h.save_product({"name": "Tonico glicolico", "actives": [{"name": "aha_glycolic", "percent": 7}]})
     r = h.save_routine({"name": "Viso sera", "slot": "evening", "cadence": {"mode": "daily"}, "steps": [
         {"product_id": cl["id"]},
         {"product_id": ret["id"], "cadence": {"mode": "target", "times": 3, "per": "week"}},
@@ -123,7 +123,7 @@ def test_step_pause(hy):
 
 def test_routines_not_same_day_from_actives(hy):
     ret = hy.save_product({"name": "Retinale", "actives": ["retinale"]})
-    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicilico"]})
+    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicylic"]})
     a = hy.save_routine({"name": "Notte retinoide", "cadence": {"mode": "target", "times": 3}, "steps": [{"product_id": ret["id"]}]})
     b = hy.save_routine({"name": "Notte esfoliante", "cadence": {"mode": "target", "times": 1}, "steps": [{"product_id": bha["id"]}]})
     hy.log_routine(a["id"])
@@ -253,7 +253,7 @@ def test_quick_chips(hy):
 
 def test_options_and_find(hy):
     hy.add_option("actives", {"label": "Acido tranexamico", "family": ""})
-    assert any(a["value"] == "acido_tranexamico" for a in hy.options("actives"))
+    assert any(a["value"] == "tranexamic_acid" for a in hy.options("actives"))
     hy.save_product({"name": "Siero Vitamina C", "brand": "Garnier"})
     assert hy.find_product("vitamina c")["name"] == "Siero Vitamina C"
     assert catalog.product_key("CeraVe", "Crème") == "cerave_creme"
@@ -292,7 +292,7 @@ def test_coach_needs_slots_conflicts_and_supplements(hy):
     events = []
     hy.on_event = lambda e, d: events.append((e, d.get("need_id")))
     ret = hy.save_product({"name": "Retinale", "actives": ["retinale"]})
-    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicilico"]})
+    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicylic"]})
     a = hy.save_routine({"name": "Notte retinoide", "slot": "evening", "cadence": {"mode": "target", "times": 3},
                          "steps": [{"product_id": ret["id"]}]})
     b = hy.save_routine({"name": "Notte esfoliante", "slot": "evening", "cadence": {"mode": "target", "times": 1},

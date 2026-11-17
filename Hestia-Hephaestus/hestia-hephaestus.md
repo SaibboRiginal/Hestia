@@ -46,7 +46,7 @@ Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`)
 Hephaestus ships its own inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3): `app/core/webui_plugin.py` declares it, kind `core`
 (WebUI sidebar section *Sistema*), `api_prefix` `/api/hephaestus/` (remediation and Forge share it).
-- page **Sviluppo** (`sviluppo`, `hephaestus-sviluppo`, order 170, first; §A4 — ported from the WebUI built-in
+- page **Sviluppo** (`sviluppo`, `hephaestus-development`, order 170, first; §A4 — ported from the WebUI built-in
   `/forge` page, which calls nothing of its own any more): Forge task list (search, filters Tutti / Aperti / *Dai
   moduli* / Applicati / Non riusciti, open count, paused banner), the engine conversation (transcript polled every 4 s
   while working — no streaming), follow-up composer (new task with `parent_task`), side panel Panoramica (incl. notes
@@ -394,19 +394,19 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 
 ## Redaction and Marko's rules (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
 The context of a Forge task prompt passes through `hestia_common.redact.redact` (Cindy 19). The coding engine's
-«read first» list includes `docs/REGOLE-DI-MARKO.md` (dated rules + the new-feature checklist, Cindy 11).
+«read first» list includes `docs/MARKO-RULES.md` (dated rules + the new-feature checklist, Cindy 11).
 
 ## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
 - **Reviewer** (Cindy 3, `app/forge/review.py`): after the tests the task goes to state `reviewing`. A fresh model
-  with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.revisione`, chain potente)
+  with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.review`, chain potente)
   gets only labelled evidence: request, acceptance criteria of the task SPEC (`docs/work/<WORKDOC>/SPEC.md`), the
   diff, the real test output, and the engine's summary marked «autodichiarazione non verificata». Answer =
-  `{verdict ok|problemi|non_disponibile, issues[{priority alta|media|bassa, file, problem, evidence}], blocking}`.
+  `{verdict ok|problemi|unavailable, issues[{priority alta|media|bassa, file, problem, evidence}], blocking}`.
   Blocking issues (alta/media) go back to the same engine for **one** fix round (`fix_prompt`), then tests and review
   again. Saved as `review.json` in the task artifacts and `task.review`; the approval card shows «Revisione
   automatica: …». Auto-merge (permission mode) only when nothing blocking is left. Model down → step skipped `[🔄]`.
-- **Team plan** (Cindy 31): a task touching ≥ `hephaestus.forge.squadra.min_servizi` services (Themis, default 3),
-  not external, is split by the model (use case `forge.piano`) into 2–4 pieces run **one after the other in the same
+- **Team plan** (Cindy 31): a task touching ≥ `hephaestus.forge.team.min_services` services (Themis, default 3),
+  not external, is split by the model (use case `forge.plan`) into 2–4 pieces run **one after the other in the same
   worktree**; `semplice` → engine `oracle` (local chain), `difficile` → `claude` (falls back to the task engine).
   `task.team` lists the pieces and their outcome; the reviewer runs on the whole result.
 - **Resume after the Claude limit** (Cindy 15): when Claude stops on the usage limit Forge commits the partial work to
@@ -461,8 +461,8 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   the address whose Ollama the brain uses, empty = this machine). `POST /api/setup/machines/pair` → Hub
   `/api/nodes/pair` plus `central` (this machine's LAN address, for the command shown to the user);
   `POST /api/setup/machines/revoke {id}` → Hub `DELETE /api/nodes/{id}`; `POST /api/setup/machines/brain
-  {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `macchine_elenco`,
-  `macchine_codice`, `macchine_scollega`, `macchine_cervello` (Telegram section «Macchine»).
+  {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `machines_list`,
+  `machines_code`, `machines_unlink`, `machines_brain` (Telegram section «Macchine»).
 - **Da fuori casa** (`setup/tunnel.py`, P5b): `GET /api/setup/tunnel` → `{on, url, phase}` (`start` · `download` ·
   `address` · `ready` · `error`); `POST /api/setup/tunnel {on}` answers within 15 s while a thread downloads the image
   the first time (a job of Hephaestus' `hestia_common.downloads`, source `docker`, progress summed over the layers,
@@ -471,20 +471,20 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   it in the «hestia» group, service `tunnel`; an older one without them is made again) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
   `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
   reads the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
-  after a reboot). Setup step `fuori`. MCP tools `fuori_casa_stato`, `fuori_casa_attiva` (Telegram «Macchine»).
+  after a reboot). Setup step `fuori`. MCP tools `away_status`, `away_enable` (Telegram «Macchine»).
 - **Aggiorna Hestia** (`setup/updater.py`, P6): versions = git tags `vX.Y.Z`; channel Themis
   `hephaestus.update.channel` (`stabile` newest tag · `novita` `origin/main`). `GET /api/setup/update` (installed,
   channel, available with notes, job, history, previous, blocked) · `POST update/check` · `POST update/apply {ref?}` ·
   `POST update/back` · `POST update/answer {answer}` (the Hermes question «Installo?») · `POST update/daily` (agenda
   job `hephaestus.update_check`, daily 11:00, asks once per version). Notes = root `CHANGELOG.md` lines added between
-  the versions, rewritten in the owner's «Lingua» by Oracle use case `hephaestus.aggiornamenti` (`voice: true`) (English when the brain is off).
+  the versions, rewritten in the owner's «Lingua» by Oracle use case `hephaestus.updates` (`voice: true`) (English when the brain is off).
   Apply (thread, state `data/update.json`): refused with a reason when tracked files are modified or HEAD has commits
   not on GitHub; `git checkout <tag>` / `merge --ff-only origin/main`; `forge.deployer.plan` on the diff; only running
   containers: image change → pull `ghcr.io/saibboriginal/hestia:<svc>-<ver>` when the container runs a ready-made
   image, else Docker SDK build from the compose `build` (read as text), then `recreate_with_env(image=…)`; others
   restart; health through the Hub; any error/unhealthy → previous commit and previous images, restart, notice.
-  Hephaestus restarts itself last; its own image change is left to the installer. MCP tools `aggiornamenti_stato`,
-  `aggiornamenti_installa`, `aggiornamenti_indietro` (Telegram «Aggiornamenti»).
+  Hephaestus restarts itself last; its own image change is left to the installer. MCP tools `updates_status`,
+  `updates_install`, `updates_rollback` (Telegram «Aggiornamenti»).
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: Forge review, plan, fix and resume prompts are English; review issues are asked in the owner's language; stored values (`alta/media/bassa`, `semplice/difficile`) do not change. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.

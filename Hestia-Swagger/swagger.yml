@@ -4312,7 +4312,7 @@ paths:
                   type: string
                 use_case:
                   type: string
-                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.annunci, athena.strategia; default oracle.generale; undeclared → runs like oracle.generale and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
+                  description: "Use case <module>.<task> declared in the module's Hub registration (capabilities.llm_usecases), e.g. scout.listings, athena.strategy; default oracle.general; undeclared → runs like oracle.general and is listed. In brain mode esterna the external agent answers (one shot, no tools)."
                 voice:
                   type: boolean
                   default: false
@@ -4508,7 +4508,7 @@ paths:
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/ui/)
       description: |
         Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `cervello` (oracle-brain, order 120),
-        widget `uso-oggi` (oracle-usage-widget). Bundle file at /ui/webui/oracle.js.
+        widget `usage-today` (oracle-usage-widget). Bundle file at /ui/webui/oracle.js.
       servers:
         - url: http://localhost:19004
       responses:
@@ -4975,7 +4975,7 @@ paths:
       servers:
         - url: http://localhost:19004
       responses:
-        "200": {description: "{downloads[{id, what, source, state in_coda|in_corso|fatto|errore, size, done, error}]}"}
+        "200": {description: "{downloads[{id, what, source, state queued|running|fatto|errore, size, done, error}]}"}
 
   /api/llm/setup/machine:
     get:
@@ -5042,7 +5042,7 @@ paths:
               type: object
               required: [messages]
               properties:
-                use_case: {type: string, default: forge.codice, description: "Declared use case (Forge: forge.codice, Wardrobe: wardrobe.foto)"}
+                use_case: {type: string, default: forge.codice, description: "Declared use case (Forge: forge.codice, Wardrobe: wardrobe.photo)"}
                 messages: {type: array, items: {type: object}}
                 tools: {type: array, items: {type: object}}
                 temperature: {type: number}
@@ -8964,7 +8964,7 @@ paths:
   /api/metis/tools/rivedi:
     get:
       tags: [Metis]
-      summary: "Tool metis_rivedi: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
+      summary: "Tool metis_review: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
       servers:
         - url: http://localhost:19014
       responses:
@@ -8973,7 +8973,7 @@ paths:
   /api/metis/tools/rivedi_decidi:
     post:
       tags: [Metis]
-      summary: "Tool metis_rivedi_decidi {trace_id, decision, answer?}: decides and returns the next card"
+      summary: "Tool metis_review_decide {trace_id, decision, answer?}: decides and returns the next card"
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -8987,7 +8987,7 @@ paths:
     post:
       tags: [Metis]
       summary: "Training dataset export: zip of sft.jsonl, dpo.jsonl, eval.jsonl (OpenAI messages + tools) and card.json"
-      description: "in_chiaro false (default) hides names of Persone, e-mails, phones, IBAN and addresses; Persone not reachable → 503. Stored as an Archive blob (owner metis)."
+      description: "plain false (default) hides names of Persone, e-mails, phones, IBAN and addresses; Persone not reachable → 503. Stored as an Archive blob (owner metis)."
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -8996,7 +8996,7 @@ paths:
             schema:
               type: object
               properties:
-                in_chiaro: {type: boolean, default: false}
+                plain: {type: boolean, default: false}
                 include_unreviewed: {type: boolean, default: false}
       responses:
         "200": {description: "{id, name, blob_id, size, sft, dpo, eval, skipped, corrected, turns, masked, routes, models, first, last, created_at}"}
@@ -9026,7 +9026,7 @@ paths:
   /api/metis/tools/dataset_esporta:
     post:
       tags: [Metis]
-      summary: "Tool metis_dataset_esporta {in_chiaro?, include_unreviewed?}: exports and returns a card with the zip"
+      summary: "Tool metis_dataset_export {plain?, include_unreviewed?}: exports and returns a card with the zip"
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -9036,7 +9036,7 @@ paths:
       responses:
         "200": {description: "{id, name, blob_id, sft, dpo, eval, masked, display}"}
 
-  /api/metis/adesso:
+  /api/metis/now:
     get:
       tags: [Metis]
       summary: "«Adesso»: agenda items with a tool (next 3 h), habits at this hour/day, recents, the assistant's ideas"
@@ -9049,10 +9049,10 @@ paths:
       responses:
         "200": {description: "{client, at, items[{tool, title, module, args, reason, source: agenda|habit|recent|idea}], ideas_at}"}
 
-  /api/metis/adesso/refresh:
+  /api/metis/now/refresh:
     post:
       tags: [Metis]
-      summary: "Agenda jobs metis.adesso.0700/1230/1800: new ideas (Oracle use case metis.adesso) + prune taps older than 180 days"
+      summary: "Agenda jobs metis.now.0700/1230/1800: new ideas (Oracle use case metis.now) + prune taps older than 180 days"
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -9062,7 +9062,7 @@ paths:
       responses:
         "200": {description: "{telegram: {ideas}, webui: {ideas}, pruned}"}
 
-  /api/metis/scopri:
+  /api/metis/discover:
     get:
       tags: [Metis]
       summary: "«Scopri»: tools never or rarely used (≤ 2 in 90 days), one per module first"
@@ -9077,7 +9077,7 @@ paths:
   /api/metis/tools/adesso:
     get:
       tags: [Metis]
-      summary: "Tool metis_adesso: the Adesso list as a display card with one button per item"
+      summary: "Tool metis_now: the Adesso list as a display card with one button per item"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -9088,7 +9088,7 @@ paths:
   /api/metis/tools/scopri:
     get:
       tags: [Metis]
-      summary: "Tool metis_scopri: the Scopri list as a display card"
+      summary: "Tool metis_discover: the Scopri list as a display card"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -10667,7 +10667,7 @@ paths:
         - url: http://localhost:19017
       parameters:
         - {name: budget, in: query, schema: {type: integer, default: 400}}
-        - {name: topic, in: query, required: false, schema: {type: string}, description: "Signal key (e.g. budget_pace:ristoranti, unusual_week, forgotten)"}
+        - {name: topic, in: query, required: false, schema: {type: string}, description: "Signal key (e.g. budget_pace:restaurants, unusual_week, forgotten)"}
       responses:
         "200": {description: OK}
 
@@ -11746,7 +11746,7 @@ paths:
   /api/selfcare/journal/voice:
     post:
       tags: [Hygieia]
-      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diario, recording kept) → {item} area giornata, tag voce"
+      summary: "Spoken diary {audio{data_b64, mime} | audio_b64, date?} → Echo transcribes (use hygieia.diary, recording kept) → {item} area giornata, tag voce"
       servers:
         - url: http://localhost:19018
       responses:
@@ -13191,7 +13191,7 @@ paths:
   /api/downloads:
     get:
       tags: [Oracle, Echo]
-      summary: "hestia_common.downloads, served by every module with capability downloads (Oracle, Echo): {module, downloads[{id, what, source, module, size, done, speed, eta_s, state in_coda|in_corso|in_pausa|fatto|errore, error}]}"
+      summary: "hestia_common.downloads, served by every module with capability downloads (Oracle, Echo): {module, downloads[{id, what, source, module, size, done, speed, eta_s, state queued|running|paused|fatto|errore, error}]}"
       servers:
         - url: http://localhost:19004
         - url: http://localhost:19021
@@ -13461,7 +13461,7 @@ paths:
   /api/voice/dictionary/learn:
     post:
       tags: [Echo]
-      summary: "A correction {heard, corrected} → {confirmed, candidates} (confirmed after echo.dizionario.conferme)"
+      summary: "A correction {heard, corrected} → {confirmed, candidates} (confirmed after echo.dictionary.confirmations)"
       servers:
         - url: http://localhost:19021
       responses:
@@ -13806,7 +13806,7 @@ paths:
   /api/webui/voice/speak:
     post:
       tags: [WebUI]
-      summary: "«Ascolta» under a reply → Echo (use webui.ascolta, kept with the reply)"
+      summary: "«Ascolta» under a reply → Echo (use webui.listen, kept with the reply)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13819,7 +13819,7 @@ paths:
   /api/webui/voice/listen:
     post:
       tags: [WebUI]
-      summary: "Live «Parla»: open the mic stream (use webui.live.ascolto)"
+      summary: "Live «Parla»: open the mic stream (use webui.live.listening)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13832,7 +13832,7 @@ paths:
   /api/webui/voice/say:
     post:
       tags: [WebUI]
-      summary: "Live «Parla»: open the voice stream (use webui.live.voce)"
+      summary: "Live «Parla»: open the voice stream (use webui.live.voice)"
       servers:
         - url: http://localhost:19015
       requestBody:

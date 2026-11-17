@@ -492,7 +492,7 @@ def quick_product_undo(id: str, date: str = ""):
 def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "oggi") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="hygieia", domain="selfcare", key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
-        voice=bool(settings.get("hygieia.notifiche.voce", True)),
+        voice=bool(settings.get("hygieia.notifications.voice", True)),
         actions=actions, page=page, level=level), timeout=8)
 
 
@@ -547,7 +547,7 @@ def alerts_run():
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
             _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
-                  page=f"prodotti/{pid}")
+                  page=f"products/{pid}")
             hygieia.store.upsert("alert", key, {"sent": today.isoformat(), "type": a["type"], "product_id": pid})
             sent.append(a["key"])
         except Exception as exc:
@@ -586,7 +586,7 @@ ui.webui(
            page("routine", "Routine", element="hygieia-routines", icon="list", order=41, parent="oggi"),
            page("routine/:id", "Routine", element="hygieia-routine", detail=True, parent="oggi"),
            page("prodotti", "Products", element="hygieia-products", icon="drop", order=42, parent="oggi"),
-           page("prodotti/:id", "Product", element="hygieia-product", detail=True, parent="oggi"),
+           page("products/:id", "Product", element="hygieia-product", detail=True, parent="oggi"),
            page("diario", "Diary", element="hygieia-journal", icon="edit", order=43, parent="oggi"),
            page("statistiche", "Statistics and history", element="hygieia-stats", icon="chart", order=44, parent="oggi"),
            page("spesa", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="oggi")],
@@ -896,7 +896,7 @@ try:
                 handler=_t(_product_get), title="Product detail", path=f"{API}/products/{{id}}", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Products"}),
-        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'I bought serum X 30ml'). status in_use (open, default) | stock (closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glicolico, bha_salicilico, vitamina_c…). category e.g. detergente, siero, crema, spf, shampoo."),
+        MCPTool(name="selfcare_product_add", description=("Add a product (e.g. 'I bought serum X 30ml'). status in_use (open, default) | stock (closed) | wishlist. actives = slugs (retinolo, niacinamide, aha_glycolic, bha_salicylic, vitamin_c…). category e.g. detergente, siero, crema, spf, shampoo."),
                 parameters={"type": "object", "properties": {"name": S, "brand": S, "category": S, "areas": L, "actives": L,
                                                              "size": N, "unit": S, "price": N, "status": S, "pao_months": I,
                                                              "notes": S, "favorite": B}, "required": ["name"]},
@@ -957,7 +957,7 @@ try:
                 handler=_t(_journal_add), title="Write in the diary", method="POST", path=f"{API}/journal", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diary"}),
-        MCPTool(name="selfcare_diario_voce", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
+        MCPTool(name="selfcare_diary_voice", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
                                                           "diary (area giornata). Offered after the evening recap."),
                 parameters={"type": "object", "properties": {
                     "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Your voice message"},

@@ -14,7 +14,7 @@ IBAN, street addresses become ``<PERSONA_1>``, ``<EMAIL_1>``…; the map stays i
 gets the real values back. A turn whose masking fails is not sent.
 
 A verdict with confidence ≥ ``metis.review.auto_accept`` and no doubt is accepted; the others wait in the list
-**«Da rivedere»** (WebUI Miglioramento, Telegram ``metis_rivedi``): Accetta / Scarta / Correggi with your own text.
+**«Da rivedere»** (WebUI Miglioramento, Telegram ``metis_review``): Accetta / Scarta / Correggi with your own text.
 Your choice always wins. Rows in Archive ``dataset-store``, kind ``review`` (id = trace_id, parent_id = session,
 ref_id = status ``accepted | pending | rejected | edited``) and one kind ``state`` row (where the last run stopped).
 """

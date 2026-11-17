@@ -146,7 +146,7 @@ reads only those (links between areas, then details through `/api/module/context
 from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
 
 signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
-signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
+signal("stall:bench", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
 metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
 signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
 signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
@@ -191,10 +191,10 @@ in Oracle → Cervello → Modelli. The module never names a provider or a model
 ```python
 from hestia_common.oracle_usecases import usecase, capabilities as llm_capabilities
 
-LLM_USECASES = [usecase("scout.annunci", "Scout · lettura annunci", chain="veloce",
+LLM_USECASES = [usecase("scout.listings", "Scout · lettura annunci", chain="veloce",
                         help="Estrae i dati degli annunci dalle mail.")]
 payload["capabilities"].update(llm_capabilities(LLM_USECASES))   # Hub registration (re-sent by the keepalive)
-# call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.annunci"}
+# call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.listings"}
 ```
 
 ## Voice (`hestia_common.voice_client`, `hestia_common.voice_usecases`)
@@ -212,7 +212,7 @@ payload["capabilities"].update(voice_capabilities(VOICE_USECASES))   # Hub regis
 voice = VoiceClient(HUB_API_URL)
 heard = voice.transcribe(audio, "audio/ogg", use_case="telegram.vocale",
                          keep={"kind": "recording", "message_id": "tg:1:2"})      # {text, ...} | None
-spoken = voice.speak("Ciao", use_case="telegram.risposta", fmt="ogg_opus")      # {audio: bytes, ...} | None
+spoken = voice.speak("Ciao", use_case="telegram.answer", fmt="ogg_opus")      # {audio: bytes, ...} | None
 voice.forget(notification_id="…")                                              # drop regenerable audio
 ```
 
@@ -506,7 +506,7 @@ Range, checks free disk **before** starting — «Servono X GB, ne hai Y…» �
 `source(name, run, remove)` adds a custom source (`run(job)` reports `job.progress(done, size)`, which raises
 `Stopped` on pause/cancel; `DownloadError(msg, final=True)` = no retry). One worker per module; 3 retries
 (2/4/8 s, `[🔄] event=download_retry`). Job `{id, what, source, module, size, done, speed, eta_s, state, error}`,
-states `in_coda · in_corso · in_pausa · fatto · errore`; jobs persist in `state_path` (a running one comes back
+states `queued · running · paused · fatto · errore`; jobs persist in `state_path` (a running one comes back
 paused). `wait(id)` blocks a caller that needs the file now. Router `GET /api/downloads`, `POST
 /api/downloads/{id}/{pause|resume|retry|cancel|remove}`; `capabilities()` → `downloads` (the WebUI page finds the
 modules by it). A failure, or a finished download over 200 MB, goes to Notifiche through Hermes. Used by Oracle

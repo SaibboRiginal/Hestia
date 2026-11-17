@@ -63,13 +63,13 @@ class TestCorrelate:
 class TestTopics:
     def test_order_and_dedup(self):
         sig = [{"module": "plutus", "key": "budget", "severity": "alta", "text": "x"},
-               {"module": "hercules", "key": "stall:panca", "severity": "attenzione", "text": "y"},
-               {"module": "hercules", "key": "pr:panca", "severity": "info", "text": "z"}]
+               {"module": "hercules", "key": "stall:bench", "severity": "attenzione", "text": "y"},
+               {"module": "hercules", "key": "pr:bench", "severity": "info", "text": "z"}]
         links = [{"key": "link:a|b|0", "r": 0.8}]
         t = choose_topics(sig, links, set(), 5)
-        assert [x["key"] for x in t] == ["signal:plutus:budget", "link:a|b|0", "signal:hercules:stall:panca"]
+        assert [x["key"] for x in t] == ["signal:plutus:budget", "link:a|b|0", "signal:hercules:stall:bench"]
         assert [x["key"] for x in choose_topics(sig, links, {"link:a|b|0"}, 5)] == \
-            ["signal:plutus:budget", "signal:hercules:stall:panca"]
+            ["signal:plutus:budget", "signal:hercules:stall:bench"]
         assert len(choose_topics(sig, links, set(), 1)) == 1
 
 
@@ -173,8 +173,8 @@ class TestRecapPiece:
 @pytest.mark.unit
 class TestSignalsClient:
     def test_signal_and_metric_shapes(self):
-        s = signal("stall:panca", "Panca ferma da 3 sedute", kind="trend", severity="attenzione", page="schede")
-        assert s["topic"] == "stall:panca" and s["ttl_days"] == 7
+        s = signal("stall:bench", "Panca ferma da 3 sedute", kind="trend", severity="attenzione", page="schede")
+        assert s["topic"] == "stall:bench" and s["ttl_days"] == 7
         with pytest.raises(ValueError):
             signal("x", "y", severity="rossa")
         m = metric("fitness.sessions", iso_week(date(2026, 10, 20)), 3)
@@ -184,8 +184,8 @@ class TestSignalsClient:
         pub = Signals("hercules", "fitness", hub_api_url="http://hub/api")
         week = iso_week(date.today() - timedelta(weeks=1))
         existing = [
-            {"kind": "signal", "id": "hercules:stall:panca", "data": {
-                **signal("stall:panca", "Panca ferma", severity="attenzione"),
+            {"kind": "signal", "id": "hercules:stall:bench", "data": {
+                **signal("stall:bench", "Panca ferma", severity="attenzione"),
                 "expires_at": "2999-01-01T00:00:00+00:00"}},
             {"kind": "signal", "id": "hercules:old", "data": {"key": "old"}},
             {"kind": "metric", "id": f"hercules:fitness.sessions:{week}", "data": {"value": 3.0}},
@@ -197,13 +197,13 @@ class TestSignalsClient:
             return {"rows": existing} if method == "GET" else {"applied": []}
 
         with patch.object(pub, "_call", side_effect=fake_call):
-            out = pub.sync([signal("stall:panca", "Panca ferma", severity="attenzione"),
+            out = pub.sync([signal("stall:bench", "Panca ferma", severity="attenzione"),
                             signal("pr:squat", "Nuovo record squat", kind="milestone")],
                            [metric("fitness.sessions", week, 3), metric("fitness.sessions", iso_week(), 1)])
         rows = calls[-1][1]["rows"]
         ids = {(r["id"], bool(r.get("deleted"))) for r in rows}
         assert ("hercules:pr:squat", False) in ids and ("hercules:old", True) in ids
-        assert ("hercules:stall:panca", False) not in ids              # unchanged, still fresh
+        assert ("hercules:stall:bench", False) not in ids              # unchanged, still fresh
         assert not any(r["id"].endswith(week) for r in rows)            # unchanged metric
         assert out == {"written": 2, "retracted": 1}
 
@@ -224,7 +224,7 @@ class TestApi:
             rp.assert_called_with("2026-10-20")
         caps = main.service.build_capabilities()
         assert caps["recap_endpoint"] == "/api/module/recap"
-        assert any(u.get("id") == "athena.riflessione" or u.get("key") == "athena.riflessione"
+        assert any(u.get("id") == "athena.reflection" or u.get("key") == "athena.reflection"
                    for u in caps.get("llm_usecases") or [])
 
     def test_think_vita_and_bad_track(self, client):

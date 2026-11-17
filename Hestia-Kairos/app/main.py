@@ -2,7 +2,7 @@
 
 Data in Archive (``/api/deadlines-store``), each open deadline in the calendar (agenda events), mails by push from
 Iris (subscription ``kairos:mail``: only proposals the owner confirms), notices through Hermes, the daily check in
-the agenda, a better advice from Oracle (use case ``kairos.consiglio``), tools for the assistant and Telegram.
+the agenda, a better advice from Oracle (use case ``kairos.advice``), tools for the assistant and Telegram.
 """
 from __future__ import annotations
 
@@ -34,13 +34,13 @@ from .core.service import CATEGORIES, RECURRENCES, Deadlines
 API = "/api/deadlines"
 DOMAIN = "deadlines"
 MAIL_KEY = "mail"
-ADVICE_USE = "kairos.consiglio"
+ADVICE_USE = "kairos.advice"
 DEFAULT_MAIL_WORDS = ["scadenza", "scade", "bolletta", "fattura", "rinnovo", "bollo", "revisione", "polizza",
                       "pagamento"]
 
 kit = ModuleKit("kairos", port=19028, api=API, domain=DOMAIN, title="Deadlines", store="deadlines-store",
                 when_to_use="deadlines: bills, insurance, car tax, car inspection, service, documents, subscriptions",
-                manual="Deadlines (scadenze_list): title, date, amount, recurrence, notice and a tip. scadenze_add for a new one, scadenze_done when paid/done (recurring ones move to the next by themselves). Emails with a deadline become proposals the user confirms.")
+                manual="Deadlines (deadlines_list): title, date, amount, recurrence, notice and a tip. deadlines_add for a new one, deadlines_done when paid/done (recurring ones move to the next by themselves). Emails with a deadline become proposals the user confirms.")
 app = kit.app
 kit.settings.declare([
     setting("kairos.mail.words", "Words of emails with deadlines", "list", list(DEFAULT_MAIL_WORDS), group="Email",
@@ -176,9 +176,9 @@ def _card(d: dict) -> dict:
     if d.get("advice"):
         lines.append(d["advice"])
     return display(d["title"], lines=lines,
-                   actions=[action(tr("Done"), "scadenze_done", {"deadline": d["id"]}, style="primary"),
-                            action(tr("In 3 days"), "scadenze_snooze", {"deadline": d["id"], "days": 3}),
-                            action(tr("Tip"), "scadenze_consiglio", {"deadline": d["id"]})])
+                   actions=[action(tr("Done"), "deadlines_done", {"deadline": d["id"]}, style="primary"),
+                            action(tr("In 3 days"), "deadlines_snooze", {"deadline": d["id"], "days": 3}),
+                            action(tr("Tip"), "deadlines_advice", {"deadline": d["id"]})])
 
 
 def _list(days: int | None = None, category: str = "", status: str = "open") -> dict:
@@ -189,14 +189,14 @@ def _list(days: int | None = None, category: str = "", status: str = "open") -> 
                                                                                if d.get("amount") else []))
                                                   for d in items[:30]],
                                lines=[] if items else [tr("No deadlines.")],
-                               actions=[action(tr("Add"), "scadenze_add", style="primary")])}
+                               actions=[action(tr("Add"), "deadlines_add", style="primary")])}
 
 
 def _add(title: str, due: str, category: str = "", amount: float | None = None, recurrence: str = "none",
          lead_days: int | None = None, notes: str = "") -> dict:
     d = deadlines.save({"title": title, "due": due, "category": category, "amount": amount, "recurrence": recurrence,
                         "lead_days": lead_days, "notes": notes})
-    return {"saved": True, "id": d["id"], "undo": undo("scadenze_delete", deadline=d["id"]), "display": _card(d)}
+    return {"saved": True, "id": d["id"], "undo": undo("deadlines_delete", deadline=d["id"]), "display": _card(d)}
 
 
 def _update(deadline: str, title: str = "", due: str = "", amount: float | None = None, recurrence: str = "",
@@ -229,46 +229,46 @@ CAT = {"type": "string", "enum": list(CATEGORIES)}
 REC = {"type": "string", "enum": list(RECURRENCES)}
 G = "scadenze"
 kit.tools([
-    MCPTool(name="scadenze_list", description="The open deadlines (days = within how many days; category; status open|proposed|done).",
+    MCPTool(name="deadlines_list", description="The open deadlines (days = within how many days; category; status open|proposed|done).",
             parameters={"type": "object", "properties": {"days": I, "category": CAT, "status": S}}, handler=_list,
             title="Deadlines", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Deadlines", "primary": 1}),
-    MCPTool(name="scadenze_get", description="One deadline with tip and amount.",
+    MCPTool(name="deadlines_get", description="One deadline with tip and amount.",
             parameters={"type": "object", "properties": {"deadline": D}, "required": ["deadline"]},
             handler=lambda deadline: (lambda d: {**d, "display": _card(d)})(deadlines.view(deadlines.find(deadline))),
             title="Deadline", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Deadlines"}),
-    MCPTool(name="scadenze_add", description=("New deadline: title, due YYYY-MM-DD, category, amount €, recurrence (monthly, yearly…), "
+    MCPTool(name="deadlines_add", description=("New deadline: title, due YYYY-MM-DD, category, amount €, recurrence (monthly, yearly…), "
                                               "lead_days of notice. Goes into the calendar."),
             parameters={"type": "object", "properties": {"title": S, "due": S, "category": CAT, "amount": N,
                                                          "recurrence": REC, "lead_days": I, "notes": S},
                         "required": ["title", "due"]},
             handler=_add, title="New deadline", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Deadlines", "primary": 2}),
-    MCPTool(name="scadenze_update", description="Edit a deadline.",
+    MCPTool(name="deadlines_update", description="Edit a deadline.",
             parameters={"type": "object", "properties": {"deadline": D, "title": S, "due": S, "amount": N,
                                                          "recurrence": REC, "lead_days": I, "notes": S},
                         "required": ["deadline"]},
             handler=_update, title="Edit deadline", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Deadlines"}),
-    MCPTool(name="scadenze_done", description="Mark paid/done: recurring ones move to the next date.",
+    MCPTool(name="deadlines_done", description="Mark paid/done: recurring ones move to the next date.",
             parameters={"type": "object", "properties": {"deadline": D}, "required": ["deadline"]},
             handler=lambda deadline: (lambda d: {"saved": True, "status": d["status"], "next_due": d["due"],
                                                  "display": _card(d)})(deadlines.done(deadline)),
             title="Done", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Deadlines", "primary": 3}),
-    MCPTool(name="scadenze_snooze", description="Postpone the reminder by a few days (days, default 3).",
+    MCPTool(name="deadlines_snooze", description="Postpone the reminder by a few days (days, default 3).",
             parameters={"type": "object", "properties": {"deadline": D, "days": I}, "required": ["deadline"]},
             handler=lambda deadline, days=3: {"saved": True, "until": deadlines.snooze(deadline, days)["snoozed_until"]},
             title="Postpone notice", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Deadlines"}),
-    MCPTool(name="scadenze_delete", description="Delete a deadline (and from the calendar).",
+    MCPTool(name="deadlines_delete", description="Delete a deadline (and from the calendar).",
             parameters={"type": "object", "properties": {"deadline": D}, "required": ["deadline"]},
             handler=lambda deadline: deadlines.delete(deadline), title="Delete deadline", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Deadlines"}),
-    MCPTool(name="scadenze_consiglio", description="A practical tip on this deadline (saved on its card).",
+    MCPTool(name="deadlines_advice", description="A practical tip on this deadline (saved on its card).",
             parameters={"type": "object", "properties": {"deadline": D}, "required": ["deadline"]}, handler=_advice,
             title="Tip", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Deadlines", "primary": 4}),
-], prefix="scadenze_")
+], prefix="deadlines_")
 
 transfer = Transfer("kairos", kit.hub, sections=[
     StoreSection("scadenze", "Deadlines", kit.store, ["deadline"], icon="clock", title=lambda r: r["data"].get("title", "")),
@@ -284,7 +284,7 @@ kit.on_warm(lambda: (mail.subscribe_async(_mail_rules), process_pending_mail()))
 kit.webui(icon="clock", color="orange", description="Bills, insurance, car tax, inspection, documents: alerts and tips.",
           pages=[page("scadenze", "Deadlines", element="kairos-list", icon="clock", order=70,
                       help="The deadlines with the advance warning, those found in emails to confirm, a tip for each. «Done» moves recurring ones to the next date."),
-                 page("scadenza/:id", "Deadline", element="kairos-detail", detail=True, parent="scadenze")],
+                 page("deadline/:id", "Deadline", element="kairos-detail", detail=True, parent="scadenze")],
           widgets=[widget("prossime", "Deadlines", element="kairos-widget", sizes=["s", "m", "l"], size="m", auto=True,
                           open_page="scadenze", icon="clock")])
 kit.finish()

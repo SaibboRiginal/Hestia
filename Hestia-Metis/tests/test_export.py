@@ -99,7 +99,7 @@ def test_clear_export_keeps_real_text_and_skips_unreviewed():
     called = []
     out = Exporter(arc, people=lambda: called.append(1) or []).build(masked=False)
     rows, card = unzip(arc, out)
-    assert not called and out["name"].endswith("-in-chiaro.zip") and card["masked"] is False
+    assert not called and out["name"].endswith("-plain.zip") and card["masked"] is False
     assert "Laura Rossi" in json.dumps(rows, ensure_ascii=False)
     assert card["skipped"] == 1 and card["turns"] == 3
 

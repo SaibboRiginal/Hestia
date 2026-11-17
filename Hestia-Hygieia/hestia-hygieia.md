@@ -93,7 +93,7 @@ log delete, journal add / delete, the MCP `log` / `journal_add` tools and once a
 - Agenda job `hygieia.alerts` (daily 10:00) → `POST /api/selfcare/alerts/run`: expiring / running out / finished
   but still in a routine, at most once a week per product (`replaces: selfcare.alert.<type>.<product_id>`),
   actions **Buttato** / **Ricomprato**.
-- Every notification carries `_link` to its plugin page (`routine/<id>` for reminders, `prodotti/<id>` for alerts).
+- Every notification carries `_link` to its plugin page (`routine/<id>` for reminders, `products/<id>` for alerts).
 - Texts are short plain Italian, readable aloud as-is (future audio client).
 
 ## Client UI (plugin contract)
@@ -103,7 +103,7 @@ Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`)
 Bundle `ui/src/index.ts` → `/ui/webui/hygieia.js` (built in the Dockerfile). Pages: oggi (today: one tap per
 routine, steps with reasons, wait timers, "ho usato un prodotto"), routine, routine/:id (editor: steps, order,
 own cadence, pause, goal, zones, never-same-day, reminder, favorite, adherence, versions), prodotti,
-prodotti/:id, diario, statistiche (heatmap, routines, top products, spend, history of
+products/:id, diario, statistiche (heatmap, routines, top products, spend, history of
 changes, a past day, JSON export), spesa. Widgets: oggi (quick chips, counts only: the frame draws the title), prossima, prodotti (alerts), settimana.
 Quick actions: fatta (routines to do today + favorites, undo), uso (favorite products, undo).
 A UI change needs `up-all.bat --build hygieia`.
@@ -119,9 +119,9 @@ there and used only when wanted. Week start and currency are the personal settin
 ## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
 
 - **Diario a voce** (B9): the evening recap piece carries the button «Racconta la giornata» (`recap.piece(...,
-  actions=)`, a `command` action that opens the tool `selfcare_diario_voce`) until today has a «giornata» entry.
+  actions=)`, a `command` action that opens the tool `selfcare_diary_voice`) until today has a «giornata» entry.
   Telegram asks for a voice note; `POST /api/selfcare/journal/voice {audio:{data_b64, mime}|audio_b64, date?}` →
-  Echo transcribes it (use `hygieia.diario`, declared in the Hub registration, recording kept) → journal entry
+  Echo transcribes it (use `hygieia.diary`, declared in the Hub registration, recording kept) → journal entry
   area `giornata`, note = transcript, tag `voce`, source `voce`, `audio_id`. Reflection reads it (signal `diario`).
 - **Sleep from the watch** (B10): Hecate pushes feed `wearable.daily` (`hestia_common.feeds`) to
   `POST /api/selfcare/wearable`; the night becomes one diary entry area `sonno` per date (id `device-sleep-<date>`,

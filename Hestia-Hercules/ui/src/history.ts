@@ -62,7 +62,7 @@ export class HerculesHistory extends LocalPage {
           const m = d.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
           const head = m !== month ? (month = m, html`<div class="month">${m}</div>`) : nothing;
           const sm = summary(L, s);
-          return html`${head}<div class="li" @click=${() => this.host.navigate('storico/' + s.id)}>
+          return html`${head}<div class="li" @click=${() => this.host.navigate('history/' + s.id)}>
             <div class="d small muted"><b>${d.getDate()}</b>${d.toLocaleDateString(locale(), { weekday: 'short' })}</div>
             <div class="grow"><div class="truncate">${s.name}${s.source === 'quick' ? html` <span class="pill">${tr("recorded")}</span>` : s.source === 'import' ? html` <span class="pill">${tr("imported")}</span>` : nothing}</div>
               <div class="small muted">${plural(sm.exercises, 'exercise', 'exercises')} · ${sm.sets} ${tr("sets")}${sm.volume ? ` · ${num(sm.volume)} kg` : ''}${sm.minutes ? ` · ${minutes(sm.minutes)}` : ''}</div></div>
@@ -162,7 +162,7 @@ export class HerculesSession extends LocalPage {
         const weight = usesWeight(ex?.kind);
         let n = 0;
         return html`<div class="card col">
-          <div class="between"><b class="truncate" style="cursor:pointer" @click=${() => this.host.navigate('esercizi/' + b.exercise_id)}>${ex?.name || '?'}</b>
+          <div class="between"><b class="truncate" style="cursor:pointer" @click=${() => this.host.navigate('exercises/' + b.exercise_id)}>${ex?.name || '?'}</b>
             ${weight ? html`<span class="small muted tnum">${num(mine.filter(x => x.type !== 'warmup').reduce((v, x) => v + (x.weight_kg || 0) * (x.reps || 0), 0))} kg</span>` : nothing}</div>
           ${this.editing ? html`<div class="sets edit">${mine.map(x => html`
               <span class="n">${x.type === 'warmup' ? 'R' : ++n}</span>

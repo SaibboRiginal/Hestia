@@ -47,12 +47,12 @@ def test_import_previews_then_applies_with_a_copy_of_before(hub):
     preview = ta.importa(1, {"file": {"data_b64": base64.b64encode(raw).decode()}})
     assert [c[3]["dry_run"] for c in hub if c[1] == "api/transfer/import"] == [True]
     token = preview.actions[0].args["token"]
-    done = ta.importa_conferma(1, {"token": token})
+    done = ta.import_confirm(1, {"token": token})
     imports = [c[3] for c in hub if c[1] == "api/transfer/import"]
     assert imports[-1]["dry_run"] is False and imports[-1]["mode"] == "merge"
     assert done.document and ta.decode(done.document[1])["modules"]["plutus"] == _BLOCK
     with pytest.raises(ta.TransferError):
-        ta.importa_conferma(1, {"token": token})          # one use only
+        ta.import_confirm(1, {"token": token})          # one use only
 
 
 def test_import_rejects_other_files_and_other_chats(hub):
@@ -61,11 +61,11 @@ def test_import_rejects_other_files_and_other_chats(hub):
     raw = ta.encode({"hestia": "transfer", "format": 1, "modules": {"plutus": _BLOCK}, "files": {}})
     token = ta.importa(1, {"file": {"data_b64": base64.b64encode(raw).decode()}}).actions[0].args["token"]
     with pytest.raises(ta.TransferError):
-        ta.importa_conferma(2, {"token": token})
+        ta.import_confirm(2, {"token": token})
 
 
 def test_restore_lists_and_confirms(hub):
     out = ta.ripristina(1, {})
-    assert out.actions[0].tool == "ripristina_conferma" and out.actions[0].args == {"file_id": "f1"}
-    ta.ripristina_conferma(1, {"file_id": "f1"})
+    assert out.actions[0].tool == "restore_confirm" and out.actions[0].args == {"file_id": "f1"}
+    ta.restore_confirm(1, {"file_id": "f1"})
     assert ("archive", "api/backup/restore", "POST", {"file_id": "f1", "confirm": True}) in hub

@@ -1,8 +1,8 @@
 """Voice uses a caller declares to Echo (dossier ``docs/work/2026-10-20-modulo-voce`` §4.C).
 
 Same shape as ``oracle_usecases``: a module that asks Echo to listen (speech → text) or speak (text → speech)
-declares each kind of task as a use, with its direction and a suggested chain (``ascolto``, ``ascolto-preciso``,
-``voce``, ``voce-naturale``…). The declaration rides in the module's Hub registration
+declares each kind of task as a use, with its direction and a suggested chain (``ascolto``, ``listening-precise``,
+``voce``, ``voice-natural``…). The declaration rides in the module's Hub registration
 (``capabilities.voice_usecases``, re-sent by the keepalive). Marko picks chain and mode of every use in one place
 (plugin «Voce» → Usi); the caller never names a provider, a model or a voice.
 

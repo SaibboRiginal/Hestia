@@ -23,10 +23,10 @@ using Hestia.WebUI.Services;
 public class VoiceController : ControllerBase
 {
     public const string UseMessage = "webui.vocale";
-    public const string UseListen = "webui.ascolta";
-    public const string UseLiveIn = "webui.live.ascolto";
-    public const string UseLiveOut = "webui.live.voce";
-    public const string UseDictation = "webui.dettatura";
+    public const string UseListen = "webui.listen";
+    public const string UseLiveIn = "webui.live.listening";
+    public const string UseLiveOut = "webui.live.voice";
+    public const string UseDictation = "webui.dictation";
 
     /// <summary>Declared on the Hub (capabilities.voice_usecases).</summary>
     public static readonly object[] UseCases =

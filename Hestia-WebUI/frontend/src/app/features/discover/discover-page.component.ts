@@ -5,10 +5,10 @@ import { tr, TrPipe } from '../../core/i18n';
 
 /**
  * «Scopri» (dossier 2026-10-24-tutto-brainstorm-cindy C14, W7): the things Hestia can do that you never or rarely
- * use, what each does and «Prova» to open it (GET /api/metis/scopri — usage stats against the tool catalog).
+ * use, what each does and «Prova» to open it (GET /api/metis/discover — usage stats against the tool catalog).
  */
 @Component({
-  selector: 'app-scopri-page',
+  selector: 'app-discover-page',
   imports: [TrPipe, ...UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `

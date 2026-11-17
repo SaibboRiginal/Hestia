@@ -125,13 +125,13 @@ class TestDomainToolFiltering:
         engine._module_registry.get_domain_owners = lambda d: ["plutus"] if d == "finance" else []
         engine._hub.get_commands = lambda: [
             {"command": "finance_add", "service": "plutus", "method": "POST", "path": "/api/x"},
-            {"command": "agenda_assistente_aggiungi", "service": "chronos", "method": "POST", "path": "/api/y"},
+            {"command": "agenda_assistant_add", "service": "chronos", "method": "POST", "path": "/api/y"},
             {"command": "create_event", "service": "chronos", "method": "POST", "path": "/api/z"},
         ]
         intent = SessionIntent(mode="domain_query", explicit_domain="finance", confidence=0.9,
                                valid_domains=["finance"])
         names = {t.name for t in engine._build_domain_tools(intent, "s", None, fallback_domains=["finance"])}
-        assert {"finance_add", "agenda_assistente_aggiungi"} <= names
+        assert {"finance_add", "agenda_assistant_add"} <= names
         assert "create_event" not in names
 
 
@@ -370,8 +370,8 @@ def test_chat_tools_are_in_the_chat_and_tag_the_conversation_of_the_turn(engine)
                 "pinned": False, "before": {"tags": [], "title": None, "pinned": False}}
     engine._memory_service._route_archive = route
     intent = SessionIntent(mode="domain_query", explicit_domain="general", confidence=0.9, valid_domains=["general"])
-    tools = {t.name: t for t in engine._build_domain_tools(intent, "sessione-in-corso", None)}
+    tools = {t.name: t for t in engine._build_domain_tools(intent, "session-running", None)}
     assert {"chat_tag", "chat_list"} <= set(tools) and tools["chat_tag"].writes
     ok, out = tools["chat_tag"].handler(tags="banco")
-    assert ok and seen == [("PUT", "/chat/sessions/sessione-in-corso/meta")]
+    assert ok and seen == [("PUT", "/chat/sessions/session-running/meta")]
     assert out["undo"]["tool"] == "chat_tag"

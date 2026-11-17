@@ -61,7 +61,7 @@ class TestHubManifest:
         assert mod["module"] == "hub" and mod["kind"] == "core" and mod["online"] is True
         webui = cat["contributions"]["webui"]
         assert webui["bundle"][0]["module"] == "hub" and webui["bundle"][0]["api_prefix"] == "/api/ui/"
-        assert [p["id"] for p in webui["page"]] == ["hub.mappa"]
+        assert [p["id"] for p in webui["page"]] == ["hub.map"]
         assert [w["id"] for w in webui["widget"]] == ["hub.online"]
 
     def test_local_manifest_respects_filters(self):
@@ -116,7 +116,7 @@ class TestHubUiApi:
     def test_catalog_endpoint_lists_hub(self, client):
         cat = client.get("/api/discovery/catalog", params={"client": "webui", "type": "page,widget"}).json()
         assert any(m["module"] == "hub" and m["kind"] == "core" for m in cat["modules"])
-        assert "hub.mappa" in [p["id"] for p in cat["contributions"]["webui"]["page"]]
+        assert "hub.map" in [p["id"] for p in cat["contributions"]["webui"]["page"]]
 
     def test_route_to_hub_is_local(self, client, bundle):
         _register("oracle")

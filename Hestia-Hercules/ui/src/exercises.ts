@@ -41,7 +41,7 @@ export class HerculesExercises extends LocalPage {
       kind: c.kind, movement_pattern: c.pattern, stress_joints: [], unilateral: false, is_custom: true, archived: false, notes: '', instructions: '',
     });
     this.creating = null;
-    this.host.navigate('esercizi/' + e.id);
+    this.host.navigate('exercises/' + e.id);
   }
 
   render() {
@@ -69,7 +69,7 @@ export class HerculesExercises extends LocalPage {
         ${Object.keys(GROUPS).map(g => html`<button class="chip" aria-pressed=${this.group === g} @click=${() => (this.group = this.group === g ? '' : g)}>${GROUP_LABEL[g]}</button>`)}
         <select class="in" .value=${this.equip} @change=${(e: any) => (this.equip = e.target.value)}><option value="">${tr("Any equipment")}</option>${Object.entries(EQUIPMENT).map(([k, v]) => html`<option value=${k}>${v}</option>`)}</select>
       </div>
-      <div class="card list">${items.slice(0, 200).map(e => html`<div class="li" @click=${() => this.host.navigate('esercizi/' + e.id)}>
+      <div class="card list">${items.slice(0, 200).map(e => html`<div class="li" @click=${() => this.host.navigate('exercises/' + e.id)}>
           <div class="grow"><div class="truncate">${e.favorite ? html`<hxk-icon name="star" size=${13} tone="warning"></hxk-icon> ` : ''}${e.name}${e.is_custom ? html` <span class="pill">${tr("yours")}</span>` : nothing}</div>
             <div class="small muted truncate">${muscleText(e)} · ${EQUIPMENT[e.equipment] || e.equipment}</div></div>
           <div class="small muted" style="text-align:right">${e.times ? html`${e.times}×<br>${relDays(e.last)}` : ''}</div></div>`)}
@@ -127,11 +127,11 @@ export class HerculesExercise extends LocalPage {
         <hxk-chart type="line" .labels=${pts.map(h => dayLabel(h.date, false))} .series=${[{ name: metrics[metric], values: pts.map(h => Number(h[metric])) }]} unit=${metric === 'max_reps' || metric === 'reps' ? '' : 'kg'} height="200"></hxk-chart></div>` : nothing}
       ${weight && rec.rep_max && Object.keys(rec.rep_max).length ? html`<div class="card col"><h3>${tr("Best weight per reps")}</h3><div class="row wrap" style="gap:16px">
         ${Object.entries(rec.rep_max).map(([r, v]: [string, any]) => html`<div><div class="small muted">${r}+ ${tr("abbr::reps")}</div><div class="tnum"><b>${kg(v.value)}</b> kg</div></div>`)}</div></div>` : nothing}
-      ${hist.length ? html`<div class="card col hist"><h3>${tr("History")}</h3><div class="list">${[...hist].reverse().slice(0, 30).map(h => html`<div class="li" @click=${() => this.host.navigate('storico/' + h.session_id)}>
+      ${hist.length ? html`<div class="card col hist"><h3>${tr("History")}</h3><div class="list">${[...hist].reverse().slice(0, 30).map(h => html`<div class="li" @click=${() => this.host.navigate('history/' + h.session_id)}>
           <div style="min-width:76px" class="small muted">${dayLabel(h.date)}</div>
           <div class="grow small tnum">${(h.detail || []).map((s: any) => setLabel(s, e.kind)).join(' · ')}</div>
           ${weight && h.best_e1rm ? html`<div class="small muted tnum">${kg(h.best_e1rm)}</div>` : nothing}</div>`)}</div></div>` : nothing}
-      ${d?.alternatives?.length ? html`<div class="card col"><h3>${tr("Alternatives")}</h3><div class="chips">${d.alternatives.map((a: any) => html`<button class="chip" @click=${() => this.host.navigate('esercizi/' + a.id)}>${a.name}</button>`)}</div></div>` : nothing}
+      ${d?.alternatives?.length ? html`<div class="card col"><h3>${tr("Alternatives")}</h3><div class="chips">${d.alternatives.map((a: any) => html`<button class="chip" @click=${() => this.host.navigate('exercises/' + a.id)}>${a.name}</button>`)}</div></div>` : nothing}
       <div class="card col"><h3>${tr("Notes and settings")}</h3>
         <textarea class="in" rows="2" placeholder=${tr("Notes (adjustments, grip, feelings)")} .value=${e.notes || ''} @change=${(ev: any) => this.save({ notes: ev.target.value })}></textarea>
         <div class="row wrap"><label class="small row">${tr("Increment kg")} <input class="in num" inputmode="decimal" placeholder=${String(d?.increment ?? '')} .value=${e.increment_kg == null ? '' : String(e.increment_kg)} @change=${(ev: any) => this.save({ increment_kg: parseNum(ev.target.value) })}></label>

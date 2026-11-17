@@ -25,7 +25,7 @@
   (≤ 1 accent colour), pattern clash, recently worn (`suggest.exclude_recent_days`), rotation of forgotten pieces,
   favourites and rating. Every result carries its reasons. The assistant adds taste on top.
 - Photos: orientation fixed, metadata (GPS) dropped by re-encoding, three sizes (original JPEG/WebP, medium 768,
-  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.foto`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
+  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.photo`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
   and only **proposes** fields; the user saves.
 - Does not call models directly, has no database: rows in Archive `wardrobe-store`, bytes in Archive `blobs`.
 
@@ -86,8 +86,8 @@ agenda job `wardrobe.signals` (daily 17:30, editable) → `POST /api/wardrobe/si
 
 Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Seasons leaf/sun/leaf/snowflake, favourites and rating star, rain umbrella, done check.
 
-Bundle `ui/src/index.ts` → `/ui/webui/wardrobe.js` (built in the Dockerfile). Pages: capi, capi/:id, accessori,
-outfit, outfit/:id, cosa-mi-metto, statistiche, liste, liste/:id, vocabolari. Widgets: oggi (auto, one-tap
+Bundle `ui/src/index.ts` → `/ui/webui/wardrobe.js` (built in the Dockerfile). Pages: capi, items/:id, accessori,
+outfit, outfit/:id, what-to-wear, statistiche, liste, lists/:id, vocabolari. Widgets: oggi (auto, one-tap
 «Indossato» chips), suggerito, lavanderia, dimenticati (auto), numeri (auto), ultimi. Quick action `indossato`
 (chips = favourite outfits + today's idea, undo). Multi-select on Guardaroba: In lavanderia / Nell'armadio /
 Crea outfit / Da donare. A UI change needs `up-all.bat --build wardrobe`.

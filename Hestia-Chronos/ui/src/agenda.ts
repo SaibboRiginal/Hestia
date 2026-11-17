@@ -173,7 +173,7 @@ export class ChronosAgenda extends HestiaElement {
     this.sel = null;
     this.host.assistant({ label: tr("Agenda · {0}{1}", fmt.dayLong(d), at ? ', ' + fmt.time(at) : ''), prompt,
       hints: this.hints({ day: dayKey(d), time: at ? fmt.time(at) : undefined, view: this.store.view,
-                          agenda: tr("{assistant}'s agenda (agenda_assistente_* tools)") }) });
+                          agenda: tr("{assistant}'s agenda (agenda_assistant_* tools)") }) });
   }
   private askAbout(ev: CalEvent) {
     const it = ev.item;

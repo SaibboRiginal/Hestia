@@ -5,7 +5,7 @@ Clients push **taps** (`POST /api/metis/usage`: a tool run, a page opened, a qui
 
 - **Adesso** — what fits now: tools used at this hour / on this kind of day (habit score with recency decay), the
   last ones used, agenda items of the next hours that name a tool; plus up to 3 **ideas** written by the assistant a
-  few times a day (agenda job ``metis.adesso``, Oracle use case ``metis.adesso``; never when a client opens). Each
+  few times a day (agenda job ``metis.now``, Oracle use case ``metis.now``; never when a client opens). Each
   item says why. Tools that the client cannot run or that no longer exist are dropped.
 - **Scopri** — the tools of the Hub catalog never or rarely used, with what they do.
 
@@ -34,7 +34,7 @@ logger = logging.getLogger("hestia_metis.usage")
 CLIENTS = ("telegram", "webui", "mcp")
 KINDS = ("tool", "page", "action")
 CLIENT_KEY = {"webui": "ui", "telegram": "telegram", "mcp": "mcp"}      # MCPTool.clients names
-IDEAS_USE = "metis.adesso"
+IDEAS_USE = "metis.now"
 KEEP_DAYS = 180
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 _SKIP = re.compile(r"(_delete|_elimina|_remove|_rimuovi|_annulla|_conferma|_off|_on)$")

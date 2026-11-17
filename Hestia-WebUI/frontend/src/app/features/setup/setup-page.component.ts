@@ -94,7 +94,7 @@ function store(key: string, value: string): void {
                 <hx-icon [name]="d.state === 'fatto' ? 'check-circle' : d.state === 'errore' ? 'alert' : 'download'" [size]="16"
                          [tone]="d.state === 'fatto' ? 'success' : d.state === 'errore' ? 'danger' : 'info'" />
                 <span><b>{{ d.what }}</b><small>{{ downloadText(d) }}</small>
-                  @if (d.state === 'in_corso' && d.size) { <span class="meter"><span [style.width.%]="100 * d.done / d.size"></span></span> }
+                  @if (d.state === 'running' && d.size) { <span class="meter"><span [style.width.%]="100 * d.done / d.size"></span></span> }
                 </span>
               </li>
             }
@@ -1246,7 +1246,7 @@ export class SetupPageComponent {
     try { this.downloads.set(await this.api.pulls()); } catch { /* not ready yet */ }
   }
 
-  activeDownloads = computed(() => this.downloads().filter(d => d.state === 'in_coda' || d.state === 'in_corso').length);
+  activeDownloads = computed(() => this.downloads().filter(d => d.state === 'queued' || d.state === 'running').length);
   downloadHint(): string { return this.activeDownloads() === 1 ? tr('A download in progress: you can see it at the top.') : tr("{0} downloads in progress: you can see them at the top.", this.activeDownloads()); }
   private ticks = 0;
 
@@ -1271,8 +1271,8 @@ export class SetupPageComponent {
   downloadText(d: Download): string {
     if (d.state === 'fatto') return 'Scaricato.';
     if (d.state === 'errore') return d.error || tr('I couldn\'t download it: I\'ll retry from the Downloads page.');
-    if (d.state === 'in_coda') return tr('Queued.');
-    if (d.state === 'in_pausa') return tr('Paused.');
+    if (d.state === 'queued') return tr('Queued.');
+    if (d.state === 'paused') return tr('Paused.');
     const gb = (n: number) => (n / 1e9).toFixed(1).replace('.', ',');
     const left = d.eta_s ? tr(" · {0} more", d.eta_s >= 60 ? Math.round(d.eta_s / 60) + ' min' : Math.round(d.eta_s) + ' s') : '';
     return d.size ? tr("{0} of {1} GB{2}", gb(d.done), gb(d.size), left) : tr('In progress…');

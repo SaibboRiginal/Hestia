@@ -33,10 +33,10 @@ COMMANDS = [
 # Old command names still typed by habit → new ones.
 ALIASES = {
     "start": "home", "help": "aiuto", "comandi": "aree", "menu": "aree", "clear": "nuova", "settings": "impostazioni",
-    "set": "impostazioni", "live": "voce_on", "chat": "voce_off", "documents": "documenti",
-    "create_event": "create_event", "create_reminder": "nuovo_promemoria", "create_task": "nuova_attivita",
-    "notifica_add": "nuovo_avviso", "notifica_get": "notifiche_attive", "notifica_remove": "notifica_disattiva",
-    "adesso": "metis_adesso", "scopri": "metis_scopri",
+    "set": "impostazioni", "live": "voice_on", "chat": "voice_off", "documents": "documenti",
+    "create_event": "create_event", "create_reminder": "new_reminder", "create_task": "new_activity",
+    "notification_add": "new_alert", "notification_get": "notifications_active", "notification_remove": "notification_disable",
+    "adesso": "metis_now", "scopri": "metis_discover",
     "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout.search",
 }
 
@@ -49,7 +49,7 @@ LAST_SECTION = "Advanced"
 HIDDEN_SECTIONS = ["interno"]
 
 # What the «Oggi» card shows (tools rendered one under the other) and its buttons.
-TODAY = {"tools": ["agenda_today", "weather_now"], "actions": ["agenda", "create_event", "nuovo_promemoria"]}
+TODAY = {"tools": ["agenda_today", "weather_now"], "actions": ["agenda", "create_event", "new_reminder"]}
 
 # How many primary actions an area card shows before «Tutte le azioni».
 PRIMARY_MAX = 6

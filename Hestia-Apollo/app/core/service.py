@@ -225,7 +225,7 @@ class Images:
                                          "_title": tr("Image ready") if not error else tr("Image failed"),
                                          "_message": job["prompt"][:120] if not error else error,
                                          "level": "info" if not error else "warning", "target": "owner",
-                                         "icon": "camera", "_link": {"module": "apollo", "page": f"lavoro/{jid}"}}})
+                                         "icon": "camera", "_link": {"module": "apollo", "page": f"job/{jid}"}}})
         return {**job, "id": jid}
 
     def _missing_notice(self, purpose: str, error: str) -> None:

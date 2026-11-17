@@ -13,7 +13,7 @@ due day, amount, recurrence, lead time and a practical advice
 - Deadlines in Archive `deadlines-store` (kind `deadline`, status `open | proposed | done | dismissed`).
 - Categories with a default lead time and advice (`GET /api/deadlines/categories`); the category is guessed from the
   title when not given. A better advice is written on request by the assistant (Oracle use case
-  `kairos.consiglio`, chain `veloce`; offline → the category advice stays).
+  `kairos.advice`, chain `veloce`; offline → the category advice stays).
 - **Recurrence** (`monthly … biennial`): «Fatto» rolls the deadline to the next due day (end of month safe); one-off
   deadlines close.
 - Every open deadline is mirrored in the calendar as an agenda event `kairos.<id>` (09:00 of the day), updated on
@@ -32,12 +32,12 @@ due day, amount, recurrence, lead time and a practical advice
 
 ## Tools (Telegram area «Scadenze»)
 
-`scadenze_list`, `scadenze_get`, `scadenze_add`, `scadenze_update`, `scadenze_done`, `scadenze_snooze`,
-`scadenze_delete`, `scadenze_consiglio`.
+`deadlines_list`, `deadlines_get`, `deadlines_add`, `deadlines_update`, `deadlines_done`, `deadlines_snooze`,
+`deadlines_delete`, `deadlines_advice`.
 
 ## WebUI plugin
 
-Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, next 30 days, later, done; «Fatto», «Dopo», new deadline) and **Scadenza** (`scadenza/:id`: edit, advice, delete); widget «Scadenze» (only the deadlines: title and link to the page are the frame's). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
+Pages **Scadenze** (`kairos-list`: proposals from mail to confirm or dismiss, next 30 days, later, done; «Fatto», «Dopo», new deadline) and **Scadenza** (`deadline/:id`: edit, advice, delete); widget «Scadenze» (only the deadlines: title and link to the page are the frame's). Built from `ui/` in the image (`hestia_common.module_kit` `kit.webui`).
 
 ## Tests
 

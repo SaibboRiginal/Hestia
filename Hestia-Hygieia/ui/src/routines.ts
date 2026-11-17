@@ -243,7 +243,7 @@ export class HygieiaRoutine extends HestiaElement {
             <hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: null })}>${tr("Resume")}</hxk-button>`
           : [7, 14, 30].map(d => html`<hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: addDays(today(), d) })}>${d} ${tr("days")}</hxk-button>`)}
         </div>
-        ${s.product_id ? html`<div><button class="link small" @click=${() => this.host.navigate('prodotti/' + s.product_id)}>${tr("Open the product ›")}</button></div>` : nothing}
+        ${s.product_id ? html`<div><button class="link small" @click=${() => this.host.navigate('products/' + s.product_id)}>${tr("Open the product ›")}</button></div>` : nothing}
       </div>` : nothing}
     </div>`;
   }

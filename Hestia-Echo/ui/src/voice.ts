@@ -84,7 +84,7 @@ export class EchoVoice extends HestiaElement {
     if (!blob) return;
     this.busy = 'ascolto';
     const r = await this.host.api('POST', `${API}/transcribe`, { body: {
-      audio_b64: await blobToB64(blob), mime_type: this.rec.mime, use_case: 'echo.prova.ascolto' } });
+      audio_b64: await blobToB64(blob), mime_type: this.rec.mime, use_case: 'echo.test.listening' } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('I couldn\'t listen'), 'danger'); return; }
     this.heard = r.data;
@@ -107,7 +107,7 @@ export class EchoVoice extends HestiaElement {
   private async speak() {
     if (!this.text.trim()) return;
     this.busy = 'voce';
-    const r = await this.host.api('POST', `${API}/speak`, { body: { text: this.text, format: 'ogg_opus', use_case: 'echo.prova.voce' } });
+    const r = await this.host.api('POST', `${API}/speak`, { body: { text: this.text, format: 'ogg_opus', use_case: 'echo.test.voice' } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('I couldn\'t speak'), 'danger'); return; }
     this.said = r.data;

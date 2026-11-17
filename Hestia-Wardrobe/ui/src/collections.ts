@@ -24,13 +24,13 @@ export class WardrobeCollections extends WardrobeElement {
     if (t.rain === null) delete body.rain;   // empty = the forecast at the place for those days
     const r = await call(this.host, 'POST', '/collections/packing', body);
     this.busy = false;
-    if (r.ok) this.host.navigate('liste/' + r.data.id);
+    if (r.ok) this.host.navigate('lists/' + r.data.id);
   }
   private async create() {
     const c = this.creating;
     if (!c.name.trim()) { this.host.toast(tr('Name the list'), 'warning'); return; }
     const r = await call(this.host, 'POST', '/collections', { name: c.name.trim(), type: c.type });
-    if (r.ok) this.host.navigate('liste/' + r.data.id);
+    if (r.ok) this.host.navigate('lists/' + r.data.id);
   }
   render() {
     const m = this.m, items = this.items, t = this.trip, c = this.creating;
@@ -51,7 +51,7 @@ export class WardrobeCollections extends WardrobeElement {
           <select class="in" @change=${(e: any) => (this.creating = { ...c, type: e.target.value })}>${Object.entries(m?.collection_types || {}).filter(([k]) => k !== 'packing').map(([k, v]) => html`<option value=${k} ?selected=${c.type === k}>${v}</option>`)}</select>
           <hxk-button variant="primary" @click=${() => this.create()}>${tr("Create")}</hxk-button></div>` : nothing}
       ${items === undefined ? html`<hxk-state kind="loading"></hxk-state>` : !items.length ? html`<hxk-state kind="empty" text=${tr("No list. Pack a suitcase or create a capsule.")}></hxk-state>` : html`
-        <div class="grid" style="--min:260px">${items.map(l => html`<div class="card col" style="cursor:pointer" @click=${() => this.host.navigate('liste/' + l.id)}>
+        <div class="grid" style="--min:260px">${items.map(l => html`<div class="card col" style="cursor:pointer" @click=${() => this.host.navigate('lists/' + l.id)}>
           <div class="between"><h2 class="truncate">${l.name}</h2><hxk-badge tone=${l.type === 'packing' ? 'info' : l.type === 'shopping' ? 'accent' : 'neutral'}>${l.type_label}</hxk-badge></div>
           ${l.trip?.from ? html`<span class="small muted">${dayLabel(l.trip.from)}${l.trip.to && l.trip.to !== l.trip.from ? ' → ' + dayLabel(l.trip.to) : ''}${l.trip.place ? ' · ' + l.trip.place : ''}</span>` : nothing}
           ${l.trip?.weather ? html`<span class="small muted row"><hxk-icon name=${l.trip.weather.icon || 'cloud'} size=${14} tone=${l.trip.weather.rain ? 'info' : 'warning'}></hxk-icon> ${l.trip.weather.min_c != null ? `${l.trip.weather.min_c}–` : ''}${l.trip.weather.temp_c}°${l.trip.weather.rain ? tr(', rain') : ''}</span>` : nothing}
@@ -127,7 +127,7 @@ export class WardrobeCollection extends WardrobeElement {
         ${c.pieces.length ? html`<div class="list">${c.pieces.map((p: any) => html`<div class="li ${checked.has(p.id) ? 'done' : ''}">
             <input type="checkbox" .checked=${checked.has(p.id)} @change=${() => this.check(p.id)}>
             <span class="thumb">${img(this.host, p.photo, p.name)}</span>
-            <span class="grow truncate" @click=${() => this.host.navigate('capi/' + p.id)}>${p.name}</span>
+            <span class="grow truncate" @click=${() => this.host.navigate('items/' + p.id)}>${p.name}</span>
             <hxk-button size="sm" variant="ghost" icon="x" title=${tr("Remove")} @click=${() => this.togglePiece(p.id)}></hxk-button></div>`)}</div>`
           : this.adding ? nothing : html`<div class="empty">${tr("No items.")}</div>`}</div>
       <div class="card col"><h3>${tr("More to bring")}</h3>

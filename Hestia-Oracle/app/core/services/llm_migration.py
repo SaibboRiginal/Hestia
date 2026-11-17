@@ -22,9 +22,9 @@ _OLD = {
     "athena_strategist": ("", "", "", "", ""),
     "athena_auditor": ("", "", "", "", ""),
 }
-_NEW_ID = {"generic": "oracle.generale", "reasoning": "oracle.ragionamento", "code": "oracle.codice",
-           "embedding": "oracle.embedding", "scout_extraction": "scout.annunci",
-           "athena_strategist": "athena.strategia", "athena_auditor": "athena.revisione"}
+_NEW_ID = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.codice",
+           "embedding": "oracle.embedding", "scout_extraction": "scout.listings",
+           "athena_strategist": "athena.strategy", "athena_auditor": "athena.review"}
 # Old provider TYPES → default named providers.
 _PROVIDER_NAME = {"ollama": "ollama", "gemini": "gemini", "anthropic": "claude-api", "claude_cli": "claude",
                   "openai": "llamacpp"}

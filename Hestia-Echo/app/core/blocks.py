@@ -51,20 +51,20 @@ def _step(provider: str, model: str = "", voice: str = "", **options) -> dict:
 DEFAULT_CHAINS: dict[str, dict] = {
     "ascolto": {"label": "Listening", "direction": "ascolto", "steps": [
         _step("whisper-locale", "small"), _step("groq", "whisper-large-v3-turbo")]},
-    "ascolto-preciso": {"label": "Precise listening", "direction": "ascolto", "steps": [
+    "listening-precise": {"label": "Precise listening", "direction": "ascolto", "steps": [
         _step("groq", "whisper-large-v3"), _step("whisper-locale", "medium")]},
     "voce": {"label": "Voice", "direction": "voce", "steps": [
         _step("kokoro", voice="if_sara"), _step("piper", voice="it_IT-paola-medium")]},
-    "voce-naturale": {"label": "Natural voice", "direction": "voce", "steps": [
+    "voice-natural": {"label": "Natural voice", "direction": "voce", "steps": [
         _step("kokoro", voice="if_sara"), _step("google", voice="it-IT-Neural2-A"),
         _step("piper", voice="it_IT-paola-medium")]},
 }
 
 # Echo's own uses (the plugin's test box); callers declare theirs.
 ECHO_USECASES = {
-    "echo.prova.ascolto": {"label": "Test · listening", "direction": "ascolto", "chain": "ascolto",
+    "echo.test.listening": {"label": "Test · listening", "direction": "ascolto", "chain": "ascolto",
                            "help": "The microphone of the Voice page."},
-    "echo.prova.voce": {"label": "Test · voice", "direction": "voce", "chain": "voce",
+    "echo.test.voice": {"label": "Test · voice", "direction": "voce", "chain": "voce",
                         "help": "The «speak» button of the Voice page."},
 }
 

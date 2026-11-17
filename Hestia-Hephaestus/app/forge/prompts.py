@@ -17,7 +17,7 @@ Repo map:
 - Hestia-Shared/hestia_common = shared libs.
 - docs/ARCHITECTURE.md = global rules. Hestia-Swagger/swagger.yml = API contract.
 
-Read first: CLAUDE.md (root) + docs/REGOLE-DI-MARKO.md (owner's product rules) + docs/AI-GUIDE.md +
+Read first: CLAUDE.md (root) + docs/MARKO-RULES.md (owner's product rules) + docs/AI-GUIDE.md +
 hestia-<name>.md of touched services.
 
 WORK PROTOCOL (mandatory, every task):

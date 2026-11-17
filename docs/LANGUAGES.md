@@ -1,7 +1,7 @@
 # Languages — the standard for every module
 
 Read this before you write any text, in Python, in the WebUI or in a plugin. Dossier with the history:
-`docs/work/2026-11-14-backend-inglese/`. Owner's decision: `docs/REGOLE-DI-MARKO.md` R9.
+`docs/work/2026-11-14-backend-inglese/`. Owner's decision: `docs/MARKO-RULES.md` R9.
 
 ## The rule in one line
 
@@ -80,12 +80,12 @@ When one English text needs two Italian texts, prefix a context tag: `tr("pl::Tr
 
 ## Italian that stays in the code (on purpose)
 
-- **Stored values and ids**: route/page ids, query keys, states (`in_corso`, `fatto`), track ids
+- **Stored values and ids**: route/page ids, query keys, states (`running`, `fatto`), track ids
   (`vita`/`sistema`/`parla`), setting keys, Plutus category ids, mood values (`giù`), use-case ids. Changing them
   would break the owner's data; only their labels are translated.
 - **Parsers of the owner's words**: keyword detectors, regexes on bank or PayPal mails, Italian date words in
   Telegram inputs. They read what people write; keep both languages there.
-- **Tool names** like `cibo_*`, `casa_*`, `scadenze_*`: renaming them is a separate decision of the owner.
+- **Tool names** like `food_*`, `home_*`, `deadlines_*`: renaming them is a separate decision of the owner.
 
 ## Check before pushing
 

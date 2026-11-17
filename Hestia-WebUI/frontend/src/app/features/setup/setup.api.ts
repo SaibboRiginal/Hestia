@@ -48,7 +48,7 @@ export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep
   programs?: { name: string; label: string; site: string; note: string }[]; }
 export interface VoiceCatalog { ascolto: VoiceDirection; voce: VoiceDirection; }
 export interface Download { module?: string; id: string; what: string; source?: string;
-  state: 'in_coda' | 'in_corso' | 'in_pausa' | 'fatto' | 'errore'; size: number; done: number;
+  state: 'queued' | 'running' | 'paused' | 'fatto' | 'errore'; size: number; done: number;
   speed?: number; eta_s?: number | null; error?: string; }
 export interface Outcome { ok: boolean; detail?: string; }
 /** «Prova»: the model tried ('' = pick another) and the chat models the service really has. */

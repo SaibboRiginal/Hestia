@@ -61,7 +61,7 @@ def test_signals_keys_on_fake_data(trained):
     signals, _ = trained.signals()
     by_key = {s["key"]: s for s in signals}
     assert f"stall:{BENCH}" in by_key and by_key[f"stall:{BENCH}"]["severity"] == "attenzione"
-    assert by_key[f"stall:{BENCH}"]["kind"] == "trend" and by_key[f"stall:{BENCH}"]["page"] == f"esercizi/{BENCH}"
+    assert by_key[f"stall:{BENCH}"]["kind"] == "trend" and by_key[f"stall:{BENCH}"]["page"] == f"exercises/{BENCH}"
     assert by_key["deload"]["severity"] == "attenzione"
     assert by_key["missed_streak"]["kind"] == "streak" and by_key["missed_streak"]["severity"] == "alta"   # 6 days
     pr = by_key[f"pr:{SQUAT}"]

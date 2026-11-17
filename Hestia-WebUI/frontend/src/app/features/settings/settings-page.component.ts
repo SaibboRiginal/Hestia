@@ -130,7 +130,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
 
   readonly personal = PERSONAL_SECTIONS;
   /** 'p:<section>' (personal) · 'system' (overview) · module id */
-  readonly view = signal('p:aspetto');
+  readonly view = signal('p:look');
   readonly searching = computed(() => !!this.store.query().trim());
   readonly pHits = computed(() => {
     const hits = personalHits(this.store.query());
@@ -171,7 +171,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     const personal = item?.scope === 'user';
     const module = item?.module ?? key.split('.')[0];
     if (item) this.store.reveal(item);
-    const view = personal ? 'p:assistente' : this.store.modules().some(m => m.module === module) ? module : 'system';
+    const view = personal ? 'p:assistant' : this.store.modules().some(m => m.module === module) ? module : 'system';
     this.open(view, false);
     const queryParams = personal ? { key: null, section: 'assistente', tab: null, module: null }
       : { key: null, tab: 'system', module: view === 'system' ? null : view, section: null };

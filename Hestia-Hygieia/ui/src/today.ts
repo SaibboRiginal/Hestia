@@ -162,7 +162,7 @@ export class HygieiaToday extends HestiaElement {
       ${editable ? html`<input type="checkbox" .checked=${checked} @change=${() => this.toggleStep(r, s.step_id)} aria-label=${s.label}>`
         : html`<span class="num">${s.done ? icon('check', 12, 'success') : i + 1}</span>`}
       <div class="grow">
-        <div class="truncate">${s.product ? html`<span class="click" @click=${() => this.host.navigate('prodotti/' + s.product.id)}>${s.label}</span>` : s.label}
+        <div class="truncate">${s.product ? html`<span class="click" @click=${() => this.host.navigate('products/' + s.product.id)}>${s.label}</span>` : s.label}
           ${s.amount ? html`<span class="small muted"> · ${s.amount}</span>` : nothing}${s.optional ? html`<span class="small muted">${tr(' · optional')}</span>` : nothing}</div>
         ${why || s.hint ? html`<div class="why ${s.state === 'blocked' ? 'blocked' : ''}">${why}${why && s.hint ? ' · ' : ''}${s.hint}</div>` : nothing}
         ${s.note ? html`<div class="why">${s.note}</div>` : nothing}
@@ -240,7 +240,7 @@ export class HygieiaToday extends HestiaElement {
     return html`<div class="page">
       ${head}
       ${this.alerts.length && this.date === today() ? html`<div class="alerts">${this.alerts.slice(0, 6).map(a => html`
-        <div class="alert ${a.level}" @click=${() => this.host.navigate('prodotti/' + a.product_id)}>
+        <div class="alert ${a.level}" @click=${() => this.host.navigate('products/' + a.product_id)}>
           ${alertIcon(a)}<span class="truncate">${a.text}</span></div>`)}</div>` : nothing}
       ${p.routines.length ? html`<div class="counts">
         ${c.done ? html`<span class="pill good">${icon('check', 13)} ${c.done} ${tr("f.pl::done")}</span>` : nothing}

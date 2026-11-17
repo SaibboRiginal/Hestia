@@ -36,7 +36,7 @@ class TestManifest:
         """SPEC §A4: the built-in Sviluppo page becomes this plugin's first page; badge = tasks waiting for you."""
         pages = {p["id"]: p for p in _manifest()["clients"]["webui"]["page"]}
         sv = pages["sviluppo"]
-        assert sv["element"] == "hephaestus-sviluppo" and sv["order"] == 170 and not sv["parent"]
+        assert sv["element"] == "hephaestus-development" and sv["order"] == 170 and not sv["parent"]
         assert sv["order"] < pages["riparazioni"]["order"]
         assert sv["badge"] == {"source": "/api/hephaestus/forge/counts", "field": "review"}
 
@@ -52,7 +52,7 @@ class TestManifest:
 
     def test_bundle_registers_declared_elements(self):
         index = (UI_SRC / "index.ts").read_text(encoding="utf-8")
-        for el in ("hephaestus-repairs", "hephaestus-forge-widget", "hephaestus-sviluppo", "hephaestus-task-panel",
+        for el in ("hephaestus-repairs", "hephaestus-forge-widget", "hephaestus-development", "hephaestus-task-panel",
                    "hephaestus-repo", "hephaestus-transcript", "hephaestus-diff", "hephaestus-md"):
             assert f"'{el}'" in index
 

@@ -31,8 +31,8 @@ class NotFound(LookupError):
 WEEK_START_KEY = "themis.personal.week_start"   # personal settings shared by every module (owner Themis)
 CURRENCY_KEY = "themis.personal.currency"
 DIARY_AREA = "giornata"                  # B9 spoken evening diary: one free entry about the day
-DIARY_TOOL = "selfcare_diario_voce"
-DIARY_VOICE_USE = "hygieia.diario"
+DIARY_TOOL = "selfcare_diary_voice"
+DIARY_VOICE_USE = "hygieia.diary"
 
 
 class Conflict(RuntimeError):

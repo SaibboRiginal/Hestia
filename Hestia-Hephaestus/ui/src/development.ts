@@ -1,5 +1,5 @@
 /**
- * <hephaestus-sviluppo> — "Sviluppo": Forge tasks and the Hestia repository, Codex / Claude Code style:
+ * <hephaestus-development> — "Sviluppo": Forge tasks and the Hestia repository, Codex / Claude Code style:
  * left = tasks, centre = the engine conversation (+ ask a change), right = File · Diff · Dossier · Test · Log · Ramo.
  * Ported from the WebUI built-in /forge page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4); calls
  * /api/hephaestus/forge|repo/* directly, polls instead of streaming. «Copia per AI» (§B5): markdown of the chosen

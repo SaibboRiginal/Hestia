@@ -45,7 +45,7 @@ export class HerculesNextWidget extends Widget {
     const exs = this.L.exercises();
     return html`<div class="w">
       <span class="small muted">${done ? html`<hxk-icon name="check" size=${12} tone="success"></hxk-icon> ${tr("Done today · next")}` : n.reason || tr('Next workout')}</span>
-      <div class="big truncate click" @click=${() => this.host.navigate('schede/' + t.id)}>${t.name}</div>
+      <div class="big truncate click" @click=${() => this.host.navigate('plans/' + t.id)}>${t.name}</div>
       <div class="small muted">${plural((t.items || []).length, 'exercise', 'exercises')}${n.estimated_minutes ? ` · ${minutes(n.estimated_minutes)}` : ''}</div>
       ${this.size === 'l' ? html`<div class="small truncate">${(t.items || []).slice(0, 5).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(' · ')}</div>` : nothing}
       <div class="row"><hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('allenamento', { scheda: t.id })}>${tr("f::Start")}</hxk-button></div>
@@ -95,7 +95,7 @@ export class HerculesPrsWidget extends Widget {
     if (this.prs === null) return html`<hxk-state kind="offline"></hxk-state>`;
     if (!this.prs.length) return html`<div class="w"><span class="small muted">${tr("Recent records")}</span><div class="muted">${tr("No record in the last 30 days.")}</div></div>`;
     return html`<div class="w"><span class="small muted"><hxk-icon name="trophy" size=${12} tone="warning"></hxk-icon> ${tr("Recent records")}</span><div class="list">
-      ${this.prs.slice(0, this.size === 'l' || this.size === 'xl' ? 8 : 4).map(p => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('esercizi/' + p.exercise_id)}>
+      ${this.prs.slice(0, this.size === 'l' || this.size === 'xl' ? 8 : 4).map(p => html`<div class="li" style="padding:6px 2px" @click=${() => this.host.navigate('exercises/' + p.exercise_id)}>
         <div class="grow"><div class="truncate">${p.exercise}</div><div class="small muted">${p.label} · ${dayLabel(p.date, false)}</div></div><b class="tnum">${kg(p.value)}</b></div>`)}</div></div>`;
   }
 }
@@ -119,7 +119,7 @@ export class HerculesExerciseWidget extends Widget {
     if (!d) return html`<div class="w muted">${tr("Exercise «")}${this.ctx.params.exercise}${tr("» not found or offline.")}</div>`;
     const hist = (d.history || []).filter((h: any) => h.best_e1rm);
     const best = d.records?.best_e1rm;
-    return html`<div class="w click" @click=${() => this.host.navigate('esercizi/' + d.exercise.id)}>
+    return html`<div class="w click" @click=${() => this.host.navigate('exercises/' + d.exercise.id)}>
       <div class="between"><span class="truncate"><b>${d.exercise.name}</b></span>${d.stall ? html`<hxk-badge tone="warning">${tr("stalled")}</hxk-badge>` : nothing}</div>
       <div class="row"><span class="big tnum">${best ? kg(best.value) : '–'}</span><span class="small muted">${tr("kg estimated 1RM")}${d.records?.heaviest ? ` · max ${kg(d.records.heaviest.value)}×${d.records.heaviest.reps}` : ''}</span></div>
       ${hist.length > 1 ? html`<hxk-chart type="line" height=${this.size === 'xl' ? 220 : 120} unit="kg" .labels=${hist.map((h: any) => dayLabel(h.date, false))} .series=${[{ name: tr('estimated 1RM'), values: hist.map((h: any) => h.best_e1rm) }]}></hxk-chart>` : nothing}

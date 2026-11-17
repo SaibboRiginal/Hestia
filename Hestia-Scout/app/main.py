@@ -53,7 +53,7 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_scout")
 
 # What Scout asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
-LLM_USECASES = [llm_usecase("scout.annunci", "Scout · reading listings", chain="veloce",
+LLM_USECASES = [llm_usecase("scout.listings", "Scout · reading listings", chain="veloce",
                             help="Extracts the listing data from Scout's emails.")]
 
 TARGET_DOMAIN = "real_estate"

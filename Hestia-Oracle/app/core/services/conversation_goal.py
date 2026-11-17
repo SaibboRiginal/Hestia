@@ -4,7 +4,7 @@ The owner fixes a goal in a chat («obiettivo: sistema le categorie delle spese 
 ``goal_set`` when he asks for a long job). After answering each of his messages the assistant works on the goal for a
 few more rounds of the agent loop, then reports; his messages always come first (a round runs only after his
 message is answered) and he can stop it at any time («ferma l'obiettivo» → ``goal_stop``). The model ends it with
-``goal_done``. Budget: ``oracle.obiettivo.giri`` rounds in all and ``oracle.obiettivo.giri_per_risposta`` per answer.
+``goal_done``. Budget: ``oracle.goal.rounds`` rounds in all and ``oracle.goal.rounds_per_answer`` per answer.
 Kept in Archive (``oracle-store``, kind ``goal``, ref = session) so a restart does not lose it. Only the owner's turns
 (origin ``utente``) run goal rounds.
 """
@@ -19,8 +19,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_oracle.conversation_goal")
 
-TOTAL_ROUNDS = "oracle.obiettivo.giri"
-ROUNDS_PER_ANSWER = "oracle.obiettivo.giri_per_risposta"
+TOTAL_ROUNDS = "oracle.goal.rounds"
+ROUNDS_PER_ANSWER = "oracle.goal.rounds_per_answer"
 _STORE = "api/oracle-store/records"
 _PREFIX = re.compile(r"^\s*(obiettivo|goal)\s*:\s*(.+)$", re.IGNORECASE | re.DOTALL)
 _STOP = re.compile(r"\b(ferma|stop|basta|annulla)\b.*\bobiettivo\b|\bobiettivo\b.*\b(fermati|stop|basta)\b",

@@ -7,18 +7,18 @@ import { tr, TrPipe } from '../../core/i18n';
 
 export interface DownloadRow {
   module: string; id: string; what: string; source: string; size: number; done: number;
-  speed: number; eta_s: number | null; state: 'in_coda' | 'in_corso' | 'in_pausa' | 'fatto' | 'errore'; error: string;
+  speed: number; eta_s: number | null; state: 'queued' | 'running' | 'paused' | 'fatto' | 'errore'; error: string;
 }
 
 const STATE: Record<DownloadRow['state'], { label: string; icon: string; tone: string }> = {
-  in_coda: { label: tr('Queued'), icon: 'clock', tone: 'muted' },
-  in_corso: { label: tr('In progress'), icon: 'download', tone: 'info' },
-  in_pausa: { label: tr('Paused'), icon: 'pause', tone: 'warning' },
+  queued: { label: tr('Queued'), icon: 'clock', tone: 'muted' },
+  running: { label: tr('In progress'), icon: 'download', tone: 'info' },
+  paused: { label: tr('Paused'), icon: 'pause', tone: 'warning' },
   fatto: { label: tr('Done'), icon: 'check-circle', tone: 'success' },
   errore: { label: tr('alt::Failed'), icon: 'alert', tone: 'danger' },
 };
 const SOURCE: Record<string, string> = { ollama: tr('Model'), whisper: tr('Listening'), http: tr('File'), docker: tr('Program') };
-const ORDER: DownloadRow['state'][] = ['in_corso', 'in_coda', 'in_pausa', 'errore', 'fatto'];
+const ORDER: DownloadRow['state'][] = ['running', 'queued', 'paused', 'errore', 'fatto'];
 
 /** Bytes in Italian: «3,1 GB», «420 MB». */
 export function bytes(n: number): string {
@@ -58,15 +58,15 @@ export function bytes(n: number): string {
               <div class="main">
                 <div class="top"><b>{{ d.what }}</b><span class="tag">{{ source(d) }}</span></div>
                 <div class="sub">{{ detail(d) }}</div>
-                @if ((d.state === 'in_corso' || d.state === 'in_pausa') && d.size) {
-                  <span class="bar" [class.paused]="d.state === 'in_pausa'"><span [style.width.%]="pct(d)"></span></span>
+                @if ((d.state === 'running' || d.state === 'paused') && d.size) {
+                  <span class="bar" [class.paused]="d.state === 'paused'"><span [style.width.%]="pct(d)"></span></span>
                 }
               </div>
               <div class="acts">
                 @switch (d.state) {
-                  @case ('in_corso') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
-                  @case ('in_coda') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
-                  @case ('in_pausa') { <button hx-btn size="sm" icon="play" (click)="op(d, 'resume')">{{ "Resume" | tr }}</button> }
+                  @case ('running') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
+                  @case ('queued') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
+                  @case ('paused') { <button hx-btn size="sm" icon="play" (click)="op(d, 'resume')">{{ "Resume" | tr }}</button> }
                   @case ('errore') { <button hx-btn size="sm" icon="refresh" (click)="op(d, 'retry')">{{ "Try again" | tr }}</button> }
                   @case ('fatto') { <button hx-btn size="sm" variant="ghost" icon="trash" (click)="remove(d)">{{ "Delete" | tr }}</button> }
                 }
@@ -119,7 +119,7 @@ export class DownloadsPageComponent {
     let tick = 0;
     const timer = setInterval(() => {
       tick++;
-      const moving = (this.rows() || []).some(d => d.state === 'in_corso' || d.state === 'in_coda');
+      const moving = (this.rows() || []).some(d => d.state === 'running' || d.state === 'queued');
       if (moving || tick % 5 === 0) void this.load();
     }, 2000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
@@ -136,7 +136,7 @@ export class DownloadsPageComponent {
     }
   }
 
-  state(d: DownloadRow) { return STATE[d.state] || STATE.in_coda; }
+  state(d: DownloadRow) { return STATE[d.state] || STATE.queued; }
   source(d: DownloadRow) { return SOURCE[d.source] || d.source; }
   pct(d: DownloadRow) { return d.size ? Math.min(100, (100 * d.done) / d.size) : 0; }
 
@@ -144,9 +144,9 @@ export class DownloadsPageComponent {
     if (d.state === 'errore') return d.error || tr('Failed.');
     if (d.state === 'fatto') return d.size ? bytes(d.size) : 'Pronto.';
     const parts = [d.size ? `${bytes(d.done)} di ${bytes(d.size)}` : this.state(d).label];
-    if (d.state === 'in_corso' && d.speed) parts.push(`${bytes(d.speed)}/s`);
-    if (d.state === 'in_corso' && d.eta_s) parts.push(d.eta_s < 60 ? tr('less than a minute') : tr("{0} min left", Math.round(d.eta_s / 60)));
-    if (d.state === 'in_pausa') parts.push(tr('paused'));
+    if (d.state === 'running' && d.speed) parts.push(`${bytes(d.speed)}/s`);
+    if (d.state === 'running' && d.eta_s) parts.push(d.eta_s < 60 ? tr('less than a minute') : tr("{0} min left", Math.round(d.eta_s / 60)));
+    if (d.state === 'paused') parts.push(tr('paused'));
     return parts.join(' · ');
   }
 

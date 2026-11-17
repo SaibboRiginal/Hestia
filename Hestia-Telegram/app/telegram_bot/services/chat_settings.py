@@ -5,7 +5,7 @@ edited in place.
 see ``personal_settings.py``); ``thinking_display`` and ``notice_mode`` are Telegram presentation; voice answers are
 ``voice_service``. Add an option: append a Setting, the panel shows it.
 
-Callback data ``set:menu`` · ``set:param:<key>`` · ``set:v:<key>:<value>`` · ``set:reset`` · ``set:voce``.
+Callback data ``set:menu`` · ``set:param:<key>`` · ``set:v:<key>:<value>`` · ``set:reset`` · ``set:voice``.
 """
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def panel(chat_id, message_id=None) -> None:
     lines.append(tr("Personal instructions: ") + (f"<i>{ui.esc(custom[:120])}{'…' if len(custom) > 120 else ''}</i>"
                                             if custom else tr("<i>none</i>")))
     buttons = [ui.button(s.label, f"set:param:{s.key}") for s in SETTINGS]
-    buttons += [ui.button(tr("Voice replies"), "set:voce"), ui.button(tr("Personal instructions"), "set:param:custom_prompt")]
+    buttons += [ui.button(tr("Voice replies"), "set:voice"), ui.button(tr("Personal instructions"), "set:param:custom_prompt")]
     rows = ui.grid(buttons)
     rows.append([ui.button(tr("f::Restore"), "set:reset"), ui.button(tr("‹ Settings"), "n:imp")])
     nav.place(chat_id, ui.card(tr("Chat"), lines, crumbs=[tr("Settings")]), ui.keyboard(rows), message_id)

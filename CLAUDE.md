@@ -6,7 +6,7 @@ engine (Claude Code inside Oracle, or a local/cloud model) in a git worktree →
 merge → container restart → health check → auto-rollback on failure.
 
 Detailed knowledge (architecture, every module, gotchas, history): **`docs/AI-GUIDE.md`**.
-Marko's product rules (dated decisions + new-feature checklist): **`docs/REGOLE-DI-MARKO.md`**.
+Marko's product rules (dated decisions + new-feature checklist): **`docs/MARKO-RULES.md`**.
 UI work: **`Hestia-WebUI/frontend/DESIGN-SYSTEM.md`**. Texts and languages: **`docs/LANGUAGES.md`**.
 
 ## Work protocol — MANDATORY for every task (human or AI)

@@ -31,7 +31,7 @@ def test_question_and_advice():
 
 def test_a_question_writes_nothing():
     """«mi consigli una pizza?» registered a dinner (bench round 2)."""
-    meal, read = _tool("cibo_pasto"), _tool("cibo_pasti", writes=False)
+    meal, read = _tool("food_meal"), _tool("food_meals", writes=False)
     _turn("stasera voglio mangiare una pizza, mi consigli qualcosa?", meal, read)
     ok, why = meal.handler(text="pizza")
     assert not ok and why.startswith("BLOCKED")
@@ -39,8 +39,8 @@ def test_a_question_writes_nothing():
 
 
 def test_a_write_tool_with_no_values_reads_on_a_question():
-    """cibo_dieta with no params only reads the diet: refused, the pizza advice ended empty (bench round 4)."""
-    diet = _tool("cibo_dieta")
+    """food_diet with no params only reads the diet: refused, the pizza advice ended empty (bench round 4)."""
+    diet = _tool("food_diet")
     _turn("stasera voglio una pizza, che mi consigli?", diet)
     assert diet.handler()[0]
     assert not diet.handler(goal="dimagrire")[0]
@@ -48,7 +48,7 @@ def test_a_write_tool_with_no_values_reads_on_a_question():
 
 def test_refused_call_is_not_a_failure_for_the_user():
     from core.agent_loop import _failed_writes
-    log = [{"tool": "cibo_pasto", "title": "Pasto", "ok": False, "writes": True, "refused": True},
+    log = [{"tool": "food_meal", "title": "Pasto", "ok": False, "writes": True, "refused": True},
            {"tool": "finance_add", "title": "Spesa", "ok": False, "writes": True}]
     assert _failed_writes(log) == ["Spesa"]
 

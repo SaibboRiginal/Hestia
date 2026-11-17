@@ -159,7 +159,7 @@ Docker Desktop, plus one reboot if WSL2 was missing: the install resumes by itse
 
 <img src="docs/assets/icons/step-1.svg" width="26" height="26" align="top" alt="1">&nbsp; **Install**
 
-Windows: download and double-click [`Installa-Hestia.cmd`](https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/Installa-Hestia.cmd), or in PowerShell (not the black Command Prompt)
+Windows: download and double-click [`Install-Hestia.cmd`](https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/Install-Hestia.cmd), or in PowerShell (not the black Command Prompt)
 
 ```powershell
 irm https://raw.githubusercontent.com/SaibboRiginal/Hestia/main/install.ps1 | iex
@@ -273,7 +273,7 @@ developers and readable by humans).
 | Architecture, rules and contracts | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [flow map](architecture-and-flow-map.md) |
 | Each module | `Hestia-<Name>/hestia-<name>.md` (links in *All modules* above) |
 | API | [Hestia-Swagger/swagger.yml](Hestia-Swagger/swagger.yml) |
-| Product rules | [docs/REGOLE-DI-MARKO.md](docs/REGOLE-DI-MARKO.md) |
+| Product rules | [docs/MARKO-RULES.md](docs/MARKO-RULES.md) |
 | Testing | [TESTING.md](TESTING.md) |
 | For AI developers | [CLAUDE.md](CLAUDE.md) → [docs/AI-GUIDE.md](docs/AI-GUIDE.md) |
 | History | [CHANGELOG.md](CHANGELOG.md) |

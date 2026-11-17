@@ -35,7 +35,7 @@ Shared library: `Hestia-Shared` (common logging, startup, and lifecycle utilitie
 ### Setup
 
 One line installs or repairs everything (prerequisites, `.env` with generated secrets, images, health): `install.ps1`
-/ `Installa-Hestia.cmd` on Windows (it must run both as a file and as text through `irm | iex`: ASCII only, no
+/ `Install-Hestia.cmd` on Windows (it must run both as a file and as text through `irm | iex`: ASCII only, no
 `[ValidateSet]` in `param`; CI tries both). Installer messages are in English by default and in Italian when the
 computer is (`T 'en' 'it'` / `$(t "en" "it")`, `--lang` / `-Lang` / `HESTIA_LANG`), and Hestia goes where the installer is launched (a Hestia folder as it is,
 otherwise `Hestia` inside it), `install.sh` on Linux (macOS on the simple path). Releases = tags `vX.Y.Z`:
@@ -131,7 +131,7 @@ Conversational reasoning layer with unified agentic tool calling.
 - Injects timezone-aware current datetime context in each turn.
 - Accepts file attachments (images, PDFs) via `POST /api/chat/document` with multimodal reasoning.
 - **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools) via Hub with a `use_case` `<module>.<task>` they declare in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`) — never provider URLs/keys/model names of their own.
-- **No speech engines in Oracle** (2026-10-20): audio inside documents is transcribed by Echo (use `oracle.documenti`); WhisperX is gone.
+- **No speech engines in Oracle** (2026-10-20): audio inside documents is transcribed by Echo (use `oracle.documents`); WhisperX is gone.
 - **Local model window** (2026-11-12): what the local program already knows is read from it, never asked again in Hestia. The context window of a local model is the one set in Ollama / LM Studio / llama-server (`core/services/local_window.py` reads it; `oracle.provider.ollama.num_ctx` = 0 automatic, a number forces it). Same rule as the model list of the guided setup.
 - **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset, any error moves to the next step) → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `veloce` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
 
@@ -232,7 +232,7 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   else at the end of the range; the run records `flex {from, at, reason}`. **Standard activities:** every rule a
   module declares is listed by `GET /api/agenda/standard` with its state (eliminata, fallita, in pausa, modificata,
   attiva); `POST /api/agenda/standard/{key}/restore` puts the module's default back in one click (WebUI page
-  «Attività standard», tools `agenda_standard`, `agenda_standard_ripristina`).
+  «Attività standard», tools `agenda_standard`, `agenda_standard_restore`).
 - **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
   profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
   `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
@@ -302,9 +302,9 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
 - Exposes five MCP tools: `metis_dataset_build`, `metis_dataset_export`, `metis_dataset_status`, `metis_benchmark_run`, `metis_loRA_train`.
 - In-memory dataset store with configurable deduplication and quality filtering. Exports ChatML, Alpaca, and ShareGPT formats.
 - **Owns the usage log** (wave 6): clients push taps (`POST /api/metis/usage`, Archive `metis-store`); «Adesso»
-  (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
-  at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
-  the same lists; tools `metis_adesso`, `metis_scopri`.
+  (`GET /api/metis/now`: agenda + habits + recents + ideas of use case `metis.now` written by agenda jobs, never
+  at each open) and «Scopri» (`GET /api/metis/discover`: catalog tools never or rarely used). Telegram and WebUI read
+  the same lists; tools `metis_now`, `metis_discover`.
 - **Owns the training dataset** (dossier `docs/work/2026-10-30-dataset-allenamento`): Oracle pushes one trace per
   owner turn (`POST /api/metis/traces`: prompt, tool calls and results, answer); Metis keeps it in Archive
   `dataset-store` with automatic signals; votes join on `interaction_id` = trace_id. Rule: a conversation marked
@@ -401,8 +401,8 @@ calendar with stable keys, owner's edits win), likes, gift ideas the assistant n
 and «senti …» notices (agenda `hera.daily` + Hermes). Rows in Archive `people-store`. Details: `Hestia-Hera/hestia-hera.md`.
 
 ### Hestia-Kairos ⏳
-Deadlines module «Scadenze» (port 19028, `scadenze_*` tools): bills, insurance, car tax, inspection, documents,
-subscriptions with recurrence, lead time and advice (Oracle `kairos.consiglio`), mirrored as agenda events; mails by
+Deadlines module «Scadenze» (port 19028, `deadlines_*` tools): bills, insurance, car tax, inspection, documents,
+subscriptions with recurrence, lead time and advice (Oracle `kairos.advice`), mirrored as agenda events; mails by
 push (Iris `kairos:mail`) only **propose** a deadline (Hermes card); «Fra N giorni» pauses the notice and then reminds
 again. Rows in Archive `deadlines-store`. Details:
 `Hestia-Kairos/hestia-kairos.md`.
@@ -417,27 +417,27 @@ insights are deterministic; reflection signals and weekly metrics feed Athena, w
 (Psyche reads no other module's data). Rows in Archive `mood-store`. Details: `Hestia-Psyche/hestia-psyche.md`.
 
 ### Hestia-Demeter 🥗
-Nutrition module «Alimentazione» (port 19026, `cibo_*` tools): diet, meals (kcal estimate through Oracle
-`demeter.stima`, owner's numbers win), supplements and intakes; a coach of the weekly plan (supplements as slots,
+Nutrition module «Alimentazione» (port 19026, `food_*` tools): diet, meals (kcal estimate through Oracle
+`demeter.estimate`, owner's numbers win), supplements and intakes; a coach of the weekly plan (supplements as slots,
 next to the workout when asked). Rows in Archive `food-store`. Details: `Hestia-Demeter/hestia-demeter.md`.
 
 ### Hestia-Lares 💡
-House module «Casa» (port 19024, `casa_*` tools): the only caller of Home Assistant (`LARES_HA_URL`/`LARES_HA_TOKEN`),
+House module «Casa» (port 19024, `home_*` tools): the only caller of Home Assistant (`LARES_HA_URL`/`LARES_HA_TOKEN`),
 websocket push of state changes into a mirror, commands, scenes, quick actions (Archive `home-store`), the owner's
 person entity → presence signal `home.present`. Details: `Hestia-Lares/hestia-lares.md`.
 
 ### Hestia-Calliope 📄
-Documents module «Documenti» (port 19027, API `/api/office`, `documento_*` tools): HTML draft → PDF / Word / Excel
+Documents module «Documenti» (port 19027, API `/api/office`, `document_*` tools): HTML draft → PDF / Word / Excel
 with three themes, reopened and checked before delivery; files in Archive blobs, records in `office-store`.
 Details: `Hestia-Calliope/hestia-calliope.md`.
 
 ### Hestia-Apollo 🎨
-Images module «Immagini» (port 19022, `immagine_*` tools): the only caller of image generators (remote ComfyUI,
+Images module «Immagini» (port 19022, `image_*` tools): the only caller of image generators (remote ComfyUI,
 `APOLLO_COMFYUI_URL`); flows per purpose uploaded by the owner, one job worker woken by new jobs, ComfyUI websocket,
 images in Archive blobs, `callback` push to the requester or a Hermes notice. Details: `Hestia-Apollo/hestia-apollo.md`.
 
 ### Hestia-Aphrodite 🌸
-Appearance module «Aspetto» (port 19023, `aspetto_*` tools): decides the look of each client (today's special
+Appearance module «Aspetto» (port 19023, `look_*` tools): decides the look of each client (today's special
 moment, dated profiles, holidays, season), pets, per-client choice (`auto` off = standard); pictures asked to Apollo;
 clients read `GET /api/appearance/now`. Rows in Archive `appearance-store`. Details: `Hestia-Aphrodite/hestia-aphrodite.md`.
 
@@ -508,7 +508,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    `routine` (a Chronos rule) may write but not delete; `autonomo` (a module on its own) may only propose, notify
    and ask. No header from a non-user client = `autonomo`. Write tools return `undo`
    (`hestia_common.mcp_helpers.undo`) when they can be undone; text sent outside the house (cloud model analysis,
-   Forge prompts) passes through `hestia_common.redact`. Dated rules from Marko: `docs/REGOLE-DI-MARKO.md`.
+   Forge prompts) passes through `hestia_common.redact`. Dated rules from Marko: `docs/MARKO-RULES.md`.
 13. **Routines are agenda rules, secrets never rest (same dossier, W2):** a routine is a Chronos agenda rule with a
    written instruction (by time = job, by event = Iris mail push or a module signal), run as a `routine` turn; no
    module adds its own scheduler for it. A value the owner types in a Hermes secret form goes straight to the module

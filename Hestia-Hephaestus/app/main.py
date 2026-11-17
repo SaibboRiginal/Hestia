@@ -167,59 +167,59 @@ try:
     _hephaestus_mcp_tools = [
         # ── Macchine: central and satellites (docs/work/2026-10-30-setup-un-click §4.0) ──
         MCPTool(
-            name="macchine_elenco", description=("The assistant's machines: this one and the satellites, on or off, with the modules running on "
+            name="machines_list", description=("The assistant's machines: this one and the satellites, on or off, with the modules running on "
                                                  "them."),
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok"}, title="Machines", method="GET", path="/api/setup/machines",
             clients=["telegram", "ui"], response_mode="oracle_natural", telegram_visible=True,
             telegram_group="sistema", telegram={"section": "Machines", "label": "List"}),
         MCPTool(
-            name="macchine_codice", description="A link code (10 minutes) to add a satellite: it is typed into the other machine's installation.",
+            name="machines_code", description="A link code (10 minutes) to add a satellite: it is typed into the other machine's installation.",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok"}, title="Link a machine", method="POST",
             path="/api/setup/machines/pair", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "alt::Link"}),
         MCPTool(
-            name="macchine_scollega", description="Unlink a satellite (by id from the list): its modules leave.",
+            name="machines_unlink", description="Unlink a satellite (by id from the list): its modules leave.",
             parameters={"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]},
             handler=lambda **kw: {"status": "ok"}, title="Unlink a machine", method="POST",
             path="/api/setup/machines/revoke", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "Unlink"}),
         MCPTool(
-            name="macchine_cervello", description=(("Run the local models on a satellite's graphics card (address from the list); empty address = "
+            name="machines_brain", description=(("Run the local models on a satellite's graphics card (address from the list); empty address = "
                                                     "back on this machine.")),
             parameters={"type": "object", "properties": {"address": {"type": "string"}, "name": {"type": "string"}}},
             handler=lambda **kw: {"status": "ok"}, title="Models on another machine", method="POST",
             path="/api/setup/machines/brain", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "Brain"}),
         MCPTool(
-            name="fuori_casa_stato", description="Can the assistant be reached from outside home? At which address.",
+            name="away_status", description="Can the assistant be reached from outside home? At which address.",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok"}, title="From outside home", method="GET", path="/api/setup/tunnel",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "From outside home"}),
         MCPTool(
-            name="fuori_casa_attiva", description=(("Turns on (on=true) or off (on=false) the address to use the assistant away from home; only when "
+            name="away_enable", description=(("Turns on (on=true) or off (on=false) the address to use the assistant away from home; only when "
                                                     "the user asks explicitly.")),
             parameters={"type": "object", "properties": {"on": {"type": "boolean"}}, "required": ["on"]},
             handler=lambda **kw: {"status": "ok"}, title="Turn on or off from outside home", method="POST",
             path="/api/setup/tunnel", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Machines", "label": "Away from home on/off"}),
         MCPTool(
-            name="aggiornamenti_stato", description="Installed version, whether a new one exists and what it brings.",
+            name="updates_status", description="Installed version, whether a new one exists and what it brings.",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok"}, title="Updates", method="POST", path="/api/setup/update/check",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Updates", "primary": True}),
         MCPTool(
-            name="aggiornamenti_installa", description=(("Install the new version (rolls back by itself if something does not answer); only when the user "
+            name="updates_install", description=(("Install the new version (rolls back by itself if something does not answer); only when the user "
                                                          "asks explicitly.")),
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok"}, title="Install the update", method="POST",
             path="/api/setup/update/apply", clients=["telegram", "ui"], response_mode="oracle_natural",
             telegram_visible=True, telegram_group="sistema", telegram={"section": "Updates", "label": "Install"}),
         MCPTool(
-            name="aggiornamenti_indietro", description="Go back to the version before the last update.",
+            name="updates_rollback", description="Go back to the version before the last update.",
             parameters={"type": "object", "properties": {}},
             handler=lambda **kw: {"status": "ok"}, title="Back to the previous version", method="POST",
             path="/api/setup/update/back", clients=["telegram", "ui"], response_mode="oracle_natural",

@@ -140,7 +140,7 @@ class Exporter:
                 z.writestr(fname, "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
             z.writestr("card.json", json.dumps(card, ensure_ascii=False, indent=2))
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
-        name = f"hestia-dataset-{stamp}-{'oscurato' if masked else 'in-chiaro'}.zip"
+        name = f"hestia-dataset-{stamp}-{'oscurato' if masked else 'plain'}.zip"
         blob = self.hub.ok("archive", "POST", "api/blobs", body={
             "owner_module": "metis", "content_type": "application/zip",
             "data_base64": base64.b64encode(buf.getvalue()).decode(), "meta": {"name": name}}, timeout=60) or {}
