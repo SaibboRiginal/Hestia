@@ -66,7 +66,7 @@ Adding a new data source = implementing this interface and registering the conne
 | `DELETE` | `/api/gateway/auth/initiate/{provider}` | Cancel pending OAuth flow |
 | `GET` | `/api/gateway/calendar/events` | List events for a provider/calendar |
 | `POST` | `/api/gateway/calendar/events` | Create event on target providers; optional `calendar_id`, `nag` (false = history events that must not remind) |
-| `POST` | `/api/gateway/calendar/calendars` | Ensure a secondary calendar by name `{name, provider}` → `{status, calendar_id}` (idempotent, cached; e.g. «Allenamenti» owned by Hercules) |
+| `POST` | `/api/gateway/calendar/calendars` | Ensure a secondary calendar by name `{name, provider}` → `{status, calendar_id}` (idempotent, cached; e.g. «Workouts» owned by Hercules) |
 | `GET` | `/api/gateway/weather/now` | Current weather at `place` (saved place name/id, city, or empty = Casa) |
 | `GET` | `/api/gateway/weather/forecast` | Daily forecast `date_from`–`date_to` (max 16 days), `hourly=true` adds the hours; `status` ok · needs_place · place_not_found · out_of_range · error |
 | `POST` | `/api/gateway/weather/at` | Many `{id, place, at}` pairs in one call → weather at that place and hour (agenda chips) |
@@ -89,7 +89,7 @@ Adding a new data source = implementing this interface and registering the conne
 | `PATCH` | `/api/gateway/drive/files/{id}` | `{app_properties}` |
 | `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
 | `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, env_credentials, waiting_code, last_sync, last_error}` |
-| `POST` | `/api/gateway/garmin/connect` | «Collega Garmin»: Hermes secret form (email + password) to the owner |
+| `POST` | `/api/gateway/garmin/connect` | «Link Garmin»: Hermes secret form (email + password) to the owner |
 | `GET` | `/api/gateway/connections` | Every linkable service, same shape `{id, label, icon, what, state, detail, step, actions}` (`?place=setup`: only the ones offered in the setup) |
 | `POST` | `/api/gateway/connections/{id}` | The current step's values `{values}` → `{item, open_url?, message?}`; refused → 422 with the reason in words |
 | `POST` | `/api/gateway/connections/{id}/{action}` | A button of the card (`sync`, `again`, `cancel`, `client`) → `{item, …}` |
@@ -147,7 +147,7 @@ Adding a new data source = implementing this interface and registering the conne
 
 Every account or device Hecate links is a **connector** (`app/connections.py`) with the same shape, and the WebUI
 draws all of them with one element, `<hecate-connections>` (`ui/src/connections.ts`): the Dispositivi page shows the
-whole list, the guided setup screen «I tuoi servizi» the ones with `in_setup` (`?place=setup`, the phone is not
+whole list, the guided setup screen «Your services» the ones with `in_setup` (`?place=setup`, the phone is not
 offered there). A row = service, one line on what it gives, state (collegato / in attesa / non collegato); opening
 it shows the current **step** at once, the same way for every service: fields + one button (`kind: form`, optional
 `guide` and `link`), or a page opened in another tab that the card polls every 5 s with an optional field to paste
@@ -156,8 +156,8 @@ appears past 6 services. A new service = one more `Connector` registered in `mai
 
 | Connector | Steps |
 |---|---|
-| `google` | OAuth client of Google Cloud (id + secret or the JSON, short guide + link) → «Collega Google» opens Google's page (`open_url`) → waits (`poll`) or the pasted address/code → connected; actions «Collega di nuovo», «Cambia accesso Google Cloud» |
-| `garmin` | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Leggi adesso», «Scollega» |
+| `google` | OAuth client of Google Cloud (id + secret or the JSON, short guide + link) → «Link Google» opens Google's page (`open_url`) → waits (`poll`) or the pasted address/code → connected; actions «Link again», «Change Google Cloud access» |
+| `garmin` | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Read now», «Unlink» |
 | `phone` | three steps to follow on the phone (Tasker/MacroDroid); connected once it has sent a signal (Dispositivi only) |
 
 The old endpoints (`auth/google*`, `auth/initiate|poll|complete/google`, `garmin/*`) stay for Telegram, the
@@ -244,7 +244,7 @@ they are not env vars. All apply **live** (read at use time).
 | `hecate.mail.watch_interval` | int (s) | `900` | Default recurrence of agenda job `hecate.mail_watch` (min 60) |
 | `hecate.mail.safety_interval` | int (s, advanced) | `21600` | Recurrence of `hecate.mail_watch` when Gmail Pub/Sub push is configured (safety net) |
 | `hecate.weather.cache_minutes` | int (min, advanced) | `30` | Forecast cache per place; a stale copy answers when Open-Meteo is down |
-| `hecate.phone.home_wifi` | list | `[]` | Home Wi-Fi names: the phone on one of them = «a casa» (empty = the phone sends `home`) |
+| `hecate.phone.home_wifi` | list | `[]` | Home Wi-Fi names: the phone on one of them = «at home» (empty = the phone sends `home`) |
 | `hecate.phone.app` | list | `[]` | Apps whose phone notifications are passed on (feed `phone.notification`); empty = every app the phone sends |
 | `hecate.log.level` | enum | boot `LOG_LEVEL` | Log verbosity |
 
@@ -322,7 +322,7 @@ Open-Meteo (free, no key): forecast (current, daily, hourly, 16 days, `timezone=
 an address resolves through its city; saved lat/lon skip geocoding). `WeatherService` caches per rounded lat/lon and
 answers a stale copy on failure (`[🔄] event=weather_stale`). WMO codes → Italian condition + icon name (sun,
 cloud-sun, cloud, fog, drizzle, rain, snow, storm). Tools `weather_now`, `weather_forecast` (tool domain `weather`,
-owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoint`) gives the piece «Meteo»
+owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoint`) gives the piece «Weather»
 with one line «Domani a Casa: 10–18°, pioggia 15–17» (warning tone when rainy; no Casa → empty piece). Modules
 read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
 
@@ -334,7 +334,7 @@ Hub. Kinds: `wearable.daily` (Hercules: activities + morning check-in; Hygieia: 
 (Plutus: bank app notifications → transactions to review), `phone.state`. The first push after a restart always
 reads the Hub registry (an empty cache is never taken as fresh, regression test in `tests/test_devices.py`).
 
-- **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» in the Dispositivi page opens the form right in the
+- **Garmin** (B10, `garminconnect`, unofficial): «Link Garmin» in the Dispositivi page opens the form right in the
   card (email, password, then the two-step code there too: `POST /api/gateway/garmin/login {direct: true, values}`),
   so there is no notification to chase; from Telegram or the assistant (tool `garmin_link`) a Hermes secret form
   is sent instead. The password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
@@ -345,14 +345,14 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   too many attempts, Garmin not answering) and logs `[🔄] event=garmin_login_failed error=<type>`.
 - **Phone** (Cindy 32): Tasker / MacroDroid POST `https://<tunnel>/api/gateway/phone/push` with header
   `X-Hestia-Phone-Token: <HECATE_PHONE_TOKEN>`. On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
-  "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Fuori casa», no
+  "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Outside home», no
   effect; it is on when `phone.home` **or** the house signal `home.present` from Lares is explicitly false — a source
   that never sent anything does not count, fixed in W5) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
   "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.phone.app`.
-- Tools (Telegram + WebUI, section «Dispositivi»): `garmin_status`, `garmin_link`, `garmin_sync`,
+- Tools (Telegram + WebUI, section «Devices»): `garmin_status`, `garmin_link`, `garmin_sync`,
   `garmin_day`, `garmin_unlink`, `phone_status`. Tests: `tests/test_devices.py`.
 - WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `devices` →
-  `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (form in the card, code included), «Leggi adesso», «Scollega»,
+  `<hecate-devices>`, order 105): Garmin state, «Link Garmin» (form in the card, code included), «Read now», «Unlink»,
   last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built
   by the Dockerfile Node stage into `/ui/dist/webui/hecate.js` (`HECATE_UI_DIST`, outside `/code`); `ui_manifest` /
   `ui_version` in the Hub registration.
@@ -438,13 +438,13 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Account e dispositivi»; agenda job titles «Controlla le email nuove» and «Rinnova l'avviso di Gmail» (no module name).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Accounts and devices»; agenda job titles «Check new emails» and «Renew the Gmail watch» (no module name).
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

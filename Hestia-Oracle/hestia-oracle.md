@@ -39,7 +39,7 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   `oracle.embedding`. Modules **declare** theirs in the Hub registration (`capabilities.llm_usecases`, helper
   `hestia_common.oracle_usecases`): `scout.listings`, `athena.strategy`, `athena.review`, `argus.analysis`,
   `chronos.agenda`, `wardrobe.photo`, `forge.code`… with a suggested chain; Marko picks chain/mode/thinking in one
-  place. A use case nobody declared runs like `oracle.general` and is listed as «non dichiarato».
+  place. A use case nobody declared runs like `oracle.general` and is listed as «not declared».
 - `ChainAgent` (same interface as `UniversalAgent`) walks the chain at every call, reading settings live (no restart,
   no reconfigure); `AgentFactory.create()` builds one per Oracle use case (`generic`, `reasoning`, `code`,
   `documents`, `embedding` slots). Streams fall back only before the first token.
@@ -77,7 +77,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `subscription`
 - Clients send `"client": "<name>"` in `/api/chat`, `/api/chat/document[/json]` and `/api/format`; Oracle appends
   the resolved sentences to the client instructions (`main._with_personal_settings`, values cached 20 s by
   `SettingsClient.user_values`; Themis down → defaults). Clients no longer send tone lines themselves.
-- `oracle.chat.mode` (auto · quick «Rapida» · thinking «Pensata» · cot «CoT») is the conversation mode, same
+- `oracle.chat.mode` (auto · quick «Quick» · thinking «Thoughtful» · cot «CoT») is the conversation mode, same
   layers. `/api/chat` with an empty `mode` uses it (`oracle_settings.chat_mode`); an explicit mode wins
   (WebUI composer sends it and saves it for the conversation; Telegram Impostazioni → Modalità).
 
@@ -113,7 +113,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `subscription`
   when the conversation list cannot be read, or when it is already there (`[🔄] event=opener_history_*`).
   Transcripts the model reads (history, compaction) mark her turns with her chosen name
   (`prompt_config.assistant_label()`).
-- **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Parla», Telegram voice note with spoken replies on) adds
+- **Spoken turn**: `/api/chat` `spoken: true` (WebUI «Talk», Telegram voice note with spoken replies on) adds
   `voice_turn_contract` (1–2 spoken sentences, no lists/markdown/links/emoji).
 - **Awareness** (`core/services/awareness.py`): owner turns get up to three background lines — mood of today
   (Psyche `/api/mood/today`), the last notifications sent today (Hermes `/api/notifications`), the last things he
@@ -159,9 +159,9 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `subscription`
   stored what the turn said (a person, a routine, an expense) the extractor does not run at all, unless the user
   asked to remember it («ricorda che…», `memory_intent.asks_to_remember`).
 - **Quiet mood capture** (2026-10-30, `docs/work/2026-10-30-diario-umore`, `core/services/mood_capture.py`): moods
-  never become memories, they go to the mood module («Umore»). In the same background step, before the memory
+  never become memories, they go to the mood module («Mood»). In the same background step, before the memory
   extractor, a deterministic gate (`mood_clauses`: first-person present cue + mood lexicon per clause; questions,
-  hypotheticals, negations, «ieri», other people and quoted text excluded; a subject-less clause continues the
+  hypotheticals, negations, «yesterday», other people and quoted text excluded; a subject-less clause continues the
   previous first-person one) decides whether to look at all. Only then one short prompt (`mood_capture_template`,
   same chain as the memory extractor) returns `{mood, energy, stress, labels, causes}` or `NONE`; an offline or
   unparsable model falls back to the lexicon guess, `NONE` wins. The result is POSTed with the user's words as
@@ -207,7 +207,7 @@ In `analyser.py`, before the normal analysis (not for audio/video), Oracle extra
 the first handler whose `mime` fits and whose `match` words appear in the user's message (any) or in the text
 (≥ `min_hits`). On a match it stores the file in Archive blobs (`owner_module=chat`, meta name/session/for) and calls
 `POST route/<module>/<path> {blob_id, filename, mime, message, session_id}`. The module answers `{handled, text, …}`:
-that text is the chat reply (saved in history, so a following «sì» reaches the module's tools with the ids it
+that text is the chat reply (saved in history, so a following «yes» reaches the module's tools with the ids it
 carries), plus signal `attachment_handled`; the file is not copied into the RAG archive. No match, module declines
 or any error → `[🔄]` and the usual document analysis (nothing lost). Handlers list cached 60 s.
 
@@ -246,27 +246,27 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 - **Truth about writes** (real-model bench, 2026-10-30, `docs/work/2026-10-30-ai-vera-gemini`): a write tool whose
   every call failed puts «AZIONI NON RIUSCITE: <title>…» in the next prompt (the model must say it did not work);
   the same write tool with the same title/name/text again in one loop is not run («GIÀ FATTO», next turn = final);
-  a module answering 200 with `{"error": …}` (no `ok`/`saved`) counts as failed (no «Fatto», not in `changes`);
+  a module answering 200 with `{"error": …}` (no `ok`/`saved`) counts as failed (no «Done», not in `changes`);
   a successful write that returns `confirm` (a Themis proposal) is notice `action.needs_approval` and not a
   change. A whole answer that is a Python-style call (`memory.search(query="…")`, Flash-Lite does this) is parsed as
   a tool call. Module tools keep their own JSON Schema (enums, array items) instead of a flattened copy.
   A near-miss tool name (`memory:save`, `memory_save` → `memory.save`) runs the one manifest tool it matches; the very
   same call (tool + arguments) that already failed in the loop is not run again («GIÀ FALLITO»). A write tool whose
   result says `unchanged` / `already_known` (a read call of a read-or-write tool like `food_diet`, a known fact)
-  is no «Fatto» and no change. Analyst rules 10–12: write tools only when the user asks or tells something to
+  is no «Done» and no change. Analyst rules 10–12: write tools only when the user asks or tells something to
   record (a question or advice reads only), never «fatto» without a successful tool, memory in third person and
   «dimentica» = `memory.search` + `memory.forget`; rule 13: a one-off «ricordami» goes to `agenda_assistant_add`
   (works with no calendar linked), a repeated one to `routine_create`. Quick chat has no tools and never claims an action: an answer
   matching «ho registrato / ho salvato / riduco gli…» (`_CLAIMED_ACTION`) is asked once more with prompt
   `quick_chat_no_claim_retry`. An answer that is only `<call:name>{…}</call:name>` is parsed as a tool call.
-  `memory.search` also matches word forms (stems: «lavoro» finds «lavora»).
+  `memory.search` also matches word forms (stems: «work» finds «lavora»).
 - **Turn guards** (`core/services/turn_guards.py`, 2026-10-30): fixed rules in code in front of every write tool of
   a chat turn, whatever the model decides: a question or a request for advice writes nothing (`settings_propose`
   and `forge_develop` excepted); once a module stored what the user said, `memory.save` does not copy it unless the
   user said «ricorda» (answer `already_known`, no notice); delete/cancel tools need the user's own words for it;
-  `forge_develop` needs an explicit build ask or a «sì» to the proposal (else «chiedi con ask_user»); at most 6
+  `forge_develop` needs an explicit build ask or a «yes» to the proposal (else «chiedi con ask_user»); at most 6
   writes per turn. On a question a write tool called with no values passes (a read, e.g. `food_diet`). A refused
-  call returns `BLOCCATO: …` to the model and is `refused` in the tool log: no «Non riuscito» notice, no failed-write
+  call returns `BLOCCATO: …` to the model and is `refused` in the tool log: no «Failed» notice, no failed-write
   note. An empty streamed final answer gets one plain ask, then the turn's text (never an empty reply).
 - **Tools per turn** (small-model bench, 2026-10-30): when the classifier is sure (confidence ≥ the quick-chat
   threshold) the agent gets only the tools of the turn's domains (`_turn_tool_domains`) plus `_ALWAYS_TOOLS`
@@ -283,10 +283,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   blocked), `autonomous` (only proposals, notifications and questions; every other write is refused with a clear
   message). The prompt gets one line saying who started the turn; presence is marked only for `user`; module
   calls of the turn carry the same header (`MCPClient.call(origin=…)` → `hestia.origin`). `final` carries
-  `origin {kind, level, label}` so clients can show «Da una tua routine».
+  `origin {kind, level, label}` so clients can show «From one of your routines».
 - **Changes with undo** (Cindy 13): after `final`, a `changes` frame lists the successful writes of the turn
   (`{tool, title, detail, undo {tool, args, label}}`); `undo` comes from the module's write result
-  (`hestia_common.mcp_helpers.undo("finance_delete", id=…)`). Clients show «Annulla» per change and call the undo
+  (`hestia_common.mcp_helpers.undo("finance_delete", id=…)`). Clients show «Cancel» per change and call the undo
   tool through Hestia-MCP.
 - **Goal of a conversation** (Cindy 23, `core/services/conversation_goal.py`): «obiettivo: …» at the start of a
   message (or tool `goal_set`) fixes a goal; after each answer to the owner the loop works on it for
@@ -384,7 +384,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `GET` | `/api/ui/code` | Claude Code status (`/api/llm/code/status`) + recent runs (`running`, `runs[]`: task folder, state, ok, ms, turns, cost) |
 | `GET` | `/api/ui/models` · `/api/ui/models/list?provider=` | Tab Modelli: providers (no keys), standards, chains with step state, use cases, overrides, modes · model names of a provider |
 | `PUT` | `/api/ui/models/{providers\|chains\|usecases}` | `{value}` → stored through Themis (actor user); 400 invalid, 502 Themis refused |
-| `POST` | `/api/ui/models/quota/reset?provider=&model=` | «Riprova adesso»: forget a quota state |
+| `POST` | `/api/ui/models/quota/reset?provider=&model=` | «Try again now»: forget a quota state |
 | `GET` | `/api/ui/usage` · `/api/ui/usage/calls` | Tab Uso: same as `/api/llm/usage` · `/api/llm/usage/calls` |
 | `GET` | `/api/ui/documents?limit=&domain=&permanent=` | Documenti page: documents from Archive (via Hub) `{documents, count, domains}`; Archive down → 502 |
 | `GET` | `/api/ui/documents/search?query=&limit=` | Semantic search over passages (same as the chat, threshold `oracle.documents.search_threshold`) |
@@ -400,7 +400,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 | `POST` | `/api/memory/note` | `memory_note` `{facts, topic?}` (+ `X-Hestia-Access`) → `{status, saved[], skipped[]}`; 422 empty/too many/too long, 502 Archive |
 | `GET` | `/api/memory/recall?query=` | `memory_recall` → `{count, memories: [{fact, domains, since}]}` |
 | `GET` | `/api/assistant/profile?client=claude` | `assistant_profile` → `{client, revision, text, tokens_estimate, memories, max_tokens}` |
-| `GET` | `/health` | Service health; `models` = `ok` · `limited` (only fallback models answer) · `none` (Argus: «Limitato» / «Non disponibile») |
+| `GET` | `/health` | Service health; `models` = `ok` · `limited` (only fallback models answer) · `none` (Argus: «Limited» / «Unavailable») |
 
 ### Module tools (agent loop)
 
@@ -465,7 +465,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistant*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
-  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404. A new owner turn in the session (origin `user`, not a queued batch) closes its open `ask_user` questions (`engine.close_open_questions`, here and in Archive): an answer spoken in live voice or typed instead of tapping the card is the message itself, so a reload does not draw the card again and a late tap gets 404 (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A routine turn's questions reach the owner as Hermes notifications that ask (Chronos `routines.py`).
+  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Other…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404. A new owner turn in the session (origin `user`, not a queued batch) closes its open `ask_user` questions (`engine.close_open_questions`, here and in Archive): an answer spoken in live voice or typed instead of tapping the card is the message itself, so a reload does not draw the card again and a late tap gets 404 (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A routine turn's questions reach the owner as Hermes notifications that ask (Chronos `routines.py`).
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
@@ -480,7 +480,7 @@ quick routes: the one prompt of `_quick_answer`), the history text, user message
 call (`params`, `ok`, `writes`, `result` = what the model read, `tool_log[].result_text`, never sent to clients),
 the final answer, model, provider, use case, route, timings. Metis owns storage, signals and exclusions; a failed
 push is logged `[🔄] event=turn_trace_dropped` and never touches the chat. Deleting a chat (`DELETE /api/chat/{id}`)
-or setting `training_off` (WebUI history «Non usare per l'allenamento», tool `chat_tag training_off`) asks Metis to
+or setting `training_off` (WebUI history «Don't use for training», tool `chat_tag training_off`) asks Metis to
 drop that conversation's traces.
 
 ## Settings (Themis, all live)
@@ -678,7 +678,7 @@ num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa -
 One section `memories` (`core/services/memory_transfer.py`): active long-term memories (preferences, facts, skills,
 commitments) — never `conversational_history`, chats or sessions (Marko 2026-10-20). Archive ids differ between two
 Hestia, so a memory is matched by class + normalized fact; imported ones are marked `extra_data.imported`.
-«Sostituisci» deactivates the memories that are only here. Settings travel through Themis.
+«Replace» deactivates the memories that are only here. Settings travel through Themis.
 
 ## Claude Code / Codex CLIs in the image
 
@@ -697,9 +697,9 @@ small `/api/ui/*` views instead of calling them directly). The Hub registration 
 
 | Kind | Id | What |
 |---|---|---|
-| page (order 120) | `brain` → `<oracle-brain>` | Tabs **Attività** · **Uso** (`<oracle-usage>`: rows from Archive per module — calls, calls/hour, tokens, cache %, largest prompt vs window, avg time, cost, fallbacks/errors/quota —, calls per day, conversations → their calls, which chain step answered) · **Modelli** (`<oracle-models>`: use cases by module → chain/mode/thinking, chains with steps ↑↓, model picker, quota badge + «Riprova adesso», providers with standard, address and key status; saves through Themis). Attività: KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
-| widget | `usage-today` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
-| page (order 121) | `documents` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle non raggiungibile» |
+| page (order 120) | `brain` → `<oracle-brain>` | Tabs **Attività** · **Uso** (`<oracle-usage>`: rows from Archive per module — calls, calls/hour, tokens, cache %, largest prompt vs window, avg time, cost, fallbacks/errors/quota —, calls per day, conversations → their calls, which chain step answered) · **Modelli** (`<oracle-models>`: use cases by module → chain/mode/thinking, chains with steps ↑↓, model picker, quota badge + «Try again now», providers with standard, address and key status; saves through Themis). Attività: KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle not reachable» |
+| widget | `usage-today` → `<oracle-usage-widget>` (s/m/l) | «Model usage today»: calls, tokens, cost, top models; opens Cervello |
+| page (order 121) | `documents` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle not reachable» |
 
 Data sources of the Attività tab (all in memory, reset when Oracle restarts — an inside view, not an audit log; the
 Uso tab reads the rows kept in Archive):
@@ -717,9 +717,9 @@ Every user chat (text and document, see the rule above) pings Chronos presence (
 ## Tests note (2026-10-29)
 Tests that stub the chat engine replace `main.engine` with their own `MagicMock` (via `monkeypatch.setattr(main, "engine", …)`) instead of patching attributes of the shared one: other test modules may leave it spec'd, which made `test_chat_endpoint_composes_queued_batch` depend on test order.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Assistente»; the brain page is «Richieste e modelli» («Cosa fa l'assistente: richieste, modelli, token»); widget offline text «Assistente non raggiungibile».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Assistant»; the brain page is «Requests and models» («What the assistant does: requests, models, tokens»); widget offline text «Assistant not reachable».
 
-## Guided setup «Cervello» (`core/services/llm_setup.py`, dossier `docs/work/2026-10-30-setup-un-click`)
+## Guided setup «Brain» (`core/services/llm_setup.py`, dossier `docs/work/2026-10-30-setup-un-click`)
 
 The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a model provider directly:
 
@@ -738,11 +738,11 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   (`both` with ≥ 8 GB of video memory; `cloud` with little RAM), the memory's `embedding` model now, cloud
   providers (`key_set` only, never the key; a provider is cloud when `llm_providers.is_local` says no: type, then
   address, so an OpenAI-compatible block on `localhost` or a home address is local).
-- `POST /api/llm/setup/test {provider, model?}`: the «Prova» spends no tokens: it reads the provider's model list
+- `POST /api/llm/setup/test {provider, model?}`: the «Test» spends no tokens: it reads the provider's model list
   with its key (Gemini `v1beta/models`, OpenAI-compatible `/models`, Anthropic `/v1/models`); the list answering
-  proves the key, 400/401/403 = «La chiave non è valida.», 429 = works but out of quota. Answer `{ok, detail, model,
-  models[], recommended[], embed[]}`: `models` = only the chat models for the «Modelli» picker (`is_chat`: no
-  embedding, speech, picture or live-audio models), `embed` = the embedding ones for «Memoria» (e.g. Gemini's
+  proves the key, 400/401/403 = «The key is not valid.», 429 = works but out of quota. Answer `{ok, detail, model,
+  models[], recommended[], embed[]}`: `models` = only the chat models for the «Models» picker (`is_chat`: no
+  embedding, speech, picture or live-audio models), `embed` = the embedding ones for «Memory» (e.g. Gemini's
   `gemini-embedding-001`), `model` = the one to try (the one asked if
   listed, else Hestia's default if listed, else the cheapest-looking: Gemini «flash-lite», then «flash»),
   `recommended` = the models preselected in order once the key works (`recommended()`: defaults still listed, then
@@ -755,10 +755,10 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
 - `POST /api/llm/setup/apply {recipe, local_model, local_provider?, cloud[], cloud_models?, embedding?, modes?, order?}`
   (`modes {potente|codice|visione: {steps: [{provider, model}]}}` = a mode's own whole list in order, a step without
   model takes the service's default; the old single `{provider, model}` still goes first before Generale;
-  `order` = the setup's «Scelti» list `[{provider, model}]`, model empty = every model of that service: the chat
+  `order` = the setup's «Chosen» list `[{provider, model}]`, model empty = every model of that service: the chat
   steps follow it, so a cloud model can come before the local one; steps it does not name stay after): a program
   picked from `runtimes` that is not a block yet becomes one (`ensure_runtime`: type `openai`, its address, label
-  «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Setup guidato»):
+  «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Guided setup»):
   `fast/strong/code/vision` get the local step (`local_provider`/`local_model`) and the cloud services in the
   chosen order, each with the models picked for it in order (`cloud_models {service: [models]}`, a single name still
   accepted; the next model takes over when the first fails) or its default models; a chosen service that no
@@ -771,12 +771,12 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   risponde X sul tuo computer; se non c'è, Y nel cloud.»).
 - `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: Ollama downloads through
   `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at
-  `/api/downloads` (pause, resume, retry, cancel; «Elimina» = Ollama `/api/delete` to free space). Idempotent per
+  `/api/downloads` (pause, resume, retry, cancel; «Delete» = Ollama `/api/delete` to free space). Idempotent per
   model; a model Ollama already has (also one made from a Modelfile, which is on no registry) is answered «fatto»
   without a job; a missing model or a full disk is a final error in plain words. Tools `models_downloads`,
   `models_download` (Telegram «Download»).
 - `GET /api/llm/setup/machine` → `{address, label}` and `POST /api/llm/setup/machine {address, name}` (2026-10-31,
-  page «Macchine»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
+  page «Machines»): the local provider `ollama` points at a satellite's Ollama (`http://<address>:11434`, label
   «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own
   (infrastructure env). The chains do not change: the same local models now run on that video card.
 
@@ -792,10 +792,10 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   training turns are dropped (`turn_trace.forget_session`).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: every hidden line is English: turn guards, loop guard and its check, conversation goal and its tools, queued messages, agent loop notes, question resume, memory notes, image description, payload summary, module manual tool and the default file messages (with no words from the owner the answer follows «Lingua»). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: every hidden line is English: turn guards, loop guard and its check, conversation goal and its tools, queued messages, agent loop notes, question resume, memory notes, image description, payload summary, module manual tool and the default file messages (with no words from the owner the answer follows «Language»). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

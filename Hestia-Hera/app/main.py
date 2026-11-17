@@ -224,7 +224,7 @@ kit.on_warm(lambda: [people.sync_calendar(p) for p in people.store.items("person
 kit.webui(icon="user", color="pink", description="The important people: dates in the calendar, tastes, gift ideas.",
           pages=[page("people", "People", element="hera-people", icon="user", order=90,
                       help="Who matters to you: birthdays and dates (they go in the calendar with a notice), tastes, gift ideas the assistant notes from the chat, when to hear from them."),
-                 page("persona/:id", "Persona", element="hera-person", detail=True, parent="people")],
+                 page("person/:id", "Person", element="hera-person", detail=True, parent="people")],
           widgets=[widget("upcoming", "Upcoming dates", element="hera-soon-widget", sizes=["s", "m", "l"], size="m",
                           auto=True, open_page="people", icon="heart")])
 kit.finish()

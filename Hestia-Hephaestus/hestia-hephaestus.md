@@ -25,7 +25,7 @@ Target role evolution: autonomous remediation executor triggered by Argus/Oracle
 - POST /api/hephaestus/remediate
 - POST /api/hephaestus/remediate/{task_id}/approve
 - POST /api/hephaestus/remediate/{task_id}/retry (agenda retry of a failed repair)
-- POST /api/hephaestus/remediate/{task_id}/rollback — real undo («Annulla riparazione»): a repair still waiting for
+- POST /api/hephaestus/remediate/{task_id}/rollback — real undo («Undo repair»): a repair still waiting for
   approval or failed is stopped (`rolled_back`, `rollback_result.status=cancelled`, no agenda retry); a succeeded one
   with `undoable=true` (the module's reconcile answered `details.undo_available`) calls the same module's
   `…/maintenance/undo` through the Hub (`restored`; on error `failed` and still undoable); anything else stays as it is
@@ -219,7 +219,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | Athena / Argus | state `scheduled` → starts only **at night** (`night`, default 00:00-07:00) in the **last `window_hours`** (48) before the weekly reset, max `night_max_tasks` (3) per night, one at a time |
 | Athena / Argus, last `final_hours` (6) before reset | any time, no cap: the remaining quota is used up |
 
-- Approving a proposed/scheduled claude task keeps it in the window; "approva sviluppo <id> **subito**" (`now=true`) runs it now.
+- Approving a proposed/scheduled claude task keeps it in the window; "approve development <id> **now**" (`now=true`) runs it now.
 - If Claude answers with a usage-limit error, Forge pauses all budgeted work until the reset (`phase=exhausted`) and
   re-schedules the task.
 - The remaining % is not readable by programs: the policy is time-based + Claude's own limit signal.
@@ -252,7 +252,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | GET | `/api/hephaestus/forge/tasks` | List (`state`, `limit`) |
 | GET | `/api/hephaestus/forge/tasks/brief` | One line per task (`id6 · state · services · request`), sized to fit Oracle's tool-result cap — used by the chat tool `forge_tasks` |
 | GET | `/api/hephaestus/forge/counts` | Tasks per state + `review` (awaiting_review + proposed) — Sviluppo page badge |
-| GET | `/api/hephaestus/forge/tasks/export?ids=a,b` | «Copia per AI»: markdown of the tasks (forge_task/forge_tasks views + how to submit a fix via MCP), returned only |
+| GET | `/api/hephaestus/forge/tasks/export?ids=a,b` | «Copy for AI»: markdown of the tasks (forge_task/forge_tasks views + how to submit a fix via MCP), returned only |
 | GET | `/api/hephaestus/forge/tasks/{id}` | Full record (history, test output, engine log) — short ids accepted |
 | GET | `/api/hephaestus/forge/tasks/{id}/diff` | Unified diff (text) |
 | POST | `/api/hephaestus/forge/tasks/{id}/approve` | proposed/scheduled → start (claude: waits for window unless `{"now": true}`) · awaiting_review → merge/deploy (async) |
@@ -378,7 +378,7 @@ code-execution surface, so not editable from clients), `HEPHAESTUS_NOTIFY_TARGET
 
 ## Assistant presence
 
-Forge reports its work to Chronos presence: each task runs as activity `forge.task` (heavy, claude_quota/gpu), each deploy as `hephaestus.deploy` (maintenance → «Sto mangiando»). Autonomous scheduled tasks start only when presence allows `work.heavy` and `llm.claude` (unknown → allowed). Claude limit exhausted → signal `resource.claude_quota_left=0` until the reset.
+Forge reports its work to Chronos presence: each task runs as activity `forge.task` (heavy, claude_quota/gpu), each deploy as `hephaestus.deploy` (maintenance → «Eating»). Autonomous scheduled tasks start only when presence allows `work.heavy` and `llm.claude` (unknown → allowed). Claude limit exhausted → signal `resource.claude_quota_left=0` until the reset.
 
 ### Engine `oracle` and the context window
 
@@ -415,7 +415,7 @@ The context of a Forge task prompt passes through `hestia_common.redact.redact` 
   note. Three restarts without progress (`limit_restarts`) → failed. Budget-window tasks go back to `scheduled`.
 - Endpoint: `POST /api/hephaestus/forge/tasks/{task_id}/resume`. Task fields: `review`, `team`, `limit_restarts`.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Sviluppo»; agenda titles «Sviluppo programmato» and «Riprendi lo sviluppo: …».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Development»; agenda titles «Scheduled development» and «Riprendi lo sviluppo: …».
 
 ## Guided setup «Benvenuto» (`app/setup/`, dossier `docs/work/2026-10-30-setup-un-click`)
 
@@ -426,7 +426,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
 
 - `setup/secrets.py`: whitelist `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID` (→ `Hestia-Telegram/app/.env`, telegram),
   `CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `ORACLE_KEY_<NAME>` (→ `Hestia-Oracle/app/.env`, oracle), `ECHO_KEY_<NAME>`
-  (→ `Hestia-Echo/app/.env`, echo: the speech services' keys of the setup «Voce», `/api/setup/voice/*` forwards to
+  (→ `Hestia-Echo/app/.env`, echo: the speech services' keys of the setup «Voice», `/api/setup/voice/*` forwards to
   Echo's `/api/voice/setup/*`; `voice/apply` takes per direction a list of steps in order, and `brain/apply` takes
   `cloud_models {service: [models]}` in order, both passed on as they are),
   `HESTIA_BACKUP_PASSPHRASE` (→ root `.env`, archive). Values: one line of printable ASCII; ids numeric; bot token
@@ -438,12 +438,12 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   container is re-created as below. Each service result says `reloaded`, `recreated`, `applied`; `brain/test`,
   `brain/apply` and `voice/test` wait for health only after a re-create. `brain/apply` also takes `modes`
   («Per modalità»: `potente|codice|visione` → `{provider, model}`, passed to Oracle and kept in the brain state with
-  the memory's `embedding`; an Ollama model named there is downloaded too) and `order` (the «Scelti» list in the
+  the memory's `embedding`; an Ollama model named there is downloaded too) and `order` (the «Chosen» list in the
   user's order, local and cloud mixed: passed to Oracle and kept in the brain state, so the setup shows it again);
   a mode in `modes` can carry its own `steps` list (Ollama models in it are pulled, kept in the state too).
-  `POST /api/setup/brain/hello`: the assistant's first message for «I modelli sono pronti», asked to Oracle (`voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Lingua»)
+  `POST /api/setup/brain/hello`: the assistant's first message for «The models are ready», asked to Oracle (`voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Language»)
   `/api/llm/generate` with the use case `hephaestus.setup` (chain veloce) → `{ok, text, model, provider}`.
-  `voice/preview` and `voice/hear` pass the setup's «Ascolta» / «Prova a parlare» to Echo `/api/voice/setup/*`.
+  `voice/preview` and `voice/hear` pass the setup's «Ascolta» / «Try speaking» to Echo `/api/voice/setup/*`.
 - `recreate_with_env`: `env_file` is read only when a container is created, so a restart would not see a new key.
   The container is re-created through the Docker API with the same image, mounts, ports, networks/aliases, restart
   policy and healthcheck plus the changed variables; the old one is renamed and kept until the new one starts, and
@@ -462,7 +462,7 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `/api/nodes/pair` plus `central` (this machine's LAN address, for the command shown to the user);
   `POST /api/setup/machines/revoke {id}` → Hub `DELETE /api/nodes/{id}`; `POST /api/setup/machines/brain
   {address, name}` → Oracle `/api/llm/setup/machine` (empty address = back here). MCP tools `machines_list`,
-  `machines_code`, `machines_unlink`, `machines_brain` (Telegram section «Macchine»).
+  `machines_code`, `machines_unlink`, `machines_brain` (Telegram section «Machines»).
 - **Da fuori casa** (`setup/tunnel.py`, P5b): `GET /api/setup/tunnel` → `{on, url, phase}` (`start` · `download` ·
   `address` · `ready` · `error`); `POST /api/setup/tunnel {on}` answers within 15 s while a thread downloads the image
   the first time (a job of Hephaestus' `hestia_common.downloads`, source `docker`, progress summed over the layers,
@@ -471,30 +471,30 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   it in the «hestia» group, service `tunnel`; an older one without them is made again) and starts `hestia_tunnel` = `cloudflare/cloudflared:2024.12.2` on `hestia_net`, restart
   `unless-stopped`, command `tunnel --no-autoupdate --metrics 0.0.0.0:20241 --url http://hestia_webui:19015`, then
   reads the address (metrics `/quicktunnel`, fallback the container log); `on=false` stops it (stays off
-  after a reboot). Setup step `away`. MCP tools `away_status`, `away_enable` (Telegram «Macchine»).
+  after a reboot). Setup step `away`. MCP tools `away_status`, `away_enable` (Telegram «Machines»).
 - **Aggiorna Hestia** (`setup/updater.py`, P6): versions = git tags `vX.Y.Z`; channel Themis
   `hephaestus.update.channel` (`stable` newest tag · `news` `origin/main`). `GET /api/setup/update` (installed,
   channel, available with notes, job, history, previous, blocked) · `POST update/check` · `POST update/apply {ref?}` ·
   `POST update/back` · `POST update/answer {answer}` (the Hermes question «Installo?») · `POST update/daily` (agenda
   job `hephaestus.update_check`, daily 11:00, asks once per version). Notes = root `CHANGELOG.md` lines added between
-  the versions, rewritten in the owner's «Lingua» by Oracle use case `hephaestus.updates` (`voice: true`) (English when the brain is off).
+  the versions, rewritten in the owner's «Language» by Oracle use case `hephaestus.updates` (`voice: true`) (English when the brain is off).
   Apply (thread, state `data/update.json`): refused with a reason when tracked files are modified or HEAD has commits
   not on GitHub; `git checkout <tag>` / `merge --ff-only origin/main`; `forge.deployer.plan` on the diff; only running
   containers: image change → pull `ghcr.io/saibboriginal/hestia:<svc>-<ver>` when the container runs a ready-made
   image, else Docker SDK build from the compose `build` (read as text), then `recreate_with_env(image=…)`; others
   restart; health through the Hub; any error/unhealthy → previous commit and previous images, restart, notice.
   Hephaestus restarts itself last; its own image change is left to the installer. MCP tools `updates_status`,
-  `updates_install`, `updates_rollback` (Telegram «Aggiornamenti»).
+  `updates_install`, `updates_rollback` (Telegram «Updates»).
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: Forge review, plan, fix and resume prompts are English; review issues are asked in the owner's language; stored values (`high/media/low`, `simple/hard`) do not change. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
 **2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the

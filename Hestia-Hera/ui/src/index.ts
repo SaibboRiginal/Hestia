@@ -75,10 +75,10 @@ export class HeraPeople extends HestiaElement {
           <hxk-button variant="ghost" @click=${() => { this.adding = false; }}>${tr("Cancel")}</hxk-button></div>
       </div>` : nothing}
       ${this.soon.length ? html`<div class="card col"><h3>${tr("Upcoming dates")}</h3>
-        ${this.soon.map(s => html`<div class="between small"><span class="click" @click=${() => this.host.navigate('persona/' + s.person_id)}>${s.label} di <b>${s.person}</b></span>
+        ${this.soon.map(s => html`<div class="between small"><span class="click" @click=${() => this.host.navigate('person/' + s.person_id)}>${tr("{0} of", s.label)} <b>${s.person}</b></span>
           <span class="muted">${ddmm(s.next)} · ${inDays(s.in_days)}</span></div>`)}</div>` : nothing}
       <input placeholder=${tr("Search")} .value=${this.q} @input=${(e: any) => { this.q = e.target.value; }}>
-      <div class="card">${shown.length ? shown.map(p => html`<div class="person" @click=${() => this.host.navigate('persona/' + p.id)}>
+      <div class="card">${shown.length ? shown.map(p => html`<div class="person" @click=${() => this.host.navigate('person/' + p.id)}>
           <div class="avatar">${p.name.slice(0, 1).toUpperCase()}</div>
           <div class="grow"><div>${p.name}</div><div class="small muted">${relLabel(p.relation)}${p.dates.length ? ` · ${p.dates[0].label.toLowerCase()} ${ddmm(p.dates[0].next)}` : ''}</div></div>
           ${p.contact_due_in !== null && p.contact_due_in !== undefined && p.contact_due_in <= 0 ? html`<hxk-badge tone="warning">${tr("to call")}</hxk-badge>` : nothing}
@@ -114,7 +114,7 @@ export class HeraPerson extends HestiaElement {
       <div class="between"><div class="row"><div class="avatar">${p.name.slice(0, 1).toUpperCase()}</div>
         <div><h1>${p.name}</h1><div class="small muted">${relLabel(p.relation)}${p.last_contact ? tr(" · talked on {0}", ddmm(p.last_contact)) : ''}</div></div></div>
         <div class="row"><hxk-button icon="check" variant="primary" @click=${async () => { if (await this.post('/contact')) this.host.toast(tr("Marked: you talked to her"), 'success'); }}>${tr("I talked to them")}</hxk-button>
-          <hxk-button icon="chat" variant="ghost" @click=${() => this.host.assistant({ label: p.name, hints: { persona: p.id }, suggestions: [tr('Gift ideas for her'), tr('What does she like?')] })}>${tr("Ask")}</hxk-button></div></div>
+          <hxk-button icon="chat" variant="ghost" @click=${() => this.host.assistant({ label: p.name, hints: { person: p.id }, suggestions: [tr('Gift ideas for her'), tr('What does she like?')] })}>${tr("Ask")}</hxk-button></div></div>
       <div class="grid" style="--min: 280px">
         <div class="card col"><h3>${tr("Dates")}</h3>
           ${p.dates.length ? p.dates.map((d: any) => html`<div class="between small"><span>${d.label}</span><span class="muted">${ddmm(d.next)} · ${inDays(d.in_days)} · ${tr("notice")} ${d.lead_days} ${tr("d before")}</span></div>`)
@@ -164,8 +164,8 @@ export class HeraSoonWidget extends HestiaElement {
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const n = this.ctx?.size === 's' ? 1 : this.ctx?.size === 'm' ? 3 : 6;
     return html`<div class="col" style="gap:6px">
-      ${this.items.length ? this.items.slice(0, n).map(s => html`<div class="between small click" @click=${() => this.host.navigate('persona/' + s.person_id)}>
-        <span class="truncate">${s.label} di <b>${s.person}</b></span><span class="muted">${inDays(s.in_days)}</span></div>`)
+      ${this.items.length ? this.items.slice(0, n).map(s => html`<div class="between small click" @click=${() => this.host.navigate('person/' + s.person_id)}>
+        <span class="truncate">${tr("{0} of", s.label)} <b>${s.person}</b></span><span class="muted">${inDays(s.in_days)}</span></div>`)
         : html`<div class="small muted">${tr("Nothing in the next 30 days.")}</div>`}
     </div>`;
   }

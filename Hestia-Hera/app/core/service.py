@@ -220,7 +220,7 @@ class People:
                                          "_title": tr("Ideas for {0}", p['name']), "level": "info", "target": "owner",
                                          "_message": tr("You noted: ") + "; ".join(ideas), "icon": "heart",
                                          "replaces": f"hera.gift.{pid}",
-                                         "_link": {"module": "hera", "page": f"persona/{pid}"}}})
+                                         "_link": {"module": "hera", "page": f"person/{pid}"}}})
         return {"handled": True, "ideas": len(ideas)}
 
     def daily(self) -> dict:

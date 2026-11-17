@@ -470,9 +470,9 @@ class Themis:
     @staticmethod
     def _decision_actions(pid: str) -> list[dict]:
         return [
-            {"id": "approve", "label": tr("Approve"), "text": "✅ Approva", "style": "primary", "service": "themis",
+            {"id": "approve", "label": tr("Approve"), "text": "✅ " + tr("Approve"), "style": "primary", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/approve", "body": {"by": "<client>"}},
-            {"id": "reject", "label": tr("Reject"), "text": "❌ Rifiuta", "style": "danger", "service": "themis",
+            {"id": "reject", "label": tr("Reject"), "text": "❌ " + tr("Reject"), "style": "danger", "service": "themis",
              "method": "POST", "path": f"/api/settings/proposals/{pid}/reject", "body": {"by": "<client>"}},
         ]
 

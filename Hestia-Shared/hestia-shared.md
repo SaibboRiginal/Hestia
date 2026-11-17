@@ -87,7 +87,7 @@ builder raises: logged, never a 500; bad date → 400). Pass `today=lambda: svc.
 local day, not the container's. Plain facts only, never an LLM call; Athena writes the text.
 `job_rule(..., flex={"earliest": "20:00", "latest": "23:30"})` makes a recurring job fire around the user's events.
 `piece(..., actions=[{label, command}|{label, service, path, method?, body?}])` (max 2) adds buttons under the recap
-message, even on an empty piece; Athena puts them in the Hermes event (e.g. Hygieia «Racconta la giornata»).
+message, even on an empty piece; Athena puts them in the Hermes event (e.g. Hygieia «Tell me about your day»).
 
 ## Module skeleton (`hestia_common.module_kit`)
 
@@ -156,7 +156,7 @@ rules.append(signals_rule("hercules", "Allenamento", path="/api/hercules/signals
 `kind` = trend · streak · anomaly · goal · milestone; `severity` = info · attenzione · alta (ranks the topics).
 `key` is stable inside the module (republishing updates the row); `sync` writes only what changed and retracts
 signals no longer present; signals expire after `ttl_days` (7). Texts are Italian, short, and name the area
-(«Allenamento», «Spese»), never the module. `SignalReader` (Athena) reads active signals and weekly series.
+(«Training», «Expenses»), never the module. `SignalReader` (Athena) reads active signals and weekly series.
 Fails soft (`[🔄] event=signals_sync_*_failed`).
 
 ## Response packets (standard for every client)
@@ -246,7 +246,7 @@ Themis (`/api/settings/key/{key}/options`) so every client gets the same list. `
 clients show the settings of a group as a grid (Oracle: use case × fornitore / modello).
 `settings.put(key, value)` persists a change the **user** made through the module's own command/UI.
 
-**Personal settings shared by every module** (owner Themis, group «Personali», `settings_client.PERSONAL`):
+**Personal settings shared by every module** (owner Themis, group «Personal», `settings_client.PERSONAL`):
 `themis.personal.week_start` (monday/sunday), `themis.personal.currency`, `themis.personal.places` (Casa, Lavoro,
 Palestra…; editor `places`, options from `hecate:/api/gateway/weather/places`) and `themis.personal.birth_date`
 (`AAAA-MM-GG`, Chronos turns it into the owner's birthday among the special events). A module never declares its own copy:
@@ -296,12 +296,12 @@ The body is a `service.action_required` event on domain `system` (where Hermes' 
 module domain travels in the payload) with `target: owner`, `replaces: <key>` (one live notification per key) and
 `_link` to the module page. Modules send at most one reminder a day and respect `max_per_week`.
 
-Voice: `voice_setting("<m>", default)` declares `<m>.notifications.voice` («Notifiche anche a voce»; each module picks its
+Voice: `voice_setting("<m>", default)` declares `<m>.notifications.voice` («Notifications by voice too»; each module picks its
 default) and `reminder_event(..., voice=settings.get("<m>.notifiche.voce"))` sets `_voice`: Hermes then adds the
 audio made by Echo to the same notification (Telegram voice message, WebUI «Ascolta»). The text never changes.
 
 Question: `reminder_event(..., question={kind, options, allow_other, service, path, method?, body?})` sets
-`_question`: the notification asks like the chat card (confirm, single/multiple choice, free text, «Altro…») on every
+`_question`: the notification asks like the chat card (confirm, single/multiple choice, free text, «Other…») on every
 client and the answer reaches `path` as `{...body, answer, answers, client, notification_id}` (dossier `docs/work/2026-10-30-domande-nelle-notifiche`).
 
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
@@ -333,7 +333,7 @@ types. Hub aggregates manifests into `/api/discovery/catalog` (client × type). 
 script) — see its `README.md`. `hxk-field` also takes `type="password"` and `type="email"` (2026-11-06: the Garmin
 login form in Dispositivi).
 `hxk-icon` names match the WebUI icon set (2026-10-18: `pulse`, `host` added for the core module plugins;
-2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Spese»).
+2026-10-19: `wallet`, `upload`, `target`, `mail` for Iris «Email» and Plutus «Expenses»).
 Host API (2026-11-12): `host.openSetting(key?)` opens Impostazioni on one central setting (highlighted), or on the
 module's own settings; the WebUI draws a gear to the module's settings on every module page, and the kit keeps the
 title line clear of it (`.page > :first-child` reads `--head-inset-end`).
@@ -341,7 +341,7 @@ SDK helpers (2026-10-29): `plural(n, 'esercizio', 'esercizi')` → «1 esercizio
 `this.markEmpty(true|false)` when it has nothing to show, and the dashboard gives that cell less room. Kit controls
 read `--tap` (44px on touch screens) and the page's first line leaves `--head-inset` for the phone menu button.
 `hxk-quicklog` chips (2026-10-29; label above hint, its own `.col` style since the kit utilities are not in its shadow root): a 409/422 from the module shows its own reason (e.g. «già segnata oggi»)
-instead of a generic «Non sono riuscito a segnarlo».
+instead of a generic «I couldn't mark it».
 
 `settings_panels=[settings_panel("backup", "Backup", element="archive-backup-panel", icon="history")]` (2026-10-21)
 adds a panel that clients show **inside the module's own settings** (WebUI *Impostazioni → Sistema → <module>*),
@@ -350,12 +350,12 @@ below its Themis settings; the element calls only the module's `api_prefix` like
 ## Areas and texts for people (`hestia_common.areas`, 2026-10-29)
 
 People never read module names or text written for the model. `AREAS` (Giornata, Allenamento, Spese, Casa…, with
-`icon` for web clients and `emoji` for Telegram) and `SERVICE_AREAS` (2026-10-30: «Umore», module `psyche`) are the single list Telegram's menus, the
-WebUI «Comandi» page and «Scopri» share. `area_of(tool, module)` = the tool's `telegram_group` when it names an area
-(or an alias), else the module's area, else «Altro». `for_people(tool)` = the tool's own `summary`
+`icon` for web clients and `emoji` for Telegram) and `SERVICE_AREAS` (2026-10-30: «Mood», module `psyche`) are the single list Telegram's menus, the
+WebUI «Commands» page and «Discover» share. `area_of(tool, module)` = the tool's `telegram_group` when it names an area
+(or an alias), else the module's area, else «Other». `for_people(tool)` = the tool's own `summary`
 (`MCPTool(..., summary="Che tempo fa.")`, sent in `tools/list` and in the Hub catalog) or, when missing, the first
 sentence of its description without parentheses and ALL-CAPS model notes. `module_label(name)` = what people call a
-module («scout» → «Immobili»), for texts such as agenda titles («Ricontrolla Immobili»).
+module («scout» → «Houses»), for texts such as agenda titles («Ricontrolla Immobili»).
 
 ## Translations for people (`hestia_common.i18n`, dossier `docs/work/2026-11-14-backend-inglese`)
 
@@ -382,7 +382,7 @@ language. `SettingsClient.follow_personal()` registers the language reader of th
 Settings: `settings_client.translated(definition, lang)` returns a setting definition with `label`, `help`,
 `group`, `unit` and option labels in `lang` (keys and values never change); Themis applies it to everything it
 serves (`/api/settings`, presets, options), so WebUI and Telegram show settings in the owner's language. Tool titles
-shown by MCP/«Comandi» go through `tr` too, and `areas.for_people` translates a tool's own `summary` with the
+shown by MCP/«Commands» go through `tr` too, and `areas.for_people` translates a tool's own `summary` with the
 process language when no `lang` is given. Every module that shows fixed texts calls `settings.follow_personal()` (`ModuleKit` does it for its modules).
 Technical strings (SQL, HTTP headers, document style names) and text for the model never go through `tr`.
 
@@ -415,7 +415,7 @@ never none, so an endpoint with a body model does not answer 422);
 `tool_call.resolve` / `template_vars` / `is_write` are the pieces. Hestia-MCP uses it; Telegram reuses `resolve`
 for `arg_picker` sources (data reads declared by a tool). `is_write`: a POST/PUT/PATCH/DELETE tool writes unless
 its name reads like a lookup (`search`, `list`, `query`, `status`, `stats`, `show`, `suggest`): a read gets
-`readOnlyHint` and no «Fatto» in the chat.
+`readOnlyHint` and no «Done» in the chat.
 
 ## Display blocks (`hestia_common.display`)
 Optional card next to a tool's data, so Telegram shows the result without the model (docs/work/2026-10-23-telegram-da-zero §6).
@@ -453,7 +453,7 @@ delivered), so each module still follows only its own agenda windows.
 
 ## Export and import (`hestia_common.transfer`)
 
-One contract for «Esporta e importa» (dossier `docs/work/2026-10-20-import-export`): a module lists *sections* of its
+One contract for «Export and import» (dossier `docs/work/2026-10-20-import-export`): a module lists *sections* of its
 own data; the client (WebUI Impostazioni → Esporta e importa, `tools/hestia_transfer.py`) builds one `.hestia` file and
 imports it elsewhere with a mode — `append` (Aggiungi: new only), `merge` (Unisci, default: new + newer `updated_at`),
 `replace` (Sostituisci: the file wins, target-only records deleted, never for a partial section). Every import can be a
@@ -530,8 +530,8 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
   checklist, button; tones primary/success/warning/danger/info); `segments`, `to_text` (plain text for Telegram),
   `buttons`.
 - `hestia_common.mcp_helpers.undo(tool, label="Annulla", **args)` (Cindy 13): what a write tool puts in its result as
-  `"undo"`, so clients can show «Annulla» under «Ho fatto».
+  `"undo"`, so clients can show «Cancel» under «I did it».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. `display.money` and the SDK `locale()` / `plural` follow the language; `areas` accepts English and Italian area names.

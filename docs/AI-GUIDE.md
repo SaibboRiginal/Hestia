@@ -25,9 +25,9 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Themis | 19016 | hestia_themis | **central settings**: modules declare, clients/assistant read-change, user confirms proposals |
 | Hygieia | 19018 | hestia_hygieia | self care: products and their life, routines as goals (no fixed days), planner with active conflicts, one-tap done, history/stats, few non-stacking reminders, WebUI plugin |
 | Hercules | 19019 | hestia_hercules | gym coach: exercises, templates, live sessions offline (sync), records, adaptation by conversation, WebUI plugin |
-| Wardrobe | 19017 | hestia_wardrobe | wardrobe: pieces, accessories, outfits, «Cosa mi metto», laundry/status, packing lists, stats, photos in Archive blobs, WebUI plugin |
-| Plutus | 19020 | hestia_plutus | expenses «Spese» (domain `finance`): PayPal mails by push, bank statement PDF (Hype) from plugin or chat, categories, budgets, recurring, PayPal↔bank linking, WebUI plugin |
-| Echo | 19021 | hestia_echo | **voice core**: speech → text and text → speech, files and streams in blocks, providers/chains/uses like Oracle a blocchi, keeps audio, WebUI page «Voce» |
+| Wardrobe | 19017 | hestia_wardrobe | wardrobe: pieces, accessories, outfits, «What should I wear», laundry/status, packing lists, stats, photos in Archive blobs, WebUI plugin |
+| Plutus | 19020 | hestia_plutus | expenses «Expenses» (domain `finance`): PayPal mails by push, bank statement PDF (Hype) from plugin or chat, categories, budgets, recurring, PayPal↔bank linking, WebUI plugin |
+| Echo | 19021 | hestia_echo | **voice core**: speech → text and text → speech, files and streams in blocks, providers/chains/uses like Oracle a blocchi, keeps audio, WebUI page «Voice» |
 | Apollo | 19022 | hestia_apollo | images through a remote ComfyUI: flows per purpose, job queue, blobs, callback push |
 | Aphrodite | 19023 | hestia_aphrodite | appearance: themes of holidays/seasons/special days, effects, pets; clients read `/api/appearance/now` |
 | Lares | 19024 | hestia_lares | house on Home Assistant: websocket mirror, commands, scenes, quick actions, `home.present` |
@@ -35,7 +35,7 @@ original conversation. Entry point: `CLAUDE.md`. Each module's truth: `Hestia-<N
 | Demeter | 19026 | hestia_demeter | nutrition: diet, meals (kcal estimates), supplements; coach of the weekly plan |
 | Calliope | 19027 | hestia_calliope | documents: HTML → PDF/Word/Excel, 3 themes, final check, blobs |
 | Kairos | 19028 | hestia_kairos | deadlines: recurrence, advice, calendar mirror, mail proposals, daily notices |
-| Psyche | 19029 | hestia_psyche | mood («Umore»): check-ins, Oracle's quiet capture from chat, trend, insights, signals |
+| Psyche | 19029 | hestia_psyche | mood («Mood»): check-ins, Oracle's quiet capture from chat, trend, insights, signals |
 | Swagger | 19000 | hestia_swagger | API docs (`Hestia-Swagger/swagger.yml`) |
 | Telegram | — | hestia_telegram | main client (bot) |
 | Atlas | host | — | HTML fetch/scrape, runs on the host (`run_host.bat`) |
@@ -57,7 +57,7 @@ serves the declared REST path of handler-only tools — call it after the app's 
 
 Turn safety (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`): whoever calls `/api/chat` without being the
 owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomous:<module>`, `hestia_common.origin`); write tools
-return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Annulla»; register
+return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Cancel»; register
 `capabilities.when_to_use` + `manual` so the assistant knows when to use your module; text sent to a cloud model or
 a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` before designing.
 
@@ -89,8 +89,8 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` b
   refs are `tg:<chat>:<msg>`, WebUI refs `web:<session>:<msg>`.
 - Notifications in voice: module setting `<module>.notifications.voice` (`reminders.voice_setting`) + `reminder_event(voice=)`
   → payload `_voice` → Hermes adds the audio as an `update`.
-- Live («Parla», Telegram `/voice`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
-- «La tua voce» (W4): voiceprint filter (`echo.voiceprint.*`, other voices → silence before any engine) and personal
+- Live («Talk», Telegram `/voice`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
+- «Your voice» (W4): voiceprint filter (`echo.voiceprint.*`, other voices → silence before any engine) and personal
   dictionary (hint to every engine, learns from `/api/voice/dictionary/learn`) live inside Echo; callers change nothing.
 
 ## 4. Forge (self-development) — how a change ships
@@ -126,14 +126,14 @@ Registered keys: see `Hestia-Chronos/hestia-chronos.md` ("Who plans what").
 A domain module that knows what is due (workouts, routines, budget review) is a **coach**: Hub tag `coach` +
 `hestia_common.coach.CoachRouter` (needs/fit/placed/review) + `CoachClient` (done/skipped/changed, pushed to Chronos).
 Never schedule the user's own week inside a module: Chronos plans it (`Hestia-Chronos/app/services/coach*.py`,
-endpoints `/api/agenda/coach/*`, page «La tua settimana»). Need fields are generic; Chronos must not learn domain words.
+endpoints `/api/agenda/coach/*`, page «Your week»). Need fields are generic; Chronos must not learn domain words.
 Tag `outdoor` on a need = the planner avoids rainy/dark hours at Casa (Hecate forecast).
 
 ### 5.2 Weather and places
 Weather lives only in Hecate (Open-Meteo): `/api/gateway/weather/*`, tools `weather_now`/`weather_forecast`.
 Modules use `hestia_common.weather_client` through Hub; never call a weather API from a module. Places are the
 personal setting `themis.personal.places` (one Casa; empty place = Casa). Outdoor activities live in Hercules
-(`app/core/activities.py`): Hestia writes only to its own Google calendar «Allenamenti», never to Marko's events.
+(`app/core/activities.py`): Hestia writes only to its own Google calendar «Workouts», never to Marko's events.
 
 ## 5a. Mail flow (push) — subscribe, never poll
 
@@ -163,8 +163,8 @@ All the code is English. Texts a person reads are English in the code wrapped in
 `hestia_common.i18n.t`, Angular `tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`) with the Italian text in
 `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared once (manifests, capabilities, agenda rules,
 settings) are plain English keys translated at the edge (`i18n.localize`, `settings_client.translated`), never `tr`
-at import. Every module follows «Lingua» (`follow_personal()`); dates via `locale()` / `month_name`, money via
-`display.money`. Languages: English (source) and Italian («Lingua»). Full standard,
+at import. Every module follows «Language» (`follow_personal()`); dates via `locale()` / `month_name`, money via
+`display.money`. Languages: English (source) and Italian («Language»). Full standard,
 examples and how to add a language: `docs/LANGUAGES.md`; gate `python tools/governance/check_i18n.py`.
 
 ## 5c. Export and import — every module moves its own data

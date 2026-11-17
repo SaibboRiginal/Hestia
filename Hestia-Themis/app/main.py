@@ -375,8 +375,8 @@ _REGISTRATION = {
                      "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
                      # Assistant tools appear when the chat is about Hestia itself / its settings.
                      "module_tool_domains": ["system", "settings"],
-                     # Owner of the "settings" tools: without it Oracle's domain gate dropped them, so «rispondimi
-                     # più diretto» became a memory instead of a proposal (bench with a real model, 2026-10-30).
+                     # Owner of the "settings" tools: without it Oracle's domain gate dropped them, so «answer
+                     # more directly» became a memory instead of a proposal (bench with a real model, 2026-10-30).
                      "owns_tool_domains": ["settings"],
                      "settings": "/api/settings", "settings_register": "/api/settings/register",
                      "settings_revision": "/api/settings/revision"},

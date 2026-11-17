@@ -160,7 +160,7 @@ def _deliver(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     if isinstance(body.get("secret"), dict):
         # Secret form (Cindy 4): never typed in the chat — the WebUI form (Mini App) sends it to Hermes.
         from telegram_bot import webapp
-        button = webapp.open_button(tr("Insert"), f"/p/hermes/notifiche?secret={notification_id}")
+        button = webapp.open_button(tr("Insert"), f"/p/hermes/notifications?secret={notification_id}")
         if button:
             rows.append([button])
         else:

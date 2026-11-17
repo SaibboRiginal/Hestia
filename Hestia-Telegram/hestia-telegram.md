@@ -40,24 +40,24 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
   `help` (`/now` and `/discover` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
   working (`ALIASES`: `/start`, `/clear`, `/settings`, `/commands`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
-- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
-  `GET /api/metis/now?client=telegram`, each with its reason and a button; the fixed «Oggi» actions when Metis has
+- **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Now»: up to 4 suggestions read from
+  `GET /api/metis/now?client=telegram`, each with its reason and a button; the fixed «Today» actions when Metis has
   nothing or is away), Aree (17 areas + «Usate
-  spesso»), area card (summary tool + primary actions + «Tutte le azioni» by section, «Avanzate» last). One live
-  navigation message edited in place; an old message's buttons answer «Questo menu è vecchio» and open a fresh one.
+  spesso»), area card (summary tool + primary actions + «All actions» by section, «Advanced» last). One live
+  navigation message edited in place; an old message's buttons answer «This menu is old» and open a fresh one.
 - **Usage taps** (W6): every action start (`actions.start`) also pushes a tap to Metis in the background
   (`telegram_bot/usage.py`, `POST /api/metis/usage`); a failed push is only logged (`[🔄]`), the local «Usate
   spesso» count stays.
-- **W5 areas**: «Scadenze», «Alimentazione», «Persone», «Casa» (Home Assistant; the real-estate area is now labelled
-  «Immobili» so the two never look alike), «Documenti», «Immagini e aspetto».
+- **W5 areas**: «Deadlines», «Nutrition», «People», «Home» (Home Assistant; the real-estate area is now labelled
+  «Houses» so the two never look alike), «Documents», «Images and look».
 - **Where the menu comes from** (`telegram_bot/menu/`), later wins:
   1. `defaults.py` — data only: keyboard, doors, commands, aliases, areas (key, label, emoji, order, aliases),
-     `SERVICE_AREAS`, «Oggi» content;
+     `SERVICE_AREAS`, «Today» content;
   2. module hints on each tool: `telegram_group` (area), `telegram: {section, primary, summary, label}`;
   3. Themis setting **`telegram.menu.layout`** (system scope, same shape as the defaults, every part optional):
      edited from Telegram (Impostazioni › Menu: rename, emoji, order, move an action, pin primaries, new area, reset),
      from the WebUI settings panel, or proposed by the assistant (the user confirms).
-  A tool that nothing mentions still appears (area from module group, else module, else «Altro»); only section
+  A tool that nothing mentions still appears (area from module group, else module, else «Other»); only section
   `interno` is hidden. Reachability: primary actions ≤ 2 taps, every action ≤ 5 taps plus paging.
 - **Catalog** (`catalog.py`): Hestia-MCP `tools/list` as client `telegram` through Hub (input schema + hints),
   refreshed on Hub `registry-changed`; local actions from `local_actions.py`.
@@ -65,10 +65,10 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 ## Guided actions (`telegram_bot/actions.py`, `inputs.py`)
 
 - Fields come from the tool's JSON schema: label in words, help, «Es.» example, «Passo i di n»; enum/boolean/
-  `arg_picker` → buttons; numbers, dates («domani», «25/10»), times («18.30»), amounts («12,50 €») parsed in Italian;
+  `arg_picker` → buttons; numbers, dates («tomorrow», «25/10»), times («18.30»), amounts («12,50 €») parsed in Italian;
   a date alone for a date-time asks the time. Indietro · Salta · Annulla on every step.
-- Writes get a **confirmation card** (Conferma); destructive tools get «Elimina» in red and «Non si può annullare».
-- Result: «Un attimo…» then the result card with the module's next-step buttons, «Cambia», «‹ Area», «Di nuovo».
+- Writes get a **confirmation card** (Conferma); destructive tools get «Delete» in red and «Non si può annullare».
+- Result: «One moment…» then the result card with the module's next-step buttons, «Change», «‹ Area», «Again».
   Images come as photo / album, exports as a document.
 - A file sent while an action waits for one is the answer (Archive blob when the schema asks `blob_id`). A voice
   note or audio counts too: a field with `contentMediaType: audio/*` asks «Mandami un vocale» (spoken diary,
@@ -101,7 +101,7 @@ subscription compile), `rating_paused`.
 
 - One Oracle stream → **one answer message** (status → steps «• Uso: <azione>» → streamed tokens → final); split
   only above 4000 characters. Reasoning in an expandable quote «Ragionamento · N passi»;
-  with tool calls and no reasoning the quote is «Strumenti usati · N» (never «Ragionamento» for a model that
+  with tool calls and no reasoning the quote is «Strumenti usati · N» (never «Reasoning» for a model that
   did not reason).
 - Notices from Oracle are italic lines inside the answer (🔴 only for errors), per the notice setting.
 - **Reply or quote = context**: replying to (or quoting part of) any message sends
@@ -140,24 +140,24 @@ mode and instructions are central settings (Themis, layer client `telegram`) thr
 - An Oracle `question` with `question_id` (e.g. a Themis proposal made in this chat) becomes a card with two
   buttons; the answer goes to `POST /api/chat/question-answer` (`client: telegram`).
 - `ask_user` questions (`services/assistant_questions.py`): Sì/No, single choice, multiple choice (toggles +
-  «Invia»), «Altro…» / free text; a question no longer open answers «Questa domanda non è più aperta».
+  «Send»), «Other…» / free text; a question no longer open answers «Questa domanda non è più aperta».
 
 ## Notifications (`services/notifications.py`)
 
 - Hermes `/api/notify`: `notification` → message with tone dot and buttons `na:<short id>` (old `ntf:` still
   accepted), «Apri» opens the WebUI page as Mini App when there is a public https address; `update` → buttons
   replaced by a disabled state button («Vista su WebUI», «Approva · da WebUI»); `retract` → deleted; repeat chains
-  in italics, superseded ones deleted (over 48 h: «Sostituito»).
-- Button → Hermes `/api/notifications/{id}/answer` (first answer wins; 409 → «Già gestita»).
+  in italics, superseded ones deleted (over 48 h: «Replaced»).
+- Button → Hermes `/api/notifications/{id}/answer` (first answer wins; 409 → «Already handled»).
 - Any message of the owner marks the notifications shown here as seen (`/api/notifications/seen-all`).
-- Secret form (`secret` in the body, Cindy 4): an «Inserisci» button opens the WebUI Notifiche page as Mini App
-  (`/p/hermes/notifiche?secret=<id>`); without a public address a line says to open the WebUI. The value is never
+- Secret form (`secret` in the body, Cindy 4): an «Insert» button opens the WebUI Notifiche page as Mini App
+  (`/p/hermes/notifications?secret=<id>`); without a public address a line says to open the WebUI. The value is never
   asked or typed in the chat.
 - `silent` (held, quiet, or another client in use: Hermes rings only where the owner is) → not sent here, inbox only.
 
 ## Mini App (`telegram_bot/webapp.py`)
 
-With `WEBUI_PUBLIC_URL` (or `CLOUDFLARE_TUNNEL_HOSTNAME`) on https: chat menu button «Apri Hestia» and «Apri»
+With `WEBUI_PUBLIC_URL` (or `CLOUDFLARE_TUNNEL_HOSTNAME`) on https: chat menu button «Open Hestia» and «Apri»
 buttons open WebUI pages inside Telegram (`?tg=1`). The page logs in by itself: WebUI
 `POST /api/webui/auth/telegram` asks this module `POST /api/webapp/verify` (via Hub) to check Telegram's signed
 `initData` with the bot token (fresh ≤ 24 h, user in `ALLOWED_USER_ID`); the WebUI then issues a 12-hour session
@@ -210,7 +210,7 @@ the personal setting `themis.personal.language` (`docs/work/2026-11-14-lingua-pe
 
 ## WebUI token actions
 `webui_token`, `webui_status`, `webui_revoke` call the WebUI admin API directly (`WEBUI_API_URL`, security exception:
-not via Hub) with `X-WebUI-Admin-Secret` when `WEBUI_ADMIN_SECRET` is set. The token comes with «Apri» and «Copia».
+not via Hub) with `X-WebUI-Admin-Secret` when `WEBUI_ADMIN_SECRET` is set. The token comes with «Apri» and «Copy».
 
 ## Assistant presence
 Every allowed message, file and button pings Chronos presence (`telegram`, debounced 60 s, `services/presence.py`).
@@ -234,7 +234,7 @@ reachability over every module tool, action flow, notifications, settings, Mini 
 ## Questions from the assistant (v3 A, `services/assistant_questions.py`)
 
 When the assistant asks (Oracle tool `ask_user`, question id `ask_…`) the question arrives as a message with inline
-buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Invia»), «Altro…» or free text (the next text
+buttons: confirm (Sì/No), single choice, multiple choice (toggles + «Send»), «Other…» or free text (the next text
 message is the answer). The callback is answered at once, then the answer goes to Oracle
 `/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
 question no longer open answers «⌛ Questa domanda non è più aperta».
@@ -242,26 +242,26 @@ question no longer open answers «⌛ Questa domanda non è più aperta».
 **Questions in notifications** (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a Hermes notification with `question` gets the same
 keyboard (`assistant_questions.notification_rows`), the answer goes to Hermes `/api/notifications/{id}/reply`
 (first answer wins; «Questa domanda è già stata gestita» otherwise). A notification arrives unasked, so its free answer
-is never the next message written: «Rispondi…» / «Altro…» starts it (callback `askw:`), or a reply to the notification
+is never the next message written: «Rispondi…» / «Other…» starts it (callback `askw:`), or a reply to the notification
 message is the answer (`notifications.answer_by_reply`). «Apri» stays under the keyboard.
 
 ## Answer extras (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
 `services/answer_extras.py` + `ReplyRenderer`:
 - ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons
-  become an inline keyboard «Scegli» whose tap sends the button's text as the next chat message (callback `uisend:`).
+  become an inline keyboard «Choose» whose tap sends the button's text as the next chat message (callback `uisend:`).
 - `final.origin` not from the owner (`routine`, `autonomous`) adds its label in italics above the answer.
 - The `changes` frame becomes «📝 Ho fatto» with one «↩️ Annulla: …» button per change that has an undo; the tap
   (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
 - `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.
 
 ## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
-- «Esporta i dati»: Telegram (a client, like the WebUI page) asks every module with the `transfer` capability for its
+- «Export the data»: Telegram (a client, like the WebUI page) asks every module with the `transfer` capability for its
   export through Hub and sends `hestia-AAAA-MM-GG.hestia` (gzip JSON, same format, no photos) as a document.
-- «Importa dati»: asks for the file, shows the preview (dry run), «Importa» merges (adds/updates, never deletes) and
+- «Import data»: asks for the file, shows the preview (dry run), «Import» merges (adds/updates, never deletes) and
   first sends back the current data of the same modules as `hestia-prima-….hestia` (import it to go back). The file
   waits in memory 30 min at most, one use, same chat only.
-- «Ripristina un backup» (list of Drive backups → «Ripristina <data>», destructive confirm) and «Annulla ripristino»
-  call Archive `/api/backup/restore` · `/undo`; status, list and «Backup adesso» are Archive tools.
+- «Restore a backup» (list of Drive backups → «Ripristina <data>», destructive confirm) and «Undo restore»
+  call Archive `/api/backup/restore` · `/undo`; status, list and «Back up now» are Archive tools.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).
 

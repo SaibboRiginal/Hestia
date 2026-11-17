@@ -5,16 +5,16 @@ Read this before you write any text, in Python, in the WebUI or in a plugin. Dos
 
 ## The rule in one line
 
-**All the code is English. Italian lives only in the catalog. Every module follows «Lingua».**
+**All the code is English. Italian lives only in the catalog. Every module follows «Language».**
 
 Languages today: **English** (the source, in the code) and **Italian** (the catalog).
-«Lingua» = `themis.personal.language` (`it` | `en`, default `it`).
+«Language» = `themis.personal.language` (`it` | `en`, default `it`).
 
 | Text | Where it lives | Language |
 |---|---|---|
 | Prompts, tool and field descriptions, `response_prompt`, module manuals, hidden context, assistant hints | in the code | English, never wrapped in `tr` |
 | Chat answer | written by the model | the language of the owner's last message |
-| Notifications, recaps, messages she writes first, texts the model writes for a person | written by the model | «Lingua»: put `{owner_language}` or `identity.LANGUAGES[i18n.language(settings.get)]` in the English prompt |
+| Notifications, recaps, messages she writes first, texts the model writes for a person | written by the model | «Language»: put `{owner_language}` or `identity.LANGUAGES[i18n.language(settings.get)]` in the English prompt |
 | Buttons, labels, cards, notices, error `detail`s, setting labels and help, tool titles | fixed texts | English in the code, Italian from `locales/it/messages.json` |
 | SQL, headers, ids, stored values, CSS, SVG paths, log lines | in the code | never translated |
 
@@ -34,7 +34,7 @@ note = tr("{0} new expenses", count)              # placeholders {0} or {name}, 
 line = tr("Recheck {0}", tr(module_label(name)))  # a label passed as argument is translated too
 ```
 
-- The module follows «Lingua» once at startup: ModuleKit does it (`self.settings.follow_personal()`); a module
+- The module follows «Language» once at startup: ModuleKit does it (`self.settings.follow_personal()`); a module
   without ModuleKit calls `SettingsClient("<name>").follow_personal()` itself (Iris, Atlas, Telegram…). Then `tr`
   answers in the owner's language.
 - **Texts declared once at import or registration** (manifests, pages, widgets, capabilities, `llm_usecases`,
@@ -70,12 +70,12 @@ new Intl.NumberFormat(locale(), ...)          // 'it-IT' | 'en-GB', never a lite
 
 Plurals: two keys (`n === 1 ? tr('1 file') : tr('{0} files', n)`) or the SDK `plural`.
 The WebUI loads the catalog before any bundle (`/api/webui/i18n.js`, from Themis `GET /api/settings/i18n`), so
-constants at module level work too. Saving «Lingua» reloads the page.
+constants at module level work too. Saving «Language» reloads the page.
 
 ## Same English word, different Italian: tags
 
-When one English text needs two Italian texts, prefix a context tag: `tr("pl::Transport")` → «Trasporti»,
-`tr("Transport")` → «Trasporto». Tags in use: `alt::` `f::` (feminine) `m::` (masculine) `pl::` `abbr::` `dev::`
+When one English text needs two Italian texts, prefix a context tag: `tr("pl::Transport")` → «Transport»,
+`tr("Transport")` → «Transport». Tags in use: `alt::` `f::` (feminine) `m::` (masculine) `pl::` `abbr::` `dev::`
 `v::` (verb) `run::` `mood::` `lang::`. `i18n.bare()` strips the tag, so English shows the plain word.
 
 ## Italian that stays in the code (on purpose)

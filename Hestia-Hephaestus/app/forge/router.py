@@ -61,7 +61,7 @@ class ForgePause(BaseModel):
 class ForgeDecision(BaseModel):
     by: str = "user"
     reason: str = ""
-    now: bool = False   # approve: skip the Claude budget window (user asked "subito")
+    now: bool = False   # approve: skip the Claude budget window (user asked to run it now)
     engine: str = ""    # approve: who develops it (local | cloud | claude), empty = as proposed
 
 

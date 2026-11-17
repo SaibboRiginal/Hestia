@@ -137,7 +137,7 @@ read at use time, so changes apply live unless marked *restart*. Safety switches
 | `argus.remediate.timeout` | int (s) | `15` | Hub-routed timeout of the remediation request |
 | `argus.repair.recheck` | int (min) | `10` | First agenda recheck after a service goes down (doubles each attempt) |
 | `argus.repair.recheck_max` | int (min) | `360` | Backoff cap for agenda rechecks |
-| `argus.oracle.grace` | int (s) | `60` | Oracle down this long → presence signal `oracle.offline` + Hermes notice (0 = at once); also used for «Limitato» |
+| `argus.oracle.grace` | int (s) | `60` | Oracle down this long → presence signal `oracle.offline` + Hermes notice (0 = at once); also used for «Limited» |
 | `argus.repair.max_restarts` | int | `3` (0–5) | Immune system: container restarts of a down module before giving up (0 = never restart) — depends on `remediate.enabled` |
 | `argus.repair.restart_after` | int (s) | `120` (30–3600) | Immune system: down this long → first restart; then the wait doubles |
 | `argus.forge.enabled` | bool | `true` | Recurring errors become Forge fix proposals — `oracle=read` |
@@ -159,7 +159,7 @@ volumes:
 
 1. Monitor loop detects a service is down or degraded (or new WARNING+ log lines).
 2. `alert_worker.send_alert()` dedupes (cooldown) and batches (`argus.alerts.batch_window`).
-3. The batch text is written by Oracle (`/route/oracle/api/llm/generate`, plain generation, `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Lingua»); if Oracle fails or is
+3. The batch text is written by Oracle (`/route/oracle/api/llm/generate`, plain generation, `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Language»); if Oracle fails or is
    offline, a fixed grouped text is used at once.
 4. Argus publishes the event to **Hermes** (`service.health`, `_message` = the text): Hermes delivers it to every
    client (Telegram, WebUI). Argus never talks to Telegram directly (Hermes is the only outbound messenger).
@@ -182,7 +182,7 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v2.0), code `app/services/oracle_wat
   `event=oracle_online`.
 - Oracle's `/health` carries `models` (`ok` · `limited` · `none`, v3 E). `none` (no model left in any chain) counts as
   offline with reason `no_models`. `limited` (only fallback models answer) for the grace time → signal
-  `oracle.limited` (overlay «Limitato»: heavy work deferred, short answers) and one notice «🔋 Limitato…»
+  `oracle.limited` (overlay «Limited»: heavy work deferred, short answers) and one notice «🔋 Limitato…»
   (`replaces: "system.oracle"`); back to `ok` → signal cleared and «✅ Di nuovo al completo» (`closes`).
 
 ## Immune system (v3 B, `app/services/immune.py`)
@@ -191,14 +191,14 @@ Each monitor cycle calls `immune.observe(service, healthy)`. A module down for `
 restarted through the Hub on Hephaestus (`POST /api/hephaestus/restart`, Docker socket), then again after double the
 wait, up to `argus.repair.max_restarts` (3). Never acts on argus, hephaestus or hub; a module Forge is deploying is
 skipped (does not use up a try). After the last try: one Hermes notice «Una parte di Hestia non riparte da sola»
-(key `system.repair.<svc>`); back healthy → «Tornato a posto» closes it. Restarts run in a thread, logs
+(key `system.repair.<svc>`); back healthy → «Back in order» closes it. Restarts run in a thread, logs
 `event=immune_restart`, `event=immune_gave_up`.
 
-## Journal (v3 F, «Registro» in the Salute page)
+## Journal (v3 F, «Log» in the Salute page)
 
 The incidents of `health_history` (down, restart, restart result, gave up, recovered) are the journal of notable
 events. They persist in Archive (`/api/argus-store`, kind `incident`; the last 200 closed kept) and are reloaded at
-startup, so the «Registro» survives restarts. Hermes notices stay for what needs you; the journal is the history,
+startup, so the «Log» survives restarts. Hermes notices stay for what needs you; the journal is the history,
 shown with an icon per action (`/api/argus/incidents?limit=` up to 200).
 
 ## Forge fix proposals
@@ -236,7 +236,7 @@ recovered → entry completed and recovery notice. Visible/movable/cancellable f
 
 ## Assistant presence
 
-Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Non disponibile».
+Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Tired». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Unavailable».
 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
@@ -252,20 +252,20 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
   `GET /api/blobs/usage` (database bytes, blobs per module). Without the Docker socket only response times.
 - History in memory: 24 h of samples per module, 7 days of storage sizes.
 - Alerts (kind `performance`, batched and deduplicated per `service + metric` by the alert worker) over the Themis
-  thresholds of group «Prestazioni»: `argus.performance.memory_mb` (1500), `.cpu_percent` (90) and `.response_ms`
+  thresholds of group «Performance»: `argus.performance.memory_mb` (1500), `.cpu_percent` (90) and `.response_ms`
   (3000) for `.cpu_samples` (3) samples in a row, `argus.storage.database_gb` (10), `argus.storage.growth_mb_day` (500).
 - API: `GET /api/argus/performance` (last sample + thresholds) · `GET /api/argus/performance/history?service=&hours=`.
-  Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Salute e log» / «Riparazioni»).
+  Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Health and logs» / «Repairs»).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Salute»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «Salute del sistema non raggiungibile».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Health»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «System health not reachable».
 
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and answer instructions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

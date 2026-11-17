@@ -461,7 +461,7 @@ try:
             ),
             parameters={"type": "object", "properties": {
                 "task_id": {"type": "string", "description": "Task id (the first 6 characters are enough)"},
-                "now": {"type": "boolean", "description": "true only if the user says 'subito'/'ora' (skips Claude's night window)"},
+                "now": {"type": "boolean", "description": "true only if the user asks to run it right away (skips Claude's night window)"},
                 "engine": {"type": "string", "description": "Only if the user chooses who develops it: local | cloud | claude"}},
                 "required": ["task_id"]},
             handler=lambda **kw: {"status": "ok", "tool": "forge_approve", "params": kw},

@@ -53,14 +53,14 @@ with something already done or due today) · `paused`. A target routine is behin
   `topic=<signal key>` the text explains that signal (`adherence_drop` → this week per routine done/needed, skipped,
   the routines behind and the 4 weeks before; `goal:<routine>` / `streak:<routine>` → hint, last done, streak,
   adherence and the last 4 periods); an unknown topic answers the normal line. Same shape, cut to `budget`.
-- `GET /api/module/recap?day=&next=`: piece «Cura di sé» of the daily recap (routines done, products used, daily
+- `GET /api/module/recap?day=&next=`: piece «Self care» of the daily recap (routines done, products used, daily
   routines not done, skipped, due next; alerts as note). Capability `recap_endpoint`.
 - Every step change keeps a version; `POST /routines/{id}/undo` goes back.
 
 ## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
 
 Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hygieia`,
-domain `selfcare`); texts speak of «Cura di sé» things, never the module name. Expiry / restock alerts are reminders,
+domain `selfcare`); texts speak of «Self care» things, never the module name. Expiry / restock alerts are reminders,
 not facts about the user: they are not signals.
 
 | Key | Kind · severity | When | Page |
@@ -118,7 +118,7 @@ there and used only when wanted. Week start and currency are the personal settin
 
 ## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
 
-- **Diario a voce** (B9): the evening recap piece carries the button «Racconta la giornata» (`recap.piece(...,
+- **Diario a voce** (B9): the evening recap piece carries the button «Tell me about your day» (`recap.piece(...,
   actions=)`, a `command` action that opens the tool `selfcare_diary_voice`) until today has a «giornata» entry.
   Telegram asks for a voice note; `POST /api/selfcare/journal/voice {audio:{data_b64, mime}|audio_b64, date?}` →
   Echo transcribes it (use `hygieia.diary`, declared in the Hub registration, recording kept) → journal entry
@@ -170,8 +170,8 @@ The Hub registration declares `capabilities.when_to_use` (one line in the assist
 
 **2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
