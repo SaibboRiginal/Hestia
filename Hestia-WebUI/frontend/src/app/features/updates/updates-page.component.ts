@@ -8,10 +8,10 @@ import { locale, tr, TrPipe } from '../../core/i18n';
 
 interface Version { version: string; tag: string; commit: string; label: string; }
 interface Available { ref: string; label: string; notes?: string[]; major?: boolean; commits?: number; }
-interface Job { state: 'idle' | 'running' | 'fatto' | 'errore'; step?: string; detail?: string; target?: string; }
+interface Job { state: 'idle' | 'running' | 'done' | 'error'; step?: string; detail?: string; target?: string; }
 interface HistoryRow { at: number; from: string; to: string; ok: boolean; back: boolean; detail: string; }
 export interface UpdateStatus {
-  installed: Version; channel: 'stabile' | 'novita'; available: Available | null; checked_at: number | null;
+  installed: Version; channel: 'stable' | 'news'; available: Available | null; checked_at: number | null;
   check_error: string; job: Job; history: HistoryRow[]; previous: string; blocked: string;
 }
 
@@ -38,7 +38,7 @@ export interface UpdateStatus {
           <div class="now">
             <hx-icon name="check-circle" [size]="22" tone="success" />
             <div><b>Hestia {{ st()!.installed.label }}</b>
-              <small>{{ st()!.channel === 'novita' ? ('Get every news as soon as it\\'s ready' | tr) : ('Get the published versions' | tr) }} ·
+              <small>{{ st()!.channel === 'news' ? ('Get every news as soon as it\\'s ready' | tr) : ('Get the published versions' | tr) }} ·
                 <a routerLink="/settings" [queryParams]="{ module: 'hephaestus' }">{{ "change" | tr }}</a>
                 @if (st()!.checked_at) { · {{ 'checked' | tr }} {{ ago(st()!.checked_at!) }} }</small></div>
           </div>
@@ -69,7 +69,7 @@ export interface UpdateStatus {
           <p class="note">{{ st()!.check_error || ('You already have the latest version.' | tr) }}</p>
         }
 
-        @if (job().state === 'errore' || job().state === 'fatto') {
+        @if (job().state === 'error' || job().state === 'done') {
           @if (job().detail) {
             <p class="note"><hx-icon [name]="job().state === 'errore' ? 'alert' : 'info'" [size]="14" [tone]="job().state === 'errore' ? 'warning' : 'info'" /> {{ job().detail }}</p>
           }

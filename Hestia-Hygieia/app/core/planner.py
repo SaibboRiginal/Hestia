@@ -91,7 +91,7 @@ def goal_state(cadence: dict | None, done_days: list[date], today: date, week_st
         st = "done" if done_today else ("due" if today_on else "off")
         nxt = next(((today + timedelta(days=i)) for i in range(1, 8) if (today + timedelta(days=i)).weekday() in c["days"]), None)
         return {**base, "state": st, "done": done_today, "times": 1, "per": "day", "behind": st == "due",
-                "hint": tr("done today") if done_today else ("oggi" if today_on else (tr("next {0}", nxt.strftime('%d/%m')) if nxt else ""))}
+                "hint": tr("done today") if done_today else ("today" if today_on else (tr("next {0}", nxt.strftime('%d/%m')) if nxt else ""))}
     if mode == "as_needed":
         return {**base, "state": "done" if done_today else "rest", "done": done_today, "times": 0, "per": "",
                 "hint": tr("done today") if done_today else (tr("last {0} d ago", since) if since is not None else tr("never done")),
@@ -315,7 +315,7 @@ class Day:
         if not s:
             return ""
         p = self.products.get(s.get("product_id") or "") or {}
-        return s.get("label") or p.get("name") or "passo"
+        return s.get("label") or p.get("name") or "step"
 
     def plan(self, include_inactive: bool = False) -> list[dict]:
         out = []

@@ -48,7 +48,7 @@ class MCPTool:
     response_mode: str = "oracle_natural"  # oracle_natural | direct | raw_json
     response_prompt: str = ""     # Prompt for Oracle LLM formatting
     telegram_visible: bool = True # Ignored by Telegram since 2026-10-24: every tool is on Telegram
-    telegram_group: str = "altro" # Telegram area (giornata, allenamento, selfcare, guardaroba, spese, case,
+    telegram_group: str = "other" # Telegram area (giornata, allenamento, selfcare, guardaroba, spese, case,
                                   # posta, memoria, sviluppo, sistema, notifiche)
     # Telegram presentation hints (docs/work/2026-10-23-telegram-da-zero §5.7): section, order, primary,
     # summary (area card header), label (short button text, ≤ 24 chars). The user's layout can override them.
@@ -96,7 +96,7 @@ def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
                     desc["response_prompt"] = t.response_prompt
                 if not t.telegram_visible:
                     desc["telegram_visible"] = False
-                if t.telegram_group != "altro":
+                if t.telegram_group != "other":
                     desc["telegram_group"] = t.telegram_group
                 if t.telegram:
                     desc["telegram"] = t.telegram

@@ -75,10 +75,10 @@ not hide it). `api_prefix` = `/api/argus/` (no duplicate endpoints).
 
 | Contribution | Element | What |
 |---|---|---|
-| Page *Salute* (`salute`) | `argus-health` | KPI tiles; open incidents with the timeline of what Argus did; health strip per service over 1/6/24 h with uptime %; closed incidents; log viewer (service, minimum level, period, text search) over `/api/argus/logs`; *Ricontrolla* per service (confirm when not up: it may re-request the repair) |
-| Widget *Stato sistema* (`stato`, auto, s/m/l) | `argus-status-widget` | healthy / total, services not up, open incidents (`/api/argus/overview`) |
-| Page *Prestazioni* (`prestazioni`, order 111) | `argus-performance` | last sample per module (memory, processor, response time over the Themis limits in red, uptime, restarts), Hub round trip, database / blob size and growth per day vs the limits, chart of the selected module over 24 h (memory / processor / response) from `/api/argus/performance(/history)` |
-| Quick action *Ricontrolla* (`ricontrolla`) | — | `POST /api/argus/recheck/{id}`, chips from `/api/argus/recheck-targets` (only services that are not up) |
+| Page *Salute* (`health`) | `argus-health` | KPI tiles; open incidents with the timeline of what Argus did; health strip per service over 1/6/24 h with uptime %; closed incidents; log viewer (service, minimum level, period, text search) over `/api/argus/logs`; *Ricontrolla* per service (confirm when not up: it may re-request the repair) |
+| Widget *Stato sistema* (`status`, auto, s/m/l) | `argus-status-widget` | healthy / total, services not up, open incidents (`/api/argus/overview`) |
+| Page *Prestazioni* (`performance`, order 111) | `argus-performance` | last sample per module (memory, processor, response time over the Themis limits in red, uptime, restarts), Hub round trip, database / blob size and growth per day vs the limits, chart of the selected module over 24 h (memory / processor / response) from `/api/argus/performance(/history)` |
+| Quick action *Ricontrolla* (`recheck`) | — | `POST /api/argus/recheck/{id}`, chips from `/api/argus/recheck-targets` (only services that are not up) |
 
 History and incidents (`app/services/health_history.py`) are **in memory**: one sample per service per minute
 (worst status), 24 h kept; 50 closed incidents kept. A restart starts empty (Argus owns no DB). Fed by the monitor

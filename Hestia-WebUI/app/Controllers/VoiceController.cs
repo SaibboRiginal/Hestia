@@ -31,15 +31,15 @@ public class VoiceController : ControllerBase
     /// <summary>Declared on the Hub (capabilities.voice_usecases).</summary>
     public static readonly object[] UseCases =
     {
-        new { id = UseMessage, label = "Sito · vocali in chat", direction = "ascolto", chain = "ascolto", mode = "segui",
+        new { id = UseMessage, label = "Sito · vocali in chat", direction = "listen", chain = "listen", mode = "follow",
               help = "I vocali che registri nella chat del sito." },
-        new { id = UseListen, label = "Sito · «Ascolta»", direction = "voce", chain = "voce", mode = "segui",
+        new { id = UseListen, label = "Sito · «Ascolta»", direction = "voice", chain = "voice", mode = "follow",
               help = "Il tasto «Ascolta» sotto le risposte." },
-        new { id = UseLiveIn, label = "Sito · Parla (ascolto)", direction = "ascolto", chain = "ascolto", mode = "segui",
+        new { id = UseLiveIn, label = "Sito · Parla (ascolto)", direction = "listen", chain = "listen", mode = "follow",
               help = "Modalità Parla: quello che dici." },
-        new { id = UseLiveOut, label = "Sito · Parla (voce)", direction = "voce", chain = "voce", mode = "segui",
+        new { id = UseLiveOut, label = "Sito · Parla (voce)", direction = "voice", chain = "voice", mode = "follow",
               help = "Modalità Parla: le risposte lette mentre si scrivono." },
-        new { id = UseDictation, label = "Sito · dettatura", direction = "ascolto", chain = "ascolto", mode = "segui",
+        new { id = UseDictation, label = "Sito · dettatura", direction = "listen", chain = "listen", mode = "follow",
               help = "Il tasto «Detta» della chat: quello che dici diventa testo da rileggere, senza inviarlo." },
     };
 

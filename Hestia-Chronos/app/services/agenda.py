@@ -350,14 +350,14 @@ def register_rules(owner: str, rules: list[dict]) -> list[dict]:
 
 def _standard_state(item: dict) -> str:
     if item["status"] == "cancelled":
-        return "eliminata"
+        return "deleted"
     if item["status"] == "paused":
         return "paused"
     if item["status"] == "failed":
-        return "fallita"
+        return "failed"
     if item["user_modified"]:
-        return "modificata"
-    return "attiva"
+        return "edited"
+    return "active"
 
 
 def standard(owner: str | None = None) -> dict:
@@ -373,8 +373,8 @@ def standard(owner: str | None = None) -> dict:
                      "description": item.get("description") or "", "start_at": item["start_at"],
                      "end_at": item.get("end_at"), "recurrence": item.get("recurrence"),
                      "flex": (item.get("params") or {}).get("flex"), "state": state,
-                     "can_restore": state != "attiva"})
-    order = {"eliminata": 0, "fallita": 1, "in pausa": 2, "modificata": 3, "attiva": 4}
+                     "can_restore": state != "active"})
+    order = {"deleted": 0, "failed": 1, "in pausa": 2, "edited": 3, "active": 4}
     rows.sort(key=lambda r: (order[r["state"]], r["owner"], r["title"] or ""))
     templates = [t for t in list_templates() if not owner or t.get("owner") == owner]
     return {"activities": rows, "templates": templates,
@@ -495,8 +495,8 @@ def fail(ref: str | int, detail: str = "", by: str = "module") -> dict:
         item = get(ref)
         at = datetime.now(timezone.utc).isoformat()
         item["status"] = "failed"
-        item["last_result"] = {"ok": False, "detail": (detail or "fallito")[:300], "at": at, "by": by}
-        _record_run(item, None, False, (detail or "fallito")[:300], at, by)
+        item["last_result"] = {"ok": False, "detail": (detail or "failed")[:300], "at": at, "by": by}
+        _record_run(item, None, False, (detail or "failed")[:300], at, by)
         item = _save(item)
         if item.get("parent"):
             _mark_parent(item, ok=False, detail=tr("linked item failed: {0}", item['title']), by=by)

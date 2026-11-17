@@ -49,7 +49,7 @@ def test_backup_verify_restore_undo_on_postgres(tmp_path):
                         before_swap=engine.dispose, after_swap=engine.dispose)
     svc.run()
     (fid, f), = remote.files.items()
-    assert b"diario" not in remote.data[fid]
+    assert b"diary" not in remote.data[fid]
     assert svc.verify()["ok"] and not pg.exists(svc.CHECK_DB)
 
     with engine.begin() as c:

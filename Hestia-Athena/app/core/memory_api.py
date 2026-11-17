@@ -99,7 +99,7 @@ def mcp_tools() -> list:
     from hestia_common.mcp_helpers import MCPTool
 
     def tool(name, description, method, path, title, *, params=None, required=None, label="", section="Memory",
-             group="memoria", prompt=""):
+             group="memory", prompt=""):
         schema = {"type": "object", "properties": params or {}}
         if required:
             schema["required"] = required
@@ -128,5 +128,5 @@ def mcp_tools() -> list:
              "/api/athena/memory/proposals/{pid}/dismiss", "Discard cleanup", params={"pid": {"type": "string"}},
              required=["pid"]),
         tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Check the documents", section="Development",
-             group="sviluppo", label="Check documents"),
+             group="development", label="Check documents"),
     ]

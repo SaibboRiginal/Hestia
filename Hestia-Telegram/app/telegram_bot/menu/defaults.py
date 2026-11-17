@@ -6,37 +6,37 @@ their area comes from the module's ``telegram_group``, else from ``SERVICE_AREAS
 """
 
 # Bottom keyboard: door keys (see DOORS).
-KEYBOARD = [["oggi", "aree"], ["notifiche", "impostazioni"]]
+KEYBOARD = [["today", "areas"], ["notifications", "settings"]]
 
 # The four doors and the words their keyboard buttons send.
 DOORS = {
-    "oggi": "Today",
-    "aree": "Areas",
-    "notifiche": "Notifications",
-    "impostazioni": "Settings",
+    "today": "Today",
+    "areas": "Areas",
+    "notifications": "Notifications",
+    "settings": "Settings",
 }
 
 # The `/` menu (setMyCommands), in this order. Description = what Telegram shows next to the command.
 COMMANDS = [
-    ("oggi", "Your day"),
-    ("aree", "All areas and their actions"),
-    ("adesso", "What you need now"),
-    ("scopri", "Features you haven't tried yet"),
-    ("notifiche", "Notifications to see or answer"),
-    ("impostazioni", "Chat, menu and settings"),
-    ("nuova", "New conversation"),
-    ("voce", "Voice replies on or off"),
-    ("stato", "Assistant status"),
+    ("today", "Your day"),
+    ("areas", "All areas and their actions"),
+    ("now", "What you need now"),
+    ("discover", "Features you haven't tried yet"),
+    ("notifications", "Notifications to see or answer"),
+    ("settings", "Chat, menu and settings"),
+    ("new", "New conversation"),
+    ("voice", "Voice replies on or off"),
+    ("status", "Assistant status"),
     ("aiuto", "How to use it"),
 ]
 
 # Old command names still typed by habit → new ones.
 ALIASES = {
-    "start": "home", "help": "aiuto", "comandi": "aree", "menu": "aree", "clear": "nuova", "settings": "impostazioni",
-    "set": "impostazioni", "live": "voice_on", "chat": "voice_off", "documents": "documenti",
+    "start": "home", "help": "aiuto", "commands": "areas", "menu": "areas", "clear": "new", "settings": "settings",
+    "set": "settings", "live": "voice_on", "chat": "voice_off", "documents": "documents",
     "create_event": "create_event", "create_reminder": "new_reminder", "create_task": "new_activity",
     "notification_add": "new_alert", "notification_get": "notifications_active", "notification_remove": "notification_disable",
-    "adesso": "metis_now", "scopri": "metis_discover",
+    "now": "metis_now", "discover": "metis_discover",
     "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout.search",
 }
 

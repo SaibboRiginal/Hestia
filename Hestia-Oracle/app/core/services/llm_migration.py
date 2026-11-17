@@ -22,7 +22,7 @@ _OLD = {
     "athena_strategist": ("", "", "", "", ""),
     "athena_auditor": ("", "", "", "", ""),
 }
-_NEW_ID = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.codice",
+_NEW_ID = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.code",
            "embedding": "oracle.embedding", "scout_extraction": "scout.listings",
            "athena_strategist": "athena.strategy", "athena_auditor": "athena.review"}
 # Old provider TYPES → default named providers.

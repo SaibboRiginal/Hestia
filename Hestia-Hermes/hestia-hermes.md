@@ -90,7 +90,7 @@ within the cooldown window.
 
 ## Notifications also as voice (2026-10-20, dossier `docs/work/2026-10-20-modulo-voce` §7.3)
 
-- The module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`) and puts
+- The module decides with its own setting `<module>.notifications.voice` (`hestia_common.reminders.voice_setting`) and puts
   `_voice: true` in the event payload (`reminder_event(voice=…)`; batched domains keep the flag for the batch).
 - Hermes publishes the written notification as always, then in the background asks Echo (`VoiceClient.speak`, use
   `hermes.notification` declared in `voice_usecases`, `ogg_opus`, kept as class `notification`), stores
@@ -140,7 +140,7 @@ within the cooldown window.
 
 ## Notification style «Frase di Hestia» (dossier `docs/work/2026-11-06-hestia-viva` F5)
 
-Setting `hermes.notifications.style`: `scheda` (default, unchanged) or `frase`. With `frase`, before publishing,
+Setting `hermes.notifications.style`: `card` (default, unchanged) or `sentence`. With `sentence`, before publishing,
 `conversational_message()` asks Oracle (`/api/llm/generate` via `narrate`) to say an informative notification as
 one short sentence of Hestia, like in chat. Warnings, errors, `service.action_required` / `service.health`, and
 events with `_actions`, `_question` or `_secret` stay cards. Oracle down or empty answer → the card text as is.
@@ -209,7 +209,7 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
   values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool
   on the *Comandi* page (`/p/mcp/comandi?command=…`).
-- sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifiche`): every notification (newest first, paged) with its state on each client
+- sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifications`): every notification (newest first, paged) with its state on each client
   (consegnata / solo elenco / fallita / abbandonata, attempts, *ritirata* from the chat), *trattenuta* by
   presence (+ released in the digest), *silenziosa* (quiet inbox copy), *sostituita* (repeat chain), the answer
   (action, client, outcome) or the actions still waiting; filters by flag and client; active subscriptions and the
@@ -270,7 +270,7 @@ Declared in `src/modules/hermes_settings.py` (`SettingsClient("hermes")`, router
 | `hermes.batch.max_attempts` | int 6 | Attempts for a failed batch before giving up |
 | `hermes.retract.after` | int 6 h (1–46) | Handled notifications are retracted from Telegram after this delay |
 | `hermes.repeat.reset_after_days` | int 30 days (1–365) | A repeat chain idle longer than this starts again from zero |
-| `hermes.notifications.style` | enum `scheda` (default) · `frase` | `frase` = informative notifications said as one sentence of Hestia (see below) |
+| `hermes.notifications.style` | enum `card` (default) · `sentence` | `sentence` = informative notifications said as one sentence of Hestia (see below) |
 | `hermes.log.level` | enum (boot = `LOG_LEVEL`) | Log verbosity |
 
 Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE_BASE_URL`,

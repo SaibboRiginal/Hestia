@@ -479,8 +479,8 @@ class TestStrategistParsing:
         candidates = _parse_candidates(raw)
         assert len(candidates) == 1
         assert candidates[0]["title"] == "Controlla servizio scout"
-        assert candidates[0].get("tipo") == "remediation"
-        assert candidates[0].get("priorita") == "elevated"
+        assert candidates[0].get("type") == "remediation"
+        assert candidates[0].get("priority") == "elevated"
 
     def test_parse_multiple_candidates(self):
         from core.strategist import _parse_candidates
@@ -501,11 +501,11 @@ class TestStrategistParsing:
         parsed = [
             {
                 "title": "Test azione",
-                "tipo": "remediation",
-                "priorita": "high",
-                "dominio": "system",
-                "motivo": "Servizio non raggiungibile",
-                "riassunto": "Riavvia il servizio",
+                "type": "remediation",
+                "priority": "high",
+                "domain": "system",
+                "reason": "Servizio non raggiungibile",
+                "summary": "Riavvia il servizio",
             }
         ]
         candidates = _map_to_action_candidates(parsed)

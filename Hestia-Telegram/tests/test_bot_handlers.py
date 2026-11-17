@@ -96,7 +96,7 @@ class TestHome:
                 patch("telegram_bot.services.chat_service.handle_chat_message") as chat:
             telegram_runtime.on_message(fake_message(text="Aree"))
             telegram_runtime.on_message(fake_message(text="mostrami le aree"))
-        door.assert_called_once_with(12345, "aree")
+        door.assert_called_once_with(12345, "areas")
         chat.assert_called_once()
 
 

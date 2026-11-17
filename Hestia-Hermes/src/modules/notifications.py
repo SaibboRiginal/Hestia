@@ -58,7 +58,7 @@ logger = logging.getLogger("hestia_hermes.notifications")
 
 CHANNEL = "notification"
 VOICE_USECASE = "hermes.notification"
-VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Voice notifications", direction="voce",
+VOICE_USECASES = [voice_usecase(VOICE_USECASE, "Voice notifications", direction="voice",
                                 help="Notifications a module also wants spoken (module setting).")]
 UNREAD_STATES = ["created", "queued", "delivered", "failed"]
 ANSWERABLE_STATES = ["created", "queued", "delivered", "seen", "failed"]
@@ -356,7 +356,7 @@ class NotificationCenter:
     ) -> dict[str, Any]:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one.
-        ``voice``: the sending module wants it also as audio (its ``<module>.notifiche.voce``): the written
+        ``voice``: the sending module wants it also as audio (its ``<module>.notifications.voice``): the written
         notification goes out first, the audio follows as an ``update`` with ``voice`` (dossier modulo-voce §7.3)."""
         if replaces:
             dedupe_key = replaces
@@ -763,7 +763,7 @@ class NotificationCenter:
         self.publish(message=message, event_type="assistant.pending_reminder", domain="assistant",
                      title=tr("To decide: {0}", len(due)), level="info", source="hermes",
                      replaces="hermes.pending_reminder",
-                     link={"module": "hermes", "page": "notifiche", "params": {"filter": "pending"}})
+                     link={"module": "hermes", "page": "notifications", "params": {"filter": "pending"}})
         logger.info("event=notification_pending_reminded count=%d", len(due))
         return {"reminded": len(due)}
 

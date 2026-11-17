@@ -65,7 +65,7 @@ class FakeDocker:
         return self.boxes[name]
 
 
-def make(install, tmp_path, *, channel="stabile", unhealthy=None, docker=None, notes=None):
+def make(install, tmp_path, *, channel="stable", unhealthy=None, docker=None, notes=None):
     sent = notes if notes is not None else []
     return up.Updater(install, tmp_path / "data", channel=lambda: channel, notify=sent.append,
                       unhealthy=unhealthy or (lambda s: []), docker_client=lambda: docker)
@@ -91,7 +91,7 @@ def test_apply_restarts_only_running_touched_services_then_records(repos, tmp_pa
     u.apply()
     u._thread.join(10)
     st = u.status()
-    assert st["installed"]["label"] == "1.1.0" and st["job"]["state"] == "fatto"
+    assert st["installed"]["label"] == "1.1.0" and st["job"]["state"] == "done"
     assert dock.boxes["hestia_oracle"].restarts == 1 and dock.boxes["hestia_hub"].restarts == 0
     assert st["history"][-1]["ok"] and st["previous"]
     assert st["available"] is None
@@ -106,7 +106,7 @@ def test_unhealthy_goes_back_to_previous_version(repos, tmp_path):
     u.apply()
     u._thread.join(10)
     st = u.status()
-    assert st["installed"]["label"] == "1.0.0" and st["job"]["state"] == "errore"
+    assert st["installed"]["label"] == "1.0.0" and st["job"]["state"] == "error"
     assert dock.boxes["hestia_oracle"].restarts == 2          # once for the update, once for the way back
     assert "1.0.0" in sent[-1]["text"]
 
@@ -125,7 +125,7 @@ def test_novita_follows_main_and_refuses_local_commits(repos, tmp_path):
     origin, install = repos
     sh(install, "checkout", "-q", "main")
     commit(origin, {"Hestia-Hub/src/main.py": "v3\n"}, "three")
-    u = make(install, tmp_path, channel="novita")
+    u = make(install, tmp_path, channel="news")
     assert u.check()["available"]["commits"] == 1
     commit(install, {"local.txt": "forge\n"}, "forge work")
     assert "non sono su GitHub" in u.blocked()

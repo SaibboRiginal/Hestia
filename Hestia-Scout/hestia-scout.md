@@ -58,7 +58,7 @@ Scout is also an event producer for proactive workflows: when entities are creat
 
 Extraction calls Oracle `POST /api/llm/generate` through Hub (`evaluators/oracle_evaluator.py`) with
 `{"prompt", "use_case": "scout.listings"}`: Oracle owns provider keys **and the model choice**. Scout declares the use
-case in its Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`, suggested chain `veloce`);
+case in its Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`, suggested chain `fast`);
 Marko picks its chain in Oracle → Cervello → Modelli. A model out of quota (429) is skipped and the next step of the
 chain answers (the old `SCOUT_LLM_MODELS` hop). No Scout env var for the model.
 
@@ -238,7 +238,7 @@ Declared in `app/core/scout_settings.py` (owner `scout`), all `apply=live` (read
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-One section `annunci`: the active listings of Scout's domain in Archive (payload with the user's marks
+One section `listings`: the active listings of Scout's domain in Archive (payload with the user's marks
 `user_flag`, `listing_status`). Import upserts through Archive's entity merge; «Sostituisci» never deletes (the
 mail cycle brings listings back anyway). Settings travel through Themis.
 

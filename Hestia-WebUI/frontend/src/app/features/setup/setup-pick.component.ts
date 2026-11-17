@@ -118,7 +118,7 @@ export class SetupPickComponent {
   limit = input<number>(5);
   picked = output<string>();
   /** A try button on every card: «voce» = hear it, «ascolto» = speak and see what it understood ('' = none). */
-  trial = input<'voce' | 'ascolto' | ''>('');
+  trial = input<'voice' | 'listen' | ''>('');
   /** The try in progress or just done, by card id. */
   trialState = input<{ id: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   tried = output<string>();

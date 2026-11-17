@@ -13,7 +13,7 @@ the assistant change values from any client, Archive stores them.
         setting("argus.remediate.enabled", "Automatic remedy", "bool", False, group="Remedy"),
         setting("argus.remediate.dry_run", "Simulation only", "bool", True, group="Remedy",
                 depends_on={"key": "argus.remediate.enabled", "equals": True}),
-    ], presets=[preset("calmo", "Calm", group="Checks", values={"argus.poll.interval": 120})])
+    ], presets=[preset("calm", "Calm", group="Checks", values={"argus.poll.interval": 120})])
     app.include_router(settings.router())          # GET /api/settings/effective, POST /api/settings/reload
     settings.start()                               # on startup: background load + hourly re-assert
     settings.get("argus.poll.interval")            # effective value (stored → default)
@@ -133,8 +133,8 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
     setting("themis.personal.assistant_name", "Assistant's name", "string", "Hestia",
             group="You and the assistant", order=3,
             help="The name it introduces itself with and answers to in chat, by voice and in notifications."),
-    setting("themis.personal.assistant_gender", "The assistant is", "enum", "lei", group="You and the assistant",
-            order=4, options=[("lei", "A woman"), ("lui", "A man")],
+    setting("themis.personal.assistant_gender", "The assistant is", "enum", "she", group="You and the assistant",
+            order=4, options=[("she", "A woman"), ("he", "A man")],
             help="Changes how it talks about itself (as a woman or a man)."),
     setting("themis.personal.language", "Language", "enum", "it", group="You and the assistant", order=5,
             options=[("it", "Italiano"), ("en", "English")],

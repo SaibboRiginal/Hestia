@@ -22,7 +22,7 @@ export function personalHits(query: string): Map<string, number> {
   const out = new Map<string, number>();
   for (const r of PERSONAL_ROWS) {
     const s = PERSONAL_SECTIONS.find(x => x.id === r.section)!;
-    if (matches(query, r.label, r.help, r.keywords, s.label, 'personali')) out.set(r.section, (out.get(r.section) ?? 0) + 1);
+    if (matches(query, r.label, r.help, r.keywords, s.label, 'personal')) out.set(r.section, (out.get(r.section) ?? 0) + 1);
   }
   return out;
 }
@@ -82,7 +82,7 @@ export function personalHits(query: string): Map<string, number> {
               @case ('look') {
                 <div class="look">
                   <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { {{ "Standard look" | tr }} }</span>
-                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">{{ "Choose" | tr }}</a>
+                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/look">{{ "Choose" | tr }}</a>
                 </div>
               }
               @case ('push') {
@@ -127,7 +127,7 @@ export function personalHits(query: string): Map<string, number> {
             }
           </hx-setting-shell>
         }
-        @if (s.section.id === 'assistente') { @for (it of store.personalExtra(); track it.key) { <hx-setting [item]="it" /> } }
+        @if (s.section.id === 'assistant') { @for (it of store.personalExtra(); track it.key) { <hx-setting [item]="it" /> } }
       </div>
     }`,
   styles: [`
@@ -199,8 +199,8 @@ export class PersonalSettingsComponent implements OnInit {
     return PERSONAL_SECTIONS
       .filter(s => q || s.id === this.section())
       .map(s => ({ section: s, rows: PERSONAL_ROWS.filter(r => r.section === s.id
-        && (!q || matches(q, r.label, r.help, r.keywords, s.label, 'personali'))) }))
-      .filter(s => s.rows.length || (s.section.id === 'assistente' && this.store.personalExtra().length));
+        && (!q || matches(q, r.label, r.help, r.keywords, s.label, 'personal'))) }))
+      .filter(s => s.rows.length || (s.section.id === 'assistant' && this.store.personalExtra().length));
   });
 
   readonly tones: SegmentOption[] = [

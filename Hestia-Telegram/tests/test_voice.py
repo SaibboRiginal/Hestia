@@ -127,7 +127,7 @@ def test_listen_button_speaks_the_reply(env, fake_callback):
 def test_voice_uses_in_registration():
     from telegram_bot.services.voice_service import capabilities
     ids = {u["id"]: u["direction"] for u in capabilities()["voice_usecases"]}
-    assert ids == {"telegram.vocale": "ascolto", "telegram.answer": "voce"}
+    assert ids == {"telegram.vocale": "listen", "telegram.answer": "voice"}
 
 
 @pytest.mark.unit

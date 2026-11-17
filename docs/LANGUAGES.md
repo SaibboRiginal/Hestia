@@ -80,8 +80,8 @@ When one English text needs two Italian texts, prefix a context tag: `tr("pl::Tr
 
 ## Italian that stays in the code (on purpose)
 
-- **Stored values and ids**: route/page ids, query keys, states (`running`, `fatto`), track ids
-  (`vita`/`sistema`/`parla`), setting keys, Plutus category ids, mood values (`giù`), use-case ids. Changing them
+- **Stored values and ids**: route/page ids, query keys, states (`running`, `done`), track ids
+  (`life`/`system`/`talk`), setting keys, Plutus category ids, mood values (`giù`), use-case ids. Changing them
   would break the owner's data; only their labels are translated.
 - **Parsers of the owner's words**: keyword detectors, regexes on bank or PayPal mails, Italian date words in
   Telegram inputs. They read what people write; keep both languages there.

@@ -4,7 +4,7 @@ Single responsibility: know the installed version, find a newer one, move ``/rep
 running containers, with an automatic way back.
 
 - Versions = git tags ``vX.Y.Z`` (the GitHub releases, `images.yml`). Channel (Themis ``hephaestus.update.channel``):
-  ``stabile`` = the newest tag · ``novita`` = ``origin/main``.
+  ``stabile`` = the newest tag · ``news`` = ``origin/main``.
 - Check: ``git fetch`` + compare; what's new = the root ``CHANGELOG.md`` lines added between the two versions.
   Daily agenda job; a newer version → Hermes asks «Installo?» (the answer comes back to ``/api/setup/update/answer``).
 - Apply (background thread, state in ``data/update.json``): refuse when the repo has local changes or commits
@@ -111,7 +111,7 @@ class Updater:
             return tr("This installation has no Hestia git folder: update by running the installer again.")
         if self._git("status", "--porcelain", "--untracked-files=no", check=False):
             return tr("There are local changes to the code: I keep them, so I don't update by myself. Save or undo them, then try again.")
-        if self.channel() == "novita":
+        if self.channel() == "news":
             ahead = self._git("rev-list", "--count", "origin/main..HEAD", check=False) or "0"
             if ahead.isdigit() and int(ahead):
                 return (tr("The code has {0} changes made here (development) that are not on GitHub: publish or undo them, then try again.", ahead))
@@ -132,7 +132,7 @@ class Updater:
                                check_error=tr("I can't reach GitHub: I'll retry later."))
         current = self.installed()
         available = None
-        if channel == "novita":
+        if channel == "news":
             behind = self._git("rev-list", "--count", "HEAD..origin/main", check=False) or "0"
             if behind.isdigit() and int(behind):
                 target = self._git("rev-parse", "--short=7", "origin/main")
@@ -298,7 +298,7 @@ class Updater:
     def _finish(self, before: str, frm: str, to: str, *, ok: bool, back: bool, detail: str) -> None:
         with self._lock:
             data = self._load()
-            data["job"] = {"state": "fatto" if ok else "errore", "step": "", "detail": detail, "ended_at": time.time()}
+            data["job"] = {"state": "done" if ok else "error", "step": "", "detail": detail, "ended_at": time.time()}
             data.setdefault("history", []).append({"at": time.time(), "from": frm, "to": to, "ok": ok,
                                                   "back": back, "detail": detail})
             data["history"] = data["history"][-50:]

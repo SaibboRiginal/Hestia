@@ -178,7 +178,7 @@ def _start_now(client=None) -> None:
                     _downloads.add(f"docker:{IMAGE}", tr("Link from outside home (Cloudflare)"), "docker",
                                    {"image": IMAGE}, size_hint=25_000_000)
                     job = _downloads.wait(f"docker:{IMAGE}", timeout=900)
-                    if job.get("state") != "fatto":
+                    if job.get("state") != "done":
                         raise RuntimeError(job.get("error") or tr("download failed"))
                 else:
                     client.images.pull(IMAGE)

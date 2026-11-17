@@ -80,7 +80,7 @@ export class HephaestusRepairs extends HestiaElement {
         <span>${tr("It can be undone")}</span><span>${t.undoable ? tr('yes, changed data is restored') : tr('no, it did not change data to restore')}</span>
         ${t.rollback_result ? html`<span>${tr("Undo")}</span><span>${UNDO[t.rollback_result.status] || t.rollback_result.status}</span>` : nothing}
         <span>${tr("alt::Branch")}</span><span><code>${t.branch || '–'}</code></span>
-        ${t.forge_task_id ? html`<span>Forge</span><span>${tr("handed to development:")} <a href=${this.host.link('sviluppo', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('sviluppo', { task: t.forge_task_id }); }}>${"task"} <code>${short(t.forge_task_id)}</code> ${tr("in Development")}</a></span>` : nothing}
+        ${t.forge_task_id ? html`<span>Forge</span><span>${tr("handed to development:")} <a href=${this.host.link('development', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('development', { task: t.forge_task_id }); }}>${"task"} <code>${short(t.forge_task_id)}</code> ${tr("in Development")}</a></span>` : nothing}
         <span>Id</span><span><code>${t.task_id}</code></span>
       </div>
       ${rb?.steps?.length ? html`<div><div class="small muted">${tr("Runbook steps")}</div><ol>${rb.steps.map((s: any) => html`<li>${s.title}

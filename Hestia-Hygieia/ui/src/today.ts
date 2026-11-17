@@ -213,7 +213,7 @@ export class HygieiaToday extends HestiaElement {
           ${items.slice(0, 40).map(p => html`<div class="li" @click=${() => this.useProduct(p)}>
             <div class="grow"><div class="truncate">${p.favorite ? html`${icon('star', 13, 'warning')} ` : nothing}${productName(p)}</div><div class="small muted">${p.status_label} · ${p.uses} ${tr("uses")}</div></div>
             <hxk-icon name="plus"></hxk-icon></div>`)}
-          ${!items.length ? html`<div class="empty">${tr("No product in use.")} <button class="link" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Add one")}</button></div>` : nothing}
+          ${!items.length ? html`<div class="empty">${tr("No product in use.")} <button class="link" @click=${() => this.host.navigate('products', { nuovo: '1' })}>${tr("Add one")}</button></div>` : nothing}
         </div>`}
       </div></div>`;
   }
@@ -222,10 +222,10 @@ export class HygieiaToday extends HestiaElement {
     const p = this.plan;
     const nav = html`<div class="nav">
       <button class="tab" @click=${() => this.host.navigate('routine')}>${tr("Routine")}</button>
-      <button class="tab" @click=${() => this.host.navigate('prodotti')}>${tr("Products")}</button>
-      <button class="tab" @click=${() => this.host.navigate('diario')}>${tr("Diary")}</button>
-      <button class="tab" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</button>
-      <button class="tab" @click=${() => this.host.navigate('spesa')}>${tr('Shopping list')}</button></div>`;
+      <button class="tab" @click=${() => this.host.navigate('products')}>${tr("Products")}</button>
+      <button class="tab" @click=${() => this.host.navigate('diary')}>${tr("Diary")}</button>
+      <button class="tab" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</button>
+      <button class="tab" @click=${() => this.host.navigate('groceries')}>${tr('Shopping list')}</button></div>`;
     const head = html`<div class="between wrap">
       <div class="head"><h1>${tr("Self care")}</h1>
         <div class="datebar"><hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.go(-1)}></hxk-button>
@@ -254,7 +254,7 @@ export class HygieiaToday extends HestiaElement {
           <h2>${tr("No routine")}</h2>
           <div class="muted">${tr("Create the first one, for example «Evening face: cleanser → retinol → cream». You can say how many times a week to do it, no fixed times.")}</div>
           <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('routine', { nuova: '1' })}>${tr("Create a routine")}</hxk-button>
-            <hxk-button icon="plus" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("Add products")}</hxk-button></div></div>` : nothing}
+            <hxk-button icon="plus" @click=${() => this.host.navigate('products', { nuovo: '1' })}>${tr("Add products")}</hxk-button></div></div>` : nothing}
       ${(['morning', 'anytime', 'evening'] as const).map(slot => groups[slot].length ? html`<div class="slot">
         <h3>${slotIcon(slot)} ${this.m?.slots?.[slot] || slot}</h3>${groups[slot].map(r => this.card(r))}</div>` : nothing)}
       <div class="row wrap">

@@ -45,7 +45,7 @@ def _runner(page):
 
 def test_repo_recipes_are_valid():
     loaded = recipes.load_all()
-    assert {"duckduckgo", "pagina"} <= set(loaded)
+    assert {"duckduckgo", "page"} <= set(loaded)
 
 
 def test_validation_rejects_bad_recipes():
@@ -87,5 +87,5 @@ def test_broken_recipe_is_logged_for_the_monitor(caplog):
 
 
 def test_browser_unavailable():
-    status, out = recipes.run("pagina", {"url": "https://a"}, lambda work, t: None, recipes=recipes.load_all())
+    status, out = recipes.run("page", {"url": "https://a"}, lambda work, t: None, recipes=recipes.load_all())
     assert status == 503

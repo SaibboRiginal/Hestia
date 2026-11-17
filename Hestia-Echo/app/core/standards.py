@@ -50,7 +50,7 @@ def fetch(job_id: str, what: str, url: str, dest: Path, size_mb: int = 0) -> Pat
         return dest
     DOWNLOADS.file(job_id, what, url, dest, size_hint=size_mb * 1_000_000)
     job = DOWNLOADS.wait(job_id, 1800)
-    if job.get("state") != "fatto" or not dest.exists():
+    if job.get("state") != "done" or not dest.exists():
         raise EngineError(job.get("error") or tr("{0}: download not finished", what))
     return dest
 
@@ -158,7 +158,7 @@ class Standard:
 # ── local engines ────────────────────────────────────────────────────────────
 
 class WhisperLocal(Standard):
-    id, label, directions, wants_pcm = "whisper_local", "Local Whisper (faster-whisper)", ("ascolto",), True
+    id, label, directions, wants_pcm = "whisper_local", "Local Whisper (faster-whisper)", ("listen",), True
     SIZES = ["tiny", "base", "small", "medium", "large-v3", "large-v3-turbo"]
     options = [
         opt("beam_size", "Precisione (beam)", "int", 5, min=1, max=10, help="Higher = more accurate and slower."),
@@ -237,7 +237,7 @@ PIPER_MALE = {"riccardo", "ryan", "davefx", "tom", "thorsten", "faber"}
 
 
 class Piper(Standard):
-    id, label, directions = "piper", "Piper (local, fast)", ("voce",)
+    id, label, directions = "piper", "Piper (local, fast)", ("voice",)
     options = [
         opt("length_scale", "Lentezza", "float", 1.0, min=0.5, max=2.0, help="1 = normal; higher = slower."),
         opt("noise_scale", "alt::Change", "float", 0.667, min=0.0, max=1.0),
@@ -358,7 +358,7 @@ KOKORO_FILES = {"kokoro-v1.0.onnx": "https://github.com/thewh1teagle/kokoro-onnx
 
 
 class Kokoro(Standard):
-    id, label, directions = "kokoro", "Kokoro (local, natural)", ("voce",)
+    id, label, directions = "kokoro", "Kokoro (local, natural)", ("voice",)
     options = [opt("speed", "Speed", "float", 1.0, min=0.5, max=2.0)]
 
     def __init__(self):
@@ -420,13 +420,13 @@ class Kokoro(Standard):
 # ── cloud / remote engines ───────────────────────────────────────────────────
 
 class OpenAICompatible(Standard):
-    id, label, directions = "openai", "OpenAI compatible (OpenAI, Groq, Speaches, LocalAI…)", ("ascolto", "voce")
+    id, label, directions = "openai", "OpenAI compatible (OpenAI, Groq, Speaches, LocalAI…)", ("listen", "voice")
     needs_key, needs_url, default_url = True, True, "https://api.openai.com/v1"
     options = [
-        opt("prompt", "Words to recognise", "string", "", direction="ascolto"),
-        opt("temperature", "Temperature", "float", 0.0, min=0.0, max=1.0, direction="ascolto"),
-        opt("speed", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voce"),
-        opt("instructions", "Voice style", "string", "", direction="voce",
+        opt("prompt", "Words to recognise", "string", "", direction="listen"),
+        opt("temperature", "Temperature", "float", 0.0, min=0.0, max=1.0, direction="listen"),
+        opt("speed", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voice"),
+        opt("instructions", "Voice style", "string", "", direction="voice",
             help="For the models that accept it (e.g. «warm, calm»)."),
     ]
 
@@ -471,7 +471,7 @@ class OpenAICompatible(Standard):
         resp = requests.post(f"{self.url(provider)}/audio/transcriptions", headers=self._headers(provider),
                              data=form, files={"file": (f"audio.{ext}", data, mime)}, timeout=180)
         if resp.status_code >= 400:
-            raise _http_error(resp, "trascrizione")
+            raise _http_error(resp, "transcription")
         return {"text": str(resp.json().get("text") or "").strip(), "language": language}
 
     def speak(self, provider, model, voice, text, language, opts):
@@ -490,16 +490,16 @@ class OpenAICompatible(Standard):
 
 
 class Google(Standard):
-    id, label, directions = "google", "Google Cloud (Speech-to-Text, Text-to-Speech)", ("ascolto", "voce")
+    id, label, directions = "google", "Google Cloud (Speech-to-Text, Text-to-Speech)", ("listen", "voice")
     needs_key = True
     options = [
-        opt("recognition_model", "Listening model", "enum", "latest_short", direction="ascolto",
+        opt("recognition_model", "Listening model", "enum", "latest_short", direction="listen",
             options=[{"value": "latest_short", "label": "Short sentences"}, {"value": "latest_long", "label": "Long audio"},
                      {"value": "default", "label": "Default"}]),
-        opt("punctuation", "Punteggiatura", "bool", True, direction="ascolto"),
-        opt("speaking_rate", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voce"),
-        opt("pitch", "Tone", "float", 0.0, min=-20.0, max=20.0, direction="voce"),
-        opt("profile", "Audio profile", "enum", "headphone-class-device", direction="voce",
+        opt("punctuation", "Punteggiatura", "bool", True, direction="listen"),
+        opt("speaking_rate", "Speed", "float", 1.0, min=0.25, max=4.0, direction="voice"),
+        opt("pitch", "Tone", "float", 0.0, min=-20.0, max=20.0, direction="voice"),
+        opt("profile", "Audio profile", "enum", "headphone-class-device", direction="voice",
             options=[{"value": "headphone-class-device", "label": "Cuffie"},
                      {"value": "handset-class-device", "label": "Phone"},
                      {"value": "small-bluetooth-speaker-class-device", "label": "Small speaker"},
@@ -527,7 +527,7 @@ class Google(Standard):
         resp = requests.post("https://speech.googleapis.com/v1/speech:recognize", params={"key": provider["key"]},
                              json=body, timeout=120)
         if resp.status_code >= 400:
-            raise _http_error(resp, "trascrizione")
+            raise _http_error(resp, "transcription")
         parts = [r["alternatives"][0].get("transcript", "") for r in resp.json().get("results") or []
                  if r.get("alternatives")]
         return {"text": " ".join(p.strip() for p in parts).strip(), "language": language}
@@ -549,12 +549,12 @@ class Google(Standard):
 
 
 class ElevenLabs(Standard):
-    id, label, directions = "elevenlabs", "ElevenLabs", ("ascolto", "voce")
+    id, label, directions = "elevenlabs", "ElevenLabs", ("listen", "voice")
     needs_key, default_url = True, "https://api.elevenlabs.io/v1"
     options = [
-        opt("stability", "Stability", "float", 0.5, min=0.0, max=1.0, direction="voce"),
-        opt("similarity", "Similarity", "float", 0.75, min=0.0, max=1.0, direction="voce"),
-        opt("style", "Expressiveness", "float", 0.0, min=0.0, max=1.0, direction="voce"),
+        opt("stability", "Stability", "float", 0.5, min=0.0, max=1.0, direction="voice"),
+        opt("similarity", "Similarity", "float", 0.75, min=0.0, max=1.0, direction="voice"),
+        opt("style", "Expressiveness", "float", 0.0, min=0.0, max=1.0, direction="voice"),
     ]
 
     def models(self, provider):
@@ -578,7 +578,7 @@ class ElevenLabs(Standard):
         resp = requests.post(f"{self.url(provider)}/speech-to-text", headers={"xi-api-key": provider["key"]},
                              data=form, files={"file": ("audio", data, mime)}, timeout=180)
         if resp.status_code >= 400:
-            raise _http_error(resp, "trascrizione")
+            raise _http_error(resp, "transcription")
         return {"text": str(resp.json().get("text") or "").strip(), "language": language}
 
     def speak(self, provider, model, voice, text, language, opts):
@@ -597,7 +597,7 @@ class ElevenLabs(Standard):
 
 class Wyoming(Standard):
     """Home Assistant's voice protocol (whisper/piper servers on the LAN): JSON event lines + binary payloads."""
-    id, label, directions, wants_pcm = "wyoming", "Wyoming (Home Assistant voice server)", ("ascolto", "voce"), True
+    id, label, directions, wants_pcm = "wyoming", "Wyoming (Home Assistant voice server)", ("listen", "voice"), True
     needs_url = True
     options = []
 

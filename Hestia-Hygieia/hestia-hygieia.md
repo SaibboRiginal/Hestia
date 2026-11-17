@@ -65,16 +65,16 @@ not facts about the user: they are not signals.
 
 | Key | Kind · severity | When | Page |
 |---|---|---|---|
-| `adherence_drop` | trend · attenzione | weekly adherence this week ≥ 20 points under the mean of the previous 4 weeks | `statistiche` |
+| `adherence_drop` | trend · attenzione | weekly adherence this week ≥ 20 points under the mean of the previous 4 weeks | `stats` |
 | `goal:<routine_id>` | goal · attenzione | a target routine `behind` its goal and `due` today (planner `goal_state`) | `routine/<id>` |
 | `streak:<routine_id>` | milestone · info | `routine_stats` streak reaches 4, 8, 12, 26 or 52 periods | `routine/<id>` |
-| `diario` | trend · info (2 days) | today's spoken diary «giornata» exists (first 200 chars; `topic=diario` gives it all) | `diario` |
+| `diary` | trend · info (2 days) | today's spoken diary «giornata» exists (first 200 chars; `topic=diario` gives it all) | `diary` |
 
 Weekly adherence = Σ min(done, needed) / Σ needed over active routines with a goal (daily = days, fixed days =
 matching days, target = times prorated on the days of the week; the open week counts until today; a routine counts
 from its first version or first log). Weekly metrics (last 12 ISO weeks): `selfcare.adherence` «Routine rispettate
 %» (weeks with something to meet) and `selfcare.journal.<area>.<metric>` «Diario <Area> · <Metrica>» (average of the
-journal scores, only weeks with entries; area in the name because metrics like `irritazione` exist in several areas).
+journal scores, only weeks with entries; area in the name because metrics like `irritation` exist in several areas).
 
 When: `signals.changed()` (debounced re-evaluation) after routine done / undone / skip, quick routine and its undo,
 log delete, journal add / delete, the MCP `log` / `journal_add` tools and once after warm-up; agenda job
@@ -122,9 +122,9 @@ there and used only when wanted. Week start and currency are the personal settin
   actions=)`, a `command` action that opens the tool `selfcare_diary_voice`) until today has a «giornata» entry.
   Telegram asks for a voice note; `POST /api/selfcare/journal/voice {audio:{data_b64, mime}|audio_b64, date?}` →
   Echo transcribes it (use `hygieia.diary`, declared in the Hub registration, recording kept) → journal entry
-  area `giornata`, note = transcript, tag `voce`, source `voce`, `audio_id`. Reflection reads it (signal `diario`).
+  area `day`, note = transcript, tag `voice`, source `voice`, `audio_id`. Reflection reads it (signal `diary`).
 - **Sleep from the watch** (B10): Hecate pushes feed `wearable.daily` (`hestia_common.feeds`) to
-  `POST /api/selfcare/wearable`; the night becomes one diary entry area `sonno` per date (id `device-sleep-<date>`,
+  `POST /api/selfcare/wearable`; the night becomes one diary entry area `sleep` per date (id `device-sleep-<date>`,
   quality 1–5 from the sleep score, duration and deep sleep in the note, source `device`). A night the owner deleted
   never comes back.
 
@@ -136,8 +136,8 @@ shopping, check, summary, overview, export, quick (Home chips), reminders/run, a
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections over `selfcare-store`: `prodotti` (product + its history events) · `routine` (routine + versions) ·
-`registro` (log) · `diario` (journal) · `liste` (option). A routine pulls its products and options. Reminder chain
+Sections over `selfcare-store`: `products` (product + its history events) · `routine` (routine + versions) ·
+`log` (log) · `diary` (journal) · `lists` (option). A routine pulls its products and options. Reminder chain
 state and alerts are never exported. Settings travel through Themis.
 
 ## Configuration (infrastructure only)
@@ -155,7 +155,7 @@ mocks the signals transport).
 Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter` (needs + review).
 - **Needs**: each active routine → a `slot` (`routine.<id>`) with its cadence, part of day, `not_same_day` from the
   known conflicts and `not_same_day_as`, and `with {tag, same_day}` from the routine's new field `plan_with`
-  (e.g. a mask the same day as the scrub). Supplements (category `integratore`) are information only: the summary
+  (e.g. a mask the same day as the scrub). Supplements (category `supplement`) are information only: the summary
   lists them, no plan item.
 - **Reports**: routine logged → done/skipped for `routine.<id>`; cadence/status/slot/conflict/`plan_with` change →
   changed (re-plan). Tool `selfcare_routine_edit` takes `plan_with`.

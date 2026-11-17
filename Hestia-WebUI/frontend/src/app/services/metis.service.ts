@@ -85,6 +85,6 @@ export class MetisService {
     this.tap('tool', tool, label);
     const params: Record<string, string> = { command: tool, run: '1' };
     if (Object.keys(args).length) params['args'] = JSON.stringify(args);
-    void this.router.navigateByUrl(this.plugins.link('mcp', 'comandi', params));
+    void this.router.navigateByUrl(this.plugins.link('mcp', 'commands', params));
   }
 }

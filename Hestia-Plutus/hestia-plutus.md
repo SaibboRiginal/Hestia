@@ -18,7 +18,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
   `link_pass` links the bank row to the PayPal row (same amount, bank text mentions PayPal, within
   `plutus.link.window_days`): both kept, counted once. Manual links/unlinks win (`link_manual`).
 - **Categories**: an explicit category wins, then the rules (longest pattern first), then Oracle for statement rows
-  no rule knows, else `altro`/`entrate` with status `to_review` (email/statement only). Correcting with «usa sempre»
+  no rule knows, else `other`/`income` with status `to_review` (email/statement only). Correcting with «usa sempre»
   (`learn`) saves a user rule.
 - **Recurring**: same merchant, ±15 % amount, weekly/monthly/yearly interval, 3+ times (2 for yearly) → suggestion;
   the user confirms or dismisses (dismissed ones are not proposed again).
@@ -115,7 +115,7 @@ quick, alerts/run, review/run, reminders/run|skip, signals/run, tools.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections over `finance-store`: `movimenti` (tx) · `categorie` · `regole` · `budget` · `conti` (account) · `ricorrenti`.
+Sections over `finance-store`: `transactions` (tx) · `categories` · `rules` · `budget` · `accounts` (account) · `recurring`.
 A transaction pulls its category and account. Statement imports, processed mails, alerts and reminder state are
 runtime: never exported. Settings travel through Themis.
 

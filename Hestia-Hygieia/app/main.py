@@ -80,7 +80,7 @@ settings.declare([
 hub = Hub(HUB_API_URL)
 store = Store(hub)
 voice = VoiceClient(HUB_API_URL)
-VOICE_USECASES = [voice_usecase(DIARY_VOICE_USE, "Spoken diary", direction="ascolto",
+VOICE_USECASES = [voice_usecase(DIARY_VOICE_USE, "Spoken diary", direction="listen",
                                 help="The story of the day after the evening recap.")]
 hygieia = Hygieia(store, settings.get, tz_name=TZ)
 coach = HygieiaCoach(hygieia)
@@ -489,7 +489,7 @@ def quick_product_undo(id: str, date: str = ""):
 
 
 # ── reminders and alerts (agenda jobs → Hermes, one live notification per thing) ──
-def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "oggi") -> None:
+def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page: str = "today") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="hygieia", domain="selfcare", key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
         voice=bool(settings.get("hygieia.notifications.voice", True)),
@@ -581,28 +581,28 @@ ui = PluginClient("hygieia", title="Self care", icon="sparkle", color="pink",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hygieia.js", api_prefix=f"{API}/",
-    pages=[page("oggi", "Self care", element="hygieia-today", icon="sparkle", order=40,
+    pages=[page("today", "Self care", element="hygieia-today", icon="sparkle", order=40,
                 help="Today's routines: one tap to mark them done."),
-           page("routine", "Routine", element="hygieia-routines", icon="list", order=41, parent="oggi"),
-           page("routine/:id", "Routine", element="hygieia-routine", detail=True, parent="oggi"),
-           page("prodotti", "Products", element="hygieia-products", icon="drop", order=42, parent="oggi"),
-           page("products/:id", "Product", element="hygieia-product", detail=True, parent="oggi"),
-           page("diario", "Diary", element="hygieia-journal", icon="edit", order=43, parent="oggi"),
-           page("statistiche", "Statistics and history", element="hygieia-stats", icon="chart", order=44, parent="oggi"),
-           page("spesa", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="oggi")],
-    widgets=[widget("oggi", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
-                    open_page="oggi", icon="sparkle"),
-             widget("prossima", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="oggi",
+           page("routine", "Routine", element="hygieia-routines", icon="list", order=41, parent="today"),
+           page("routine/:id", "Routine", element="hygieia-routine", detail=True, parent="today"),
+           page("products", "Products", element="hygieia-products", icon="drop", order=42, parent="today"),
+           page("products/:id", "Product", element="hygieia-product", detail=True, parent="today"),
+           page("diary", "Diary", element="hygieia-journal", icon="edit", order=43, parent="today"),
+           page("stats", "Statistics and history", element="hygieia-stats", icon="chart", order=44, parent="today"),
+           page("groceries", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="today")],
+    widgets=[widget("today", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
+                    open_page="today", icon="sparkle"),
+             widget("prossima", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="today",
                     icon="clock"),
-             widget("prodotti", "Expiring and to buy again", element="hygieia-alerts-widget", sizes=["m", "l"],
-                    open_page="spesa", icon="drop"),
-             widget("settimana", "Self care week", element="hygieia-week-widget", sizes=["s", "m", "l"],
-                    open_page="statistiche", icon="calendar")],
+             widget("products", "Expiring and to buy again", element="hygieia-alerts-widget", sizes=["m", "l"],
+                    open_page="groceries", icon="drop"),
+             widget("week", "Self care week", element="hygieia-week-widget", sizes=["s", "m", "l"],
+                    open_page="stats", icon="calendar")],
     quick_actions=[
-        quick_action("fatta", "Routine done", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
+        quick_action("done", "Routine done", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
                      source=f"{API}/quick/routines", undo={"method": "DELETE", "path": f"{API}/quick/routine/{{id}}"},
                      favorite=True, order=40),
-        quick_action("uso", "Product used", "POST", f"{API}/quick/product/{{id}}", icon="drop", group="Self care",
+        quick_action("use", "Product used", "POST", f"{API}/quick/product/{{id}}", icon="drop", group="Self care",
                      source=f"{API}/quick/products", undo={"method": "DELETE", "path": f"{API}/quick/product/{{id}}"},
                      order=41),
     ],
@@ -612,17 +612,17 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("hygieia", hub, sections=[
-    StoreSection("prodotti", "Products", store, ["product", "event"], item_kinds=["product"], icon="drop",
+    StoreSection("products", "Products", store, ["product", "event"], item_kinds=["product"], icon="drop",
                  subtitle=lambda r: r["data"].get("brand") or ""),
     StoreSection("routine", "Routine", store, ["routine", "version"], item_kinds=["routine"], icon="repeat",
-                 subtitle=lambda r: r["data"].get("slot") or "", depends_on=["prodotti", "liste"]),
-    StoreSection("registro", "Log", store, ["log"], icon="history",
+                 subtitle=lambda r: r["data"].get("slot") or "", depends_on=["products", "lists"]),
+    StoreSection("log", "Log", store, ["log"], icon="history",
                  title=lambda r: f"{r['data'].get('date')} · {r['data'].get('status') or 'fatto'}",
-                 subtitle=lambda r: r["data"].get("note") or "", depends_on=["routine", "prodotti"]),
-    StoreSection("diario", "Diary", store, ["journal"], icon="note",
+                 subtitle=lambda r: r["data"].get("note") or "", depends_on=["routine", "products"]),
+    StoreSection("diary", "Diary", store, ["journal"], icon="note",
                  title=lambda r: f"{r['data'].get('date')} · {r['data'].get('area') or ''}",
                  subtitle=lambda r: r["data"].get("note") or ""),
-    StoreSection("liste", "Personal lists", store, ["option"], icon="list"),
+    StoreSection("lists", "Personal lists", store, ["option"], icon="list"),
 ])
 app.include_router(transfer.router())
 
@@ -819,7 +819,7 @@ try:
         if favorite is not None:
             body["favorite"] = favorite
         if plan_with:
-            body["plan_with"] = "" if catalog.slug(plan_with) in ("nessuno", "no", "none") else plan_with
+            body["plan_with"] = "" if catalog.slug(plan_with) in ("none", "no", "none") else plan_with
         if not body:
             return {"error": tr("no change given")}
         d = hygieia.save_routine(body, id=r["id"], reason=reason or tr("edited by the assistant"), source="assistant")

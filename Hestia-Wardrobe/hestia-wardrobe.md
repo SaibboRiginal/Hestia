@@ -88,7 +88,7 @@ Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`)
 
 Bundle `ui/src/index.ts` → `/ui/webui/wardrobe.js` (built in the Dockerfile). Pages: capi, items/:id, accessori,
 outfit, outfit/:id, what-to-wear, statistiche, liste, lists/:id, vocabolari. Widgets: oggi (auto, one-tap
-«Indossato» chips), suggerito, lavanderia, dimenticati (auto), numeri (auto), ultimi. Quick action `indossato`
+«Indossato» chips), suggerito, lavanderia, dimenticati (auto), numeri (auto), ultimi. Quick action `worn`
 (chips = favourite outfits + today's idea, undo). Multi-select on Guardaroba: In lavanderia / Nell'armadio /
 Crea outfit / Da donare. A UI change needs `up-all.bat --build wardrobe`.
 
@@ -117,8 +117,8 @@ nothing is saved and the reply asks what it is. Dossier `docs/work/2026-10-30-co
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections over `wardrobe-store`: `capi` (piece) · `outfit` · `indossati` (wear) · `liste` (collection) · `vocabolari`
-(taxonomy) · `foto` (photo rows + their Archive blobs, only with «Includi foto» or chosen by hand). On import the
+Sections over `wardrobe-store`: `pieces` (piece) · `outfit` · `worn` (wear) · `lists` (collection) · `vocabularies`
+(taxonomy) · `photos` (photo rows + their Archive blobs, only with «Includi foto» or chosen by hand). On import the
 blobs are uploaded first (`POST /api/transfer/files`, owner `wardrobe`) and the photo rows get the new blob ids.
 Reminder rows are never exported. Settings travel through Themis.
 

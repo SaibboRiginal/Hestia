@@ -93,7 +93,7 @@ function linkOf(n) {
     const qs = l.params && Object.keys(l.params).length ? '?' + new URLSearchParams(l.params).toString() : '';
     return `/p/${encodeURIComponent(l.module)}/${String(l.page).replace(/^\//, '')}${qs}`;
   }
-  return '/p/hermes/notifiche';
+  return '/p/hermes/notifications';
 }
 
 self.addEventListener('notificationclick', e => {

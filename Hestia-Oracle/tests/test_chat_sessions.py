@@ -13,7 +13,7 @@ from core.services import chat_sessions
 class FakeArchive:
     def __init__(self):
         self.calls = []
-        self.meta = {"s2": {"title": None, "tags": [{"name": "casa", "color": "teal"}], "pinned": False}}
+        self.meta = {"s2": {"title": None, "tags": [{"name": "home", "color": "teal"}], "pinned": False}}
 
     def __call__(self, method, endpoint, body=None, query=None, timeout=6):
         self.calls.append((method, endpoint, body, query))
@@ -39,7 +39,7 @@ class FakeArchive:
         if endpoint.startswith("/chat/sessions/") and method == "DELETE":
             return {"status": "success", "session_id": endpoint.split("/")[3], "deleted_messages": 2}
         if endpoint == "/chat/sessions/tags":
-            return {"items": [{"name": "casa", "color": "teal", "count": 1}]}
+            return {"items": [{"name": "home", "color": "teal", "count": 1}]}
         if endpoint.startswith("/chat/history/"):
             return [{"role": "user", "content": "ciao", "timestamp": "2026-10-29T10:00:00"}]
         return None
@@ -50,18 +50,18 @@ def test_tag_without_session_takes_the_conversation_written_last_and_gives_undo(
     fake = FakeArchive()
     out = chat_sessions.tool_tag(fake, tags="Lavoro, urgente", color="red")
     assert out["session_id"] == "s2"
-    assert [t["name"] for t in out["tags"]] == ["casa", "lavoro", "urgente"]
+    assert [t["name"] for t in out["tags"]] == ["home", "work", "urgente"]
     assert out["undo"]["tool"] == "chat_tag"
-    assert out["undo"]["args"]["replace"] == [{"name": "casa", "color": "teal"}]
+    assert out["undo"]["args"]["replace"] == [{"name": "home", "color": "teal"}]
     back = chat_sessions.tool_tag(fake, **out["undo"]["args"])
-    assert back["tags"] == [{"name": "casa", "color": "teal"}]
+    assert back["tags"] == [{"name": "home", "color": "teal"}]
 
 
 @pytest.mark.unit
 def test_list_filters_by_tag_and_draws_a_card():
-    out = chat_sessions.tool_list(FakeArchive(), tag="casa")
+    out = chat_sessions.tool_list(FakeArchive(), tag="home")
     assert [i["session_id"] for i in out["items"]] == ["s2"]
-    assert out["display"]["title"] == "Conversazioni" and "casa" in out["display"]["subtitle"]
+    assert out["display"]["title"] == "Conversazioni" and "home" in out["display"]["subtitle"]
 
 
 @pytest.mark.unit
@@ -83,8 +83,8 @@ def test_ui_doors_and_tools_registered(client):
     main, http = client
     fake = FakeArchive()
     with patch.object(main, "_chat_route", fake):
-        assert http.get("/api/ui/chats", params={"tag": "casa"}).json()["items"][0]["session_id"] == "s2"
-        assert http.get("/api/ui/chats/tags").json()["items"][0]["name"] == "casa"
+        assert http.get("/api/ui/chats", params={"tag": "home"}).json()["items"][0]["session_id"] == "s2"
+        assert http.get("/api/ui/chats/tags").json()["items"][0]["name"] == "home"
         assert http.get("/api/ui/chats/s1/messages").json()["items"][0]["content"] == "ciao"
         r = http.put("/api/ui/chats/s1", json={"pinned": True, "add_tags": [{"name": "gym", "color": ""}]}).json()
         assert r["pinned"] is True and fake.calls[-1][2]["client"] == "webui"

@@ -66,7 +66,7 @@ def active(hub, session_id: str) -> dict | None:
         ok, res = hub.route_to_service("archive", _STORE, "GET", query={"kind": "goal", "ref_id": session_id},
                                        timeout=6)
         rows = (res or {}).get("rows") if ok and isinstance(res, dict) else []
-        live = [dict(r.get("data") or {}) for r in rows or [] if (r.get("data") or {}).get("state") == "attivo"]
+        live = [dict(r.get("data") or {}) for r in rows or [] if (r.get("data") or {}).get("state") == "active"]
         goal = live[-1] if live else None
     except Exception as exc:
         logger.warning("[🔄] event=goal_load_failed session_id=%s error=%s", session_id, exc)
@@ -80,7 +80,7 @@ def set_goal(hub, session_id: str, text: str) -> dict:
         old.update(state="sostituito", ended_at=_now())
         _save(hub, old)
     goal = {"id": f"goal_{uuid.uuid4().hex[:10]}", "session_id": session_id, "text": text.strip()[:500],
-            "state": "attivo", "rounds": 0, "notes": [], "created_at": _now()}
+            "state": "active", "rounds": 0, "notes": [], "created_at": _now()}
     _save(hub, goal)
     _cache[session_id] = goal
     logger.info("event=goal_set session_id=%s goal_id=%s", session_id, goal["id"])

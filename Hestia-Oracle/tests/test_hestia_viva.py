@@ -74,10 +74,10 @@ def test_controls_extraction_skips_the_llm_without_a_hint():
 def test_awareness_lines_from_three_sources():
     now = datetime.now(timezone.utc)
     payloads = {
-        "psyche": {"summary": {"mood_word": "giù", "energy": 2, "stress": 4, "causes": ["lavoro"]}},
+        "psyche": {"summary": {"mood_word": "giù", "energy": 2, "stress": 4, "causes": ["work"]}},
         "hermes": {"items": [{"title": "Allenamento di oggi", "created_at": now.isoformat()},
                              {"title": "Vecchia", "created_at": (now - timedelta(days=2)).isoformat()}]},
-        "metis": {"items": [{"client": "webui", "kind": "page", "ref": "spese", "label": "Spese",
+        "metis": {"items": [{"client": "webui", "kind": "page", "ref": "expenses", "label": "Spese",
                              "at": now.isoformat()}]},
     }
     lines = awareness.build_lines(lambda service, path, query: payloads[service], limit=3)
@@ -220,7 +220,7 @@ def test_identity_defaults_to_hestia_she_and_asks_the_name():
 
 @pytest.mark.unit
 def test_identity_follows_the_personal_settings(ident):
-    ident(assistant_name="Leo", assistant_gender="lui", owner_name="Marco", owner_call="Marko")
+    ident(assistant_name="Leo", assistant_gender="he", owner_name="Marco", owner_call="Marko")
     text = prompt_config.analyst_persona_default()
     assert text.startswith("You are Leo, the personal assistant of Marko:")
     assert "a man" in text and "a woman" not in text
@@ -294,7 +294,7 @@ def test_opener_endpoint_writes_or_stays_silent(client):
     with patch.object(main, "_no_usable_model", return_value=False), \
             patch.object(main, "_awareness_lines", return_value=[]):
         main.engine._ask_analyst.return_value = "Hai poi finito quel libro?"
-        res = http.post("/api/chat/opener", json={"reasons": ["nessuno"], "avoid": []})
+        res = http.post("/api/chat/opener", json={"reasons": ["none"], "avoid": []})
         assert res.status_code == 200 and res.json() == {"text": "Hai poi finito quel libro?"}
         main.engine._ask_analyst.return_value = "NIENTE"
         assert http.post("/api/chat/opener", json={}).json()["text"] == ""

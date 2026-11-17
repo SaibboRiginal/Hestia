@@ -32,10 +32,10 @@ def ap():
 
 def test_calendar_rules():
     assert easter(2027) == date(2027, 3, 28) and easter(2026) == date(2026, 4, 5)
-    assert holiday(date(2026, 12, 31)) == "capodanno" and holiday(date(2026, 12, 20)) == "natale"
+    assert holiday(date(2026, 12, 31)) == "capodanno" and holiday(date(2026, 12, 20)) == "christmas"
     assert holiday(date(2027, 1, 7)) is None and holiday(date(2026, 10, 31)) == "halloween"
     assert holiday(date(2026, 4, 6)) == "pasqua" and season(date(2026, 7, 1)) == "estate"
-    assert season(date(2026, 12, 25)) == "inverno"
+    assert season(date(2026, 12, 25)) == "winter"
 
 
 def test_moment_wins_and_choice_off_is_standard(ap):
@@ -45,7 +45,7 @@ def test_moment_wins_and_choice_off_is_standard(ap):
     look.moment({"key": "special.birthday.owner", "kind": "birthday", "title": "Il tuo compleanno",
                  "date": today.isoformat()})
     n = look.now("webui")
-    assert n["profile"]["key"] == "compleanno" and n["profile"]["effect"] == "confetti"
+    assert n["profile"]["key"] == "birthday" and n["profile"]["effect"] == "confetti"
     look.set_choice("webui", auto=False)
     assert look.now("webui")["profile"]["key"] == "standard"
 
@@ -66,9 +66,9 @@ def test_pet_pictures_by_push(ap):
     look.image_done({"ref": f"pet:{pet['id']}:happy", "status": "done", "blob_ids": ["b9"]})
     look.set_choice("webui", pet=pet["id"])
     assert look.now()["pet"]["images"] == {"happy": "b9"}
-    look.generate("profile", "natale")
+    look.generate("profile", "christmas")
     look.image_done({"ref": "profile:christmas:background", "status": "done", "blob_ids": ["b10"]})
-    assert look.profile("natale")["background"] == "b10" and look.profile("natale")["builtin"] is True
+    assert look.profile("christmas")["background"] == "b10" and look.profile("christmas")["builtin"] is True
 
 
 @pytest.mark.api

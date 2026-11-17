@@ -106,10 +106,10 @@ export class LaresWidget extends HestiaElement {
     const s = this.s;
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     this.markEmpty(s === null || !s?.configured || !s?.connected);
-    if (s === null || !s.configured || !s.connected) return html`<div class="small muted click" @click=${() => this.host.navigate('casa')}>${s && !s.configured ? tr('Home not linked') : tr('Home not reachable')}</div>`;
+    if (s === null || !s.configured || !s.connected) return html`<div class="small muted click" @click=${() => this.host.navigate('home')}>${s && !s.configured ? tr('Home not linked') : tr('Home not reachable')}</div>`;
     const favs = this.ctx?.size === 's' ? [] : s.favorites.slice(0, this.ctx?.size === 'l' ? 6 : 3);
     return html`<div class="col" style="gap:6px">
-      <div class="between click" @click=${() => this.host.navigate('casa')}><span></span><span class="small">${s.lights_on.length ? tr('{0} lights on', s.lights_on.length) : tr('lights off')}</span></div>
+      <div class="between click" @click=${() => this.host.navigate('home')}><span></span><span class="small">${s.lights_on.length ? tr('{0} lights on', s.lights_on.length) : tr('lights off')}</span></div>
       ${s.temperatures.length ? html`<div class="small">${s.temperatures[0]}</div>` : nothing}
       ${favs.length ? html`<div class="row wrap">${favs.map((f: any) => html`<hxk-button size="sm" @click=${async () => { const r = await call(this.host, 'POST', `/favorites/${f.id}/run`); if (r.ok) this.load(); }}>${f.label}</hxk-button>`)}</div>` : nothing}
     </div>`;

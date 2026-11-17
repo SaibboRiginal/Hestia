@@ -7,7 +7,7 @@ from .catalog import MUSCLE_GROUPS
 from .records import Data, is_hard, local_date, period_next, period_start
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
-PER_LABEL = {"day": "oggi", "week": "this week", "month": "this month"}
+PER_LABEL = {"day": "today", "week": "this week", "month": "this month"}
 
 
 def _counts(data: Data, goal: dict, sessions: list[dict]) -> int:

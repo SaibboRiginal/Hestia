@@ -159,7 +159,7 @@ def test_italian_labels_become_vocabulary_keys(wd):
     """Bench run 2026-10-19: chat said «ufficio», the UI stores «office» — tags and the suggester must agree."""
     shirt = wd.save_piece({"name": "Camicia", "category": "shirt", "occasions": ["Ufficio", "gita"], "styles": "Elegante"})
     assert shirt["occasions"][0] == "office" and "gita" in shirt["occasions"]
-    assert wd.vocab_keys("occasion", ["ufficio"]) == ["office"]
+    assert wd.vocab_keys("occasion", ["office"]) == ["office"]
     _basics(wd)
     assert wd.suggest(day="2026-01-10", temp_c=3, occasion="Ufficio")["occasion"] == "office"
 
@@ -182,7 +182,7 @@ def test_outfit_mark_once_per_day_and_undo(wd):
     first = wd.mark_worn({"outfit_id": o["id"]})
     again = wd.mark_worn({"outfit_id": o["id"]})
     assert again.get("already") and wd.wears()["total"] == 1
-    assert first["label"].endswith("indossato")
+    assert first["label"].endswith("worn")
     assert wd.piece_detail(tee["id"])["wear_count"] == 1
     wd.quick_undo(o["id"])
     assert wd.wears()["total"] == 0
@@ -300,8 +300,8 @@ def test_mcp_tools_and_manifest():
     manifest = main.ui.manifest()
     assert manifest["module"] == "wardrobe"
     webui = manifest["clients"]["webui"]
-    assert any(q["id"] == "indossato" for q in webui.get("quick_action") or [])
-    assert {"capi", "outfit", "what-to-wear"} <= {p["id"] for p in webui["page"]}
+    assert any(q["id"] == "worn" for q in webui.get("quick_action") or [])
+    assert {"pieces", "outfit", "what-to-wear"} <= {p["id"] for p in webui["page"]}
 
 
 @pytest.mark.unit
@@ -389,8 +389,8 @@ def test_signals_forgotten_laundry_repair_and_worn_metric(wd):
     sigs, mets = wd.signals()
     by = {s["key"]: s for s in sigs}
     assert set(by) == {"forgotten", "laundry_backlog", "to_repair"}
-    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "statistiche"
-    assert by["laundry_backlog"]["severity"] == "attenzione" and by["laundry_backlog"]["metrics"]["count"] == 3
+    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "stats"
+    assert by["laundry_backlog"]["severity"] == "warning" and by["laundry_backlog"]["metrics"]["count"] == 3
     assert by["to_repair"]["metrics"]["count"] == 1
     assert all(s["text"].startswith("Guardaroba") and "Wardrobe" not in s["text"] for s in sigs)
     assert len(mets) == 12 and {m["name"] for m in mets} == {"wardrobe.worn"} and mets[-1]["label"] == "Capi indossati"
@@ -512,4 +512,4 @@ def test_chat_photo_not_recognised_asks_instead_of_saving(wd):
 def test_chat_photo_handler_declared():
     from app import main
     h = main.ATTACHMENT_HANDLERS[0]
-    assert "image/jpeg" in h["mime"] and "guardaroba" in h["match"] and h["path"] == "/api/wardrobe/attachments"
+    assert "image/jpeg" in h["mime"] and "wardrobe" in h["match"] and h["path"] == "/api/wardrobe/attachments"

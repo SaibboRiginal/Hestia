@@ -24,9 +24,9 @@ logger = logging.getLogger("hecate.garmin")
 TOKENS_DIR = Path(os.getenv("HECATE_GARMIN_TOKENS", "/code/data/garmin"))
 ACTIVITY_KINDS = {"running": "corsa", "trail_running": "corsa", "treadmill_running": "corsa", "track_running": "corsa",
                   "cycling": "bici", "road_biking": "bici", "mountain_biking": "bici", "indoor_cycling": "bici",
-                  "gravel_cycling": "bici", "walking": "camminata", "hiking": "camminata",
+                  "gravel_cycling": "bici", "walking": "walk", "hiking": "walk",
                   "lap_swimming": "nuoto", "open_water_swimming": "nuoto", "swimming": "nuoto",
-                  "strength_training": "forza"}
+                  "strength_training": "strength"}
 
 
 class GarminError(RuntimeError):
@@ -79,7 +79,7 @@ def normalise_activity(a: dict) -> dict:
     key = str(((a.get("activityType") or {}).get("typeKey")) or "").lower()
     seconds = _num(a.get("duration"))
     meters = _num(a.get("distance"))
-    return {"id": str(a.get("activityId") or ""), "kind": ACTIVITY_KINDS.get(key, "altro"), "type": key,
+    return {"id": str(a.get("activityId") or ""), "kind": ACTIVITY_KINDS.get(key, "other"), "type": key,
             "name": str(a.get("activityName") or "")[:120], "start": a.get("startTimeLocal"),
             "minutes": int(seconds // 60) if seconds else None, "km": round(meters / 1000, 2) if meters else None,
             "calories": _num(a.get("calories"), True), "avg_hr": _num(a.get("averageHR"), True),

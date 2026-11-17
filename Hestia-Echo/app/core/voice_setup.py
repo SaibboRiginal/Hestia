@@ -1,14 +1,14 @@
 """Guided setup «Voce» (docs/work/2026-10-30-setup-un-click §4.2): the same shape as the models screen.
 
 Echo owns the speech providers, so the screen asks Echo only:
-- ``catalog(blocks, language, hosts)``: for each direction (``ascolto`` = listening, ``voce`` = speaking) the providers
+- ``catalog(blocks, language, hosts)``: for each direction (``ascolto`` = listening, ``voice`` = speaking) the providers
   that can do it, local first, each with what it offers (Whisper sizes, Kokoro/Piper voices, a cloud service's
   models and voices once its key is there) and the step the chain uses now; plus the speech programs found at home
   (Speaches/LocalAI with the OpenAI API, Home Assistant's Wyoming servers) on this computer and on the other
   computers the user names, like the models screen finds Ollama or LM Studio;
 - ``check(blocks, name, language)``: «Prova» without spending anything: a cloud service's model or voice list read
   with its key proves the key;
-- ``plan(chains, listen, speak)``: the chosen steps first, in order, in the ``ascolto`` / ``voce`` chains (one local
+- ``plan(chains, listen, speak)``: the chosen steps first, in order, in the ``ascolto`` / ``voice`` chains (one local
   engine, then any cloud services as fallbacks), the other steps kept after them (pure, for the tests); ``apply``
   writes it through Themis.
 """
@@ -34,7 +34,7 @@ logger = logging.getLogger("hestia_echo.voice_setup")
 
 LOCAL_TYPES = {"whisper_local", "piper", "kokoro"}
 # Shown first and preselected when nothing is chosen yet.
-PREFERRED = {"ascolto": ("whisper_local", "small"), "voce": ("kokoro", "")}
+PREFERRED = {"listen": ("whisper_local", "small"), "voice": ("kokoro", "")}
 # One line per engine, so the user knows what to pick (Marko: «che ne so se scegliere Kokoro o Piper?»).
 ENGINE_NOTES = {
     "whisper_local": "Understands what you say on your computer, free and private. Bigger = more accurate and slower.",
@@ -55,13 +55,13 @@ THIS_COMPUTER = "host.docker.internal"
 # «mettiamo tutte le voci locali»). ``model``: its speech model when it has no ``/v1/models`` list.
 SPEECH_PROGRAMS = [
     {"name": "chatterbox", "label": "Chatterbox", "port": 8004, "type": "openai", "model": "chatterbox",
-     "site": "https://github.com/devnen/Chatterbox-TTS-Server", "dirs": ("voce",),
+     "site": "https://github.com/devnen/Chatterbox-TTS-Server", "dirs": ("voice",),
      "note": "The most natural voice, in 23 languages (Italian included). Uses the graphics card, works without it too but slowly."},
     {"name": "kokoro-fastapi", "label": "Kokoro (program)", "port": 8880, "type": "openai", "model": "kokoro",
-     "site": "https://github.com/remsky/Kokoro-FastAPI", "dirs": ("voce",),
+     "site": "https://github.com/remsky/Kokoro-FastAPI", "dirs": ("voice",),
      "note": "Kokoro as a separate program, faster with the graphics card."},
     {"name": "speaches", "label": "Speaches", "port": 8000, "type": "openai",
-     "site": "https://github.com/speaches-ai/speaches", "dirs": ("ascolto", "voce"),
+     "site": "https://github.com/speaches-ai/speaches", "dirs": ("listen", "voice"),
      "note": "Listening and voice in one program (Whisper, Kokoro, Piper)."},
     {"name": "localai", "label": "LocalAI", "port": 8080, "type": "openai"},
     {"name": "wyoming-whisper", "label": "Home Assistant Whisper", "port": 10300, "type": "wyoming"},
@@ -128,8 +128,8 @@ def _probe_openai(base: str, model: str = "") -> dict[str, list[dict]] | None:
                 voices.append({"id": str(vid), "label": str(v.get("name") or vid) if isinstance(v, dict) else str(vid)})
     except Exception:
         pass
-    return {"ascolto": [{"id": i, "label": i} for i in listen],
-            "voce": [{"id": i, "label": i} for i in speak], "voices": voices}
+    return {"listen": [{"id": i, "label": i} for i in listen],
+            "voice": [{"id": i, "label": i} for i in speak], "voices": voices}
 
 
 def _probe_wyoming(host: str, port: int) -> dict[str, list[dict]] | None:
@@ -154,8 +154,8 @@ def _probe_wyoming(host: str, port: int) -> dict[str, list[dict]] | None:
               for p in data.get("tts") or [] for v in p.get("voices") or [] if v.get("name")]
     if not listen and not voices and not (data.get("asr") or data.get("tts")):
         return None
-    return {"ascolto": listen or ([{"id": "", "label": tr("Default")}] if data.get("asr") else []),
-            "voce": [], "voices": voices or ([{"id": "", "label": tr("f::Default")}] if data.get("tts") else [])}
+    return {"listen": listen or ([{"id": "", "label": tr("Default")}] if data.get("asr") else []),
+            "voice": [], "voices": voices or ([{"id": "", "label": tr("f::Default")}] if data.get("tts") else [])}
 
 
 def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
@@ -175,8 +175,8 @@ def found_programs(blocks, hosts: str | list[str] | None = None) -> list[dict]:
     for (spec, host), (url, got) in zip(probes, answers):
         if got is None or url in known:
             continue
-        if spec.get("model") and spec["model"] not in {v["id"] for v in got["voce"]}:
-            got["voce"].append({"id": spec["model"], "label": spec["model"]})
+        if spec.get("model") and spec["model"] not in {v["id"] for v in got["voice"]}:
+            got["voice"].append({"id": spec["model"], "label": spec["model"]})
         here = host == THIS_COMPUTER
         out.append({"name": spec["name"] if here else f"{spec['name']}-{re.sub(r'[^a-z0-9]+', '-', host.lower()).strip('-')}",
                     "label": spec["label"] if here else f"{spec['label']} · {host}", "type": spec["type"], "url": url,
@@ -207,8 +207,8 @@ def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) 
                 continue
             state = blocks.provider_state(p)
             ready = state in ("ready", "not_installed", "downloading") if p["type"] in LOCAL_TYPES else state == "ready"
-            models = _items(std.models(p)) if ready and direction == "ascolto" else []
-            voices = _items(std.voices(p, language)) if ready and direction == "voce" else []
+            models = _items(std.models(p)) if ready and direction == "listen" else []
+            voices = _items(std.voices(p, language)) if ready and direction == "voice" else []
             if p["type"] == "whisper_local":
                 models = [{**m, "note": WHISPER_NOTES.get(m["id"], "")} for m in models]
             home = p["type"] in LOCAL_TYPES or (p["type"] in ("openai", "wyoming") and is_home(p.get("url") or ""))
@@ -217,7 +217,7 @@ def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) 
                          "needs_key": bool(std.needs_key) or state == "no_key", "key": bool(p["key"]),
                          "state": state, "models": models, "voices": voices})
         for f in found:
-            models, voices = (f["ascolto"], []) if direction == "ascolto" else (f["voce"], f["voices"] or f["voce"])
+            models, voices = (f["listen"], []) if direction == "listen" else (f["voice"], f["voices"] or f["voice"])
             if not models and not voices:
                 continue
             rows.append({"name": f["name"], "label": f["label"], "type": f["type"], "local": True, "found": True,
@@ -271,7 +271,7 @@ def check(blocks, name: str, language: str = "it") -> dict[str, Any]:
     models, voices = _items(std.models(p)), _items(std.voices(p, language))
     # Preselected once the key works, so nothing is asked: the first model and the first voice it lists.
     return {"ok": True, "detail": tr("The key works."), "models": models, "voices": voices,
-            "recommended": {"ascolto": [m["id"] for m in models[:1]], "voce": [v["id"] for v in voices[:1]]}}
+            "recommended": {"listen": [m["id"] for m in models[:1]], "voice": [v["id"] for v in voices[:1]]}}
 
 
 def _steps(choice: dict | list | None) -> list[dict]:
@@ -293,10 +293,10 @@ def _steps(choice: dict | list | None) -> list[dict]:
 
 
 def plan(chains: dict[str, dict], listen: dict | list | None, speak: dict | list | None) -> dict[str, dict]:
-    """New ``echo.chains``: the chosen steps first, in order, in ``ascolto`` / ``voce``; the other steps of providers
+    """New ``echo.chains``: the chosen steps first, in order, in ``listen`` / ``voice``; the other steps of providers
     not chosen stay after them as fallbacks. Pure function."""
     out = {name: dict(c) for name, c in (chains or DEFAULT_CHAINS).items()}
-    for direction, choice in (("ascolto", listen), ("voce", speak)):
+    for direction, choice in (("listen", listen), ("voice", speak)):
         chosen = _steps(choice)
         if not chosen:
             continue

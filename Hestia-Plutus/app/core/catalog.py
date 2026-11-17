@@ -1,49 +1,39 @@
 """Plutus seed data and text helpers: default categories (editable data, not code rules), default merchant rules,
-money parsing that understands Italian and English formats."""
+money parsing that understands both decimal formats (1.234,56 and 1,234.56)."""
 from __future__ import annotations
 
 import re
 import unicodedata
 
+from hestia_common.i18n import word_regex, words
+
 # id, label, icon, color, kind (expense | income | transfer)
 CATEGORIES = [
-    ("spesa", "Groceries", "cart", "green", "expense"),
-    ("casa", "Home and bills", "home", "blue", "expense"),
-    ("trasporti", "pl::Transport", "car", "teal", "expense"),
-    ("ristoranti", "Restaurants and bars", "coffee", "orange", "expense"),
-    ("abbonamenti", "Subscriptions", "repeat", "purple", "expense"),
-    ("salute", "Health", "heart", "red", "expense"),
-    ("cura", "Personal care", "sparkle", "pink", "expense"),
-    ("svago", "Leisure", "music", "amber", "expense"),
+    ("groceries", "Groceries", "cart", "green", "expense"),
+    ("home", "Home and bills", "home", "blue", "expense"),
+    ("transport", "pl::Transport", "car", "teal", "expense"),
+    ("restaurants", "Restaurants and bars", "coffee", "orange", "expense"),
+    ("subscriptions", "Subscriptions", "repeat", "purple", "expense"),
+    ("health", "Health", "heart", "red", "expense"),
+    ("care", "Personal care", "sparkle", "pink", "expense"),
+    ("leisure", "Leisure", "music", "amber", "expense"),
     ("shopping", "Shopping", "bag", "indigo", "expense"),
-    ("viaggi", "pl::Travel", "plane", "cyan", "expense"),
-    ("regali", "Gifts", "gift", "rose", "expense"),
-    ("lavoro", "Work and study", "briefcase", "slate", "expense"),
-    ("altro", "Other", "dots", "gray", "expense"),
-    ("entrate", "f.pl::Income", "arrow-down", "green", "income"),
-    ("trasferimenti", "Transfers", "swap", "gray", "transfer"),
+    ("travel", "pl::Travel", "plane", "cyan", "expense"),
+    ("gifts", "Gifts", "gift", "rose", "expense"),
+    ("work", "Work and study", "briefcase", "slate", "expense"),
+    ("other", "Other", "dots", "gray", "expense"),
+    ("income", "f.pl::Income", "arrow-down", "green", "income"),
+    ("transfers", "Transfers", "swap", "gray", "transfer"),
 ]
 
-# pattern (lowercase substring of merchant/description) → category. Seeded once, editable by the user.
-DEFAULT_RULES = {
-    "spesa": ["esselunga", "coop", "conad", "lidl", "carrefour", "eurospin", "pam ", "despar", "aldi", "penny market",
-              "iper", "naturasi", "tigros", "bennet", "famila"],
-    "casa": ["enel", "a2a", "iren", "hera", "edison", "tim ", "vodafone", "iliad", "fastweb", "windtre", "wind tre",
-             "ikea", "leroy merlin", "affitto", "condominio"],
-    "trasporti": ["trenitalia", "italo", "atm ", "uber", "freenow", "telepass", "autostrade", "eni ", "q8", "tamoil",
-                  "esso", "ip ", "benzina", "parcheggio", "bike", "lime", "bird"],
-    "ristoranti": ["ristorante", "pizzeria", "trattoria", "osteria", "bar ", "caffe", "mcdonald", "burger king",
-                   "deliveroo", "glovo", "just eat", "starbucks", "sushi"],
-    "abbonamenti": ["netflix", "spotify", "disney", "prime video", "amazon prime", "youtube premium", "dazn", "now tv",
-                    "icloud", "google one", "apple.com/bill", "chatgpt", "openai", "anthropic", "claude.ai", "github"],
-    "salute": ["farmacia", "parafarmacia", "medico", "dentista", "ospedale", "analisi", "ottica"],
-    "cura": ["sephora", "douglas", "kiko", "parrucchiere", "barbiere", "estetista", "lookfantastic", "notino"],
-    "svago": ["cinema", "teatro", "concerto", "ticketone", "steam", "playstation", "nintendo", "xbox", "libreria",
-              "feltrinelli", "mondadori"],
-    "shopping": ["amazon", "zalando", "zara", "h&m", "decathlon", "mediaworld", "unieuro", "ebay", "aliexpress",
-                 "vinted", "shein", "uniqlo"],
-    "viaggi": ["booking.com", "airbnb", "ryanair", "easyjet", "ita airways", "expedia", "hotel", "flixbus"],
-}
+RULE_CATEGORIES = ("groceries", "home", "transport", "restaurants", "subscriptions", "health", "care", "leisure",
+                   "shopping", "travel")
+
+
+def default_rules() -> dict[str, list[str]]:
+    """Pattern (lowercase substring of merchant/description) → category, from the words of every language
+    (``plutus.rule.<category>`` in ``locales/<lang>/words.json``). Seeded once, editable by the user."""
+    return {cid: list(words(f"plutus.rule.{cid}")) for cid in RULE_CATEGORIES}
 
 
 def slug(text: str | None) -> str:
@@ -54,7 +44,8 @@ def slug(text: str | None) -> str:
 def norm_merchant(text: str | None) -> str:
     """Comparable merchant name: lowercase, no accents, no PayPal/card prefixes or trailing codes."""
     t = unicodedata.normalize("NFKD", str(text or "")).encode("ascii", "ignore").decode().lower()
-    t = re.sub(r"^(paypal\s*\*|pp\*|sumup\s*\*|sq\s*\*|zettle_\*|pagamento\s+(pos|carta)\s+)", "", t.strip())
+    t = re.sub(r"^(paypal\s*\*|pp\*|sumup\s*\*|sq\s*\*|zettle_\*)", "", t.strip())
+    t = word_regex(r"^(?:{0})", "plutus.merchant_prefix").sub("", t)
     t = re.sub(r"\b(srl|s\.r\.l\.|spa|s\.p\.a\.|ltd|inc|gmbh|sa)\b\.?", "", t)
     t = re.sub(r"[#*]\s*\w*\d\w*", "", t)
     t = re.sub(r"\s{2,}", " ", t)

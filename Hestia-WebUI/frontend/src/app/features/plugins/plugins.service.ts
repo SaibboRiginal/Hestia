@@ -29,7 +29,7 @@ type HostEvent = 'refresh' | 'theme' | 'visible' | 'hidden' | 'online' | 'offlin
 const BASE = '/api/webui/plugins';
 /** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A6). */
 /** Titled «Stato del sistema» (2026-10-29): «Sistema» is the sidebar page of the system modules, only one of each name. */
-const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
+const SYSTEM_DASHBOARD: Dashboard = { id: 'system', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
 
 /**
  * Client plugins runtime (SPEC docs/work/2026-10-17-client-plugins §4): Hub catalog for client=webui, this client's

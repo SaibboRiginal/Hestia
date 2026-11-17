@@ -155,7 +155,7 @@ def _pet(name: str, species: str = "gatto", look_: str = "") -> dict:
 
 S, B = {"type": "string"}, {"type": "boolean"}
 CL = {"type": "string", "enum": list(CLIENTS), "description": "where (default webui)"}
-G = "aspetto"
+G = "look"
 kit.tools([
     MCPTool(name="look_now", description="How the site looks now and why (holiday, season, birthday).",
             parameters={"type": "object", "properties": {"client": CL}}, handler=_now, title="Look now",
@@ -189,13 +189,13 @@ kit.tools([
 ], prefix="look_")
 
 transfer = Transfer("aphrodite", kit.hub, sections=[
-    StoreSection("aspetto", "Look", kit.store, ["profile", "pet", "choice"], icon="palette",
+    StoreSection("look", "Look", kit.store, ["profile", "pet", "choice"], icon="palette",
                  title=lambda r: r["data"].get("name", r["id"]), file_fields=["background"]),
 ])
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment"})
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="palette", color="pink", description="Holiday, season and special-day themes, a little pet.",
-          pages=[page("aspetto", "Look", element="aphrodite-look", icon="palette", order=220,
+          pages=[page("look", "Look", element="aphrodite-look", icon="palette", order=220,
                       help="The site changes by itself with holidays, seasons and your special days: here you see what is on now and why, turn themes off, choose and create the little pet, edit the profiles.")])
 kit.finish()

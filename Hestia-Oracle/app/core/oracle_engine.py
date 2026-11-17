@@ -862,8 +862,8 @@ class OracleEngine:
     ):
         """Main conversational loop. Yields NDJSON lines.
 
-        *origin* (``hestia_common.origin.parse``) = who started the turn, decided by the system: ``utente`` acts
-        with the usual confirmation gate, ``routine`` only inside its instruction, ``autonomo`` only reads,
+        *origin* (``hestia_common.origin.parse``) = who started the turn, decided by the system: ``user`` acts
+        with the usual confirmation gate, ``routine`` only inside its instruction, ``autonomous`` only reads,
         proposes and notifies (Cindy 6).
 
         Modes (control PROCESS, same model for all; main.py resolves "" from oracle.chat.mode):
@@ -902,17 +902,17 @@ class OracleEngine:
         if client and session_id:
             self._session_clients[session_id] = str(client)[:40]
         # The HTTP endpoint always passes the parsed origin (fail closed there); a direct in-process call is trusted.
-        origin = dict(origin or origin_mod.parse({origin_mod.HEADER: "utente"}, client))
+        origin = dict(origin or origin_mod.parse({origin_mod.HEADER: "user"}, client))
         if session_id:
             self._session_origins[session_id] = origin
         # Conversation goal (Cindy 23): «obiettivo: …» fixes it, «ferma l'obiettivo» stops it.
-        _goal_text = conversation_goal.parse_prefix(user_message) if origin["level"] == "utente" else ""
+        _goal_text = conversation_goal.parse_prefix(user_message) if origin["level"] == "user" else ""
         if _goal_text:
             conversation_goal.set_goal(self._hub, session_id, _goal_text)
             if mode == "quick":
                 mode = "thinking"
-        elif origin["level"] == "utente" and conversation_goal.is_stop(user_message):
-            conversation_goal.end(self._hub, session_id, "fermato")
+        elif origin["level"] == "user" and conversation_goal.is_stop(user_message):
+            conversation_goal.end(self._hub, session_id, "stopped")
         logger.trace("event=chat_entry trace_id=%s session_id=%s mode=%s model=%s msg=%s",
                      trace_id, session_id, mode, model,
                      json.dumps(user_message[:120], ensure_ascii=False))
@@ -936,7 +936,7 @@ class OracleEngine:
         # Brain mode (dossier 2026-10-19-oracle-a-blocchi §D): esterna = an agent CLI runs the loop below.
         from core.services import external_agent, llm_chains
         chat_use_case = llm_chains.SLOTS.get(model, llm_chains.GENERAL)
-        external = external_agent.mode_for(chat_use_case) == "esterna"
+        external = external_agent.mode_for(chat_use_case) == "external"
         logger.trace("event=chat_agent_resolved trace_id=%s agent_type=%s model=%s provider=%s thinking=%s",
                      trace_id, type(agent).__name__, agent.model_name, agent.provider, agent.thinking)
         logger.info(
@@ -1281,7 +1281,7 @@ class OracleEngine:
             except external_agent.AgentError as exc:
                 # Writes the agent already did must not run twice (Cindy 2): the internal loop continues from them.
                 _prior_actions = [e for e in (getattr(exc, "log", None) or []) if e.get("ok")]
-                if external_agent.brain()["fallback"] != "interna":
+                if external_agent.brain()["fallback"] != "internal":
                     answer, tokens, tool_log = (tr("⚠️ The external agent did not answer. Try again shortly."),
                                                 [tr("⚠️ The external agent did not answer. Try again shortly.")], [])
                 else:
@@ -1311,7 +1311,7 @@ class OracleEngine:
             tool_log = list(_prior_actions) + list(tool_log)
 
         # ── Conversation goal rounds (Cindy 23): after the owner's message is answered ────────────
-        if origin["level"] == "utente" and not any(e.get("ask") for e in tool_log):
+        if origin["level"] == "user" and not any(e.get("ask") for e in tool_log):
             _goal_answer, _goal_log, _goal_frames = self._goal_rounds(
                 session_id=session_id, history_text=history_text, preference_facts=preference_facts,
                 tools=domain_tools, ask_tools=_ask_tools_bound, think_level=_think_level,
@@ -1388,7 +1388,7 @@ class OracleEngine:
         yield stream_emitter.emit_final(
             answer,
             intent.valid_domains[0] if intent.valid_domains else "general",
-            origin=origin if origin.get("level") != "utente" or origin.get("kind") == "esterno" else None,
+            origin=origin if origin.get("level") != "user" or origin.get("kind") == "external" else None,
             trace_id=trace_id,
             model=llm_stats.last_model(session_id),
         )
@@ -2602,7 +2602,7 @@ class OracleEngine:
     def _origin_header(self, session_id: str) -> str:
         """``X-Hestia-Origin`` for the module calls of this turn; empty for the owner typing (X-Hestia-Client says it)."""
         o = self._session_origins.get(session_id) or {}
-        if not o.get("kind") or o.get("kind") == "utente":
+        if not o.get("kind") or o.get("kind") == "user":
             return ""
         return f"{o['kind']}:{o.get('ref') or ''}".rstrip(":")
 
@@ -2622,7 +2622,7 @@ class OracleEngine:
                         "which tool of that module you need.",
             parameters={"type": "object", "properties": {"module": {"type": "string"}}, "required": ["module"]},
             handler=_manual)]
-        if origin.get("level") != "utente":
+        if origin.get("level") != "user":
             return tools
         hub = self._hub
 
@@ -2633,11 +2633,11 @@ class OracleEngine:
             return True, {"goal": goal["text"], "note": tr("Goal set: I work on it after every answer.")}
 
         def _goal_done(summary: str = "") -> tuple[bool, Any]:
-            goal = conversation_goal.end(hub, session_id, "raggiunto", summary)
+            goal = conversation_goal.end(hub, session_id, "reached", summary)
             return (True, {"done": True, "goal": goal["text"]}) if goal else (False, tr("no active goal"))
 
         def _goal_stop() -> tuple[bool, Any]:
-            goal = conversation_goal.end(hub, session_id, "fermato")
+            goal = conversation_goal.end(hub, session_id, "stopped")
             return (True, {"stopped": True}) if goal else (False, tr("no active goal"))
 
         handlers = {"goal_set": _goal_set, "goal_done": _goal_done, "goal_stop": _goal_stop}
@@ -2650,7 +2650,7 @@ class OracleEngine:
     @staticmethod
     def _apply_origin_gate(tools: list[ToolDefinition], origin: dict) -> None:
         """Turn authority (Cindy 6): a routine never deletes, an autonomous turn never writes (it proposes)."""
-        if origin.get("level") == "utente":
+        if origin.get("level") == "user":
             return
         blocked = 0
         for t in tools:

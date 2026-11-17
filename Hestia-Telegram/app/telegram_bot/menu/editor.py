@@ -59,7 +59,7 @@ def _failed(chat_id, message_id, back: str) -> None:
 def root(chat_id, message_id=None) -> None:
     menu = model.current()
     rows = ui.grid([ui.button(a.button_text, f"m:a:{a.key}", icon=a.icon) for a in menu.all_areas
-                    if a.sections or a.key != "altro"])
+                    if a.sections or a.key != "other"])
     rows.append([ui.button(tr("New area"), "m:new"), ui.button(tr("Restore everything"), "m:reset")])
     rows.append([ui.button(tr("‹ Settings"), "n:imp")])
     lines = [ui.note(tr("Choose an area to change name, emoji, order and main actions."))]
@@ -72,7 +72,7 @@ def area(chat_id, key: str, message_id=None) -> None:
     if not a:
         return root(chat_id, message_id)
     lines = [tr("Actions: {0}", len(a.names)), tr("Main: ") + (", ".join(ui.esc(menu.label(n)) for n in a.primary)
-                                                       or "nessuna")]
+                                                       or "none")]
     rows = [[ui.button(tr("Main actions"), f"m:p:{key}")],
             [ui.button(tr("Rename"), f"m:rn:{key}"), ui.button(tr("Emoji"), f"m:em:{key}")],
             [ui.button(tr("Higher"), f"m:ou:{key}"), ui.button(tr("Lower"), f"m:od:{key}")],
@@ -144,7 +144,7 @@ def move_target(chat_id, short: str, message_id=None) -> None:
     if not name or not current:
         return root(chat_id, message_id)
     rows = ui.grid([ui.button(a.button_text, f"m:mto:{short}:{a.key}") for a in menu.all_areas
-                    if a.key not in (current.key, "altro")])
+                    if a.key not in (current.key, "other")])
     rows.append([ui.button(tr(ui.BACK), f"m:mv:{current.key}:0")])
     _place(chat_id, ui.card(tr("Where do I move «{0}»?", menu.label(name)), []), rows, message_id)
 
@@ -218,7 +218,7 @@ def on_text(chat_id, text: str) -> bool:
         _area_over(layout, key)["emoji"] = emoji
     elif op == "new":
         label = ui.strip_emoji(value)[:24]
-        key = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:20] or "nuova"
+        key = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_")[:20] or "new"
         _area_over(layout, key).update({"label": label or tr("New area"), "emoji": "•", "order": 800})
     if not save(layout):
         _failed(chat_id, mid, "m:root")

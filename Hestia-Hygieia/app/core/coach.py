@@ -68,7 +68,7 @@ class HygieiaCoach:
     def supplements(self) -> list[str]:
         """What I take (products of category ``integratore`` in use): information, nothing to log."""
         return [f"{p.get('brand') + ' ' if p.get('brand') else ''}{p['name']}" for p in self.h.items("product")
-                if p.get("category") == "integratore" and p.get("status") == "in_use"]
+                if p.get("category") == "supplement" and p.get("status") == "in_use"]
 
     def review(self, start: date, end: date) -> dict:
         logs = [l for l in self.h.items("log") if l.get("routine_id") and start.isoformat() <= (l.get("date") or "") < end.isoformat()]

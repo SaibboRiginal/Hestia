@@ -42,8 +42,8 @@ def test_job_image(monkeypatch):
     monkeypatch.setattr(main.kit, "hub", hub)
     monkeypatch.setattr(imgs, "wait", lambda jid, s: (imgs.run_next(), imgs.job(jid))[1])
     c = TestClient(main.app)
-    c.post("/api/images/flows", json={"purpose": "ritratto", "graph": GRAPH})
-    jid = c.post("/api/images/tools/crea", json={"prompt": "portrait", "purpose": "ritratto"}).json()["id"]
+    c.post("/api/images/flows", json={"purpose": "portrait", "graph": GRAPH})
+    jid = c.post("/api/images/tools/crea", json={"prompt": "portrait", "purpose": "portrait"}).json()["id"]
     img = c.get(f"/api/images/jobs/{jid}/image/0").json()
     assert img["mime"] == "image/png" and img["data_b64"]
     assert c.get(f"/api/images/jobs/{jid}/image/5").status_code == 404

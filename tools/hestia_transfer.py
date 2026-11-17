@@ -108,9 +108,9 @@ def run_import(hub: Hub, data: dict, mode: str, dry_run: bool, only: list[str]) 
             "data": data["modules"][owner], "mode": mode, "dry_run": dry_run, "sections": sections or None,
             "files_map": files_map})
         for sid, r in rep["sections"].items():
-            parts = [f"{r[k]} {label}" for k, label in (("added", "nuovi"), ("updated", "aggiornati"),
-                                                        ("skipped", "ignorati"), ("deleted", "eliminati"),
-                                                        ("problems", "problemi")) if r.get(k)]
+            parts = [f"{r[k]} {label}" for k, label in (("added", "new"), ("updated", "updated"),
+                                                        ("skipped", "ignored"), ("deleted", "deleted"),
+                                                        ("problems", "problems")) if r.get(k)]
             print(f"  {owner}/{sid}: {', '.join(parts) or 'nessuna modifica'}")
             for p in r["items"]["problems"][:10]:
                 print(f"      ! {p}")
@@ -161,7 +161,7 @@ def main() -> None:
     write_file(backup, build(hub, sel, None, False))
     print(f"punto di ripristino: {backup}")
     run_import(hub, data, args.mode, False, args.select)
-    print("fatto")
+    print("done")
 
 
 if __name__ == "__main__":

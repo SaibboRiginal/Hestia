@@ -160,7 +160,7 @@ def test_planner_has_no_domain_words():
     import inspect
     from services import coach_planner
     src = inspect.getsource(coach_planner).lower()
-    for word in ("hercules", "hygieia", "plutus", "retinol", "palestra", "allenamento", "fitness", "selfcare"):
+    for word in ("hercules", "hygieia", "plutus", "retinol", "gym", "training", "fitness", "selfcare"):
         assert word not in src
 
 
@@ -266,7 +266,7 @@ def test_weekly_message_without_the_brain_uses_the_fixed_text(chronos):
     assert out["week"] == "2026-10-26" and out["delivered"] is True
     assert out["text"].startswith("Piano della settimana:") and "Allenamento" in out["text"]
     domain, event_type, entity, payload = chronos["sent"][-1]
-    assert domain == "system" and entity == "coach.week" and payload["_link"]["page"] == "settimana"
+    assert domain == "system" and entity == "coach.week" and payload["_link"]["page"] == "week"
 
 
 @pytest.mark.unit

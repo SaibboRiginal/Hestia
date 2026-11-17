@@ -46,8 +46,8 @@ export class PlutusOverview extends HestiaElement {
           <hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
           <b>${s.label}</b><hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.shift(1)}></hxk-button></div>
         <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Expense")}</hxk-button>
-          <hxk-button icon="upload" @click=${() => this.host.navigate('importa')}>${tr("Bank statement")}</hxk-button></div></div>
-      ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('movimenti', { rivedere: '1' })}>
+          <hxk-button icon="upload" @click=${() => this.host.navigate('import')}>${tr("Bank statement")}</hxk-button></div></div>
+      ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('transactions', { rivedere: '1' })}>
         <span>${plural(s.to_review, 'transaction', 'transactions')} ${tr("with the category to check")}</span><span class="link">${tr("Review ›")}</span></div>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Spent'), value: money(s.spent, cur), hint: s.linked ? tr("{0} linked, counted once", plural(s.linked, 'transaction', 'transactions')) : '' },
@@ -60,7 +60,7 @@ export class PlutusOverview extends HestiaElement {
       ${s.budget ? html`<div class="card col"><div class="between"><span class="small muted">${tr("Monthly budget")}</span>
         <span class="small tnum">${money(s.spent, cur)} / ${money(s.budget, cur)}</span></div>${budgetBar(pct)}</div>` : nothing}
       <div class="card col"><div class="between"><h2>${tr("Categories")}</h2><button class="link" @click=${() => this.host.navigate('budget')}>${tr("Budget ›")}</button></div>
-        ${s.categories.length ? html`<div class="list">${s.categories.map((c: any, i: number) => html`<div class="li" @click=${() => this.host.navigate('movimenti', { categoria: c.id, mese: s.month })}>
+        ${s.categories.length ? html`<div class="list">${s.categories.map((c: any, i: number) => html`<div class="li" @click=${() => this.host.navigate('transactions', { categoria: c.id, mese: s.month })}>
           <span class="dot" style="background:var(--cal-${(i % 8) + 1})" title=${tr("same color as the chart")}></span><div class="grow col" style="gap:4px"><div class="between"><span class="truncate">${c.label}</span>
             <span class="tnum small">${money(c.spent, cur)}${c.budget ? html`<span class="muted"> / ${money(c.budget, cur)}</span>` : nothing}</span></div>
             ${budgetBar(c.pct)}</div></div>`)}</div>` : html`<div class="empty">${tr("No expenses this month.")}</div>`}
@@ -68,16 +68,16 @@ export class PlutusOverview extends HestiaElement {
       ${s.categories.length > 1 ? html`<div class="card col"><h2>${tr("Where the money goes")}</h2>
         <hxk-chart type="donut" height="180" unit=${cur === 'EUR' ? '€' : cur} .labels=${s.categories.map((c: any) => c.label)}
           .series=${[{ name: tr('Spent'), values: s.categories.map((c: any) => c.spent) }]}></hxk-chart></div>` : nothing}
-      <div class="card col"><div class="between"><h2>${tr("Latest transactions")}</h2><button class="link" @click=${() => this.host.navigate('movimenti', { mese: s.month })}>${tr("All ›")}</button></div>
+      <div class="card col"><div class="between"><h2>${tr("Latest transactions")}</h2><button class="link" @click=${() => this.host.navigate('transactions', { mese: s.month })}>${tr("All ›")}</button></div>
         ${this.latest.length ? html`<div class="list">${this.latest.map(t => txRow(this.host, t, cur))}</div>` : html`<div class="empty">${tr("Nothing yet: PayPal emails arrive by themselves, you add the rest here or in chat.")}</div>`}</div>
-      ${s.recurring_next.length ? html`<div class="card col"><div class="between"><h2>${tr("Coming")}</h2><button class="link" @click=${() => this.host.navigate('abbonamenti')}>${tr("Subscriptions ›")}</button></div>
-        <div class="list">${s.recurring_next.map((r: any) => html`<div class="li" @click=${() => this.host.navigate('abbonamenti')}>
+      ${s.recurring_next.length ? html`<div class="card col"><div class="between"><h2>${tr("Coming")}</h2><button class="link" @click=${() => this.host.navigate('subscriptions')}>${tr("Subscriptions ›")}</button></div>
+        <div class="list">${s.recurring_next.map((r: any) => html`<div class="li" @click=${() => this.host.navigate('subscriptions')}>
           <div class="grow"><b>${r.merchant}</b><div class="small muted">${PERIOD[r.period] || r.period} · ${dayLabel(r.next)}</div></div>
           <span class="tnum amt">${money(-r.amount, cur, true)}</span></div>`)}</div></div>` : nothing}
       ${s.top_merchants.length ? html`<div class="card col"><h2>${tr("Main merchants")}</h2>
         ${s.top_merchants.map((x: any) => html`<div class="between small" style="padding:3px 0"><span class="truncate">${x.merchant}</span><span class="tnum">${money(x.spent, cur)}</span></div>`)}</div>` : nothing}
       <div class="row wrap"><hxk-button variant="ghost" icon="refresh" ?loading=${this.checking} @click=${() => this.checkMail()}>${tr("Recheck PayPal emails")}</hxk-button>
-        <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</hxk-button>
+        <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</hxk-button>
         <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.assistant({ label: tr("Expenses of {0}", s.label), hints: { month: s.month },
           suggestions: [tr('How did the month go?'), tr('Where can I save?'), tr('How much did I spend at restaurants?')] })}>${tr("Ask")}</hxk-button></div>
       ${this.form ? html`<plutus-tx-form .host=${this.host} @close=${() => { this.form = false; this.load(); }}></plutus-tx-form>` : nothing}

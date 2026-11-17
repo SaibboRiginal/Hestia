@@ -32,9 +32,9 @@ BRAIN_MODE = "oracle.brain.mode"
 BRAIN_AGENT = "oracle.brain.agent"
 BRAIN_MODEL = "oracle.brain.model"
 BRAIN_FALLBACK = "oracle.brain.fallback"
-BRAIN_MODES = [("interna", "Internal"), ("esterna", "External")]
+BRAIN_MODES = [("internal", "Internal"), ("external", "External")]
 BRAIN_AGENTS = [("claude", "Claude Code (subscription)"), ("codex", "Codex (ChatGPT)")]
-BRAIN_FALLBACKS = [("interna", "Redo the turn in internal mode"), ("nessuno", "None: tell me it did not answer")]
+BRAIN_FALLBACKS = [("internal", "Redo the turn in internal mode"), ("none", "None: tell me it did not answer")]
 
 settings = SettingsClient("oracle")
 
@@ -54,13 +54,13 @@ def _definitions() -> list[dict]:
         setting(CHAIN_COOLDOWN, "Pause of a model without quota", "int", 60, group="Models", order=3,
                 min=1, max=1440, unit="min", advanced=True,
                 help="When the provider does not say when the quota refills (Gemini daily: Pacific midnight)."),
-        setting(BRAIN_MODE, "Brain mode", "enum", "interna", group="Models", order=4, options=BRAIN_MODES,
+        setting(BRAIN_MODE, "Brain mode", "enum", "internal", group="Models", order=4, options=BRAIN_MODES,
                 help="Internal: Oracle reasons with the model chains (classifier, Quick/Thoughtful/CoT, agent loop). External: an agent (Claude Code, Codex) runs the loop with Hestia's tools; Oracle prepares the context, saves messages and memory. Each use can choose its own."),
         setting(BRAIN_AGENT, "External agent", "enum", "claude", group="Models", order=5, options=BRAIN_AGENTS,
                 help="It needs its login: Claude Code with CLAUDE_CODE_OAUTH_TOKEN, Codex with `codex login` (image with ORACLE_INSTALL_CODEX=1)."),
         setting(BRAIN_MODEL, "External agent model", "string", "sonnet", group="Models", order=6,
                 help="E.g. sonnet, opus (Claude Code) or gpt-5-codex (Codex). Empty = the agent's default."),
-        setting(BRAIN_FALLBACK, "If the external agent does not answer", "enum", "interna", group="Models", order=7,
+        setting(BRAIN_FALLBACK, "If the external agent does not answer", "enum", "internal", group="Models", order=7,
                 options=BRAIN_FALLBACKS),
         setting(USAGE_RETENTION, "Keep model usage for", "int", 90, group="Usage", order=0, min=1,
                 max=3650, unit="days", help="Each model call stays in the Usage panel for these days."),
@@ -78,7 +78,7 @@ PROFILE_MAX_TOKENS = "oracle.chat.profile_max_tokens"
 # Conversation modes (process, not brain): quick = one call no tools · auto = classifier decides ·
 # thinking = always agent loop + model reasoning · cot = deep reasoning, more turns, step-by-step plan.
 MODES = [("auto", "Auto"), ("quick", "Quick"), ("thinking", "Thoughtful"), ("cot", "CoT · step by step")]
-_MODE_ALIASES = {"fast": "quick", "rapida": "quick", "pensata": "thinking", "deep": "cot"}
+_MODE_ALIASES = {"fast": "quick", "quick": "quick", "thinking": "thinking", "deep": "cot"}
 
 # Personal chat settings (scope user): same values on every client; profile = default for new sessions,
 # a client or a single conversation can override (session → client → profile → default).

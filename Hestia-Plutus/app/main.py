@@ -19,7 +19,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # owner language; owner words per language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -94,7 +94,7 @@ store = Store(hub)
 
 # What Spese asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
 LLM_USECASE = "plutus.reading"
-LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="veloce",
+LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="fast",
                             help="Reads the emails or statements the automatic reader doesn't understand and proposes the categories.")]
 
 
@@ -377,8 +377,7 @@ def import_undo(id: str):
 
 # Chat attachments (Oracle hand-off): a PDF whose text has these words is offered to Plutus (Hub capability).
 ATTACHMENT_HANDLERS = [{"mime": ["application/pdf"], "label": "Bank statement", "min_hits": 2, "path": f"{API}/attachments",
-                        "match": ["lista movimenti", "estratto conto", "saldo contabile", "saldo disponibile", "saldo iniziale",
-                                  "saldo finale", "data valuta", "data operazione", "iban", "movimenti"]}]
+                        "match": list(words("plutus.statement.header"))}]
 
 
 def _day(iso: str) -> str:
@@ -507,7 +506,7 @@ def quick_categories():
 def quick_expense(id: str, body: dict = Body(default={})):
     out = plutus.add_tx({"amount": body.get("amount"), "category": id, "date": body.get("date"),
                          "merchant": body.get("merchant") or body.get("note") or "", "type": "expense",
-                         "account": body.get("account") or "contanti"}, source="quick")
+                         "account": body.get("account") or "cash"}, source="quick")
     signals.changed()
     return {**out, "label": f"{out['category_label']}: {abs(out['amount']):.2f} {out['currency']}"}
 
@@ -526,7 +525,7 @@ def quick_expense_undo(id: str, date: str = ""):
 
 
 # ── alerts, review, statement reminder (agenda jobs → Hermes) ────────────────
-def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page_: str = "panoramica") -> None:
+def _emit(key: str, title: str, text: str, actions: list[dict], level: str = "info", page_: str = "overview") -> None:
     hub.ok("hermes", "POST", "api/events/ingest", body=reminder_event(
         module="plutus", domain=DOMAIN, key=key, kind=key.rsplit(".", 1)[0], title=title, text=text,
         voice=bool(settings.get("plutus.notifications.voice", False)),
@@ -581,7 +580,7 @@ def review_run(body: dict = Body(default={})):
         return {"sent": False, "why": "disabled"}
     r = plutus.review()
     text = _review_text(r)
-    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Expenses of {0}", r['month']), text, [], page_="panoramica")
+    _emit(f"finance.review.{plutus.month_range()[0].isoformat()}", tr("Expenses of {0}", r['month']), text, [], page_="overview")
     return {"sent": True, "text": text, "review": r}
 
 
@@ -607,7 +606,7 @@ def reminders_run():
                 "resolves": True}]
     try:
         _emit("finance.reminder.statement", tr("Expenses"),
-              tr("The statement of {0} is missing: download the transaction list as PDF from the bank app and upload it in the Import page (or send it in chat).", label), actions, page_="importa")
+              tr("The statement of {0} is missing: download the transaction list as PDF from the bank app and upload it in the Import page (or send it in chat).", label), actions, page_="import")
     except Exception as exc:
         logger.warning("[🔄] event=plutus_reminder_emit_failed error=%s fallback=next_run", exc)
         return {"sent": False, "why": "hermes_unreachable"}
@@ -643,23 +642,23 @@ ui = PluginClient("plutus", title="Expenses", icon="wallet", color="green",
                   dist=UI_DIST, version=SERVICE_VERSION)
 ui.webui(
     entry="plutus.js", api_prefix=f"{API}/",
-    pages=[page("panoramica", "Expenses", element="plutus-overview", icon="wallet", order=60,
+    pages=[page("overview", "Expenses", element="plutus-overview", icon="wallet", order=60,
                 help="The current month: spent, budget, categories, latest transactions."),
-           page("movimenti", "Transactions", element="plutus-transactions", icon="list", order=61, parent="panoramica",
+           page("transactions", "Transactions", element="plutus-transactions", icon="list", order=61, parent="overview",
                 badge={"source": f"{API}/summary", "field": "to_review"}),
-           page("transactions/:id", "Transaction", element="plutus-transaction", detail=True, parent="panoramica"),
-           page("budget", "Budget", element="plutus-budgets", icon="target", order=62, parent="panoramica"),
-           page("abbonamenti", "Subscriptions", element="plutus-recurring", icon="repeat", order=63, parent="panoramica"),
-           page("importa", "Import", element="plutus-import", icon="upload", order=64, parent="panoramica",
+           page("transactions/:id", "Transaction", element="plutus-transaction", detail=True, parent="overview"),
+           page("budget", "Budget", element="plutus-budgets", icon="target", order=62, parent="overview"),
+           page("subscriptions", "Subscriptions", element="plutus-recurring", icon="repeat", order=63, parent="overview"),
+           page("import", "Import", element="plutus-import", icon="upload", order=64, parent="overview",
                 help="Upload the PDF of the bank transactions (e.g. Hype): see the preview and confirm. PayPal emails arrive by themselves."),
-           page("statistiche", "Statistics", element="plutus-stats", icon="chart", order=65, parent="panoramica"),
-           page("categorie", "Categories and rules", element="plutus-categories", icon="tag", order=66,
-                parent="panoramica")],
-    widgets=[widget("mese", "This month's expenses", element="plutus-month-widget", sizes=["s", "m", "l"], auto=True,
-                    open_page="panoramica", icon="wallet"),
-             widget("ultimi", "Latest transactions", element="plutus-latest-widget", sizes=["m", "l"],
-                    open_page="movimenti", icon="list")],
-    quick_actions=[quick_action("spesa", "Quick expense", "POST", f"{API}/quick/expense/{{id}}", icon="wallet",
+           page("stats", "Statistics", element="plutus-stats", icon="chart", order=65, parent="overview"),
+           page("categories", "Categories and rules", element="plutus-categories", icon="tag", order=66,
+                parent="overview")],
+    widgets=[widget("month", "This month's expenses", element="plutus-month-widget", sizes=["s", "m", "l"], auto=True,
+                    open_page="overview", icon="wallet"),
+             widget("latest", "Latest transactions", element="plutus-latest-widget", sizes=["m", "l"],
+                    open_page="transactions", icon="list")],
+    quick_actions=[quick_action("groceries", "Quick expense", "POST", f"{API}/quick/expense/{{id}}", icon="wallet",
                                 group="Expenses", source=f"{API}/quick/categories",
                                 undo={"method": "DELETE", "path": f"{API}/quick/expense/{{id}}"},
                                 params={"amount": {"type": "float", "label": "Amount", "required": True},
@@ -671,18 +670,18 @@ app.include_router(settings.router())
 
 # ── export / import (hestia_common.transfer; reminder/alert rows are runtime state) ─────────────────────
 transfer = Transfer("plutus", hub, sections=[
-    StoreSection("movimenti", "Transactions", store, ["tx"], icon="wallet",
+    StoreSection("transactions", "Transactions", store, ["tx"], icon="wallet",
                  title=lambda r: f"{r['data'].get('merchant') or r['data'].get('description') or tr('Transaction')} "
                                  f"{r['data'].get('amount')} {r['data'].get('currency') or ''}".strip(),
-                 subtitle=lambda r: r["data"].get("date") or "", depends_on=["categorie", "conti"]),
-    StoreSection("categorie", "Categories", store, ["category"], icon="tag"),
-    StoreSection("regole", "Rules", store, ["rule"], icon="filter",
-                 title=lambda r: f"{r['data'].get('pattern')} → {r['data'].get('category')}", depends_on=["categorie"]),
+                 subtitle=lambda r: r["data"].get("date") or "", depends_on=["categories", "accounts"]),
+    StoreSection("categories", "Categories", store, ["category"], icon="tag"),
+    StoreSection("rules", "Rules", store, ["rule"], icon="filter",
+                 title=lambda r: f"{r['data'].get('pattern')} → {r['data'].get('category')}", depends_on=["categories"]),
     StoreSection("budget", "Budget", store, ["budget"], icon="target",
-                 title=lambda r: f"{r['data'].get('category')}: {r['data'].get('amount')}", depends_on=["categorie"]),
-    StoreSection("conti", "Accounts", store, ["account"], icon="wallet"),
-    StoreSection("ricorrenti", "Recurring", store, ["recurring"], icon="repeat",
-                 title=lambda r: r["data"].get("merchant") or r["id"], depends_on=["categorie"]),
+                 title=lambda r: f"{r['data'].get('category')}: {r['data'].get('amount')}", depends_on=["categories"]),
+    StoreSection("accounts", "Accounts", store, ["account"], icon="wallet"),
+    StoreSection("recurring", "Recurring", store, ["recurring"], icon="repeat",
+                 title=lambda r: r["data"].get("merchant") or r["id"], depends_on=["categories"]),
 ])
 app.include_router(transfer.router())
 
@@ -767,7 +766,7 @@ try:
     def _add(amount: float | None = None, category: str = "", merchant: str = "", date: str = "", account: str = "",
              note: str = "", income: bool = False) -> dict:
         out = plutus.add_tx({"amount": amount, "category": category, "merchant": merchant, "date": date,
-                             "account": account or "contanti", "notes": note, "type": "income" if income else "expense"},
+                             "account": account or "cash", "notes": note, "type": "income" if income else "expense"},
                             source="chat")
         signals.changed()
         return {"saved": True, **_short(out), "undo": undo("finance_delete", id=out.get("id")),
@@ -830,23 +829,23 @@ try:
     I = {"type": "integer"}
     N = {"type": "number"}
     B = {"type": "boolean"}
-    G = "spese"
+    G = "expenses"
     _tools = [
         MCPTool(name="finance_summary", description=("Expenses of the month (or 'month' YYYY-MM-DD): spent, income, budget, pace, categories, main "
                                                      "merchants, upcoming recurring payments. Use it first for questions on money, expenses, budget."), parameters={"type": "object", "properties": {"month": S}},
-                handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "summary": True}),
         MCPTool(name="finance_search", description=("Search transactions: query (merchant/description), category, month or since/until YYYY-MM-DD, "
                                                     "account (paypal, hype, contanti…), to_review. Also gives the total."),
                 parameters={"type": "object", "properties": {"query": S, "category": S, "month": S, "since": S,
                                                              "until": S, "account": S, "to_review": B, "limit": I}},
-                handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "primary": 2}),
         MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category ristoranti) or an income (income=true). date YYYY-MM-DD (default today), account contanti (default) | hype | paypal."),
                 parameters={"type": "object", "properties": {"amount": N, "category": S, "merchant": S, "date": S,
                                                              "account": S, "note": S, "income": B},
                             "required": ["amount"]},
-                handler=_t(_add), title="Log expense", method="POST", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_add), title="Log expense", method="POST", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "primary": 1}),
         MCPTool(name="finance_update", description=("Fix a transaction (id from finance_search): category, amount, date, merchant, note. always=true "
                                                     "→ from now on the same category for that merchant."),
@@ -854,39 +853,39 @@ try:
                                                              "merchant": S, "note": S, "always": B},
                             "required": ["id"]},
                 handler=_t(_update), title="Fix transaction", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Transactions"}),
         MCPTool(name="finance_delete", description="Delete a transaction (id). Only after the user's yes.",
                 parameters={"type": "object", "properties": {"id": S}, "required": ["id"]},
                 handler=_t(_delete), title="Delete transaction", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Transactions"}),
         MCPTool(name="finance_budget", description="Budget of the month by category and total, with what was spent.",
                 parameters={"type": "object", "properties": {"month": S}}, handler=_t(_budget),
-                title="Budget", clients=["telegram", "ui"], telegram_group="spese",
+                title="Budget", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Budget and categories", "primary": 3}),
         MCPTool(name="finance_set_budget", description="Set the monthly budget of a category (or 'total'). amount 0 = remove. Only after the user's yes.",
                 parameters={"type": "object", "properties": {"category": S, "amount": N}, "required": ["amount"]},
                 handler=_t(_set_budget), title="Set budget", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_categories", description="The expense categories (id = name).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_categories), title="Categories",
-                clients=["ui"], telegram_visible=False, telegram_group="spese",
+                clients=["ui"], telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_import_statement", description=("Bank statement PDF sent in chat (blob_id of the attachment): first a preview (new transactions, "
                                                               "already present, linked to PayPal), then, after the user's yes, import_id + commit=true. "
                                                               "account hype (default) or another bank."),
                 parameters={"type": "object", "properties": {"blob_id": S, "account": S, "commit": B, "import_id": S}},
                 handler=_t(_import), title="Import bank statement", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Import"}),
         MCPTool(name="finance_recurring", description="Recurring payments and subscriptions recognised (amount, period, next date).", parameters={"type": "object", "properties": {}},
-                handler=_t(_recurring), title="Subscriptions", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_recurring), title="Subscriptions", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Statistics", "primary": 4}),
         MCPTool(name="finance_stats", description="Trend of the last months: totals, by category, merchants.",
                 parameters={"type": "object", "properties": {"months": I}}, handler=_t(_stats),
-                title="Expense statistics", clients=["ui"], telegram_visible=False, telegram_group="spese",
+                title="Expense statistics", clients=["ui"], telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Statistics", "label": "Statistics"}),
     ]
 

@@ -12,7 +12,7 @@ export const routes: Routes = [
   // The address is the same in every language (the installer prints it); the old Italian one still works.
   { path: 'setup', canActivate: [authGuard], title: tr('Setup · Hestia'),
     loadComponent: () => import('./features/setup/setup-page.component').then(m => m.SetupPageComponent) },
-  { path: 'benvenuto', redirectTo: 'setup' },
+  { path: 'welcome', redirectTo: 'setup' },
   {
     path: '',
     component: ShellComponent,
@@ -20,15 +20,15 @@ export const routes: Routes = [
     children: [
       ...APP_MODULES.map(m => ({ path: m.path, loadComponent: m.load, title: `${m.label} · Hestia` })),
       // Built-in pages that moved into their module as plugins (old links, bookmarks, ?task=… keep working).
-      { path: 'notifications', redirectTo: '/p/hermes/notifiche' },
-      { path: 'commands', redirectTo: '/p/mcp/comandi' },
-      { path: 'forge', redirectTo: '/p/hephaestus/sviluppo' },
-      { path: 'documents', redirectTo: '/p/oracle/documenti' },
+      { path: 'notifications', redirectTo: '/p/hermes/notifications' },
+      { path: 'commands', redirectTo: '/p/mcp/commands' },
+      { path: 'forge', redirectTo: '/p/hephaestus/development' },
+      { path: 'documents', redirectTo: '/p/oracle/documents' },
       { path: 'calendar', redirectTo: '/p/chronos/agenda' },
       { path: 'download', loadComponent: () => import('./features/downloads/downloads-page.component').then(m => m.DownloadsPageComponent), title: tr('Downloads · Hestia') },
-      { path: 'aggiornamenti', loadComponent: () => import('./features/updates/updates-page.component').then(m => m.UpdatesPageComponent), title: tr('Updates · Hestia') },
-      { path: 'macchine', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: tr('Machines · Hestia') },
-      { path: 'sistema', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: tr('System · Hestia') },
+      { path: 'updates', loadComponent: () => import('./features/updates/updates-page.component').then(m => m.UpdatesPageComponent), title: tr('Updates · Hestia') },
+      { path: 'machines', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: tr('Machines · Hestia') },
+      { path: 'system', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: tr('System · Hestia') },
       { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: tr('Dashboard · Hestia') },
       { matcher: pluginPageMatcher, loadComponent: () => import('./features/plugins/plugin-page.component').then(m => m.PluginPageComponent), title: 'Hestia' },
       { path: '', pathMatch: 'full' as const, redirectTo: 'home' },

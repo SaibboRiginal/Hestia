@@ -19,8 +19,8 @@
   «only on training days» → `with: {tag: workout, relation: same_day}` so the plan puts it next to the workout.
   Taking one reports `done` to the planner; any change of diet or supplements reports `changed`.
 - Hygieia keeps the products in the cabinet (stock, purchases); Demeter decides what is taken and when.
-- Recap piece «Alimentazione» (yesterday's meals and kcal, today's supplements). Export/import sections `dieta`,
-  `pasti`, `integratori`.
+- Recap piece «Alimentazione» (yesterday's meals and kcal, today's supplements). Export/import sections `diet`,
+  `meals`, `supplements`.
 
 ## API (`/api/food`)
 

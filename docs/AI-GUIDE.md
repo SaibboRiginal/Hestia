@@ -56,7 +56,7 @@ Hub turns them into commands (`/api/discovery/commands?client=telegram|ui`). Pat
 serves the declared REST path of handler-only tools — call it after the app's own routes.
 
 Turn safety (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`): whoever calls `/api/chat` without being the
-owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomo:<module>`, `hestia_common.origin`); write tools
+owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomous:<module>`, `hestia_common.origin`); write tools
 return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Annulla»; register
 `capabilities.when_to_use` + `manual` so the assistant knows when to use your module; text sent to a cloud model or
 a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` before designing.
@@ -72,7 +72,7 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` b
 - Brain mode `oracle.brain.mode` interna (chains) | esterna (Claude Code / Codex run the loop with Hestia's tools
   through `core.services.mcp_bridge`; Archive stays the session truth). Usage rows → Archive `llm-usage`.
 - `/api/llm/generate {prompt, use_case, voice?}` plain prompt (`voice: true` = a text for the owner, written as the assistant; never write «Sei Hestia…» in a module); `/api/llm/chat {use_case, messages, tools}` OpenAI-compatible
-  along the use case's chain (Forge: `forge.codice`).
+  along the use case's chain (Forge: `forge.code`).
 - `/api/llm/code`: Claude Code CLI (`claude -p`) in a Forge worktree under `/forge/worktrees`, auth
   `CLAUDE_CODE_OAUTH_TOKEN` (Pro/Max, from `claude setup-token`). Only for code tasks.
 - Embeddings are truncated + renormalized to 768 (`ORACLE_EMBED_DIM`) because Archive is `Vector(768)`.
@@ -87,9 +87,9 @@ a Forge prompt goes through `hestia_common.redact`. Read `docs/MARKO-RULES.md` b
   ascolto|voce, uses `echo.usecases`, mode `echo.mode` interna|esterna — edited on page «Voce → Motori».
 - `keep` stores audio in Archive with its message/notification (`recording` never deleted automatically). Telegram
   refs are `tg:<chat>:<msg>`, WebUI refs `web:<session>:<msg>`.
-- Notifications in voice: module setting `<module>.notifiche.voce` (`reminders.voice_setting`) + `reminder_event(voice=)`
+- Notifications in voice: module setting `<module>.notifications.voice` (`reminders.voice_setting`) + `reminder_event(voice=)`
   → payload `_voice` → Hermes adds the audio as an `update`.
-- Live («Parla», Telegram `/voce`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
+- Live («Parla», Telegram `/voice`) = the normal Oracle chat + Echo streams. Never an external live/realtime service.
 - «La tua voce» (W4): voiceprint filter (`echo.voiceprint.*`, other voices → silence before any engine) and personal
   dictionary (hint to every engine, learns from `/api/voice/dictionary/learn`) live inside Echo; callers change nothing.
 

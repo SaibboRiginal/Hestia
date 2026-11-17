@@ -134,7 +134,7 @@ def _get(person: str) -> dict:
 
 def _add(name: str, relation: str = "", birthday: str = "", likes: list | None = None, notes: str = "",
          contact_every_days: int | None = None) -> dict:
-    p = people.save({"name": name, "relation": relation or "altro", "birthday": birthday, "likes": likes or [],
+    p = people.save({"name": name, "relation": relation or "other", "birthday": birthday, "likes": likes or [],
                      "notes": notes, "contact_every_days": contact_every_days})
     return {"saved": True, "id": p["id"], "name": p["name"], "undo": undo("people_delete", person=p["id"]),
             "display": _card(p)}
@@ -146,14 +146,14 @@ def _update(person: str, relation: str = "", birthday: str = "", notes: str = ""
                               "contact_every_days": contact_every_days}.items() if v}
     if date_label and date_day:
         body["dates"] = [{"label": date_label, "day": date_day, "kind": "anniversary"
-                          if "anniversario" in date_label.casefold() else "custom"}]
+                          if "anniversary" in date_label.casefold() else "custom"}]
     p = people.save(body, people.find(person)["id"])
     return {"saved": True, "display": _card(p)}
 
 
 S, I, L = {"type": "string"}, {"type": "integer"}, {"type": "array", "items": {"type": "string"}}
 P = {"type": "string", "description": "person's name or id"}
-G = "persone"
+G = "people"
 kit.tools([
     MCPTool(name="people_list", description="The important people saved (query = part of the name or relation).",
             parameters={"type": "object", "properties": {"query": S}}, handler=_list, title="People",
@@ -164,7 +164,7 @@ kit.tools([
     MCPTool(name="people_add", description=("Add a person. relation: partner|famiglia|amico|collega|altro; birthday DD/MM or YYYY-MM-DD "
                                             "(goes into the calendar with a reminder)."),
             parameters={"type": "object", "properties": {"name": S, "relation": {"type": "string", "enum": [
-                "partner", "famiglia", "amico", "collega", "altro"]}, "birthday": S, "likes": L, "notes": S,
+                "partner", "family", "friend", "colleague", "other"]}, "birthday": S, "likes": L, "notes": S,
                 "contact_every_days": I}, "required": ["name"]},
             handler=_add, title="Add person", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "People", "primary": 2}),
@@ -211,8 +211,8 @@ def _short(p: dict) -> dict:
 
 
 transfer = Transfer("hera", kit.hub, sections=[
-    StoreSection("persone", "People", kit.store, ["person"], icon="user", title=lambda r: r["data"].get("name", "")),
-    StoreSection("contatti", "Contacts", kit.store, ["interaction"], icon="list", depends_on=["persone"]),
+    StoreSection("people", "People", kit.store, ["person"], icon="user", title=lambda r: r["data"].get("name", "")),
+    StoreSection("contacts", "Contacts", kit.store, ["interaction"], icon="list", depends_on=["people"]),
 ])
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment", **recap.capabilities()})
@@ -222,9 +222,9 @@ kit.agenda_rules(lambda: [job_rule("hera.daily", tr("People: who to call"), serv
                                    description="A notice for whoever you haven't heard from for longer than the time you chose.")])
 kit.on_warm(lambda: [people.sync_calendar(p) for p in people.store.items("person")])
 kit.webui(icon="user", color="pink", description="The important people: dates in the calendar, tastes, gift ideas.",
-          pages=[page("persone", "People", element="hera-people", icon="user", order=90,
+          pages=[page("people", "People", element="hera-people", icon="user", order=90,
                       help="Who matters to you: birthdays and dates (they go in the calendar with a notice), tastes, gift ideas the assistant notes from the chat, when to hear from them."),
-                 page("persona/:id", "Persona", element="hera-person", detail=True, parent="persone")],
-          widgets=[widget("prossime", "Upcoming dates", element="hera-soon-widget", sizes=["s", "m", "l"], size="m",
-                          auto=True, open_page="persone", icon="heart")])
+                 page("persona/:id", "Persona", element="hera-person", detail=True, parent="people")],
+          widgets=[widget("upcoming", "Upcoming dates", element="hera-soon-widget", sizes=["s", "m", "l"], size="m",
+                          auto=True, open_page="people", icon="heart")])
 kit.finish()

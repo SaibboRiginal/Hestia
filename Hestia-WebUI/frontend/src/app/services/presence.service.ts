@@ -80,8 +80,8 @@ export function reasonLabel(r?: string): string {
 }
 
 export function ago(minutes: number | null | undefined): string {
-  if (minutes === null || minutes === undefined) return 'mai';
-  if (minutes < 1) return 'adesso';
+  if (minutes === null || minutes === undefined) return 'never';
+  if (minutes < 1) return 'now';
   if (minutes < 60) return `${Math.floor(minutes)} min fa`;
   if (minutes < 48 * 60) return `${Math.floor(minutes / 60)} h fa`;
   return tr("{0} days ago", Math.floor(minutes / 1440));

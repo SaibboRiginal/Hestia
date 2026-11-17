@@ -58,7 +58,7 @@ BASE = "/api/llm-usage-store"
 
 def _row(**kw) -> dict:
     row = {"at": datetime.now(timezone.utc).isoformat(), "module": "oracle", "use_case": "oracle.general",
-           "chain": "veloce", "step": 0, "provider": "ollama", "model": "gemma4:e4b", "session_id": "s1",
+           "chain": "fast", "step": 0, "provider": "ollama", "model": "gemma4:e4b", "session_id": "s1",
            "client": "telegram", "input_tokens": 100, "cached_tokens": 40, "output_tokens": 20, "duration_ms": 500,
            "outcome": "ok"}
     row.update(kw)

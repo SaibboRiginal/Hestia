@@ -93,7 +93,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 - **Scopri** (`GET /api/metis/discover?client=`, tool `metis_discover`): catalog tools used at most twice in 90 days,
   one per module first, with what they do.
 - Telegram: the Oggi card shows «Adesso» (reason + one button each) instead of its fixed actions when Metis has
-  something; `/adesso` and `/scopri` open the two tools.
+  something; `/now` and `/discover` open the two tools.
 
 ## MCP Tools
 
@@ -123,7 +123,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-viva`) |
 | `GET` | `/api/metis/now` · `/api/metis/discover` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/now/refresh` | Agenda job: new ideas + prune |
-| `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |
+| `GET` | `/api/metis/tools/now` · `/tools/discover` | The two tools (display cards) |
 | `POST` | `/api/metis/traces` | Oracle pushes one chat turn trace (422 if trace_id/session_id/user/answer missing; skipped when the chat is `training_off`) |
 | `DELETE` | `/api/metis/traces?session_id=` | Drop a conversation's traces and signals |
 | `GET` | `/api/metis/traces/status` · `/api/metis/traces/recent` | Dataset counts · newest turns, short |
@@ -133,7 +133,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET`/`POST` | `/api/metis/tools/rivedi` · `/tools/rivedi_decidi` | The two tools (display card) |
 | `POST` | `/api/metis/export` | Build the training zip `{plain?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
 | `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
-| `POST` | `/api/metis/tools/dataset_esporta` | Tool `metis_dataset_export` (card with the file) |
+| `POST` | `/api/metis/tools/dataset_export` | Tool `metis_dataset_export` (card with the file) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
@@ -153,7 +153,7 @@ Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle 
 Metis ships its inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
 `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
 section *Sistema*), `api_prefix` `/api/metis/`, no new endpoint.
-- page **Miglioramento** (`miglioramento`, `metis-improvement`, order 180): *Dataset di allenamento* from
+- page **Miglioramento** (`improvement`, `metis-improvement`, order 180): *Dataset di allenamento* from
   `/api/metis/traces/status` (saved turns, last 7 days, signals), *Da rivedere* from `/api/metis/review/pending`
   (original vs corrected, Accetta / Correggi io with a text box / Scarta → `POST /api/metis/review/{id}`), *Esporta* (`POST /api/metis/export`, then
   `/export/{id}/b64` saved as a file; «Scarica oscurato» / «Scarica in chiaro», the last five exports), *Dove sbaglia* from

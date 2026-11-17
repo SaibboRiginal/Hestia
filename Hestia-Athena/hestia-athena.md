@@ -18,11 +18,11 @@ is archived for audit and client display.
 1. Read active signals (`hestia_common.signals_client.SignalReader`) and weekly series (26 weeks).
 2. **Link** series of different areas: Pearson at lag 0 (same week) and lag 1 (the week after), closed weeks only,
    ≥ `athena.reflection.min_weeks` paired weeks and |r| ≥ `athena.reflection.min_correlation`. Numbers, not the model.
-3. **Topics**: `alta` signals, then links (strongest), then `attenzione` signals; at most `max_topics`; anything told
+3. **Topics**: `high` signals, then links (strongest), then `warning` signals; at most `max_topics`; anything told
    within `repeat_days` is skipped (dedup on `topic_key`).
 4. **Details**: `GET route/<module>/api/module/context?topic=<key>&budget=<detail_budget>` per signal topic; the
    normal context line of both modules for a link.
-5. **Think**: one Oracle call, use case `athena.reflection` (chain `potente`), caveman prompt, same `AZIONE/TIPO/…`
+5. **Think**: one Oracle call, use case `athena.reflection` (chain `strong`), caveman prompt, same `AZIONE/TIPO/…`
    format plus `TEMA: T<n>`; kinds `observation` | `setting`.
 6. **Gate** (same score and threshold). Accepted observations → Archive `signals-store` (`kind=observation`,
    `ref_id=athena`, `day`, `title`, `text`, `domains`, `topic_key`, `link`, `page`, `score`), outcome `observed`,
@@ -197,7 +197,7 @@ Third output, next to the system briefs and the life observations (those stay in
    her last message − 0.25 for each of her last messages left unanswered, all damped in the first days (× 0.5 on
    day 0, × 1 after 7 days of observation). Weighed again every 30 min (`event=talk_quiet drive= bar=`). Checked
    at every loop tick **before** the thinking gate, so she can write while he is awake.
-2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`attenzione`, a long silence (≥ 20 h); plus
+2. **Why**: mood of today (Psyche `/api/mood/today`), signals `high`/`warning`, a long silence (≥ 20 h); plus
    the **last days** (`past`): how he felt each of the last 3 days (Psyche `/api/mood/history`), what she wrote
    and whether he answered (he wrote after it = yes; 12 h without a word = no, kept on the stored row), and «do
    not insist» after unanswered messages. These lines are hidden text for Oracle, in English.
@@ -240,11 +240,11 @@ Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_pr
 
 | Kind | Id | What |
 |---|---|---|
-| page (order 130) | `pensieri` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena non raggiungibile» |
-| page (order 131) | `segnali` → `<athena-signals>` | active signals per area (severity icon + tone, «Apri» opens the module page), links between areas, recent observations, weekly series charts; area filter |
-| widget (auto) | `ultimo` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
+| page (order 130) | `thoughts` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena non raggiungibile» |
+| page (order 131) | `signals` → `<athena-signals>` | active signals per area (severity icon + tone, «Apri» opens the module page), links between areas, recent observations, weekly series charts; area filter |
+| widget (auto) | `latest` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
 | quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
-| page (order 133) | `imparato` → `<athena-learning>` | «Cosa ho imparato»: the learning log (added, merged, let go, weaker) with the owner's quote and «Annulla» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Applica» / «Lascia») and «Rivedi cosa sai di me» (`POST /memory/review`); proposal notifications link here |
+| page (order 133) | `learned` → `<athena-learning>` | «Cosa ho imparato»: the learning log (added, merged, let go, weaker) with the owner's quote and «Annulla» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Applica» / «Lascia») and «Rivedi cosa sai di me» (`POST /memory/review`); proposal notifications link here |
 
 Pensieri has a **Vita / Sistema / Ti scrive** switch (default Vita; «Ti scrive» and the card «Sta raccogliendo prove» in Sistema: see above): a life cycle shows 1 Legge i segnali · 2 Collega · 3
 Approfondisce · 4 Pensa e filtra · 5 Per il recap; «Pensa ora» runs the selected track.
@@ -291,7 +291,7 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | POST | `/api/athena/commitments/{brief_id}/resolve` | Resolve a commitment |
 | GET | `/api/athena/thinking` | Recent thinking records, full (observation payload included) |
 | GET | `/api/athena/thinking/summary?limit=&track=` | Compact cycles + `running`, `threshold`, `weights`, `loop_enabled`, `strategist_enabled` (page Pensieri, MCP `athena_thinking`) |
-| POST | `/api/athena/think?track=` | «Pensa ora»: one full cycle now in background (`sistema` default, or `vita`) → `{status: started, trace_id, track}` or `{status: busy}` |
+| POST | `/api/athena/think?track=` | «Pensa ora»: one full cycle now in background (`system` default, or `life`) → `{status: started, trace_id, track}` or `{status: busy}` |
 | GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Segnali, MCP `athena_signals`) |
 | GET | `/api/module/recap?day=` | Athena's recap piece «Da tenere d'occhio» (capability `recap_endpoint`) |
 | GET | `/api/athena/memory/proposals` | Clean-up proposals still waiting for the owner (page «Cosa ho imparato») |
@@ -334,7 +334,7 @@ Only infrastructure and model routing stay in env (tunables are central settings
 
 Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategy`
 (strategist + memory consolidation), `athena.reflection` (life reflection) or `athena.review` (answer audit), both declared in its Hub registration
-(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `potente`).
+(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `strong`).
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)

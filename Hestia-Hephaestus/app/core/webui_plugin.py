@@ -33,12 +33,12 @@ ui = PluginClient("hephaestus", title="Development", icon="code", color="amber",
                   version=os.getenv("SERVICE_VERSION", "1.0.0"))
 ui.webui(
     entry="hephaestus.js", api_prefix=API_PREFIX,
-    pages=[page("sviluppo", "Development", element="hephaestus-development", icon="code", order=170,
+    pages=[page("development", "Development", element="hephaestus-development", icon="code", order=170,
                 badge={"source": f"{API_PREFIX}forge/counts", "field": "review"},
                 help="Forge develops Hestia on separate branches: here you see the tasks, the engine's conversation, the diff, the dossier and the tests, and you decide whether to apply. «Copy for AI» prepares the chosen tasks for another AI (it delivers the fix via MCP)."),
-           page("riparazioni", "Repairs", element="hephaestus-repairs", icon="settings", order=171,
+           page("repairs", "Repairs", element="hephaestus-repairs", icon="settings", order=171,
                 help="Service repairs: which runbook, what consent it needs, whether it was a trial (dry-run), how it went and where to roll back from. Approving or cancelling stays with you, in chat or on Telegram.")],
     widgets=[widget("forge", "Forge", element="hephaestus-forge-widget", sizes=["s", "m", "l"], size="m",
-                    auto=True, icon="code", open_page="sviluppo",
+                    auto=True, icon="code", open_page="development",
                     help="State of self-development: paused or active, queue, tasks to review and Claude window.")],
 )

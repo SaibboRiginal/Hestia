@@ -114,7 +114,7 @@ export class OracleUsage extends HestiaElement {
           <div class="grow"><div class="truncate"><b>${c.use_case}</b> <span class="small muted">${c.chain || ''}${c.step ? tr(' · step {0}', c.step + 1) : ''}</span></div>
             <div class="small muted truncate">${at(c.at)} · ${c.provider} · ${c.model}</div></div>
           <div class="num small"><div>${c.outcome === 'ok' ? `${num(c.input_tokens)} / ${num(c.output_tokens)} token` : html`<hxk-badge tone="danger">${c.outcome}</hxk-badge>`}</div>
-            <div class="muted">${ms(c.duration_ms)}${c.cost_usd ? ` · ${cost(c.cost_usd)}` : ''}${c.cost_kind === 'abbonamento' ? ' abbonamento' : ''}</div></div></div>`)}
+            <div class="muted">${ms(c.duration_ms)}${c.cost_usd ? ` · ${cost(c.cost_usd)}` : ''}${c.cost_kind === 'subscription' ? ' abbonamento' : ''}</div></div></div>`)}
     </hxk-card>`;
   }
 

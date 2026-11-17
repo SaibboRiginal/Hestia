@@ -40,7 +40,7 @@ logger = logging.getLogger("hestia_common.signals")
 
 STORE = "api/signals-store"
 KINDS = ("trend", "streak", "anomaly", "goal", "milestone")
-SEVERITIES = ("info", "attenzione", "alta")
+SEVERITIES = ("info", "warning", "high")
 
 
 def _hub_default() -> str:

@@ -38,7 +38,7 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
         }
         <div class="row">
           <div class="lbl"><span>{{ "Reasoning" | tr }}</span>
-            <hx-setting-link section="assistente" row="thinking"  [label]="'on this browser' | tr"  [title]="'Open in Settings' | tr" (go)="open.set(false)" /></div>
+            <hx-setting-link section="assistant" row="thinking"  [label]="'on this browser' | tr"  [title]="'Open in Settings' | tr" (go)="open.set(false)" /></div>
           <hx-segmented [options]="thinking" [value]="prefs.settings().thinkingDisplay" (changed)="setThinking($event)" />
         </div>
         <a class="more" routerLink="/settings" (click)="open.set(false)">{{ "Defaults and other settings…" | tr }}</a>

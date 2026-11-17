@@ -51,7 +51,7 @@ def ago(minutes: float | None) -> str:
     if minutes is None:
         return tr("never")
     if minutes < 1:
-        return "adesso"
+        return "now"
     if minutes < 60:
         return f"{int(minutes)} min fa"
     if minutes < 48 * 60:

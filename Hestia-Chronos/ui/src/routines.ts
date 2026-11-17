@@ -159,7 +159,7 @@ export class ChronosRoutines extends HestiaElement {
     const paused = r.status === 'paused';
     const last = r.last_run;
     return html`<div class="r">
-      <hxk-icon name=${r.trigger === 'evento' ? 'mail' : 'repeat'} tone=${paused ? 'neutral' : 'accent'} size="16"></hxk-icon>
+      <hxk-icon name=${r.trigger === 'event' ? 'mail' : 'repeat'} tone=${paused ? 'neutral' : 'accent'} size="16"></hxk-icon>
       <div class="grow col" style="gap:3px">
         <div class="row wrap"><span class="t">${r.title}</span>
           ${paused ? html`<hxk-badge tone="warning">${tr("Paused")}</hxk-badge>` : nothing}

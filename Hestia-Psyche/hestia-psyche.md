@@ -35,7 +35,7 @@ quietly by the assistant when he says how he feels in chat; trend, insights and 
   `hestia_common.reminders`, off by default) and today has no check-in. Agenda job `psyche.signals` (17:30).
 - Context contract (tag `context`): `GET /api/module/context` = the last 7 days in one line (`topic=insights` →
   the insights sentences).
-- Export/import section `umore`.
+- Export/import section `mood`.
 
 ## Settings (Themis)
 

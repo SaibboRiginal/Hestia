@@ -108,8 +108,8 @@ def _lines(reports: dict, labels: dict) -> list[str]:
         for r in (rep.get("sections") or {}).values():
             for k in totals:
                 totals[k] += int(r.get(k) or 0)
-        parts = [f"{totals[k]} {label}" for k, label in (("added", "nuovi"), ("updated", "aggiornati"),
-                                                         ("skipped", "ignorati"), ("problems", "problemi"))
+        parts = [f"{totals[k]} {label}" for k, label in (("added", "new"), ("updated", "updated"),
+                                                         ("skipped", "ignored"), ("problems", "problems"))
                  if totals[k]]
         lines.append(ui.item(name, parts or [tr("no changes")]))
     return lines
@@ -185,7 +185,7 @@ def ripristina(chat_id, args):
     lines, actions = [], []
     for b in items[:6]:
         when = str(b.get("created_at") or "")[:16].replace("T", " ")
-        meta = [f"{int(b.get('size') or 0) / 1048576:.0f} MB"] + (["verificato"] if b.get("verified_at") else [])
+        meta = [f"{int(b.get('size') or 0) / 1048576:.0f} MB"] + (["verified"] if b.get("verified_at") else [])
         lines.append(ui.item(when, meta))
         actions.append(Action(tr("Restore {0}", when[:10]), "restore_confirm", {"file_id": str(b["id"])},
                               style="danger"))
@@ -219,25 +219,25 @@ def restore_cancel(chat_id, args):
 def tools() -> list[catalog.Tool]:
     T = catalog.Tool
     return [
-        T("esporta", "Export the data", "A file with your data and settings, to take to another Hestia",
-          group="sistema", hints={"section": "Data and backups"}, handler=esporta),
-        T("importa", "Import data", "Brings data back from a .hestia file (you see a preview first)", group="sistema",
+        T("export", "Export the data", "A file with your data and settings, to take to another Hestia",
+          group="system", hints={"section": "Data and backups"}, handler=esporta),
+        T("import", "Import data", "Brings data back from a .hestia file (you see a preview first)", group="system",
           hints={"section": "Data and backups"},
           schema={"type": "object", "required": ["file"], "properties": {"file": {
               "type": "string", "contentMediaType": "application/octet-stream", "title": "The .hestia file"}}},
           handler=importa),
-        T("import_confirm", "Confirm import", "", group="sistema", hints={"section": "interno"},
+        T("import_confirm", "Confirm import", "", group="system", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           writes=True, handler=import_confirm),
-        T("import_cancel", "Cancel import", "", group="sistema", hints={"section": "interno"},
+        T("import_cancel", "Cancel import", "", group="system", hints={"section": "interno"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           handler=import_cancel),
-        T("ripristina", "Restore a backup", "Brings all data back to a backup on Google Drive", group="sistema",
+        T("restore", "Restore a backup", "Brings all data back to a backup on Google Drive", group="system",
           hints={"section": "Data and backups"}, handler=ripristina),
-        T("restore_confirm", "f::Restore", "", group="sistema", hints={"section": "interno"},
+        T("restore_confirm", "f::Restore", "", group="system", hints={"section": "interno"},
           schema={"type": "object", "properties": {"file_id": {"type": "string"}}, "required": ["file_id"]},
           writes=True, destructive=True, handler=restore_confirm),
         T("restore_cancel", "Undo restore", "Back to the data before the last restore",
-          group="sistema", hints={"section": "Data and backups"}, writes=True, destructive=True,
+          group="system", hints={"section": "Data and backups"}, writes=True, destructive=True,
           handler=restore_cancel),
     ]

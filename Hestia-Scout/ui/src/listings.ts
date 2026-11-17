@@ -130,7 +130,7 @@ export class ScoutListings extends HestiaElement {
       <div class="head">
         <div><h1>${tr("Houses")}</h1><div class="sub">${s ? tr("{0} houses followed · {1} new this week", num(s.total), num(s.new)) : tr('Listings arrived by email')}</div></div>
         <div class="acts">
-          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</hxk-button>
+          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</hxk-button>
           <hxk-button icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Check emails")}</hxk-button>
         </div>
       </div>

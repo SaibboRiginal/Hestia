@@ -188,7 +188,7 @@ def flow_hercules(ctx: dict) -> None:
         return need(items, f"esercizio «{q}» non trovato")[0]["id"]
 
     def template():
-        bench, row = pick("panca piana"), pick("rematore")
+        bench, row = pick("panca piana"), pick("row")
         for old in api(M, "GET", "api/hercules/templates")["items"]:  # earlier runs: Home shows at most 6 favourites
             if str(old.get("name", "")).startswith("Banco Push "):
                 api(M, "DELETE", f"api/hercules/templates/{old['id']}")
@@ -313,16 +313,16 @@ def flow_hygieia(ctx: dict) -> None:
     def products():
         t0 = time.time()
         cleanser = api(M, "POST", f"{P}/products", {"name": f"Banco Detergente schiumoso {RUN}", "brand": "CeraVe",
-                                                    "areas": ["viso"], "category": "detergente", "size": 236,
+                                                    "areas": ["face"], "category": "cleanser", "size": 236,
                                                     "pao_months": 12, "status": "in_use"})
         secs = time.time() - t0
         need(cleanser.get("opened_at") == TODAY.isoformat(), f"opened_at {cleanser.get('opened_at')} (atteso oggi)")
         need(cleanser.get("expires_at") or cleanser.get("pao_expires_at") or "pao" in json.dumps(cleanser),
              "nessun conto alla rovescia PAO")
-        ret = api(M, "POST", f"{P}/products", {"name": f"Banco Siero retinolo {RUN}", "brand": "Banco", "areas": ["viso"],
-                                               "category": "siero", "actives": ["retinolo"], "status": "in_use"})
-        aha = api(M, "POST", f"{P}/products", {"name": f"Banco Tonico glicolico {RUN}", "brand": "Banco", "areas": ["viso"],
-                                               "category": "tonico", "actives": ["aha_glycolic"], "status": "in_use"})
+        ret = api(M, "POST", f"{P}/products", {"name": f"Banco Siero retinolo {RUN}", "brand": "Banco", "areas": ["face"],
+                                               "category": "serum", "actives": ["retinol"], "status": "in_use"})
+        aha = api(M, "POST", f"{P}/products", {"name": f"Banco Tonico glicolico {RUN}", "brand": "Banco", "areas": ["face"],
+                                               "category": "toner", "actives": ["aha_glycolic"], "status": "in_use"})
         ctx.update(cleanser=cleanser["id"], retinol=ret["id"], aha=aha["id"])
         return f"3 prodotti; il primo salvato in {secs:.1f} s con apertura oggi e PAO 12 mesi"
     step(A, "Aggiungi prodotti (detergente con PAO, retinolo, AHA)")(products)
@@ -330,7 +330,7 @@ def flow_hygieia(ctx: dict) -> None:
         return
 
     def routine():
-        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Viso sera {RUN}", "areas": ["viso"], "slot": "evening",
+        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Viso sera {RUN}", "areas": ["face"], "slot": "evening",
                                              "cadence": {"mode": "daily"}, "reminder": True, "steps": [
             {"product_id": ctx["cleanser"]},
             {"product_id": ctx["retinol"], "cadence": {"mode": "target", "times": 3, "per": "week"}},
@@ -352,7 +352,7 @@ def flow_hygieia(ctx: dict) -> None:
         steps = plan.get("steps") or []
         aha = next((s for s in steps if (s.get("product") or {}).get("id") == ctx["aha"]), {})
         need(aha, f"passo AHA assente nel piano: {text[:300]}")
-        need(not aha.get("include") and "retinolo" in (aha.get("reason") or ""),
+        need(not aha.get("include") and "retinol" in (aha.get("reason") or ""),
              f"AHA: include={aha.get('include')} stato={aha.get('state')} motivo «{aha.get('reason')}»")
         return f"AHA dopo la sera col retinolo: {aha.get('state')} · {aha.get('reason') or aha.get('hint')}"
     step(A, "Dopo la sera col retinolo l'AHA dice «non oggi»")(retinol_evening)
@@ -394,7 +394,7 @@ def flow_hygieia(ctx: dict) -> None:
     def reminder_chain():
         code, _ = http("PUT", f"{THEMIS}/api/settings/key/hygieia.reminder.enabled", {"value": True, "actor": "banco"})
         need(code == 200, f"Themis non accetta hygieia.reminder.enabled → {code}")
-        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Crema mani {RUN}", "areas": ["mani"], "slot": "anytime",
+        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Crema mani {RUN}", "areas": ["hands"], "slot": "anytime",
                                              "cadence": {"mode": "daily"}, "reminder": True,
                                              "steps": [{"label": "crema mani"}]})
         ctx["hands"] = r["id"]
@@ -468,14 +468,14 @@ def flow_wardrobe(ctx: dict) -> None:
 
     def pieces():
         made = {}
-        spec = [("shirt", "Camicia azzurra", ["azzurro"], 2, 3, ["ufficio"], (120, 170, 230)),
-                ("polo", "Polo bianca", ["bianco"], 2, 2, ["casual"], (240, 240, 240)),
-                ("longsleeve", "Maglia righe", ["blu"], 2, 2, ["ufficio"], (60, 80, 160)),
-                ("trousers", "Pantaloni grigi lana", ["grigio"], 3, 4, ["ufficio"], (120, 120, 120)),
-                ("sweater", "Maglione blu scuro", ["blu"], 4, 3, ["ufficio", "casual"], (20, 30, 80)),
-                ("raincoat", "Impermeabile nero", ["nero"], 3, 3, ["ufficio", "casual"], (10, 10, 10)),
-                ("coat", "Cappotto pesante antracite", ["grigio"], 5, 4, ["ufficio"], (50, 50, 55)),
-                ("boots", "Stivaletti marroni", ["marrone"], 3, 3, ["ufficio", "casual"], (110, 70, 30)),
+        spec = [("shirt", "Camicia azzurra", ["light_blue"], 2, 3, ["office"], (120, 170, 230)),
+                ("polo", "Polo bianca", ["white"], 2, 2, ["casual"], (240, 240, 240)),
+                ("longsleeve", "Maglia righe", ["blue"], 2, 2, ["office"], (60, 80, 160)),
+                ("trousers", "Pantaloni grigi lana", ["gray"], 3, 4, ["office"], (120, 120, 120)),
+                ("sweater", "Maglione blu scuro", ["blue"], 4, 3, ["office", "casual"], (20, 30, 80)),
+                ("raincoat", "Impermeabile nero", ["black"], 3, 3, ["office", "casual"], (10, 10, 10)),
+                ("coat", "Cappotto pesante antracite", ["gray"], 5, 4, ["office"], (50, 50, 55)),
+                ("boots", "Stivaletti marroni", ["brown"], 3, 3, ["office", "casual"], (110, 70, 30)),
                 ("sandals", "Sandali estivi", ["beige"], 1, 1, ["casual"], (230, 210, 170))]
         for cat, name, colors, warmth, formality, occ, rgb in spec:
             seasons = ["summer"] if cat == "sandals" else ["autumn", "winter", "spring"]
@@ -500,7 +500,7 @@ def flow_wardrobe(ctx: dict) -> None:
     w = ctx["w"]
 
     def filters():
-        found = api(M, "GET", f"{P}/pieces", query={"category": "shirt", "season": "autumn", "q": "azzurra"})
+        found = api(M, "GET", f"{P}/pieces", query={"category": "shirt", "season": "autumn", "q": "light_blue"})
         need(any(i["id"] == w["shirt"] for i in found.get("items") or []), "filtro categoria/stagione/testo non trova la camicia")
         sem = chat("trova la giacca pesante scura #tool wardrobe_search " + json.dumps({"query": "giacca pesante scura"}))
         need(sem["tools"] and sem["tools"][0]["ok"], f"wardrobe_search: {sem['tools'][:1]}")
@@ -510,7 +510,7 @@ def flow_wardrobe(ctx: dict) -> None:
 
     def suggest():
         api(M, "PATCH", f"{P}/pieces/{w['coat']}", {"status": "laundry"})
-        out = api(M, "POST", f"{P}/suggest", {"occasion": "ufficio", "temp_c": 8, "rain": True, "count": 3,
+        out = api(M, "POST", f"{P}/suggest", {"occasion": "office", "temp_c": 8, "rain": True, "count": 3,
                                               "date": (TODAY + timedelta(days=1)).isoformat()})
         items = out.get("items") or out.get("suggestions") or []
         need(len(items) == 3, f"{len(items)} proposte invece di 3: {str(out)[:300]}")
@@ -520,7 +520,7 @@ def flow_wardrobe(ctx: dict) -> None:
         need(w["sandals"] not in text, "suggeriti i sandali estivi con 8 gradi e pioggia")
         why = items[0].get("reasons") or items[0].get("why") or ""
         r = chat("Cosa mi metto domani per ufficio, 8 gradi, pioggia #tool wardrobe_suggest "
-                 + json.dumps({"occasion": "ufficio", "temp_c": 8, "rain": True}))
+                 + json.dumps({"occasion": "office", "temp_c": 8, "rain": True}))
         need(r["tools"] and r["tools"][0]["ok"], f"wardrobe_suggest dalla chat: {r['tools'][:1]}")
         api(M, "PATCH", f"{P}/pieces/{w['coat']}", {"status": "active"})
         return f"{len(items)} proposte senza lavanderia né sandali; motivi: {str(why)[:120]}"
@@ -557,7 +557,7 @@ def flow_wardrobe(ctx: dict) -> None:
         need(st, "statistiche vuote")
         pk = api(M, "POST", f"{P}/collections/packing", {"name": f"Banco Milano {RUN}", "from": TODAY.isoformat(),
                                                          "to": (TODAY + timedelta(days=2)).isoformat(),
-                                                         "occasion": "ufficio", "temp_c": 9, "rain": True})
+                                                         "occasion": "office", "temp_c": 9, "rain": True})
         n = len(pk.get("piece_ids") or pk.get("items") or [])
         need(n >= 3, f"valigia con {n} capi: {str(pk)[:300]}")
         code, mc = http("GET", "http://localhost:19017/api/module/context")
@@ -811,11 +811,11 @@ def flow_mcp(ctx: dict) -> None:
 
 # ── WebUI in Chromium: pages with data, Home, notifications, chat ────────────
 
-PAGES = ["/home", "/p/hercules/allenamento", "/p/hercules/schede", "/p/hercules/storico", "/p/hercules/progressi",
-         "/p/hercules/corpo", "/p/hygieia/oggi", "/p/hygieia/routine", "/p/hygieia/prodotti", "/p/hygieia/statistiche",
-         "/p/hygieia/spesa", "/p/wardrobe/capi", "/p/wardrobe/outfit", "/p/wardrobe/what-to-wear",
-         "/p/wardrobe/statistiche", "/p/wardrobe/liste", "/p/hermes/notifiche", "/p/hermes/consegne",
-         "/p/chronos/agenda", "/p/chronos/esecuzioni", "/p/mcp/accessi", "/p/themis/registro", "/settings"]
+PAGES = ["/home", "/p/hercules/training", "/p/hercules/plans", "/p/hercules/history", "/p/hercules/progress",
+         "/p/hercules/body", "/p/hygieia/today", "/p/hygieia/routine", "/p/hygieia/products", "/p/hygieia/stats",
+         "/p/hygieia/groceries", "/p/wardrobe/pieces", "/p/wardrobe/outfit", "/p/wardrobe/what-to-wear",
+         "/p/wardrobe/stats", "/p/wardrobe/lists", "/p/hermes/notifications", "/p/hermes/deliveries",
+         "/p/chronos/agenda", "/p/chronos/runs", "/p/mcp/access", "/p/themis/log", "/settings"]
 
 
 def browser():
@@ -830,7 +830,7 @@ def _errors_on(page) -> list[str]:
     return page.evaluate("""() => {
       const out = [];
       const walk = (root) => root.querySelectorAll('*').forEach(el => {
-        if (el.tagName === 'HXK-STATE' && el.getAttribute('kind') === 'error') out.push((el.getAttribute('message') || el.textContent || 'errore').trim().slice(0, 120));
+        if (el.tagName === 'HXK-STATE' && el.getAttribute('kind') === 'error') out.push((el.getAttribute('message') || el.textContent || 'error').trim().slice(0, 120));
         if (el.shadowRoot) walk(el.shadowRoot);
       });
       walk(document);
@@ -907,7 +907,7 @@ def flow_webui(ctx: dict) -> None:
                     "_actions": [{"id": "skip", "label": "Salta", "service": "hygieia", "method": "POST",
                                   "path": f"/api/selfcare/routines/{rid}/skip", "body": {}}]}})
         page = br.new_page(viewport={"width": 1280, "height": 900})
-        page.goto(f"{WEBUI}/p/hermes/notifiche", wait_until="networkidle", timeout=60000)
+        page.goto(f"{WEBUI}/p/hermes/notifications", wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(2000)
         btn = page.get_by_text("Salta", exact=True).first
         need(btn.count(), "nessun bottone «Salta» nella pagina Notifiche")
@@ -1091,7 +1091,7 @@ def flow_vita(ctx: dict) -> None:
 
     def hera():
         bday = (TODAY + timedelta(days=3)).isoformat()
-        p = api("hera", "POST", "api/people", {"name": f"Banco Anna {RUN}", "relation": "amica", "birthday": bday,
+        p = api("hera", "POST", "api/people", {"name": f"Banco Anna {RUN}", "relation": "friend", "birthday": bday,
                                                "likes": ["tè verde"]})
         pid = p.get("id") or (p.get("person") or {}).get("id")
         need(pid, f"nessun id: {str(p)[:200]}")
@@ -1171,7 +1171,7 @@ def flow_shell(ctx: dict) -> None:
         at = datetime.now().isoformat(timespec="seconds")
         api("metis", "POST", "api/metis/usage", {"taps": [
             {"client": "webui", "kind": "tool", "ref": "deadlines_list", "label": "Scadenze", "at": at},
-            {"client": "webui", "kind": "page", "ref": "/p/kairos/scadenze", "label": "Scadenze", "at": at}]})
+            {"client": "webui", "kind": "page", "ref": "/p/kairos/deadlines", "label": "Scadenze", "at": at}]})
         a = api("metis", "GET", "api/metis/now", query={"client": "webui"})
         s = api("metis", "GET", "api/metis/discover", query={"limit": 20})
         na, ns = len(a.get("items") or []), len(s.get("items") or [])
@@ -1214,9 +1214,9 @@ def flow_shell(ctx: dict) -> None:
         try:
             pg = br.new_page(viewport={"width": 1366, "height": 860})
             pg.on("pageerror", lambda e: js.append(str(e)[:160]))
-            for path in ("/home", "/scopri", "/sistema", "/chat", "/p/kairos/scadenze", "/p/hera/persone",
-                         "/p/demeter/oggi", "/p/calliope/documenti", "/p/aphrodite/aspetto", "/p/apollo/immagini",
-                         "/p/lares/casa"):
+            for path in ("/home", "/discover", "/system", "/chat", "/p/kairos/deadlines", "/p/hera/people",
+                         "/p/demeter/today", "/p/calliope/documents", "/p/aphrodite/look", "/p/apollo/images",
+                         "/p/lares/home"):
                 pg.goto(WEBUI + path, wait_until="networkidle", timeout=60000)
                 pg.wait_for_timeout(1200)
                 errs = _errors_on(pg)
@@ -1233,7 +1233,7 @@ def flow_shell(ctx: dict) -> None:
 
 AREAS = {"hercules": flow_hercules, "hygieia": flow_hygieia, "wardrobe": flow_wardrobe, "agenda": flow_agenda,
          "presence": flow_presence, "settings": flow_settings, "plugins": flow_plugins, "mcp": flow_mcp, "webui": flow_webui,
-         "transfer": flow_transfer, "vita": flow_vita, "shell": flow_shell}
+         "transfer": flow_transfer, "life": flow_vita, "shell": flow_shell}
 
 
 def main(argv: list[str]) -> int:

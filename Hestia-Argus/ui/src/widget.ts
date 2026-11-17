@@ -23,7 +23,7 @@ export class ArgusStatusWidget extends HestiaElement {
     if (!d.last_cycle_at) return html`<div class="w"><span class="small muted">${tr("System status")}</span><div class="muted">${tr("First check in progress…")}</div></div>`;
     const bad: any[] = d.unhealthy_services || [];
     const n = this.ctx?.size === 's' ? 2 : this.ctx?.size === 'l' ? 8 : 4;
-    return html`<div class="w" @click=${() => this.host.navigate('salute')}>
+    return html`<div class="w" @click=${() => this.host.navigate('health')}>
       <div class="row"><span class="small muted grow">${tr("System status")}</span><span class="small muted">${ago(d.last_cycle_at)}</span></div>
       <div class="big">${d.healthy}<span class="muted" style="font-size:15px"> / ${d.total} ${tr("healthy")}</span></div>
       ${bad.length ? html`<div class="row wrap">${bad.slice(0, n).map(s => html`<hxk-badge tone=${statusOf(s.status)[0]}>${s.service}</hxk-badge>`)}

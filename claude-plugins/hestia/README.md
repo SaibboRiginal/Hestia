@@ -22,7 +22,7 @@ live from your Hestia. What Claude learns about you goes back into Hestia's memo
 
 Buttons: **Ricorda** (Claude saves the lasting facts of this chat into Hestia), **Memoria**, **Stato**, **Sviluppo**.
 Command: `/hestia on · strumenti · off · ricorda [fatto] · memoria [parole] · stato · sviluppo · importa-memoria · aggiorna`.
-`importa-memoria` shows the personal facts in Claude's own memory and saves them into Hestia only after your ok.
+`import-memory` shows the personal facts in Claude's own memory and saves them into Hestia only after your ok.
 
 ## Install
 

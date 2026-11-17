@@ -34,7 +34,7 @@ USE_CASE = "athena.recap"
 ARCHIVE_DOMAIN = "recap"
 REPLACES_KEY = "athena.recap"
 JOB_EVENING = "athena.recap.evening"
-MOMENTS = ("sera", "mattina")
+MOMENTS = ("evening", "morning")
 # Evening by default (Marko 2026-10-20): 21:30, free to move 20:00–23:30 around his own events (Chronos flex).
 EVENING_AT = "21:30"
 EVENING_FLEX = {"earliest": "20:00", "latest": "23:30"}
@@ -50,7 +50,7 @@ def day_label(d: date, lang: str | None = None) -> str:
 def moment_days(momento: str, day: date | None = None, *, today: date | None = None) -> tuple[date, date]:
     """``sera``: the day that ends (today) + tomorrow. ``mattina``: yesterday + today."""
     base = today or datetime.now().date()
-    if momento == "mattina":
+    if momento == "morning":
         d = day or base - timedelta(days=1)
     else:
         d = day or base
@@ -77,7 +77,7 @@ def _lines(rows: list[dict] | None) -> list[str]:
 
 def template_text(pieces: list[dict], momento: str, day: date, nxt: date) -> str:
     """Deterministic recap (Oracle unavailable): the pieces as a short HTML list, Telegram-safe."""
-    head = tr("How today went") if momento == "sera" else tr("Yesterday, {0}", day_label(day))
+    head = tr("How today went") if momento == "evening" else tr("Yesterday, {0}", day_label(day))
     out = [f"<b>{head}</b>"]
     upcoming: list[str] = []
     for p in pieces:
@@ -92,7 +92,7 @@ def template_text(pieces: list[dict], momento: str, day: date, nxt: date) -> str
         if nxt_rows:
             upcoming.append(f"{title}: " + "; ".join(html.escape(t) for t in nxt_rows))
     if upcoming:
-        label = tr("Tomorrow") if momento == "sera" else tr("Today")
+        label = tr("Tomorrow") if momento == "evening" else tr("Today")
         out.append(f"<b>{label}, {day_label(nxt)}</b>\n" + "\n".join(f"• {u}" for u in upcoming))
     return "\n\n".join(out)
 
@@ -107,9 +107,9 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
                 facts.append(f"[{title}|{tag}] {t}")
         if p.get("note"):
             facts.append(f"[{title}|note] {p['note']}")
-    when = (f"today={day_label(day, 'en')} tomorrow={day_label(nxt, 'en')}" if momento == "sera"
+    when = (f"today={day_label(day, 'en')} tomorrow={day_label(nxt, 'en')}" if momento == "evening"
             else f"yesterday={day_label(day, 'en')} today={day_label(nxt, 'en')}")
-    tone = ("friendly, warm, one short opening sentence" if style == "amichevole"
+    tone = ("friendly, warm, one short opening sentence" if style == "friendly"
             else "dry, facts only, no courtesy phrases")
     return (
         f"Write the owner the {'evening' if momento == 'sera' else 'morning'} recap.\n{when}\nParts: 1) how it went ({'today' if momento == 'sera' else 'yesterday'}): done/skipped by area; 2) {'tomorrow' if momento == 'sera' else 'today'}: what is planned, in time order.\nTone: {tone}. Max {max_chars} characters. Format: HTML, only <b> for small titles, no Markdown, one emoji at most per title. Nothing beyond the facts. Never name programs or modules.\nFACTS:\n" + "\n".join(facts)
@@ -196,7 +196,7 @@ class RecapComposer:
     def write(self, pieces: list[dict], momento: str, day: date, nxt: date) -> tuple[str, bool]:
         """→ (text, fallback_used)."""
         max_chars = get_int(RECAP_MAX_CHARS)
-        style = str(settings.get(RECAP_STYLE) or "amichevole")
+        style = str(settings.get(RECAP_STYLE) or "friendly")
         prompt = build_prompt(pieces, momento, day, nxt, style, max_chars)
         try:
             status, payload = self._route("oracle", "POST", "api/llm/generate",
@@ -216,12 +216,12 @@ class RecapComposer:
 
     # ── 3. deliver + store ────────────────────────────────────────────────────
     def deliver(self, text: str, momento: str, day: date, actions: list[dict] | None = None) -> bool:
-        title = tr("Evening recap") if momento == "sera" else tr("Morning recap")
+        title = tr("Evening recap") if momento == "evening" else tr("Morning recap")
         event = {"event_type": "service.action_required", "domain": "system",
                  "entity_id": f"athena-recap-{day.isoformat()}-{momento}",
                  "payload": {"kind": "athena.recap", "service": "athena", "source": "athena", "domain": "recap",
                              "_source": "athena", "_title": title, "_message": text, "level": "info",
-                             "target": "owner", "replaces": REPLACES_KEY, "emoji": "🌙" if momento == "sera" else "☀️",
+                             "target": "owner", "replaces": REPLACES_KEY, "emoji": "🌙" if momento == "evening" else "☀️",
                              "icon": "note", "tone": "info", "_actions": list(actions or []),
                              "_link": {"module": "athena", "page": "recap"}}}
         try:
@@ -262,9 +262,9 @@ class RecapComposer:
             return list(self._recent[:limit])
 
     # ── all together ──────────────────────────────────────────────────────────
-    def compose(self, *, momento: str = "sera", day: str | None = None, deliver: bool = True,
+    def compose(self, *, momento: str = "evening", day: str | None = None, deliver: bool = True,
                 trigger: str = "manual") -> dict[str, Any]:
-        momento = momento if momento in MOMENTS else "sera"
+        momento = momento if momento in MOMENTS else "evening"
         today = self._now().date()
         d, n = moment_days(momento, date.fromisoformat(day) if day else None, today=today)
         with self._compose_lock:

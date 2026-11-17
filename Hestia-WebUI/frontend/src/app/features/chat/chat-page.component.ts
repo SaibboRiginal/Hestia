@@ -392,7 +392,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
       const f = this.voice.failed();
       if (!f || f.n === seen) return;
       seen = f.n;
-      untracked(() => this.toast.show(f.text, 'danger', { label: tr('Open Voice'), run: () => void this.router.navigateByUrl('/p/echo/voce') }, 9000));
+      untracked(() => this.toast.show(f.text, 'danger', { label: tr('Open Voice'), run: () => void this.router.navigateByUrl('/p/echo/voice') }, 9000));
     });
   }
 

@@ -264,7 +264,7 @@ def tools(MCPTool) -> list:
         return MCPTool(name=name, title=title, description=description,
                        parameters={"type": "object", "properties": props or {}, "required": required or []},
                        handler=lambda **kw: {"status": "ok", "tool": name, "params": kw}, method=method, path=path,
-                       clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="sistema",
+                       clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="system",
                        telegram={"section": tr("Devices"), **({"label": label} if label else {})})
     return [
         t("garmin_status", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",

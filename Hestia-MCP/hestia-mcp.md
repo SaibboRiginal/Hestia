@@ -83,7 +83,7 @@ access in the list like claude.ai's.
 
 **WebUI plugin** (core module, *Sistema*, bundle `ui/` → `/ui/dist/webui/mcp.js`, outside `/code` so the compose dev
 mount does not hide it):
-- page *Comandi & MCP* (`comandi` → `mcp-commands`, order 190; on a phone the title takes its own line and the search wraps below; ported from the built-in WebUI page, SPEC §A4): every
+- page *Comandi & MCP* (`commands` → `mcp-commands`, order 190; on a phone the title takes its own line and the search wraps below; ported from the built-in WebUI page, SPEC §A4): every
   tool the WebUI sees grouped by module, search, description, `METHOD path`, arguments from the JSON schema (enum →
   select, boolean → sì/no, array/object → JSON or `a, b, c`), *Esegui* (a tool that changes something asks first),
   raw result; tools with `response_mode=oracle_natural` then get Oracle's readable text (second call, own 30 s budget
@@ -92,7 +92,7 @@ mount does not hide it):
   `X-Hestia-Client: webui` towards the module), call timeout 20 s. Deep link `?command=<tool>` opens that tool,
   `&args=<json>` fills its form and `&run=1` runs it at once when no required argument is missing (WebUI «Adesso»,
   «Scopri», notification buttons with `execute: command`; brainstorm W7).
-- sub-page *Accessi AI* (`accessi` → `mcp-accesses`, parent `comandi`): new token with the ready `claude mcp add` line
+- sub-page *Accessi AI* (`access` → `mcp-accesses`, parent `commands`): new token with the ready `claude mcp add` line
   and JSON config, revoke, renew, delete, tool choice; OAuth consent card when opened with `?oauth=<id>`; badge
   *OAuth* on grants; *Servizi esterni* list.
 

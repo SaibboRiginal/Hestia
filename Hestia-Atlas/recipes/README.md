@@ -7,4 +7,4 @@ One JSON file per recipe (shape and ops: `app/recipes.py` docstring). Recipes ar
 | Recipe | Site | Params | Fields |
 |---|---|---|---|
 | `duckduckgo` | html.duckduckgo.com | `q` | titles, links, snippets |
-| `pagina` | any | `url` | title, description, headings, text |
+| `page` | any | `url` | title, description, headings, text |

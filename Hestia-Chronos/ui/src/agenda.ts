@@ -344,7 +344,7 @@ export class ChronosAgenda extends HestiaElement {
     const n = (key: NumKey, min: number, max: number) => html`<input type="number" min=${min} max=${max} .value=${String(vp[key])}
       @change=${(e: any) => this.num(key, e.target.value)}>`;
     return html`<chronos-pop .open=${!!this.vistaRect} .anchor=${this.vistaRect} .width=${340} placement="below" @close=${() => (this.vistaRect = null)}>
-      <div class="vista">
+      <div class="view">
         <h4>${tr("Calendar view")}</h4>
         <div class="lab">${tr("Windows (e.g. Athena when you are idle)")}
           ${segmented([{ value: 'lane', label: tr('Lane') }, { value: 'band', label: tr('Band') }, { value: 'hidden', label: tr('f.pl::Hidden') }],

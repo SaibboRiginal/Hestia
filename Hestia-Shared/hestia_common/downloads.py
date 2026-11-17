@@ -121,7 +121,7 @@ class Downloads:
             raise ValueError(f"unknown download source {source}")
         with self._lock:
             job = self._jobs.get(job_id)
-            if job and job.data["state"] in (*ACTIVE, "fatto"):
+            if job and job.data["state"] in (*ACTIVE, "done"):
                 return dict(job.data)
             data = {"id": job_id, "what": what, "source": source, "params": dict(params or {}),
                     "module": self.module, "size": int(size_hint or 0), "done": 0, "speed": 0, "eta_s": None,
@@ -164,7 +164,7 @@ class Downloads:
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         """Stop and forget the job; a partial file is deleted."""
-        out = self._stop_job(job_id, "annullato")
+        out = self._stop_job(job_id, "cancelled")
         job = self._jobs.get(job_id)
         if job and job.data["source"] == "http":
             Path(job.params["dest"] + ".part").unlink(missing_ok=True)
@@ -176,7 +176,7 @@ class Downloads:
     def resume(self, job_id: str) -> dict[str, Any]:
         with self._lock:
             job = self._require(job_id)
-            if job.data["state"] in ("paused", "errore"):
+            if job.data["state"] in ("paused", "error"):
                 job.data.update(state="queued", error="", attempts=0)
                 self._enqueue(job_id)      # a run still stopping ends on its own stop flag; the next one gets a new one
             return self._public(job.data)
@@ -251,7 +251,7 @@ class Downloads:
                 if run is None:
                     raise DownloadError(tr("This download can no longer be resumed."), final=True)
                 run(job)
-                self._finish(job, "fatto")
+                self._finish(job, "done")
                 return
             except Stopped:
                 logger.info("event=download_stopped module=%s id=%s state=%s", self.module, job.id, job.data["state"])
@@ -264,7 +264,7 @@ class Downloads:
                     job.data["error"] = str(exc) if isinstance(exc, DownloadError) else tr("Download failed.")
                     logger.warning("event=download_failed module=%s id=%s attempts=%s error=%s", self.module,
                                    job.id, attempt, str(exc)[:200])
-                    self._finish(job, "errore")
+                    self._finish(job, "error")
                     return
                 delay = RETRY_DELAYS[attempt - 1]
                 logger.warning("[🔄] event=download_retry module=%s id=%s attempt=%s in=%ss error=%s", self.module,
@@ -279,15 +279,15 @@ class Downloads:
                 job.data["state"] = state
             job.data["speed"], job.data["eta_s"] = 0, None
             job.data["updated_at"] = time.time()
-            if state == "fatto" and job.data.get("size"):
+            if state == "done" and job.data.get("size"):
                 job.data["done"] = job.data["size"]
             self._save()
             self._done.notify_all()
-        if state == "fatto":
+        if state == "done":
             logger.info("event=download_done module=%s id=%s bytes=%s", self.module, job.id, job.data.get("size"))
             if (job.data.get("size") or 0) >= NOTIFY_DONE_BYTES:
                 self._notify(job, tr("{0} is ready.", job.data['what']), "info")
-        elif state == "errore":
+        elif state == "error":
             self._notify(job, f"{job.data['what']}: {job.data['error']}", "warning")
 
     def _notify(self, job: Job, text: str, level: str) -> None:
@@ -394,7 +394,7 @@ class Downloads:
             try:
                 return ops[op](job_id)
             except DownloadError as exc:
-                raise HTTPException(status_code=409 if exc.final and "ferma" in str(exc) else 404, detail=str(exc))
+                raise HTTPException(status_code=409 if exc.final and "stop" in str(exc) else 404, detail=str(exc))
 
         return router
 

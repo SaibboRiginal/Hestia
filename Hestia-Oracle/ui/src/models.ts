@@ -201,9 +201,9 @@ export class OracleModels extends HestiaElement {
   // ── use cases ──────────────────────────────────────────────────────────
   private ucRow(u: any) {
     const o = this.overrides[u.id] || {};
-    const chainOpts: Opt[] = [{ value: '', label: tr("Suggested ({0})", u.chain || 'generale') },
+    const chainOpts: Opt[] = [{ value: '', label: tr("Suggested ({0})", u.chain || 'general') },
       ...Object.entries<any>(this.chains).map(([n, c]) => ({ value: n, label: c.label || n }))];
-    const modeOpts: Opt[] = [{ value: '', label: tr("Suggested ({0})", u.mode || 'segui') }, ...(this.data?.modes || [])];
+    const modeOpts: Opt[] = [{ value: '', label: tr("Suggested ({0})", u.mode || 'follow') }, ...(this.data?.modes || [])];
     const set = (k: string, v: string) => {
       const next = { ...o, [k]: v }; if (!v) delete next[k];
       const all: Record<string, any> = { ...this.overrides, [u.id]: next }; if (!Object.keys(next).length) delete all[u.id];

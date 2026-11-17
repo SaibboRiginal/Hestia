@@ -12,7 +12,7 @@ to send.
     if settings.get("hercules.reminder.enabled"):
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento",
-            text=text, actions=actions, page="allenamento", voice=settings.get("hercules.notifications.voice")))
+            text=text, actions=actions, page="training", voice=settings.get("hercules.notifications.voice")))
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def voice_setting(module: str, default: bool, *, group: str = "Reminders", help:
     (dossier docs/work/2026-10-20-modulo-voce §7.3). Each module picks its own default: on where a notification
     reads well aloud (reminders, recaps), off where it is a list or numbers. Pass the value to
     ``reminder_event(voice=...)``; the written notification never changes."""
-    return setting(f"{module}.notifiche.voce", "Notifications by voice too", "bool", bool(default), group=group,
+    return setting(f"{module}.notifications.voice", "Notifications by voice too", "bool", bool(default), group=group,
                    order=order, help=help or tr("Besides the text you get a voice message (Telegram) or a play button (site)."))
 
 

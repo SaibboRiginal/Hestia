@@ -27,32 +27,32 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   font-family: the first usable step answers; a **quota** error (429, `RESOURCE_EXHAUSTED`, «quota», «usage limit»)
   marks that provider/model pair exhausted until its reset (Retry-After, `retryDelay`, midnight Pacific for Gemini per-day
   quotas, else `oracle.quota.cooldown_minutes` = 60) and every chain skips it until then; any other error just moves
-  to the next step. All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `veloce`, `potente`,
-  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable), `cloud` (Gemini only, for the
+  to the next step. All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `fast`, `strong`,
+  `code`, `vision`, `embedding` (one model only: vectors must stay comparable), `cloud` (Gemini only, for the
   Metis dataset review `metis.dataset.review`, 2026-10-30; an owner who saved his own chains adds it in Sistema). Gemini steps use the aliases
   `gemini-flash-latest` / `gemini-flash-lite-latest` (Google stops serving dated models to new keys: 2.0-flash and
   2.5-flash-lite in 2026-10). Gemini native tools send each tool's JSON Schema as `parameters_json_schema` (the
   OpenAPI-subset `parameters` refused `contentMediaType` and arrays without `items`, failing the whole call).
   Code: `core/services/llm_chains.py`.
 - **Use cases** `oracle.usecases` = `{use case: {chain, mode, thinking}}` overrides. Oracle's own: `oracle.general`
-  (chat, classify, tools, memory, format), `oracle.reasoning`, `oracle.codice`, `oracle.documents` (vision),
+  (chat, classify, tools, memory, format), `oracle.reasoning`, `oracle.code`, `oracle.documents` (vision),
   `oracle.embedding`. Modules **declare** theirs in the Hub registration (`capabilities.llm_usecases`, helper
   `hestia_common.oracle_usecases`): `scout.listings`, `athena.strategy`, `athena.review`, `argus.analysis`,
-  `chronos.agenda`, `wardrobe.photo`, `forge.codice`… with a suggested chain; Marko picks chain/mode/thinking in one
+  `chronos.agenda`, `wardrobe.photo`, `forge.code`… with a suggested chain; Marko picks chain/mode/thinking in one
   place. A use case nobody declared runs like `oracle.general` and is listed as «non dichiarato».
 - `ChainAgent` (same interface as `UniversalAgent`) walks the chain at every call, reading settings live (no restart,
   no reconfigure); `AgentFactory.create()` builds one per Oracle use case (`generic`, `reasoning`, `code`,
   `documents`, `embedding` slots). Streams fall back only before the first token.
 - One-time migration: old `oracle.models.*` values (before 2026-10-19) become chains `<use case>-personale` when neither
   `oracle.chains` nor `oracle.usecases` was ever stored (`core/services/llm_migration.py`).
-- Claude Code for Forge (`/api/llm/code`) uses the first `claude_cli` step of use case `forge.codice` (none → CLI default).
+- Claude Code for Forge (`/api/llm/code`) uses the first `claude_cli` step of use case `forge.code` (none → CLI default).
 - `UniversalAgent.ask_with_attachment(file_bytes, mime_type, user_message)` enables multimodal reasoning over images and PDFs (see Multimodal below).
 
 ### Brain mode: interna / esterna (§D)
-- `oracle.brain.mode` = `interna` (default: classifier, Rapida/Pensata/CoT, agent loop, chains) or `esterna`: an agent
+- `oracle.brain.mode` = `internal` (default: classifier, Rapida/Pensata/CoT, agent loop, chains) or `external`: an agent
   CLI runs the tool loop — `oracle.brain.agent` = `claude` (Claude Code, subscription login `CLAUDE_CODE_OAUTH_TOKEN`)
   or `codex` (Codex, `codex login`, image built with `ORACLE_INSTALL_CODEX=1`, login mounted in `/root/.codex`),
-  `oracle.brain.model` (e.g. `sonnet`), `oracle.brain.fallback` = `interna` (redo the turn with the chains) or `nessuno`.
+  `oracle.brain.model` (e.g. `sonnet`), `oracle.brain.fallback` = `internal` (redo the turn with the chains) or `none`.
   A use case can override the mode (Modelli).
 - In esterna Oracle keeps the door work: history, classification (domain filter), context, tools, saving to Archive,
   memory, usage rows; quick shortcuts are skipped (the agent answers every turn). Code: `core/services/external_agent.py`.
@@ -67,7 +67,7 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
 Every LLM call (chain step, Forge chat, external agent, Claude Code) becomes one row pushed to Archive store
 `llm-usage` (one background worker started by the first row, batches of 200, a failed send is dropped): time, module
 (prefix of the use case), client and session, use case, chain, step, provider, model, tokens in/cached/out, context window,
-duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`, `locale`, `sconosciuto`), outcome
+duration, cost and kind (`api` reported or from `oracle.pricing`, `subscription`, `locale`, `unknown`), outcome
 (`ok`/`quota`/`error`). Archive deletes rows older than `oracle.usage.retention_days` (90) on each write.
 `GET /api/llm/usage` sums them. Code: `core/services/llm_usage.py`; `llm_stats` keeps the in-memory live gauge.
 
@@ -138,7 +138,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
 
 ### Temporal Context Awareness
 - Every chat turn injects explicit current date/time context (timezone-aware) into routing and analysis prompts.
-- Relative temporal expressions such as "oggi", "domani", and "la prossima settimana" are resolved against that context before planning/tool reasoning.
+- Relative temporal expressions such as "today", "domani", and "la prossima settimana" are resolved against that context before planning/tool reasoning.
 - Timezone = container `TZ` (infrastructure, same as every module; default `Europe/Rome`).
 - Today's agenda from Chronos is added to the context when `oracle.context.today_agenda` is on (default).
 
@@ -278,10 +278,10 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   (`AgentError.log`) seeds the internal loop as «GIÀ FATTO … non ripeterlo», and is kept in the turn's tool log.
 - **Origin** (Cindy 6, `hestia_common.origin`): `/api/chat` reads `X-Hestia-Origin: <kind>[:<ref>]` (+ optional
   `X-Hestia-Origin-Label`) set by the **caller's code** (never by the model or the body). No header: a user client
-  (`telegram`, `webui`, …) = `utente`, anything else = `autonomo` (fail closed). Levels: `utente` (also `esterno`, an
+  (`telegram`, `webui`, …) = `user`, anything else = `autonomous` (fail closed). Levels: `user` (also `external`, an
   external AI through Hestia-MCP), `routine` (a Chronos rule: writes allowed, deletes and destructive tools
-  blocked), `autonomo` (only proposals, notifications and questions; every other write is refused with a clear
-  message). The prompt gets one line saying who started the turn; presence is marked only for `utente`; module
+  blocked), `autonomous` (only proposals, notifications and questions; every other write is refused with a clear
+  message). The prompt gets one line saying who started the turn; presence is marked only for `user`; module
   calls of the turn carry the same header (`MCPClient.call(origin=…)` → `hestia.origin`). `final` carries
   `origin {kind, level, label}` so clients can show «Da una tua routine».
 - **Changes with undo** (Cindy 13): after `final`, a `changes` frame lists the successful writes of the turn
@@ -292,7 +292,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   message (or tool `goal_set`) fixes a goal; after each answer to the owner the loop works on it for
   `oracle.goal.rounds_per_answer` rounds (at most `oracle.goal.rounds` in all), emits `goal.progress`
   notices and appends a short «Obiettivo (giro n/N)» line. «ferma l'obiettivo» or `goal_stop` ends it, the model
-  closes it with `goal_done`. Stored in Archive `oracle-store` kind `goal`. Only `utente` turns run rounds.
+  closes it with `goal_done`. Stored in Archive `oracle-store` kind `goal`. Only `user` turns run rounds.
 - **Module index** (Cindy 30): modules declare `capabilities.when_to_use` (one line) and `capabilities.manual` in
   their Hub registration; the prompt gets a short «MODULI» index and the tool `module_manual(service)` loads the
   manual only when needed.
@@ -300,7 +300,7 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
   allows ```` ```hestia-ui ```` blocks (card, stat, table, list, chart, checklist, button); Telegram turns them into
   plain text and reply buttons.
 - **Vision bridge** (Cindy 16): an image sent to a chain step whose model has no vision is first described by the
-  use case `oracle.describe_image` (chain `visione`), then the text model answers with that description.
+  use case `oracle.describe_image` (chain `vision`), then the text model answers with that description.
 
 ### Visible Thinking
 - The agent loop emits **thinking** NDJSON events (`type: "thinking"`) for real-time visibility:
@@ -465,7 +465,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistant*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
 - `{"type":"question","question_id":"...","header":"...","prompt":"...","kind":"...","options":[...]}` — interactive approval prompts. A module tool result with `confirm {question_id, header, prompt, options, actions}` (Themis proposal made in this chat) is emitted as a `kind: confirm` question after `final`; `POST /api/chat/question-answer` then routes `actions[answer]` through Hub (`"<client>"` in the body → answering client) and returns `{resolved, action: {ok, result}}`. Oracle sends `X-Hestia-Client` (the session's client from `ChatRequest.client`) with `X-Session-Id` on every tool call.
-  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404. A new owner turn in the session (origin `utente`, not a queued batch) closes its open `ask_user` questions (`engine.close_open_questions`, here and in Archive): an answer spoken in live voice or typed instead of tapping the card is the message itself, so a reload does not draw the card again and a late tap gets 404 (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A routine turn's questions reach the owner as Hermes notifications that ask (Chronos `routines.py`).
+  Questions the model asks (tool `ask_user`, `core/services/user_questions.py`, oracle-offline v3 A) use the same frame with ids `ask_…`, kinds `confirm` · `single_choice` · `multi_choice` · `free_text` and `allow_other` («Altro…»). The turn stops at the question (`final` = the question text). They are kept in Archive (`/api/oracle-store`, kind `question`) for `oracle.ask.timeout` h; `question-answer` returns `resume.message` («Risposta alla tua domanda «…»: X»), which the client sends as the next chat turn of the same session (no paused thread, nothing lost on restart); multiple answers one per line; empty answer → the model picks the safest choice; expired → 404. A new owner turn in the session (origin `user`, not a queued batch) closes its open `ask_user` questions (`engine.close_open_questions`, here and in Archive): an answer spoken in live voice or typed instead of tapping the card is the message itself, so a reload does not draw the card again and a late tap gets 404 (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). A routine turn's questions reach the owner as Hermes notifications that ask (Chronos `routines.py`).
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
@@ -536,7 +536,7 @@ Other services never hold LLM URLs/keys; they call Oracle via Hub.
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/api/llm/chat` | OpenAI-compatible chat along a use case's chain: `{use_case?, messages, tools?, temperature?, max_tokens?, tool_choice?}` (default `forge.codice`) → provider JSON + `hestia_step` (use case, chain, step, provider, model) |
+| POST | `/api/llm/chat` | OpenAI-compatible chat along a use case's chain: `{use_case?, messages, tools?, temperature?, max_tokens?, tool_choice?}` (default `forge.code`) → provider JSON + `hestia_step` (use case, chain, step, provider, model) |
 | POST | `/api/llm/generate` | Plain prompt `{prompt, use_case?}` → `{response, model, provider, use_case, chain}` (Athena, Scout, Argus, Chronos, Metis) |
 | GET | `/api/llm/usecases/{id}` | What a chat on that use case would use now: first usable step, `context_window`, `billed` (Forge engine `oracle`) |
 | GET | `/api/llm/code/status` | Claude Code ready? (CLI installed, token, worktree root mounted) |
@@ -588,7 +588,7 @@ agent loop no longer injects a duplicated `RESULTS_DICT` block and keeps paralle
 
 - Build Oracle with `--build-arg INSTALL_CLAUDE_CODE=1`; put `CLAUDE_CODE_OAUTH_TOKEN` (run `claude setup-token` on
   your PC, sign in with the Pro account) in `Hestia-Oracle/app/.env`. Model: the first `claude_cli` step of use
-  case `forge.codice` (none = CLI default).
+  case `forge.code` (none = CLI default).
 - Code tasks run inside `ORACLE_CODE_WORKDIR_ROOT` (`/forge/worktrees`, shared with Hephaestus). The CLI never sees
   `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or any `ORACLE_KEY_*` (`agents.llm_config.cli_env`).
 
@@ -663,7 +663,7 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   `llamacpp`, off by default). Each chat session gets its own slot (`id_slot`, LRU over
   `oracle.provider.llamacpp.slots`; slot 0 = calls without a session); the evicted session's KV cache is saved
   (`/slots/{id}?action=save`) and restored when it comes back. Needs `--slot-save-path` (a refusal turns saving off,
-  `[🔄]` logged). `/health` probe cached 30 s: the default chains `veloce`, `potente`, `codice` start with it and
+  `[🔄]` logged). `/health` probe cached 30 s: the default chains `fast`, `strong`, `code` start with it and
   skip it at once when it is off, so Ollama answers as before.
 
 Host tips (Ollama env on the PC, infrastructure, not managed by Hestia): `OLLAMA_FLASH_ATTENTION=1` +
@@ -675,7 +675,7 @@ num_ctx there). llama-server example: `llama-server -m model.gguf -c 16384 -fa -
 
 ## Export and import of memories (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-One section `memorie` (`core/services/memory_transfer.py`): active long-term memories (preferences, facts, skills,
+One section `memories` (`core/services/memory_transfer.py`): active long-term memories (preferences, facts, skills,
 commitments) — never `conversational_history`, chats or sessions (Marko 2026-10-20). Archive ids differ between two
 Hestia, so a memory is matched by class + normalized fact; imported ones are marked `extra_data.imported`.
 «Sostituisci» deactivates the memories that are only here. Settings travel through Themis.
@@ -697,9 +697,9 @@ small `/api/ui/*` views instead of calling them directly). The Hub registration 
 
 | Kind | Id | What |
 |---|---|---|
-| page (order 120) | `cervello` → `<oracle-brain>` | Tabs **Attività** · **Uso** (`<oracle-usage>`: rows from Archive per module — calls, calls/hour, tokens, cache %, largest prompt vs window, avg time, cost, fallbacks/errors/quota —, calls per day, conversations → their calls, which chain step answered) · **Modelli** (`<oracle-models>`: use cases by module → chain/mode/thinking, chains with steps ↑↓, model picker, quota badge + «Riprova adesso», providers with standard, address and key status; saves through Themis). Attività: KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
+| page (order 120) | `brain` → `<oracle-brain>` | Tabs **Attività** · **Uso** (`<oracle-usage>`: rows from Archive per module — calls, calls/hour, tokens, cache %, largest prompt vs window, avg time, cost, fallbacks/errors/quota —, calls per day, conversations → their calls, which chain step answered) · **Modelli** (`<oracle-models>`: use cases by module → chain/mode/thinking, chains with steps ↑↓, model picker, quota badge + «Riprova adesso», providers with standard, address and key status; saves through Themis). Attività: KPIs of today, last 40 turns (route rapida/conversazione/agente, client, domains, tools — failed in red, writes in amber —, provider · model, ms, calls/tokens/cost of the turn), tokens per day (14 d) + cost line, today per use case/model, rolling stats per use case (prompt size, cache hit, token/s, load), Claude Code (ready or why not, runs). Auto-refresh 30 s; Oracle down → «Oracle non raggiungibile» |
 | widget | `usage-today` → `<oracle-usage-widget>` (s/m/l) | «Uso modelli oggi»: calls, tokens, cost, top models; opens Cervello |
-| page (order 121) | `documenti` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle non raggiungibile» |
+| page (order 121) | `documents` → `<oracle-documents>` | Ported from the built-in WebUI page (SPEC §A4). Documents in Archive (title, file, type, size, passages, uses, summary, domain, tags), domain chips, semantic search (the chat's `DocumentRAG`, passages with distance), *Aggiungi file* (SDK `host.upload`, ≤ 8 MB from the browser and ≤ `oracle.documents.max_archive_mb`; archived in background like a chat attachment, the page polls until it appears), *Tieni per sempre* / temporaneo, delete, *Chiedi a Hestia*. Oracle/Archive down → «Oracle non raggiungibile» |
 
 Data sources of the Attività tab (all in memory, reset when Oracle restarts — an inside view, not an audit log; the
 Uso tab reads the rows kept in Archive):
@@ -735,7 +735,7 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   has `fits: false` when its file is bigger than the video card (programs that do not say the size: no warning).
   Hestia keeps no model list for them: the program knows. `CATALOG` (no video card → `gemma4:e4b`; 6–11 GB →
   `qwen3:8b`; 12 GB+ → `qwen3:14b`) is only a suggestion for Ollama when it has nothing. Also: the preselected recipe
-  (`entrambi` with ≥ 8 GB of video memory; `cloud` with little RAM), the memory's `embedding` model now, cloud
+  (`both` with ≥ 8 GB of video memory; `cloud` with little RAM), the memory's `embedding` model now, cloud
   providers (`key_set` only, never the key; a provider is cloud when `llm_providers.is_local` says no: type, then
   address, so an OpenAI-compatible block on `localhost` or a home address is local).
 - `POST /api/llm/setup/test {provider, model?}`: the «Prova» spends no tokens: it reads the provider's model list
@@ -759,15 +759,15 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   steps follow it, so a cloud model can come before the local one; steps it does not name stay after): a program
   picked from `runtimes` that is not a block yet becomes one (`ensure_runtime`: type `openai`, its address, label
   «LM Studio (locale)»…). Then `oracle.chains` through Themis (actor user, reason «Setup guidato»):
-  `veloce/potente/codice/visione` get the local step (`local_provider`/`local_model`) and the cloud services in the
+  `fast/strong/code/vision` get the local step (`local_provider`/`local_model`) and the cloud services in the
   chosen order, each with the models picked for it in order (`cloud_models {service: [models]}`, a single name still
   accepted; the next model takes over when the first fails) or its default models; a chosen service that no
   longer lists its default model (a retired alias) gets one it lists. `cloud` gets the cloud services; `embedding`
   changes only when `embedding {provider, model}` names another model (changing it re-indexes the memory; a cloud
   embedding model such as Gemini's is accepted). `modes {potente|codice|visione: {provider, model, url?, type?,
   label?}}` («Per modalità»): that model answers first in that chain, the general choice follows as fallback; a mode
-  not named stays the same as `veloce`. Recipe
-  `claude` also sets the brain mode `esterna` with agent `claude` and fallback `interna`. Answer: one sentence («Ti
+  not named stays the same as `fast`. Recipe
+  `claude` also sets the brain mode `external` with agent `claude` and fallback `internal`. Answer: one sentence («Ti
   risponde X sul tuo computer; se non c'è, Y nel cloud.»).
 - `POST /api/llm/setup/pull {model}` / `GET /api/llm/setup/pulls`: Ollama downloads through
   `hestia_common.downloads` (source `ollama`, progress summed over the layers, state `data/downloads.json`), also at

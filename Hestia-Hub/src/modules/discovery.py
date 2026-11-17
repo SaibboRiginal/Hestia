@@ -114,7 +114,7 @@ def _fetch_mcp_tools_as_commands(
                 "clients": _normalize_clients(tool.get("clients")),
                 "telegram_visible": bool(tool.get("telegram_visible", False)),
                 "telegram_help_visible": bool(tool.get("telegram_help_visible", True)),
-                "telegram_group": str(tool.get("telegram_group", "altro")).strip(),
+                "telegram_group": str(tool.get("telegram_group", "other")).strip(),
                 "telegram": tool.get("telegram") if isinstance(tool.get("telegram"), dict) else {},
                 # Full JSON Schema (enums, formats, limits): clients build their inputs from it.
                 "input_schema": tool.get("inputSchema") if isinstance(tool.get("inputSchema"), dict) else {},

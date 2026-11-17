@@ -67,7 +67,7 @@ def delete_flow(fid: str):
 @app.post(f"{API}/jobs")
 def request_job(body: dict = Body(...)):
     """Other modules (e.g. the appearance one) ask an image here, with ``callback: {service, path}``."""
-    return images.request(body.get("prompt", ""), purpose=body.get("purpose", "generico"),
+    return images.request(body.get("prompt", ""), purpose=body.get("purpose", "generic"),
                           negative=body.get("negative", ""), width=body.get("width"), height=body.get("height"),
                           seed=body.get("seed"), callback=body.get("callback"), ref=body.get("ref", ""),
                           by=str(body.get("by") or "module"), notify=bool(body.get("notify")))
@@ -106,7 +106,7 @@ def _job_display(j: dict) -> dict:
     return display(tr("Image in progress"), lines=[tr("I'll let you know when it's ready.")])
 
 
-def _create(prompt: str, purpose: str = "generico", negative: str = "", width: int | None = None,
+def _create(prompt: str, purpose: str = "generic", negative: str = "", width: int | None = None,
             height: int | None = None) -> dict:
     j = images.request(prompt, purpose=purpose, negative=negative, width=width, height=height, by="user", notify=True)
     if j["status"] in ("queued", "running"):
@@ -115,7 +115,7 @@ def _create(prompt: str, purpose: str = "generico", negative: str = "", width: i
 
 
 S, I = {"type": "string"}, {"type": "integer"}
-G = "aspetto"
+G = "look"
 kit.tools([
     MCPTool(name="image_create", description="Creates an image: prompt (better in English), purpose " +
             "|".join(PURPOSES) + ", negative, width, height.",
@@ -148,9 +148,9 @@ kit.tools([
 ], prefix="image_")
 
 transfer = Transfer("apollo", kit.hub, sections=[
-    StoreSection("flussi", "Image workflows", kit.store, ["workflow"], icon="camera",
+    StoreSection("workflows", "Image workflows", kit.store, ["workflow"], icon="camera",
                  title=lambda r: r["data"].get("name", "")),
-    StoreSection("immagini", "Created images", kit.store, ["job"], icon="camera",
+    StoreSection("images", "Created images", kit.store, ["job"], icon="camera",
                  title=lambda r: r["data"].get("prompt", "")[:60], file_fields=["blob_ids"]),
 ])
 app.include_router(transfer.router())
@@ -164,9 +164,9 @@ def _start_worker() -> None:
 
 kit.on_warm(_start_worker)
 kit.webui(icon="camera", color="purple", description="Images made with your ComfyUI: portraits, backgrounds, mascots.",
-          pages=[page("immagini", "Images", element="apollo-images", icon="camera", order=210,
+          pages=[page("images", "Images", element="apollo-images", icon="camera", order=210,
                       help="Create an image and see the ones made. You need your ComfyUI and one flow per type."),
-                 page("job/:id", "Image", element="apollo-job", detail=True, parent="immagini"),
-                 page("flussi", "Workflows", element="apollo-flows", icon="upload", order=211, parent="immagini",
+                 page("job/:id", "Image", element="apollo-job", detail=True, parent="images"),
+                 page("workflows", "Workflows", element="apollo-flows", icon="upload", order=211, parent="images",
                       help="Upload from ComfyUI the flow saved in API format (Save → API Format), one per image type.")])
 kit.finish()

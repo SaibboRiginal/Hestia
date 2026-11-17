@@ -5,7 +5,7 @@ Archive ``signals-store``). This track reads ONLY those, never the raw data:
 
 1. read active signals and the weekly series;
 2. link series of different domains (Pearson at lag 0 and 1 week, closed weeks only) — numbers, not the model;
-3. choose a few topics (strongest links, ``alta``/``attenzione`` signals), skipping what was said recently;
+3. choose a few topics (strongest links, ``alta``/``warning`` signals), skipping what was said recently;
 4. ask the owning module for details (``/api/module/context?topic=``);
 5. one Oracle call (use case ``athena.reflection``) → observations / one setting proposal;
 6. the runtime gates them; accepted observations are stored (``kind=observation``, ``ref_id=athena``) and reach
@@ -36,7 +36,7 @@ iso_week = import_shared_symbol("hestia_common.signals_client", "iso_week")
 logger = logging.getLogger("hestia_athena.reflection")
 
 USE_CASE = "athena.reflection"
-SEVERITY_RANK = {"alta": 0, "attenzione": 1, "info": 2}
+SEVERITY_RANK = {"high": 0, "warning": 1, "info": 2}
 DOMAIN_WORDS = {"fitness": "Training", "selfcare": "Self care", "finance": "Expenses", "wardrobe": "Wardrobe",
                 "real_estate": "Houses", "cognition": "Hestia"}
 
@@ -107,10 +107,10 @@ def link_text(link: dict) -> str:
 def choose_topics(signals: list[dict], links: list[dict], told: set[str], max_topics: int) -> list[dict]:
     """Alta signals first, then links (strongest), then attenzione signals; ``info`` only enrich the context."""
     topics: list[dict] = []
-    ranked = sorted((s for s in signals if s.get("severity") in ("alta", "attenzione")),
+    ranked = sorted((s for s in signals if s.get("severity") in ("high", "warning")),
                     key=lambda s: SEVERITY_RANK.get(s.get("severity"), 9))
-    alta = [s for s in ranked if s.get("severity") == "alta"]
-    rest = [s for s in ranked if s.get("severity") != "alta"]
+    alta = [s for s in ranked if s.get("severity") == "high"]
+    rest = [s for s in ranked if s.get("severity") != "high"]
     for s in alta:
         topics.append({"type": "signal", "key": f"signal:{s.get('module')}:{s.get('key')}", "signal": s})
     for link in links:
@@ -293,9 +293,9 @@ class LifeReflection:
         candidates = _map_to_action_candidates(parsed)
         stored: list[dict] = []
         for item, cand in zip(parsed, candidates):
-            cand.track = "vita"
+            cand.track = "life"
             topic = None
-            tema = str(item.get("tema") or "").strip().upper().lstrip("T")
+            tema = str(item.get("topic") or "").strip().upper().lstrip("T")
             if tema.isdigit() and 1 <= int(tema) <= len(topics):
                 topic = topics[int(tema) - 1]
             cand.topic_key = topic["key"] if topic else None

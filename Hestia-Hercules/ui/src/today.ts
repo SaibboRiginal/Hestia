@@ -82,7 +82,7 @@ export class HerculesToday extends HestiaElement {
     this.L.ready.then(() => {
       this.loadNext();
       const pre = this.ctx?.query?.scheda;          // "Inizia ora" from a template page
-      if (pre && !this.L.activeSession()) { const t = this.L.get('template', pre); if (t) this.start(t); this.host.navigate('allenamento'); }
+      if (pre && !this.L.activeSession()) { const t = this.L.get('template', pre); if (t) this.start(t); this.host.navigate('training'); }
       this.requestUpdate();
     });
     this.onHost('refresh', () => { this.L.sync(); this.loadNext(); });
@@ -441,7 +441,7 @@ export class HerculesToday extends HestiaElement {
       </hxk-card>` : html`<hxk-card heading=${tr("No plan")}>
         <div class="muted">${tr("Create your first plan (e.g. Push, Pull, Legs) or start a free workout.")}</div>
         <div class="row wrap" style="margin-top:10px">
-          <hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('schede')}>${tr("Create a plan")}</hxk-button>
+          <hxk-button variant="primary" icon="plus" @click=${() => this.host.navigate('plans')}>${tr("Create a plan")}</hxk-button>
           <hxk-button icon="play" @click=${() => this.start(null)}>${tr("Free workout")}</hxk-button>
         </div></hxk-card>`}
 

@@ -149,7 +149,7 @@ def _documenti(chat_id, args):
     lines, actions = [], []
     for d in docs[:12]:
         title = d.get("title") or d.get("filename") or tr("Document")
-        meta = ["fisso" if d.get("is_permanent") else "", str(d.get("created_at") or "")[:10]]
+        meta = ["pinned" if d.get("is_permanent") else "", str(d.get("created_at") or "")[:10]]
         lines.append(ui.item(title, [m for m in meta if m]))
         actions.append(Action(tr("Delete {0}", ui.label(title, 14)), "document_delete",
                               {"document_id": str(d.get("document_id"))}))
@@ -164,7 +164,7 @@ def _documento_fissa(chat_id, args):
     ok, _ = catalog.route("archive", f"api/documents/{doc_id}/permanent", "PATCH", body={"is_permanent": True})
     if not ok:
         raise ActionError(tr("I couldn't keep it."))
-    return Rendered(ui.outcome(tr("I keep it forever")), actions=[Action(tr("Documents"), "documenti")])
+    return Rendered(ui.outcome(tr("I keep it forever")), actions=[Action(tr("Documents"), "documents")])
 
 
 def _documento_elimina(chat_id, args):
@@ -172,7 +172,7 @@ def _documento_elimina(chat_id, args):
     ok, _ = catalog.route("archive", f"api/documents/{doc_id}", "DELETE")
     if not ok:
         raise ActionError(tr("I couldn't delete it."))
-    return Rendered(ui.outcome(tr("Document deleted")), actions=[Action(tr("Documents"), "documenti")])
+    return Rendered(ui.outcome(tr("Document deleted")), actions=[Action(tr("Documents"), "documents")])
 
 
 # ── quick reminder / task / alert ────────────────────────────────────────────
@@ -226,49 +226,49 @@ def tools() -> list[catalog.Tool]:
     T = catalog.Tool
     dt = {"type": "string", "format": "date-time", "title": "When"}
     return [
-        T("nuova", "New conversation", "Starts from scratch: the previous chat is forgotten", group="sistema",
+        T("new", "New conversation", "Starts from scratch: the previous chat is forgotten", group="system",
           hints={"section": "Chat"}, writes=True, handler=_nuova),
-        T("voce", "Voice replies", "Turns voice replies to voice messages on or off", group="sistema",
+        T("voice", "Voice replies", "Turns voice replies to voice messages on or off", group="system",
           hints={"section": "Chat"}, handler=_voce),
-        T("voice_on", "Turn on voice replies", "", group="sistema", hints={"section": "interno"},
+        T("voice_on", "Turn on voice replies", "", group="system", hints={"section": "interno"},
           handler=lambda c, a: _voce(c, a, on=True)),
-        T("voice_off", "Turn off voice replies", "", group="sistema", hints={"section": "interno"},
+        T("voice_off", "Turn off voice replies", "", group="system", hints={"section": "interno"},
           handler=lambda c, a: _voce(c, a, on=False)),
-        T("aiuto", "How to use it", "Quick guide and shortcuts", group="sistema", hints={"section": "Chat"},
+        T("aiuto", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
           handler=_aiuto),
-        T("webui_token", "Access to the web page", "A code to enter the web page", group="sistema",
+        T("webui_token", "Access to the web page", "A code to enter the web page", group="system",
           hints={"section": "Web page", "primary": 3, "label": "Web access"}, writes=False,
           handler=_webui_token),
-        T("webui_status", "Web access status", "", group="sistema", hints={"section": "Web page"},
+        T("webui_status", "Web access status", "", group="system", hints={"section": "Web page"},
           handler=_webui_status),
-        T("webui_revoke", "Revoke web access", "Closes access to the web page", group="sistema",
+        T("webui_revoke", "Revoke web access", "Closes access to the web page", group="system",
           hints={"section": "Web page"}, writes=True, destructive=True, handler=_webui_revoke),
-        T("documenti", "Saved documents", "The files you sent me that I remember", group="memoria",
+        T("documents", "Saved documents", "The files you sent me that I remember", group="memory",
           hints={"section": "Documents", "primary": 4}, handler=_documenti),
-        T("document_pin", "Keep a document", "", group="memoria", hints={"section": "Documents"},
+        T("document_pin", "Keep a document", "", group="memory", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
           handler=_documento_fissa),
-        T("document_delete", "Delete a document", "", group="memoria", hints={"section": "Documents"},
+        T("document_delete", "Delete a document", "", group="memory", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
           destructive=True, handler=_documento_elimina),
-        T("new_reminder", "New reminder", "I'll remind you at the right time", group="giornata",
+        T("new_reminder", "New reminder", "I'll remind you at the right time", group="day",
           hints={"section": "Reminders and tasks", "primary": 5},
           schema=_schema({"title": {**S, "title": "About what"}, "start_at": dt,
                           "note": {**S, "title": "Note"}}, ["title", "start_at"]),
           writes=True, handler=_nuovo_promemoria),
-        T("new_activity", "New task", "Something to do, with or without a deadline", group="giornata",
+        T("new_activity", "New task", "Something to do, with or without a deadline", group="day",
           hints={"section": "Reminders and tasks"},
           schema=_schema({"title": {**S, "title": "What"}, "due": {"type": "string", "format": "date",
                                                                    "title": "By when"},
                           "note": {**S, "title": "Note"}}, ["title"]),
           writes=True, handler=_nuova_attivita),
         T("new_alert", "New automatic alert", "Tell me what to keep an eye on and when to alert you",
-          group="notifiche", hints={"section": "Automatic alerts", "primary": 1},
+          group="notifications", hints={"section": "Automatic alerts", "primary": 1},
           schema=_schema({"request": {**S, "title": "What should I keep an eye on?",
                                       "examples": ["houses in Udine under €150,000"]}}, ["request"]),
           writes=True, handler=_nuovo_avviso),
         T("rating_paused", "No more rating requests", "For a few days I won't ask you to rate answers",
-          group="sistema", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
+          group="system", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
         *transfer_tools(),
     ]
 

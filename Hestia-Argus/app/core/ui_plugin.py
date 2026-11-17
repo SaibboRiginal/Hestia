@@ -26,13 +26,13 @@ ui = PluginClient("argus", title="Health", icon="pulse", color="green", kind="co
                   version=SERVICE_VERSION)
 ui.webui(
     entry="argus.js", api_prefix=f"{API}/",
-    pages=[page("salute", "Health", element="argus-health", icon="pulse", order=110,
+    pages=[page("health", "Health", element="argus-health", icon="pulse", order=110,
                 help="Health of each service over time, open incidents and what Argus did, logs with filters."),
-           page("prestazioni", "Performance", element="argus-performance", icon="chart", order=111,
+           page("performance", "Performance", element="argus-performance", icon="chart", order=111,
                 help="Memory, processor, response time and restarts of each module, the trip through the hub, how much databases and files weigh and how fast they grow per day. Beyond the limits a notice arrives.")],
-    widgets=[widget("stato", "System status", element="argus-status-widget", sizes=["s", "m", "l"], auto=True,
-                    open_page="salute", icon="pulse",
+    widgets=[widget("status", "System status", element="argus-status-widget", sizes=["s", "m", "l"], auto=True,
+                    open_page="health", icon="pulse",
                     help="Healthy services out of total and open incidents, from Argus' latest check.")],
-    quick_actions=[quick_action("ricontrolla", "Recheck", "POST", f"{API}/recheck/{{id}}", icon="refresh",
+    quick_actions=[quick_action("recheck", "Recheck", "POST", f"{API}/recheck/{{id}}", icon="refresh",
                                 group="System", source=f"{API}/recheck-targets", order=110)],
 )

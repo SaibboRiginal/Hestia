@@ -99,7 +99,7 @@ class TestHubCatalog:
     def test_core_kind_and_badge_reach_the_catalog(self, monkeypatch):
         core = PluginClient("athena", title="Athena", kind="core")
         core.webui(entry="athena.js", api_prefix="/api/athena/",
-                   pages=[page("pensieri", "Pensieri", element="athena-thinking",
+                   pages=[page("thoughts", "Pensieri", element="athena-thinking",
                                badge={"source": "/api/athena/status", "field": "pending"})])
         monkeypatch.setattr(disc.requests, "get", lambda url, timeout=0: _Resp(core.manifest()))
         reg = ServiceRegistry()

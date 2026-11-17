@@ -23,10 +23,10 @@ def _search_threshold() -> float:
 
 # Keywords that indicate the user is asking about their stored documents
 _DOC_AWARENESS_KEYWORDS: frozenset[str] = frozenset([
-    "document", "documents", "documento", "documenti",
+    "document", "documents", "documento", "documents",
     "file", "files",
     "pdf", "attachment", "allegato",
-    "saved", "salvato", "salvati", "archiviato", "archiviati",
+    "saved", "salvato", "saved", "archived", "archiviati",
     "uploaded", "caricato", "caricati",
     "hai", "have", "know about", "remember",
 ])

@@ -200,7 +200,7 @@ export class MachinesPageComponent {
     }
   }
 
-  role(r: string) { return ROLE[r] || ROLE['tutto']; }
+  role(r: string) { return ROLE[r] || ROLE['all']; }
 
   hardware(): string {
     const h = this.state()?.this.hardware || {};

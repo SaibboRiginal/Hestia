@@ -396,7 +396,7 @@ SPEC `docs/work/2026-10-10-assistant-presence`. Chronos keeps the assistant's ge
 - **Settings** (group Presenza): `enabled`, `idle_after` 5, `nap_after` 45, `sleep_after` 180 (0 = night only),
   `use_sleep_window`, `dnd_default_duration` 120, `tired_quota` 25 %, `tired_degraded` 2, `count_ui_actions`,
   `oracle_context_line`, `states` (advanced).
-- **MCP**: `stato`, `nondisturbare`, `disturbami` (Telegram group sistema).
+- **MCP**: `status`, `nondisturbare`, `disturbami` (Telegram group sistema).
 
 | Method | Path | Description |
 |---|---|---|
@@ -447,7 +447,7 @@ Endpoints (plugin prefix): `GET /api/agenda/coach/week?date=`, `GET /api/agenda/
 `DELETE /api/agenda/coach/busy/{key}`. MCP tools: `coach_week`, `coach_replan`, `coach_move`, `coach_skip`,
 `coach_add_busy`, `coach_review` (domain `coach`).
 
-WebUI: page **«La tua settimana»** (`settimana`, element `chronos-week`): seven columns (one day at a time on a
+WebUI: page **«La tua settimana»** (`week`, element `chronos-week`): seven columns (one day at a time on a
 phone), blocks with the area icon, slots as chips, targets with a bar, «Non entra», last week's review; drag a
 block to another day or «Sposta» (= user move), «Salta», «Rifai il piano», «Aggiungi impegno». Widget
 **«Oggi nel piano»** (`chronos-today-widget`). Icons from the kit, never emoji, no module names in texts.
@@ -506,7 +506,7 @@ anything by itself.
 
 **WebUI pages** (W7, plugin `api_prefix` `/api/agenda/`): **Routine** (`routine`, `chronos-routines`, order 153: new
 routine in words by time or by mail, the ready-made gallery, «Esegui adesso» / Pausa / Elimina through the agenda item
-routes; Hermes `_link` of `routine.result`) and **Eventi speciali** (`eventi`, `chronos-special`, order 154: list with
+routes; Hermes `_link` of `routine.result`) and **Eventi speciali** (`events`, `chronos-special`, order 154: list with
 days left and lead time, add, remove; the birthday from the personal settings is not removable there; `_link` of
 `special.today` / `special.soon`). The proxy only allows the plugin prefix, so the owner-facing routes are also served
 as `/api/agenda/routines` (GET/POST), `/api/agenda/routines/templates`, `/api/agenda/routines/from-template/{id}`,

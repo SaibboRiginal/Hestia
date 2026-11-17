@@ -80,7 +80,7 @@ def test_masked_export_hides_people_and_has_dpo_pair():
     arc = _reviewed()
     ex = Exporter(arc, people=lambda: ["Laura Rossi"])
     out = ex.build()
-    assert out["masked"] is True and out["name"].endswith("-oscurato.zip")
+    assert out["masked"] is True and out["name"].endswith("-redacted.zip")
     rows, card = unzip(arc, out)
     dump = json.dumps(rows, ensure_ascii=False)
     assert "Laura" not in dump and "<PERSONA_1>" in dump

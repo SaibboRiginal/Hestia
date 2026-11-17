@@ -60,10 +60,10 @@ def trained(hc):
 def test_signals_keys_on_fake_data(trained):
     signals, _ = trained.signals()
     by_key = {s["key"]: s for s in signals}
-    assert f"stall:{BENCH}" in by_key and by_key[f"stall:{BENCH}"]["severity"] == "attenzione"
+    assert f"stall:{BENCH}" in by_key and by_key[f"stall:{BENCH}"]["severity"] == "warning"
     assert by_key[f"stall:{BENCH}"]["kind"] == "trend" and by_key[f"stall:{BENCH}"]["page"] == f"exercises/{BENCH}"
-    assert by_key["deload"]["severity"] == "attenzione"
-    assert by_key["missed_streak"]["kind"] == "streak" and by_key["missed_streak"]["severity"] == "alta"   # 6 days
+    assert by_key["deload"]["severity"] == "warning"
+    assert by_key["missed_streak"]["kind"] == "streak" and by_key["missed_streak"]["severity"] == "high"   # 6 days
     pr = by_key[f"pr:{SQUAT}"]
     assert pr["kind"] == "milestone" and pr["severity"] == "info" and pr["ttl_days"] == 3
     for s in signals:   # user text speaks of the domain, never the module
@@ -94,7 +94,7 @@ def test_week_goal_only_when_behind_at_the_end_of_the_week(hc, monkeypatch):
                                       "remaining": 2, "label": "Allenamento 3 volte a settimana", "hint": "1/3"}}]
     monkeypatch.setattr(hc, "goals", goals(2))
     s = {x["key"]: x for x in hc.signals()[0]}
-    assert s["week_goal"]["kind"] == "goal" and s["week_goal"]["severity"] == "attenzione"
+    assert s["week_goal"]["kind"] == "goal" and s["week_goal"]["severity"] == "warning"
     monkeypatch.setattr(hc, "goals", goals(4))
     assert "week_goal" not in {x["key"] for x in hc.signals()[0]}
     monkeypatch.setattr(hc, "goals", goals(1, behind=False))

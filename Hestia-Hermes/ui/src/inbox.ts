@@ -301,7 +301,7 @@ export class HermesInbox extends HestiaElement {
     if (r.ok && r.data?.execute === 'command' && r.data.command) {
       // A button that starts a tool (e.g. «Racconta la giornata»): its form opens in «Comandi».
       this.applyAnswer(n.id, { label: a.label, by: 'webui', status: 'done' });
-      this.host.navigate('comandi', { command: String(r.data.command) }, 'mcp');
+      this.host.navigate('commands', { command: String(r.data.command) }, 'mcp');
     } else if (r.ok) {
       this.applyAnswer(n.id, r.data?.answer ?? { label: a.label, by: 'webui', status: 'done' });
       this.host.toast(r.data?.answer?.outcome_text || a.label, 'success');

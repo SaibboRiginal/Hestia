@@ -22,12 +22,12 @@ def test_for_people_drops_model_notes():
 def test_area_from_group_alias_or_module():
     assert area_of({"telegram_group": "fitness"})["label"] == "Training"
     assert area_of({}, "kairos")["label"] == "Deadlines"
-    assert area_of({"telegram_group": "nonesiste"}, "nessuno")["key"] == "altro"
+    assert area_of({"telegram_group": "nonesiste"}, "none")["key"] == "other"
     assert area("Cura di sé")["key"] == "selfcare"
 
 
 def test_comandi_command_carries_area_and_summary():
     tool = {"name": "deadlines_list", "title": "Scadenze", "description": "Le scadenze aperte (days; status).",
-            "_meta": {"hestia": {"service": "kairos", "telegram_group": "scadenze"}}}
+            "_meta": {"hestia": {"service": "kairos", "telegram_group": "deadlines"}}}
     cmd = as_command(tool)
     assert (cmd["area_label"], cmd["summary"]) == ("Deadlines", "Le scadenze aperte.")

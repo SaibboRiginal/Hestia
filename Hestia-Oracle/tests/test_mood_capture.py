@@ -84,7 +84,7 @@ def test_parse_answer():
     assert parse_answer("boh") is None and parse_answer("") is None and parse_answer("{rotto") is None
     out = parse_answer('Ecco: {"mood": 7, "energy": "2", "labels": ["Stanco", "felicione", "giu"], '
                        '"causes": ["lavoro", "x"]}')
-    assert out == {"mood": 5, "energy": 2, "stress": None, "labels": ["stanco", "giù"], "causes": ["lavoro"]}
+    assert out == {"mood": 5, "energy": 2, "stress": None, "labels": ["stanco", "giù"], "causes": ["work"]}
     assert parse_answer('{"energy": 2}') is None
 
 
@@ -113,7 +113,7 @@ def test_run_uses_the_model_answer():
     sig = cap.run("oggi sono stanco morto, il lavoro mi ha ucciso")
     service, path, method, body = hub.calls[0]
     assert (service, path, method) == ("psyche", "/api/mood/capture", "POST")
-    assert body["mood"] == 2 and body["causes"] == ["lavoro"] and "stanco morto" in body["quote"]
+    assert body["mood"] == 2 and body["causes"] == ["work"] and "stanco morto" in body["quote"]
     assert sig[0]["event"] == "mood.logged" and "2/5" in sig[0]["data"]["detail"]
 
 

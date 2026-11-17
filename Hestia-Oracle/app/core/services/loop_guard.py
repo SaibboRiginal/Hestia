@@ -90,11 +90,11 @@ class LoopGuard:
 
     def suspect(self) -> str:
         if self._same_run():
-            return "ripetizione"
+            return "repetition"
         if self._ping_pong():
             return "ping-pong"
         if self._rotation():
-            return "giro"
+            return "loop"
         return ""
 
     # ── public ───────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ class LoopGuard:
             except Exception as exc:  # timeout / no model: stop is the safe side
                 logger.warning("[🔄] event=agent_loop_guard_check_failed kind=%s error=%s fallback=stop", kind,
                                str(exc)[:160])
-                verdict = "giro"
+                verdict = "loop"
             if verdict.startswith("aspett") or verdict.startswith("wait"):
                 logger.info("event=agent_loop_guard_waiting kind=%s checks=%d", kind, self.checks)
                 # keep only the last call: a new run must build up again before the next suspicion

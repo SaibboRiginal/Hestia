@@ -24,7 +24,7 @@ def _talk(monkeypatch, *, idle=30 * 3600, per_day=2, gap=4, sent=None, routes=No
     talk.reader = MagicMock()
     talk.reader.rows.return_value = [{"data": r, "at": r["at"]} for r in (sent or [])]
     talk.reader.signals.return_value = [
-        {"severity": "alta", "domain": "fitness", "text": "Nessun allenamento da 9 giorni"},
+        {"severity": "high", "domain": "fitness", "text": "Nessun allenamento da 9 giorni"},
         {"severity": "info", "domain": "finance", "text": "Spese nella norma"}]
     calls = []
 
@@ -76,7 +76,7 @@ def test_remembers_the_last_days_and_whether_he_answered(monkeypatch):
             {"id": "a", "day": "2026-11-10", "text": "Hai mangiato?", "answered": True,
              "at": (NOW - timedelta(days=2)).isoformat()}]
     history = {"days": [{"date": "2026-11-10", "mood_word": "bene"},
-                        {"date": "2026-11-11", "mood_word": "giù", "stress": 4, "causes": ["lavoro"]},
+                        {"date": "2026-11-11", "mood_word": "giù", "stress": 4, "causes": ["work"]},
                         {"date": local_day(NOW), "mood_word": "così così"}]}
     talk, calls = _talk(monkeypatch, sent=sent, idle=30 * 3600, routes={"psyche": (200, history)})
     state = talk.weigh(NOW)
@@ -114,7 +114,7 @@ def test_daily_limit_and_pause_between_two_messages(monkeypatch):
 
 def test_sends_what_oracle_wrote_through_hermes_and_keeps_it(monkeypatch):
     talk, calls = _talk(monkeypatch, routes={
-        "psyche": (200, {"summary": {"mood_word": "giù", "energy": 2, "causes": ["lavoro"]}}),
+        "psyche": (200, {"summary": {"mood_word": "giù", "energy": 2, "causes": ["work"]}}),
         "oracle": (200, {"text": "Giornata pesante al lavoro?"})})
     out = talk.run("t1")
     assert out["status"] == "sent" and out["text"] == "Giornata pesante al lavoro?"
@@ -176,8 +176,8 @@ def test_write_now_and_history_endpoints():
     with patch("requests.post"), patch("requests.get"), patch("requests.Session"):
         import app.main as main
     http = TestClient(main.app)
-    with patch.object(main.runtime, "talk_now", return_value={"status": "started", "track": "parla"}) as now:
-        assert http.post("/api/athena/think", params={"track": "parla"}).json()["track"] == "parla"
+    with patch.object(main.runtime, "talk_now", return_value={"status": "started", "track": "talk"}) as now:
+        assert http.post("/api/athena/think", params={"track": "talk"}).json()["track"] == "talk"
         now.assert_called_once()
     row = {"id": "1", "text": "Ehi.", "reasons": ["How they feel today: giù, energy 2/5 (because of lavoro)"], "x": 1}
     state = {"drive": 0.4, "bar": 0.5, "wants": False, "past": ["hidden"],

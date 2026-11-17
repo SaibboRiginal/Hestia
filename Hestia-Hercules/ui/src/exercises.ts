@@ -116,7 +116,7 @@ export class HerculesExercise extends LocalPage {
     const metric = metrics[this.metric] ? this.metric : Object.keys(metrics)[0];
     const pts = hist.filter(h => h[metric] !== null && h[metric] !== undefined);
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('esercizi')}>${tr('‹ Exercises')}</hxk-button></div>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('exercises')}>${tr('‹ Exercises')}</hxk-button></div>
       <div class="between"><div><h1>${e.name}</h1><div class="small muted">${muscleText(e)}${(e.secondary_muscles || []).length ? tr(' · also ') + e.secondary_muscles.map((m: string) => MUSCLES[m] || m).join(', ') : ''} · ${EQUIPMENT[e.equipment] || e.equipment}</div></div>
         <button class="chip" aria-pressed=${!!e.favorite} title=${tr("Favourite")} @click=${() => this.save({ favorite: !e.favorite })}><hxk-icon name="star" size=${14}></hxk-icon></button></div>
       ${d === undefined ? html`<hxk-state kind="loading"></hxk-state>` : d === null ? html`<div class="offline">${tr("Statistics available when you are online.")}</div>` : nothing}
@@ -137,7 +137,7 @@ export class HerculesExercise extends LocalPage {
         <div class="row wrap"><label class="small row">${tr("Increment kg")} <input class="in num" inputmode="decimal" placeholder=${String(d?.increment ?? '')} .value=${e.increment_kg == null ? '' : String(e.increment_kg)} @change=${(ev: any) => this.save({ increment_kg: parseNum(ev.target.value) })}></label>
           ${e.is_custom ? html`<label class="small row">${tr("Name")} <input class="in" .value=${e.name} @change=${(ev: any) => this.save({ name: ev.target.value || e.name })}></label>` : nothing}
           <span class="grow"></span>
-          <hxk-button size="sm" variant="ghost" @click=${() => { this.save({ archived: !e.archived }); if (!e.archived) this.host.navigate('esercizi'); }}>${e.archived ? tr('f::Restore') : tr('f::Archive')}</hxk-button></div>
+          <hxk-button size="sm" variant="ghost" @click=${() => { this.save({ archived: !e.archived }); if (!e.archived) this.host.navigate('exercises'); }}>${e.archived ? tr('f::Restore') : tr('f::Archive')}</hxk-button></div>
       </div>
     </div>`;
   }

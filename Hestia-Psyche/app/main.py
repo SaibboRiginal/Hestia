@@ -120,14 +120,14 @@ def checkin():
     if not ask:
         return {"sent": False, "reason": "already_logged"}
     sent = kit.hub.notify(reminder_event(module="psyche", domain=DOMAIN, key=ask["key"], title=tr("Mood"),
-                                         text=ask["text"], actions=ask["actions"], page="umore"))
+                                         text=ask["text"], actions=ask["actions"], page="mood"))
     return {"sent": sent}
 
 
 @app.get("/api/module/context")
 def module_context(budget: int = 400, topic: str = ""):
     """Assistant/Athena context contract (tag ``context``): the last 7 days in one line, or the insights."""
-    if topic in ("insights", "andamento", "mood_drop", "low_streak", "energy_low", "good_streak"):
+    if topic in ("insights", "trend", "mood_drop", "low_streak", "energy_low", "good_streak"):
         text = " ".join(psyche.insights()["sentences"])
     else:
         text = psyche.context_text(budget)
@@ -212,7 +212,7 @@ def _delete(id: str = "", last: bool = False) -> dict:
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 LV = {"type": "integer", "minimum": 1, "maximum": 5}
-G = "umore"
+G = "mood"
 kit.tools([
     MCPTool(name="mood_log", description=("Log how the user feels: mood 1-5 (1 very low, 3 so-so, 5 great), energy and stress 1-5, labels, "
                                           "causes, note, date (YYYY-MM-DD or ieri). Only if they ask."),
@@ -242,7 +242,7 @@ kit.tools([
 ], prefix="mood_")
 
 transfer = Transfer("psyche", kit.hub, sections=[
-    StoreSection("umore", "Mood", kit.store, ["mood"], icon="smile",
+    StoreSection("mood", "Mood", kit.store, ["mood"], icon="smile",
                  title=lambda r: f"{r['data'].get('date', '')} · {mood_word(r['data'].get('mood'))}"),
 ])
 app.include_router(transfer.router())
@@ -256,10 +256,10 @@ kit.agenda_rules(lambda: [
 ])
 kit.on_warm(signals.changed)
 kit.webui(icon="smile", color="yellow", description="How you are over time: days, energy, trend.",
-          pages=[page("umore", "Mood", element="psyche-mood", icon="smile", order=240,
+          pages=[page("mood", "Mood", element="psyche-mood", icon="smile", order=240,
                       help="How you feel day by day. When you say how you are in chat («today I'm tired») the assistant records it by itself; here you see it, fix it or remove it.")],
-          widgets=[widget("umore", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
-                          open_page="umore", icon="smile")],
+          widgets=[widget("mood", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
+                          open_page="mood", icon="smile")],
           quick_actions=[quick_action("come-stai", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
                                       params={"mood": {"type": "int", "label": "Mood 1-5", "min": 1, "max": 5}},
                                       order=240)])

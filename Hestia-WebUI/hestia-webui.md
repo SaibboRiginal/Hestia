@@ -105,7 +105,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   imports it as a blob module; the bundle imports the shared SDK (`/plugins/_sdk/sdk.js`, built from
   `Hestia-Shared/webui-sdk` in the Dockerfile) through the import map in `index.html`. Elements get `host` + `ctx`.
 - **Home** (`/home`, first module) = quick-action strip + dashboard grid; until edited it is composed from widgets
-  marked `auto` of the domain modules. A ready-made *Sistema* dashboard (`/d/sistema`) takes the core modules' `auto`
+  marked `auto` of the domain modules. A ready-made *Sistema* dashboard (`/d/system`) takes the core modules' `auto`
   widgets (hidden while there is none; deleting it leaves a `removed` marker in `webui.dashboards`). Other dashboards at `/d/:id` (tabs + sidebar "Dashboard"). Edit mode: add, drag, size, configure,
   remove; Oracle-created dashboards carry `created_by: oracle`.
 - Module pages at `/p/<module>/<page>` (sidebar "Moduli", core modules under "Sistema"; detail pages hidden).
@@ -141,7 +141,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   `GET /api/metis/now?client=webui` (up to 6, each with its reason); a tap opens the tool on the *Comandi* page
   (`/p/mcp/comandi?command=…&args=…&run=1`: run at once when nothing required is missing). Hidden when empty. The
   Ctrl/⌘+K palette lists the same items first, in the group *Adesso*.
-- **Scopri** (`/scopri`, `features/scopri/`; like «Sistema», its header leaves 56 px for the phone menu button): features never or rarely used (`GET /api/metis/discover?limit=50`),
+- **Scopri** (`/discover`, `features/discover/`; like «Sistema», its header leaves 56 px for the phone menu button): features never or rarely used (`GET /api/metis/discover?limit=50`),
   grouped by module, search, *Prova* opens the tool like *Adesso*.
 - **Aspetto** (`services/appearance.service.ts`, `layout/appearance-layer.component.ts`): `GET /api/appearance/now`
   through the Aphrodite plugin door at start, when the catalog shows the module and when the tab comes back after
@@ -162,7 +162,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   palette through the window event `hestia:palette`) and **Parla**; sections *Generale* (now above) · *Fissati* ·
   *Conversazioni* (pinned conversations, else the 3 latest; *Tutte le conversazioni* opens the history) ·
   *Dashboard* · *Moduli*; the system modules' pages are behind one **Sistema** entry at the bottom (sum of their
-  counters) → page `/sistema` (`features/system/`, modules with their pages, pin to *Fissati*, link to the *Sistema*
+  counters) → page `/system` (`features/system/`, modules with their pages, pin to *Fissati*, link to the *Sistema*
   dashboard). A pinned system page still shows in *Fissati*. Compact mode = the collapsed sidebar (icons only).
 - **History** (`features/chat/chat-history.component.ts`, `services/chats.service.ts`): second sidebar, every
   conversation (pinned first), search in titles and messages, from/to dates, tag filter, *Carica altre*; per
@@ -216,7 +216,7 @@ in chat she answers in the language you write) → saved live. Later: Sistema �
   (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.
 - Icons `mic`, `mic-off`, `volume`, `waveform` in the shared icon set (`hx-icon` and the SDK's `hxk-icon`).
 
-### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifiche`, `services/notifications.service.ts`)
+### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifications`, `services/notifications.service.ts`)
 
 The page moved into Hermes (plugin, badge from its own counts); `/notifications` redirects there keeping the query.
 The WebUI keeps `NotificationsService`: SignalR pushes, toasts (mode shared with the page through localStorage + the
@@ -244,11 +244,11 @@ per browser (`core/theme/looks.ts`); thin themed scrollbars; sidebar shows one s
 connection only when it is not «Connesso»).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
-### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/sviluppo`)
+### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/development`)
 
 Moved into Hephaestus (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`, adds *Copia per AI*); `/forge`
 redirects keeping `?task=` / `?view=`. Same behaviour as described here. Comandi & MCP (`/commands` →
-`/p/mcp/comandi`) and Documenti (`/documents` → `/p/oracle/documenti`) moved the same way; their old WebUI
+`/p/mcp/commands`) and Documenti (`/documents` → `/p/oracle/documents`) moved the same way; their old WebUI
 controllers are gone (chat upload stays in `ChatController`).
 Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - **Task** mode: left = task list (search, filters Tutti/Aperti/Applicati/Non riusciti, live state dot);
@@ -298,7 +298,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   options else dropdown, number + unit, model name with suggestions from `options`, 24h time, text, list one per
   line, JSON). An `object` setting with an `editor` hint (`llm_providers`, `llm_chains`, `llm_usecases`: Oracle's
   providers, chains and use cases) also shows the link «Modifica in Oracle · Cervello · Modelli» to its dedicated
-  editor (`/p/oracle/cervello`, tab Modelli); the JSON stays editable. Emits only complete values; Themis validates
+  editor (`/p/oracle/brain`, tab Modelli); the JSON stays editable. Emits only complete values; Themis validates
   and its Italian error goes to a toast.
   Reusable outside the page (chat quick menu, P4).
 - `central-settings.store.ts`: loads every setting once (`items` without filters), reloads what Themis answers after every change (toast with *Annulla*) and polls
@@ -528,7 +528,7 @@ emoji that module texts carry for Telegram (`noEmoji`). Favicon `/icon.svg`.
 
 ## Guided setup «Benvenuto» (dossier `docs/work/2026-10-30-setup-un-click`)
 
-`/setup` (`features/setup/`; the old `/benvenuto` redirects there) is a full-screen page outside the shell, one
+`/setup` (`features/setup/`; the old `/welcome` redirects there) is a full-screen page outside the shell, one
 question per screen: Inizio → **Modelli → Memoria** → models ready → **Ascolto → Voce** → Telegram → Backup →
 calendar, mail and Garmin → outside home → «Tutto pronto». Layout (round 7): one centred column; a bar on top with
 the step («3/11 Memoria», with the number of downloads running) that opens a drop-down with every step (a row jumps
@@ -581,7 +581,7 @@ for later. Backend: `SetupController` forwards only the screens' paths of `/api/
 `/api/setup/*` through the Hub (`telegram/claim` is the bot's, never forwarded); usual WebUI access rules (home
 network, or token).
 
-## Macchine page (`/macchine`, dossier `docs/work/2026-10-30-setup-un-click` §4.0)
+## Macchine page (`/machines`, dossier `docs/work/2026-10-30-setup-un-click` §4.0)
 
 `features/machines/` (button «Macchine» in Sistema; «Dispositivi» is the page of phones and watches): this machine
 (role, video card, LAN address) and its satellites (address, online, what they do in plain words: voce, allenamento
@@ -591,11 +591,11 @@ says when the machine joined. «Usa la sua scheda video» / «Riporta qui i mode
 «Scollega» asks first (and brings the models back first when they were there). Backend: `SetupController`
 whitelist `GET machines`, `POST machines/pair|revoke|brain` (→ Hephaestus `/api/setup/machines*`).
 Card «Da fuori casa»: *Attiva* (asks first) / *Spegni* the Cloudflare quick tunnel (`GET|POST /api/webui/setup/tunnel`,
-also the setup screen `fuori`). `PublicUrlService` reads the tunnel's address from `http://hestia_tunnel:20241/quicktunnel`
+also the setup screen `away`). `PublicUrlService` reads the tunnel's address from `http://hestia_tunnel:20241/quicktunnel`
 at most once a minute in the background (never blocking a request; a manual URL wins; the address is forgotten when
 the tunnel is off), so the login links follow it; requests to that host always need the token.
 
-## Aggiornamenti page (`/aggiornamenti`, dossier `docs/work/2026-10-30-setup-un-click` §4.4)
+## Aggiornamenti page (`/updates`, dossier `docs/work/2026-10-30-setup-un-click` §4.4)
 
 `features/updates/` (button «Aggiornamenti» in Sistema): installed version and channel (link to the setting), the new
 version with what's new, «Installa» (asks first), the running step every 3 s, history, «Torna alla versione di
@@ -616,7 +616,7 @@ Replaces what the 2026-10-29 section says about the sidebar's top and the «Sist
 
 - **Sidebar** (`layout/shell.component.ts`): top = logo, bell with the unread notifications (→ Notifiche), collapse,
   then **Chat** and **Cerca**. Sections, all foldable: *Generale* (Home, Scopri) · *Fissati* · *Conversazioni* ·
-  *Dashboard* · *Moduli* · **Sistema** (Panoramica = `/sistema`, the system modules' pages, Aggiornamenti, Macchine,
+  *Dashboard* · *Moduli* · **Sistema** (Panoramica = `/system`, the system modules' pages, Aggiornamenti, Macchine,
   Download). A module with sub-pages folds too (`webui.sidebar.collapsed`, key `m:<entry id>`). The page on screen is
   marked with its parent, a folded section or module opens by itself around it, and `Sezione › Modulo › Pagina` is
   written above pages of Fissati, Dashboard, Moduli and Sistema. On phones the menu button shows the unread count.

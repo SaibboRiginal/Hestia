@@ -103,7 +103,7 @@ export class WardrobeCollection extends WardrobeElement {
   private async drop() {
     if (!(await this.host.confirm(tr('Delete list'), tr("«{0}» is deleted (the items stay).", this.c.name), { label: tr('Delete'), danger: true }))) return;
     const r = await call(this.host, 'DELETE', `/collections/${this.c.id}`);
-    if (r.ok) this.host.navigate('liste');
+    if (r.ok) this.host.navigate('lists');
   }
   render() {
     const c = this.c;
@@ -113,7 +113,7 @@ export class WardrobeCollection extends WardrobeElement {
     let pcs = this.pieces || [];
     if (this.q) { const w = norm(this.q); pcs = pcs.filter(p => norm(p.name).includes(w)); }
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('liste')}>${tr('‹ Lists')}</hxk-button><span class="grow"></span>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('lists')}>${tr('‹ Lists')}</hxk-button><span class="grow"></span>
         <hxk-badge>${c.type_label}</hxk-badge><span class="small muted">${c.progress.checked}/${c.progress.total} ${tr("ready")}</span></div>
       <input class="in" style="font-size:20px;font-weight:650;background:transparent;border-color:transparent" .value=${c.name} @change=${(e: any) => e.target.value.trim() && this.patch({ name: e.target.value.trim() })}>
       ${c.outfits.length ? html`<div class="card col"><h3>${tr("Outfit")}</h3><div class="list">${c.outfits.map((o: any) => html`<div class="li ${checked.has(o.id) ? 'done' : ''}">

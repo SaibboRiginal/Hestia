@@ -161,7 +161,7 @@ def handle(call) -> None:
             core.set_session_setting(str(chat_id), key, val)
             note = label_of(key, val).split(" · ")[0]
         panel(chat_id, mid)
-    elif action == "voce":
+    elif action == "voice":
         from telegram_bot.services import voice_service
         voice_service.set_live(chat_id, not voice_service.is_live(chat_id))
         panel(chat_id, mid)

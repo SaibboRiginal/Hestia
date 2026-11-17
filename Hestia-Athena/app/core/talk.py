@@ -9,7 +9,7 @@ Third output of Athena, next to the system briefs and the life observations (whi
    ``athena.talk.eagerness``. The drive grows with the silence between them and with what she has to say, drops
    when her messages get no answer, and is low in the first days, when she knows little;
 2. **why** — the reasons of today, read through Hub: his mood (Psyche), what the areas noticed (signals
-   ``alta``/``attenzione``), how long since they last talked; plus the **last days**: how he was, what she wrote
+   ``alta``/``warning``), how long since they last talked; plus the **last days**: how he was, what she wrote
    and whether he answered;
 3. **what** — Oracle writes it (``POST /api/chat/opener``: persona + what it remembers of him); nothing true to
    say → no message;
@@ -150,8 +150,8 @@ class Talk:
         except Exception as exc:
             logger.info("[🔄] event=talk_reason_failed source=mood error=%s fallback=skip", exc)
         try:
-            signals = [s for s in self.reader.signals() if s.get("severity") in ("alta", "attenzione")]
-            signals.sort(key=lambda s: 0 if s.get("severity") == "alta" else 1)
+            signals = [s for s in self.reader.signals() if s.get("severity") in ("high", "warning")]
+            signals.sort(key=lambda s: 0 if s.get("severity") == "high" else 1)
             for s in signals[:3]:
                 out.append(f"{DOMAIN_WORDS.get(s.get('domain'), 'One of their areas')}: {str(s.get('text') or '')[:200]}")
         except Exception as exc:

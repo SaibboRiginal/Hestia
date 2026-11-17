@@ -39,7 +39,7 @@ public class AssistantToolsController : ControllerBase
             path = "/api/ai/widgets",
             clients = new[] { "ui" },
             telegram_visible = false,
-            telegram_group = "impostazioni",
+            telegram_group = "settings",
         },
         new
         {
@@ -52,7 +52,7 @@ public class AssistantToolsController : ControllerBase
             path = "/api/ai/dashboards",
             clients = new[] { "ui" },
             telegram_visible = false,
-            telegram_group = "impostazioni",
+            telegram_group = "settings",
         },
     ];
 

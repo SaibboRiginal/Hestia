@@ -99,7 +99,7 @@ def conversational_message(message: str, title: str, *, level: str, event_type: 
     """Style «Frase di Hestia» (docs/work/2026-11-06-hestia-viva F5): an informative notification is said as one
     short sentence of hers, like in chat. Warnings, errors and notifications with buttons, questions or secrets
     stay cards; Oracle down → the card text, unchanged."""
-    if style != "frase" or not str(message or "").strip():
+    if style != "sentence" or not str(message or "").strip():
         return message
     if str(level or "").lower() in ("warning", "error") or event_type in _ALERT_TYPES:
         return message

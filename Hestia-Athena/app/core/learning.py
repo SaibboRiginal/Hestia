@@ -130,7 +130,7 @@ class Learning:
             if not key:
                 continue
             if key in seen:
-                out.append({"kind": "doppione", "keep": seen[key]["id"], "retire": [m["id"]],
+                out.append({"kind": "duplicate", "keep": seen[key]["id"], "retire": [m["id"]],
                             "why": tr("Same thing written twice."), "facts": [seen[key]["fact"], m["fact"]]})
             else:
                 seen[key] = m
@@ -158,7 +158,7 @@ class Learning:
         for f in data.get("findings") or []:
             retire = [i for i in f.get("retire") or [] if i in ids] if isinstance(f, dict) else []
             if retire:
-                out.append({"kind": f.get("kind") or "vecchia", "keep": f.get("keep") if f.get("keep") in ids else None,
+                out.append({"kind": f.get("kind") or "old", "keep": f.get("keep") if f.get("keep") in ids else None,
                             "retire": retire, "merged": str(f.get("merged") or "")[:500],
                             "why": str(f.get("why") or "")[:300],
                             "facts": [next(m["fact"] for m in memories if m["id"] == i) for i in retire]})
@@ -175,7 +175,7 @@ class Learning:
         for f in findings[:10]:
             pid = uuid.uuid4().hex[:10]
             self._put("memory_proposal", pid, {**f, "id": pid, "at": _now(), "status": "pending"})
-            label = {"doppione": "alt::Duplicate", "contraddizione": "Contradiction"}.get(f["kind"], "Maybe outdated")
+            label = {"duplicate": "alt::Duplicate", "contradiction": "Contradiction"}.get(f["kind"], "Maybe outdated")
             lines = "\n".join(f"• {str(t)[:160]}" for t in f["facts"][:4])
             publish("service.action_required", f"memory.proposal.{pid}", {
                 "_title": tr("Memory · {0}", tr(label)), "_source": tr("Memory"), "_level": "info",
@@ -185,7 +185,7 @@ class Learning:
                               "method": "POST", "path": f"/api/athena/memory/proposals/{pid}/apply"},
                              {"id": "keep", "label": tr("Leave"), "service": "athena", "method": "POST",
                               "path": f"/api/athena/memory/proposals/{pid}/dismiss"}],
-                "_link": {"module": "athena", "page": "imparato"}})
+                "_link": {"module": "athena", "page": "learned"}})
         logger.info("event=athena_memory_review memories=%d proposals=%d", len(memories), min(10, len(findings)))
         return {"memories": len(memories), "proposals": min(10, len(findings))}
 

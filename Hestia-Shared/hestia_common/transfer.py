@@ -13,9 +13,9 @@ Every import can run as a dry run (preview: same report, nothing written).
     from hestia_common.transfer import Transfer, StoreSection
 
     transfer = Transfer("hercules", hub, sections=[
-        StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
-        StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"],
-                     depends_on=["esercizi", "schede"]),
+        StoreSection("exercises", "Esercizi", store, ["exercise"], icon="dumbbell"),
+        StoreSection("sessions", "Sessioni", store, ["session", "set"], item_kinds=["session"],
+                     depends_on=["exercises", "plans"]),
     ])
     app.include_router(transfer.router())                 # /api/transfer/*
     caps.update(transfer.capabilities())                  # Hub registration

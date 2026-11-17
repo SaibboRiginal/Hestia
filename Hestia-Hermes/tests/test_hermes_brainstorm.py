@@ -52,7 +52,7 @@ class TestActiveClient:
         assert not bodies["telegram"]["silent"]
 
     def test_unknown_client_rings_everywhere(self, center):
-        center.presence.get.return_value = {"last_interaction_client": "voce", "idle_minutes": 1}
+        center.presence.get.return_value = {"last_interaction_client": "voice", "idle_minutes": 1}
         bodies = _bodies(center)
         assert not bodies["telegram"]["silent"] and not bodies["webui"]["silent"]
 

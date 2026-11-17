@@ -36,9 +36,9 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 
 - **Bottom keyboard** (always there): Oggi · Aree · Notifiche · Impostazioni. Tapping a key during a guided action
   leaves it.
-- **`/` menu** (10): `oggi`, `aree`, `adesso`, `scopri`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`,
-  `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
-  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
+- **`/` menu** (10): `today`, `areas`, `now`, `discover`, `notifications`, `settings`, `new`, `voice`, `status`,
+  `aiuto` (`/now` and `/discover` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
+  working (`ALIASES`: `/start`, `/clear`, `/settings`, `/commands`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
 - **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
   `GET /api/metis/now?client=telegram`, each with its reason and a button; the fixed «Oggi» actions when Metis has
@@ -92,8 +92,8 @@ A tool result is drawn by Telegram, never sent to Oracle for formatting:
 ## Local actions (`local_actions.py`)
 
 Actions that belong to the client itself, declared like tools (`T(name, title, description, …)`, checked by
-`check_command_contracts`): `nuova` (new conversation: Oracle `DELETE /api/chat/{session}`), `voce` / `voice_on` /
-`voice_off`, `aiuto`, `webui_token` / `webui_status` / `webui_revoke`, `documenti` / `document_pin` /
+`check_command_contracts`): `new` (new conversation: Oracle `DELETE /api/chat/{session}`), `voice` / `voice_on` /
+`voice_off`, `aiuto`, `webui_token` / `webui_status` / `webui_revoke`, `documents` / `document_pin` /
 `document_delete`, `new_reminder` / `new_activity` (Archive calendar items), `new_alert` (Oracle
 subscription compile), `rating_paused`.
 
@@ -116,7 +116,7 @@ subscription compile), `rating_paused`.
   sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
   puoi scrivermelo?» (`[🔄]`).
 - «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.answer`), kept so a second tap does not regenerate.
-- `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
+- `/voice` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
   With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
 - **She wrote first** (dossier `docs/work/2026-11-12-identita-e-proattivita`): a notification whose payload has
   `_chat` is sent as plain chat text (escaped, no card, no tone dot, no cut at 80 characters) and remembered like an
@@ -214,7 +214,7 @@ not via Hub) with `X-WebUI-Admin-Secret` when `WEBUI_ADMIN_SECRET` is set. The t
 
 ## Assistant presence
 Every allowed message, file and button pings Chronos presence (`telegram`, debounced 60 s, `services/presence.py`).
-`/stato` shows the assistant state.
+`/status` shows the assistant state.
 
 ## Oracle offline (chat queue)
 SPEC `docs/work/2026-10-19-oracle-offline`, `services/chat_queue.py`. A message Oracle does not accept is stored in
@@ -249,7 +249,7 @@ message is the answer (`notifications.answer_by_reply`). «Apri» stays under th
 `services/answer_extras.py` + `ReplyRenderer`:
 - ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons
   become an inline keyboard «Scegli» whose tap sends the button's text as the next chat message (callback `uisend:`).
-- `final.origin` not from the owner (`routine`, `autonomo`) adds its label in italics above the answer.
+- `final.origin` not from the owner (`routine`, `autonomous`) adds its label in italics above the answer.
 - The `changes` frame becomes «📝 Ho fatto» with one «↩️ Annulla: …» button per change that has an undo; the tap
   (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
 - `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.

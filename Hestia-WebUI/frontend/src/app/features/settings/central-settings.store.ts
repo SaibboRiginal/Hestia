@@ -71,7 +71,7 @@ export class CentralSettingsStore {
     return m ? this.systemItems().filter(i => i.module === m) : [];
   });
 
-  /** Items after the "solo modificate" / "avanzate" filters. */
+  /** Items after the "solo modificate" / "advanced" filters. */
   readonly visible = computed(() => this.scoped().filter(i =>
     (this.showAdvanced() || !i.advanced || isModified(i)) && (!this.onlyModified() || isModified(i))));
 

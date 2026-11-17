@@ -55,9 +55,9 @@ ui = PluginClient("mcp", title="Commands & MCP", icon="command", color="blue", k
                   description="Hestia's tools and who can use them from outside (external AIs).",
                   version=SERVICE_VERSION)
 ui.webui(entry="mcp.js", api_prefix="/api/mcp/",
-         pages=[page("comandi", "Commands & MCP", element="mcp-commands", icon="terminal", order=190,
+         pages=[page("commands", "Commands & MCP", element="mcp-commands", icon="terminal", order=190,
                      help="All the tools Hestia offers (the same as chat, Telegram and external AIs): search, read the parameters and run them."),
-                page("accessi", "AI access", element="mcp-accesses", icon="external", order=191, parent="comandi",
+                page("access", "AI access", element="mcp-accesses", icon="external", order=191, parent="commands",
                      help="Tokens to link Claude Code, Claude Desktop, Cursor or another AI to Hestia's tools (MCP). Revoke and renew in one tap.")])
 
 # ── Service descriptor ───────────────────────────────────────────────────────

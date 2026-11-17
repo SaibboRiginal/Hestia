@@ -283,7 +283,7 @@ flowchart LR
 Only Oracle talks to LLM providers. Athena/Scout/Argus/Chronos use `/api/llm/generate` (`voice: true` for a text to
 the owner: Oracle adds who speaks and the personal «Lingua»), Forge and Wardrobe use
 `/api/llm/chat` — always via Hub. Callers name a `use_case` `<module>.<task>` (e.g. `scout.listings`, `athena.strategy`,
-`forge.codice`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
+`forge.code`) and declare it in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`);
 Oracle maps each use case to a named chain of provider/model steps (quota skip) and a brain mode (interna / esterna =
 Claude Code or Codex with Hestia's tools over MCP), all chosen in Oracle → Cervello → Modelli, never env in the caller.
 Every call becomes a usage row in Archive (`llm-usage`, panel Cervello → Uso).
@@ -353,7 +353,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    Oracle `setup/test` returns `recommended`, `setup/apply` takes `cloud_models {service: [models]}` in order.
    The page has one step component for Modelli (chat models only), Memoria (embedding models, at home or a cloud
    one such as Gemini's), Ascolto and Voce; `setup/apply` also takes `modes` (Ragionamento/Codice/Immagini with their
-   own model first in `potente/codice/visione`) and `order` (the «Scelti» list in the user's order, local and cloud
+   own model first in `strong/code/vision`) and `order` (the «Scelti» list in the user's order, local and cloud
    mixed, Hephaestus → Oracle `plan_chains` sorts the chat steps by it); a mode can carry its own `steps` list.
    «I modelli sono pronti»: WebUI `setup/brain/hello` → Hephaestus → Hub → Oracle `/api/llm/generate`
    (use case `hephaestus.setup`) → the assistant's first message shown on the page. Voce/Ascolto «Ascolta» and
@@ -392,7 +392,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 ### Update flow («Aggiorna Hestia»)
 1. Chronos job `hephaestus.update_check` → Hephaestus `/api/setup/update/daily` → `git fetch` → newer tag (or
    `origin/main`) → Oracle `/api/llm/generate` (`voice: true`, notes in the owner's «Lingua») → Hermes event with `_question` «Installo?».
-2. «Sì» (notification, page `/aggiornamenti` → WebUI → Hub, or Telegram tool) → `/api/setup/update/apply` → git
+2. «Sì» (notification, page `/updates` → WebUI → Hub, or Telegram tool) → `/api/setup/update/apply` → git
    checkout → per changed service: restart, or new image (GHCR pull / SDK build) + re-create → Hub health → on
    failure checkout back + previous images → Hermes notice.
 
@@ -406,16 +406,16 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 1. Voice note (Telegram) or voice message (WebUI) → client → Echo `/api/voice/transcribe` (use `telegram.vocale` /
    `webui.vocale`, recording kept in Archive with the message) → the text goes to Oracle like a typed message.
 2. «Ascolta» under a reply → Echo `/api/voice/speak` (kept with the reply; asked again → the kept audio).
-3. Live («Parla», Telegram `/voce`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
+3. Live («Parla», Telegram `/voice`): mic chunks → Echo `listen` stream (partial text, silence ends the turn) → Oracle
    chat as usual → answer text → Echo `say` stream → sentences played in order. No external live service.
-4. Notification in voice: module setting `<module>.notifiche.voce` → event `_voice` → Hermes publishes the text, then
+4. Notification in voice: module setting `<module>.notifications.voice` → event `_voice` → Hermes publishes the text, then
    Echo `speak` (use `hermes.notification`, kept with the notification) → `update` with `voice` to the clients.
 5. Audio inside a document → Oracle → Echo (use `oracle.documents`); Oracle has no speech engine.
 6. Before any engine (W4): Echo voiceprint filter (uses in `echo.voiceprint.uses`: other voices → silence, also before
    the live end-of-turn check) + personal dictionary hint; a correction (`/dictionary/learn`) teaches new words.
 7. Spoken diary (W4 B9): evening recap → button «Racconta la giornata» (Hygieia piece action, `command`) → Telegram
    asks a voice note → Hygieia `/api/selfcare/journal/voice` → Echo transcribe (use `hygieia.diary`) → diary
-   «giornata» → reflection signal `diario`.
+   «giornata» → reflection signal `diary`.
 
 ### Device feed flow (same dossier, W4)
 - Garmin: agenda job `hecate.garmin.sync` → Hecate (garminconnect, tokens in its data folder) → `FeedPublisher`

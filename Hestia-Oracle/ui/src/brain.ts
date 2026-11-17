@@ -36,14 +36,14 @@ export class OracleBrain extends HestiaElement {
     .tabs button[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   `];
 
-  constructor() { super(); this.activity = null; this.stats = null; this.code = null; this.error = ''; this.loading = false; this.tab = 'attivita'; }
+  constructor() { super(); this.activity = null; this.stats = null; this.code = null; this.error = ''; this.loading = false; this.tab = 'activity'; }
 
   connectedCallback() {
     super.connectedCallback();
     this.load();
     this.onHost('refresh', () => this.load());
     this.onHost('visible', () => this.load());
-    this.timer = window.setInterval(() => { if (!document.hidden && this.tab === 'attivita') this.load(); }, 30000);
+    this.timer = window.setInterval(() => { if (!document.hidden && this.tab === 'activity') this.load(); }, 30000);
   }
   disconnectedCallback() { super.disconnectedCallback(); window.clearInterval(this.timer); }
 
@@ -157,7 +157,7 @@ export class OracleBrain extends HestiaElement {
   }
 
   private tabs() {
-    const items = [['attivita', tr('Activity')], ['uso', tr('Usage')], ['modelli', tr('Models')]];
+    const items = [['activity', tr('Activity')], ['use', tr('Usage')], ['models', tr('Models')]];
     return html`<div class="tabs" role="tablist">${items.map(([id, label]) => html`<button role="tab" aria-selected=${this.tab === id}
       @click=${() => { this.tab = id; }}>${label}</button>`)}</div>`;
   }
@@ -176,10 +176,10 @@ export class OracleBrain extends HestiaElement {
   render() {
     return html`<div class="page">
       <div class="head"><h1>${tr("Requests and models")}</h1><span class="sub">${tr("What the assistant does: requests, models, tokens")}</span><span class="grow"></span>
-        ${this.tab === 'attivita' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>${tr("Refresh")}</hxk-button>` : nothing}</div>
+        ${this.tab === 'activity' ? html`<hxk-button variant="ghost" icon="refresh" ?loading=${this.loading} @click=${() => this.load()}>${tr("Refresh")}</hxk-button>` : nothing}</div>
       ${this.tabs()}
-      ${this.tab === 'uso' ? html`<oracle-usage .host=${this.host}></oracle-usage>`
-        : this.tab === 'modelli' ? html`<oracle-models .host=${this.host}></oracle-models>` : this.activityTab()}
+      ${this.tab === 'use' ? html`<oracle-usage .host=${this.host}></oracle-usage>`
+        : this.tab === 'models' ? html`<oracle-models .host=${this.host}></oracle-models>` : this.activityTab()}
     </div>`;
   }
 }

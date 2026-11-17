@@ -128,9 +128,9 @@ def build(tools: list, layout: dict | None = None) -> Menu:
         over = lay_tools.get(t.name) if isinstance(lay_tools.get(t.name), dict) else {}
         hints = t.hints or {}
         area_key = (alias.get(str(over.get("area") or "").lower()) or alias.get(t.group)
-                    or D.SERVICE_AREAS.get(t.service) or "altro")
+                    or D.SERVICE_AREAS.get(t.service) or "other")
         if area_key not in areas:
-            area_key = "altro"
+            area_key = "other"
         section = str(over.get("section") or hints.get("section") or OTHER_SECTION)
         menu.labels[t.name] = ui.label(over.get("label") or hints.get("label") or t.title)
         if section in D.HIDDEN_SECTIONS:

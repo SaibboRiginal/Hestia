@@ -62,10 +62,10 @@ domain `fitness`); texts say «Allenamento» things, never the module name. No L
 | Key | Kind · severity | When | Page |
 |---|---|---|---|
 | `stall:<exercise_id>` | trend · attenzione | `progression.stall` (setting `hercules.stall.exposures`), exercise trained in the last 30 days | `exercises/<id>` |
-| `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `allenamento` |
-| `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `allenamento` |
+| `deload` | trend · attenzione | ≥ 3 check-ins with energy ≤ 2 in 7 days | `training` |
+| `missed_streak` | streak · attenzione (alta ≥ 4) | ≥ 2 planned days of the weekly program missed in a row (skipped/moved days neither count nor break) | `training` |
 | `pr:<exercise_id>` | milestone · info, ttl 3 days | `records.recent_prs` of the last 3 days | `exercises/<id>` |
-| `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progressi` |
+| `week_goal` | goal · attenzione | a weekly goal `behind` with ≤ 2 days left | `progress` |
 
 Weekly metrics (last 12 ISO weeks, current included; weeks before the first workout left out): `fitness.sessions`
 «Allenamenti», `fitness.volume` «Volume (kg)», `fitness.energy` «Energia media» (only weeks with check-ins).
@@ -80,7 +80,7 @@ Agenda job `hercules.reminder` (daily 18:30, editable in the agenda) → `POST /
 Sends only when enabled, a goal is behind, nothing done or skipped today, no live session, and under
 `hercules.reminder.max_per_week`. Hermes `service.action_required` with `replaces: hercules.reminder`
 (one live reminder) and actions **Segna fatto** (`resolves: true`) / **Salta oggi**; target `owner`;
-`_link` opens the plugin page `allenamento`.
+`_link` opens the plugin page `training`.
 
 ## Client UI (plugin contract)
 
@@ -111,8 +111,8 @@ propose, `{plan}/confirm`, `{plan}/slots` (+`/{slot}/done|missed|moved|ask`), `{
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections (hestia_common.transfer over `hercules-store`): `esercizi` (exercise) · `schede` (template, program) ·
-`sessioni` (session + its sets) · `misure` (measurement) · `obiettivi` (goal, plan) · `feedback` (checkin, feedback).
+Sections (hestia_common.transfer over `hercules-store`): `exercises` (exercise) · `plans` (template, program) ·
+`sessions` (session + its sets) · `measures` (measurement) · `goals` (goal, plan) · `feedback` (checkin, feedback).
 Choosing a session pulls its template and exercises. Reminder and adaptation rows are runtime state: never exported.
 Settings travel through Themis.
 

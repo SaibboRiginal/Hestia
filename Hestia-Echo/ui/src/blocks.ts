@@ -8,7 +8,7 @@ import { API, DIRECTIONS, STATES, clone, slug } from './util';
 
 type Opt = { value: string; label: string };
 type Part = 'providers' | 'chains' | 'usecases';
-const MODES: Opt[] = [{ value: 'interna', label: tr('Internal') }, { value: 'esterna', label: tr('External') }];
+const MODES: Opt[] = [{ value: 'internal', label: tr('Internal') }, { value: 'external', label: tr('External') }];
 
 export class EchoBlocks extends HestiaElement {
   static properties = { ...HestiaElement.properties, live: { state: true }, error: { state: true }, providers: { state: true },
@@ -65,7 +65,7 @@ export class EchoBlocks extends HestiaElement {
                     steps: ch.steps.map((st: any) => ({ provider: st.provider, model: st.model || '', voice: st.voice || '', options: st.options || {} })) };
     this.chains = chains;
     const ov: Record<string, any> = {};
-    for (const x of this.live.usecases) if (x.overridden) ov[x.id] = { ...(x.chain !== x.suggested_chain ? { chain: x.chain } : {}), ...(x.mode !== 'segui' ? { mode: x.mode } : {}) };
+    for (const x of this.live.usecases) if (x.overridden) ov[x.id] = { ...(x.chain !== x.suggested_chain ? { chain: x.chain } : {}), ...(x.mode !== 'follow' ? { mode: x.mode } : {}) };
     this.overrides = clone(ov);
     this.dirty = {};
   }
@@ -146,7 +146,7 @@ export class EchoBlocks extends HestiaElement {
       .filter(([, p]) => (this.std(p.type).directions || []).includes(c.direction))
       .map(([n, p]) => ({ value: n, label: p.label || n }));
     const lp = this.liveProvider(step.provider);
-    const speaking = c.direction === 'voce';
+    const speaking = c.direction === 'voice';
     const choices: any[] = speaking ? lp.voices || [] : lp.models || [];
     const update = (patch: any) => { const next = steps.slice(); next[i] = { ...step, ...patch }; this.setSteps(chain, next); };
     const move = (d: number) => { const next = steps.slice(); const [s] = next.splice(i, 1); next.splice(i + d, 0, s); this.setSteps(chain, next); };
@@ -195,7 +195,7 @@ export class EchoBlocks extends HestiaElement {
     const name = slug(raw || '');
     if (!name || this.chains[name]) return;
     const voice = window.confirm(tr('Is it a voice chain (text → voice)? Cancel = listening.'));
-    this.chains = { ...this.chains, [name]: { label: raw!.trim(), direction: voice ? 'voce' : 'ascolto', steps: [] } };
+    this.chains = { ...this.chains, [name]: { label: raw!.trim(), direction: voice ? 'voice' : 'listen', steps: [] } };
     this.touch('chains');
   }
 
@@ -222,7 +222,7 @@ export class EchoBlocks extends HestiaElement {
       <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">${tr("not declared")}</hxk-badge>` : nothing}</div>
         <div class="small muted truncate" title=${u.help || ''}>${u.direction} · ${u.id}${u.help ? ` · ${u.help}` : ''}</div></div>
       <hxk-field type="enum" label=${tr("Chain")} .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
-      <hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode && o.mode !== 'segui' ? o.mode : ''}
+      <hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode && o.mode !== 'follow' ? o.mode : ''}
         @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
     </div>`;
   }

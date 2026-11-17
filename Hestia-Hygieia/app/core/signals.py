@@ -86,13 +86,13 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
         mean = round(sum(before) / len(before))
         if mean - now >= DROP_POINTS:
             out.append(signal("adherence_drop", tr("Routines kept {0}% this week, before {1}%", now, mean),
-                              kind="trend", severity="attenzione", metrics={"percent": now, "previous": mean},
-                              period=weeks[-1], page="statistiche"))
+                              kind="trend", severity="warning", metrics={"percent": now, "previous": mean},
+                              period=weeks[-1], page="stats"))
     for p in h.plan(today.isoformat())["routines"]:
         g = p["goal"]
         if g.get("mode") == "target" and g.get("behind") and p["state"] == "due":
             out.append(signal(f"goal:{p['routine_id']}", (tr("{0} behind: {1}, 1 day to the end", p['name'], g['hint']) if g['days_left'] == 1 else tr("{0} behind: {1}, {2} days to the end", p['name'], g['hint'], g['days_left'])),
-                              kind="goal", severity="attenzione",
+                              kind="goal", severity="warning",
                               metrics={"done": g["done"], "times": g["times"], "days_left": g["days_left"]},
                               page=f"routine/{p['routine_id']}"))
     for r in h.items("routine"):
@@ -108,9 +108,9 @@ def evaluate(h: "Hygieia", today: date | None = None) -> tuple[list[dict], list[
     if told:
         # B9 spoken evening diary: the day told by the owner, read by the evening reflection (full text via topic)
         note = " ".join(str(told.get("note") or "").split())
-        out.append(signal("diario", tr("Day told: {0}", note[:200]) + ("…" if len(note) > 200 else ""),
+        out.append(signal("diary", tr("Day told: {0}", note[:200]) + ("…" if len(note) > 200 else ""),
                           kind="trend", severity="info", metrics={"chars": len(note)}, period=today.isoformat(),
-                          ttl_days=2, page="diario"))
+                          ttl_days=2, page="diary"))
     return out, weekly_metrics(h, weeks, adherence)
 
 
@@ -149,7 +149,7 @@ def detail(h: "Hygieia", topic: str, today: date | None = None) -> str | None:
     h.store.refresh()
     today = today or h.today()
     kind, _, ref = (topic or "").partition(":")
-    if topic == "diario":
+    if topic == "diary":
         told = _told(h, today)
         return tr("Diary of the day ({0}): {1}", today.isoformat(), told.get('note')) if told else None
     if topic == "adherence_drop":

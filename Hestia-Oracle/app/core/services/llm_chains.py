@@ -33,13 +33,13 @@ def _step(provider: str, model: str, **extra) -> dict:
 DEFAULT_CHAINS: dict[str, dict] = {
     # llama-server first (brainstorm D17: slots + saved context); skipped at once when it is not running.
     # Gemini by alias (…-latest): Google retires dated models for new keys (2.0-flash, 2.5-flash-lite in 2026-10).
-    "veloce": {"label": "Fast", "steps": [
+    "fast": {"label": "Fast", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-lite-latest"),
         _step("gemini", "gemini-flash-latest")]},
-    "potente": {"label": "Potente", "steps": [
+    "strong": {"label": "Potente", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
         _step("gemini", "gemini-flash-lite-latest")]},
-    "codice": {"label": "Code", "steps": [
+    "code": {"label": "Code", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
         _step("gemini", "gemini-flash-lite-latest")]},
     # Cloud only (training dataset review, docs/work/2026-10-30-dataset-allenamento): the owner chose a model stronger
@@ -48,7 +48,7 @@ DEFAULT_CHAINS: dict[str, dict] = {
         _step("gemini", "gemini-flash-latest"), _step("gemini", "gemini-flash-lite-latest")]},
     # One step only: vectors of different models are not comparable (memory and document search would break).
     "embedding": {"label": "Embedding", "steps": [_step("ollama", "qwen3-embedding:0.6b")]},
-    "visione": {"label": "Visione", "steps": [
+    "vision": {"label": "Visione", "steps": [
         _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest")]},
 }
 EMBEDDING_CHAIN = "embedding"
@@ -58,22 +58,22 @@ DESCRIBE_PROMPT = ("Describe this image for someone who cannot see it: what is i
 
 # Oracle's own use cases: id → (label, chain, thinking, help). Internal slot names (AgentBundle) in SLOTS.
 ORACLE_USECASES: dict[str, tuple[str, str, str, str]] = {
-    "oracle.general": ("General use", "veloce", "auto",
+    "oracle.general": ("General use", "fast", "auto",
                         "Chat, classification, tool choice, memory."),
-    "oracle.reasoning": ("Reasoning", "potente", "true", "Long analyses and complex reasoning."),
-    "oracle.codice": ("Code", "codice", "auto", "Code generation and fixing in chat."),
-    "oracle.documents": ("Documents and images", "visione", "false", "Reading documents, images and audio."),
-    "oracle.describe_image": ("Image description", "visione", "false",
+    "oracle.reasoning": ("Reasoning", "strong", "true", "Long analyses and complex reasoning."),
+    "oracle.code": ("Code", "code", "auto", "Code generation and fixing in chat."),
+    "oracle.documents": ("Documents and images", "vision", "false", "Reading documents, images and audio."),
+    "oracle.describe_image": ("Image description", "vision", "false",
                                  "When the answering model can't see images, a model that sees them describes them first."),
-    "oracle.check_rounds": ("Idle-loop check", "veloce", "false",
+    "oracle.check_rounds": ("Idle-loop check", "fast", "false",
                               "When the assistant repeats the same calls: a quick look to understand whether it is waiting or looping."),
     "oracle.embedding": ("Embedding (search)", "embedding", "false",
                          "Vectors for memory and documents. Changing it makes the vectors already saved different."),
 }
-SLOTS = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.codice",
+SLOTS = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.code",
          "documents": "oracle.documents", "embedding": "oracle.embedding"}
 GENERAL = "oracle.general"
-MODES = [("segui", "Like the Brain"), ("interna", "Internal"), ("esterna", "External")]
+MODES = [("follow", "Like the Brain"), ("internal", "Internal"), ("external", "External")]
 
 # ── Quota state (memory: a restart costs at most one extra 429 per pair) ────────
 
@@ -241,7 +241,7 @@ def chains() -> dict[str, dict]:
 def declared_usecases() -> dict[str, dict]:
     """Oracle's use cases + the ones modules declare in their Hub registration (``llm_usecases``)."""
     out = {uc: {"id": uc, "module": "oracle", "label": label, "chain": chain, "thinking": thinking, "help": help_,
-                "mode": "segui"}
+                "mode": "follow"}
            for uc, (label, chain, thinking, help_) in ORACLE_USECASES.items()}
     for row in _registry_usecases():
         out.setdefault(row["id"], row)
@@ -250,7 +250,7 @@ def declared_usecases() -> dict[str, dict]:
     for uc in seen:
         out.setdefault(uc, {"id": uc, "module": uc.split(".", 1)[0], "label": uc, "chain": "",
                             "thinking": "auto", "help": tr("Not declared by the module: uses the «General use» chain."),
-                            "mode": "segui", "undeclared": True})
+                            "mode": "follow", "undeclared": True})
     return out
 
 
@@ -284,7 +284,7 @@ def _registry_usecases() -> list[dict]:
                     found.append({"id": str(item["id"]).strip().lower(), "module": module,
                                   "label": str(item.get("label") or item["id"]), "chain": str(item.get("chain") or ""),
                                   "thinking": str(item.get("thinking") or "auto"),
-                                  "mode": str(item.get("mode") or "segui"), "help": str(item.get("help") or "")})
+                                  "mode": str(item.get("mode") or "follow"), "help": str(item.get("help") or "")})
         _registry_cache = (time.time(), found)
         return found
     except Exception as exc:
@@ -319,10 +319,10 @@ def usecase_config(uc: str) -> dict:
         logger.warning("[🔄] event=llm_usecase_unknown_chain use_case=%s chain=%s fallback=%s",
                        uc, chain, general["chain"])
         chain = general["chain"]
-    mode = str(own.get("mode") or (decl or {}).get("mode") or "segui")
+    mode = str(own.get("mode") or (decl or {}).get("mode") or "follow")
     return {"id": uc, "chain": chain, "thinking": str(own.get("thinking") or (decl or general).get("thinking")
                                                       or "auto").lower(),
-            "mode": mode if mode in {m for m, _ in MODES} else "segui", "declared": decl is not None}
+            "mode": mode if mode in {m for m, _ in MODES} else "follow", "declared": decl is not None}
 
 
 def chain_steps(uc: str) -> list[dict]:
@@ -493,7 +493,7 @@ class ChainAgent:
     def ask_with_attachment(self, file_bytes: bytes = b"", mime_type: str = "", user_message: str = "",
                             *args, **kwargs) -> str:
         """Attachments along the chain. Vision bridge (Cindy 16): an image never goes to a step whose model is
-        text-only (``oracle.documents.vision_models``): that step gets a description made by the ``visione`` chain
+        text-only (``oracle.documents.vision_models``): that step gets a description made by the ``vision`` chain
         (use case ``oracle.describe_image``) instead. Steps that see images are untouched."""
         if not str(mime_type or "").startswith("image/"):
             return self._call("ask_with_attachment", file_bytes, mime_type, user_message, *args, **kwargs)
@@ -587,7 +587,7 @@ def agent_for(use_case: str, voice: bool = False) -> ChainAgent:
         return agent
 
 
-def claude_code_model(use_case: str = "forge.codice") -> str:
+def claude_code_model(use_case: str = "forge.code") -> str:
     """Model for Claude Code runs (Forge engine ``claude``): the first ``claude_cli`` step of the use case's
     chain, else "" (Claude Code's own default)."""
     from core.services import llm_providers

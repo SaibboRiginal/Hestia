@@ -98,7 +98,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   `{"params": {...}, "timeout_seconds": 30}`.
 - A step that fails or a required field that comes back empty → answer `status: broken` and the log
   `event=atlas_recipe_broken` (WARNING): Argus alerts on it and, when it repeats, proposes the fix to Forge.
-- Shipped: `duckduckgo` (q → titles, links, snippets), `pagina` (url → title, description, headings, text).
+- Shipped: `duckduckgo` (q → titles, links, snippets), `page` (url → title, description, headings, text).
 
 
 

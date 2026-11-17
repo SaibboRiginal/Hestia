@@ -20,7 +20,7 @@ who is at home
   Devices are found by entity id or by name (exact, then partial; ambiguous → the list of matches).
 - **Presence**: the person entity chosen in Themis `lares.persona` (options read live from HA) → presence signal
   `home.present` (true when `home`). Hecate's state «Fuori casa» reads it next to `phone.home`.
-- Quick actions (favourites: device, label, room, command) in Archive `home-store`; export/import section `preferiti`.
+- Quick actions (favourites: device, label, room, command) in Archive `home-store`; export/import section `favorites`.
 
 ## API (`/api/home`)
 

@@ -82,7 +82,7 @@ export class EchoVoice extends HestiaElement {
     this.recording = false;
     const blob = await this.rec.stop();
     if (!blob) return;
-    this.busy = 'ascolto';
+    this.busy = 'listen';
     const r = await this.host.api('POST', `${API}/transcribe`, { body: {
       audio_b64: await blobToB64(blob), mime_type: this.rec.mime, use_case: 'echo.test.listening' } });
     this.busy = '';
@@ -94,7 +94,7 @@ export class EchoVoice extends HestiaElement {
   private async learn() {
     const corrected = (this.fix || '').trim();
     if (!corrected || corrected === this.heard?.text) { this.fix = null; return; }
-    this.busy = 'impara';
+    this.busy = 'learn';
     const r = await this.host.api('POST', `${API}/dictionary/learn`, { body: { heard: this.heard.text, corrected } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('alt::Failed'), 'warning'); return; }
@@ -106,7 +106,7 @@ export class EchoVoice extends HestiaElement {
 
   private async speak() {
     if (!this.text.trim()) return;
-    this.busy = 'voce';
+    this.busy = 'voice';
     const r = await this.host.api('POST', `${API}/speak`, { body: { text: this.text, format: 'ogg_opus', use_case: 'echo.test.voice' } });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('I couldn\'t speak'), 'danger'); return; }
@@ -124,7 +124,7 @@ export class EchoVoice extends HestiaElement {
     return html`<div class="meta">
       ${d.provider ? html`<hxk-badge tone="neutral">${d.provider}${d.model || d.voice ? ` · ${d.model || d.voice}` : ''}</hxk-badge>` : nothing}
       ${d.chain ? html`<span>${tr("chain")} ${d.chain}</span>` : nothing}
-      ${d.mode === 'esterna' ? html`<hxk-badge tone="info">${tr("external")}</hxk-badge>` : nothing}
+      ${d.mode === 'external' ? html`<hxk-badge tone="info">${tr("external")}</hxk-badge>` : nothing}
       ${d.fallback ? html`<hxk-badge tone="warning">${tr("fallback")}</hxk-badge>` : nothing}
       ${d.duration_s ? html`<span>${secs(d.duration_s)}</span>` : nothing}
     </div>`;
@@ -136,11 +136,11 @@ export class EchoVoice extends HestiaElement {
         <div class="mic">
           <button class=${this.recording ? 'on' : ''} @click=${() => this.toggleMic()} aria-label=${this.recording ? tr('Stop and transcribe') : tr('f::Log')}>
             <hxk-icon name=${this.recording ? 'stop' : 'mic'} size=${30}></hxk-icon></button>
-          <span class="small muted">${this.recording ? tr('I\'m listening… tap to finish') : this.busy === 'ascolto' ? tr('Transcribing…') : tr('Tap to speak')}</span>
+          <span class="small muted">${this.recording ? tr('I\'m listening… tap to finish') : this.busy === 'listen' ? tr('Transcribing…') : tr('Tap to speak')}</span>
         </div>
         ${this.heard ? this.fix !== null && this.fix !== undefined ? html`<textarea .value=${this.fix} @input=${(e: any) => (this.fix = e.target.value)}></textarea>
             <div class="actions"><hxk-button variant="ghost" @click=${() => (this.fix = null)}>${tr("Cancel")}</hxk-button>
-              <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'impara'} @click=${() => this.learn()}>${tr("Fix")}</hxk-button></div>`
+              <hxk-button variant="primary" icon="check" ?loading=${this.busy === 'learn'} @click=${() => this.learn()}>${tr("Fix")}</hxk-button></div>`
           : html`<div class="out">${this.heard.text}</div>${this.meta(this.heard)}
             <div class="actions"><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.fix = this.heard.text)}>${tr("Fix the transcription")}</hxk-button></div>` : nothing}
       </hxk-card>
@@ -148,7 +148,7 @@ export class EchoVoice extends HestiaElement {
         <textarea .value=${this.text} @input=${(e: any) => (this.text = e.target.value)}></textarea>
         <div class="actions">
           ${this.said ? html`<hxk-button variant="ghost" icon="play" @click=${() => this.play(this.said.audio_b64, this.said.mime_type)}>${tr("Again")}</hxk-button>` : nothing}
-          <hxk-button variant="primary" icon="volume" ?loading=${this.busy === 'voce'} @click=${() => this.speak()}>${tr("Read")}</hxk-button>
+          <hxk-button variant="primary" icon="volume" ?loading=${this.busy === 'voice'} @click=${() => this.speak()}>${tr("Read")}</hxk-button>
         </div>
         ${this.meta(this.said)}
       </hxk-card>
@@ -156,14 +156,14 @@ export class EchoVoice extends HestiaElement {
     <hxk-card heading=${tr("Prepare the voice now")} subtitle=${tr("So as not to wait at the first sentence")} style="margin-top:16px">
       <p class="small muted" style="margin:0 0 10px">${tr("The first time I listen to you or talk to you on this computer I have to download what's needed, and that sentence waits. Here I download it right away. If everything is already ready, or you use a cloud voice, I download nothing. You see the progress in System › Downloads.")}</p>
       <div class="actions" style="justify-content:flex-start;margin:0">
-        <hxk-button icon="download" ?loading=${this.busy === 'prepara'} @click=${() => this.prepare()}>${tr("Prepare the voice now")}</hxk-button>
+        <hxk-button icon="download" ?loading=${this.busy === 'prepare'} @click=${() => this.prepare()}>${tr("Prepare the voice now")}</hxk-button>
       </div>
     </hxk-card>`;
   }
 
   /** Queues the local models of the listening and speaking chains in use (nothing for cloud steps). */
   private async prepare() {
-    this.busy = 'prepara';
+    this.busy = 'prepare';
     const r = await this.host.api('POST', `${API}/models/prefetch`, { body: {} });
     this.busy = '';
     if (!r.ok) { this.host.toast(r.error || tr('The voice doesn\'t answer now'), 'danger'); return; }

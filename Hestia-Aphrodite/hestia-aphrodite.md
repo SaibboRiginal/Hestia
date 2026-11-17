@@ -21,7 +21,7 @@
 - **Pictures** are asked to the image module (`POST /route/apollo/api/images/jobs` with a callback to
   `/api/appearance/images/done`): a profile background, three poses per pet (idle, happy, sleep). An uploaded blob
   wins over a generated one.
-- Archive `appearance-store` (`profile`, `pet`, `choice`, `moment`); export/import section `aspetto`.
+- Archive `appearance-store` (`profile`, `pet`, `choice`, `moment`); export/import section `look`.
 
 ## API (`/api/appearance`)
 

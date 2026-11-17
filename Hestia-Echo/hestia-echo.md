@@ -10,8 +10,8 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
 
 ## Responsibility
 
-- **Listening** (`ascolto`): audio of any format (ogg/opus from Telegram, webm from the browser, mp3, wav, m4a…) → text.
-- **Speaking** (`voce`): text → audio (`ogg_opus` for Telegram voice notes, `mp3` for browsers, `wav`, `webm`).
+- **Listening** (`listen`): audio of any format (ogg/opus from Telegram, webm from the browser, mp3, wav, m4a…) → text.
+- **Speaking** (`voice`): text → audio (`ogg_opus` for Telegram voice notes, `mp3` for browsers, `wav`, `webm`).
   **Language follows the conversation** (Marko 2026-11-07): the text to speak is read in its own language
   (`core/lang.py`, langdetect; short or unsure texts keep `echo.language`, Italian when it is `auto`), and a local
   voice of another language is swapped for that language's voice of the same kind (Kokoro: `if_sara` + English →
@@ -38,14 +38,14 @@ for every client. Built like Oracle a blocchi: named providers, chains, uses dec
   (e.g. `ECHO_KEY_GROQ`), never in Themis.
 - **Chains** `echo.chains`: name → `{label, direction: ascolto|voce, steps[{provider, model, voice, options}]}`.
   The first ready step is used; a step out of quota (429) is skipped until its reset (`Retry-After` or
-  `echo.chains.cooldown`), «Riprova adesso» clears it. Defaults: `ascolto` (Whisper locale small → Groq
-  whisper-large-v3-turbo), `listening-precise`, `voce` (Kokoro if_sara → Piper it_IT-paola-medium), `voice-natural`.
+  `echo.chains.cooldown`), «Riprova adesso» clears it. Defaults: `listen` (Whisper locale small → Groq
+  whisper-large-v3-turbo), `listening-precise`, `voice` (Kokoro if_sara → Piper it_IT-paola-medium), `voice-natural`.
 - **Uses** `echo.usecases`: every module declares its uses in Hub capabilities `voice_usecases`
   (`hestia_common.voice_usecases.usecase(id, label, direction=, chain=, help=, mode=)`); the page chooses chain and
   mode per use. Undeclared uses still work on the default chain of their direction and are listed as «non dichiarato».
-- **Mode** `echo.mode`: `interna` (Echo's chains) or `esterna` (one engine does everything, `echo.external.provider`
+- **Mode** `echo.mode`: `internal` (Echo's chains) or `external` (one engine does everything, `echo.external.provider`
   + `echo.external.model`; Echo is only the door: cuts blocks, keeps audio, counts use). If the external engine fails:
-  `echo.external.fallback` = `interna` (back to the chains) or `nessuno` (say it does not work). Each use may override.
+  `echo.external.fallback` = `internal` (back to the chains) or `none` (say it does not work). Each use may override.
 
 Declared uses today: `echo.prova.*` (page «Prova»), `oracle.documents` (audio in documents, chain `listening-precise`),
 `telegram.vocale`, `telegram.answer`, `webui.vocale`, `webui.listen`, `webui.live.listening`, `webui.live.voice`,
@@ -69,7 +69,7 @@ The same text for the same message is never generated twice (`text_hash`).
 
 ## Notifications in voice
 
-Each module decides with its own setting `<module>.notifiche.voce` (`hestia_common.reminders.voice_setting`; on for
+Each module decides with its own setting `<module>.notifications.voice` (`hestia_common.reminders.voice_setting`; on for
 Hercules, Hygieia, Wardrobe; off for Plutus and Scout). The event carries `_voice`; Hermes publishes the written
 notification first, then asks Echo (use `hermes.notification`) and sends an `update` with `voice`: Telegram sends a voice
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
@@ -96,7 +96,7 @@ never changes.
 ## Clients
 
 - **Telegram**: a voice note becomes a chat message (transcript shown, then handled like typed text, recording
-  kept); every reply has «Ascolta»; `/voce` switches spoken answers to voice notes on or off.
+  kept); every reply has «Ascolta»; `/voice` switches spoken answers to voice notes on or off.
 - **WebUI**: voice messages in the chat like any messenger (hold to record, release to send, slide left to cancel;
   with a mouse click to record, then bin or send), audio bubble with transcript; «Ascolta» under every reply;
   **Parla** (live): the browser notices start and end of speech (`echo.live.silence_ms`), streams the mic to `listen`,
@@ -142,7 +142,7 @@ never changes.
 | POST | `/setup/test` | «Prova» of a speech service `{provider}`: its list read with the key (no audio made) → `{ok, detail, models, voices, recommended {ascolto, voce}}` (preselected once the key works) |
 | POST | `/setup/preview` | «Ascolta» on a voice chosen in the setup `{provider, voice, model?, text?}`: a short sentence spoken by that provider only (no chain, nothing saved) → `{ok, audio_b64, mime_type}` or `{ok: false, detail}` (a local engine not downloaded yet, a service without key) |
 | POST | `/setup/hear` | «Prova» of listening in the setup `{provider, model, audio_b64, mime_type}`: the recording heard by that provider only → `{ok, text}` or `{ok: false, detail}` |
-| POST | `/setup/apply` | `{listen, speak}`, each a list of steps in order (one local engine, then cloud services; one object still accepted; a found program's step carries `url/type/label` and becomes a block) → `echo.chains` (the chosen steps first in `ascolto`/`voce`, the other providers' steps kept as fallbacks), then the local models are queued → `{queued, downloads}` |
+| POST | `/setup/apply` | `{listen, speak}`, each a list of steps in order (one local engine, then cloud services; one object still accepted; a found program's step carries `url/type/label` and becomes a block) → `echo.chains` (the chosen steps first in `listen`/`voice`, the other providers' steps kept as fallbacks), then the local models are queued → `{queued, downloads}` |
 | POST | `/models/prefetch` | queue the local models of the first local step of the «ascolto» and «voce» chains (guided setup «Voce», Download page) → `{queued, downloads}` |
 
 Downloads (`/api/downloads`, `hestia_common.downloads`, state `/models/downloads.json`): Whisper (source `whisper`,

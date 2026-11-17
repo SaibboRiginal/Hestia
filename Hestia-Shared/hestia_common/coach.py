@@ -11,7 +11,7 @@ A module becomes a coach with one router and the Hub tag ``coach``:
     def build_needs(start: date, end: date) -> dict:          # {state, needs: [need(...)]}
         return {"state": "1/3 questa settimana",
                 "needs": [need("workout.1", "Allenamento Push A", kind="block", minutes=60, min_minutes=30,
-                               time_of_day="evening", tags=["effort:3", "workout"], reason="1/3", link="oggi")]}
+                               time_of_day="evening", tags=["effort:3", "workout"], reason="1/3", link="today")]}
 
     coach.done("workout.1")          # the user did it (module data) → Chronos marks the plan item
     coach.changed()                  # needs changed (deload, paused routine…) → Chronos re-plans the rest of the week

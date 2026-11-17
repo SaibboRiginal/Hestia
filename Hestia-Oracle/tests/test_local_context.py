@@ -205,7 +205,7 @@ class TestOpenAIProvider:
 @pytest.mark.unit
 class TestGatewayOllamaNative:
     def _body(self) -> dict:
-        return {"use_case": "forge.codice", "temperature": 0.2, "tools": [{"type": "function", "function": {"name": "read_file"}}],
+        return {"use_case": "forge.code", "temperature": 0.2, "tools": [{"type": "function", "function": {"name": "read_file"}}],
                 "messages": [{"role": "system", "content": "s"}, {"role": "user", "content": "u"},
                              {"role": "assistant", "content": "", "tool_calls": [
                                  {"id": "c1", "type": "function",
@@ -238,7 +238,7 @@ class TestGatewayOllamaNative:
 
     def test_usecase_status_reports_window(self):
         from core.services import llm_gateway
-        status = llm_gateway.usecase_status("forge.codice")
+        status = llm_gateway.usecase_status("forge.code")
         assert status["available"] and status["provider"] == "ollama"
         assert status["context_window"] == oracle_settings.context_window()
         assert status["billed"] is False   # no keys in tests: only the local step is usable

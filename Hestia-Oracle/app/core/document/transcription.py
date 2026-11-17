@@ -14,7 +14,7 @@ from hestia_common.voice_usecases import capabilities as voice_capabilities, use
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 USE_CASE = "oracle.documents"
-VOICE_USECASES = [voice_usecase(USE_CASE, "Oracle · audio in documents", direction="ascolto",
+VOICE_USECASES = [voice_usecase(USE_CASE, "Oracle · audio in documents", direction="listen",
                                 chain="listening-precise",
                                 help="Audio and video sent in chat or uploaded to Documents.")]
 

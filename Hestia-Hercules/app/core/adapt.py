@@ -18,9 +18,9 @@ DEFAULTS = {"low_energy": 2, "weight_cut_pct": 10, "very_low_weight_cut_pct": 15
 
 # Words the owner may use: the English labels, their Italian translations and a few plural/colloquial forms.
 _LABELS = {**{tr(v, lang=lang).lower(): k for lang in ("en", "it") for names in (JOINTS, MUSCLES) for k, v in names.items()},
-           "spalle": "shoulder", "ginocchia": "knee", "schiena": "lower_back", "lombare": "lower_back",
-           "polsi": "wrist", "gomiti": "elbow", "anche": "hip", "caviglie": "ankle", "gambe": "quads",
-           "petto": "chest", "dorso": "lats", "braccia": "biceps"}
+           "shoulders": "shoulder", "knees": "knee", "back": "lower_back", "lombare": "lower_back",
+           "wrists": "wrist", "gomiti": "elbow", "anche": "hip", "caviglie": "ankle", "legs": "quads",
+           "chest": "chest", "dorso": "lats", "arms": "biceps"}
 
 
 def resolve_areas(areas: list[str] | None) -> tuple[set[str], set[str]]:
@@ -133,7 +133,7 @@ def adapt(plan: list[dict], catalog: dict[str, dict], readiness: dict, *, intent
                 continue
             alt = _alternative(m, catalog, avoid_joints=pain_j, avoid_equipment=set(equipment_missing or []),
                                avoid_muscles=pain_m, used=used)
-            name = m.get("name", "esercizio")
+            name = m.get("name", "exercise")
             if alt and not (set(alt.get("primary_muscles") or []) & pain_m):
                 ex.update(replaced_from=ex["exercise_id"], exercise_id=alt["id"])
                 used.add(alt["id"])

@@ -225,7 +225,7 @@ export const THEMES: ThemeDef[] = [
     makeTheme('rose-dark', tr('Wine'), 'dark', 'rose-light', { bg: '#1d1316', surface: '#281a1f', text: '#f5e8eb', accent: '#e57c9c' }),
     makeTheme('sand-light', tr('Sand'), 'light', 'ember-dark', { bg: '#fbf7ef', surface: '#fffdf8', text: '#231c10', accent: '#b7791f' }),
     makeTheme('ember-dark', tr('Ember'), 'dark', 'sand-light', { bg: '#1c1612', surface: '#261e18', text: '#f3ebe2', accent: '#f08a4b' }),
-    makeTheme('mezzanotte', tr('Midnight'), 'dark', undefined, { bg: '#0c0f1a', surface: '#141a2a', text: '#e6e9f2', accent: '#e3b04b', chatSans: true }),
+    makeTheme('midnight', tr('Midnight'), 'dark', undefined, { bg: '#0c0f1a', surface: '#141a2a', text: '#e6e9f2', accent: '#e3b04b', chatSans: true }),
   ],
 ];
 

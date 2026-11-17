@@ -1,4 +1,4 @@
-"""Hestia-Kairos — deadlines with advice («Scadenze», port 19028, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 B7).
+"""Hestia-Kairos — deadlines with advice («Deadlines», port 19028, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 B7).
 
 Data in Archive (``/api/deadlines-store``), each open deadline in the calendar (agenda events), mails by push from
 Iris (subscription ``kairos:mail``: only proposals the owner confirms), notices through Hermes, the daily check in
@@ -11,7 +11,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # owner language; owner words per language
 
 try:
     import hestia_common  # noqa: F401
@@ -35,8 +35,7 @@ API = "/api/deadlines"
 DOMAIN = "deadlines"
 MAIL_KEY = "mail"
 ADVICE_USE = "kairos.advice"
-DEFAULT_MAIL_WORDS = ["scadenza", "scade", "bolletta", "fattura", "rinnovo", "bollo", "revisione", "polizza",
-                      "pagamento"]
+DEFAULT_MAIL_WORDS = words("kairos.mail_subject")          # subject words of every language (locales/*/words.json)
 
 kit = ModuleKit("kairos", port=19028, api=API, domain=DOMAIN, title="Deadlines", store="deadlines-store",
                 when_to_use="deadlines: bills, insurance, car tax, car inspection, service, documents, subscriptions",
@@ -227,7 +226,7 @@ S, I, N = {"type": "string"}, {"type": "integer"}, {"type": "number"}
 D = {"type": "string", "description": "id or part of the deadline title"}
 CAT = {"type": "string", "enum": list(CATEGORIES)}
 REC = {"type": "string", "enum": list(RECURRENCES)}
-G = "scadenze"
+G = "deadlines"
 kit.tools([
     MCPTool(name="deadlines_list", description="The open deadlines (days = within how many days; category; status open|proposed|done).",
             parameters={"type": "object", "properties": {"days": I, "category": CAT, "status": S}}, handler=_list,
@@ -271,20 +270,20 @@ kit.tools([
 ], prefix="deadlines_")
 
 transfer = Transfer("kairos", kit.hub, sections=[
-    StoreSection("scadenze", "Deadlines", kit.store, ["deadline"], icon="clock", title=lambda r: r["data"].get("title", "")),
+    StoreSection("deadlines", "Deadlines", kit.store, ["deadline"], icon="clock", title=lambda r: r["data"].get("title", "")),
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
-    usecase(ADVICE_USE, "Deadlines · tips", chain="veloce", help="A short practical tip about a deadline.")])})
+    usecase(ADVICE_USE, "Deadlines · tips", chain="fast", help="A short practical tip about a deadline.")])})
 kit.capabilities(transfer.capabilities)
 kit.agenda_rules(lambda: [job_rule("kairos.daily", tr("Deadlines: notices"), service="kairos", path=f"{API}/daily",
                                    recurrence="FREQ=DAILY", start_at="2026-01-01T08:30:00", tz=kit.tz,
                                    description="A notice at the advance warning and one on the day of the deadline.")])
 kit.on_warm(lambda: (mail.subscribe_async(_mail_rules), process_pending_mail()))
 kit.webui(icon="clock", color="orange", description="Bills, insurance, car tax, inspection, documents: alerts and tips.",
-          pages=[page("scadenze", "Deadlines", element="kairos-list", icon="clock", order=70,
+          pages=[page("deadlines", "Deadlines", element="kairos-list", icon="clock", order=70,
                       help="The deadlines with the advance warning, those found in emails to confirm, a tip for each. «Done» moves recurring ones to the next date."),
-                 page("deadline/:id", "Deadline", element="kairos-detail", detail=True, parent="scadenze")],
-          widgets=[widget("prossime", "Deadlines", element="kairos-widget", sizes=["s", "m", "l"], size="m", auto=True,
-                          open_page="scadenze", icon="clock")])
+                 page("deadline/:id", "Deadline", element="kairos-detail", detail=True, parent="deadlines")],
+          widgets=[widget("upcoming", "Deadlines", element="kairos-widget", sizes=["s", "m", "l"], size="m", auto=True,
+                          open_page="deadlines", icon="clock")])
 kit.finish()

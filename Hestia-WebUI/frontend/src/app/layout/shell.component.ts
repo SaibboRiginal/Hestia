@@ -32,9 +32,9 @@ interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'syste
 interface Crumb { label: string; link?: string; }
 /** Pages of the app that belong to «Sistema» next to the system modules' own pages. */
 const SYSTEM_PAGES = [
-  { id: 'app.system', label: tr('Overview'), icon: 'grid', link: '/sistema' },
-  { id: 'app.updates', label: tr('Updates'), icon: 'refresh', link: '/aggiornamenti' },
-  { id: 'app.machines', label: tr('Machines'), icon: 'host', link: '/macchine' },
+  { id: 'app.system', label: tr('Overview'), icon: 'grid', link: '/system' },
+  { id: 'app.updates', label: tr('Updates'), icon: 'refresh', link: '/updates' },
+  { id: 'app.machines', label: tr('Machines'), icon: 'host', link: '/machines' },
   { id: 'app.download', label: tr('alt::Download'), icon: 'download', link: '/download' },
 ];
 /** Sections whose pages show «Sezione › Pagina» above the page. */
@@ -376,7 +376,7 @@ export class ShellComponent {
     return top.flatMap(p => [p, ...pages.filter(c => c.parent === p.local_id && c.module === p.module)]);
   });
   /** The «Stato del sistema» dashboard opens from the Sistema page, not from a second sidebar entry. */
-  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'sistema'));
+  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'system'));
 
   /** Every sidebar entry by section; pinned ones move to «Fissati» (in the user's order) and leave their section. */
   readonly sections = computed<NavSection[]>(() => {

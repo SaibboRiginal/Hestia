@@ -166,9 +166,9 @@ def test_endpoints_and_tool_cards():
                                                 "ref": "gym_today"}).json() == {"recorded": 1}
         assert c.post("/api/metis/usage", json={"taps": [{"client": "fax", "ref": "x"}]}).status_code == 422
         assert c.get("/api/metis/now", params={"client": "telegram"}).json()["items"][0]["tool"] == "gym_today"
-        card = c.get("/api/metis/tools/adesso", params={"client": "telegram"}).json()
+        card = c.get("/api/metis/tools/now", params={"client": "telegram"}).json()
         assert card["display"]["title"] == "Adesso" and card["display"]["actions"][0]["tool"] == "gym_today"
-        scopri = c.get("/api/metis/tools/scopri").json()
+        scopri = c.get("/api/metis/tools/discover").json()
         assert scopri["display"]["title"] == "Scopri" and scopri["items"]
         assert c.get("/api/metis/usage/stats").json()["taps"] == 1
         assert "pruned" in c.post("/api/metis/now/refresh", json={}).json()
@@ -184,9 +184,9 @@ def test_recent_lists_last_taps_newest_first_within_hours():
     u, _ = _usage()
     now = datetime.now(timezone.utc)
     u.record([{"client": "telegram", "kind": "tool", "ref": "gym_today", "at": (now - timedelta(hours=30)).isoformat()},
-              {"client": "webui", "kind": "page", "ref": "spese", "label": "Spese", "at": (now - timedelta(hours=2)).isoformat()},
+              {"client": "webui", "kind": "page", "ref": "expenses", "label": "Spese", "at": (now - timedelta(hours=2)).isoformat()},
               {"client": "telegram", "kind": "tool", "ref": "weather_today", "at": (now - timedelta(minutes=5)).isoformat()}])
     items = u.recent(limit=5, hours=12)["items"]
-    assert [i["ref"] for i in items] == ["weather_today", "spese"]
+    assert [i["ref"] for i in items] == ["weather_today", "expenses"]
     assert items[1]["label"] == "Spese" and items[0]["client"] == "telegram"
     assert len(u.recent(limit=1)["items"]) == 1

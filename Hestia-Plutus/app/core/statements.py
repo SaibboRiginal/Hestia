@@ -19,25 +19,27 @@ from datetime import date
 from . import catalog
 from .service import Invalid, NotFound, Plutus, _d, _id, _json_from
 from .store import now_iso
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_regex, word_set  # owner language; owner words per language
 
 logger = logging.getLogger("hestia_plutus.statements")
 
-_MONTHS = {"gen": 1, "feb": 2, "mar": 3, "apr": 4, "mag": 5, "giu": 6, "lug": 7, "ago": 8, "set": 9, "ott": 10,
-           "nov": 11, "dic": 12, "jan": 1, "may": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9, "oct": 10, "dec": 12}
+def _month_abbr(name: str) -> int | None:
+    """Month number of a short or long month name in any language (``date.month_abbr.<n>``)."""
+    low = name[:3].lower()
+    return next((n for n in range(1, 13) if low in word_set(f"date.month_abbr.{n}")), None)
+
+
 _DATE_RE = re.compile(r"^\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+[a-zA-Z]{3,9}\.?\s+\d{4})\b")
 _AMOUNT_END_RE = re.compile(r"([-+−]?\s*€?\s*\d{1,3}(?:[.\s]\d{3})*,\d{2}|[-+−]?\s*€?\s*\d+[.,]\d{2})\s*(?:€|EUR)?\s*$")
-_INCOME_WORDS = re.compile(r"accredit|bonifico (?:ricevuto|in entrata|da)|ricarica|rimborso|stipendio|entrata|"
-                           r"ricevut|cashback|interessi", re.I)
-_SKIP_RE = re.compile(r"saldo (?:iniziale|finale|disponibile|contabile)|totale|pagina \d|estratto conto|"
-                      r"lista movimenti|data\s+(?:operazione|valuta)|^\s*data\s", re.I)
+_INCOME_WORDS = word_regex("{0}", "plutus.statement.income")
+_SKIP_RE = word_regex("{0}", "plutus.statement.skip")
 
 
 def _date(text: str) -> date | None:
     text = text.strip()
     m = re.match(r"(\d{1,2})\s+([a-zA-Z]{3,9})\.?\s+(\d{4})", text)
     if m:
-        month = _MONTHS.get(m.group(2)[:3].lower())
+        month = _month_abbr(m.group(2))
         return date(int(m.group(3)), month, int(m.group(1))) if month else None
     return _d(text)
 
@@ -82,11 +84,11 @@ def parse_rows(text: str) -> list[dict]:
 
 
 def merchant_of(description: str) -> str:
-    """Readable merchant from a bank line («PAGAMENTO POS ESSELUNGA MILANO 12/10» → «Esselunga Milano»)."""
-    d = re.sub(r"^(pagamento|pag\.?|acquisto|addebito)\s+(pos|carta|online|con carta|contactless)?\s*", "",
-               description.strip(), flags=re.I)
-    d = re.sub(r"\b(carta|card)\s*\*+\s*\d+|\b\d{2}[/.]\d{2}(?:[/.]\d{2,4})?\b|\bore\s+\d{1,2}[:.]\d{2}\b", "", d,
-               flags=re.I)
+    """Readable merchant from a bank line («CARD PAYMENT TESCO LONDON 12/10» → «Tesco London»)."""
+    d = word_regex(r"^(?:{0})\s+(?:{1})?\s*", "plutus.statement.payment_prefix",
+                   "plutus.statement.payment_channel").sub("", description.strip())
+    d = word_regex(r"\b(?:{0})\s*\*+\s*\d+|\b\d{{2}}[/.]\d{{2}}(?:[/.]\d{{2,4}})?\b|\b(?:{1})\s+\d{{1,2}}[:.]\d{{2}}\b",
+                   "plutus.statement.card", "plutus.statement.time_word").sub("", d)
     d = re.sub(r"\s{2,}", " ", d).strip(" -*")
     return d.title()[:80] if d.isupper() else d[:80]
 

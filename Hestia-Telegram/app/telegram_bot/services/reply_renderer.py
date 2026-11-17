@@ -121,7 +121,7 @@ class ReplyRenderer:
         if ui_blocks.has_blocks(answer):
             self.buttons = ui_blocks.buttons(answer)
             answer = ui_blocks.to_text(answer)
-        if isinstance(origin, dict) and origin.get("level") not in (None, "", "utente"):
+        if isinstance(origin, dict) and origin.get("level") not in (None, "", "user"):
             self.origin_label = str(origin.get("label") or "")
         if not answer:
             answer = tr("No answer: try again shortly.")

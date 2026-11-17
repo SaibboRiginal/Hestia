@@ -49,7 +49,7 @@ def ctx():
     app.dependency_overrides[database.get_db] = _db
     db = session()
     t0 = datetime(2026, 10, 20, 9, 0, tzinfo=timezone.utc)
-    for sid, day, msgs in [("a", 0, ["parliamo della palestra", "ok"]), ("b", 3, ["spese di ottobre", "fatto"]),
+    for sid, day, msgs in [("a", 0, ["parliamo della palestra", "ok"]), ("b", 3, ["spese di ottobre", "done"]),
                            ("c", 5, ["ciao", "ciao!"])]:
         for i, text in enumerate(msgs):
             db.add(models.ChatHistory(session_id=sid, role="user" if i % 2 == 0 else "assistant", content=text,
@@ -73,16 +73,16 @@ def test_search_dates_tags_and_pinned_first(ctx):
     got = ctx.get("/api/chat/sessions/list", params={"since": "2026-10-22T00:00:00+00:00", "until": "2026-10-24T00:00:00+00:00"}).json()
     assert [i["session_id"] for i in got["items"]] == ["b"]
 
-    r = ctx.put("/api/chat/sessions/a/meta", json={"add_tags": [{"name": "Salute", "color": "green"}, "lavoro"], "pinned": True}).json()
-    assert r["before"]["tags"] == [] and [t["name"] for t in r["tags"]] == ["salute", "lavoro"]
+    r = ctx.put("/api/chat/sessions/a/meta", json={"add_tags": [{"name": "Salute", "color": "green"}, "work"], "pinned": True}).json()
+    assert r["before"]["tags"] == [] and [t["name"] for t in r["tags"]] == ["health", "work"]
     assert r["tags"][0]["color"] == "green"
     items = ctx.get("/api/chat/sessions/list").json()["items"]
     assert items[0]["session_id"] == "a" and items[0]["pinned"]
-    assert [i["session_id"] for i in ctx.get("/api/chat/sessions/list", params={"tag": "salute"}).json()["items"]] == ["a"]
+    assert [i["session_id"] for i in ctx.get("/api/chat/sessions/list", params={"tag": "health"}).json()["items"]] == ["a"]
 
-    ctx.put("/api/chat/sessions/a/meta", json={"remove_tags": ["lavoro"], "title": "Allenamento"})
+    ctx.put("/api/chat/sessions/a/meta", json={"remove_tags": ["work"], "title": "Allenamento"})
     tags = ctx.get("/api/chat/sessions/tags").json()["items"]
-    assert tags == [{"name": "salute", "color": "green", "count": 1}]
+    assert tags == [{"name": "health", "color": "green", "count": 1}]
     assert [i["session_id"] for i in ctx.get("/api/chat/sessions/list", params={"q": "allenam"}).json()["items"]] == ["a"]
 
 

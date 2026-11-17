@@ -114,11 +114,11 @@ export class HerculesSession extends LocalPage {
     if (!(await this.host.confirm(tr('Delete the workout?'), tr("{0} of {1} and its series.", s.name, dayLabel(s.started_at, false)), { label: tr('Delete'), danger: true }))) return;
     for (const x of this.L.setsOf(s.id)) this.L.remove('set', x.id);
     this.L.remove('session', s.id);
-    this.host.navigate('storico');
+    this.host.navigate('history');
   }
   private repeat() {
     const s = this.s;
-    if (this.L.activeSession()) { this.host.toast(tr('A workout is already in progress'), 'warning'); this.host.navigate('allenamento'); return; }
+    if (this.L.activeSession()) { this.host.toast(tr('A workout is already in progress'), 'warning'); this.host.navigate('training'); return; }
     const sets = this.L.setsOf(s.id);
     const exercises = (s.exercises || []).map((b: any) => {
       const done = sets.filter((x: any) => x.session_exercise_id === b.id);
@@ -126,7 +126,7 @@ export class HerculesSession extends LocalPage {
       return { ...b, id: uuid(), planned, skipped: false };
     });
     this.L.put('session', uuid(), { name: s.name, status: 'active', started_at: nowIso(), template_id: s.template_id, exercises, readiness: {}, source: 'live', notes: '' });
-    this.host.navigate('allenamento');
+    this.host.navigate('training');
   }
   private feedback(tag: string) {
     this.L.put('feedback', uuid(), { session_id: this.s.id, tags: [tag], at: nowIso(), text: '' });
@@ -144,8 +144,8 @@ export class HerculesSession extends LocalPage {
     const prs = ((this.detail?.prs || []) as any[]).filter(p => !p.first);
     const fb = L.list('feedback').filter(f => f.session_id === s.id);
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('storico')}>${tr('‹ History')}</hxk-button><span class="grow"></span>
-        ${s.status === 'active' ? html`<hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('allenamento')}>${tr("Resume")}</hxk-button>` : nothing}
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('history')}>${tr('‹ History')}</hxk-button><span class="grow"></span>
+        ${s.status === 'active' ? html`<hxk-button variant="primary" icon="play" @click=${() => this.host.navigate('training')}>${tr("Resume")}</hxk-button>` : nothing}
         <hxk-button variant="ghost" icon="edit" @click=${() => (this.editing = !this.editing)}>${this.editing ? tr('End') : tr('Edit')}</hxk-button></div>
       <div><h1>${s.name}</h1><div class="small muted">${dayLabel(s.started_at)} · ${timeLabel(s.started_at)}${s.ended_at ? '–' + timeLabel(s.ended_at) : ''}</div></div>
       <hxk-stat .items=${[{ label: tr('Duration'), value: minutes(sm.minutes) }, { label: tr('Streak'), value: sm.sets }, { label: tr('Volume'), value: num(sm.volume), unit: 'kg' },

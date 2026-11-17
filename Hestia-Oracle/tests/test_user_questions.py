@@ -66,7 +66,7 @@ def test_agent_loop_stops_on_ask_user():
     call = '<tool_call>' + json.dumps({"name": "ask_user", "params": {
         "prompt": "Cancello anche quello di venerdì?", "kind": "confirm"}}) + '</tool_call>'
     later = '<tool_call>' + json.dumps({"name": "calendar_delete", "params": {}}) + '</tool_call>'
-    seq = iter([call, later, "fatto"])
+    seq = iter([call, later, "done"])
     answer, tokens, log = run_agent_loop(user_message="cancella", history_text="", preference_facts=[],
                                          tools=[_ask_tool(), other], ask_fn=lambda p: next(seq))
     assert answer == "Cancello anche quello di venerdì?"

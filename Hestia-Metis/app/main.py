@@ -79,7 +79,7 @@ ui = PluginClient("metis", title="Improvement", icon="flask", color="purple", ki
                   description="Continuous improvement: where {assistant} gets it wrong, datasets and model training.",
                   version=SERVICE_VERSION)
 ui.webui(entry="metis.js", api_prefix="/api/metis/",
-         pages=[page("miglioramento", "Improvement", element="metis-improvement", icon="chart", order=180,
+         pages=[page("improvement", "Improvement", element="metis-improvement", icon="chart", order=180,
                      help="Where {assistant} answers worst according to your ratings, the collected datasets and the LoRA trainings (planned in the agenda's night window, running, finished).")])
 
 # ── Assistant agenda (Chronos) ────────────────────────────────────────────────
@@ -614,7 +614,7 @@ try:
                 stdout=log_file, stderr=subprocess.STDOUT)
             pid = proc.pid
             # "Occupato: addestramento" while the trainer runs (GPU busy for the local model).
-            presence.activity_start(f"metis.training.{job_id}", label="addestramento", load="heavy",
+            presence.activity_start(f"metis.training.{job_id}", label="training_data", load="heavy",
                                     resource="gpu", ttl_seconds=12 * 3600)
 
             def _wait_trainer(p=proc, log=log_file, key=f"metis.training.{job_id}"):
@@ -692,7 +692,7 @@ try:
                  "dropped. Brief.")
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
+            telegram_group="development",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_dataset_export",
@@ -719,7 +719,7 @@ try:
             clients=["telegram", "ui"],
             response_mode="raw_json",
             telegram_visible=True,
-            telegram_group="sviluppo",
+            telegram_group="development",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_dataset_status",
@@ -745,7 +745,7 @@ try:
                  "Tabular and brief.")
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
+            telegram_group="development",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_benchmark_run",
@@ -779,7 +779,7 @@ try:
                 "Report the benchmark results: scores on style, accuracy, brevity. Say the winner or a tie."
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
+            telegram_group="development",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_loRA_train",
@@ -820,7 +820,7 @@ try:
                  "asynchronous.")
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
+            telegram_group="development",
                 telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_review",
@@ -828,7 +828,7 @@ try:
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: _traces_call(_review_card),
             title="To review", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
-            response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
+            response_mode="raw_json", telegram_visible=True, telegram_group="development",
             telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_review_decide",
@@ -843,7 +843,7 @@ try:
                 **_traces_call(review.decide, trace_id, decision, answer),
                 "next": _traces_call(_review_card).get("display")},
             title="Decide a fix", method="POST", path="/api/metis/tools/rivedi_decidi",
-            clients=["telegram", "ui"], response_mode="raw_json", telegram_group="sviluppo",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_group="development",
             telegram={"section": "Dataset e training"}),
         MCPTool(
             name="metis_dataset_export",
@@ -857,8 +857,8 @@ try:
                 "required": []},
             handler=lambda plain=False, include_unreviewed=False: _traces_call(
                 _export_card, bool(plain), bool(include_unreviewed)),
-            title="Export the dataset", method="POST", path="/api/metis/tools/dataset_esporta",
-            clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
+            title="Export the dataset", method="POST", path="/api/metis/tools/dataset_export",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="development",
             telegram={"section": "Dataset e training", "label": "Export"}),
         MCPTool(
             name="metis_now",
@@ -868,8 +868,8 @@ try:
                 "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
             handler=lambda client="telegram": _adesso_card(client),
-            title="Now", method="GET", path="/api/metis/tools/adesso", clients=["telegram", "ui"],
-            response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
+            title="Now", method="GET", path="/api/metis/tools/now", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="day",
             telegram={"section": "Now", "primary": 1}),
         MCPTool(
             name="metis_discover",
@@ -879,8 +879,8 @@ try:
                 "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
             handler=lambda client="telegram": _scopri_card(client),
-            title="Discover", method="GET", path="/api/metis/tools/scopri", clients=["telegram", "ui"],
-            response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
+            title="Discover", method="GET", path="/api/metis/tools/discover", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="day",
             telegram={"section": "Discover"}),
     ]
 
@@ -914,8 +914,8 @@ _HUB_REGISTRATION_PAYLOAD = {
         "when_to_use": "what to do now, features to discover, how the assistant improves (ratings, dataset, training)",
         "manual": "Now: metis_now (habits, agenda, ideas). Discover: metis_discover (features never used). Improvement: dataset from ratings, benchmark and LoRA training.",
         "usage": "/api/metis/usage",
-        "adesso": "/api/metis/now",
-        "scopri": "/api/metis/discover",
+        "now": "/api/metis/now",
+        "discover": "/api/metis/discover",
         "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
         "dataset_build": "/api/metis/dataset/build",
         "dataset_export": "/api/metis/dataset/export",
@@ -925,7 +925,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
         **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
-        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="veloce",
+        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="fast",
                                     help="Three useful actions for the next hours, different from the habits."),
                             usecase(REVIEW_USE, "Dataset review", chain="cloud", thinking="true",
                                     help="At night it rereads the answers and fixes the wrong ones. Choose a model stronger than the local one: your personal data is hidden.")]),

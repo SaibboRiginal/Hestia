@@ -4,7 +4,7 @@ import { CentralSettingsApi } from '../features/settings/central-settings.api';
 /** Who the assistant is and whose it is, and the owner's language: five personal settings (Themis `themis.personal.*`, dossier
  * docs/work/2026-11-12-identita-e-proattivita). The pages that talk to the owner show the chosen name; the product
  * stays «Hestia». Settings unreachable → the defaults, nothing breaks. */
-export interface Identity { assistant: string; gender: 'lei' | 'lui'; ownerName: string; ownerCall: string; language: string; }
+export interface Identity { assistant: string; gender: 'she' | 'he'; ownerName: string; ownerCall: string; language: string; }
 
 /** The languages of `themis.personal.language` (notifications, recaps, messages she writes on her own). */
 export const LANGUAGES: { value: string; label: string }[] = [
@@ -25,7 +25,7 @@ export class IdentityService {
   private asked = false;
 
   readonly assistant = signal(DEFAULT_ASSISTANT);
-  readonly gender = signal<'lei' | 'lui'>('lei');
+  readonly gender = signal<'she' | 'he'>('she');
   readonly ownerName = signal('');
   readonly ownerCall = signal('');
   readonly language = signal(DEFAULT_LANGUAGE);
@@ -38,7 +38,7 @@ export class IdentityService {
       const page = await this.api.items('themis');
       const value = (key: string) => String(page.items.find(i => i.key === key)?.value ?? '').trim();
       this.assistant.set(value(KEYS.assistant) || DEFAULT_ASSISTANT);
-      this.gender.set(value(KEYS.gender) === 'lui' ? 'lui' : 'lei');
+      this.gender.set(value(KEYS.gender) === 'he' ? 'he' : 'she');
       this.ownerName.set(value(KEYS.ownerName));
       this.ownerCall.set(value(KEYS.ownerCall));
       const lang = value(KEYS.language);

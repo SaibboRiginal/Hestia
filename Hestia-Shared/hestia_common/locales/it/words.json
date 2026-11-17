@@ -1,5 +1,9 @@
 {
  "_about": "Words people write, per list (regex fragments): read with hestia_common.i18n.words/alt/word_regex. docs/LANGUAGES.md",
+ "common.next_week": [
+  "prossima",
+  "prossima settimana"
+ ],
  "common.no": [
   "annulla",
   "lascia stare",
@@ -42,6 +46,126 @@
   "ogni\\s+tanto",
   "\\b(?:alle|dalle|fino\\s+alle)\\s+\\d"
  ],
+ "date.day_after_tomorrow": [
+  "dopodomani"
+ ],
+ "date.day_before_yesterday": [
+  "l'altro ieri",
+  "altroieri",
+  "l'altroieri"
+ ],
+ "date.month.1": [
+  "gennaio"
+ ],
+ "date.month.10": [
+  "ottobre"
+ ],
+ "date.month.11": [
+  "novembre"
+ ],
+ "date.month.12": [
+  "dicembre"
+ ],
+ "date.month.2": [
+  "febbraio"
+ ],
+ "date.month.3": [
+  "marzo"
+ ],
+ "date.month.4": [
+  "aprile"
+ ],
+ "date.month.5": [
+  "maggio"
+ ],
+ "date.month.6": [
+  "giugno"
+ ],
+ "date.month.7": [
+  "luglio"
+ ],
+ "date.month.8": [
+  "agosto"
+ ],
+ "date.month.9": [
+  "settembre"
+ ],
+ "date.month_abbr.1": [
+  "gen"
+ ],
+ "date.month_abbr.10": [
+  "ott"
+ ],
+ "date.month_abbr.11": [
+  "nov"
+ ],
+ "date.month_abbr.12": [
+  "dic"
+ ],
+ "date.month_abbr.2": [
+  "feb"
+ ],
+ "date.month_abbr.3": [
+  "mar"
+ ],
+ "date.month_abbr.4": [
+  "apr"
+ ],
+ "date.month_abbr.5": [
+  "mag"
+ ],
+ "date.month_abbr.6": [
+  "giu"
+ ],
+ "date.month_abbr.7": [
+  "lug"
+ ],
+ "date.month_abbr.8": [
+  "ago"
+ ],
+ "date.month_abbr.9": [
+  "set"
+ ],
+ "date.time_prefix": [
+  "alle",
+  "ore",
+  "alle ore"
+ ],
+ "date.today": [
+  "oggi"
+ ],
+ "date.tomorrow": [
+  "domani"
+ ],
+ "date.weekday.0": [
+  "lunedì",
+  "lunedi"
+ ],
+ "date.weekday.1": [
+  "martedì",
+  "martedi"
+ ],
+ "date.weekday.2": [
+  "mercoledì",
+  "mercoledi"
+ ],
+ "date.weekday.3": [
+  "giovedì",
+  "giovedi"
+ ],
+ "date.weekday.4": [
+  "venerdì",
+  "venerdi"
+ ],
+ "date.weekday.5": [
+  "sabato"
+ ],
+ "date.weekday.6": [
+  "domenica"
+ ],
+ "date.yesterday": [
+  "ieri"
+ ],
  "goal.stop": [
   "ferma",
   "fermati",
@@ -50,6 +174,91 @@
  ],
  "goal.word": [
   "obiettivo"
+ ],
+ "hercules.activity.bike": [
+  "bici",
+  "bicicletta",
+  "ciclismo"
+ ],
+ "hercules.activity.run": [
+  "corsa",
+  "correre",
+  "corro",
+  "corso"
+ ],
+ "hercules.activity.swim": [
+  "nuoto",
+  "nuotare",
+  "piscina"
+ ],
+ "hercules.activity.walk": [
+  "camminata",
+  "camminare",
+  "passeggiata",
+  "escursione"
+ ],
+ "kairos.category.bill": [
+  "bollett",
+  "luce",
+  "gas",
+  "acqua",
+  "energia",
+  "enel",
+  "fattura"
+ ],
+ "kairos.category.car_tax": [
+  "bollo"
+ ],
+ "kairos.category.document": [
+  "carta d'identit",
+  "passaporto",
+  "patente",
+  "permesso"
+ ],
+ "kairos.category.inspection": [
+  "revision"
+ ],
+ "kairos.category.insurance": [
+  "assicura",
+  "polizza",
+  "rca"
+ ],
+ "kairos.category.service": [
+  "tagliand",
+  "manutenzion"
+ ],
+ "kairos.category.subscription": [
+  "abbonament",
+  "rinnovo"
+ ],
+ "kairos.category.tax": [
+  "f24",
+  "imu",
+  "tari",
+  "tassa",
+  "agenzia delle entrate"
+ ],
+ "kairos.due": [
+  "scaden",
+  "entro il",
+  "da pagare",
+  "rinnov",
+  "revision",
+  "bollo",
+  "fattura",
+  "bolletta",
+  "pagamento entro"
+ ],
+ "kairos.mail_subject": [
+  "scadenza",
+  "scade",
+  "bolletta",
+  "fattura",
+  "rinnovo",
+  "bollo",
+  "revisione",
+  "polizza",
+  "pagamento"
  ],
  "memory.fact_stop": [
   "utente",
@@ -511,5 +720,281 @@
   "smetti",
   "basta",
   "dimentic"
+ ],
+ "plutus.merchant_prefix": [
+  "pagamento\\s+(?:pos|carta)\\s+"
+ ],
+ "plutus.money_hint": [
+  "pagament",
+  "ricevut",
+  "rimbors",
+  "denaro",
+  "addebit",
+  "ordine",
+  "abbonament"
+ ],
+ "plutus.paypal.amount_label": [
+  "importo",
+  "totale",
+  "pagamento di",
+  "hai inviato",
+  "hai ricevuto",
+  "rimborso di",
+  "hai pagato"
+ ],
+ "plutus.paypal.merchant": [
+  "(?:pagamento)\\s+(?:a)\\s+(.+?)(?:\\s+(?:di|per)\\s+[-€$£\\d]|[.\\n|]|$)",
+  "(?:hai inviato)\\s+(?:un pagamento)?\\s*(?:di)?\\s*[^\\n]*?\\s+(?:a)\\s+(.+?)(?:[.\\n|]|$)",
+  "(?:rimborso)\\s+(?:da)\\s+(.+?)(?:[.\\n|]|$)",
+  "(.+?)\\s+(?:ti ha inviato|ti ha rimborsato)",
+  "(?:esercente|venditore)\\s*[:\\n]\\s*(.+?)(?:\\n|$)"
+ ],
+ "plutus.paypal.payment": [
+  "ricevuta",
+  "hai inviato un pagamento",
+  "hai pagato",
+  "hai autorizzato un pagamento",
+  "pagamento a",
+  "il tuo pagamento",
+  "abbonamento",
+  "ordine"
+ ],
+ "plutus.paypal.received": [
+  "hai ricevuto (?:denaro|un pagamento|\\d)",
+  "ti ha inviato"
+ ],
+ "plutus.paypal.refund": [
+  "rimborso",
+  "ti (?:è|e) stato rimborsato"
+ ],
+ "plutus.paypal.transaction_id": [
+  "id (?:della )?transazione",
+  "codice transazione"
+ ],
+ "plutus.phone.in": [
+  "accredit",
+  "ricevut",
+  "in entrata",
+  "rimbors",
+  "hai ricevuto",
+  "stipendio"
+ ],
+ "plutus.phone.merchant_after": [
+  "il",
+  "con",
+  "di",
+  "in",
+  "alle",
+  "per"
+ ],
+ "plutus.phone.merchant_before": [
+  "presso",
+  "da",
+  "a",
+  "su",
+  "verso"
+ ],
+ "plutus.phone.out": [
+  "pagament",
+  "pagato",
+  "addebit",
+  "spes[oa]",
+  "acquist",
+  "prelievo",
+  "transazione",
+  "autorizzat",
+  "hai inviato"
+ ],
+ "plutus.rule.care": [
+  "sephora",
+  "douglas",
+  "kiko",
+  "parrucchiere",
+  "barbiere",
+  "estetista",
+  "lookfantastic",
+  "notino"
+ ],
+ "plutus.rule.groceries": [
+  "esselunga",
+  "coop",
+  "conad",
+  "lidl",
+  "carrefour",
+  "eurospin",
+  "pam ",
+  "despar",
+  "aldi",
+  "penny market",
+  "iper",
+  "naturasi",
+  "tigros",
+  "bennet",
+  "famila"
+ ],
+ "plutus.rule.health": [
+  "farmacia",
+  "parafarmacia",
+  "medico",
+  "dentista",
+  "ospedale",
+  "analisi",
+  "ottica"
+ ],
+ "plutus.rule.home": [
+  "enel",
+  "a2a",
+  "iren",
+  "hera",
+  "edison",
+  "tim ",
+  "vodafone",
+  "iliad",
+  "fastweb",
+  "windtre",
+  "wind tre",
+  "ikea",
+  "leroy merlin",
+  "affitto",
+  "condominio"
+ ],
+ "plutus.rule.leisure": [
+  "cinema",
+  "teatro",
+  "concerto",
+  "ticketone",
+  "steam",
+  "playstation",
+  "nintendo",
+  "xbox",
+  "libreria",
+  "feltrinelli",
+  "mondadori"
+ ],
+ "plutus.rule.restaurants": [
+  "ristorante",
+  "pizzeria",
+  "trattoria",
+  "osteria",
+  "bar ",
+  "caffe",
+  "mcdonald",
+  "burger king",
+  "deliveroo",
+  "glovo",
+  "just eat",
+  "starbucks",
+  "sushi"
+ ],
+ "plutus.rule.shopping": [
+  "amazon",
+  "zalando",
+  "zara",
+  "h&m",
+  "decathlon",
+  "mediaworld",
+  "unieuro",
+  "ebay",
+  "aliexpress",
+  "vinted",
+  "shein",
+  "uniqlo"
+ ],
+ "plutus.rule.subscriptions": [
+  "netflix",
+  "spotify",
+  "disney",
+  "prime video",
+  "amazon prime",
+  "youtube premium",
+  "dazn",
+  "now tv",
+  "icloud",
+  "google one",
+  "apple.com/bill",
+  "chatgpt",
+  "openai",
+  "anthropic",
+  "claude.ai",
+  "github"
+ ],
+ "plutus.rule.transport": [
+  "trenitalia",
+  "italo",
+  "atm ",
+  "uber",
+  "freenow",
+  "telepass",
+  "autostrade",
+  "eni ",
+  "q8",
+  "tamoil",
+  "esso",
+  "ip ",
+  "benzina",
+  "parcheggio",
+  "bike",
+  "lime",
+  "bird"
+ ],
+ "plutus.rule.travel": [
+  "booking.com",
+  "airbnb",
+  "ryanair",
+  "easyjet",
+  "ita airways",
+  "expedia",
+  "hotel",
+  "flixbus"
+ ],
+ "plutus.statement.card": [
+  "carta"
+ ],
+ "plutus.statement.header": [
+  "lista movimenti",
+  "estratto conto",
+  "saldo contabile",
+  "saldo disponibile",
+  "saldo iniziale",
+  "saldo finale",
+  "data valuta",
+  "data operazione",
+  "iban",
+  "movimenti"
+ ],
+ "plutus.statement.income": [
+  "accredit",
+  "bonifico (?:ricevuto|in entrata|da)",
+  "ricarica",
+  "rimborso",
+  "stipendio",
+  "entrata",
+  "ricevut",
+  "interessi"
+ ],
+ "plutus.statement.payment_channel": [
+  "pos",
+  "carta",
+  "online",
+  "con carta",
+  "contactless"
+ ],
+ "plutus.statement.payment_prefix": [
+  "pagamento",
+  "pag\\.?",
+  "acquisto",
+  "addebito"
+ ],
+ "plutus.statement.skip": [
+  "saldo (?:iniziale|finale|disponibile|contabile)",
+  "totale",
+  "pagina \\d",
+  "estratto conto",
+  "lista movimenti",
+  "data\\s+(?:operazione|valuta)",
+  "^\\s*data\\s"
+ ],
+ "plutus.statement.time_word": [
+  "ore"
  ]
 }

@@ -251,8 +251,8 @@ export class SetupChainComponent {
   cloudEmpty = input<string>(tr('No cloud service for this step.'));
   emptyList = input<string>(tr('The key works, but the service has nothing to choose here.'));
   single = input<boolean>(false);
-  /** «Prova» on each chosen row: hear a voice ('voce') or speak and see what it understood ('ascolto'). */
-  trial = input<'' | 'voce' | 'ascolto'>('');
+  /** «Prova» on each chosen row: hear a voice ('voice') or speak and see what it understood ('listen'). */
+  trial = input<'' | 'voice' | 'listen'>('');
   trialState = input<{ key: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   tryRow = output<{ key: string; provider: string; model: string }>();
 

@@ -79,7 +79,7 @@ export class ScopriPageComponent implements OnInit {
   /** Grouped by area as people know them (Allenamento, Casa…), never by module. */
   readonly groups = computed(() => {
     const by = new Map<string, ScopriItem[]>();
-    for (const it of this.shown()) { const k = it.area || 'altro'; by.set(k, [...(by.get(k) ?? []), it]); }
+    for (const it of this.shown()) { const k = it.area || 'other'; by.set(k, [...(by.get(k) ?? []), it]); }
     return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || tr('Other'),
       icon: items[0].area_icon || 'puzzle', order: items[0].area_order ?? 999 }))
       .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));

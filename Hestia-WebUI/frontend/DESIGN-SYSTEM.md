@@ -50,11 +50,11 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
 
 ### Styles (second axis, `core/theme/looks.ts`, 2026-10-29)
 
-Over the colours the user picks a **style** — `classico` (current look), `vetro` (translucent blurred panels on a shaded
-backdrop, rounder, lively motion), `netto` (sans everywhere, almost square corners, strong borders, no shadows) — and
+Over the colours the user picks a **style** — `classic` (current look), `glass` (translucent blurred panels on a shaded
+backdrop, rounder, lively motion), `net` (sans everywhere, almost square corners, strong borders, no shadows) — and
 can change its four knobs one by one: **corners** (radius scale), **borders** (`--border*` lighter/stronger),
 **transparency** (`--surface`, `--bg-subtle`, `--surface-2` with alpha + `--glass`), **animations** (`--dur*`;
-`nessuna` stops every animation, `vivaci` adds card hover and a page entrance). Saved per browser
+`none` stops every animation, `lively` adds card hover and a page entrance). Saved per browser
 (`localStorage hestia_look`), written as tokens + `data-style` / `data-glass` / `data-motion` on `<html>`.
 Rules for components: never hardcode radii, durations or opaque page backgrounds (`var(--bg)` on a page root hides
 the backdrop); a floating panel gets `hx-glass` (blur on `::before`, so the panel never becomes the containing block
@@ -159,7 +159,7 @@ Resizable from its left edge (`<hx-resize key="assistant">`, 340px–90vw, defau
 
 Since 2026-10-19 Sviluppo is Hephaestus' plugin page (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`:
 store, api, transcript, task panel, repo browser + graph), built with the plugin kit (`hxk-*`) and the same tokens.
-The WebUI route `/forge` only redirects to `/p/hephaestus/sviluppo`.
+The WebUI route `/forge` only redirects to `/p/hephaestus/development`.
 
 ## 8. Central settings (`features/settings/`)
 

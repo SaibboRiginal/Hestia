@@ -24,13 +24,13 @@ llm_capabilities = import_shared_symbol("hestia_common.oracle_usecases", "capabi
 
 # What Athena asks Oracle for (chains chosen by Marko in Oracle → Cervello → Modelli).
 LLM_USECASES = [
-    llm_usecase("athena.strategy", "Athena · strategy and memory", chain="potente",
+    llm_usecase("athena.strategy", "Athena · strategy and memory", chain="strong",
                 help="Athena's reasoning (proposals, memory consolidation)."),
-    llm_usecase("athena.review", "Athena · answer review", chain="veloce",
+    llm_usecase("athena.review", "Athena · answer review", chain="fast",
                 help="Rates the quality of the assistant's answers."),
-    llm_usecase("athena.recap", "Athena · daily recap", chain="veloce",
+    llm_usecase("athena.recap", "Athena · daily recap", chain="fast",
                 help="Writes the evening or morning recap from the facts of the areas (training, expenses, agenda…)."),
-    llm_usecase("athena.reflection", "Athena · reflection on your life", chain="potente",
+    llm_usecase("athena.reflection", "Athena · reflection on your life", chain="strong",
                 help="Reads the signals of the areas and the links across weeks and writes the observations of the evening recap."),
 ]
 plugin_page = import_shared_symbol("hestia_common.plugin_client", "page")
@@ -164,16 +164,16 @@ ui = plugin_client("athena", title="Thoughts", icon="zap", color="amber", kind="
                    version=SERVICE_VERSION)
 ui.webui(
     entry="athena.js", api_prefix=f"{API}/",
-    pages=[plugin_page("pensieri", "Thoughts", element="athena-thoughts", icon="zap", order=130,
+    pages=[plugin_page("thoughts", "Thoughts", element="athena-thoughts", icon="zap", order=130,
                        help="Every Athena cycle, in two tracks: Life (signals of the areas, links across weeks, observations for the recap) and System (Hestia's health). What it observed, the score (5 factors) and what it did or discarded, with the reason. «Think now» for a cycle right away. In System also the evidence it is collecting before proposing; in «Writes to you» when and why she writes to you first."),
-           plugin_page("segnali", "Signals", element="athena-signals", icon="pulse", order=131,
+           plugin_page("signals", "Signals", element="athena-signals", icon="pulse", order=131,
                        help="The short signals each area publishes about its data and the weekly numbers the reflection compares. The observations they produce arrive in the evening recap."),
            plugin_page("recap", "Recap", element="athena-recaps", icon="note", order=132,
                        help="Daily recaps: the text you received and, below, the facts of each area it was written from. The time moves in the calendar."),
-           plugin_page("imparato", "What I learned", element="athena-learning", icon="memory", order=133,
+           plugin_page("learned", "What I learned", element="athena-learning", icon="memory", order=133,
                        help="Everything the assistant learned, changed or let go about your memory, with your own sentence it comes from. «Undo» removes it; «Review what you know about me» proposes to fix duplicates and contradictions.")],
-    widgets=[plugin_widget("ultimo", "Latest thought", element="athena-last-widget", sizes=["m", "l"], auto=True,
-                           open_page="pensieri", icon="zap", help="Athena's latest cycle and what came out of it.")],
+    widgets=[plugin_widget("latest", "Latest thought", element="athena-last-widget", sizes=["m", "l"], auto=True,
+                           open_page="thoughts", icon="zap", help="Athena's latest cycle and what came out of it.")],
     quick_actions=[plugin_quick_action("pensa", "Make Athena think", "POST", f"{API}/think", icon="zap",
                                        group="System"),
                    plugin_quick_action("recap", "Recap now", "POST", f"{API}/recap/now", icon="note",
@@ -321,18 +321,18 @@ def athena_thinking(
 def athena_thinking_summary(limit: int = 10, track: str | None = None) -> dict[str, Any]:
     """Compact cycles (newest first) for the Pensieri page and the MCP tool ``athena_thinking``: observation
     counts, every candidate with its 5 gate factors, score, accepted/discarded and why, and the outcome.
-    ``track`` = ``vita`` | ``sistema`` (both when omitted)."""
+    ``track`` = ``life`` | ``system`` (both when omitted)."""
     return runtime.thinking_summary(limit=limit, track=track or None)
 
 
 @app.post("/api/athena/think")
-def athena_think_now(track: str = "sistema") -> dict[str, Any]:
+def athena_think_now(track: str = "system") -> dict[str, Any]:
     """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
-    ``track`` = ``sistema`` (default) or ``vita``. ``started`` or ``busy`` (a cycle is already running); the
+    ``track`` = ``system`` (default) or ``life``. ``started`` or ``busy`` (a cycle is already running); the
     record appears in /api/athena/thinking."""
-    if track == "parla":       # «Scrivimi ora»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
+    if track == "talk":       # «Scrivimi ora»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
         return runtime.talk_now()
-    if track not in ("sistema", "vita"):
+    if track not in ("system", "life"):
         raise HTTPException(status_code=422, detail="track: sistema | vita | parla")
     return runtime.think_now(track=track)
 
@@ -414,7 +414,7 @@ def athena_observation() -> dict[str, Any]:
 @app.post("/api/athena/recap")
 def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
     """Compose the recap (agenda job, template, quick action). ``deliver`` false = return the text only."""
-    momento = str((body or {}).get("momento") or "sera")
+    momento = str((body or {}).get("momento") or "evening")
     day = str((body or {}).get("day") or "").strip() or None
     try:
         return runtime.recap.compose(momento=momento, day=day, deliver=bool((body or {}).get("deliver", True)),
@@ -426,7 +426,7 @@ def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
 @app.post("/api/athena/recap/now")
 def athena_recap_now() -> dict[str, Any]:
     """Quick action «Recap adesso»: evening recap now, delivered like the scheduled one."""
-    out = runtime.recap.compose(momento="sera", trigger="quick")
+    out = runtime.recap.compose(momento="evening", trigger="quick")
     label = (tr("Nothing to tell today") if out.get("status") == "empty"
              else tr("Recap sent") if out.get("delivered") else tr("Recap ready (late delivery)"))
     return {**out, "label": label}
@@ -441,7 +441,7 @@ def athena_recaps(limit: int = 20) -> dict[str, Any]:
 def _recap_today_handler(momento: str = "", **_kw) -> dict:
     """Chat «fammi il recap»: before 14:00 the morning view (yesterday + today), then the evening one."""
     from datetime import datetime as _dt
-    moment = momento if momento in {"sera", "mattina"} else ("mattina" if _dt.now().hour < 14 else "sera")
+    moment = momento if momento in {"evening", "morning"} else ("morning" if _dt.now().hour < 14 else "evening")
     out = runtime.recap.compose(momento=moment, deliver=False, trigger="chat")
     if out.get("status") == "empty":
         return {"status": "empty", "text": tr("Nothing to tell: no area recorded anything.")}
@@ -475,7 +475,7 @@ try:
                           "what comes next. 'momento': sera = today + tomorrow, mattina = yesterday + today (default by "
                           "the hour). Returns the ready text.")),
             parameters={"type": "object", "properties": {
-                "momento": {"type": "string", "enum": ["sera", "mattina"],
+                "momento": {"type": "string", "enum": ["evening", "morning"],
                             "description": "sera = today and tomorrow; mattina = yesterday and today"}}},
             handler=_recap_today_handler,
             title="Daily recap",
@@ -484,7 +484,7 @@ try:
             clients=["telegram", "ui", "external"],
             response_mode="direct",
             telegram_visible=True,
-            telegram_group="giornata",
+            telegram_group="day",
                 telegram={"section": "Recap", "primary": 3, "label": "Recap"}),
         # Inside view, also for external AIs (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): read only.
         MCPTool(
@@ -509,7 +509,7 @@ try:
             clients=["telegram", "ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_commitments",
@@ -523,7 +523,7 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt="Short list: what, since when. No ids.",
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_commitment_resolve",
@@ -538,7 +538,7 @@ try:
             path="/api/athena/commitments/{brief_id}/resolve",
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_signals",
@@ -561,7 +561,7 @@ try:
             clients=["telegram", "ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_audit_conversation",
@@ -597,7 +597,7 @@ try:
                  "accuracy and usefulness. Be brief.")
             ),
             telegram_visible=True,
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Advanced"}),
     ]
     from .core import memory_api as _memory_api

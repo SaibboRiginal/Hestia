@@ -36,7 +36,7 @@ class FetchService(HestiaServiceBase):
                 {
                     "command": "fetch_page",
                     "title": "Read a web page",
-                    "telegram_group": "memoria",
+                    "telegram_group": "memory",
                     "telegram": {"section": "Web", "label": "Read a page"},
                     "description": "Fetches HTML by attaching to host Edge via CDP only",
                     "method": "POST",
@@ -48,7 +48,7 @@ class FetchService(HestiaServiceBase):
                 {
                     "command": "web_search",
                     "title": "Search the web",
-                    "telegram_group": "memoria",
+                    "telegram_group": "memory",
                     "telegram": {"section": "Web"},
                     "description": "Search via DuckDuckGo Instant Answer API",
                     "method": "GET",
@@ -275,7 +275,7 @@ _atlas_mcp_tools = [
         ),
         title="Read a web page", method="POST", path="/api/fetch/html",
         clients=["*"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Web", "label": "Read a page"}),
     MCPTool(
         name="web_search",
@@ -290,7 +290,7 @@ _atlas_mcp_tools = [
         handler=lambda **kw: _web_search_mcp_handler(q=str(kw.get("q", ""))),
         title="Search the web", method="GET", path="/api/web/search",
         clients=["*"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Web", "primary": 4}),
     MCPTool(
         name="atlas_recipe",
@@ -306,7 +306,7 @@ _atlas_mcp_tools = [
         handler=lambda **kw: _recipe_mcp_handler(str(kw.get("name") or ""), kw.get("params") or {}),
         title="Website recipes", method="POST", path="/api/recipes/{name}/run",
         clients=["*"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Web", "label": "Website recipes"}),
 ]
 

@@ -60,14 +60,14 @@ def read(get: Callable[[str], Any]) -> dict[str, str]:
             return ""
     owner_name = value(OWNER_NAME)
     return {"assistant": value(ASSISTANT_NAME) or DEFAULT_NAME,
-            "gender": "lui" if value(ASSISTANT_GENDER).lower() == "lui" else "lei",
+            "gender": "he" if value(ASSISTANT_GENDER).lower() == "he" else "she",
             "owner_name": owner_name,
             "owner": value(OWNER_CALL) or owner_name,
             "language": language_code(value(LANGUAGE))}
 
 
 def default() -> dict[str, str]:
-    return {"assistant": DEFAULT_NAME, "gender": "lei", "owner_name": "", "owner": "", "language": DEFAULT_LANGUAGE}
+    return {"assistant": DEFAULT_NAME, "gender": "she", "owner_name": "", "owner": "", "language": DEFAULT_LANGUAGE}
 
 
 def language_code(value: Any) -> str:
@@ -95,7 +95,7 @@ def render(text: str, ident: dict[str, str] | None = None) -> str:
     if "{" not in raw:
         return raw
     ident = ident or default()
-    index = 2 if ident.get("gender") == "lui" else 1
+    index = 2 if ident.get("gender") == "he" else 1
     raw = _GENDERED.sub(lambda m: m.group(index), raw)
     return (raw.replace("{assistant}", ident.get("assistant") or DEFAULT_NAME)
                .replace("{owner_rule}", owner_rule(ident))
@@ -110,5 +110,5 @@ def named(text: str, ident: dict[str, str] | None = None) -> str:
     if "{assistant}" not in raw and "{g:" not in raw:
         return raw
     ident = ident or default()
-    index = 2 if ident.get("gender") == "lui" else 1
+    index = 2 if ident.get("gender") == "he" else 1
     return _GENDERED.sub(lambda m: m.group(index), raw).replace("{assistant}", ident.get("assistant") or DEFAULT_NAME)

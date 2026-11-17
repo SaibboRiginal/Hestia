@@ -138,7 +138,7 @@ def _command(device: str, command: str = "toggle", value: float | None = None) -
 
 S, N = {"type": "string"}, {"type": "number"}
 DEV = {"type": "string", "description": "device name or entity_id"}
-G = "casa"
+G = "home"
 kit.tools([
     MCPTool(name="home_status", description="How the house is now: lights on, temperatures, open doors/windows, quick actions.", parameters={"type": "object", "properties": {}}, handler=_status, title="Home now",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Home", "primary": 1}),
@@ -176,17 +176,17 @@ kit.tools([
 ], prefix="home_")
 
 transfer = Transfer("lares", kit.hub, sections=[
-    StoreSection("preferiti", "Quick actions", kit.store, ["favorite"], icon="zap",
+    StoreSection("favorites", "Quick actions", kit.store, ["favorite"], icon="zap",
                  title=lambda r: r["data"].get("label", "")),
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
 kit.on_warm(lambda: threading.Thread(target=_listen, daemon=True, name="lares-ha-ws").start())
 kit.webui(icon="home", color="teal", description="The house on Home Assistant: lights, shutters, climate, scenes, quick actions.",
-          pages=[page("casa", "Home", element="lares-home", icon="home", order=230,
+          pages=[page("home", "Home", element="lares-home", icon="home", order=230,
                       help="The house now, the quick actions and all Home Assistant devices by type.")],
-          widgets=[widget("casa", "Home", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
-                          open_page="casa", icon="home")],
-          quick_actions=[quick_action("azione", "Home", "POST", f"{API}/favorites/{{id}}/run", icon="home",
+          widgets=[widget("home", "Home", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
+                          open_page="home", icon="home")],
+          quick_actions=[quick_action("action", "Home", "POST", f"{API}/favorites/{{id}}/run", icon="home",
                                       group="Home", source=f"{API}/quick", order=230)])
 kit.finish()

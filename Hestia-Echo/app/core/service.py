@@ -141,10 +141,10 @@ class Echo:
             # Local engines (and every engine in interna) get clean 16 kHz WAV; an external engine that accepts
             # common formats gets the audio as it came (the proxy does not reshape it).
             # A filtered audio (other voices muted) always goes as WAV.
-            external = self.blocks.usecase_config(uc, "ascolto")["mode"] == "esterna" and not std.wants_pcm \
+            external = self.blocks.usecase_config(uc, "listen")["mode"] == "external" and not std.wants_pcm \
                 and not vstats.get("muted")
             data, kind = (raw, mime) if external else (pcm, "audio/wav")
-            opts = _opts(std, provider, step, "ascolto")
+            opts = _opts(std, provider, step, "listen")
             if hint:
                 for key in ("initial_prompt", "prompt"):
                     opts[key] = f"{opts.get(key) or ''} {hint}".strip()
@@ -152,14 +152,14 @@ class Echo:
 
         started = time.monotonic()
         try:
-            result, info = self.blocks.run(uc, "ascolto", call)
+            result, info = self.blocks.run(uc, "listen", call)
         except ChainExhausted as exc:
             if record:
-                self._record("ascolto", {"use_case": uc}, ms=int((time.monotonic() - started) * 1000), ok=False,
+                self._record("listen", {"use_case": uc}, ms=int((time.monotonic() - started) * 1000), ok=False,
                              seconds=seconds, error=str(exc))
             raise
         if record:
-            self._record("ascolto", info, ms=int((time.monotonic() - started) * 1000), ok=True, seconds=seconds)
+            self._record("listen", info, ms=int((time.monotonic() - started) * 1000), ok=True, seconds=seconds)
         return {**result, "duration_s": seconds}, info, pcm
 
     def transcribe(self, body: dict) -> dict:
@@ -183,16 +183,16 @@ class Echo:
         def call(provider, step):
             std = STANDARDS[provider["type"]]
             return std.speak(provider, step.get("model") or "", voice or step.get("voice") or "", text, language,
-                             _opts(std, provider, step, "voce"))
+                             _opts(std, provider, step, "voice"))
 
         started = time.monotonic()
         try:
-            (data, mime), info = self.blocks.run(uc, "voce", call)
+            (data, mime), info = self.blocks.run(uc, "voice", call)
         except ChainExhausted as exc:
-            self._record("voce", {"use_case": uc}, ms=int((time.monotonic() - started) * 1000), ok=False,
+            self._record("voice", {"use_case": uc}, ms=int((time.monotonic() - started) * 1000), ok=False,
                          chars=len(text), error=str(exc))
             raise
-        self._record("voce", info, ms=int((time.monotonic() - started) * 1000), ok=True, chars=len(text))
+        self._record("voice", info, ms=int((time.monotonic() - started) * 1000), ok=True, chars=len(text))
         return data, mime, info
 
     # ── setup «Prova»: one provider tried directly, before the choice is saved ──
@@ -208,7 +208,7 @@ class Echo:
 
     def setup_preview(self, body: dict) -> dict:
         """«Ascolta» on a voice of the setup: a short sentence spoken by that provider and voice (no chain)."""
-        p, why = self._setup_provider(str(body.get("provider") or ""), "voce")
+        p, why = self._setup_provider(str(body.get("provider") or ""), "voice")
         if p is None:
             return {"ok": False, "detail": why}
         std = STANDARDS[p["type"]]
@@ -217,7 +217,7 @@ class Echo:
         speech = own or self.speak_language(str(body.get("text") or ""))
         text = str(body.get("text") or lang.sample(speech, identity_now()))[:200]
         try:
-            data, mime = std.speak(p, step["model"], step["voice"], text, speech, _opts(std, p, step, "voce"))
+            data, mime = std.speak(p, step["model"], step["voice"], text, speech, _opts(std, p, step, "voice"))
             pcm = audio.to_pcm16k(data, mime)
             out, out_mime = audio.encode(data, str(body.get("format") or "mp3"))
         except Exception as exc:  # noqa: BLE001 — a failed try is an answer, not an error page
@@ -231,7 +231,7 @@ class Echo:
 
     def setup_hear(self, body: dict) -> dict:
         """«Prova» of listening in the setup: what the user said, heard by that provider and model (no chain)."""
-        p, why = self._setup_provider(str(body.get("provider") or ""), "ascolto")
+        p, why = self._setup_provider(str(body.get("provider") or ""), "listen")
         if p is None:
             return {"ok": False, "detail": why}
         raw = _b64(body.get("audio_b64"))
@@ -245,7 +245,7 @@ class Echo:
         std = STANDARDS[p["type"]]
         step = {"provider": p["name"], "model": str(body.get("model") or ""), "voice": ""}
         try:
-            result = std.transcribe(p, step["model"], pcm, "audio/wav", self.language(), _opts(std, p, step, "ascolto"))
+            result = std.transcribe(p, step["model"], pcm, "audio/wav", self.language(), _opts(std, p, step, "listen"))
         except Exception as exc:  # noqa: BLE001
             logger.warning("[🔄] event=voice_setup_hear_failed provider=%s error=%s", p["name"], str(exc)[:200])
             return {"ok": False, "detail": tr("It did not answer: {0}", str(exc)[:160])}

@@ -15,7 +15,7 @@ from typing import Any
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 
 from telegram_bot import catalog, core, store, ui, usage
-from telegram_bot.inputs import MONTHS, WEEKDAYS
+from hestia_common.i18n import month_name, weekday_name
 from telegram_bot.menu import model
 from telegram_bot.render import render
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
@@ -98,7 +98,7 @@ def back_row(*buttons) -> list:
 
 def _today_words(d: date | None = None) -> str:
     d = d or date.today()
-    return f"{tr(WEEKDAYS[d.weekday()]).capitalize()} {d.day} {tr(MONTHS[d.month - 1])}"
+    return f"{weekday_name(d.weekday()).capitalize()} {d.day} {month_name(d.month)}"
 
 
 def _counts() -> dict:
@@ -142,7 +142,7 @@ def home(chat_id) -> None:
 
 def oggi(chat_id, message_id: int | None = None) -> None:
     menu = model.current()
-    parts: list[str] = [ui.title_line(tr("Today — {0}", _today_words().lower()), marker=_emoji(menu, "giornata"))]
+    parts: list[str] = [ui.title_line(tr("Today — {0}", _today_words().lower()), marker=_emoji(menu, "day"))]
     for name in menu.today.get("tools") or []:
         tool = catalog.get(name)
         if not tool:
@@ -184,7 +184,7 @@ def aree(chat_id, message_id: int | None = None) -> None:
         lines.append(ui.note(tr("Often used")))
         rows += ui.grid([ui.button(menu.label(n), f"t:{store.sid(n)}") for n in frequent])
     rows += ui.grid([ui.button(a.button_text, f"n:a:{a.key}", icon=a.icon) for a in menu.areas
-                     if a.key != "altro" or a.sections])
+                     if a.key != "other" or a.sections])
     place(chat_id, ui.card(tr("Areas"), lines), ui.keyboard(rows), message_id)
 
 
@@ -274,10 +274,10 @@ def notifiche(chat_id, message_id: int | None = None) -> None:
     if not lines:
         lines.append(ui.note(tr("Nothing new.")))
     menu = model.current()
-    if menu.area("notifiche"):
+    if menu.area("notifications"):
         rows.append([ui.button(tr("Automatic alerts ›"), "n:a:notifications")])
     rows.append([ui.button(tr("Refresh"), "n:ntf")])
-    place(chat_id, ui.card(tr("Notifications"), lines, marker=_emoji(menu, "notifiche")), ui.keyboard(rows), message_id)
+    place(chat_id, ui.card(tr("Notifications"), lines, marker=_emoji(menu, "notifications")), ui.keyboard(rows), message_id)
 
 
 def render_when(value: Any) -> str:
@@ -335,9 +335,9 @@ def handle(call) -> None:
     except Exception:  # noqa: BLE001
         pass
     what = parts[1] if len(parts) > 1 else ""
-    if what == "oggi":
+    if what == "today":
         oggi(chat_id, mid)
-    elif what == "aree":
+    elif what == "areas":
         aree(chat_id, mid)
     elif what == "a" and len(parts) > 2:
         area(chat_id, parts[2], mid)
@@ -351,7 +351,7 @@ def handle(call) -> None:
         notification_detail(chat_id, parts[2], mid)
     elif what == "imp":
         impostazioni(chat_id, mid)
-    elif what == "voce":
+    elif what == "voice":
         toggle_voice(chat_id, mid)
     else:
         aree(chat_id, mid)
@@ -376,13 +376,13 @@ def stale(chat_id, message_id: int | None = None) -> None:
 
 def open_door(chat_id, door: str) -> bool:
     """A bottom keyboard button or its `/` command."""
-    if door == "oggi":
+    if door == "today":
         oggi(chat_id)
-    elif door == "aree":
+    elif door == "areas":
         aree(chat_id)
-    elif door == "notifiche":
+    elif door == "notifications":
         notifiche(chat_id)
-    elif door == "impostazioni":
+    elif door == "settings":
         impostazioni(chat_id)
     else:
         return False

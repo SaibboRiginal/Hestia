@@ -7,7 +7,7 @@ import { tr, TrPipe } from '../../core/i18n';
 
 export interface DownloadRow {
   module: string; id: string; what: string; source: string; size: number; done: number;
-  speed: number; eta_s: number | null; state: 'queued' | 'running' | 'paused' | 'fatto' | 'errore'; error: string;
+  speed: number; eta_s: number | null; state: 'queued' | 'running' | 'paused' | 'done' | 'error'; error: string;
 }
 
 const STATE: Record<DownloadRow['state'], { label: string; icon: string; tone: string }> = {
@@ -18,7 +18,7 @@ const STATE: Record<DownloadRow['state'], { label: string; icon: string; tone: s
   errore: { label: tr('alt::Failed'), icon: 'alert', tone: 'danger' },
 };
 const SOURCE: Record<string, string> = { ollama: tr('Model'), whisper: tr('Listening'), http: tr('File'), docker: tr('Program') };
-const ORDER: DownloadRow['state'][] = ['running', 'queued', 'paused', 'errore', 'fatto'];
+const ORDER: DownloadRow['state'][] = ['running', 'queued', 'paused', 'error', 'done'];
 
 /** Bytes in Italian: «3,1 GB», «420 MB». */
 export function bytes(n: number): string {
@@ -38,7 +38,7 @@ export function bytes(n: number): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header  [title]="'alt::Download' | tr"  [subtitle]="'Models and voices Hestia downloads: progress, pause, retry, space' | tr">
-      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voce"  [title]="'Prepare the voice: it\\'s done from the Voice page' | tr"><span class="lbl">{{ "Voice" | tr }}</span></a>
+      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voice"  [title]="'Prepare the voice: it\\'s done from the Voice page' | tr"><span class="lbl">{{ "Voice" | tr }}</span></a>
       <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup"  [title]="'Choose the brain' | tr"><span class="lbl">{{ "Choose the brain" | tr }}</span></a>
     </hx-page-header>
     <div class="body">
@@ -67,10 +67,10 @@ export function bytes(n: number): string {
                   @case ('running') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
                   @case ('queued') { <button hx-btn size="sm" variant="ghost" icon="pause" (click)="op(d, 'pause')">{{ "Pause" | tr }}</button> }
                   @case ('paused') { <button hx-btn size="sm" icon="play" (click)="op(d, 'resume')">{{ "Resume" | tr }}</button> }
-                  @case ('errore') { <button hx-btn size="sm" icon="refresh" (click)="op(d, 'retry')">{{ "Try again" | tr }}</button> }
-                  @case ('fatto') { <button hx-btn size="sm" variant="ghost" icon="trash" (click)="remove(d)">{{ "Delete" | tr }}</button> }
+                  @case ('error') { <button hx-btn size="sm" icon="refresh" (click)="op(d, 'retry')">{{ "Try again" | tr }}</button> }
+                  @case ('done') { <button hx-btn size="sm" variant="ghost" icon="trash" (click)="remove(d)">{{ "Delete" | tr }}</button> }
                 }
-                @if (d.state !== 'fatto') {
+                @if (d.state !== 'done') {
                   <button hx-btn size="sm" variant="ghost" icon="x" iconOnly  [attr.aria-label]="'Cancel' | tr"  [title]="'Cancel' | tr" (click)="op(d, 'cancel')"></button>
                 }
               </div>
@@ -141,8 +141,8 @@ export class DownloadsPageComponent {
   pct(d: DownloadRow) { return d.size ? Math.min(100, (100 * d.done) / d.size) : 0; }
 
   detail(d: DownloadRow): string {
-    if (d.state === 'errore') return d.error || tr('Failed.');
-    if (d.state === 'fatto') return d.size ? bytes(d.size) : 'Pronto.';
+    if (d.state === 'error') return d.error || tr('Failed.');
+    if (d.state === 'done') return d.size ? bytes(d.size) : 'Pronto.';
     const parts = [d.size ? `${bytes(d.done)} di ${bytes(d.size)}` : this.state(d).label];
     if (d.state === 'running' && d.speed) parts.push(`${bytes(d.speed)}/s`);
     if (d.state === 'running' && d.eta_s) parts.push(d.eta_s < 60 ? tr('less than a minute') : tr("{0} min left", Math.round(d.eta_s / 60)));

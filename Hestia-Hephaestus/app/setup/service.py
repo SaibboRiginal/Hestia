@@ -22,7 +22,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.setup")
 
-STEPS = ("cervello", "voce", "telegram", "backup", "esterni", "fuori")
+STEPS = ("brain", "voice", "telegram", "backup", "external_ais", "away")
 CODE_TTL = 600
 CODE_TRIES = 5
 # Modules that re-read their provider keys from their own .env without a restart: (path, key prefix).
@@ -61,7 +61,7 @@ class SetupService:
 
     def role(self) -> str:
         """«tutto» (whole stack here), «centrale» (always-on core) or «satellite»: written by the installer."""
-        return str(self.hardware_raw().get("role") or "tutto")
+        return str(self.hardware_raw().get("role") or "all")
 
     def hardware_raw(self) -> dict[str, Any]:
         try:
@@ -212,7 +212,7 @@ class SetupService:
                     pulls.append(step["model"])
         for model in pulls:
             self.oracle("POST", "/api/llm/setup/pull", body={"model": model})
-        self.mark("cervello", brain={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
+        self.mark("brain", brain={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
                                      "cloud": cloud, "cloud_models": cloud_models or {},
                                      "embedding": emb, "modes": {k: {"provider": v.get("provider", ""), "model": v.get("model", ""),
                                                                       "steps": [{"provider": s.get("provider", ""),

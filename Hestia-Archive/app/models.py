@@ -64,7 +64,7 @@ class ChatSessionMeta(Base):
 
     session_id = Column(String, primary_key=True)
     title = Column(String, nullable=True)
-    tags = Column(JSONB, nullable=True)          # [{"name": "lavoro", "color": "blue"}]
+    tags = Column(JSONB, nullable=True)          # [{"name": "work", "color": "blue"}]
     pinned = Column(Boolean, nullable=False, default=False)
     # «Non usare per l'allenamento» (docs/work/2026-10-30-dataset-allenamento): no trace of it in the dataset.
     training_off = Column(Boolean, nullable=True, default=False)

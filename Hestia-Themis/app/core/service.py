@@ -359,7 +359,7 @@ class Themis:
             if actors and not any(who == a or who.startswith(f"{a}:") for a in actors):
                 continue
             reason = str(r.get("reason") or "")
-            kind = ("undo" if reason == "annulla" else "reset" if r.get("new_value") is None
+            kind = ("undo" if reason == "cancel" else "reset" if r.get("new_value") is None
                     else "approved" if reason.startswith(("proposal approved", "proposta approvata")) else
                     "preset" if reason.startswith("preset ") else "change")
             out.append({**r, "label": d.get("label") or r.get("key"), "module": row_module, "type": d.get("type"),
@@ -378,7 +378,7 @@ class Themis:
         old = rows[0].get("old_value")
         if old is None:
             return self.reset(key, scope=scope, scope_id=scope_id, actor=actor)
-        return self.set(key, old, scope=scope, scope_id=scope_id, actor=actor, reason="annulla")
+        return self.set(key, old, scope=scope, scope_id=scope_id, actor=actor, reason="cancel")
 
     def apply_preset(self, module: str, preset_id: str, *, actor: str = "user") -> dict:
         preset = next((p for p in self.registry.presets(module) if p.get("id") == preset_id), None)

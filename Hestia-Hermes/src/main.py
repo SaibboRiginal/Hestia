@@ -61,13 +61,13 @@ ui = PluginClient("hermes", title="Notifications", icon="bell", color="teal", ki
                   description="Notifications and where they arrived: held back, silent, withdrawn, answered.",
                   version=SERVICE_VERSION)
 ui.webui(entry="hermes.js", api_prefix="/api/ui/",
-         pages=[page("notifiche", "Notifications", element="hermes-inbox", icon="bell", order=140,
+         pages=[page("notifications", "Notifications", element="hermes-inbox", icon="bell", order=140,
                      badge={"source": "/api/ui/inbox/counts", "field": "unread"},
                      help="The list of notifications, the same on every client (read here = read on Telegram): to read, to answer, all; the buttons answer the module that asked."),
-                page("consegne", "Deliveries", element="hermes-deliveries", icon="send", order=141, parent="notifiche",
+                page("deliveries", "Deliveries", element="hermes-deliveries", icon="send", order=141, parent="notifications",
                      help="Every notification and which clients it reached (Telegram, WebUI…): held back by presence, silent, withdrawn from the chat, answered. The list to read is in Notifications.")],
-         widgets=[widget("oggi", "Deliveries today", element="hermes-today-widget", sizes=["s", "m"], auto=True,
-                         open_page="consegne", icon="bell",
+         widgets=[widget("today", "Deliveries today", element="hermes-today-widget", sizes=["s", "m"], auto=True,
+                         open_page="deliveries", icon="bell",
                          help="Today's notifications: delivered, held back, failed, waiting for an answer.")])
 app.include_router(ui.router())
 

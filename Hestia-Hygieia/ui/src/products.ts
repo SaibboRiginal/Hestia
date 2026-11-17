@@ -160,9 +160,9 @@ export class HygieiaProducts extends HestiaElement {
     </div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
+    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
       ${this.items ? html`<span class="sub">${this.items.length}</span>` : nothing}</div>
-      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('spesa')}>${tr('Shopping list')}</hxk-button>
+      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('groceries')}>${tr('Shopping list')}</hxk-button>
         <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div></div>`;
     return html`<div class="page">${head}
       <div class="filters">
@@ -213,10 +213,10 @@ export class HygieiaProduct extends HestiaElement {
   private async drop() {
     if (!await this.host.confirm(tr('Delete product'), tr('You remove it from the list. If you finished it or threw it away, better mark it so: it stays in the history.'), { label: tr('Delete'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `${API}/products/${this.rid}`);
-    if (r.ok) this.host.navigate('prodotti');
+    if (r.ok) this.host.navigate('products');
   }
   render() {
-    const back = html`<button class="link" @click=${() => this.host.navigate('prodotti')}>${tr('‹ Products')}</button>`;
+    const back = html`<button class="link" @click=${() => this.host.navigate('products')}>${tr('‹ Products')}</button>`;
     if (this.p === undefined) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
     if (this.p === 'missing') return html`<div class="page">${back}<hxk-state kind="empty" text=${tr("Product not found")}></hxk-state></div>`;
     if (this.p === null) return html`<div class="page">${back}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;

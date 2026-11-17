@@ -178,7 +178,7 @@ def _supplements() -> dict:
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 SUP = {"type": "string", "description": "supplement id or name"}
-G = "alimentazione"
+G = "nutrition"
 kit.tools([
     MCPTool(name="food_today", description="Today's summary: meals, kcal and protein against the diet, supplements.",
             parameters={"type": "object", "properties": {"date": S}},
@@ -228,22 +228,22 @@ kit.tools([
 ], prefix="food_")
 
 transfer = Transfer("demeter", kit.hub, sections=[
-    StoreSection("dieta", "Diet", kit.store, ["diet"], icon="leaf"),
-    StoreSection("pasti", "Meals", kit.store, ["meal"], icon="list", title=lambda r: r["data"].get("text", "")),
-    StoreSection("integratori", "Supplements", kit.store, ["supplement", "intake"], icon="droplet",
+    StoreSection("diet", "Diet", kit.store, ["diet"], icon="leaf"),
+    StoreSection("meals", "Meals", kit.store, ["meal"], icon="list", title=lambda r: r["data"].get("text", "")),
+    StoreSection("supplements", "Supplements", kit.store, ["supplement", "intake"], icon="droplet",
                  title=lambda r: r["data"].get("name", "")),
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([
-    usecase(ESTIMATE_USE, "Nutrition · kcal estimate", chain="veloce",
+    usecase(ESTIMATE_USE, "Nutrition · kcal estimate", chain="fast",
             help="Estimates kcal and protein of a meal described in words.")])})
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="leaf", color="green", description="Diet, meals with estimated calories, supplements in the week plan.",
-          pages=[page("oggi", "Nutrition", element="demeter-today", icon="leaf", order=80,
+          pages=[page("today", "Nutrition", element="demeter-today", icon="leaf", order=80,
                       help="The meals of the day with calories and protein (estimated by the assistant if you don't write them), the supplements to take."),
-                 page("dieta", "Diet", element="demeter-diet", icon="target", order=81, parent="oggi"),
-                 page("integratori", "Supplements", element="demeter-supplements", icon="droplet", order=82,
-                      parent="oggi")],
-          widgets=[widget("oggi", "Today's nutrition", element="demeter-widget", sizes=["s", "m"], size="m",
-                          auto=True, open_page="oggi", icon="leaf")])
+                 page("diet", "Diet", element="demeter-diet", icon="target", order=81, parent="today"),
+                 page("supplements", "Supplements", element="demeter-supplements", icon="droplet", order=82,
+                      parent="today")],
+          widgets=[widget("today", "Today's nutrition", element="demeter-widget", sizes=["s", "m"], size="m",
+                          auto=True, open_page="today", icon="leaf")])
 kit.finish()

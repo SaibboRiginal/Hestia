@@ -133,14 +133,14 @@ Conversational reasoning layer with unified agentic tool calling.
 - **LLM gateway:** sole owner of LLM provider access. Other services use `/api/llm/generate` (prompt) or `/api/llm/chat` (OpenAI-compatible + tools) via Hub with a `use_case` `<module>.<task>` they declare in their Hub registration (`capabilities.llm_usecases`, `hestia_common.oracle_usecases`) — never provider URLs/keys/model names of their own.
 - **No speech engines in Oracle** (2026-10-20): audio inside documents is transcribed by Echo (use `oracle.documents`); WhisperX is gone.
 - **Local model window** (2026-11-12): what the local program already knows is read from it, never asked again in Hestia. The context window of a local model is the one set in Ollama / LM Studio / llama-server (`core/services/local_window.py` reads it; `oracle.provider.ollama.num_ctx` = 0 automatic, a number forces it). Same rule as the model list of the guided setup.
-- **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset, any error moves to the next step) → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `veloce` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
+- **Oracle a blocchi** (2026-10-19): named providers (`oracle.providers`, keys only in env `ORACLE_KEY_<NAME>`) → reusable chains of provider/model steps (`oracle.chains`; a quota error skips that model until its reset, any error moves to the next step) → use cases (`oracle.usecases`: chain, mode, thinking), all edited in Oracle → Cervello → Modelli. Default chain `fast` = local Ollama first, then Gemini. Brain mode interna (chains) or esterna (Claude Code / Codex run the loop with Hestia's tools over a stdio MCP bridge; Archive stays the session truth). Every LLM call is a usage row in Archive (`llm-usage`).
 
 ### Hestia-Echo 🎙️
 Voice core (port 19021): the only module that listens (speech → text) and speaks (text → speech), for files and for
 streams in blocks (`listen` mic chunks with partial text and end-of-turn silence, `say` text → audio sentence by
 sentence), for every client. Built like Oracle a blocchi: providers (`echo.providers`, keys only in env
 `ECHO_KEY_<NAME>`; standards Whisper locale, Piper, Kokoro, OpenAI-compatible, Google, ElevenLabs, Wyoming), chains
-with a direction `ascolto` or `voce` (quota skip until reset), uses declared by modules (`capabilities.voice_usecases`,
+with a direction `listen` or `voice` (quota skip until reset), uses declared by modules (`capabilities.voice_usecases`,
 `hestia_common.voice_usecases`) and mode interna/esterna (Echo as the door of one engine, fallback to the chains).
 Keeps audio in Archive (blobs + `echo-store`): Marko's recordings never deleted, generated audio while useful
 (`echo.audio.generated_days`, regenerated from the text), space limit drops regenerable audio first. Live mode on every
@@ -156,7 +156,7 @@ Proactive dispatch core — the only outbound messenger to the user's clients.
 - Recurring nudges (reminders) never pile up: the module sends `replaces: "<key>"`; Hermes keeps one live
   notification per key on every client with the skip counter (`resolves: true` / `closes` done ends it).
 - Read state is global; answers go to the module that asked, first answer wins.
-- Voice: a module that wants its notifications also as audio says so with its own setting `<module>.notifiche.voce`
+- Voice: a module that wants its notifications also as audio says so with its own setting `<module>.notifications.voice`
   (`hestia_common.reminders.voice_setting`) and the event flag `_voice`; Hermes sends the text first, then the audio
   made by Echo as an `update` (Telegram: voice message replying to it; WebUI inbox: «Ascolta»). Superseded → audio dropped.
 - Writes delivery outcomes to Archive.
@@ -198,7 +198,7 @@ Telegram client: chat with Oracle and **every assistant function** (SPEC `docs/w
   destructive ones). Every module tool is reachable; only section `interno` is hidden.
 - Tool results are drawn without the model: the module's `display` block (`hestia_common.display`) or a generic renderer.
 - Replying to / quoting a message sends it to Oracle as `quoted` context. Files, photos and voice notes go to the
-  open action or to Oracle; voice through Echo («Ascolta» under replies, `/voce`).
+  open action or to Oracle; voice through Echo («Ascolta» under replies, `/voice`).
 - Mini App: WebUI pages open inside Telegram on the public https address; login with Telegram's signed initData,
   verified by Telegram via Hub.
 - Pasted OAuth callback URLs (`.../api/gateway/auth/callback/<provider>?code=`) go straight to Hecate, no LLM involved.
@@ -280,7 +280,7 @@ Guarded remediation and coding executor.
 - Uses source-control safety primitives: branch-based work, checkpoints, rollback path.
 - May execute local build/deploy workflows according to policy tiers.
 - Claude Pro budget windows are agenda windows (`forge.claude_nights`, `forge.claude_final`): skip a night to block autonomous Claude work.
-- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`oracle` = Oracle's chain of use case `forge.codice`, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
+- **Forge (self-development):** "aggiungi/correggi X" on Telegram → isolated git branch → coding engine (`oracle` = Oracle's chain of use case `forge.code`, or Claude Code with a Pro/Max token) → tests → approval → merge/deploy/rollback. Permission modes `ask | auto | full_auto` per group (local/cloud), set from Telegram. Athena (idle retrospective) and Argus (recurring errors) feed it via Hub. See `Hestia-Hephaestus/hestia-hephaestus.md` → *Forge*.
 
 ### Hestia-Athena 🧭
 Proactive cognition and advisory strategy engine.
@@ -504,9 +504,9 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 
 12. **Origin and authority of a turn (`hestia_common.origin`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`):**
    whoever starts an assistant turn says so in `X-Hestia-Origin: <kind>[:<ref>]`, set by the caller's code, never by
-   the model. `utente` (the owner's client, or `esterno` = an external AI through Hestia-MCP) may do anything;
-   `routine` (a Chronos rule) may write but not delete; `autonomo` (a module on its own) may only propose, notify
-   and ask. No header from a non-user client = `autonomo`. Write tools return `undo`
+   the model. `user` (the owner's client, or `external` = an external AI through Hestia-MCP) may do anything;
+   `routine` (a Chronos rule) may write but not delete; `autonomous` (a module on its own) may only propose, notify
+   and ask. No header from a non-user client = `autonomous`. Write tools return `undo`
    (`hestia_common.mcp_helpers.undo`) when they can be undone; text sent outside the house (cloud model analysis,
    Forge prompts) passes through `hestia_common.redact`. Dated rules from Marko: `docs/MARKO-RULES.md`.
 13. **Routines are agenda rules, secrets never rest (same dossier, W2):** a routine is a Chronos agenda rule with a
@@ -564,7 +564,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    in relay mode (`HUB_UPSTREAM_URL`, `HUB_NODE_TOKEN`, `HUB_NODE_ADDRESS`) and registers its modules (voice,
    training) on the central with a pairing token, at `<satellite LAN address>:<module port>`. A satellite's module
    answers first, the central's own copy is the fallback. The brain's local models can run on a satellite's video
-   card (Oracle provider `ollama` → `http://<satellite>:11434`). Roles from the installer: `tutto`, `centrale`,
+   card (Oracle provider `ollama` → `http://<satellite>:11434`). Roles from the installer: `all`, `centrale`,
    `satellite`. Detail: `Hestia-Hub/hestia-hub.md` «Machines».
    Updates: Hephaestus moves `/repo` to the next tag (or `main`) and applies it to the running containers with a
    health check and an automatic way back («Aggiorna Hestia»); host software and satellites update by rerunning

@@ -7,10 +7,10 @@ import { tr } from '../i18n';
  * result into tokens on <html> and the attributes data-style / data-glass / data-motion, so plugins follow too.
  * Dossier: docs/work/2026-10-29-revisione-e-test-frontend §6.
  */
-export type Corners = 'squadrati' | 'normali' | 'arrotondati';
-export type Borders = 'leggeri' | 'normali' | 'marcati';
-export type Glass = 'no' | 'leggera' | 'vetro';
-export type Motion = 'nessuna' | 'ridotte' | 'normali' | 'vivaci';
+export type Corners = 'squared' | 'normal' | 'rounded';
+export type Borders = 'light' | 'normal' | 'marked';
+export type Glass = 'no' | 'light' | 'glass';
+export type Motion = 'none' | 'reduced' | 'normal' | 'lively';
 
 export interface LookKnobs { corners: Corners; borders: Borders; glass: Glass; motion: Motion; }
 
@@ -25,16 +25,16 @@ export interface StyleDef {
 
 export const STYLES: StyleDef[] = [
   {
-    id: 'classico', label: tr('Classic'), help: tr('Warm and calm: serif titles, soft corners, full surfaces.'),
-    knobs: { corners: 'normali', borders: 'normali', glass: 'no', motion: 'normali' }, tokens: {},
+    id: 'classic', label: tr('Classic'), help: tr('Warm and calm: serif titles, soft corners, full surfaces.'),
+    knobs: { corners: 'normal', borders: 'normal', glass: 'no', motion: 'normal' }, tokens: {},
   },
   {
-    id: 'vetro', label: tr('Glass'), help: tr('Light: transparent and blurred panels on a gradient background, rounder corners, lively animations.'),
-    knobs: { corners: 'arrotondati', borders: 'leggeri', glass: 'vetro', motion: 'vivaci' }, tokens: {},
+    id: 'glass', label: tr('Glass'), help: tr('Light: transparent and blurred panels on a gradient background, rounder corners, lively animations.'),
+    knobs: { corners: 'rounded', borders: 'light', glass: 'glass', motion: 'lively' }, tokens: {},
   },
   {
-    id: 'netto', label: tr('Net'), help: tr('Precise: all sans serif, almost square corners, marked borders and no shadows.'),
-    knobs: { corners: 'squadrati', borders: 'marcati', glass: 'no', motion: 'ridotte' },
+    id: 'net', label: tr('Net'), help: tr('Precise: all sans serif, almost square corners, marked borders and no shadows.'),
+    knobs: { corners: 'squared', borders: 'marked', glass: 'no', motion: 'reduced' },
     tokens: {
       '--font-serif': 'var(--font-sans)', '--font-chat': 'var(--font-sans)',
       '--shadow-1': 'none', '--shadow-2': '0 0 0 1px var(--border-strong)',
@@ -43,7 +43,7 @@ export const STYLES: StyleDef[] = [
   },
 ];
 
-export const DEFAULT_STYLE = 'classico';
+export const DEFAULT_STYLE = 'classic';
 
 export const RADII: Record<Corners, Record<string, string>> = {
   squadrati: { '--radius-xs': '2px', '--radius-sm': '3px', '--radius-md': '4px', '--radius-lg': '6px', '--radius-xl': '8px' },
@@ -67,8 +67,8 @@ export const GLASS: Record<Glass, { surface: number; subtle: number; surface2: n
 
 /** Labels for the settings page. */
 export const KNOB_OPTIONS = {
-  corners: [{ value: 'squadrati', label: tr('Squared') }, { value: 'normali', label: tr('pl::Normal') }, { value: 'arrotondati', label: tr('Rounded') }],
-  borders: [{ value: 'leggeri', label: tr('pl::Light') }, { value: 'normali', label: tr('pl::Normal') }, { value: 'marcati', label: tr('alt::Marked') }],
-  glass: [{ value: 'no', label: tr('f::None') }, { value: 'leggera', label: tr('Light') }, { value: 'vetro', label: tr('Glass') }],
-  motion: [{ value: 'nessuna', label: tr('f::None') }, { value: 'ridotte', label: tr('Reduced') }, { value: 'normali', label: tr('pl::Normal') }, { value: 'vivaci', label: tr('Vivid') }],
+  corners: [{ value: 'squared', label: tr('Squared') }, { value: 'normal', label: tr('pl::Normal') }, { value: 'rounded', label: tr('Rounded') }],
+  borders: [{ value: 'light', label: tr('pl::Light') }, { value: 'normal', label: tr('pl::Normal') }, { value: 'marked', label: tr('alt::Marked') }],
+  glass: [{ value: 'no', label: tr('f::None') }, { value: 'light', label: tr('Light') }, { value: 'glass', label: tr('Glass') }],
+  motion: [{ value: 'none', label: tr('f::None') }, { value: 'reduced', label: tr('Reduced') }, { value: 'normal', label: tr('pl::Normal') }, { value: 'lively', label: tr('Vivid') }],
 } as const;

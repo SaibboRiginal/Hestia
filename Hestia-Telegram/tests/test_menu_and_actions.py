@@ -105,14 +105,14 @@ class TestReachability:
 
     def test_sample_layout_moves_renames_and_loses_nothing(self, ui_env):
         bot, tools, layout = ui_env
-        layout.update({"areas": {"spese": {"label": "Soldi", "emoji": "💰", "primary": ["finance_add"]},
+        layout.update({"areas": {"expenses": {"label": "Soldi", "emoji": "💰", "primary": ["finance_add"]},
                                  "viaggi": {"label": "Viaggi", "emoji": "🧳", "order": 5}},
                        "tools": {"wardrobe_packing": {"area": "viaggi", "label": "Valigia"},
                                  "missing": {"area": "viaggi"}}})
         from telegram_bot.menu import model
         menu = model.current()
         assert menu.areas[0].key == "viaggi" and menu.area("viaggi").names == ["wardrobe_packing"]
-        assert menu.area("spese").label == "Soldi" and menu.area("spese").primary == ["finance_add"]
+        assert menu.area("expenses").label == "Soldi" and menu.area("expenses").primary == ["finance_add"]
         assert menu.label("wardrobe_packing") == "Valigia"
         reached = _walk(bot)
         assert all(t.name in reached for t in tools if t.name not in menu.hidden)
@@ -121,19 +121,19 @@ class TestReachability:
         from telegram_bot.catalog import Tool
         from telegram_bot.menu import model
         menu = model.build([Tool(name="x_strano", title="Strano", group="missing_area")], {})
-        assert menu.tool_area["x_strano"] == "altro" and menu.area("altro").names == ["x_strano"]
+        assert menu.tool_area["x_strano"] == "other" and menu.area("other").names == ["x_strano"]
 
     def test_slash_menu_has_ten_entries(self):
         from telegram_bot.menu import model
         assert [c for c, _ in model.build([], {}).commands] == [
-            "oggi", "aree", "adesso", "scopri", "notifiche", "impostazioni", "nuova", "voce", "stato", "aiuto"]
+            "today", "areas", "now", "discover", "notifications", "settings", "new", "voice", "status", "aiuto"]
 
     def test_adesso_and_scopri_commands_open_their_tools(self, ui_env, monkeypatch):
         import telegram_runtime
         from telegram_bot import actions
         opened = []
         monkeypatch.setattr(actions, "from_command", lambda chat, name, args: opened.append(name) or True)
-        assert telegram_runtime.open_command(12345, "adesso") and telegram_runtime.open_command(12345, "scopri")
+        assert telegram_runtime.open_command(12345, "now") and telegram_runtime.open_command(12345, "discover")
         assert opened == ["metis_now", "metis_discover"]
 
 
@@ -141,12 +141,12 @@ class TestReachability:
 class TestActionFlow:
     def _tool(self, writes=True, destructive=False):
         from telegram_bot import catalog
-        return catalog.Tool(name="finance_add", title="Registra spesa", group="spese", writes=writes,
+        return catalog.Tool(name="finance_add", title="Registra spesa", group="expenses", writes=writes,
                             destructive=destructive, schema={"type": "object", "required": ["amount", "category"],
                                                              "properties": {
                                                                  "amount": {"type": "number"},
                                                                  "category": {"type": "string",
-                                                                              "enum": ["bar", "spesa"]},
+                                                                              "enum": ["bar", "groceries"]},
                                                                  "note": {"type": "string"}}})
 
     def test_ask_in_words_buttons_confirm_run_result(self, monkeypatch):
@@ -263,8 +263,8 @@ class TestCallbacks:
         from telegram_bot.menu import editor
         drawn: set[str] = set()
         for draw in (lambda: nav.aree(12345), lambda: nav.impostazioni(12345), lambda: nav.oggi(12345),
-                     lambda: editor.root(12345), lambda: editor.area(12345, "spese"),
-                     lambda: editor.primary(12345, "spese")):
+                     lambda: editor.root(12345), lambda: editor.area(12345, "expenses"),
+                     lambda: editor.primary(12345, "expenses")):
             draw()
             drawn |= set(_callbacks(_last_markup(bot)))
         stale = []
@@ -281,7 +281,7 @@ class TestCallbacks:
         from telegram_bot import nav
         core.bot = _fake_bot()
         shown = []
-        monkeypatch.setattr(nav, "aree", lambda chat, mid=None: shown.append(chat))
+        monkeypatch.setattr(nav, "areas", lambda chat, mid=None: shown.append(chat))
         telegram_runtime._route_callback(_call("grp:fitness"))
         core.bot.answer_callback_query.assert_called_with("cb", "Questo menu è vecchio")
         assert shown == [12345]

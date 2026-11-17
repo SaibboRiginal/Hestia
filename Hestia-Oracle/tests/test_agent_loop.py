@@ -315,7 +315,7 @@ class TestRunAgentLoop:
             ask_fn=_always_fail,
         )
         # Should surface a user-friendly Italian error message
-        assert "disponibile" in answer.lower() or "errore" in answer.lower() or answer
+        assert "disponibile" in answer.lower() or "error" in answer.lower() or answer
 
     def test_stream_fn_used_for_final_answer(self):
         tokens_out = ["Ciao ", "Mark!"]

@@ -25,7 +25,7 @@ logger = logging.getLogger("hestia_hephaestus.forge.review")
 
 REVIEW_USECASE = "forge.review"
 PLAN_USECASE = "forge.plan"
-BLOCKING = ("alta", "media")
+BLOCKING = ("high", "media")
 MAX_PIECES = 4
 _DIFF_CHARS = 40000
 
@@ -63,8 +63,8 @@ Services: {services}
 """
 
 # Model answers in English; stored values stay the ones the rest of Forge (and its cards) already use.
-_PRIORITY = {"high": "alta", "medium": "media", "low": "bassa", "alta": "alta", "media": "media", "bassa": "bassa"}
-_HARD = ("hard", "difficile")
+_PRIORITY = {"high": "high", "medium": "media", "low": "low", "high": "high", "media": "media", "low": "low"}
+_HARD = ("hard", "hard")
 
 
 def _owner_language() -> str:
@@ -140,7 +140,7 @@ class ForgeReviewer:
                                "file": str(i.get("file") or "")[:200], "problem": str(i["problem"])[:600],
                                "evidence": str(i.get("evidence") or "")[:400]})
         blocking = sum(1 for i in issues if i["priority"] in BLOCKING)
-        verdict = "problemi" if issues else "ok"
+        verdict = "problems" if issues else "ok"
         logger.info("event=forge_review_done verdict=%s issues=%d blocking=%d", verdict, len(issues), blocking)
         return {"verdict": verdict, "issues": issues, "blocking": blocking}
 
@@ -154,7 +154,7 @@ class ForgeReviewer:
             if isinstance(p, dict) and str(p.get("request") or "").strip():
                 pieces.append({"title": str(p.get("title") or p["request"])[:120],
                                "request": str(p["request"])[:4000],
-                               "difficulty": "difficile" if str(p.get("difficulty") or "hard").lower() in _HARD else "semplice",
+                               "difficulty": "hard" if str(p.get("difficulty") or "hard").lower() in _HARD else "simple",
                                "services": [str(s) for s in p.get("services") or []][:10]})
         return pieces[:MAX_PIECES]
 

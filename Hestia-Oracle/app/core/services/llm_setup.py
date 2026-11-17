@@ -41,15 +41,15 @@ CATALOG: list[dict[str, Any]] = [
         {"model": "qwen3:8b", "size_gb": 5.2, "good": "Faster, a bit less accurate."}]},
 ]
 EMBEDDING_MODEL = {"model": "qwen3-embedding:0.6b", "size_gb": 0.6, "good": "Memory needs it to find things again."}
-RECIPES = ("locale", "cloud", "entrambi", "claude")
-CHAT_CHAINS = ("veloce", "potente", "codice", "visione")
+RECIPES = ("locale", "cloud", "both", "claude")
+CHAT_CHAINS = ("fast", "strong", "code", "vision")
 
 
 def recommend(vram_gb: float = 0, ram_gb: float = 0) -> dict[str, Any]:
     """Tier for the detected hardware, its preselected chat model and the recipe to preselect."""
     vram = float(vram_gb or 0)
     tier = next(t for t in CATALOG if vram <= t["max_vram"])
-    recipe = "entrambi" if vram >= 8 else ("cloud" if float(ram_gb or 0) and float(ram_gb) < 12 else "entrambi")
+    recipe = "both" if vram >= 8 else ("cloud" if float(ram_gb or 0) and float(ram_gb) < 12 else "both")
     return {"tier": tier["tier"], "label": tier["label"], "chat": tier["chat"], "model": tier["chat"][0]["model"],
             "embedding": EMBEDDING_MODEL, "recipe": recipe}
 
@@ -411,7 +411,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
                 order: list[dict] | None = None) -> dict[str, dict]:
     """New ``oracle.chains`` for a recipe. ``order``: the setup's «Scelti» list (``{provider, model}``, model empty =
     every model of that service) to put the chosen steps in the user's order, the local one included; a step it does
-    not name keeps its place after the named ones. ``modes``: per chat chain (``potente``, ``codice``, ``visione``) a model
+    not name keeps its place after the named ones. ``modes``: per chat chain (``strong``, ``code``, ``vision``) a model
     chosen for that mode only (``{provider, model}``): it answers first there, the general choice follows as fallback. Pure function (tests): local steps use ``local_provider``/``local_model``;
     each chosen cloud service uses the models picked for it in order (``cloud_models``, one or more: the next one takes
     over when the first fails), or its default models; the embedding
@@ -498,7 +498,7 @@ def _as_lists(cloud_models: dict | None) -> dict[str, list[str]]:
 def summary(chains: dict[str, dict]) -> str:
     """One sentence: who answers first, and who if not («Ti risponde X sul tuo computer; se non c'è, Y.»)."""
     from core.services import llm_providers
-    steps = (chains.get("veloce") or {}).get("steps") or []
+    steps = (chains.get("fast") or {}).get("steps") or []
     if not steps:
         return tr("No model chosen.")
 
@@ -558,8 +558,8 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     if not oracle_settings.settings.put(oracle_settings.CHAINS_KEY, chains, actor="user", reason=tr("Guided setup")):
         return {"ok": False, "detail": tr("The settings did not accept the choice.")}
     if recipe == "claude":
-        for key, value in ((oracle_settings.BRAIN_MODE, "esterna"), (oracle_settings.BRAIN_AGENT, "claude"),
-                           (oracle_settings.BRAIN_FALLBACK, "interna")):
+        for key, value in ((oracle_settings.BRAIN_MODE, "external"), (oracle_settings.BRAIN_AGENT, "claude"),
+                           (oracle_settings.BRAIN_FALLBACK, "internal")):
             oracle_settings.settings.put(key, value, actor="user", reason=tr("Guided setup"))
     logger.info("event=llm_setup_applied recipe=%s local=%s/%s cloud=%s", recipe, local_provider, local_model or "-",
                 ",".join(cloud or []) or "-")
@@ -617,7 +617,7 @@ def downloads():
             from hestia_common.module_kit import Hub
             hub = Hub(os.getenv("HUB_API_URL", "http://hestia_hub:19001/api"))
             _downloads = Downloads("oracle", state_path=Path(os.getenv("ORACLE_DATA_DIR", "data")) / "downloads.json",
-                                   hub=hub, page="cervello")
+                                   hub=hub, page="brain")
             _downloads.source("ollama", _run_pull, remove=_remove_model)
         return _downloads
 
@@ -635,7 +635,7 @@ def pull(model: str) -> dict[str, Any]:
     have = llm_providers.list_models("ollama") if llm_providers.get("ollama") else []
     if model in have or f"{model}:latest" in have:
         # Already on the computer (also one made from a Modelfile, which is on no registry): nothing to download.
-        return {"ok": True, "id": f"ollama:{model}", "state": "fatto", "already": True}
+        return {"ok": True, "id": f"ollama:{model}", "state": "done", "already": True}
     size = next((int(m["size_gb"] * 1e9) for t in CATALOG for m in t["chat"] if m["model"] == model),
                 int(EMBEDDING_MODEL["size_gb"] * 1e9) if model == EMBEDDING_MODEL["model"] else 0)
     return {"ok": True, **downloads().add(f"ollama:{model}", model, "ollama", {"model": model}, size_hint=size)}

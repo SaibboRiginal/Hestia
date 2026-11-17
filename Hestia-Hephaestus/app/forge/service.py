@@ -418,7 +418,7 @@ class Forge:
                     self._hold(task, "queued")
                     continue
                 if task["state"] == "approved":
-                    with self.presence.activity("hephaestus.deploy", label="aggiornamento", load="heavy",
+                    with self.presence.activity("hephaestus.deploy", label="update", load="heavy",
                                                 kind="maintenance", ttl_seconds=1800):
                         self._merge_and_deploy(task, task.get("approved_by", "user"))
                 elif (task.get("external") or {}).get("pending"):
@@ -949,7 +949,7 @@ class Forge:
         return self.reviewer.plan(task["request"], task.get("services") or [])
 
     def _engine_for_piece(self, piece: dict, default):
-        wanted = "oracle" if piece.get("difficulty") == "semplice" else "claude"
+        wanted = "oracle" if piece.get("difficulty") == "simple" else "claude"
         engine = self.engines.get(wanted)
         if engine is not None and engine.available()[0]:
             return engine

@@ -16,7 +16,7 @@ export class AthenaThoughts extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, commitments: { state: true },
                         error: { state: true }, thinking: { state: true }, open: { state: true },
                         track: { state: true }, evidence: { state: true }, talk: { state: true } };
-  declare track: 'vita' | 'sistema' | 'parla';
+  declare track: 'life' | 'system' | 'talk';
   declare evidence: any; declare talk: any;
   declare data: any; declare commitments: any[] | null; declare error: string; declare thinking: boolean;
   declare open: Record<string, boolean>;
@@ -56,7 +56,7 @@ export class AthenaThoughts extends HestiaElement {
     .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font: inherit; font-size: 12.5px; }
   `];
 
-  constructor() { super(); this.data = null; this.commitments = null; this.error = ''; this.thinking = false; this.open = {}; this.track = 'vita'; this.evidence = null; this.talk = null; }
+  constructor() { super(); this.data = null; this.commitments = null; this.error = ''; this.thinking = false; this.open = {}; this.track = 'life'; this.evidence = null; this.talk = null; }
 
   connectedCallback() {
     super.connectedCallback();
@@ -67,11 +67,11 @@ export class AthenaThoughts extends HestiaElement {
   disconnectedCallback() { super.disconnectedCallback(); window.clearTimeout(this.poll); }
 
   private async load(): Promise<any> {
-    if (this.track === 'parla') return this.loadTalk();
+    if (this.track === 'talk') return this.loadTalk();
     const [t, c, e] = await Promise.all([
       this.host.api('GET', `${API}/thinking/summary`, { query: { limit: 15, track: this.track } }),
       this.host.api('GET', `${API}/commitments`, { query: { limit: 20 } }),
-      this.track === 'sistema' ? this.host.api('GET', `${API}/evidence`) : Promise.resolve({ ok: false } as any),
+      this.track === 'system' ? this.host.api('GET', `${API}/evidence`) : Promise.resolve({ ok: false } as any),
     ]);
     this.evidence = e.ok ? e.data : null;
     if (!t.ok) { this.error = t.status === 0 ? tr('Athena not reachable') : t.error || tr('Athena not reachable'); return null; }
@@ -92,7 +92,7 @@ export class AthenaThoughts extends HestiaElement {
 
   private async writeNow() {
     const before = this.talk?.items?.[0]?.id;
-    const r = await this.host.api('POST', `${API}/think`, { query: { track: 'parla' } });
+    const r = await this.host.api('POST', `${API}/think`, { query: { track: 'talk' } });
     if (!r.ok) { this.host.toast(r.error || tr('Athena not reachable'), 'danger'); return; }
     this.host.toast(tr('Thinking about it: if there\'s something to tell you, you\'ll find it in chat'), 'info');
     this.thinking = true;
@@ -100,7 +100,7 @@ export class AthenaThoughts extends HestiaElement {
     const wait = (tries: number) => {
       this.poll = window.setTimeout(async () => {
         const d = await this.loadTalk();
-        if (this.track !== 'parla') { this.thinking = false; return; }
+        if (this.track !== 'talk') { this.thinking = false; return; }
         if ((d?.items?.[0]?.id ?? before) !== before || tries >= 30) { this.thinking = false; return; }
         wait(tries + 1);
       }, 4000);
@@ -119,7 +119,7 @@ export class AthenaThoughts extends HestiaElement {
         const fresh = d.cycles?.[0];
         if (fresh && fresh.record_id !== before) {
           const n = (fresh.candidates || []).filter((x: any) => x.accepted).length;
-          const what = this.track === 'vita' ? (n === 1 ? tr('observation for the recap') : tr('observations for the recap'))
+          const what = this.track === 'life' ? (n === 1 ? tr('observation for the recap') : tr('observations for the recap'))
             : (n === 1 ? tr('useful idea') : tr('useful ideas'));
           this.host.toast(n ? tr("Athena thought: {0} {1}", n, what) : tr('Athena thought: nothing to say now'), n ? 'success' : 'info');
           this.open = { ...this.open, [fresh.record_id]: true };
@@ -175,7 +175,7 @@ export class AthenaThoughts extends HestiaElement {
     </div>`;
   }
 
-  private setTrack(t: 'vita' | 'sistema' | 'parla') {
+  private setTrack(t: 'life' | 'system' | 'talk') {
     if (t === this.track) return;
     window.clearTimeout(this.poll); this.thinking = false;
     this.track = t; this.data = null; this.talk = null; this.load();
@@ -183,9 +183,9 @@ export class AthenaThoughts extends HestiaElement {
 
   private tabs() {
     return html`<span class="tabs" role="group" aria-label=${tr("Track")}>
-      <button aria-pressed=${String(this.track === 'vita')} @click=${() => this.setTrack('vita')}>${tr("Life")}</button>
-      <button aria-pressed=${String(this.track === 'sistema')} @click=${() => this.setTrack('sistema')}>${tr("System")}</button>
-      <button aria-pressed=${String(this.track === 'parla')} @click=${() => this.setTrack('parla')}>${tr("Writes to you")}</button></span>`;
+      <button aria-pressed=${String(this.track === 'life')} @click=${() => this.setTrack('life')}>${tr("Life")}</button>
+      <button aria-pressed=${String(this.track === 'system')} @click=${() => this.setTrack('system')}>${tr("System")}</button>
+      <button aria-pressed=${String(this.track === 'talk')} @click=${() => this.setTrack('talk')}>${tr("Writes to you")}</button></span>`;
   }
 
   /** Sistema: findings she saw but does not propose yet (first observe, then propose). */
@@ -282,9 +282,9 @@ export class AthenaThoughts extends HestiaElement {
           <hxk-badge tone=${accepted ? 'success' : 'neutral'}>${verdict}</hxk-badge>
           ${r.error ? html`<hxk-badge tone="danger">${tr("error")}</hxk-badge>` : nothing}
           <button class="link" @click=${() => (this.open = { ...this.open, [r.record_id]: !isOpen })}>${isOpen ? tr('Close') : tr('Details')}</button></div>
-        ${isOpen && r.track === 'vita' ? html`${this.lifeSteps(r, cands, threshold, verdict)}
+        ${isOpen && r.track === 'life' ? html`${this.lifeSteps(r, cands, threshold, verdict)}
           ${cands.map(c => this.candidate(c, threshold))}` : nothing}
-        ${isOpen && r.track !== 'vita' ? html`
+        ${isOpen && r.track !== 'life' ? html`
           <div class="steps">
             <div class="step"><b>${tr("1 · Observes")}</b>${o.services} ${tr("services")}${o.unhealthy_services?.length
               ? html`, <span style="color:var(--danger)">${o.unhealthy_services.length} ${tr("down (")}${o.unhealthy_services.join(', ')})</span>` : tr(', all ok')}
@@ -319,26 +319,26 @@ export class AthenaThoughts extends HestiaElement {
 
   render() {
     if (this.error) return html`<div class="page"><hxk-state kind="offline" text=${this.error} @retry=${() => this.load()}></hxk-state></div>`;
-    if (this.track === 'parla') return this.renderTalk();
+    if (this.track === 'talk') return this.renderTalk();
     const d = this.data;
     if (!d) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const cycles: any[] = d.cycles || [];
     const last = cycles[0];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Thoughts")}</h1><span class="sub">${this.track === 'vita' ? tr('What she notices about your life: it ends up in the evening recap') : tr('How Hestia is: services, errors, improvements')}</span><span class="grow"></span>
+      <div class="head"><h1>${tr("Thoughts")}</h1><span class="sub">${this.track === 'life' ? tr('What she notices about your life: it ends up in the evening recap') : tr('How Hestia is: services, errors, improvements')}</span><span class="grow"></span>
         ${this.tabs()}
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button>
         <hxk-button variant="primary" icon="play" ?loading=${this.thinking} @click=${() => this.thinkNow()}>${this.thinking ? tr('alt::Thinking…') : tr('Think now')}</hxk-button></div>
       <div class="line">
-        ${this.track === 'vita' ? html`<hxk-badge tone="neutral">${tr("once a day, before the recap (time in Agenda)")}</hxk-badge>`
+        ${this.track === 'life' ? html`<hxk-badge tone="neutral">${tr("once a day, before the recap (time in Agenda)")}</hxk-badge>`
           : html`<hxk-badge tone=${d.loop_enabled ? 'success' : 'warning'}>${d.loop_enabled ? tr("thinks on its own every {0} min", Math.round(d.interval_seconds / 60)) : tr('automatic thinking off')}</hxk-badge>`}
         ${d.strategist_enabled ? nothing : html`<hxk-badge tone="warning">${tr("reasoning off: no idea")}</hxk-badge>`}
         <span class="chip">${tr("threshold")} ${Number(d.threshold).toFixed(2)}</span>
         ${last ? html`<span class="small muted">${tr("last cycle")} ${ago(last.cycle_at)}</span>` : nothing}</div>
-      ${this.track === 'sistema' ? this.renderEvidence() : nothing}
-      ${this.track === 'sistema' ? this.renderCommitments() : nothing}
+      ${this.track === 'system' ? this.renderEvidence() : nothing}
+      ${this.track === 'system' ? this.renderCommitments() : nothing}
       ${cycles.length ? cycles.map((r, i) => this.cycle(r, i === 0))
-        : html`<hxk-state kind="empty" text=${this.track === 'vita'
+        : html`<hxk-state kind="empty" text=${this.track === 'life'
           ? tr('No reflection yet: it happens once a day before the evening recap. Press «Think now» to have one right away.')
           : tr('No cycle yet since Athena started. Press «Think now».')}></hxk-state>`}
       <p class="small muted">${tr("Score = 30% urgency + 25% usefulness + 20% novelty + 15% confidence + 10% (1 − trouble). Thresholds and times are changed in Settings → System → Athena.")}</p>

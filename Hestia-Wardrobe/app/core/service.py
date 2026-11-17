@@ -23,7 +23,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_wardrobe.service")
 
-PER_LABEL = {"day": "oggi", "week": "this week", "month": "this month"}
+PER_LABEL = {"day": "today", "week": "this week", "month": "this month"}
 # Personal settings shared by every module (owner Themis): never a wardrobe.* copy.
 WEEK_START_KEY = "themis.personal.week_start"
 CURRENCY_KEY = "themis.personal.currency"
@@ -153,8 +153,8 @@ class Wardrobe:
     def get(self, kind: str, id: str) -> dict:
         row = self.store.data(kind, id)
         if not row:
-            raise NotFound({"piece": "capo", "outfit": "outfit", "wear": "segno", "collection": "lista",
-                            "photo": "foto"}.get(kind, kind) + tr(" not found"))
+            raise NotFound({"piece": "piece", "outfit": "outfit", "wear": "sign", "collection": "list",
+                            "photo": "photos"}.get(kind, kind) + tr(" not found"))
         return row
 
     def _decorate(self, p: dict, use: dict[str, dict], cats: dict[str, dict]) -> dict:
@@ -626,15 +626,15 @@ class Wardrobe:
             n = len(f["forgotten"])
             sigs.append(signal("forgotten", tr("Wardrobe: {0} items not worn for {1}+ days.", n, self.FORGOTTEN_DAYS),
                                kind="trend", severity="info", metrics={"count": n, "days": self.FORGOTTEN_DAYS},
-                               page="statistiche"))
+                               page="stats"))
         if len(f["laundry"]) >= self.LAUNDRY_MIN:
             n = len(f["laundry"])
-            sigs.append(signal("laundry_backlog", tr("Wardrobe: {0} items in the laundry for more than {1} days.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="attenzione",
-                               metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="capi"))
+            sigs.append(signal("laundry_backlog", tr("Wardrobe: {0} items in the laundry for more than {1} days.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="warning",
+                               metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="pieces"))
         if f["repair"]:
             n = len(f["repair"])
             sigs.append(signal("to_repair", tr("Wardrobe: {0} items to repair.", n), kind="trend", severity="info",
-                               metrics={"count": n}, page="capi"))
+                               metrics={"count": n}, page="pieces"))
         weeks = last_weeks(12, f["today"])
         per_week = {w: 0 for w in weeks}
         for w in f["wears"]:

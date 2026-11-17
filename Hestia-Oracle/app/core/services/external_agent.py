@@ -53,15 +53,15 @@ class AgentError(RuntimeError):
 def brain() -> dict[str, str]:
     from core.services import oracle_settings as s
     get = s.settings.get
-    return {"mode": str(get(s.BRAIN_MODE, "interna") or "interna"), "agent": str(get(s.BRAIN_AGENT, "claude") or "claude"),
-            "model": str(get(s.BRAIN_MODEL, "") or "").strip(), "fallback": str(get(s.BRAIN_FALLBACK, "interna") or "interna")}
+    return {"mode": str(get(s.BRAIN_MODE, "internal") or "internal"), "agent": str(get(s.BRAIN_AGENT, "claude") or "claude"),
+            "model": str(get(s.BRAIN_MODEL, "") or "").strip(), "fallback": str(get(s.BRAIN_FALLBACK, "internal") or "internal")}
 
 
 def mode_for(use_case: str) -> str:
     """interna | esterna for *use_case*: its own mode (Modelli) or, with «segui», the global one."""
     from core.services import llm_chains
     own = llm_chains.usecase_config(use_case)["mode"]
-    return own if own in ("interna", "esterna") else ("esterna" if brain()["mode"] == "esterna" else "interna")
+    return own if own in ("internal", "external") else ("external" if brain()["mode"] == "external" else "internal")
 
 
 def available(agent: str = "") -> tuple[bool, str]:

@@ -109,7 +109,7 @@ def test_reviewer_parses_issues_and_counts_blocking(monkeypatch):
         'Ecco: {"verdict": "problemi", "issues": [{"priority": "alta", "file": "a.py", "problem": "manca il test"},'
         '{"priority": "bassa", "file": "b.py", "problem": "nome"}, {"problem": ""}]}'))
     out = r.review(request="r", acceptance="a", diff="d", tests="t", summary="s")
-    assert out["verdict"] == "problemi" and out["blocking"] == 1 and len(out["issues"]) == 2
+    assert out["verdict"] == "problems" and out["blocking"] == 1 and len(out["issues"]) == 2
 
 
 def test_reviewer_unreachable_never_blocks(monkeypatch):
@@ -126,14 +126,14 @@ def test_review_prompt_marks_the_engine_story_as_unverified():
 
 def test_blocking_issues_get_one_round_of_fixes(monkeypatch, tmp_path):
     forge = _forge(monkeypatch, tmp_path)
-    issue = {"priority": "alta", "file": "x.py", "problem": "bug", "evidence": ""}
-    forge.reviewer = _Reviewer([{"verdict": "problemi", "issues": [issue], "blocking": 1},
+    issue = {"priority": "high", "file": "x.py", "problem": "bug", "evidence": ""}
+    forge.reviewer = _Reviewer([{"verdict": "problems", "issues": [issue], "blocking": 1},
                                 {"verdict": "ok", "issues": [], "blocking": 0}])
     commits = iter(["fix-sha"])
     monkeypatch.setattr(forge_service.git_ops, "commit_all", lambda *a, **k: next(commits, None))
     engine = _Engine("oracle")
     task = _task(forge)
-    forge._review(task, tmp_path, "base", "sha1", "fatto", True, engine=engine, test_runner=None)
+    forge._review(task, tmp_path, "base", "sha1", "done", True, engine=engine, test_runner=None)
     assert "automatic review" in engine.prompts[0] and "bug" in engine.prompts[0]
     assert task["state"] == "awaiting_review" and task["commit_sha"] == "fix-sha"
     assert task["review"]["rounds"] == 1 and task["review"]["verdict"] == "ok"
@@ -143,11 +143,11 @@ def test_blocking_issues_get_one_round_of_fixes(monkeypatch, tmp_path):
 def test_auto_merge_waits_when_blocking_issues_remain(monkeypatch, tmp_path):
     forge = _forge(monkeypatch, tmp_path)
     issue = {"priority": "media", "file": "x.py", "problem": "bug", "evidence": ""}
-    forge.reviewer = _Reviewer([{"verdict": "problemi", "issues": [issue], "blocking": 1}])
+    forge.reviewer = _Reviewer([{"verdict": "problems", "issues": [issue], "blocking": 1}])
     merged = []
     monkeypatch.setattr(Forge, "_merge_and_deploy", lambda self, task, by: merged.append(by))
     task = _task(forge, auto_merge=True)
-    forge._review(task, tmp_path, "base", "sha1", "fatto", True)          # external branch: no fix round
+    forge._review(task, tmp_path, "base", "sha1", "done", True)          # external branch: no fix round
     assert task["state"] == "awaiting_review" and merged == []
 
 
@@ -177,8 +177,8 @@ def test_team_pieces_use_the_engine_of_their_difficulty(monkeypatch, tmp_path):
     forge = _forge(monkeypatch, tmp_path)
     local, claude = _Engine("oracle"), _Engine("claude")
     forge.engines = {"oracle": local, "claude": claude}
-    assert forge._engine_for_piece({"difficulty": "semplice"}, claude) is local
-    assert forge._engine_for_piece({"difficulty": "difficile"}, local) is claude
-    forge.reviewer = _Reviewer([], pieces=[{"title": "a", "request": "x", "difficulty": "semplice", "services": []}])
+    assert forge._engine_for_piece({"difficulty": "simple"}, claude) is local
+    assert forge._engine_for_piece({"difficulty": "hard"}, local) is claude
+    forge.reviewer = _Reviewer([], pieces=[{"title": "a", "request": "x", "difficulty": "simple", "services": []}])
     assert forge._team_plan({"services": ["a"], "request": "r"}) == []          # below the threshold (3)
     assert len(forge._team_plan({"services": ["a", "b", "c"], "request": "r"})) == 1

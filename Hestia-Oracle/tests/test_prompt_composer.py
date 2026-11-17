@@ -134,7 +134,7 @@ def test_generate_voice_flag_reaches_the_chain(monkeypatch):
         calls["voice"] = voice
         return _Agent()
     monkeypatch.setattr(llm_chains, "agent_for", _agent_for)
-    monkeypatch.setattr("core.services.external_agent.mode_for", lambda uc: "interna")
+    monkeypatch.setattr("core.services.external_agent.mode_for", lambda uc: "internal")
     res = TestClient(main.app).post("/api/llm/generate", json={"prompt": "FACTS: x", "use_case": "athena.recap",
                                                                "voice": True})
     assert res.status_code == 200 and calls["voice"] is True
@@ -147,7 +147,7 @@ def test_generate_voice_flag_reaches_the_chain(monkeypatch):
 def test_texts_she_writes_on_her_own_follow_the_language_setting(engine, monkeypatch):  # noqa: F811
     """Notifications, recaps and formatted results use the owner's language setting, never the data's language;
     the chat keeps following the language of the owner's last message (docs/work/2026-11-14-lingua-personale)."""
-    monkeypatch.setattr(prompt_config, "_identity", lambda: {"assistant": "Hestia", "gender": "lei",
+    monkeypatch.setattr(prompt_config, "_identity", lambda: {"assistant": "Hestia", "gender": "she",
                                                             "owner_name": "", "owner": "", "language": "en"})
     assert "Write in English" in prompt_config.prompt("module_voice_instruction")
     assert prompt_config.owner_language() == "en"

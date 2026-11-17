@@ -57,7 +57,7 @@ class PlutusCoach:
         if self.review_open:
             out.append({"id": REVIEW_NEED, "title": tr("Review expenses"), "kind": "block", "count": 1, "minutes": 15,
                         "time_of_day": "evening", "tags": ["admin"], "priority": "could",
-                        "reason": tr("{0} transactions to check", s['to_review']), "link": "movimenti"})
+                        "reason": tr("{0} transactions to check", s['to_review']), "link": "transactions"})
         state = f"spent {s['spent']:.2f} {cur}" + (f" su {s['budget']:.2f}" if s.get("budget") else "")
         return {"state": state, "needs": out}
 

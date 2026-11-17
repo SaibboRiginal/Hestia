@@ -141,7 +141,7 @@ def notes_translator(hub_api_url: str):
     return translate
 
 
-def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel=lambda: "stabile",
+def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel=lambda: "stable",
                         unhealthy=None) -> tuple[APIRouter, SetupService]:
     service = SetupService(repo, data_dir, hub_call=hub_caller(hub_api_url))
     tunnel.init(data_dir)   # downloads of Hephaestus (the cloudflared image): /api/downloads, page Download
@@ -221,7 +221,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     def voice_apply(req: VoiceApply):
         out = service.echo("POST", "/api/voice/setup/apply", body={"listen": req.listen or None,
                                                                    "speak": req.speak or None}, timeout=60)
-        service.mark("voce", voice={"listen": req.listen, "speak": req.speak})
+        service.mark("voice", voice={"listen": req.listen, "speak": req.speak})
         return {"status": "ok", "ok": True, **{k: v for k, v in out.items() if k != "status"}}
 
     @router.post("/brain/apply")
@@ -369,7 +369,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         except Exception as exc:
             logger.warning("[🔄] event=setup_tunnel_failed on=%s error=%s", req.on, str(exc)[:200])
             raise HTTPException(status_code=502, detail=tr("I couldn't change the link from outside home: check that Docker is on and try again."))
-        service.mark("fuori")
+        service.mark("away")
         return {"status": "ok", **out}
 
     # ── Backup ──

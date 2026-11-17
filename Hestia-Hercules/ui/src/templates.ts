@@ -211,7 +211,7 @@ export class HerculesTemplate extends LocalPage {
     const t = this.t!;
     if (!(await this.host.confirm(tr('Delete the plan?'), tr("«{0}» will be deleted (the history stays).", t.name), { label: tr('Delete'), danger: true }))) return;
     this.L.remove('template', t.id);
-    this.host.navigate('schede');
+    this.host.navigate('plans');
   }
   private async undo() {
     await this.L.sync();
@@ -228,7 +228,7 @@ export class HerculesTemplate extends LocalPage {
     const est = estimate(t, this.L.settings.rest_default);
     const sugs = this.L.suggestions;
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('schede')}>${tr('‹ Plans')}</hxk-button></div>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('plans')}>${tr('‹ Plans')}</hxk-button></div>
       <div class="row wrap">
         <input class="in grow" style="font-size:20px;font-weight:600" .value=${t.name} @change=${(e: any) => this.save({ name: e.target.value || tr('Workout plan') })}>
         <button class="chip" aria-pressed=${!!t.favorite} title=${tr("Favourite: appears in Home for «Mark done»")} @click=${() => this.save({ favorite: !t.favorite })}><hxk-icon name="star" size=${14}></hxk-icon> ${tr("f::Favourite")}</button>
@@ -295,7 +295,7 @@ export class HerculesTemplate extends LocalPage {
 
   private startNow(t: any) {
     // the live page owns the session logic: open it with this template preselected
-    this.host.navigate('allenamento', { scheda: t.id });
+    this.host.navigate('training', { scheda: t.id });
   }
 }
 

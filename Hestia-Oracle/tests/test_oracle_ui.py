@@ -117,10 +117,10 @@ class TestUiApi:
         web = m["clients"]["webui"]
         assert web["entry"] == "/ui/webui/oracle.js" and web["api_prefix"] == "/api/ui/"
         pages = {p["id"]: p for p in web["page"]}
-        assert pages["cervello"]["element"] == "oracle-brain" and pages["cervello"]["order"] == 120
+        assert pages["brain"]["element"] == "oracle-brain" and pages["brain"]["order"] == 120
         widgets = {w["id"]: w for w in web["widget"]}
         assert widgets["usage-today"]["element"] == "oracle-usage-widget"
-        assert widgets["usage-today"]["open_page"] == "cervello"
+        assert widgets["usage-today"]["open_page"] == "brain"
 
     def test_activity(self, client):
         activity_log.record_turn(session_id="s", mode="auto", route="agent", model="m", provider="p",
@@ -169,7 +169,7 @@ class TestModelsTab:
         from core.services import oracle_settings
         puts = []
         monkeypatch.setattr(oracle_settings.settings, "put", lambda k, v, **kw: puts.append((k, v, kw)) or True)
-        ok = client.put("/api/ui/models/chains", json={"value": {"veloce": {"steps": [{"provider": "ollama", "model": "m"}]}}})
+        ok = client.put("/api/ui/models/chains", json={"value": {"fast": {"steps": [{"provider": "ollama", "model": "m"}]}}})
         assert ok.status_code == 200 and puts[0][0] == oracle_settings.CHAINS_KEY and puts[0][2]["actor"] == "user"
         assert client.put("/api/ui/models/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 400
         assert client.put("/api/ui/models/chains", json={"value": {"c": {}}}).status_code == 400

@@ -135,7 +135,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
   readonly pHits = computed(() => {
     const hits = personalHits(this.store.query());
     const extra = this.store.personalExtra().length;
-    if (extra) hits.set('assistente', (hits.get('assistente') ?? 0) + extra);
+    if (extra) hits.set('assistant', (hits.get('assistant') ?? 0) + extra);
     return hits;
   });
   readonly pTotal = computed(() => this.store.onlyModified() ? 0 : [...this.pHits().values()].reduce((a, b) => a + b, 0));
@@ -173,7 +173,7 @@ export class SettingsPageComponent implements OnInit, OnDestroy {
     if (item) this.store.reveal(item);
     const view = personal ? 'p:assistant' : this.store.modules().some(m => m.module === module) ? module : 'system';
     this.open(view, false);
-    const queryParams = personal ? { key: null, section: 'assistente', tab: null, module: null }
+    const queryParams = personal ? { key: null, section: 'assistant', tab: null, module: null }
       : { key: null, tab: 'system', module: view === 'system' ? null : view, section: null };
     void this.router.navigate([], { queryParams, queryParamsHandling: 'merge', replaceUrl: true });
     if (item) this.flash(KEY_ROWS[key] ? `[data-row="${KEY_ROWS[key]}"]` : `[data-setting="${key}"]`);

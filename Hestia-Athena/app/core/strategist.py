@@ -107,9 +107,9 @@ def _build_strategist_prompt(observation_text: str) -> str:
 
 
 # English field names of the prompt → the internal keys (the Italian ones are still read: older models, tests).
-_FIELDS = {"type": "tipo", "priority": "priorita", "domain": "dominio", "reason": "motivo", "summary": "riassunto",
-           "key": "chiave", "value": "valore", "topic": "tema",
-           **{k: k for k in ("tipo", "priorita", "dominio", "motivo", "riassunto", "chiave", "valore", "tema")}}
+_FIELDS = {"type": "type", "priority": "priority", "domain": "domain", "reason": "reason", "summary": "summary",
+           "key": "key", "value": "value", "topic": "topic",
+           **{k: k for k in ("type", "priority", "domain", "reason", "summary", "key", "value", "topic")}}
 _ACTION = re.compile(r"(?:ACTION|AZIONE):")
 
 
@@ -152,9 +152,9 @@ def _map_to_action_candidates(
     """Map parsed dicts to ActionCandidate models with default signals."""
     candidates: list[ActionCandidate] = []
     for item in parsed:
-        priority = (item.get("priorita") or "normal").strip().lower()
-        kind = (item.get("tipo") or "advisory").strip().lower()
-        domain = (item.get("dominio") or "cognition").strip().lower()
+        priority = (item.get("priority") or "normal").strip().lower()
+        kind = (item.get("type") or "advisory").strip().lower()
+        domain = (item.get("domain") or "cognition").strip().lower()
 
         # Default signals based on priority
         if priority == "high":
@@ -179,12 +179,12 @@ def _map_to_action_candidates(
             ActionCandidate(
                 domain=domain,
                 title=item.get("title", tr("Action")),
-                summary=item.get("riassunto") or item.get("motivo", ""),
+                summary=item.get("summary") or item.get("reason", ""),
                 kind=kind,
                 priority=priority,
-                reasoning=item.get("motivo", ""),
-                setting_key=(item.get("chiave") or "").strip() or None,
-                setting_value=(item.get("valore") or "").strip() or None,
+                reasoning=item.get("reason", ""),
+                setting_key=(item.get("key") or "").strip() or None,
+                setting_value=(item.get("value") or "").strip() or None,
                 signals=signals,
                 score=0.0,  # Scored later by the runtime gate
             )

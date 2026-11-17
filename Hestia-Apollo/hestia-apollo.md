@@ -14,7 +14,7 @@
 - **Flows**: ComfyUI workflows in API format (ComfyUI → Save (API Format); the whole `/prompt` body is accepted too),
   one default per purpose (`generico, ritratto, sfondo, mascotte, icona, illustrazione`). Inputs (prompt, negative,
   width, height, seed) are detected on the usual txt2img nodes or given as `inputs: {prompt: "6.inputs.text", …}`.
-  A purpose without a flow uses the `generico` one.
+  A purpose without a flow uses the `generic` one.
 - **Jobs** (Archive `images-store`, kind `job`): one worker thread woken by new jobs (no timer); each job is queued on
   ComfyUI, followed on its websocket (`executing` with node null = done, `execution_error` = failed), the images are
   read from `/history` + `/view` and stored as Archive blobs. A job left `running` by a restart runs again.

@@ -61,7 +61,7 @@ def _parse_day(value: Any) -> date:
 
 
 def _slug(text: str) -> str:
-    return (re.sub(r"[^a-z0-9]+", "-", str(text or "").lower()).strip("-") or "evento")[:40]
+    return (re.sub(r"[^a-z0-9]+", "-", str(text or "").lower()).strip("-") or "event")[:40]
 
 
 def special_of(item: dict) -> dict:
@@ -98,14 +98,14 @@ def list_special(today: date | None = None) -> list[dict]:
                     "kind_label": KIND_LABEL.get(sp.get("kind"), tr("Important event")),
                     "lead_days": int(sp.get("lead_days") if sp.get("lead_days") is not None else DEFAULT_LEAD),
                     "person": sp.get("person"), "person_id": sp.get("person_id"), "note": sp.get("note"),
-                    "source": sp.get("source") or "utente", "yearly": bool(item.get("recurrence")),
+                    "source": sp.get("source") or "user", "yearly": bool(item.get("recurrence")),
                     "next": nxt.isoformat() if nxt else None,
                     "in_days": (nxt - (today or _today())).days if nxt else None, "status": item["status"]})
     return sorted(out, key=lambda s: (s["in_days"] is None, s["in_days"] if s["in_days"] is not None else 0))
 
 
 def add(*, title: str, day: str, kind: str = "custom", lead_days: int | None = None, person: str = "",
-        person_id: str = "", note: str = "", yearly: bool | None = None, source: str = "utente",
+        person_id: str = "", note: str = "", yearly: bool | None = None, source: str = "user",
         key: str = "", by: str = "user") -> dict:
     kind = kind if kind in KINDS else "custom"
     first = _parse_day(day)
@@ -216,7 +216,7 @@ def run_daily(today: date | None = None) -> dict:
             hermes_client.publish_event("assistant", "special.today", s["key"], {
                 "_title": s["title"], "_message": tr("Today: <b>{0}</b>{1}.", s['title'], who), "_source": tr("Calendar"),
                 "_level": "success", "dedupe_key": f"special.today:{s['key']}:{today.isoformat()}",
-                "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
+                "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "events"}})
             moment = {"key": s["key"], "title": s["title"], "kind": s["kind"], "person": s.get("person"),
                       "person_id": s.get("person_id"), "date": today.isoformat()}
             _push_moment(moment)
@@ -230,7 +230,7 @@ def run_daily(today: date | None = None) -> dict:
             hermes_client.publish_event("assistant", "special.soon", s["key"], {
                 "_title": tr("In {0} days", s['in_days']), "_source": tr("Calendar"), "_level": "info",
                 "_message": tr("In {0} days: <b>{1}</b>{2} ({3}/{4}).", s['in_days'], s['title'], who, s['next'][8:10], s['next'][5:7]),
-                "dedupe_key": f"special.soon:{s['key']}:{s['next']}", "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
+                "dedupe_key": f"special.soon:{s['key']}:{s['next']}", "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "events"}})
     logger.info("event=special_daily today=%d soon=%d", len(now), len(lead))
     return {"today": [s["key"] for s in now], "soon": [s["key"] for s in lead]}
 

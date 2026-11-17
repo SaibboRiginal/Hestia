@@ -111,7 +111,7 @@ class TestRoutines:
         from services import routines
         item = routines.create(title="Notizie", instruction="Dimmi le notizie", recurrence="FREQ=DAILY;BYHOUR=8")
         assert item["type"] == "job" and item["action"]["path"] == f"/api/routines/{item['key']}/run"
-        assert routines.list_routines()[0]["trigger"] == "orario"
+        assert routines.list_routines()[0]["trigger"] == "schedule"
 
     def test_routine_needs_instruction_and_trigger(self, store):
         from services import agenda, routines
@@ -264,4 +264,4 @@ def test_plugin_pages_reach_routines_and_special_under_the_api_prefix(store):
     src = (Path(__file__).parents[1] / "ui" / "src" / "index.ts").read_text(encoding="utf-8")
     defined = set(re.findall(r"'(chronos-[a-z-]+)'\s*:", src))
     assert {p["element"] for p in pages.values()} <= defined
-    assert pages["routine"]["element"] == "chronos-routines" and pages["eventi"]["element"] == "chronos-special"
+    assert pages["routine"]["element"] == "chronos-routines" and pages["events"]["element"] == "chronos-special"

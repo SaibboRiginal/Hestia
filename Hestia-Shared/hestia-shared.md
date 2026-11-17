@@ -146,7 +146,7 @@ reads only those (links between areas, then details through `/api/module/context
 from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
 
 signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
-signal("stall:bench", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
+signal("stall:bench", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="warning", page="progress")
 metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
 signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
 signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
@@ -184,14 +184,14 @@ Add a kind: one line in `NOTICE_KINDS` (+ `_SIGNAL_TO_NOTICE` if it mirrors a si
 ## Oracle use cases (`hestia_common.oracle_usecases`)
 
 A module that asks Oracle for text declares each kind of task as a **use case** `<module>.<task>` with a suggested
-chain (`veloce`, `potente`, `codice`, `visione`); Marko picks chain, mode (interna/esterna) and thinking for all of them
+chain (`fast`, `strong`, `code`, `vision`); Marko picks chain, mode (interna/esterna) and thinking for all of them
 in Oracle → Cervello → Modelli. The module never names a provider or a model (dossier
 `docs/work/2026-10-19-oracle-a-blocchi`).
 
 ```python
 from hestia_common.oracle_usecases import usecase, capabilities as llm_capabilities
 
-LLM_USECASES = [usecase("scout.listings", "Scout · lettura annunci", chain="veloce",
+LLM_USECASES = [usecase("scout.listings", "Scout · lettura annunci", chain="fast",
                         help="Estrae i dati degli annunci dalle mail.")]
 payload["capabilities"].update(llm_capabilities(LLM_USECASES))   # Hub registration (re-sent by the keepalive)
 # call: POST {HUB}/route/oracle/api/llm/generate  body {"prompt": ..., "use_case": "scout.listings"}
@@ -200,14 +200,14 @@ payload["capabilities"].update(llm_capabilities(LLM_USECASES))   # Hub registrat
 ## Voice (`hestia_common.voice_client`, `hestia_common.voice_usecases`)
 
 Only Echo calls speech engines (dossier `docs/work/2026-10-20-modulo-voce`). A module declares its voice uses
-(direction `ascolto` or `voce`, suggested chain) and calls Echo through the Hub; failures return `None` so the caller
+(direction `listen` or `voice`, suggested chain) and calls Echo through the Hub; failures return `None` so the caller
 keeps its own fallback.
 
 ```python
 from hestia_common.voice_client import VoiceClient
 from hestia_common.voice_usecases import usecase, capabilities as voice_capabilities
 
-VOICE_USECASES = [usecase("telegram.vocale", "Telegram · vocali", direction="ascolto")]
+VOICE_USECASES = [usecase("telegram.vocale", "Telegram · vocali", direction="listen")]
 payload["capabilities"].update(voice_capabilities(VOICE_USECASES))   # Hub registration
 voice = VoiceClient(HUB_API_URL)
 heard = voice.transcribe(audio, "audio/ogg", use_case="telegram.vocale",
@@ -230,7 +230,7 @@ settings.declare([
     setting("argus.workers", "Worker", "int", 2, apply="restart", advanced=True),
     setting("argus.remediate.dry_run", "Solo simulazione", "bool", True,
             depends_on={"key": "argus.remediate.enabled", "equals": True}),
-], presets=[preset("calmo", "Tranquillo", group="Controlli", values={"argus.poll.interval": 120})])
+], presets=[preset("calm", "Tranquillo", group="Controlli", values={"argus.poll.interval": 120})])
 settings.declare_log_level()                 # standard <module>.log.level (live, replaces LOG_LEVEL)
 app.include_router(settings.router())        # GET /api/settings/effective · POST /api/settings/reload
 settings.start()                             # in the startup hook: first load + hourly re-assert
@@ -289,14 +289,14 @@ from hestia_common.reminders import reminder_settings, reminder_event
 settings.declare([..., *reminder_settings("hercules", help="…")])   # <m>.reminder.enabled (off) + .max_per_week
 hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
     module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento", text="…",
-    actions=[{"id": "skip", "label": "Salta oggi"}], page="allenamento"))
+    actions=[{"id": "skip", "label": "Salta oggi"}], page="training"))
 ```
 
 The body is a `service.action_required` event on domain `system` (where Hermes' owner subscription listens; the
 module domain travels in the payload) with `target: owner`, `replaces: <key>` (one live notification per key) and
 `_link` to the module page. Modules send at most one reminder a day and respect `max_per_week`.
 
-Voice: `voice_setting("<m>", default)` declares `<m>.notifiche.voce` («Notifiche anche a voce»; each module picks its
+Voice: `voice_setting("<m>", default)` declares `<m>.notifications.voice` («Notifiche anche a voce»; each module picks its
 default) and `reminder_event(..., voice=settings.get("<m>.notifiche.voce"))` sets `_voice`: Hermes then adds the
 audio made by Echo to the same notification (Telegram voice message, WebUI «Ascolta»). The text never changes.
 
@@ -463,10 +463,10 @@ dry run (the preview).
 from hestia_common.transfer import StoreSection, Section, Transfer
 
 transfer = Transfer("hercules", hub, sections=[
-    StoreSection("esercizi", "Esercizi", store, ["exercise"], icon="dumbbell"),
-    StoreSection("sessioni", "Sessioni", store, ["session", "set"], item_kinds=["session"],   # sets travel with
-                 depends_on=["esercizi", "schede"]),                                          # pulled when named
-    StoreSection("foto", "Foto", store, ["photo"], file_fields=["original", "medium", "thumb"]),  # Archive blobs
+    StoreSection("exercises", "Esercizi", store, ["exercise"], icon="dumbbell"),
+    StoreSection("sessions", "Sessioni", store, ["session", "set"], item_kinds=["session"],   # sets travel with
+                 depends_on=["exercises", "plans"]),                                          # pulled when named
+    StoreSection("photos", "Foto", store, ["photo"], file_fields=["original", "medium", "thumb"]),  # Archive blobs
 ])
 app.include_router(transfer.router())       # /api/transfer/describe|items|export|import|files
 caps.update(transfer.capabilities())        # Hub registration: capabilities.transfer
@@ -523,7 +523,7 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
   tokens, passwords in assignments and URLs, emails, phone numbers, IBAN, card numbers, chat ids, home paths, private
   IPs) with `[segreto]`, `[email]`, … before text leaves the house (Argus → Oracle, Forge task prompts).
 - `hestia_common.origin` (Cindy 6): `X-Hestia-Origin: <kind>[:<ref>]` + `X-Hestia-Origin-Label`; `headers()`,
-  `parse(headers, client)` (no header: user client = `utente`, else `autonomo`), `prompt_line`, `blocks_write`
+  `parse(headers, client)` (no header: user client = `user`, else `autonomous`), `prompt_line`, `blocks_write`
   (autonomo: only proposals/notifications/questions; routine: no deletes). `MCPClient.call(origin=…)` puts it in
   `hestia.origin`; `tool_call.build_request` turns `ctx["origin"]` into the header.
 - `hestia_common.ui_blocks` (Cindy 9): ```` ```hestia-ui ```` blocks in answers (card, stat, table, list, chart,

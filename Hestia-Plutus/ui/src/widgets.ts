@@ -29,7 +29,7 @@ export class PlutusMonthWidget extends Widget {
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const pct = s.budget ? Math.round(100 * s.spent / s.budget) : null;
     const big = this.size === 'l' || this.size === 'xl';
-    return html`<div class="w click" @click=${() => this.host.navigate('panoramica')}>
+    return html`<div class="w click" @click=${() => this.host.navigate('overview')}>
       <div class="between"><span class="small muted">${tr("Expenses of")} ${s.label}</span>${s.to_review ? html`<span class="pill warn">${s.to_review} ${tr("to review")}</span>` : nothing}</div>
       <div class="big">${money(s.spent, s.currency)}</div>
       ${s.budget ? html`${budgetBar(pct)}<div class="small muted">${s.left >= 0 ? `rimangono ${money(s.left, s.currency)}` : tr("{0} over budget", money(-s.left, s.currency))} · ${pct}%</div>`
@@ -55,7 +55,7 @@ export class PlutusLatestWidget extends Widget {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="w">
-      <div class="between click" @click=${() => this.host.navigate('movimenti')}><span class="small muted">${tr("Latest transactions")}</span><span class="link small">${tr("All ›")}</span></div>
+      <div class="between click" @click=${() => this.host.navigate('transactions')}><span class="small muted">${tr("Latest transactions")}</span><span class="link small">${tr("All ›")}</span></div>
       ${this.items.length ? html`<div class="list">${this.items.map(t => txRow(this.host, t, this.cur))}</div>` : html`<div class="muted small">${tr("No transaction yet.")}</div>`}
     </div>`;
   }

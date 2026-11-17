@@ -92,10 +92,10 @@ export class ThemeService {
     const k = this.knobs();
     const tokens: Record<string, string> = { ...BASE_TOKENS, ...theme.tokens, ...this.style().tokens, ...RADII[k.corners], ...MOTION[k.motion] };
     const t = theme.tokens;
-    if (k.borders === 'leggeri') {
+    if (k.borders === 'light') {
       tokens['--border'] = tr("color-mix(in srgb, {0} 55%, transparent)", t['--border']);
       tokens['--border-strong'] = tr("color-mix(in srgb, {0} 75%, transparent)", t['--border-strong']);
-    } else if (k.borders === 'marcati') {
+    } else if (k.borders === 'marked') {
       tokens['--border'] = t['--border-strong'];
       tokens['--border-strong'] = tr("color-mix(in srgb, {0} 65%, {1})", t['--border-strong'], t['--text']);
     }

@@ -13,7 +13,7 @@ due day, amount, recurrence, lead time and a practical advice
 - Deadlines in Archive `deadlines-store` (kind `deadline`, status `open | proposed | done | dismissed`).
 - Categories with a default lead time and advice (`GET /api/deadlines/categories`); the category is guessed from the
   title when not given. A better advice is written on request by the assistant (Oracle use case
-  `kairos.advice`, chain `veloce`; offline → the category advice stays).
+  `kairos.advice`, chain `fast`; offline → the category advice stays).
 - **Recurrence** (`monthly … biennial`): «Fatto» rolls the deadline to the next due day (end of month safe); one-off
   deadlines close.
 - Every open deadline is mirrored in the calendar as an agenda event `kairos.<id>` (09:00 of the day), updated on
@@ -23,7 +23,7 @@ due day, amount, recurrence, lead time and a practical advice
   «Nuova scadenza?» with «Aggiungi» / «No». Nothing enters the calendar before the owner confirms. Each mail once.
 - Agenda job `kairos.daily` (08:30): one notice at the lead time and one on the day, with «Fatto» and
   «Fra 3 giorni» (snooze: reminds again after the pause); a stage is notified once per due day.
-- Recap piece «Scadenze» (next 7 days). Export/import section `scadenze`.
+- Recap piece «Scadenze» (next 7 days). Export/import section `deadlines`.
 
 ## API (`/api/deadlines`)
 

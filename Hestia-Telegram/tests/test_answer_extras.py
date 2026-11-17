@@ -34,7 +34,7 @@ def test_components_become_text_and_buttons(bot):
 @pytest.mark.unit
 def test_owner_turn_has_no_origin_label(bot):
     r = _renderer()
-    r.on_final("ciao", {"level": "utente", "label": "Tu"})
+    r.on_final("ciao", {"level": "user", "label": "Tu"})
     assert r.origin_label == ""
 
 

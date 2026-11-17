@@ -61,8 +61,8 @@ TZ = os.getenv("TZ") or "Europe/Rome"
 API = "/api/voice"
 
 # ── settings (Themis) ────────────────────────────────────────────────────────
-MODES = [("interna", "Internal: Echo chains"), ("esterna", "External: one voice engine does everything, Echo is the door")]
-FALLBACKS = [("interna", "Back to the internal chains"), ("nessuno", "None: tell me it's not working")]
+MODES = [("internal", "Internal: Echo chains"), ("external", "External: one voice engine does everything, Echo is the door")]
+FALLBACKS = [("internal", "Back to the internal chains"), ("none", "None: tell me it's not working")]
 LANGUAGES = [("auto", "Follow the conversation"), ("it", "Italiano"), ("en", "alt::English"), ("es", "Spanish"),
              ("fr", "French"), ("de", "German")]
 
@@ -76,14 +76,14 @@ settings.declare([
             help="Ordered provider/model or voice lists, each for listening or for voice: if a step fails or runs out of quota I move to the next."),
     setting(USECASES_KEY, "Voice uses", "object", {}, group="Voice", order=2, editor="voice_usecases",
             help="For each declared use (Telegram voice messages, dictation, answers read aloud…): chain and mode. Empty = the suggested choice."),
-    setting(MODE_KEY, "Voice mode", "enum", "interna", group="Voice", order=3, options=MODES,
+    setting(MODE_KEY, "Voice mode", "enum", "internal", group="Voice", order=3, options=MODES,
             help="Internal: Echo uses its chains. External: Echo passes everything to a voice engine (yours or in the cloud) and is only the door. Each use can choose its own."),
     setting(EXTERNAL_KEY, "External engine", "enum", "", group="Voice", order=4, options_source=f"{API}/providers/options",
-            depends_on={"key": MODE_KEY, "equals": "esterna"}),
+            depends_on={"key": MODE_KEY, "equals": "external"}),
     setting(EXTERNAL_MODEL_KEY, "External engine model or voice", "string", "", group="Voice", order=5,
-            depends_on={"key": MODE_KEY, "equals": "esterna"}, help="Empty = the engine's default."),
-    setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "interna", group="Voice", order=6,
-            options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
+            depends_on={"key": MODE_KEY, "equals": "external"}, help="Empty = the engine's default."),
+    setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "internal", group="Voice", order=6,
+            options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "external"}),
     setting("echo.language", "Language", "enum", "auto", group="Voice", order=7, options=LANGUAGES),
     setting("echo.voice.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
             unit="characters", help="Beyond it, the voice reads the start and says the rest is in the text."),
@@ -117,7 +117,7 @@ hub = Hub(HUB_API_URL)
 
 # Voice models (Whisper, Piper, Kokoro, the voiceprint) go through the shared download manager: progress, resume,
 # retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-setup-un-click §4.3).
-downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voce")
+downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voice")
 downloads.source("whisper", _standards.whisper_download)
 _standards.DOWNLOADS = downloads
 
@@ -135,7 +135,7 @@ def _notify(event: dict) -> None:
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="echo", domain="system", key="echo.audio_space", title=event["title"], text=event["text"],
-            actions=[], page="voce", level="warning"))
+            actions=[], page="voice", level="warning"))
     except Exception as exc:
         logger.warning("[🔄] event=voice_notify_failed error=%s", exc)
 
@@ -174,7 +174,7 @@ async def _store_down(_: Request, exc: HubError):
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_echo", "version": SERVICE_VERSION, "ffmpeg": audio.ffmpeg_available(),
-            "streams": echo.streams(), "mode": settings.get(MODE_KEY, "interna")}
+            "streams": echo.streams(), "mode": settings.get(MODE_KEY, "internal")}
 
 
 @app.get("/api/logs")
@@ -233,7 +233,7 @@ def standards():
 
 @app.get(f"{API}/providers")
 def providers():
-    return {"items": blocks.describe_providers(echo.language()), "mode": settings.get(MODE_KEY, "interna"),
+    return {"items": blocks.describe_providers(echo.language()), "mode": settings.get(MODE_KEY, "internal"),
             "external": settings.get(EXTERNAL_KEY, "")}
 
 
@@ -277,7 +277,7 @@ def blocks_write(part: str, body: dict = Body(...)):
         if bad or not value:
             raise Invalid(tr("unknown standard for: {0}", ', '.join(bad) or tr('no provider')))
     elif part == "chains":
-        if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
+        if not value or any(c.get("direction") not in ("listen", "voice") or not isinstance(c.get("steps"), list)
                             for c in value.values()):
             raise Invalid(tr("each chain needs a direction (listening or voice) and a list of steps"))
     if not settings.put(key, value, actor="user", reason=tr("WebUI Voice")):
@@ -452,7 +452,7 @@ ui = PluginClient("echo", title="Voice", icon="mic", color="teal", kind="core", 
                   description="{assistant}'s listening and voice: providers, chains, uses, tests, usage and stored audio.",
                   version=SERVICE_VERSION)
 ui.webui(entry="echo.js", api_prefix=f"{API}/",
-         pages=[page("voce", "Voice", element="echo-voice", icon="mic", order=125,
+         pages=[page("voice", "Voice", element="echo-voice", icon="mic", order=125,
                      help="How {assistant} listens and speaks: providers, listening and voice chains, uses of every module, external mode, microphone and voice test, usage and costs, your recordings.")])
 # ── MCP tools (assistant, Telegram, WebUI): your voice ───────────────────────
 from hestia_common.mcp_helpers import MCPTool, create_mcp_router  # noqa: E402
@@ -463,7 +463,7 @@ def _t(name, title, description, method, path, props=None, required=None, label=
                    parameters={"type": "object", "properties": props or {}, "required": required or []},
                    handler=lambda **_kw: {"status": "ok"}, method=method, path=path,
                    clients=["telegram", "ui"], response_mode="oracle_natural",
-                   telegram_visible=True, telegram_group="sistema",
+                   telegram_visible=True, telegram_group="system",
                    telegram={"section": tr("Voice"), **({"label": label} if label else {})})
 
 
@@ -509,7 +509,7 @@ def _prefetch(chains: dict | None = None) -> dict:
     providers = settings.get(PROVIDERS_KEY, DEFAULT_PROVIDERS) or {}
     chains = chains or settings.get(CHAINS_KEY, DEFAULT_CHAINS) or {}
     queued: list[str] = []
-    for name in ("ascolto", "voce"):
+    for name in ("listen", "voice"):
         for step in (chains.get(name) or {}).get("steps") or []:
             kind = (providers.get(step.get("provider")) or {}).get("type", "")
             ids = _standards.prefetch(kind, step.get("model") or "", step.get("voice") or "")

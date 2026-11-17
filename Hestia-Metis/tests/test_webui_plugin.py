@@ -44,9 +44,9 @@ class TestManifest:
 
     def test_page_miglioramento_order_decade_180(self):
         pages = {p["id"]: p for p in _manifest()["clients"]["webui"]["page"]}
-        assert set(pages) == {"miglioramento"}
-        assert pages["miglioramento"]["element"] == "metis-improvement"
-        assert 180 <= pages["miglioramento"]["order"] < 190
+        assert set(pages) == {"improvement"}
+        assert pages["improvement"]["element"] == "metis-improvement"
+        assert 180 <= pages["improvement"]["order"] < 190
 
     def test_no_widgets_no_quick_actions(self):
         web = _manifest()["clients"]["webui"]

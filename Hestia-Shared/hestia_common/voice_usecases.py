@@ -8,20 +8,20 @@ declares each kind of task as a use, with its direction and a suggested chain (`
 
     from hestia_common.voice_usecases import usecase as voice_usecase, capabilities as voice_capabilities
 
-    VOICE_USECASES = [voice_usecase("telegram.vocale", "Telegram · vocali", direction="ascolto")]
+    VOICE_USECASES = [voice_usecase("telegram.vocale", "Telegram · vocali", direction="listen")]
     payload["capabilities"].update(voice_capabilities(VOICE_USECASES))
 """
 from __future__ import annotations
 
 import re
 
-DIRECTIONS = ("ascolto", "voce")
-MODES = ("segui", "interna", "esterna")
+DIRECTIONS = ("listen", "voice")
+MODES = ("follow", "internal", "external")
 _ID = re.compile(r"^[a-z0-9_]+\.[a-z0-9_.-]+$")
 
 
-def usecase(id: str, label: str, *, direction: str, chain: str = "", help: str = "", mode: str = "segui") -> dict:
-    """One use: id ``<module>.<task>``, Italian label, direction ``ascolto`` | ``voce``, suggested chain
+def usecase(id: str, label: str, *, direction: str, chain: str = "", help: str = "", mode: str = "follow") -> dict:
+    """One use: id ``<module>.<task>``, Italian label, direction ``ascolto`` | ``voice``, suggested chain
     (empty = the default chain of the direction) and mode."""
     if not _ID.match(id):
         raise ValueError(f"voice use id {id!r} must be '<module>.<task>' (lowercase)")

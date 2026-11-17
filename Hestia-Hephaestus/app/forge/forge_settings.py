@@ -103,8 +103,8 @@ settings.declare([
             help="After a failed repair I retry after this time × number of attempts."),
     setting(REPAIR_MAX_ATTEMPTS, "Most attempts", "int", 3, group=_REPAIR, min=1, max=20, order=24,
             help="After the last failed attempt the problem goes to Forge as a code fix."),
-    setting(UPDATE_CHANNEL, "Which updates", "enum", "stabile", group=_UPDATE, order=30, oracle="read",
-            options=[("stabile", "Published versions (recommended)"), ("novita", "Each piece of news as soon as it's ready")],
+    setting(UPDATE_CHANNEL, "Which updates", "enum", "stable", group=_UPDATE, order=30, oracle="read",
+            options=[("stable", "Published versions (recommended)"), ("news", "Each piece of news as soon as it's ready")],
             help="Published versions: tested and with notes. Every news: the latest code, sooner but less tested. I always ask you before installing."),
 ]).declare_log_level()
 

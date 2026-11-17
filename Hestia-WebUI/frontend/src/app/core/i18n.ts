@@ -23,7 +23,7 @@ export function assistantName(): string { return String(catalog().assistant || '
 export function named(text: string): string {
   const s = text == null ? '' : String(text);
   if (!s.includes('{assistant}') && !s.includes('{g:')) return s;
-  const he = catalog().gender === 'lui';
+  const he = catalog().gender === 'he';
   return s.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, a, b) => (he ? b : a)).split('{assistant}').join(assistantName());
 }
 
@@ -64,9 +64,9 @@ export function followIdentity(key: string, value: unknown): void {
   const c = (globalThis as any).__hestiaI18n;
   if (!IDENTITY_KEYS.includes(key) || !c || reloading) return;
   const v = String(value ?? '').trim();
-  const now = key === IDENTITY_KEYS[0] ? assistantName() : (c.gender || 'lei');
-  if ((v || (key === IDENTITY_KEYS[0] ? 'Hestia' : 'lei')) === now) return;
-  if (key === IDENTITY_KEYS[0]) c.assistant = v || 'Hestia'; else c.gender = v === 'lui' ? 'lui' : 'lei';
+  const now = key === IDENTITY_KEYS[0] ? assistantName() : (c.gender || 'she');
+  if ((v || (key === IDENTITY_KEYS[0] ? 'Hestia' : 'she')) === now) return;
+  if (key === IDENTITY_KEYS[0]) c.assistant = v || 'Hestia'; else c.gender = v === 'he' ? 'he' : 'she';
   if (location.pathname.startsWith('/setup')) return;
   reloading = true;
   setTimeout(() => location.reload(), 400);

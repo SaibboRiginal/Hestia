@@ -125,8 +125,8 @@ class TestQuota:
 
 @pytest.mark.unit
 class TestChainAgent:
-    def _chain(self, monkeypatch, steps, uc="oracle.general", chain="veloce"):
-        _set(monkeypatch, oracle_settings.CHAINS_KEY, {chain: {"steps": steps}, "veloce": {"steps": steps}})
+    def _chain(self, monkeypatch, steps, uc="oracle.general", chain="fast"):
+        _set(monkeypatch, oracle_settings.CHAINS_KEY, {chain: {"steps": steps}, "fast": {"steps": steps}})
         _set(monkeypatch, oracle_settings.USECASES_KEY, {uc: {"chain": chain}})
         return llm_chains.ChainAgent(uc)
 
@@ -168,27 +168,27 @@ class TestChainAgent:
 
     def test_unknown_chain_falls_back_to_general(self, monkeypatch, fake_agents):
         _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.listings": {"chain": "nope"}})
-        assert llm_chains.usecase_config("scout.listings")["chain"] == "veloce"
+        assert llm_chains.usecase_config("scout.listings")["chain"] == "fast"
 
 
 @pytest.mark.unit
 class TestUseCases:
     def test_module_declaration_from_registry(self, monkeypatch):
-        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Pianifica", "chain": "potente",
-                 "thinking": "auto", "mode": "segui", "help": ""}]
+        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Pianifica", "chain": "strong",
+                 "thinking": "auto", "mode": "follow", "help": ""}]
         monkeypatch.setattr(llm_chains, "_registry_usecases", lambda: rows)
-        assert llm_chains.usecase_config("hercules.plan")["chain"] == "potente"
-        _set(monkeypatch, oracle_settings.USECASES_KEY, {"hercules.plan": {"chain": "veloce", "mode": "esterna"}})
+        assert llm_chains.usecase_config("hercules.plan")["chain"] == "strong"
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {"hercules.plan": {"chain": "fast", "mode": "external"}})
         cfg = llm_chains.usecase_config("hercules.plan")
-        assert (cfg["chain"], cfg["mode"], cfg["declared"]) == ("veloce", "esterna", True)
+        assert (cfg["chain"], cfg["mode"], cfg["declared"]) == ("fast", "external", True)
 
     def test_registry_parsing(self, monkeypatch):
         services = [{"service_name": "scout", "capabilities": {"llm_usecases": [
-            {"id": "Scout.Annunci", "label": "Scout · annunci", "chain": "veloce"}]}}, {"name": "x"}]
+            {"id": "Scout.Annunci", "label": "Scout · annunci", "chain": "fast"}]}}, {"name": "x"}]
         monkeypatch.setattr(llm_chains, "_registry_services", lambda: services)
         assert llm_chains._registry_usecases() == [
-            {"id": "scout.listings", "module": "scout", "label": "Scout · annunci", "chain": "veloce",
-             "thinking": "auto", "mode": "segui", "help": ""}]
+            {"id": "scout.listings", "module": "scout", "label": "Scout · annunci", "chain": "fast",
+             "thinking": "auto", "mode": "follow", "help": ""}]
         assert llm_chains.declared_usecases()["scout.listings"]["module"] == "scout"
 
 
@@ -256,7 +256,7 @@ class TestUsageRows:
         from core.services import llm_stats, llm_usage
         llm_stats.record("code", "claude_cli", "sonnet", prompt_tokens=10, cost_usd=0.02)
         (row,) = llm_usage.captured
-        assert row["use_case"] == "oracle.codice" and row["module"] == "oracle"
+        assert row["use_case"] == "oracle.code" and row["module"] == "oracle"
 
     def test_price_from_table_and_subscription(self, monkeypatch):
         from core.services import llm_usage
@@ -264,8 +264,8 @@ class TestUsageRows:
         _set(monkeypatch, oracle_settings.PRICING_KEY, {"gemini/flash": {"in": 1.0, "out": 2.0, "cached": 0.5}})
         cost, kind = llm_usage.price("gemini", "flash", 1_000_000, 400_000, 1_000_000)
         assert kind == "api" and cost == pytest.approx(0.6 + 0.2 + 2.0)
-        assert llm_usage.price("gemini", "other", 10, 0, 10) == (0.0, "sconosciuto")
-        assert llm_usage.price("claude", "sonnet", 10, 0, 10, reported=0.3) == (0.3, "abbonamento")
+        assert llm_usage.price("gemini", "other", 10, 0, 10) == (0.0, "unknown")
+        assert llm_usage.price("claude", "sonnet", 10, 0, 10, reported=0.3) == (0.3, "subscription")
 
     def test_drain_sends_batches_to_archive(self, monkeypatch):
         from core.services import llm_usage

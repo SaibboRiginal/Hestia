@@ -72,7 +72,7 @@ class HerculesCoach:
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "days": [d.weekday()],
                                 "time_of_day": tod, "tags": ["workout", effort, *self._muscle_tags(t)],
                                 "priority": "should", "reason": tr("planned {0}", h_weekday(d)) + reason_extra,
-                                "link": "oggi"})
+                                "link": "today"})
                 d += timedelta(days=1)
         else:
             goal = next((g for g in h.goals() if (g.get("scope") or "any") == "any"), None)
@@ -94,7 +94,7 @@ class HerculesCoach:
                                 "min_gap_days": 2 if remaining <= 3 else 1,
                                 "tags": ["workout", effort], "priority": "should",
                                 "reason": f"{prog_.get('hint')}" + (tr(" · next: {0}", nxt['name']) if nxt else "")
-                                          + reason_extra, "link": "oggi"})
+                                          + reason_extra, "link": "today"})
         state = " · ".join((summary.get("lines") or [])[:2])
         return {"state": state, "needs": out}
 
@@ -107,8 +107,8 @@ class HerculesCoach:
     @staticmethod
     def _muscle_tags(template: dict) -> list[str]:
         name = (template.get("name") or "").lower()
-        return [t for t, words in (("legs", ("gamb", "leg", "squat")), ("push", ("push", "spinta", "petto")),
-                                   ("pull", ("pull", "trazion", "schiena"))) if any(w in name for w in words)]
+        return [t for t, words in (("legs", ("gamb", "leg", "squat")), ("push", ("push", "spinta", "chest")),
+                                   ("pull", ("pull", "trazion", "back"))) if any(w in name for w in words)]
 
     def fit(self, need_id: str, day: date, minutes: int) -> dict:
         """Short version: the adaptation engine's time-limit rule on the workout of that day."""

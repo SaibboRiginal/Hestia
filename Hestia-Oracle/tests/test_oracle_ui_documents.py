@@ -41,13 +41,13 @@ class TestDocumentsPage:
     def test_manifest_has_documenti_page(self, main_mod):
         m = TestClient(main_mod.app).get("/api/ui/manifest").json()
         ids = {p["id"]: p for p in m["clients"]["webui"]["page"]}
-        assert ids["documenti"]["element"] == "oracle-documents" and ids["documenti"]["order"] == 121
+        assert ids["documents"]["element"] == "oracle-documents" and ids["documents"]["order"] == 121
 
     def test_list_reads_archive_through_hub(self, rig):
         c, engine = rig
         engine._hub.route_to_service.return_value = (True, [DOC])
         body = c.get("/api/ui/documents", params={"domain": "documents", "permanent": "true"}).json()
-        assert body["count"] == 1 and body["documents"][0]["tags"] == ["casa", "affitto"]
+        assert body["count"] == 1 and body["documents"][0]["tags"] == ["home", "affitto"]
         assert body["domains"] == ["documents"]
         args, kwargs = engine._hub.route_to_service.call_args
         assert args[:3] == ("archive", "api/documents", "GET")

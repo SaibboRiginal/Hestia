@@ -33,10 +33,10 @@ ui = PluginClient("hub", title="System map", icon="host", color="blue", kind="co
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hub.js", api_prefix=f"{API}/",
-    pages=[page("mappa", "Map", element="hub-map", icon="host", order=100,
+    pages=[page("map", "Map", element="hub-map", icon="host", order=100,
                 help="Every Hestia service: online or not, node, version, last signal, topology tags.")],
     widgets=[widget("online", "Services online", element="hub-online-widget", sizes=["s", "m"], auto=True,
-                    open_page="mappa", icon="host",
+                    open_page="map", icon="host",
                     help="How many services gave a sign of life in the last 3 minutes.")],
 )
 

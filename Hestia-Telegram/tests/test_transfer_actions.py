@@ -9,7 +9,7 @@ from telegram_bot import transfer_actions as ta
 
 pytestmark = pytest.mark.unit
 
-_BLOCK = {"module": "plutus", "format": 1, "sections": {"spese": {"records": [{"id": 1}, {"id": 2}]}}}
+_BLOCK = {"module": "plutus", "format": 1, "sections": {"expenses": {"records": [{"id": 1}, {"id": 2}]}}}
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def hub(monkeypatch):
         if path == "api/transfer/export":
             return True, _BLOCK
         if path == "api/transfer/import":
-            return True, {"sections": {"spese": {"added": 2 if body["dry_run"] else 2, "updated": 0}}}
+            return True, {"sections": {"expenses": {"added": 2 if body["dry_run"] else 2, "updated": 0}}}
         if path == "api/backup/list":
             return True, {"items": [{"id": "f1", "size": 3 * 1048576, "created_at": "2026-10-28T03:30:00+00:00"}]}
         if path == "api/backup/restore":

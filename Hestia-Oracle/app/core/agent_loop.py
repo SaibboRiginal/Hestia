@@ -312,7 +312,7 @@ def _python_style_call(text: str) -> dict | None:
 
 
 ALREADY_DONE = "ALREADY DONE this turn (same title): don't repeat it, answer the user."
-_WRITE_KEY_PARAMS = ("title", "name", "titolo", "nome", "text", "fact")
+_WRITE_KEY_PARAMS = ("title", "name", "title", "nome", "text", "fact")
 
 
 def _write_key(tool: "ToolDefinition | None", call: dict) -> tuple[str, str] | None:

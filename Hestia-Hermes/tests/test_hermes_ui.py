@@ -95,12 +95,12 @@ class TestUiEndpoints:
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/ui/" and web["entry"] == "/ui/webui/hermes.js"
         pages = {p["id"]: p for p in web["page"]}
-        assert list(pages) == ["notifiche", "consegne"]
-        assert pages["notifiche"]["order"] == 140 and pages["notifiche"]["element"] == "hermes-inbox"
-        assert pages["notifiche"]["badge"] == {"source": "/api/ui/inbox/counts", "field": "unread"}
-        assert pages["notifiche"]["badge"]["source"].startswith(web["api_prefix"])
-        assert pages["consegne"]["order"] == 141 and pages["consegne"]["parent"] == "notifiche"
-        assert [w["id"] for w in web["widget"]] == ["oggi"] and web["widget"][0]["open_page"] == "consegne"
+        assert list(pages) == ["notifications", "deliveries"]
+        assert pages["notifications"]["order"] == 140 and pages["notifications"]["element"] == "hermes-inbox"
+        assert pages["notifications"]["badge"] == {"source": "/api/ui/inbox/counts", "field": "unread"}
+        assert pages["notifications"]["badge"]["source"].startswith(web["api_prefix"])
+        assert pages["deliveries"]["order"] == 141 and pages["deliveries"]["parent"] == "notifications"
+        assert [w["id"] for w in web["widget"]] == ["today"] and web["widget"][0]["open_page"] == "deliveries"
 
     def test_deliveries_endpoint(self, app_client):
         client, main = app_client

@@ -185,7 +185,7 @@ try:
             path="/api/feedback",
             clients=["telegram", "ui"],
             response_mode="direct",
-            telegram_visible=False, telegram_group="sistema",
+            telegram_visible=False, telegram_group="system",
                 telegram={"section": "interno"}),
         # Backup from every client (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F). Restore is NOT a tool:
         # only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel), never the assistant.
@@ -196,7 +196,7 @@ try:
             handler=lambda **_kw: {"status": "ok"}, title="Backup status", method="GET",
             path="/api/backup/status", clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Two or three lines: last backup (when, result), last check, any problem.",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Data and backups", "label": "Backup"}),
         MCPTool(
             name="backup_list",
@@ -204,7 +204,7 @@ try:
             parameters={"type": "object", "properties": {}},
             handler=lambda **_kw: {"status": "ok"}, title="Saved backups", method="GET",
             path="/api/backup/list", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Data and backups"}),
         MCPTool(
             name="backup_run",
@@ -212,7 +212,7 @@ try:
             parameters={"type": "object", "properties": {}},
             handler=lambda **_kw: {"status": "ok"}, title="Back up now", method="POST",
             path="/api/backup/run", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Data and backups", "label": "Back up now"}),
     ]
     app.include_router(
@@ -253,7 +253,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "preferences_active",
                 "title": "Active preferences",
-                "telegram_group": "memoria",
+                "telegram_group": "memory",
                 "telegram": {"section": "Notes and preferences"},
                 "description": "Show the user's active preferences",
                 "method": "GET",
@@ -265,7 +265,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notifications_active",
                 "title": "Automatic alerts",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts", "label": "Automatic alerts"},
                 "description": "Show the active automatic notifications",
                 "method": "GET",
@@ -276,7 +276,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "alerts_recent",
                 "title": "Recent notices",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
                 "description": "Show the latest notices sent",
                 "method": "GET",
@@ -289,7 +289,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notification_disable",
                 "title": "Turn off a notice",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
                 "description": "Turn off a notification by subscription_id",
                 "method": "PATCH",
@@ -313,7 +313,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notification_enable",
                 "title": "Turn a notice back on",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
                 "description": "Turn a notification back on by subscription_id",
                 "method": "PATCH",
@@ -338,7 +338,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "calendar_subscribe",
                 "title": "Turn on calendar reminders",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Get automatic reminders for calendar events",
                 "method": "POST",
@@ -359,7 +359,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "calendar_unsubscribe",
                 "title": "Turn off calendar reminders",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Stop automatic calendar reminders",
                 "method": "PATCH",
@@ -373,7 +373,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "system_subscribe",
                 "title": "Turn on system alerts",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Get notifications about the services' status",
                 "method": "POST",
@@ -394,7 +394,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "system_unsubscribe",
                 "title": "Turn off system alerts",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Stop notifications about the services' status",
                 "method": "PATCH",
@@ -407,7 +407,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "archive_reconcile",
                 "title": "Reconcile archive",
-                "telegram_group": "sistema",
+                "telegram_group": "system",
                 "telegram": {"section": "Advanced"},
                 "description": "Run a reconciliation maintenance on Archive entity records",
                 "method": "POST",

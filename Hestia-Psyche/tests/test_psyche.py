@@ -36,7 +36,7 @@ def test_log_validates_and_keeps_only_the_vocabulary(ps):
     r = p.log({"mood": "2", "energy": 1, "labels": ["Stanco", "giu", "boh"], "causes": "lavoro, sonno, x",
                "source": "tap"})
     assert r["mood"] == 2 and r["energy"] == 1 and r["labels"] == ["stanco", "giù"]
-    assert r["causes"] == ["lavoro", "sonno"] and r["source"] == "tap" and r["mood_word"] == "giù"
+    assert r["causes"] == ["work", "sleep"] and r["source"] == "tap" and r["mood_word"] == "giù"
     assert r["date"] == p.today().isoformat()
     for bad in ({"mood": 0}, {"mood": 6}, {}, {"mood": "molto"}, {"mood": 3, "date": "2999-01-01"}):
         with pytest.raises(Invalid):
@@ -93,7 +93,7 @@ def test_insights_need_enough_days_then_speak_plainly(ps):
     assert not out["enough"] and "Servono ancora 6 giorni" in out["sentences"][0]
     for n in range(1, 12):
         p.log({"mood": 2 if n % 2 else 4, "date": _day(p, n), "labels": ["stanco"] if n % 2 else ["sereno"],
-               "causes": ["lavoro"] if n % 2 else ["sport"]})
+               "causes": ["work"] if n % 2 else ["sport"]})
     out = p.insights()
     text = " ".join(out["sentences"])
     assert out["enough"] and "Ultimi 30 giorni" in text and "stanco" in text

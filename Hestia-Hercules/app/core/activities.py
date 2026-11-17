@@ -19,29 +19,26 @@ from typing import Any, Callable
 
 from . import domain
 from .store import now_iso
-from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, weekday_name, word_set  # owner language; owner words per language
 
 logger = logging.getLogger("hestia_hercules.activities")
 
-KINDS = {"corsa": "Corsa", "bici": "Bici", "camminata": "Camminata", "nuoto": "Nuoto", "altro": "Activity"}
-ALIASES = {"run": "corsa", "running": "corsa", "correre": "corsa", "jogging": "corsa", "bike": "bici",
-           "bicicletta": "bici", "ciclismo": "bici", "walk": "camminata", "camminare": "camminata",
-           "passeggiata": "camminata", "hike": "camminata", "escursione": "camminata", "swim": "nuoto",
-           "nuotare": "nuoto", "piscina": "nuoto"}
+KINDS = {"run": "Running", "bike": "Cycling", "walk": "Walking", "swim": "Swimming", "other": "Activity"}
+# words people use for each kind, every language: hercules.activity.<kind> in locales/<lang>/words.json
 SLOT_STATUS = ("proposed", "planned", "done", "missed", "moved", "cancelled")
 CALENDAR_NAME = "Workouts"
 EARLIEST, LATEST = 6, 21          # hours a slot may start
-GOOD_SCORE = 70                    # «ottimo giorno» threshold
+GOOD_SCORE = 70                    # «great day» threshold
 
 
 def kind_of(text: Any) -> str:
     k = domain._str(text, 40).lower().strip()
-    k = ALIASES.get(k, k)
-    return k if k in KINDS else ("altro" if k else "corsa")
+    k = next((kind for kind in KINDS if kind != "other" and k in word_set(f"hercules.activity.{kind}")), k)
+    return k if k in KINDS else ("other" if k else "run")
 
 
 def label(kind: str) -> str:
-    return KINDS.get(kind, tr("Activity"))
+    return tr(KINDS.get(kind, "Activity"))
 
 
 # ── normalizers (registered in domain.NORMALIZERS) ─────────────────────────
@@ -78,16 +75,16 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
     score = 100
     rain = h.get("rain_prob") or 0
     if rain >= 60 or (h.get("rain_mm") or 0) >= 1:
-        return 0, ["pioggia"]
+        return 0, [tr("rain")]
     if rain >= 30:
         score -= 35
         why.append(tr("rain possible {0}%", rain))
     if sunrise and sunset and not (sunrise[:5] <= f"{hh:02d}:30" and f"{hh:02d}:00" < sunset[:5]):
-        return 0, ["buio"]
+        return 0, [tr("dark")]
     if not h.get("is_day", True) and not (sunrise and sunset):
-        return 0, ["buio"]
+        return 0, [tr("dark")]
     t = h.get("feels_c") if h.get("feels_c") is not None else h.get("temp_c")
-    lo, hi = (8, 20) if kind in ("corsa", "camminata") else (12, 24)
+    lo, hi = (8, 20) if kind in ("run", "walk") else (12, 24)
     if t is not None:
         if t < lo - 8 or t > hi + 10:
             return 0, [tr("{0}° too cold", t) if t < lo else tr("{0}° too hot", t)]
@@ -102,9 +99,9 @@ def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "cor
     wind = h.get("wind_kmh") or 0
     if wind > 30:
         score -= min(40, int((wind - 30) * 2))
-        why.append(f"vento {wind} km/h")
+        why.append(tr("wind {0} km/h", wind))
     if rain < 30:
-        why.append("asciutto")
+        why.append(tr("dry"))
     if hh in (7, 8, 17, 18, 19):          # usual training hours: a small preference, never a rule
         score += 5
     return max(0, min(100, score)), why
@@ -199,7 +196,7 @@ class Activities:
         today = self.h.today()
         ws = self.h.week_start()
         start = today - timedelta(days=(today.weekday() - ws) % 7)
-        if str(which).lower() in ("next", "prossima", "prossima settimana"):
+        if str(which).lower() in word_set("common.next_week"):
             start += timedelta(days=7)
             return start, start + timedelta(days=6)
         return today, start + timedelta(days=6)
@@ -443,7 +440,7 @@ class Activities:
         out = []
         for act in item.get("activities") or []:
             ext = f"{item.get('source') or 'device'}:{act.get('id')}"
-            if not act.get("id") or ext in seen or act.get("kind") not in KINDS or act.get("kind") == "altro":
+            if not act.get("id") or ext in seen or act.get("kind") not in KINDS or act.get("kind") == "other":
                 continue
             day = str(act.get("start") or item.get("date") or "")[:10]
             out.append(self.log(act["kind"], day, act.get("minutes"), act.get("km"), str(act.get("name") or ""),
@@ -626,7 +623,7 @@ class Activities:
                 continue
             best = cands[0]
             w = best.get("weather") or {}
-            text = ((tr("Great day for {0}: {1}–{2}", name, best['start'][11:16], best['end'][11:16]) if plan['kind'] != 'altro'
+            text = ((tr("Great day for {0}: {1}–{2}", name, best['start'][11:16], best['end'][11:16]) if plan['kind'] != 'other'
                     else tr("Great day to move: {0}–{1}", best['start'][11:16], best['end'][11:16]))
                     + (f", {w['temp_c']}°" if w.get("temp_c") is not None else "")
                     + (f", {w['condition']}" if w.get("condition") else "") + f" · {prog['hint']}")
@@ -711,5 +708,5 @@ class Activities:
             out.append({"id": f"activity.{p['id']}", "title": label(p["kind"]), "kind": "block", "count": left,
                         "minutes": minutes, "min_minutes": minutes, "time_of_day": "any", "min_gap_days": 1,
                         "tags": ["outdoor", "activity", "effort:2"], "priority": "could",
-                        "reason": prog["hint"] + (f" · {p['place']}" if p.get("place") else ""), "link": "allenamento"})
+                        "reason": prog["hint"] + (f" · {p['place']}" if p.get("place") else ""), "link": "training"})
         return out

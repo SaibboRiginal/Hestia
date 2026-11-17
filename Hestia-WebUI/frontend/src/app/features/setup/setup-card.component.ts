@@ -31,8 +31,8 @@ export class SetupCardComponent {
   open = computed(() => {
     const s = this.state();
     if (!s) return [];
-    const left = s.later.filter(k => k !== 'esterni' && !(k === 'telegram' && s.telegram.linked) && !(k === 'backup' && s.backup.passphrase));
-    if (!s.completed && !s.brain.recipe && !left.includes('cervello')) left.unshift('cervello');
+    const left = s.later.filter(k => k !== 'external_ais' && !(k === 'telegram' && s.telegram.linked) && !(k === 'backup' && s.backup.passphrase));
+    if (!s.completed && !s.brain.recipe && !left.includes('brain')) left.unshift('brain');
     return left.map(k => LABELS[k] || k);
   });
 

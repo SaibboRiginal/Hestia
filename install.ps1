@@ -15,7 +15,7 @@
 [CmdletBinding()]
 param(
     [string]$Dir = '',                 # empty = where it is launched (see below)
-    [string]$Channel = 'stabile',      # stabile | novita (checked below: no ValidateSet, see the note after param)
+    [string]$Channel = 'stable',      # stabile | novita (checked below: no ValidateSet, see the note after param)
     [switch]$Update,
     [switch]$Repair,
     [switch]$Uninstall,
@@ -49,10 +49,10 @@ if (-not $Dir) {
     else { $Dir = Join-Path $here 'Hestia' }
 }
 # English names of the options work too.
-$Channel = switch ($Channel) { 'stable' { 'stabile' } 'latest' { 'novita' } default { $Channel } }
-$Role = switch ($Role) { 'all' { 'tutto' } 'central' { 'centrale' } default { $Role } }
-if (@('stabile', 'novita') -notcontains $Channel) { Write-Host (T "Unknown channel: $Channel. Use stable or latest." "Canale sconosciuto: $Channel. Usa stabile o novita."); return }
-if ($Role -and @('tutto', 'centrale', 'satellite') -notcontains $Role) { Write-Host (T "Unknown role: $Role. Use all, central or satellite." "Ruolo sconosciuto: $Role. Usa tutto, centrale o satellite."); return }
+$Channel = switch ($Channel) { 'stable' { 'stable' } 'latest' { 'news' } default { $Channel } }
+$Role = switch ($Role) { 'all' { 'all' } 'central' { 'centrale' } default { $Role } }
+if (@('stable', 'news') -notcontains $Channel) { Write-Host (T "Unknown channel: $Channel. Use stable or latest." "Canale sconosciuto: $Channel. Usa stabile o novita."); return }
+if ($Role -and @('all', 'centrale', 'satellite') -notcontains $Role) { Write-Host (T "Unknown role: $Role. Use all, central or satellite." "Ruolo sconosciuto: $Role. Usa tutto, centrale o satellite."); return }
 
 # Continue, not Stop: on Windows PowerShell 5.1 any stderr line of a native program (docker, git, winget) would
 # otherwise become a terminating error. Native calls are checked by exit code; cmdlets that must stop say -ErrorAction Stop.
@@ -391,7 +391,7 @@ function Select-Version {
         $script:VersionTag = [string](& git -C $Dir describe --tags --exact-match 2>$null)
         return
     }
-    if ($Channel -eq 'stabile') {
+    if ($Channel -eq 'stable') {
         $tag = & git -C $Dir tag -l 'v*.*.*' --sort=-v:refname | Select-Object -First 1
         if ($tag) {
             Invoke-Step 'git' @('-C', $Dir, '-c', 'advice.detachedHead=false', 'checkout', '--quiet', $tag) | Out-Null
@@ -434,7 +434,7 @@ function Resolve-Role {
     if (-not $script:Role) {   # a re-run keeps the role chosen before
         $hw = Join-Path $Dir '.hestia-install\hardware.json'
         if (Test-Path $hw) { try { $script:Role = [string](Get-Content $hw -Raw | ConvertFrom-Json).role } catch { } }
-        if (-not $script:Role) { $script:Role = 'tutto' }
+        if (-not $script:Role) { $script:Role = 'all' }
     }
     $envFile = Join-Path $Dir '.env'
     $linked = (Test-Path $envFile) -and [bool](Select-String -Path $envFile -Pattern '^HUB_NODE_TOKEN=.+' -Quiet)

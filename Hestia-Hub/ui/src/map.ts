@@ -136,7 +136,7 @@ export class HubOnlineWidget extends HestiaElement {
     const d = this.data;
     const off = (d.services || []).filter((s: any) => !s.online).map((s: any) => s.name);
     const small = this.ctx?.size === 's';
-    return html`<div class="w" @click=${() => this.host.navigate('mappa')}>
+    return html`<div class="w" @click=${() => this.host.navigate('map')}>
       <span class="small muted">${tr("Services online")}</span>
       <div class="big">${d.online_count}<span class="muted" style="font-size:15px"> / ${d.services_count}</span></div>
       ${off.length ? html`<div class="row wrap">${(small ? off.slice(0, 2) : off.slice(0, 6)).map((n: string) => html`<hxk-badge tone="danger">${n}</hxk-badge>`)}

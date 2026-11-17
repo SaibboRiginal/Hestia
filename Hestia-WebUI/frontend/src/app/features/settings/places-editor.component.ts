@@ -111,7 +111,7 @@ export class PlacesEditorComponent implements OnInit {
     if (names.some((n, i) => n && names.indexOf(n) !== i)) { this.error.set(tr('Two places with the same name')); return; }
     const used = new Set<string>();
     for (const r of rows) {
-      let id = r.id || slug(r.name || r.address) || 'luogo';
+      let id = r.id || slug(r.name || r.address) || 'place';
       while (used.has(id)) id += '-2';
       used.add(id); r.id = id;
     }

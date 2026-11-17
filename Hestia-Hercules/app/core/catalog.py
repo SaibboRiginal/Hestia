@@ -20,9 +20,9 @@ MUSCLES = {
 }
 # Coarse groups for weekly volume and goals ("schiena 2/settimana").
 MUSCLE_GROUPS = {
-    "petto": ["chest"], "spalle": ["front_delts", "side_delts", "rear_delts"],
-    "braccia": ["biceps", "triceps", "forearms"], "schiena": ["lats", "upper_back", "traps", "lower_back"],
-    "core": ["abs", "obliques"], "gambe": ["quads", "hamstrings", "glutes", "adductors", "abductors", "calves"],
+    "chest": ["chest"], "shoulders": ["front_delts", "side_delts", "rear_delts"],
+    "arms": ["biceps", "triceps", "forearms"], "back": ["lats", "upper_back", "traps", "lower_back"],
+    "core": ["abs", "obliques"], "legs": ["quads", "hamstrings", "glutes", "adductors", "abductors", "calves"],
 }
 JOINTS = {"shoulder": "Shoulder", "elbow": "Elbow", "wrist": "Wrist", "lower_back": "alt::Lower back",
           "hip": "Hip", "knee": "Knee", "ankle": "Ankle", "neck": "Neck"}

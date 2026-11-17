@@ -1,5 +1,9 @@
 {
  "_about": "Words people write, per list (regex fragments): read with hestia_common.i18n.words/alt/word_regex. docs/LANGUAGES.md",
+ "common.next_week": [
+  "next",
+  "next week"
+ ],
  "common.no": [
   "no",
   "cancel",
@@ -50,6 +54,120 @@
   "silen",
   "(?:at|from|until)\\s+\\d"
  ],
+ "date.day_after_tomorrow": [
+  "day after tomorrow",
+  "the day after tomorrow"
+ ],
+ "date.day_before_yesterday": [
+  "day before yesterday",
+  "the day before yesterday"
+ ],
+ "date.month.1": [
+  "january"
+ ],
+ "date.month.10": [
+  "october"
+ ],
+ "date.month.11": [
+  "november"
+ ],
+ "date.month.12": [
+  "december"
+ ],
+ "date.month.2": [
+  "february"
+ ],
+ "date.month.3": [
+  "march"
+ ],
+ "date.month.4": [
+  "april"
+ ],
+ "date.month.5": [
+  "may"
+ ],
+ "date.month.6": [
+  "june"
+ ],
+ "date.month.7": [
+  "july"
+ ],
+ "date.month.8": [
+  "august"
+ ],
+ "date.month.9": [
+  "september"
+ ],
+ "date.month_abbr.1": [
+  "jan"
+ ],
+ "date.month_abbr.10": [
+  "oct"
+ ],
+ "date.month_abbr.11": [
+  "nov"
+ ],
+ "date.month_abbr.12": [
+  "dec"
+ ],
+ "date.month_abbr.2": [
+  "feb"
+ ],
+ "date.month_abbr.3": [
+  "mar"
+ ],
+ "date.month_abbr.4": [
+  "apr"
+ ],
+ "date.month_abbr.5": [
+  "may"
+ ],
+ "date.month_abbr.6": [
+  "jun"
+ ],
+ "date.month_abbr.7": [
+  "jul"
+ ],
+ "date.month_abbr.8": [
+  "aug"
+ ],
+ "date.month_abbr.9": [
+  "sep"
+ ],
+ "date.time_prefix": [
+  "at",
+  "at the"
+ ],
+ "date.today": [
+  "today"
+ ],
+ "date.tomorrow": [
+  "tomorrow"
+ ],
+ "date.weekday.0": [
+  "monday"
+ ],
+ "date.weekday.1": [
+  "tuesday"
+ ],
+ "date.weekday.2": [
+  "wednesday"
+ ],
+ "date.weekday.3": [
+  "thursday"
+ ],
+ "date.weekday.4": [
+  "friday"
+ ],
+ "date.weekday.5": [
+  "saturday"
+ ],
+ "date.weekday.6": [
+  "sunday"
+ ],
+ "date.yesterday": [
+  "yesterday"
+ ],
  "goal.stop": [
   "stop",
   "enough",
@@ -58,6 +176,99 @@
  ],
  "goal.word": [
   "goal"
+ ],
+ "hercules.activity.bike": [
+  "bike",
+  "cycling",
+  "cycle",
+  "bicycle"
+ ],
+ "hercules.activity.run": [
+  "run",
+  "running",
+  "jogging",
+  "jog"
+ ],
+ "hercules.activity.swim": [
+  "swim",
+  "swimming",
+  "pool"
+ ],
+ "hercules.activity.walk": [
+  "walk",
+  "walking",
+  "hike",
+  "hiking"
+ ],
+ "kairos.category.bill": [
+  "bill",
+  "electricity",
+  "gas",
+  "water",
+  "energy",
+  "invoice",
+  "utilit"
+ ],
+ "kairos.category.car_tax": [
+  "car tax",
+  "road tax",
+  "vehicle tax"
+ ],
+ "kairos.category.document": [
+  "identity card",
+  "id card",
+  "passport",
+  "driving licen[cs]e",
+  "permit",
+  "visa"
+ ],
+ "kairos.category.inspection": [
+  "inspection",
+  "mot\\b"
+ ],
+ "kairos.category.insurance": [
+  "insur",
+  "policy"
+ ],
+ "kairos.category.service": [
+  "car service",
+  "servicing",
+  "maintenance"
+ ],
+ "kairos.category.subscription": [
+  "subscription",
+  "renewal"
+ ],
+ "kairos.category.tax": [
+  "tax\\b",
+  "taxes",
+  "council tax",
+  "hmrc",
+  "irs"
+ ],
+ "kairos.due": [
+  "due",
+  "deadline",
+  "expir",
+  "by the",
+  "to pay",
+  "renew",
+  "inspection",
+  "car tax",
+  "invoice",
+  "bill",
+  "payment due"
+ ],
+ "kairos.mail_subject": [
+  "deadline",
+  "expires",
+  "bill",
+  "invoice",
+  "renewal",
+  "car tax",
+  "inspection",
+  "policy",
+  "payment"
  ],
  "memory.fact_stop": [
   "the",
@@ -467,5 +678,244 @@
   "unsubscribe",
   "unlink",
   "stop"
+ ],
+ "plutus.merchant_prefix": [
+  "payment\\s+(?:pos|card)\\s+"
+ ],
+ "plutus.money_hint": [
+  "payment",
+  "receipt",
+  "refund",
+  "money",
+  "order",
+  "subscription"
+ ],
+ "plutus.paypal.amount_label": [
+  "total",
+  "amount",
+  "payment of",
+  "you sent",
+  "you received",
+  "refund of",
+  "you paid"
+ ],
+ "plutus.paypal.merchant": [
+  "(?:payment)\\s+(?:to)\\s+(.+?)(?:\\s+(?:for|of)\\s+[-€$£\\d]|[.\\n|]|$)",
+  "(?:you sent)\\s+(?:a payment)?\\s*(?:of)?\\s*[^\\n]*?\\s+(?:to)\\s+(.+?)(?:[.\\n|]|$)",
+  "(?:refund)\\s+(?:from)\\s+(.+?)(?:[.\\n|]|$)",
+  "(.+?)\\s+(?:sent you|has sent you|refunded)",
+  "(?:merchant|seller)\\s*[:\\n]\\s*(.+?)(?:\\n|$)"
+ ],
+ "plutus.paypal.payment": [
+  "receipt for your payment",
+  "you sent a payment",
+  "you(?:'ve| have)? paid",
+  "you authorized a payment",
+  "payment to",
+  "your payment",
+  "subscription",
+  "order"
+ ],
+ "plutus.paypal.received": [
+  "you(?:'ve| have)? received (?:money|a payment|\\d)",
+  "sent you"
+ ],
+ "plutus.paypal.refund": [
+  "refund",
+  "you(?:'ve| have) (?:got|received) a refund"
+ ],
+ "plutus.paypal.transaction_id": [
+  "transaction id"
+ ],
+ "plutus.phone.in": [
+  "received",
+  "refund",
+  "salary",
+  "credited",
+  "deposit"
+ ],
+ "plutus.phone.merchant_after": [
+  "on",
+  "with",
+  "of",
+  "in",
+  "at",
+  "for"
+ ],
+ "plutus.phone.merchant_before": [
+  "at",
+  "to",
+  "from",
+  "on"
+ ],
+ "plutus.phone.out": [
+  "paid",
+  "payment",
+  "purchase",
+  "sent",
+  "spent",
+  "withdrawal",
+  "charged",
+  "transaction",
+  "authori[sz]ed"
+ ],
+ "plutus.rule.care": [
+  "sephora",
+  "douglas",
+  "hairdresser",
+  "barber",
+  "beautician",
+  "lookfantastic",
+  "notino"
+ ],
+ "plutus.rule.groceries": [
+  "tesco",
+  "sainsbury",
+  "asda",
+  "waitrose",
+  "whole foods",
+  "walmart",
+  "supermarket",
+  "grocery"
+ ],
+ "plutus.rule.health": [
+  "pharmacy",
+  "doctor",
+  "dentist",
+  "hospital",
+  "optician"
+ ],
+ "plutus.rule.home": [
+  "ikea",
+  "vodafone",
+  "rent",
+  "electricity",
+  "utilities"
+ ],
+ "plutus.rule.leisure": [
+  "cinema",
+  "theatre",
+  "theater",
+  "concert",
+  "steam",
+  "playstation",
+  "nintendo",
+  "xbox",
+  "bookshop",
+  "bookstore"
+ ],
+ "plutus.rule.restaurants": [
+  "restaurant",
+  "pizzeria",
+  "bar ",
+  "cafe",
+  "coffee",
+  "mcdonald",
+  "burger king",
+  "deliveroo",
+  "just eat",
+  "starbucks",
+  "sushi"
+ ],
+ "plutus.rule.shopping": [
+  "amazon",
+  "zalando",
+  "zara",
+  "h&m",
+  "decathlon",
+  "ebay",
+  "aliexpress",
+  "vinted",
+  "shein",
+  "uniqlo"
+ ],
+ "plutus.rule.subscriptions": [
+  "netflix",
+  "spotify",
+  "disney",
+  "prime video",
+  "amazon prime",
+  "youtube premium",
+  "icloud",
+  "google one",
+  "apple.com/bill",
+  "chatgpt",
+  "openai",
+  "anthropic",
+  "claude.ai",
+  "github"
+ ],
+ "plutus.rule.transport": [
+  "uber",
+  "lime",
+  "bird",
+  "bike",
+  "esso",
+  "shell",
+  "fuel",
+  "parking",
+  "train",
+  "taxi"
+ ],
+ "plutus.rule.travel": [
+  "booking.com",
+  "airbnb",
+  "ryanair",
+  "easyjet",
+  "expedia",
+  "hotel",
+  "flixbus"
+ ],
+ "plutus.statement.card": [
+  "card"
+ ],
+ "plutus.statement.header": [
+  "transaction list",
+  "statement",
+  "book balance",
+  "available balance",
+  "opening balance",
+  "closing balance",
+  "value date",
+  "transaction date",
+  "iban",
+  "transactions"
+ ],
+ "plutus.statement.income": [
+  "credit",
+  "transfer received",
+  "incoming transfer",
+  "top.?up",
+  "refund",
+  "salary",
+  "income",
+  "received",
+  "cashback",
+  "interest"
+ ],
+ "plutus.statement.payment_channel": [
+  "pos",
+  "card",
+  "online",
+  "contactless",
+  "by card"
+ ],
+ "plutus.statement.payment_prefix": [
+  "payment",
+  "purchase",
+  "debit",
+  "card payment"
+ ],
+ "plutus.statement.skip": [
+  "(?:opening|closing|available|book) balance",
+  "total",
+  "page \\d",
+  "statement",
+  "transaction list",
+  "(?:transaction|value) date",
+  "^\\s*date\\s"
+ ],
+ "plutus.statement.time_word": [
+  "at"
  ]
 }

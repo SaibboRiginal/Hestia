@@ -351,7 +351,7 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.phone.app`.
 - Tools (Telegram + WebUI, section «Dispositivi»): `garmin_status`, `garmin_link`, `garmin_sync`,
   `garmin_day`, `garmin_unlink`, `phone_status`. Tests: `tests/test_devices.py`.
-- WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `dispositivi` →
+- WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `devices` →
   `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (form in the card, code included), «Leggi adesso», «Scollega»,
   last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built
   by the Dockerfile Node stage into `/ui/dist/webui/hecate.js` (`HECATE_UI_DIST`, outside `/code`); `ui_manifest` /

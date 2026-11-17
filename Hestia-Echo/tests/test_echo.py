@@ -38,7 +38,7 @@ def tone(seconds=1.0, silence_tail=0.0, rate=16000):
 
 
 class FakeEngine(Standard):
-    id, label, directions = "fake", "Finto", ("ascolto", "voce")
+    id, label, directions = "fake", "Finto", ("listen", "voice")
     options = []
 
     def __init__(self):
@@ -114,22 +114,22 @@ def engine(monkeypatch):
 def world(engine, monkeypatch):
     values = {
         "echo.providers": {"uno": {"type": "fake"}, "due": {"type": "fake"}, "chiuso": {"type": "fake_keyed"},
-                           "fuori": {"type": "fake"}},
-        "echo.chains": {"ascolto": {"label": "A", "direction": "ascolto", "steps": [
+                           "away": {"type": "fake"}},
+        "echo.chains": {"listen": {"label": "A", "direction": "listen", "steps": [
                             {"provider": "chiuso", "model": "m0"}, {"provider": "uno", "model": "m1"},
                             {"provider": "due", "model": "m2"}]},
-                        "voce": {"label": "V", "direction": "voce", "steps": [
+                        "voice": {"label": "V", "direction": "voice", "steps": [
                             {"provider": "uno", "voice": "v1"}, {"provider": "due", "voice": "v2"}]},
-                        "only-two": {"label": "D", "direction": "ascolto", "steps": [{"provider": "due", "model": "x"}]}},
-        "echo.usecases": {}, "echo.mode": "interna", "echo.external.provider": "fuori",
-        "echo.external.fallback": "interna", "echo.language": "it", "echo.voice.max_chars": 1200,
+                        "only-two": {"label": "D", "direction": "listen", "steps": [{"provider": "due", "model": "x"}]}},
+        "echo.usecases": {}, "echo.mode": "internal", "echo.external.provider": "away",
+        "echo.external.fallback": "internal", "echo.language": "it", "echo.voice.max_chars": 1200,
         "echo.listening.max_seconds": 600, "echo.audio.space_mb": 2048, "echo.audio.generated_days": 30,
         "echo.chains.cooldown": 60, "echo.pricing": {"uno/m1": {"minute": 0.5}},
     }
     monkeypatch.delenv(key_env("chiuso"), raising=False)
     get = lambda k, d=None: values.get(k, d)  # noqa: E731
     registry = [{"name": "telegram", "capabilities": {"voice_usecases": [
-        {"id": "telegram.vocale", "label": "Vocali", "direction": "ascolto", "chain": "only-two"}]}}]
+        {"id": "telegram.vocale", "label": "Vocali", "direction": "listen", "chain": "only-two"}]}}]
     arch = FakeArchive()
     notes = []
     blocks = Blocks(get, lambda: registry)
@@ -200,10 +200,10 @@ def test_provider_key_from_env_only(world, monkeypatch):
 
 
 def test_chain_skips_step_without_key_and_falls_back(world):
-    out, info = world["blocks"].run("x.y", "ascolto", lambda p, s: p["name"])
+    out, info = world["blocks"].run("x.y", "listen", lambda p, s: p["name"])
     assert out == "uno" and info["step"] == 1 and info["fallback"] is True
     world["engine"].fail["uno"] = EngineError("boom", 500)
-    result, info = world["blocks"].run("x.y", "ascolto",
+    result, info = world["blocks"].run("x.y", "listen",
                                        lambda p, s: STANDARDS["fake"].transcribe(p, s["model"], b"", "", "it", {}))
     assert info["provider"] == "due"
     assert not world["blocks"].exhausted_until("uno", "m1")          # a 500 does not skip the pair later
@@ -212,53 +212,53 @@ def test_chain_skips_step_without_key_and_falls_back(world):
 def test_quota_skips_pair_in_every_chain(world):
     world["engine"].fail["uno"] = EngineError("quota", 429, retry_after=120)
     call = lambda p, s: STANDARDS["fake"].transcribe(p, s["model"], b"", "", "it", {})  # noqa: E731
-    world["blocks"].run("x.y", "ascolto", call)
+    world["blocks"].run("x.y", "listen", call)
     assert world["blocks"].exhausted_until("uno", "m1") > 0
     world["engine"].fail.clear()
-    _, info = world["blocks"].run("x.y", "ascolto", call)
+    _, info = world["blocks"].run("x.y", "listen", call)
     assert info["provider"] == "due"                                  # still skipped until reset
     world["blocks"].clear_exhausted("uno")
-    _, info = world["blocks"].run("x.y", "ascolto", call)
+    _, info = world["blocks"].run("x.y", "listen", call)
     assert info["provider"] == "uno"
 
 
 def test_chain_exhausted(world):
     world["engine"].fail.update({"uno": EngineError("x"), "due": EngineError("y")})
     with pytest.raises(ChainExhausted):
-        world["blocks"].run("x.y", "ascolto", lambda p, s: STANDARDS["fake"].transcribe(p, "", b"", "", "", {}))
+        world["blocks"].run("x.y", "listen", lambda p, s: STANDARDS["fake"].transcribe(p, "", b"", "", "", {}))
 
 
 def test_usecases_declared_by_callers_and_overrides(world):
     b = world["blocks"]
-    assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "only-two"
-    world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "ascolto"}}
-    assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "ascolto"
-    world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "voce"}}      # wrong direction → default
-    assert b.usecase_config("telegram.vocale", "ascolto")["chain"] == "ascolto"
-    b.usecase_config("new.use", "voce")
+    assert b.usecase_config("telegram.vocale", "listen")["chain"] == "only-two"
+    world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "listen"}}
+    assert b.usecase_config("telegram.vocale", "listen")["chain"] == "listen"
+    world["values"]["echo.usecases"] = {"telegram.vocale": {"chain": "voice"}}      # wrong direction → default
+    assert b.usecase_config("telegram.vocale", "listen")["chain"] == "listen"
+    b.usecase_config("new.use", "voice")
     rows = {r["id"]: r for r in b.describe_usecases()}
     assert rows["new.use"]["undeclared"] and rows["telegram.vocale"]["module"] == "telegram"
 
 
 def test_external_mode_proxies_and_falls_back(world):
-    world["values"]["echo.mode"] = "esterna"
-    _, info = world["blocks"].run("x.y", "ascolto", lambda p, s: p["name"])
-    assert info == {**info, "mode": "esterna", "provider": "fuori"}
+    world["values"]["echo.mode"] = "external"
+    _, info = world["blocks"].run("x.y", "listen", lambda p, s: p["name"])
+    assert info == {**info, "mode": "external", "provider": "away"}
     def boom(p, s):
-        if p["name"] == "fuori":
+        if p["name"] == "away":
             raise EngineError("down")
         return p["name"]
-    out, info = world["blocks"].run("x.y", "ascolto", boom)
-    assert out == "uno" and info["mode"] == "interna" and info["fallback"]
-    world["values"]["echo.external.fallback"] = "nessuno"
+    out, info = world["blocks"].run("x.y", "listen", boom)
+    assert out == "uno" and info["mode"] == "internal" and info["fallback"]
+    world["values"]["echo.external.fallback"] = "none"
     with pytest.raises(ChainExhausted):
-        world["blocks"].run("x.y", "ascolto", boom)
-    world["values"]["echo.usecases"] = {"x.y": {"mode": "interna"}}              # a use can stay internal
-    assert world["blocks"].run("x.y", "ascolto", boom)[1]["mode"] == "interna"
+        world["blocks"].run("x.y", "listen", boom)
+    world["values"]["echo.usecases"] = {"x.y": {"mode": "internal"}}              # a use can stay internal
+    assert world["blocks"].run("x.y", "listen", boom)[1]["mode"] == "internal"
 
 
 def test_describe_chains_states(world):
-    steps = world["blocks"].describe_chains()["ascolto"]["steps"]
+    steps = world["blocks"].describe_chains()["listen"]["steps"]
     assert [s["state"] for s in steps] == ["no_key", "ready", "ready"]
 
 
@@ -271,7 +271,7 @@ def test_transcribe_wav_records_usage(world):
     out = world["echo"].transcribe({"audio_b64": b64(tone(1.2)), "mime_type": "audio/wav", "use_case": "x.y"})
     assert out["text"] == "ciao da uno" and out["provider"] == "uno" and out["duration_s"] == pytest.approx(1.2)
     usage = world["keep"].usage(1)
-    assert usage[0]["kind"] == "ascolto" and usage[0]["cost"] == pytest.approx(0.01, abs=1e-3)
+    assert usage[0]["kind"] == "listen" and usage[0]["cost"] == pytest.approx(0.01, abs=1e-3)
     assert world["echo"].recent[0]["provider"] == "uno"
 
 
@@ -322,7 +322,7 @@ def test_listen_stream_partials_silence_and_end(world):
     assert dup["partial"] == "ciao da uno"
     out = world["echo"].listen_end(sid)
     assert out["text"] == "ciao da uno"
-    assert [u["kind"] for u in world["keep"].usage(1)] == ["ascolto"]                    # partials not counted
+    assert [u["kind"] for u in world["keep"].usage(1)] == ["listen"]                    # partials not counted
     with pytest.raises(NotFound):
         world["echo"].listen_chunk(sid, {"audio_b64": b64(tone(0.2))})
 
@@ -386,8 +386,8 @@ def test_endpoints_and_manifest(monkeypatch):
     monkeypatch.setitem(STANDARDS, "fake", FakeEngine())
     monkeypatch.setattr(main.settings, "get", lambda k, d=None: {
         "echo.providers": {"uno": {"type": "fake"}},
-        "echo.chains": {"ascolto": {"direction": "ascolto", "steps": [{"provider": "uno", "model": "m"}]},
-                        "voce": {"direction": "voce", "steps": [{"provider": "uno", "voice": "v"}]}},
+        "echo.chains": {"listen": {"direction": "listen", "steps": [{"provider": "uno", "model": "m"}]},
+                        "voice": {"direction": "voice", "steps": [{"provider": "uno", "voice": "v"}]}},
     }.get(k, d))
     monkeypatch.setattr(main.blocks, "get", main.settings.get)
     monkeypatch.setattr(main.echo, "get", main.settings.get)
@@ -402,11 +402,11 @@ def test_endpoints_and_manifest(monkeypatch):
     assert r.status_code == 200 and r.json()["text"] == "ciao da uno"
     assert client.post("/api/voice/transcribe", json={"audio_b64": ""}).status_code == 422
     assert client.post("/api/voice/listen/nope/chunk", json={"audio_b64": ""}).status_code == 404
-    assert client.get("/api/voice/chains").json()["items"]["ascolto"]["steps"][0]["state"] == "ready"
+    assert client.get("/api/voice/chains").json()["items"]["listen"]["steps"][0]["state"] == "ready"
     assert client.get("/api/voice/usage").json()["totals"]["calls"] == 1
     assert client.get("/api/voice/providers/options").json()["options"][1]["value"] == "uno"
     manifest = client.get("/api/ui/manifest").json()
-    assert manifest["kind"] == "core" and manifest["clients"]["webui"]["page"][0]["id"] == "voce"
+    assert manifest["kind"] == "core" and manifest["clients"]["webui"]["page"][0]["id"] == "voice"
     caps = main._registration()["capabilities"]
     assert caps["voice"]["api"] == "/api/voice"
 
@@ -419,11 +419,11 @@ def test_blocks_write_goes_through_settings(monkeypatch):
     puts = []
     monkeypatch.setattr(main.settings, "put", lambda k, v, **kw: puts.append((k, v)) or True)
     client = TestClient(main.app)
-    ok = client.put("/api/voice/blocks/chains", json={"value": {"veloce": {"direction": "voce", "steps": []}}})
-    assert ok.status_code == 200 and puts == [("echo.chains", {"veloce": {"direction": "voce", "steps": []}})]
+    ok = client.put("/api/voice/blocks/chains", json={"value": {"fast": {"direction": "voice", "steps": []}}})
+    assert ok.status_code == 200 and puts == [("echo.chains", {"fast": {"direction": "voice", "steps": []}})]
     assert client.put("/api/voice/blocks/chains", json={"value": {"x": {"direction": "boh", "steps": []}}}).status_code == 422
     assert client.put("/api/voice/blocks/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 422
-    assert client.put("/api/voice/blocks/altro", json={"value": {}}).status_code == 404
+    assert client.put("/api/voice/blocks/other", json={"value": {}}).status_code == 404
 
 
 # ── Setup guidato «Voce» (core/voice_setup.py) ─────────────────────────────────────────────
@@ -434,11 +434,11 @@ def test_voice_setup_plan_puts_the_choice_first_and_keeps_the_rest():
     from app.core.blocks import DEFAULT_CHAINS
     out = voice_setup.plan(DEFAULT_CHAINS, {"provider": "groq", "model": "whisper-large-v3-turbo"},
                            {"provider": "piper", "voice": "it_IT-paola-medium"})
-    assert [s["provider"] for s in out["ascolto"]["steps"]] == ["groq", "whisper-locale"]
-    assert out["ascolto"]["steps"][0]["model"] == "whisper-large-v3-turbo"
-    assert [s["provider"] for s in out["voce"]["steps"]] == ["piper", "kokoro"]
+    assert [s["provider"] for s in out["listen"]["steps"]] == ["groq", "whisper-locale"]
+    assert out["listen"]["steps"][0]["model"] == "whisper-large-v3-turbo"
+    assert [s["provider"] for s in out["voice"]["steps"]] == ["piper", "kokoro"]
     assert out["voice-natural"] == DEFAULT_CHAINS["voice-natural"]         # chains the setup does not show stay
-    assert voice_setup.plan(DEFAULT_CHAINS, None, None)["voce"] == DEFAULT_CHAINS["voce"]
+    assert voice_setup.plan(DEFAULT_CHAINS, None, None)["voice"] == DEFAULT_CHAINS["voice"]
 
 
 def test_voice_setup_plan_takes_several_steps_in_order():
@@ -448,7 +448,7 @@ def test_voice_setup_plan_takes_several_steps_in_order():
     out = voice_setup.plan(DEFAULT_CHAINS, [{"provider": "whisper-locale", "model": "small"},
                                             {"provider": "groq", "model": "whisper-large-v3-turbo"},
                                             {"provider": "groq", "model": "whisper-large-v3-turbo"}], None)
-    assert [(s["provider"], s["model"]) for s in out["ascolto"]["steps"]] == [
+    assert [(s["provider"], s["model"]) for s in out["listen"]["steps"]] == [
         ("whisper-locale", "small"), ("groq", "whisper-large-v3-turbo")]
 
 
@@ -459,15 +459,15 @@ def test_voice_setup_catalog_lists_local_first_with_their_choices(monkeypatch):
     monkeypatch.setattr(voice_setup, "found_programs", lambda blocks, hosts=None: [])
     b = Blocks(lambda key, default=None: default)
     cat = voice_setup.catalog(b, "it")
-    listen = cat["ascolto"]["providers"]
+    listen = cat["listen"]["providers"]
     assert listen[0]["type"] == "whisper_local" and listen[0]["local"]
     assert any(m["id"] == "small" and m["note"] for m in listen[0]["models"])
     groq = next(p for p in listen if p["name"] == "groq")
     assert groq["needs_key"] and not groq["key"] and groq["models"] == []      # no key: nothing to list yet
-    speak = cat["voce"]["providers"]
+    speak = cat["voice"]["providers"]
     assert speak[0]["type"] == "kokoro" and speak[0]["voices"]
     assert "natural" in speak[0]["note"] and any("synthesi" in p["note"] for p in speak)   # Kokoro vs Piper
-    assert cat["ascolto"]["current"]["provider"] == "whisper-locale"
+    assert cat["listen"]["current"]["provider"] == "whisper-locale"
 
 
 def test_voice_setup_check_reads_the_list_with_the_key(monkeypatch):
@@ -493,31 +493,31 @@ def test_voice_setup_finds_speech_programs_at_home_and_adds_the_chosen_one(monke
 
     def fake_openai(base, model=""):
         if base == "http://host.docker.internal:8004/v1":              # Chatterbox: no model list, only voices
-            return {"ascolto": [], "voce": [], "voices": [{"id": "Emily.wav", "label": "Emily.wav"}]}
-        return ({"ascolto": [{"id": "Systran/faster-whisper-small", "label": "Systran/faster-whisper-small"}],
-                 "voce": [{"id": "speaches-ai/Kokoro-82M", "label": "speaches-ai/Kokoro-82M"}],
+            return {"listen": [], "voice": [], "voices": [{"id": "Emily.wav", "label": "Emily.wav"}]}
+        return ({"listen": [{"id": "Systran/faster-whisper-small", "label": "Systran/faster-whisper-small"}],
+                 "voice": [{"id": "speaches-ai/Kokoro-82M", "label": "speaches-ai/Kokoro-82M"}],
                  "voices": [{"id": "af_heart", "label": "af_heart"}]} if base == "http://192.168.1.20:8000/v1" else None)
     monkeypatch.setattr(voice_setup, "_probe_openai", fake_openai)
     monkeypatch.setattr(voice_setup, "_probe_wyoming", lambda host, port: (
-        {"ascolto": [], "voce": [], "voices": [{"id": "it_IT-paola-medium", "label": "it_IT-paola-medium"}]}
+        {"listen": [], "voice": [], "voices": [{"id": "it_IT-paola-medium", "label": "it_IT-paola-medium"}]}
         if (host, port) == ("host.docker.internal", 10200) else None))
     stored = {}
     b = Blocks(lambda key, default=None: stored.get(key, default))
     cat = voice_setup.catalog(b, "it", "192.168.1.20")
-    speak = {p["name"]: p for p in cat["voce"]["providers"]}
+    speak = {p["name"]: p for p in cat["voice"]["providers"]}
     assert speak["wyoming-piper"]["local"] and speak["wyoming-piper"]["found"]
     assert speak["speaches-192-168-1-20"]["voices"][0]["id"] == "af_heart"
-    listen = {p["name"]: p for p in cat["ascolto"]["providers"]}
+    listen = {p["name"]: p for p in cat["listen"]["providers"]}
     assert "Trovato su 192.168.1.20" in listen["speaches-192-168-1-20"]["note"]
     put = lambda key, value, **kw: stored.__setitem__(key, value) or True
     out = voice_setup.apply(b, put, [{"provider": "speaches-192-168-1-20", "model": "Systran/faster-whisper-small",
                                       "url": "http://192.168.1.20:8000/v1", "type": "openai", "label": "Speaches · 192.168.1.20"}], None)
     assert out["ok"] and stored[PROVIDERS_KEY]["speaches-192-168-1-20"]["url"] == "http://192.168.1.20:8000/v1"
-    assert "_new" not in out["chains"]["ascolto"]["steps"][0]
+    assert "_new" not in out["chains"]["listen"]["steps"][0]
     assert voice_setup.is_home("http://192.168.1.20:8000/v1") and not voice_setup.is_home("https://api.groq.com/openai/v1")
     # Marko 2026-11-07 «mettiamo tutte le voci locali»: Chatterbox found by its voices, the others offered to install
     assert speak["chatterbox"]["voices"][0]["id"] == "Emily.wav"
-    offered = [p["name"] for p in cat["voce"]["programs"]]
+    offered = [p["name"] for p in cat["voice"]["programs"]]
     assert "chatterbox" not in offered and "kokoro-fastapi" in offered and "speaches" not in offered
 
 
@@ -580,7 +580,7 @@ def test_sample_says_the_chosen_name_and_gender():
     from app.core import lang
     assert lang.sample("it") == "Ciao, sono Hestia. Questa è la mia voce."
     assert lang.sample("ja").startswith("こんにちは、ヘスティアです")            # default name in its own script
-    leo = {"assistant": "Leo", "gender": "lui"}
+    leo = {"assistant": "Leo", "gender": "he"}
     assert lang.sample("pt", leo) == "Olá, eu sou o Leo. Esta é a minha voz."
     assert lang.sample("ja", leo).startswith("こんにちは、Leoです") and lang.sample("xx", leo).startswith("Ciao, sono Leo")
 

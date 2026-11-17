@@ -58,7 +58,7 @@ _oracle_mcp_tools = [
             facts=kw.get("facts", ""), topic=str(kw.get("topic", "") or "")),
         title="Remember this", method="POST", path="/api/memory/note",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Notes and preferences", "primary": 1}),
     MCPTool(
         name="memory_recall",
@@ -73,7 +73,7 @@ _oracle_mcp_tools = [
         handler=lambda **kw: engine._memory_service.recall(query=str(kw.get("query", "") or "")),
         title="What do you remember", method="GET", path="/api/memory/recall",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Notes and preferences", "primary": 2}),
     # ── Hestia inside another AI (docs/work/2026-10-30-hestia-in-claude) ────
     MCPTool(
@@ -105,7 +105,7 @@ _oracle_mcp_tools = [
             str(kw.get("query", "")), None, None)),
         title="Search the documents", method="GET", path="/api/documents/search",
         clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Documents", "primary": 3}),
     # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7) ─────────
     MCPTool(
@@ -113,14 +113,14 @@ _oracle_mcp_tools = [
         handler=lambda **kw: _chat_tool(chat_sessions.tool_tag, **kw),
         title="Tag the conversation", method="POST", path="/api/chats/tag",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     MCPTool(
         name="chat_list", description=chat_sessions.LIST_DESCRIPTION, parameters=chat_sessions.LIST_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_list, **kw),
         title="Your conversations", method="GET", path="/api/chats",
         clients=["ui", "telegram"], response_mode="direct",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     # ── downloads of the brain's models (docs/work/2026-10-30-setup-un-click §4.3) ──
     MCPTool(
@@ -130,7 +130,7 @@ _oracle_mcp_tools = [
         handler=lambda **_kw: {"downloads": _llm_setup.pulls()},
         title="Model downloads", method="GET", path="/api/llm/setup/pulls",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Models"}),
+        telegram_visible=True, telegram_group="system", telegram={"section": "alt::Download", "label": "Models"}),
     MCPTool(
         name="models_download", description=("Download (or retry, or resume) a local model for the brain, by its "
                                              "Ollama name, e.g. qwen3:8b. It runs in the background."),
@@ -139,7 +139,7 @@ _oracle_mcp_tools = [
         handler=lambda **kw: _llm_setup.pull(str(kw.get("model", ""))),
         title="Download a model", method="POST", path="/api/llm/setup/pull",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Download model"}),
+        telegram_visible=True, telegram_group="system", telegram={"section": "alt::Download", "label": "Download model"}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -155,7 +155,7 @@ _oracle_mcp_tools = [
             session_id=str(kw.get("session_id", ""))),
         title="Chat context", method="GET", path="/api/chat/context",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     MCPTool(
         name="oracle.compact",
@@ -171,7 +171,7 @@ _oracle_mcp_tools = [
             session_id=str(kw.get("session_id", ""))),
         title="Compact the chat", method="POST", path="/api/chat/compact",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     MCPTool(
         name="oracle.session_info",
@@ -180,7 +180,7 @@ _oracle_mcp_tools = [
         handler=lambda **kw: engine.get_session_info(),
         title="Model status", method="GET", path="/api/sessions",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Health and logs"}),
     MCPTool(
         name="oracle.logs_query",
@@ -200,7 +200,7 @@ _oracle_mcp_tools = [
         ),
         title="Model logs", method="GET", path="/api/logs",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Health and logs"}),
 ]
 try:
@@ -229,14 +229,14 @@ ui = PluginClient("oracle", title="Assistant", icon="brain", color="purple", kin
                   description="How the assistant works: requests, models used, tokens and costs, documents, memory.",
                   version=os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="oracle.js", api_prefix="/api/ui/",
-         pages=[page("cervello", "Requests and models", element="oracle-brain", icon="brain", order=120,
+         pages=[page("brain", "Requests and models", element="oracle-brain", icon="brain", order=120,
                      help="What Oracle does: latest requests (domain, tools, model, times), Claude Code status; Usage tab (calls, tokens, cache and costs per module and conversation) and Models tab (providers, model chains, use chosen by each module)."),
-                page("documenti", "Documents", element="oracle-documents", icon="file", order=121,
+                page("documents", "Documents", element="oracle-documents", icon="file", order=121,
                      help="The files you shared with {assistant} (in chat or from here): search them like the chat does, add new ones, keep them forever or delete them."),
-                page("memoria", "Memory", element="oracle-memory", icon="bookmark", order=122,
+                page("memory", "Memory", element="oracle-memory", icon="bookmark", order=122,
                      help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to Hestia. Search, filter by origin, forget.")],
          widgets=[widget("usage-today", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
-                         size="m", open_page="cervello", icon="chart",
+                         size="m", open_page="brain", icon="chart",
                          help="Today's calls, tokens and cost, per model.")])
 app.include_router(ui.router())
 
@@ -349,7 +349,7 @@ class SetupTest(BaseModel):
 
 
 class SetupApply(BaseModel):
-    recipe: Literal["locale", "cloud", "entrambi", "claude"]
+    recipe: Literal["locale", "cloud", "both", "claude"]
     local_model: str = ""
     local_provider: str = "ollama"
     cloud: list[str] = Field(default_factory=list)
@@ -1028,7 +1028,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
     from hestia_common import origin as _origin
     turn_origin = _origin.parse(dict(request.headers), req.client or "")
     presence_state = (_mark_user_activity(req.notify_target, req.client)
-                      if turn_origin["level"] == "utente" else None)
+                      if turn_origin["level"] == "user" else None)
     try:
         current_session = req.session_id if req.session_id else str(
             uuid.uuid4())
@@ -1038,7 +1038,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if _no_usable_model():
             logger.warning("[🔄] event=chat_refused_no_models session_id=%s", current_session)
             return JSONResponse(status_code=503, content={"detail": "no model available", "models": "none"})
-        if turn_origin["level"] == "utente" and not req.queued:
+        if turn_origin["level"] == "user" and not req.queued:
             # A written or spoken message answers the assistant's open question (it is in the history).
             engine.close_open_questions(current_session)
             if req.save_history is not False:
@@ -1050,7 +1050,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
         if req.spoken:
             instructions = "\n".join(p for p in (instructions, _prompt_config.voice_turn_contract()) if p)
         # Emoji reactions (hestia-viva F4): only clients that can show them get the prompt line and the filter.
-        reacts = (req.client or "") in reaction_marker.CLIENTS and turn_origin["level"] == "utente"
+        reacts = (req.client or "") in reaction_marker.CLIENTS and turn_origin["level"] == "user"
         if reacts:
             instructions = "\n".join(p for p in (instructions, reaction_marker.INSTRUCTION) if p)
         queued = [q for q in (req.queued or []) if isinstance(q, dict) and str(q.get("text") or "").strip()]
@@ -1597,7 +1597,7 @@ def llm_generate_endpoint(req: dict):
     if voice:
         prompt = f"{_prompt_config.prompt('module_voice_instruction')}\n\n{prompt}"
     from core.services import external_agent
-    if external_agent.mode_for(use_case) == "esterna":
+    if external_agent.mode_for(use_case) == "external":
         try:   # external agent, one shot without tools
             text = external_agent.ask(prompt, system=_prompt_config.system_identity() if voice else "",
                                       use_case=use_case)
@@ -1605,7 +1605,7 @@ def llm_generate_endpoint(req: dict):
             return {"response": text, "model": cfg["model"], "provider": cfg["agent"], "use_case": use_case,
                     "chain": f"agente:{cfg['agent']}"}
         except external_agent.AgentError as exc:
-            if external_agent.brain()["fallback"] != "interna":
+            if external_agent.brain()["fallback"] != "internal":
                 raise HTTPException(status_code=503, detail=f"external agent: {exc}")
             logger.warning("[🔄] event=llm_generate_external_failed use_case=%s fallback=interna error=%s",
                            use_case, str(exc)[:200])

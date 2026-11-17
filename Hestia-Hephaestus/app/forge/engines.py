@@ -3,7 +3,7 @@
 - ``claude``       — Claude Code (Pro/Max subscription) run by Oracle in the task
   worktree via ``POST /api/llm/code``; Oracle holds the token.
 - ``oracle`` — in-process tool-calling loop.  The LLM is reached via Oracle's
-  ``/api/llm/chat`` (Hub route) with the use case ``forge.codice``: Oracle walks that
+  ``/api/llm/chat`` (Hub route) with the use case ``forge.code``: Oracle walks that
   use case's chain and owns provider URLs and keys (microservice boundary).
 """
 from __future__ import annotations

@@ -20,7 +20,7 @@ gift ideas, notes, last contact and how often to hear from them
 - `contact_every_days`: the agenda job `hera.daily` (18:00, user-editable in the agenda) sends one «Senti …?»
   notice per person due a call, with the action «Sentito» (`POST /api/people/{id}/contact`); `replaces` keeps one.
 - The assistant saves what it hears in conversations: `people_gift_idea`, `people_like` (dedup case-insensitive).
-- Recap piece «Persone» (dates of the next days). Export/import sections `persone`, `contatti`.
+- Recap piece «Persone» (dates of the next days). Export/import sections `people`, `contacts`.
 - Never talks to the owner directly (Hermes), never calls models.
 
 ## API (`/api/people`)

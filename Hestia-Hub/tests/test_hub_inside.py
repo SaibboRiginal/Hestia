@@ -49,10 +49,10 @@ class TestHubManifest:
         webui = m["clients"]["webui"]
         assert webui["entry"] == "/ui/webui/hub.js" and webui["api_prefix"] == "/api/ui/"
         (p,) = webui["page"]
-        assert (p["id"], p["label"], p["element"], p["order"]) == ("mappa", "Map", "hub-map", 100)
+        assert (p["id"], p["label"], p["element"], p["order"]) == ("map", "Map", "hub-map", 100)
         (w,) = webui["widget"]
         assert (w["id"], w["label"], w["element"], w["auto"], w["open_page"]) == \
-            ("online", "Services online", "hub-online-widget", True, "mappa")
+            ("online", "Services online", "hub-online-widget", True, "map")
 
     def test_hub_in_catalog_without_registering(self):
         reg = ServiceRegistry()
