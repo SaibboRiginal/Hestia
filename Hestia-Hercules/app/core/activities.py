@@ -24,6 +24,10 @@ from hestia_common.i18n import t as tr, weekday_name  # fixed texts in the owner
 logger = logging.getLogger("hestia_hercules.activities")
 
 KINDS = {"corsa": "Corsa", "bici": "Bici", "camminata": "Camminata", "nuoto": "Nuoto", "altro": "Activity"}
+# Morning coach line, one phrase per kind (each language puts its own article: «per la corsa», «per il nuoto»).
+GOOD_DAY = {"corsa": "Great day for a run: {0}–{1}", "bici": "Great day for a ride: {0}–{1}",
+            "camminata": "Great day for a walk: {0}–{1}", "nuoto": "Great day for a swim: {0}–{1}"}
+GOOD_DAY_ANY = "Great day to move: {0}–{1}"
 ALIASES = {"run": "corsa", "running": "corsa", "correre": "corsa", "jogging": "corsa", "bike": "bici",
            "bicicletta": "bici", "ciclismo": "bici", "walk": "camminata", "camminare": "camminata",
            "passeggiata": "camminata", "hike": "camminata", "escursione": "camminata", "swim": "nuoto",
@@ -626,8 +630,7 @@ class Activities:
                 continue
             best = cands[0]
             w = best.get("weather") or {}
-            text = ((tr("Great day for {0}: {1}–{2}", name, best['start'][11:16], best['end'][11:16]) if plan['kind'] != 'altro'
-                    else tr("Great day to move: {0}–{1}", best['start'][11:16], best['end'][11:16]))
+            text = (tr(GOOD_DAY.get(plan['kind'], GOOD_DAY_ANY), best['start'][11:16], best['end'][11:16])
                     + (f", {w['temp_c']}°" if w.get("temp_c") is not None else "")
                     + (f", {w['condition']}" if w.get("condition") else "") + f" · {prog['hint']}")
             actions = [{"id": "plan", "label": tr("alt::Plan"), "style": "primary", "service": "hercules", "method": "POST",

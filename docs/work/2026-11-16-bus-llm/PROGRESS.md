@@ -9,5 +9,6 @@
 - [x] Tests `Hestia-Oracle/tests/test_llm_bus.py`; Oracle unit/api/format suite green (754)
 - [x] Docs: hestia-oracle.md, ARCHITECTURE.md 3b, AI-GUIDE.md §3, root CHANGELOG
 - [x] precheck, PR
+- [x] Fix Hercules morning line regression (lost article after the English-source change, test failing before 18:00)
 - [ ] CI green and merged
 - [ ] Message the multi-agent thread (merge `agenti`/`agenti_in_serie`, bacheca del turno)
