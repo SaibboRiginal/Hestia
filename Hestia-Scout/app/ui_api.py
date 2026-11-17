@@ -26,7 +26,7 @@ from pydantic import BaseModel
 from core.archive_client import ArchiveClient
 from domain.listing_key import listing_key
 from domain.listing_status import ListingStatus
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_regex  # fixed texts in the owner's language
 
 try:
     from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -130,7 +130,7 @@ def city_of(payload: dict) -> str:
     parts = [p.strip() for p in address.split(",") if p.strip()]
     for part in reversed(parts):
         cleaned = re.sub(r"\(\s*\w{2}\s*\)", "", _CAP_RE.sub("", part)).strip(" -()")
-        if cleaned and not cleaned.isdigit() and len(cleaned) > 2 and not re.match(r"^(via|viale|piazza|corso|vicolo|largo)\b", cleaned, re.I):
+        if cleaned and not cleaned.isdigit() and len(cleaned) > 2 and not word_regex(r"^(?:{0})\b", "address.street_word").match(cleaned):
             return cleaned.title()
     loc = payload.get("location") if isinstance(payload.get("location"), dict) else {}
     query = str(loc.get("query") or "").split(",")[-1].strip()
@@ -417,7 +417,7 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
 
     @router.get("/quick/new")
     def quick_new(limit: int = Query(3, ge=1, le=10)):
-        """Chips for the Home strip: newest listings not yet marked (tap = Preferita)."""
+        """Chips for the Home strip: newest listings not yet marked (tap = Favorite)."""
         items = [v for v in filter_views(store.views(), days=NEW_DAYS) if not v["flag"]]
         items.sort(key=SORTS["new"][0], reverse=True)
         chips = []

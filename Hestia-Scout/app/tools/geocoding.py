@@ -5,6 +5,7 @@ import time
 from typing import Optional
 
 import requests
+from hestia_common.i18n import word_regex
 
 # Nominatim usage policy: max 1 request/second per application (bans otherwise).
 _NOMINATIM_MIN_INTERVAL = 1.1
@@ -69,8 +70,7 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 def extract_city_from_text(text: str) -> Optional[str]:
     merged = (text or "").lower()
-    match = re.search(
-        r"\b(?:in|a|near|vicino\s+a|zona)\s+([a-zà-öø-ÿ'\- ]{2,50})", merged, flags=re.IGNORECASE)
+    match = word_regex(r"\b(?:{0})\s+([^\W\d_][^\W\d_'\- ]{{1,49}})", "scout.near").search(merged)
     if not match:
         return None
     city = re.sub(r"\s+", " ", match.group(1)).strip(" .,!?:;")

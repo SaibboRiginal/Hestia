@@ -1350,5 +1350,147 @@
  ],
  "plutus.statement.time_word": [
   "at"
+ ],
+ "scout.label.air_conditioning": [
+  "air conditioning"
+ ],
+ "scout.label.balcony": [
+  "balcony"
+ ],
+ "scout.label.bathrooms": [
+  "bathrooms",
+  "bathroom"
+ ],
+ "scout.label.bedrooms": [
+  "bedrooms",
+  "bedroom"
+ ],
+ "scout.label.built_in": [
+  "built in"
+ ],
+ "scout.label.condo_fees": [
+  "service charge",
+  "condo fees"
+ ],
+ "scout.label.contract": [
+  "contract"
+ ],
+ "scout.label.elevator": [
+  "lift",
+  "elevator"
+ ],
+ "scout.label.energy_class": [
+  "energy class",
+  "energy rating"
+ ],
+ "scout.label.floor": [
+  "floor"
+ ],
+ "scout.label.furnished": [
+  "furnished"
+ ],
+ "scout.label.ground_floor": [
+  "ground floor",
+  "raised ground floor"
+ ],
+ "scout.label.heating": [
+  "heating"
+ ],
+ "scout.label.kitchen": [
+  "kitchen"
+ ],
+ "scout.label.listing_updated": [
+  "listing updated"
+ ],
+ "scout.label.no_elevator": [
+  "no lift",
+  "no elevator"
+ ],
+ "scout.label.of": [
+  "of"
+ ],
+ "scout.label.other": [
+  "Other"
+ ],
+ "scout.label.parking": [
+  "parking",
+  "garage",
+  "box"
+ ],
+ "scout.label.partly_furnished": [
+  "partly furnished",
+  "part furnished"
+ ],
+ "scout.label.price": [
+  "price"
+ ],
+ "scout.label.price_per_m2": [
+  "price per m"
+ ],
+ "scout.label.property_price": [
+  "property price"
+ ],
+ "scout.label.property_type": [
+  "property type"
+ ],
+ "scout.label.reference": [
+  "reference",
+  "ref\\."
+ ],
+ "scout.label.rooms": [
+  "rooms"
+ ],
+ "scout.label.state": [
+  "condition"
+ ],
+ "scout.label.surface": [
+  "surface",
+  "floor area"
+ ],
+ "scout.label.surface_type": [
+  "surface type"
+ ],
+ "scout.label.terrace": [
+  "terrace"
+ ],
+ "scout.label.year_built": [
+  "year built"
+ ],
+ "scout.near": [
+  "in",
+  "near",
+  "around"
+ ],
+ "scout.nearby": [
+  "nearby",
+  "around",
+  "close to"
+ ],
+ "scout.page.sold": [
+  "property sold",
+  "no longer available",
+  "listing removed",
+  "this property is no longer"
+ ],
+ "scout.status.available": [
+  "\\bimmediately\\s+available\\b",
+  "\\bavailable\\s+now\\b"
+ ],
+ "scout.status.negotiation": [
+  "\\bunder\\s+offer\\b",
+  "\\bunder\\s+negotiation\\b"
+ ],
+ "scout.status.occupied": [
+  "\\btenant\\s+occupied\\b",
+  "\\bsold\\s+with\\s+tenant\\b",
+  "\\blet\\b"
+ ],
+ "scout.status.sold": [
+  "\\bsold\\b",
+  "\\bsale\\s+agreed\\b"
+ ],
+ "scout.value.none": [
+  "none",
+  "absent"
  ]
 }

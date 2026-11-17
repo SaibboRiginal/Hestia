@@ -1327,5 +1327,153 @@
  ],
  "plutus.statement.time_word": [
   "ore"
+ ],
+ "scout.label.air_conditioning": [
+  "climatizzazione",
+  "climatizz"
+ ],
+ "scout.label.balcony": [
+  "balcone"
+ ],
+ "scout.label.bathrooms": [
+  "bagni",
+  "bagno"
+ ],
+ "scout.label.bedrooms": [
+  "camere da letto",
+  "camera"
+ ],
+ "scout.label.built_in": [
+  "costruito nel"
+ ],
+ "scout.label.condo_fees": [
+  "spese condominio"
+ ],
+ "scout.label.contract": [
+  "contratto"
+ ],
+ "scout.label.elevator": [
+  "ascensore",
+  "ascensor"
+ ],
+ "scout.label.energy_class": [
+  "classe energetica"
+ ],
+ "scout.label.floor": [
+  "piano"
+ ],
+ "scout.label.furnished": [
+  "arredato"
+ ],
+ "scout.label.ground_floor": [
+  "piano\\s+terra",
+  "piano\\s+rialzato"
+ ],
+ "scout.label.heating": [
+  "riscaldamento"
+ ],
+ "scout.label.kitchen": [
+  "cucina"
+ ],
+ "scout.label.listing_updated": [
+  "annuncio aggiornato"
+ ],
+ "scout.label.no_elevator": [
+  "no ascensore"
+ ],
+ "scout.label.of": [
+  "di"
+ ],
+ "scout.label.other": [
+  "Altre"
+ ],
+ "scout.label.parking": [
+  "posti auto",
+  "posto auto",
+  "box",
+  "garage"
+ ],
+ "scout.label.partly_furnished": [
+  "parzialmente arredato"
+ ],
+ "scout.label.price": [
+  "prezzo"
+ ],
+ "scout.label.price_per_m2": [
+  "prezzo al m"
+ ],
+ "scout.label.property_price": [
+  "prezzo dell'immobile"
+ ],
+ "scout.label.property_type": [
+  "tipologia"
+ ],
+ "scout.label.reference": [
+  "riferimento"
+ ],
+ "scout.label.rooms": [
+  "locali"
+ ],
+ "scout.label.state": [
+  "stato"
+ ],
+ "scout.label.surface": [
+  "superficie"
+ ],
+ "scout.label.surface_type": [
+  "tipo superficie"
+ ],
+ "scout.label.terrace": [
+  "terrazzo",
+  "terraz"
+ ],
+ "scout.label.year_built": [
+  "anno di costruzione"
+ ],
+ "scout.near": [
+  "a",
+  "vicino\\s+a",
+  "zona"
+ ],
+ "scout.nearby": [
+  "vicino",
+  "dintorni",
+  "vicinanze"
+ ],
+ "scout.page.sold": [
+  "annuncio rimosso",
+  "immobile venduto",
+  "non più disponibile",
+  "venduta",
+  "venduto"
+ ],
+ "scout.status.available": [
+  "\\bdisponibile\\s+subito\\b",
+  "\\blibero\\s+subito\\b"
+ ],
+ "scout.status.negotiation": [
+  "\\btrattativa\\s+in\\s+corso\\b",
+  "\\bin\\s+trattativa\\b",
+  "\\btrattativa\\s+riservata\\b",
+  "\\btrattativa\\b"
+ ],
+ "scout.status.occupied": [
+  "\\bgià\\s+affittato\\b",
+  "\\baffittato\\b",
+  "\\bimmobile\\s+occupato\\b",
+  "\\boccupato\\s+da\\s+inquilino\\b",
+  "\\binquilino\\s+presente\\b",
+  "\\bvendita\\s+con\\s+inquilino\\b",
+  "\\binvestimento\\s+immobiliare\\b"
+ ],
+ "scout.status.sold": [
+  "\\bvendita\\s+conclusa\\b",
+  "\\bgià\\s+venduto\\b",
+  "\\bimmobile\\s+venduto\\b",
+  "\\bvenduto\\b"
+ ],
+ "scout.value.none": [
+  "assente",
+  "nessuno"
  ]
 }

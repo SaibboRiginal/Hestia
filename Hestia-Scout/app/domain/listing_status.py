@@ -8,6 +8,8 @@ Italian listing platforms.
 from __future__ import annotations
 
 import re
+
+from hestia_common.i18n import words
 from enum import Enum
 
 
@@ -28,39 +30,13 @@ class ListingStatus(str, Enum):
 #  Keyword signal tables  (ordered by specificity — most specific first)
 # ─────────────────────────────────────────────────────────────────────
 
-_SOLD_PATTERNS: list[str] = [
-    r"\bvendita\s+conclusa\b",
-    r"\bgià\s+venduto\b",
-    r"\bimmobile\s+venduto\b",
-    r"\bvenduto\b",
-    r"\bsold\b",
-]
-
-_NEGOTIATION_PATTERNS: list[str] = [
-    r"\btrattativa\s+in\s+corso\b",
-    r"\bin\s+trattativa\b",
-    r"\btrattativa\s+riservata\b",
-    r"\btrattativa\b",
-    r"\bunder\s+offer\b",
-    r"\bunder\s+negotiation\b",
-]
-
-_INVESTMENT_PATTERNS: list[str] = [
-    r"\bgià\s+affittato\b",
-    r"\baffittato\b",
-    r"\bimmobile\s+occupato\b",
-    r"\boccupato\s+da\s+inquilino\b",
-    r"\binquilino\s+presente\b",
-    r"\bvendita\s+con\s+inquilino\b",
-    r"\binvestimento\s+immobiliare\b",
-    r"\btenant\s+occupied\b",
-]
-
-_AVAILABLE_PATTERNS: list[str] = [
-    r"\bdisponibile\s+subito\b",
-    r"\blibero\s+subito\b",
-    r"\bimmediately\s+available\b",
-]
+# Patterns of every language: scout.status.<kind> in locales/<lang>/words.json (regex fragments).
+_PATTERN_KEYS = {"sold": "scout.status.sold", "negotiation": "scout.status.negotiation",
+                 "occupied": "scout.status.occupied", "available": "scout.status.available"}
+_SOLD_PATTERNS: list[str] = list(words(_PATTERN_KEYS["sold"]))
+_NEGOTIATION_PATTERNS: list[str] = list(words(_PATTERN_KEYS["negotiation"]))
+_INVESTMENT_PATTERNS: list[str] = list(words(_PATTERN_KEYS["occupied"]))
+_AVAILABLE_PATTERNS: list[str] = list(words(_PATTERN_KEYS["available"]))
 
 # Compile all patterns once at module load
 _COMPILED: dict[ListingStatus, list[re.Pattern]] = {
