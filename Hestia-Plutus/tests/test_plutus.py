@@ -355,11 +355,11 @@ class _QuietSignals:
 @pytest.mark.api
 def test_api_quick_expense_and_undo(api):
     c, *_ = api
-    r = c.post("/api/finance/quick/expense/ristoranti", json={"amount": "3,20", "note": "caffè"})
+    r = c.post("/api/finance/quick/expense/restaurants", json={"amount": "3,20", "note": "caffè"})
     assert r.status_code == 200 and r.json()["amount"] == -3.2 and "Ristoranti" in r.json()["label"]
     assert c.get("/api/finance/summary").json()["spent"] == 3.2
-    assert c.delete("/api/finance/quick/expense/ristoranti").json()["deleted"]
-    assert c.delete("/api/finance/quick/expense/ristoranti").status_code == 404
+    assert c.delete("/api/finance/quick/expense/restaurants").json()["deleted"]
+    assert c.delete("/api/finance/quick/expense/restaurants").status_code == 404
 
 
 @pytest.mark.api
@@ -438,7 +438,7 @@ def test_recap_quiet_day(pl):
 @pytest.mark.api
 def test_api_recap_piece(api):
     c, *_ = api
-    c.post("/api/finance/quick/expense/ristoranti", json={"amount": "3,20"})
+    c.post("/api/finance/quick/expense/restaurants", json={"amount": "3,20"})
     body = c.get("/api/module/recap").json()
     assert body["module"] == "plutus" and body["title"] == "Spese" and "3,20" in body["done"][0]["text"]
 
@@ -484,7 +484,7 @@ def test_signals_budget_week_subscription_review(pl):
     sigs, mets = pl.signals()
     by = {s["key"]: s for s in sigs}
     assert by["budget_pace:restaurants"]["severity"] == "high" and by["budget_pace:restaurants"]["page"] == "budget"
-    assert by["budget_pace:expense"]["severity"] == "warning"
+    assert by["budget_pace:groceries"]["severity"] == "warning"
     assert by["unusual_week"]["severity"] == "warning" and by["unusual_week"]["metrics"]["median_8w"] == 50
     assert any(k.startswith("new_subscription:rec_") for k in by)
     assert by["to_review"]["metrics"]["count"] == 5
@@ -562,7 +562,7 @@ def test_coach_budget_targets_and_review_block(pl):
     pl.set_budget("groceries", 100)
     pl.add_tx({"amount": 40, "merchant": "Lidl"})
     needs = coach.needs(start, start + timedelta(days=7))["needs"]
-    t = next(n for n in needs if n["id"] == "finance.budget.expense")
+    t = next(n for n in needs if n["id"] == "finance.budget.groceries")
     assert t["kind"] == "target" and t["progress"] == 0.4 and 0 < t["value"] <= 60 and validate_need(t)
     SETTINGS["plutus.coach.review_threshold"] = 2
     for i in range(2):

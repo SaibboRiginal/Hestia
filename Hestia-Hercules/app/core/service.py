@@ -789,7 +789,7 @@ class Hercules:
             lines.append(f"{g['label']}: {g['hint']}" + (tr(" (behind)") if g["behind"] else ""))
         else:
             lines.append(tr("Week: {0} workouts", week[-1]['sessions']))
-        # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km di corsa» logged, then
+        # Runs, walks, rides logged this week count too (bench 2026-10-30: «5 km run» logged, then
         # «how am I doing?» → «no session this week»).
         week_start = str(week[-1].get("start") or "")[:10]
         acts = [a for a in self.store.items("activity") if a.get("status", "done") == "done"

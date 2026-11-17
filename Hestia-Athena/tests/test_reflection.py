@@ -87,8 +87,8 @@ class _Reader:
         return [{"id": f"athena:{o['id']}", "at": "2026-10-20T18:00:00Z", "data": o} for o in self._obs]
 
 
-ORACLE_OK = ("AZIONE: Allenamento e routine\nTIPO: observation\nPRIORITA: elevated\nDOMINIO: fitness\nTEMA: T2\n"
-             "MOTIVO: r=+1.00 su 8 settimane\nRIASSUNTO: Nelle settimane in cui ti alleni di più rispetti anche le "
+ORACLE_OK = ("ACTION: Allenamento e routine\nTYPE: observation\nPRIORITY: elevated\nDOMAIN: fitness\nTOPIC: T2\n"
+             "REASON: r=+1.00 su 8 settimane\nSUMMARY: Nelle settimane in cui ti alleni di più rispetti anche le "
              "routine.\n")
 
 
@@ -151,8 +151,8 @@ class TestLifeCycle:
         assert rec["error"] == "modello non disponibile" and life._stored == []
 
     def test_setting_goes_to_themis(self, life):
-        out = ("AZIONE: Alza obiettivo\nTIPO: setting\nPRIORITA: high\nDOMINIO: fitness\nTEMA: T1\n"
-               "MOTIVO: m\nRIASSUNTO: r\nCHIAVE: hercules.week_goal\nVALORE: 4\n")
+        out = ("ACTION: Alza obiettivo\nTYPE: setting\nPRIORITY: high\nDOMAIN: fitness\nTOPIC: T1\n"
+               "REASON: m\nSUMMARY: r\nKEY: hercules.week_goal\nVALUE: 4\n")
         with patch.object(life.reflection, "_propose_setting", return_value=True) as prop, \
                 patch.object(life.reflection, "_ask_oracle", return_value=out):
             rec = life._life_cycle("manual", "t5")

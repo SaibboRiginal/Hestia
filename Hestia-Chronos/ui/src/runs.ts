@@ -106,7 +106,7 @@ export class ChronosRuns extends HestiaElement {
       <div class="head"><h1>${tr("Runs")}</h1><span class="sub">${tr("The jobs of the assistant's agenda: how each run went")}</span></div>
       ${s ? html`<hxk-stat .items=${[
         { label: tr('pl::Succeeded'), value: s.ok, tone: 'success' },
-        { label: tr('pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? `${s.failed_items} fermi` : '' },
+        { label: tr('pl::Failed'), value: s.failed, tone: s.failed ? 'danger' : 'neutral', delta: s.failed_items ? tr('{0} stuck', s.failed_items) : '' },
         { label: tr('pl::Skipped'), value: s.skipped },
         { label: tr('Average duration'), value: s.avg_ms === null ? '–' : ms(s.avg_ms) },
       ]}></hxk-stat>` : nothing}

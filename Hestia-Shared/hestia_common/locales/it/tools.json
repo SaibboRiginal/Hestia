@@ -130,10 +130,10 @@
   "summary": "Per un client: auto=false spegne i temi, true li riaccende; pet = id o nome dell'animaletto, vuoto per nessuno."
  },
  "assistant_profile": {
-  "summary": "Hestia's persona, the user's tone and instructions, and what Hestia remembers about the user, as one block to follow when the user switches Hestia on inside…"
+  "summary": "Il carattere dell'assistente, il tuo tono e le tue istruzioni e quello che ricorda di te, in un unico blocco da seguire quando lo accendi in un'altra AI."
  },
  "athena_audit_conversation": {
-  "summary": "Run a quality audit on recent conversation turns using the 26B reasoning model."
+  "summary": "Controlla la qualità degli ultimi turni della conversazione con il modello di ragionamento."
  },
  "athena_commitment_resolve": {
   "summary": "Chiude un impegno dell'assistente: fatto o non serve più."
@@ -334,7 +334,7 @@
   "summary": "Manda di nuovo il file di un documento creato."
  },
  "documents.search": {
-  "summary": "Search through uploaded documents and files for relevant content."
+  "summary": "Cerca nei documenti e nei file caricati."
  },
  "email_search": {
   "params": {
@@ -362,10 +362,10 @@
   "summary": "Mostra un thread email."
  },
  "feedback_submit": {
-  "summary": "Store a quality grade for a chat interaction."
+  "summary": "Salva un voto sulla qualità di una risposta in chat."
  },
  "fetch_url": {
-  "summary": "Fetch web page content from a URL via host browser."
+  "summary": "Legge il contenuto di una pagina web da un indirizzo."
  },
  "finance_add": {
   "summary": "Registra una spesa o un'entrata."
@@ -683,7 +683,7 @@
   "summary": "Annulla una cosa imparata."
  },
  "memory_note": {
-  "summary": "Save in Hestia's long-term memory the durable facts about the user that came out of this conversation."
+  "summary": "Salva nella memoria a lungo termine i fatti duraturi su di te emersi da questa conversazione."
  },
  "memory_proposal_apply": {
   "summary": "Applica una pulizia proposta: solo se l'utente dice sì."
@@ -695,7 +695,7 @@
   "summary": "Le pulizie della memoria proposte da «Rivedi cosa sai di me» che aspettano ancora una risposta."
  },
  "memory_recall": {
-  "summary": "What Hestia already knows about the user on a topic, so your answer and Hestia's memory agree."
+  "summary": "Quello che l'assistente sa già di te su un argomento, così la risposta e la memoria vanno d'accordo."
  },
  "memory_review": {
   "summary": "«Rivedi cosa sai di me»: cerca doppioni, contraddizioni e cose vecchie nella memoria e le propone."
@@ -707,12 +707,12 @@
   "summary": "Cosa ti serve adesso: azioni che usi di solito a quest'ora, quelle in agenda nelle prossime ore e qualche idea dell'assistente, ognuna con il perché."
  },
  "metis_benchmark_run": {
-  "summary": "Run a benchmark evaluation comparing a candidate model against the current baseline on a held-out test set."
+  "summary": "Confronta un modello candidato con quello attuale su un insieme di prova tenuto da parte."
  },
  "metis_dataset_build": {
-  "summary": "Build a cleaned, deduplicated, balanced dataset from graded feedback records."
+  "summary": "Costruisce un dataset pulito, senza doppioni ed equilibrato dalle risposte valutate."
  },
- "metis_dataset_export": {
+ "metis_training_export": {
   "params": {
    "plain": "true = dati veri, false = oscurati (predefinito)",
    "include_unreviewed": "true = anche i turni non ancora riletti"
@@ -720,16 +720,16 @@
   "summary": "Esporta il dataset di allenamento da scaricare."
  },
  "metis_dataset_export": {
-  "summary": "Export a built dataset as jsonl for LoRA fine-tuning."
+  "summary": "Esporta un dataset costruito in JSONL per l'allenamento LoRA."
  },
  "metis_dataset_status": {
-  "summary": "Show statistics for built datasets: example count, quality distribution, domain coverage, last build date."
+  "summary": "Statistiche dei dataset costruiti: esempi, distribuzione della qualità, argomenti coperti, data dell'ultima costruzione."
  },
  "metis_loRA_train": {
   "params": {
    "schedule": "now = subito; window = nella finestra notturna dell'agenda; auto = subito se lo chiede l'utente"
   },
-  "summary": "Orchestrate a LoRA fine-tuning run on the built dataset."
+  "summary": "Avvia un allenamento LoRA sul dataset costruito."
  },
  "metis_review": {
   "summary": "Le correzioni notturne delle risposte che aspettano te prima di entrare nel dataset di allenamento."
@@ -748,10 +748,10 @@
   "summary": "Funzioni di Hestia che non hai mai usato o quasi, con cosa fanno e un pulsante per provarle."
  },
  "models_downloads": {
-  "summary": "The brain's model downloads: what is downloading, done or failed, with progress and time left."
+  "summary": "I download dei modelli: cosa si sta scaricando, cosa è finito o fallito, con avanzamento e tempo che manca."
  },
  "models_download": {
-  "summary": "Download a local model for the brain, by its Ollama name, e.g."
+  "summary": "Scarica un modello locale con il suo nome Ollama."
  },
  "presence_dnd_on": {
   "params": {
@@ -761,16 +761,16 @@
   "summary": "Attiva «Non disturbare»: passano solo le notifiche urgenti."
  },
  "oracle.compact": {
-  "summary": "Force-compact conversation history for a session via LLM summarisation."
+  "summary": "Riassume la cronologia di una conversazione per farla stare nel contesto."
  },
  "oracle.context_stats": {
-  "summary": "Return token breakdown and context-window usage for a session."
+  "summary": "Quanti token usa una conversazione e quanto del contesto occupa."
  },
  "oracle.logs_query": {
-  "summary": "Query Oracle's in-memory log buffer by level and text filter."
+  "summary": "Cerca nei log recenti per livello e testo."
  },
  "oracle.session_info": {
-  "summary": "Return global Oracle state: active sessions, uptime, model in use, Hub connection."
+  "summary": "Stato generale: conversazioni attive, da quanto è acceso, modello in uso, collegamento."
  },
  "people_add": {
   "summary": "Aggiungi una persona."
@@ -858,16 +858,16 @@
   "summary": "Modifica una scadenza."
  },
  "scout.search": {
-  "summary": "Search real estate listings by query, city, price range, surface, rooms."
+  "summary": "Cerca annunci di case per testo, città, prezzo, superficie e locali."
  },
  "scout_fetch": {
-  "summary": "Check listing emails now: Iris passes the last day's listing mails again and Scout parses and extracts them."
+  "summary": "Controlla adesso le email degli annunci dell'ultimo giorno e ne estrae le case."
  },
  "scout_reconcile": {
-  "summary": "Run Scout data reconciliation maintenance."
+  "summary": "Riordina e sistema i dati delle case salvate."
  },
  "scout_stats": {
-  "summary": "Return real_estate domain statistics: total entities, breakdown by listing status, and date range of when listings were added."
+  "summary": "Statistiche delle case: quante sono, per stato dell'annuncio e periodo in cui sono arrivate."
  },
  "selfcare_check": {
   "summary": "Compatibilità degli attivi: di una routine, o di un prodotto / lista di attivi rispetto a quelli in uso."
@@ -1086,7 +1086,7 @@
   "summary": "Meteo adesso e oggi in un luogo: temperatura, percepita, condizioni, vento, ore di pioggia."
  },
  "web_search": {
-  "summary": "Search the web via DuckDuckGo Instant Answer api."
+  "summary": "Cerca sul web."
  },
  "preferences_active": {
   "summary": "Mostra le preferenze utente attive"

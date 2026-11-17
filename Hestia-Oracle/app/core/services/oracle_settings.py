@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from hestia_common import i18n
 from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 try:
@@ -511,6 +512,10 @@ def normalize_mode(raw: str | None) -> str:
     """A known mode name, or "" (= follow the setting)."""
     value = str(raw or "").strip().lower()
     value = _MODE_ALIASES.get(value, value)
+    if value and value not in {m for m, _ in MODES}:   # the mode's name as the owner reads it, in any language («Rapida»)
+        for code in i18n.languages():
+            texts = i18n.catalog("messages", code)
+            value = next((m for m, label in MODES if str(texts.get(label) or "").strip().lower() == value), value)
     return value if value in {m for m, _ in MODES} else ""
 
 

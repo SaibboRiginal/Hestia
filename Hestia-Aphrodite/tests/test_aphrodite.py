@@ -32,9 +32,9 @@ def ap():
 
 def test_calendar_rules():
     assert easter(2027) == date(2027, 3, 28) and easter(2026) == date(2026, 4, 5)
-    assert holiday(date(2026, 12, 31)) == "capodanno" and holiday(date(2026, 12, 20)) == "christmas"
+    assert holiday(date(2026, 12, 31)) == "new_year" and holiday(date(2026, 12, 20)) == "christmas"
     assert holiday(date(2027, 1, 7)) is None and holiday(date(2026, 10, 31)) == "halloween"
-    assert holiday(date(2026, 4, 6)) == "pasqua" and season(date(2026, 7, 1)) == "estate"
+    assert holiday(date(2026, 4, 6)) == "easter" and season(date(2026, 7, 1)) == "summer"
     assert season(date(2026, 12, 25)) == "winter"
 
 

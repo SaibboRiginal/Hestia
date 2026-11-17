@@ -20,6 +20,7 @@ Third output of Athena, next to the system briefs and the life observations (whi
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -325,7 +326,8 @@ _SHOWN = (("How they feel today:", "How you feel today:"), ("You two have not ta
 
 def shown(reason: str) -> str:
     """A reason as the owner reads it."""
-    text = str(reason or "")
+    text = re.sub(r"\(because of ([^)]*)\)", lambda m: "(because of " + ", ".join(
+        tr(f"cause::{c.strip()}") for c in m.group(1).split(",")) + ")", str(reason or ""))
     for hidden, plain in _SHOWN:
         text = text.replace(hidden, tr(plain))
     return text

@@ -505,7 +505,7 @@ try:
                          "items": {"type": "object", "properties": {
                              "start_at": {"type": "string", "description": "ISO 8601 start"},
                              "end_at": {"type": "string", "description": "ISO 8601 end"},
-                             "title": {"type": "string", "description": "e.g. Trasferta"}}}}}},
+                             "title": {"type": "string", "description": "e.g. Business trip"}}}}}},
             handler=lambda **kw: {"status": "ok", "tool": "coach_replan", "params": kw},
             title="Redo the plan", method="POST", path="/api/agenda/coach/replan",
             clients=["telegram", "ui"], response_mode="oracle_natural",
@@ -542,7 +542,7 @@ try:
             parameters={"type": "object", "properties": {
                 "start_at": {"type": "string", "description": "ISO 8601 start"},
                 "end_at": {"type": "string", "description": "ISO 8601 end"},
-                "title": {"type": "string", "description": "e.g. Trasferta"}}, "required": ["start_at", "end_at"]},
+                "title": {"type": "string", "description": "e.g. Business trip"}}, "required": ["start_at", "end_at"]},
             handler=lambda **kw: {"status": "ok", "tool": "coach_add_busy", "params": kw},
             title="Commitment for the plan", method="POST", path="/api/agenda/coach/busy",
             clients=["telegram", "ui"], response_mode="oracle_natural",

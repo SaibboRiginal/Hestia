@@ -174,7 +174,7 @@ class TestChainAgent:
 @pytest.mark.unit
 class TestUseCases:
     def test_module_declaration_from_registry(self, monkeypatch):
-        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Pianifica", "chain": "strong",
+        rows = [{"id": "hercules.plan", "module": "hercules", "label": "Plan", "chain": "strong",
                  "thinking": "auto", "mode": "follow", "help": ""}]
         monkeypatch.setattr(llm_chains, "_registry_usecases", lambda: rows)
         assert llm_chains.usecase_config("hercules.plan")["chain"] == "strong"
@@ -184,10 +184,10 @@ class TestUseCases:
 
     def test_registry_parsing(self, monkeypatch):
         services = [{"service_name": "scout", "capabilities": {"llm_usecases": [
-            {"id": "Scout.Annunci", "label": "Scout · annunci", "chain": "fast"}]}}, {"name": "x"}]
+            {"id": "Scout.Listings", "label": "Scout · listings", "chain": "fast"}]}}, {"name": "x"}]
         monkeypatch.setattr(llm_chains, "_registry_services", lambda: services)
         assert llm_chains._registry_usecases() == [
-            {"id": "scout.listings", "module": "scout", "label": "Scout · annunci", "chain": "fast",
+            {"id": "scout.listings", "module": "scout", "label": "Scout · listings", "chain": "fast",
              "thinking": "auto", "mode": "follow", "help": ""}]
         assert llm_chains.declared_usecases()["scout.listings"]["module"] == "scout"
 

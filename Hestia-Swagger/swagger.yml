@@ -9026,7 +9026,7 @@ paths:
   /api/metis/tools/dataset_export:
     post:
       tags: [Metis]
-      summary: "Tool metis_dataset_export {plain?, include_unreviewed?}: exports and returns a card with the zip"
+      summary: "Tool metis_training_export {plain?, include_unreviewed?}: exports and returns a card with the zip"
       servers:
         - url: http://localhost:19014
       requestBody:

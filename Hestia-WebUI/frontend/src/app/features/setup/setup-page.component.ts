@@ -33,7 +33,7 @@ const SCREEN_KEY = 'hestia_setup_screen';
 const HOSTS_KEY = 'hestia_setup_hosts';
 /** The steps list (from the bar on top): one line per screen. */
 const TITLES: Record<Screen, string> = {
-  benvenuto: tr('Start'), who: tr('You and me'), models: tr('Models'), memory: tr('Memory'), brain: tr('Models ready'), listen: tr('Listening'),
+  welcome: tr('Start'), who: tr('You and me'), models: tr('Models'), memory: tr('Memory'), brain: tr('Models ready'), listen: tr('Listening'),
   voice: tr('Voice'), telegram: 'Telegram', backup: tr('Backup'), external_ais: tr('Calendar and Garmin'), away: tr('Outside home'), ready: tr('End'),
 };
 /** No address after this long: say so instead of a spinner forever. */

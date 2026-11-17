@@ -525,7 +525,7 @@ def summary():
 
 
 def _activity_hints() -> list[dict]:
-    """«Corsa 1/2» for every open outdoor intention of this week (summary, widget, context)."""
+    """«Running 1/2» for every open outdoor intention of this week (summary, widget, context)."""
     try:
         return [{"kind": i["kind"], "label": i["label"], "done": i["done"], "times": i["times"], "hint": i["hint"]}
                 for i in activities.week()["intentions"]]
@@ -682,25 +682,25 @@ def activities_week():
 
 @app.post(f"{API}/activities/propose")
 def activities_propose(body: dict = Body(default={})):
-    return activities.propose(body.get("kind") or "corsa", int(body.get("times") or 1), str(body.get("place") or ""),
+    return activities.propose(body.get("kind") or "run", int(body.get("times") or 1), str(body.get("place") or ""),
                               int(body.get("minutes") or 45), str(body.get("week") or ""))
 
 
 @app.post(f"{API}/activities/log")
 def activities_log(body: dict = Body(default={})):
-    return activities.log(body.get("kind") or "corsa", str(body.get("date") or ""), domain._num(body.get("minutes"), integer=True),
+    return activities.log(body.get("kind") or "run", str(body.get("date") or ""), domain._num(body.get("minutes"), integer=True),
                           domain._num(body.get("km")), str(body.get("note") or ""))
 
 
 @app.post(f"{API}/activities/quick-run")
 def activities_quick_run(body: dict = Body(default={})):
     """Home quick action «I ran» (``km`` optional, ``date`` for another day)."""
-    return activities.log("corsa", str(body.get("date") or ""), None, domain._num(body.get("km")))
+    return activities.log("run", str(body.get("date") or ""), None, domain._num(body.get("km")))
 
 
 @app.delete(f"{API}/activities/quick-run")
 def activities_quick_run_undo(date: str = ""):
-    last = [a for a in activities.logs() if a.get("kind") == "corsa" and a.get("source") in ("log", "slot")
+    last = [a for a in activities.logs() if a.get("kind") == "run" and a.get("source") in ("log", "slot")
             and a["date"] == (date or hercules.today().isoformat())]
     if not last:
         return {"undone": False}
@@ -837,7 +837,7 @@ ui.webui(
                      group="Training", order=31),
         quick_action("weight", "Log body weight", "POST", f"{API}/quick-bodyweight", icon="scale",
                      group="Training", params={"weight": {"type": "float", "label": "Weight (kg)"}}, order=32),
-        quick_action("corsa", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
+        quick_action("run", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
                      params={"km": {"type": "float", "label": "Km (optional)"}},
                      undo={"method": "DELETE", "path": f"{API}/activities/quick-run"}, order=34),
         quick_action("skip", "Skip today", "POST", f"{API}/days/skip", icon="skip", group="Training",
@@ -1061,13 +1061,13 @@ try:
         return hercules.save("goal", {"times": times, "per": per, "scope": scope, "target_id": target_id, "active": active},
                              id=existing["id"] if existing else None)
 
-    def _plan_activity(kind: str = "corsa", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
+    def _plan_activity(kind: str = "run", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
         return activities.propose(kind, times, place, minutes, week)
 
     def _confirm_activity(plan_id: str = "", slots: list | None = None) -> dict:
         return activities.confirm(plan_id, slots or None)
 
-    def _log_activity(kind: str = "corsa", date: str = "", minutes: int | None = None, km: float | None = None,
+    def _log_activity(kind: str = "run", date: str = "", minutes: int | None = None, km: float | None = None,
                       note: str = "") -> dict:
         return activities.log(kind, date, minutes, km, note)
 
@@ -1219,7 +1219,7 @@ try:
                 handler=_t(_log_activity), title="Log activity", method="POST", path=f"{API}/activities/log",
                 clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Activity", "primary": 4}),
-        MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Corsa 1/2), planned moments and "
+        MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Running 1/2), planned moments and "
                                                         "activities done."),
                 parameters={"type": "object", "properties": {}}, handler=_t(_activities_week),
                 title="This week's tasks", path=f"{API}/activities", clients=["telegram", "ui"],

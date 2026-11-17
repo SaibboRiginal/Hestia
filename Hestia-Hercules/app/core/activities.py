@@ -37,6 +37,16 @@ def kind_of(text: Any) -> str:
     return k if k in KINDS else ("other" if k else "run")
 
 
+# Whole sentences per kind: a noun dropped into one sentence breaks the grammar of other languages.
+GREAT_DAY = {"run": "Great day for running: {0}–{1}", "bike": "Great day for cycling: {0}–{1}",
+             "walk": "Great day for a walk: {0}–{1}", "swim": "Great day for swimming: {0}–{1}"}
+DID_YOU = {"run": "Did you go running at {0:%H:%M}?", "bike": "Did you go cycling at {0:%H:%M}?",
+           "walk": "Did you go for a walk at {0:%H:%M}?", "swim": "Did you go swimming at {0:%H:%M}?",
+           "other": "Did you do the activity at {0:%H:%M}?"}
+RAIN_AT = {"run": "Rain at {0} for the run", "bike": "Rain at {0} for the ride", "walk": "Rain at {0} for the walk",
+           "swim": "Rain at {0} for the swim", "other": "Rain at {0} for the activity"}
+
+
 def label(kind: str) -> str:
     return tr(KINDS.get(kind, "Activity"))
 
@@ -68,7 +78,7 @@ def norm_activity(d: dict) -> dict:
 
 
 # ── slot picker (pure) ──────────────────────────────────────────────────────
-def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "corsa") -> tuple[int, list[str]]:
+def score_hour(h: dict, *, sunrise: str = "", sunset: str = "", kind: str = "run") -> tuple[int, list[str]]:
     """0–100 for starting the activity at hour ``h`` (Hecate hour row) + the reasons."""
     hh = int(str(h.get("time") or "T00")[11:13] or 0)
     why: list[str] = []
@@ -112,7 +122,7 @@ def _overlaps(start: datetime, end: datetime, busy: list[tuple[datetime, datetim
 
 
 def best_of_day(day: str, hours: list[dict], *, minutes: int, busy: list[tuple[datetime, datetime]],
-                sunrise: str = "", sunset: str = "", kind: str = "corsa", not_before: datetime | None = None,
+                sunrise: str = "", sunset: str = "", kind: str = "run", not_before: datetime | None = None,
                 tz=None) -> dict | None:
     """Best free starting hour of ``day`` (needs the whole duration dry and free)."""
     best = None
@@ -270,14 +280,14 @@ class Activities:
             if exclude_days and d["date"] in exclude_days:
                 continue
             c = best_of_day(d["date"], hours, minutes=int(plan.get("minutes") or 45), busy=busy,
-                            sunrise=d.get("sunrise") or "", sunset=d.get("sunset") or "", kind=plan.get("kind", "corsa"),
+                            sunrise=d.get("sunrise") or "", sunset=d.get("sunset") or "", kind=plan.get("kind", "run"),
                             not_before=now, tz=self.tz)
             if c:
                 cands.append(c)
         return cands, f
 
     # ── propose / confirm ───────────────────────────────────────────────────
-    def propose(self, kind: str = "corsa", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
+    def propose(self, kind: str = "run", times: int = 1, place: str = "", minutes: int = 45, week: str = "") -> dict:
         """Best slots for the intention (nothing in the calendar yet). Without forecast: the intention alone."""
         d0, d1 = self._week(week)
         plan = {"kind": kind_of(kind), "times": max(1, int(times or 1)), "minutes": int(minutes or 45),
@@ -411,7 +421,7 @@ class Activities:
         best = pick_slots(cands, 1)[0]
         return {"moved": True, **self.add_slot(plan_id, best["start"])}
 
-    def log(self, kind: str = "corsa", day: str = "", minutes: int | None = None, km: float | None = None,
+    def log(self, kind: str = "run", day: str = "", minutes: int | None = None, km: float | None = None,
             note: str = "", ext: str = "") -> dict:
         """«I ran 5 km»: one done activity; a planned slot of the same kind that day becomes done.
         ``ext``: id of the same activity on a device (``garmin:<id>``), so a device sync never logs it twice."""
@@ -571,7 +581,7 @@ class Activities:
             return None
         base = f"{self.api}/activities/{plan_id}/slots/{slot_id}"
         s = datetime.fromisoformat(slot["start"])
-        text = tr("Did you do the {0} at {1:%H:%M}?", label(plan['kind']).lower(), s)
+        text = tr(DID_YOU.get(plan['kind'], DID_YOU["other"]), s)
         actions = [{"id": "done", "label": tr("Done"), "text": tr("Done"), "style": "primary", "service": "hercules",
                     "method": "POST", "path": f"{base}/done", "body": {}, "resolves": True},
                    {"id": "missed", "label": tr("Not done"), "text": tr("Not done"), "service": "hercules", "method": "POST",
@@ -595,14 +605,13 @@ class Activities:
             if f.get("status") != "ok":
                 continue
             base = f"{self.api}/activities/{plan['id']}"
-            name = label(plan["kind"]).lower()
             if todays:
                 slot = todays[0]
                 hour = next((h for d in f["days"] for h in d.get("hours") or [] if h["time"][:13] == slot["start"][:13]), None)
                 if hour and score_hour(hour, kind=plan["kind"])[0] >= 40:
                     continue                              # the planned slot still holds: nothing to say
                 alt = cands[0] if cands else None
-                text = tr("Rain at {0} for the {1}", slot['start'][11:16], name)
+                text = tr(RAIN_AT.get(plan["kind"], RAIN_AT["other"]), slot['start'][11:16])
                 actions = []
                 if alt and alt["start"][:13] != slot["start"][:13]:
                     text += tr(": better at {0}?", alt['start'][11:16])
@@ -623,8 +632,7 @@ class Activities:
                 continue
             best = cands[0]
             w = best.get("weather") or {}
-            text = ((tr("Great day for {0}: {1}–{2}", name, best['start'][11:16], best['end'][11:16]) if plan['kind'] != 'other'
-                    else tr("Great day to move: {0}–{1}", best['start'][11:16], best['end'][11:16]))
+            text = (tr(GREAT_DAY.get(plan['kind'], "Great day to move: {0}–{1}"), best['start'][11:16], best['end'][11:16])
                     + (f", {w['temp_c']}°" if w.get("temp_c") is not None else "")
                     + (f", {w['condition']}" if w.get("condition") else "") + f" · {prog['hint']}")
             actions = [{"id": "plan", "label": tr("alt::Plan"), "style": "primary", "service": "hercules", "method": "POST",
@@ -653,7 +661,7 @@ class Activities:
             for s in p.get("slots") or []:
                 when = s["start"][11:16]
                 if s["start"][:10] == d and s.get("status") in ("missed", "planned"):
-                    state = (tr("not done") if p["kind"] == "nuoto" else tr("f::not done")) if s["status"] == "missed" \
+                    state = (tr("not done") if p["kind"] == "swim" else tr("f::not done")) if s["status"] == "missed" \
                         else tr("to mark")
                     missed.append({"text": tr("{0} at {1}: {2}", label(p['kind']), when, state), "tone": "warning"})
                 elif s["start"][:10] == n and s.get("status") == "planned":

@@ -44,18 +44,18 @@ BUILTIN: dict[str, dict] = {
                    "prompt": "soft festive birthday background, balloons, warm light, minimal, no text"},
     "event": {"name": "Special day", "palette": {"accent": "#7C3AED"}, "effect": "stars",
                "prompt": "soft celebratory background, gentle sparkles, minimal, no text"},
-    "capodanno": {"name": "Capodanno", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
+    "new_year": {"name": "New Year", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
                   "prompt": "new year night, gold fireworks, elegant minimal, no text"},
     "christmas": {"name": "Christmas", "palette": {"accent": "#B91C1C", "accent2": "#166534"}, "effect": "snow",
                "prompt": "cozy christmas, warm lights, snow, minimal illustration, no text"},
-    "san_valentino": {"name": "San Valentino", "palette": {"accent": "#DB2777"}, "effect": "hearts",
+    "valentines": {"name": "Valentine's Day", "palette": {"accent": "#DB2777"}, "effect": "hearts",
                       "prompt": "soft pink hearts, minimal, no text"},
-    "pasqua": {"name": "Pasqua", "palette": {"accent": "#65A30D", "accent2": "#EAB308"}, "effect": "petals",
+    "easter": {"name": "Easter", "palette": {"accent": "#65A30D", "accent2": "#EAB308"}, "effect": "petals",
                "prompt": "spring easter, pastel flowers, minimal, no text"},
     "halloween": {"name": "Halloween", "palette": {"accent": "#EA580C", "accent2": "#6D28D9"}, "effect": "pumpkins",
                   "prompt": "friendly halloween, pumpkins, purple dusk, minimal illustration, no text"},
     "spring": {"name": "Spring", "palette": {"accent": "#16A34A"}, "effect": "petals", "prompt": ""},
-    "estate": {"name": "Estate", "palette": {"accent": "#0284C7"}, "effect": "sun", "prompt": ""},
+    "summer": {"name": "Summer", "palette": {"accent": "#0284C7"}, "effect": "sun", "prompt": ""},
     "autumn": {"name": "Autumn", "palette": {"accent": "#C2410C"}, "effect": "leaves", "prompt": ""},
     "winter": {"name": "Winter", "palette": {"accent": "#2563EB"}, "effect": "none", "prompt": ""},
 }
@@ -64,13 +64,13 @@ BUILTIN: dict[str, dict] = {
 def holiday(day: date) -> str | None:
     md = (day.month, day.day)
     if md in ((12, 31), (1, 1)):
-        return "capodanno"
+        return "new_year"
     if (12, 8) <= md or md <= (1, 6):
         return "christmas"
     if md == (2, 14):
-        return "san_valentino"
+        return "valentines"
     if abs((day - easter(day.year)).days) <= 1:
-        return "pasqua"
+        return "easter"
     if (10, 25) <= md <= (10, 31) or md == (11, 1):
         return "halloween"
     return None
@@ -81,7 +81,7 @@ def season(day: date) -> str:
     if (3, 21) <= md < (6, 21):
         return "spring"
     if (6, 21) <= md < (9, 23):
-        return "estate"
+        return "summer"
     if (9, 23) <= md < (12, 21):
         return "autumn"
     return "winter"

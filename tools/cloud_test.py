@@ -68,7 +68,7 @@ NEEDS_CA = ("node:22-alpine", "mcr.microsoft.com/dotnet/sdk:9.0")  # build stage
 # Gemini steps of every bench chain (Oracle blocks; key ORACLE_KEY_GEMINI from GEMINI_API_KEY). The free tier
 # gives each model about 20 requests a day: four models = four quotas, when one is out (or busy, 503) the chain
 # moves on. Flash-Lite first: seconds per answer, the bigger Flash thinks for a minute on Hestia's 240 tools.
-GEMINI_CHAIN = {"label": "Gemini (banco)", "steps": [
+GEMINI_CHAIN = {"label": "Gemini (bench)", "steps": [
     {"provider": "gemini", "model": m} for m in (
         "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3-flash-preview", "gemini-3.5-flash-lite",
         "gemini-flash-lite-latest", "gemini-3.1-flash-lite")]}
@@ -326,7 +326,7 @@ def use_gemini() -> None:
         log("[🔄] gemini_skipped", reason="oracle.chains not registered in Themis", status=code)
         return
     chains = body.get("value") or body.get("default") or {}
-    chains = {name: ({**c, "label": f"{c.get('label', name)} · Gemini (banco)", "steps": GEMINI_CHAIN["steps"]}
+    chains = {name: ({**c, "label": f"{c.get('label', name)} · Gemini (bench)", "steps": GEMINI_CHAIN["steps"]}
                      if name != "embedding" else c) for name, c in chains.items()}
     code, _ = http("PUT", f"{themis}/oracle.chains", {"value": chains, "actor": "cloud-test"})
     log("setting_set", key="oracle.chains", status=code, chains=",".join(sorted(chains)))

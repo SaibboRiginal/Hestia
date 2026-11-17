@@ -60,7 +60,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   answer. The owner picks at each export: **oscurato** (default, the same masking as the review: Persone names,
   e-mails, phones, IBAN, addresses; Hera away → refused, never half masked) or **in chiaro**. The zip is an Archive
   blob (owner `metis`), the export a dataset-store row kind `export`; download from Miglioramento («Scarica
-  oscurato» / «Download in clear» + the last five) or Telegram `metis_dataset_export` (file under the card).
+  oscurato» / «Download in clear» + the last five) or Telegram `metis_training_export` (file under the card).
 
 ### Benchmark Evaluation
 - Runs held-out eval comparing candidate model vs baseline
@@ -133,7 +133,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET`/`POST` | `/api/metis/tools/review` · `/tools/review_decide` | The two tools (display card) |
 | `POST` | `/api/metis/export` | Build the training zip `{plain?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
 | `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
-| `POST` | `/api/metis/tools/dataset_export` | Tool `metis_dataset_export` (card with the file) |
+| `POST` | `/api/metis/tools/dataset_export` | Tool `metis_training_export` (card with the file) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |

@@ -1,4 +1,4 @@
-"""Esporta / importa / ripristina from Telegram (dossier docs/work/2026-10-24-whole-cindy-brainstorm F)."""
+"""Export / import / restore from Telegram (dossier docs/work/2026-10-24-whole-cindy-brainstorm F)."""
 from __future__ import annotations
 
 import base64
@@ -35,7 +35,7 @@ def hub(monkeypatch):
 
 
 def test_export_sends_a_hestia_file(hub):
-    out = ta.esporta(1, {})
+    out = ta.export_data(1, {})
     name, data = out.document
     assert name.endswith(".hestia")
     assert ta.decode(data)["modules"]["plutus"] == _BLOCK
@@ -44,7 +44,7 @@ def test_export_sends_a_hestia_file(hub):
 
 def test_import_previews_then_applies_with_a_copy_of_before(hub):
     raw = ta.encode({"hestia": "transfer", "format": 1, "modules": {"plutus": _BLOCK}, "files": {}})
-    preview = ta.importa(1, {"file": {"data_b64": base64.b64encode(raw).decode()}})
+    preview = ta.import_data(1, {"file": {"data_b64": base64.b64encode(raw).decode()}})
     assert [c[3]["dry_run"] for c in hub if c[1] == "api/transfer/import"] == [True]
     token = preview.actions[0].args["token"]
     done = ta.import_confirm(1, {"token": token})
@@ -57,15 +57,15 @@ def test_import_previews_then_applies_with_a_copy_of_before(hub):
 
 def test_import_rejects_other_files_and_other_chats(hub):
     with pytest.raises(ta.TransferError):
-        ta.importa(1, {"file": {"data_b64": base64.b64encode(b"ciao").decode()}})
+        ta.import_data(1, {"file": {"data_b64": base64.b64encode(b"ciao").decode()}})
     raw = ta.encode({"hestia": "transfer", "format": 1, "modules": {"plutus": _BLOCK}, "files": {}})
-    token = ta.importa(1, {"file": {"data_b64": base64.b64encode(raw).decode()}}).actions[0].args["token"]
+    token = ta.import_data(1, {"file": {"data_b64": base64.b64encode(raw).decode()}}).actions[0].args["token"]
     with pytest.raises(ta.TransferError):
         ta.import_confirm(2, {"token": token})
 
 
 def test_restore_lists_and_confirms(hub):
-    out = ta.ripristina(1, {})
+    out = ta.restore_backup(1, {})
     assert out.actions[0].tool == "restore_confirm" and out.actions[0].args == {"file_id": "f1"}
     ta.restore_confirm(1, {"file_id": "f1"})
     assert ("archive", "api/backup/restore", "POST", {"file_id": "f1", "confirm": True}) in hub

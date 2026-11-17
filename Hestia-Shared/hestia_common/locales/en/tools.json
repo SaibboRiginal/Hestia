@@ -712,7 +712,7 @@
  "metis_dataset_build": {
   "summary": "Build a cleaned, deduplicated, balanced dataset from graded feedback records."
  },
- "metis_dataset_export": {
+ "metis_training_export": {
   "summary": "Exports the training dataset to download.",
   "params": {
    "plain": "true = real data, false = masked (default)",

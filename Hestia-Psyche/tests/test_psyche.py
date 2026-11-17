@@ -35,7 +35,7 @@ def test_log_validates_and_keeps_only_the_vocabulary(ps):
     p, _ = ps
     r = p.log({"mood": "2", "energy": 1, "labels": ["Stanco", "giu", "boh"], "causes": "lavoro, sonno, x",
                "source": "tap"})
-    assert r["mood"] == 2 and r["energy"] == 1 and r["labels"] == ["stanco", "giù"]
+    assert r["mood"] == 2 and r["energy"] == 1 and r["labels"] == ["tired", "down"]
     assert r["causes"] == ["work", "sleep"] and r["source"] == "tap" and r["mood_word"] == "giù"
     assert r["date"] == p.today().isoformat()
     for bad in ({"mood": 0}, {"mood": 6}, {}, {"mood": "molto"}, {"mood": 3, "date": "2999-01-01"}):
@@ -59,7 +59,7 @@ def test_chat_capture_merges_close_ones_and_undo_removes_the_last(ps):
     a = p.capture({"mood": 2, "energy": 1, "labels": ["stanco"], "quote": "oggi sono stanco morto"})
     assert not a["merged"] and a["source"] == "chat"
     b = p.capture({"mood": 3, "labels": ["nervoso"], "quote": "e pure nervoso"})
-    assert b["merged"] and b["id"] == a["id"] and b["labels"] == ["stanco", "nervoso"]
+    assert b["merged"] and b["id"] == a["id"] and b["labels"] == ["tired", "nervous"]
     assert b["energy"] == 1 and "stanco morto" in b["quote"] and "nervoso" in b["quote"]
     assert len(p.entries()) == 1
     p.log({"mood": 4, "source": "tap"})                  # a tap is never undone by «non segnarlo»
@@ -82,7 +82,7 @@ def test_day_summary_last_wins(ps):
     p.log({"mood": 2, "labels": ["stanco"]})
     p.log({"mood": 4, "labels": ["contento"], "energy": 3})
     s = p.today_view()["summary"]
-    assert s["mood"] == 4 and s["min"] == 2 and s["max"] == 4 and s["labels"] == ["stanco", "contento"]
+    assert s["mood"] == 4 and s["min"] == 2 and s["max"] == 4 and s["labels"] == ["tired", "happy"]
     assert s["count"] == 2 and s["energy"] == 3
 
 
@@ -143,9 +143,9 @@ def test_recap_piece_and_checkin(ps):
 
 def test_context_text(ps):
     p, _ = ps
-    assert "nessun dato" in p.context_text()
+    assert "no data" in p.context_text()
     p.log({"mood": 4, "labels": ["sereno"]})
-    assert "4/5 (sereno)" in p.context_text()
+    assert "4/5 (calm)" in p.context_text()
 
 
 def test_endpoints_capture_and_tools():
@@ -156,7 +156,7 @@ def test_endpoints_capture_and_tools():
     main.signals.changed = lambda: None
     c = TestClient(main.app)
     out = c.post("/api/mood/capture", json={"mood": 2, "labels": ["stanco"], "quote": "sono stanco"}).json()
-    assert out["source"] == "chat" and out["labels"] == ["stanco"]
+    assert out["source"] == "chat" and out["labels"] == ["tired"]
     assert c.get("/api/mood/today").json()["summary"]["mood"] == 2
     assert c.post("/api/mood/capture/undo").json()["deleted"]
     assert c.post("/api/mood/tap", json={"mood": 4}).json()["source"] == "tap"
@@ -165,8 +165,8 @@ def test_endpoints_capture_and_tools():
     assert "display" in c.get("/api/mood/tools/history").json()
     assert c.post("/api/mood/tools/delete", json={"last": True}).json()["deleted"]
     assert c.post("/api/mood", json={"mood": 9}).status_code == 422
-    assert c.get("/api/mood/options").json()["labels"][0] == "stanco"
-    assert "Umore" in c.get("/api/module/context").json()["text"]
+    assert c.get("/api/mood/options").json()["labels"][0] == "tired"
+    assert "Mood" in c.get("/api/module/context").json()["text"]
     assert c.post("/api/mood/checkin").json() == {"sent": False, "reason": "reminders_off"}
     piece = c.get("/api/module/recap").json()
     assert piece["module"] == "psyche"

@@ -51,7 +51,7 @@ class TestGateHistory:
         ok, ko = by["Controlla backup"], by["Idea debole"]
         assert ok["accepted"] and ok["outcome"] == "emitted" and "≥ soglia" in ok["gate_reason"]
         assert not ko["accepted"] and ko["outcome"] == "discarded"
-        assert "< soglia" in ko["gate_reason"] and "low" in ko["gate_reason"]
+        assert "< soglia" in ko["gate_reason"] and "bassa" in ko["gate_reason"]
 
     def test_think_still_returns_accepted_only(self, rt):
         from core.schemas import ObservationSnapshot

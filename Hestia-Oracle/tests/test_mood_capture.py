@@ -11,28 +11,34 @@ pytestmark = pytest.mark.unit
 
 # What the user says → the label the gate must see (None = nothing to record).
 BENCH = [
-    ("oggi sono stanco", "stanco"),
-    ("Oggi sono stanco morto", "stanco"),
-    ("sono distrutta, giornata infinita", "stanco"),
-    ("sono stanco, cosa mangio stasera?", "stanco"),
-    ("mi sento giù", "giù"),
-    ("mi sento uno schifo oggi", "giù"),
-    ("non sto bene", "giù"),
-    ("sto benissimo!", "contento"),
-    ("oggi sto bene", "contento"),
-    ("sono felice, ho passato l'esame", "contento"),
-    ("sono carico per la palestra", "carico"),
-    ("oggi spacco", "carico"),
-    ("sono un po' nervoso per il colloquio", "nervoso"),
-    ("sono in ansia per domani", "ansioso"),
-    ("sono stressato dal lavoro", "ansioso"),
-    ("mi sento triste", "triste"),
-    ("sono incazzato nero", "arrabbiato"),
-    ("ho la febbre, sono a letto", "malato"),
-    ("che giornata pesante", "stanco"),
+    ("oggi sono stanco", "tired"),
+    ("Oggi sono stanco morto", "tired"),
+    ("sono distrutta, giornata infinita", "tired"),
+    ("sono stanco, cosa mangio stasera?", "tired"),
+    ("mi sento giù", "down"),
+    ("mi sento uno schifo oggi", "down"),
+    ("non sto bene", "down"),
+    ("sto benissimo!", "happy"),
+    ("oggi sto bene", "happy"),
+    ("sono felice, ho passato l'esame", "happy"),
+    ("sono carico per la palestra", "charged"),
+    ("oggi spacco", "charged"),
+    ("sono un po' nervoso per il colloquio", "nervous"),
+    ("sono in ansia per domani", "anxious"),
+    ("sono stressato dal lavoro", "anxious"),
+    ("mi sento triste", "sad"),
+    ("sono incazzato nero", "angry"),
+    ("ho la febbre, sono a letto", "sick"),
+    ("che giornata pesante", "tired"),
     ("giornata fantastica oggi", ""),
-    ("mia moglie è stanca ma io sono carico", "carico"),
+    ("mia moglie è stanca ma io sono carico", "charged"),
     ("ciao", None),
+    # English, from the same words files (docs/LANGUAGES.md)
+    ("I am so tired today", "tired"),
+    ("I feel down", "down"),
+    ("I'm happy, I passed the exam", "happy"),
+    ("hello", None),
+    ("why am I always tired?", None),
     ("test", None),
     ("che tempo fa domani?", None),
     ("perché sono sempre stanco?", None),
@@ -68,7 +74,7 @@ def test_gate_bench(text, label):
 
 def test_guess_lowest_mood_and_quote():
     g = guess(mood_clauses("sono felice ma stanco morto"))
-    assert g["mood"] == 2 and g["energy"] == 1 and "stanco" in g["labels"] and "stanco morto" in g["quote"]
+    assert g["mood"] == 2 and g["energy"] == 1 and "tired" in g["labels"] and "stanco morto" in g["quote"]
     assert guess([]) is None
 
 
@@ -82,9 +88,9 @@ def test_undo_phrases():
 def test_parse_answer():
     assert parse_answer("NONE") == "NONE" and parse_answer("`NONE`.") == "NONE"
     assert parse_answer("boh") is None and parse_answer("") is None and parse_answer("{rotto") is None
-    out = parse_answer('Ecco: {"mood": 7, "energy": "2", "labels": ["Stanco", "felicione", "giu"], '
-                       '"causes": ["lavoro", "x"]}')
-    assert out == {"mood": 5, "energy": 2, "stress": None, "labels": ["stanco", "giù"], "causes": ["work"]}
+    out = parse_answer('Ecco: {"mood": 7, "energy": "2", "labels": ["Tired", "felicione", "down"], '
+                       '"causes": ["work", "x"]}')
+    assert out == {"mood": 5, "energy": 2, "stress": None, "labels": ["tired", "down"], "causes": ["work"]}
     assert parse_answer('{"energy": 2}') is None
 
 
@@ -108,8 +114,8 @@ class FakeHub:
 
 def test_run_uses_the_model_answer():
     hub = FakeHub()
-    cap = MoodCapture(hub, lambda prompt: '{"mood": 2, "energy": 1, "stress": null, "labels": ["stanco"], '
-                                          '"causes": ["lavoro"]}')
+    cap = MoodCapture(hub, lambda prompt: '{"mood": 2, "energy": 1, "stress": null, "labels": ["tired"], '
+                                          '"causes": ["work"]}')
     sig = cap.run("oggi sono stanco morto, il lavoro mi ha ucciso")
     service, path, method, body = hub.calls[0]
     assert (service, path, method) == ("psyche", "/api/mood/capture", "POST")
@@ -120,12 +126,12 @@ def test_run_uses_the_model_answer():
 def test_run_falls_back_to_the_lexicon_when_the_model_is_dumb_or_offline():
     hub = FakeHub()
     MoodCapture(hub, lambda prompt: "Certo! L'utente sembra stanco.").run("sono stanco")
-    assert hub.calls[-1][3]["labels"] == ["stanco"] and hub.calls[-1][3]["mood"] == 3
+    assert hub.calls[-1][3]["labels"] == ["tired"] and hub.calls[-1][3]["mood"] == 3
 
     def boom(prompt):
         raise RuntimeError("offline")
     MoodCapture(hub, boom).run("mi sento giù")
-    assert hub.calls[-1][3]["labels"] == ["giù"]
+    assert hub.calls[-1][3]["labels"] == ["down"]
 
 
 def test_run_respects_model_none_and_skips_without_gate_or_module():

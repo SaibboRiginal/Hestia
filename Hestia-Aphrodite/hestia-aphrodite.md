@@ -9,7 +9,7 @@
 
 ## Responsibility
 
-- **Profiles**: built-in (standard, compleanno, giornata speciale, capodanno, natale, san valentino, pasqua,
+- **Profiles**: built-in (standard, birthday, special day, new year, christmas, valentines, easter,
   halloween, the four seasons) plus the owner's own dated ones (`when: {from: MM-GG, to: MM-GG}`). A profile is an
   accent palette over the client's light/dark theme, an effect (`snow, leaves, petals, sun, hearts, confetti,
   pumpkins, stars`) and an optional background picture.

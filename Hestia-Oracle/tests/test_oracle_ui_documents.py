@@ -47,7 +47,7 @@ class TestDocumentsPage:
         c, engine = rig
         engine._hub.route_to_service.return_value = (True, [DOC])
         body = c.get("/api/ui/documents", params={"domain": "documents", "permanent": "true"}).json()
-        assert body["count"] == 1 and body["documents"][0]["tags"] == ["home", "affitto"]
+        assert body["count"] == 1 and body["documents"][0]["tags"] == ["casa", "affitto"]
         assert body["domains"] == ["documents"]
         args, kwargs = engine._hub.route_to_service.call_args
         assert args[:3] == ("archive", "api/documents", "GET")

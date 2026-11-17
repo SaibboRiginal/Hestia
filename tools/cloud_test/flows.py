@@ -741,7 +741,7 @@ def flow_plugins(ctx: dict) -> None:
             code, body = http("GET", f"{WEBUI}/api/webui/plugins/{bnd['module']}/bundle/{file}")
             if code != 200 or len(str(body)) < 500:
                 bad.append(f"{bnd['module']}:{code}")
-        need(c.get("bundle") and not bad, f"bundle non serviti: {bad}")
+        need(c.get("bundle") and not bad, f"bundles not served: {bad}")
         return f"{len(c['bundle'])} bundle JS serviti"
     step(A, "The plugin bundles are served")(bundles)
 
@@ -784,7 +784,7 @@ def flow_mcp(ctx: dict) -> None:
         code, out = rpc(ctx["mcp_read"], "tools/list")
         need(code == 200, f"tools/list → {code}")
         tools = [t["name"] for t in out["result"]["tools"]]
-        need("forge_tasks" in tools, f"forge_tasks non esposto: {tools[:20]}")
+        need("forge_tasks" in tools, f"forge_tasks not exposed: {tools[:20]}")
         code, res = rpc(ctx["mcp_read"], "tools/call", {"name": "forge_tasks", "arguments": {}})
         need(code == 200 and not (res.get("result") or {}).get("isError"), f"forge_tasks → {code} {str(res)[:200]}")
         ctx["mcp_tools"] = tools

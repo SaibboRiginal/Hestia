@@ -1096,7 +1096,7 @@ class Forge:
                         if dplan.rebuild else "")
         if not self.cfg.deploy_cmd or not (services or dplan.restart_self):
             self._notify(task, (
-                f"✅ <b>Forge: applicata</b> <code>{task['id'][:6]}</code> (merge {merge_sha[:8]}).\n"
+                tr("✅ <b>Forge: applied</b> <code>{0}</code> (merge {1}).\n", task['id'][:6], merge_sha[:8])
                 + (tr("Restart: {0}.", ', '.join(services + (['hephaestus'] if dplan.restart_self else [])))
                    if (services or dplan.restart_self) else "") + rebuild_note))
             return

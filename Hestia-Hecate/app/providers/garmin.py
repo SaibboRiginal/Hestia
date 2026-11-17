@@ -22,10 +22,10 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hecate.garmin")
 
 TOKENS_DIR = Path(os.getenv("HECATE_GARMIN_TOKENS", "/code/data/garmin"))
-ACTIVITY_KINDS = {"running": "corsa", "trail_running": "corsa", "treadmill_running": "corsa", "track_running": "corsa",
-                  "cycling": "bici", "road_biking": "bici", "mountain_biking": "bici", "indoor_cycling": "bici",
-                  "gravel_cycling": "bici", "walking": "walk", "hiking": "walk",
-                  "lap_swimming": "nuoto", "open_water_swimming": "nuoto", "swimming": "nuoto",
+ACTIVITY_KINDS = {"running": "run", "trail_running": "run", "treadmill_running": "run", "track_running": "run",
+                  "cycling": "bike", "road_biking": "bike", "mountain_biking": "bike", "indoor_cycling": "bike",
+                  "gravel_cycling": "bike", "walking": "walk", "hiking": "walk",
+                  "lap_swimming": "swim", "open_water_swimming": "swim", "swimming": "swim",
                   "strength_training": "strength"}
 
 

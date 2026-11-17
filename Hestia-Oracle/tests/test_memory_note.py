@@ -76,7 +76,7 @@ class TestRecallListForget:
     def test_recall_compact_rows(self):
         svc, _ = _svc(existing=[{"id": 1, "fact": "Va in palestra il martedì", "domains": ["fitness"],
                                  "created_at": "2026-10-20T10:00:00Z", "embedding": [0.1]}])
-        ok, rows = svc.recall("gym")
+        ok, rows = svc.recall("palestra")
         assert ok and rows == [{"fact": "Va in palestra il martedì", "domains": ["fitness"], "since": "2026-10-20"}]
 
     def test_list_origin(self):

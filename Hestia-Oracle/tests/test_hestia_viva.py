@@ -82,7 +82,7 @@ def test_awareness_lines_from_three_sources():
     }
     lines = awareness.build_lines(lambda service, path, query: payloads[service], limit=3)
     assert len(lines) == 3 and all(line.startswith(awareness.PREFIX) for line in lines)
-    assert "giù, energy 2/5, stress 4/5, because of lavoro" in lines[0]
+    assert "giù, energy 2/5, stress 4/5, because of work" in lines[0]
     assert "«Allenamento di oggi»" in lines[1] and "Vecchia" not in lines[1]
     assert "Spese (website" in lines[2]
 
@@ -242,7 +242,7 @@ def test_chain_agent_reads_the_persona_at_every_call(ident):
 def test_style_lets_her_chat_and_bans_bot_phrases():
     text = prompt_config.conversation_style_contract()
     assert "ONE real question about them" in text and "Task or data: go to the point" in text
-    assert "one-word greeting" not in text and "sono qui" in text and "Fammi sapere" in text
+    assert "one-word greeting" not in text and "I am here" in text and "Let me know" in text
 
 
 # ── She writes first («parla con te», docs/work/2026-11-12-identity-and-proactivity) ───────────────────────────
@@ -264,7 +264,7 @@ def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("answer", ["NIENTE", "niente.", "", "NIENTE: è tardi"])
+@pytest.mark.parametrize("answer", ["NOTHING", "nothing.", "", "NOTHING: it is late"])
 def test_opener_nothing_to_say_sends_nothing(answer):
     from core.services import opener
     assert opener.write(lambda p: answer, reasons=[], avoid=[]) == {"text": "", "skip": "nothing_to_say"}
@@ -296,7 +296,7 @@ def test_opener_endpoint_writes_or_stays_silent(client):
         main.engine._ask_analyst.return_value = "Hai poi finito quel libro?"
         res = http.post("/api/chat/opener", json={"reasons": ["none"], "avoid": []})
         assert res.status_code == 200 and res.json() == {"text": "Hai poi finito quel libro?"}
-        main.engine._ask_analyst.return_value = "NIENTE"
+        main.engine._ask_analyst.return_value = "NOTHING"
         assert http.post("/api/chat/opener", json={}).json()["text"] == ""
     with patch.object(main, "_no_usable_model", return_value=True):
         assert http.post("/api/chat/opener", json={}).status_code == 503

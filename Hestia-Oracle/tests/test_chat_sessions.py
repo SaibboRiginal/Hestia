@@ -50,7 +50,7 @@ def test_tag_without_session_takes_the_conversation_written_last_and_gives_undo(
     fake = FakeArchive()
     out = chat_sessions.tool_tag(fake, tags="Lavoro, urgente", color="red")
     assert out["session_id"] == "s2"
-    assert [t["name"] for t in out["tags"]] == ["home", "work", "urgente"]
+    assert [t["name"] for t in out["tags"]] == ["home", "lavoro", "urgente"]
     assert out["undo"]["tool"] == "chat_tag"
     assert out["undo"]["args"]["replace"] == [{"name": "home", "color": "teal"}]
     back = chat_sessions.tool_tag(fake, **out["undo"]["args"])

@@ -846,7 +846,7 @@ try:
             clients=["telegram", "ui"], response_mode="raw_json", telegram_group="development",
             telegram={"section": "Dataset and training"}),
         MCPTool(
-            name="metis_dataset_export",
+            name="metis_training_export",
             description=("Export the training dataset (zipped JSONL files: sft, dpo, eval, card) to download. "
                          "plain=false (default) masks people's names, e-mails, phones, IBAN and addresses; "
                          "plain=true keeps the real data."),

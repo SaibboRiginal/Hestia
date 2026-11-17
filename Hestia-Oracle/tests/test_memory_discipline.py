@@ -86,7 +86,7 @@ def test_search_finds_other_word_forms():
     """«dimentica dove lavoro» must find «L'utente lavora…», or nothing is forgotten."""
     svc = _service([{"id": 12, "fact": "L'utente lavora come sviluppatore a Udine."},
                     {"id": 13, "fact": "L'utente è allergico alle noccioline."}])
-    ok, rows = svc.search_memories("work")
+    ok, rows = svc.search_memories("lavoro")
     assert ok and [r["id"] for r in rows] == [12]
 
 

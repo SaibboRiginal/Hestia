@@ -1014,7 +1014,7 @@ def _with_personal_settings(client_instructions: Optional[str], client: Optional
 
 
 def _awareness_lines() -> list[str]:
-    """Owner turns only: today's mood, the last notifications sent, the last things opened (hestia-viva F3)."""
+    """Owner turns only: today's mood, the last notifications sent, the last things opened (living-hestia F3)."""
     try:
         return awareness.lines_for_turn(engine._hub, _oracle_settings.get_int(_oracle_settings.AWARENESS_ITEMS, 0))
     except Exception as exc:  # never blocks a turn
@@ -1049,7 +1049,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         if req.spoken:
             instructions = "\n".join(p for p in (instructions, _prompt_config.voice_turn_contract()) if p)
-        # Emoji reactions (hestia-viva F4): only clients that can show them get the prompt line and the filter.
+        # Emoji reactions (living-hestia F4): only clients that can show them get the prompt line and the filter.
         reacts = (req.client or "") in reaction_marker.CLIENTS and turn_origin["level"] == "user"
         if reacts:
             instructions = "\n".join(p for p in (instructions, reaction_marker.INSTRUCTION) if p)

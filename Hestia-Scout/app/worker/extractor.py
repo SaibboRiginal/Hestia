@@ -210,8 +210,8 @@ def _build_geocoding_candidates(payload: dict) -> list[str]:
         if not c:
             continue
         expanded.append(c)
-        if "italia" not in c.lower() and "italy" not in c.lower():
-            expanded.append(f"{c}, Italia")
+        if "italia" not in c.lower() and "italy" not in c.lower():   # the listing sites are Italian
+            expanded.append(f"{c}, Italy")
     return expanded
 
 

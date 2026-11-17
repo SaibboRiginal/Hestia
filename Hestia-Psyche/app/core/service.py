@@ -9,6 +9,7 @@ Everything derived (day summary, trend, insights, signals, recap) is computed he
 from __future__ import annotations
 
 import logging
+import unicodedata
 from collections import Counter
 from datetime import date, datetime, timedelta
 from statistics import mean
@@ -16,6 +17,7 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso, parse_dt
+from hestia_common import i18n
 from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_psyche.service")
@@ -56,14 +58,28 @@ def _level(value: Any, field: str, required: bool = False) -> int | None:
     return n
 
 
-def _vocab(values: Any, allowed: tuple[str, ...]) -> list[str]:
-    """Keep only words of the vocabulary (case and accent tolerant), in order, no duplicates."""
+def _fold(text: Any) -> str:
+    """Lower case without accents: «Giù», «giu» and «GIÙ» are the same word."""
+    t = unicodedata.normalize("NFD", str(text or "").strip().lower())
+    return "".join(c for c in t if unicodedata.category(c) != "Mn").replace("_", " ")
+
+
+def _vocab(values: Any, allowed: tuple[str, ...], prefix: str = "") -> list[str]:
+    """Keep only words of the vocabulary, in order, no duplicates. The owner may write the stored value (``tired``)
+    or its word in any language of the catalog (``mood::tired`` → «stanco»), case and accent tolerant."""
     if isinstance(values, str):
         values = [v for v in values.replace(";", ",").split(",")]
+    norm = {_fold(a): a for a in allowed}
+    if prefix:
+        for code in i18n.languages():
+            texts = i18n.catalog("messages", code)
+            for a in allowed:
+                said = texts.get(f"{prefix}::{a}")
+                if isinstance(said, str) and said:
+                    norm.setdefault(_fold(said), a)
     out: list[str] = []
-    norm = {a.replace("ù", "u"): a for a in allowed}
     for v in values or []:
-        key = str(v or "").strip().lower().replace("ù", "u")
+        key = _fold(v)
         if key in norm and norm[key] not in out:
             out.append(norm[key])
     return out
@@ -97,9 +113,9 @@ class Psyche:
             else:
                 d.setdefault(f, None)
         if "labels" in body or not old:
-            d["labels"] = _vocab(body.get("labels"), LABELS)
+            d["labels"] = _vocab(body.get("labels"), LABELS, "mood")
         if "causes" in body or not old:
-            d["causes"] = _vocab(body.get("causes"), CAUSES)
+            d["causes"] = _vocab(body.get("causes"), CAUSES, "cause")
         if "note" in body or not old:
             d["note"] = str(body.get("note") or "").strip()[:NOTE_MAX]
         if "quote" in body or not old:
@@ -164,9 +180,9 @@ class Psyche:
             if age <= timedelta(minutes=merge):
                 quote = " · ".join(q for q in (last.get("quote"), str(body.get("quote") or "").strip()) if q)
                 merged = {**body, "labels": list(dict.fromkeys((last.get("labels") or [])
-                                                               + _vocab(body.get("labels"), LABELS))),
+                                                               + _vocab(body.get("labels"), LABELS, "mood"))),
                           "causes": list(dict.fromkeys((last.get("causes") or [])
-                                                       + _vocab(body.get("causes"), CAUSES))),
+                                                       + _vocab(body.get("causes"), CAUSES, "cause"))),
                           "quote": quote[-QUOTE_MAX:]}
                 for f in ("energy", "stress"):
                     if merged.get(f) in (None, ""):
@@ -300,12 +316,12 @@ class Psyche:
         if bad_causes:
             c, n = bad_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("On bad days «{0}» comes up often ({1} times).", c, n))
+                s.append(tr("On bad days «{0}» comes up often ({1} times).", cause_text(c), n))
         good_causes = Counter(c for d in recent if d["mood"] >= 4 for c in d["causes"])
         if good_causes:
             c, n = good_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("On good days there is often «{0}» ({1} times).", c, n))
+                s.append(tr("On good days there is often «{0}» ({1} times).", cause_text(c), n))
         out["labels"] = dict(labels.most_common(8))
         return out
 
@@ -378,10 +394,10 @@ class Psyche:
     def context_text(self, budget: int = 400) -> str:
         days = self.days(7)
         if not days:
-            return tr("Mood: no data in the last 7 days.")
+            return "Mood: no data in the last 7 days."  # hidden text for the model: English
         parts = [f"{d['date'][8:10]}/{d['date'][5:7]} {d['mood']}/5" + (f" ({', '.join(d['labels'][:2])})"
                                                                        if d["labels"] else "") for d in days]
-        return (tr("Mood of the last 7 days: ") + "; ".join(parts))[:max(80, int(budget))]
+        return ("Mood of the last 7 days: " + "; ".join(parts))[:max(80, int(budget))]
 
     def checkin(self) -> dict | None:
         """Agenda job: the evening question, only when today has no check-in (the module decides, Hermes sends)."""

@@ -105,7 +105,7 @@ def test_score_hour_rain_dark_and_good():
     assert act.score_hour(_hour(day, 18, rain=80))[0] == 0
     assert act.score_hour(_hour(day, 22), sunrise="06:30", sunset="20:00")[0] == 0
     good, why = act.score_hour(_hour(day, 18), sunrise="06:30", sunset="20:00")
-    assert good >= act.GOOD_SCORE and "dry" in why
+    assert good >= act.GOOD_SCORE and "asciutto" in why
     windy, _ = act.score_hour(_hour(day, 18, wind=50), sunrise="06:30", sunset="20:00")
     assert windy < good
 
@@ -128,7 +128,8 @@ def test_best_of_day_skips_busy_hours():
 
 
 def test_kind_aliases():
-    assert act.kind_of("correre") == "corsa" and act.kind_of("bike") == "bici" and act.kind_of("") == "corsa"
+    assert act.kind_of("correre") == "run" and act.kind_of("bici") == "bike" and act.kind_of("") == "run"
+    assert act.kind_of("running") == "run" and act.kind_of("swimming") == "swim"
     assert act.kind_of("yoga") == "other"
 
 

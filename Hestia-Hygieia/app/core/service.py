@@ -680,7 +680,7 @@ class Hygieia:
         note = f"{hours} h {minutes:02d} min"
         if sleep.get("deep_minutes"):
             note += tr(", deep {0} min", sleep['deep_minutes'])
-        scores = {"qualita": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
+        scores = {"quality": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
         row_id = f"device-sleep-{d}"
         old = self.store.get("journal", row_id, deleted=True)
         if old and old.get("deleted"):

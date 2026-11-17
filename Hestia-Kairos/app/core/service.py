@@ -143,7 +143,8 @@ class Deadlines:
         except ValueError:
             raise Invalid(tr("due date YYYY-MM-DD")) from None
         category = body.get("category") or old.get("category") or guess_category(title)
-        category = category if category in CATEGORIES else "other"
+        # The owner's word for a category («bollo», «tax») → its stored id, in any language of the words files.
+        category = category if category in CATEGORIES else guess_category(str(category).replace("_", " "))
         recurrence = body.get("recurrence") or old.get("recurrence") or "none"
         if recurrence not in RECURRENCES:
             raise Invalid(tr("recurrence: ") + ", ".join(RECURRENCES))

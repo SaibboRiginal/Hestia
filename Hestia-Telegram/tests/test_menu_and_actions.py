@@ -281,7 +281,7 @@ class TestCallbacks:
         from telegram_bot import nav
         core.bot = _fake_bot()
         shown = []
-        monkeypatch.setattr(nav, "areas", lambda chat, mid=None: shown.append(chat))
+        monkeypatch.setattr(nav, "show_areas", lambda chat, mid=None: shown.append(chat))
         telegram_runtime._route_callback(_call("grp:fitness"))
         core.bot.answer_callback_query.assert_called_with("cb", "Questo menu è vecchio")
         assert shown == [12345]

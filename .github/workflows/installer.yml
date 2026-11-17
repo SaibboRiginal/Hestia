@@ -121,7 +121,7 @@ jobs:
       - name: Install from this branch (no Ollama on the runner)
         run: |
           git clone --branch "${GITHUB_REF_NAME}" "https://github.com/${GITHUB_REPOSITORY}.git" "$HOME/Hestia"
-          HESTIA_REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git" HESTIA_CHANNEL=novita \
+          HESTIA_REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git" HESTIA_CHANNEL=news \
             bash "$HOME/Hestia/install.sh" --no-browser
       - name: Health
         run: curl -fsS http://localhost:19001/health && curl -fsS -o /dev/null http://localhost:19015
