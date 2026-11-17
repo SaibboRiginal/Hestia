@@ -271,3 +271,6 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
 **2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): monitor messages are titled «{assistant} Monitor» (Italian «Monitor di …») with the chosen name.
+
+## Module agent (Oracle operating mode «agents», 2026-11-17)
+The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-moduli-come-agenti`.

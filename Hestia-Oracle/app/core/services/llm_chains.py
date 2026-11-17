@@ -240,6 +240,19 @@ def chains() -> dict[str, dict]:
     return out
 
 
+_agent_usecases: dict[str, dict] = {}
+
+
+def register_agent_usecases(specs) -> None:
+    """Module agents (operating mode «agents»): one use case ``agent.<module>`` per agent, listed on the Models page.
+    No chain of their own: they follow «General use» until the owner gives one (``usecase_config``)."""
+    with _lock:
+        for sp in specs:
+            _agent_usecases.setdefault(sp.use_case, {
+                "id": sp.use_case, "module": sp.module, "label": "Module agent", "chain": "",
+                "thinking": "auto", "mode": "segui", "help": sp.when})
+
+
 def declared_usecases() -> dict[str, dict]:
     """Oracle's use cases + the ones modules declare in their Hub registration (``llm_usecases``)."""
     out = {uc: {"id": uc, "module": "oracle", "label": label, "chain": chain, "thinking": thinking, "help": help_,
@@ -249,6 +262,8 @@ def declared_usecases() -> dict[str, dict]:
         out.setdefault(row["id"], row)
     with _lock:
         seen = list(_seen_usecases)
+        for uc, row in _agent_usecases.items():
+            out.setdefault(uc, dict(row))
     for uc in seen:
         out.setdefault(uc, {"id": uc, "module": uc.split(".", 1)[0], "label": uc, "chain": "",
                             "thinking": "auto", "help": tr("Not declared by the module: uses the «General use» chain."),

@@ -7612,5 +7612,22 @@
   "Great day for a run: {0}–{1}": "Ottimo giorno per la corsa: {0}–{1}",
   "Great day for a ride: {0}–{1}": "Ottimo giorno per la bici: {0}–{1}",
   "Great day for a walk: {0}–{1}": "Ottimo giorno per una camminata: {0}–{1}",
-  "Great day for a swim: {0}–{1}": "Ottimo giorno per il nuoto: {0}–{1}"
+  "Great day for a swim: {0}–{1}": "Ottimo giorno per il nuoto: {0}–{1}",
+  "Operating mode": "Modo di funzionamento",
+  "Module agents": "Agenti dei moduli",
+  "Classic: a classifier picks the domains, one loop holds their tools. Module agents: the brain sees one colleague per module and hands it a job; each agent works with its own tools and model chain. How many agents really run together is decided by the local model queue.": "Classico: un classificatore sceglie gli ambiti e un solo ciclo tiene i loro strumenti. Agenti dei moduli: il cervello vede un collega per modulo e gli affida un compito; ogni agente lavora con i suoi strumenti e la sua catena di modelli. Quanti agenti lavorano davvero insieme lo decide la coda del modello locale.",
+  "Agents per answer": "Agenti per risposta",
+  "agents": "agenti",
+  "Module agents: most agents one answer may call.": "Agenti dei moduli: quanti agenti al massimo può chiamare una risposta.",
+  "Conversation an agent reads": "Conversazione letta da un agente",
+  "Module agents: last messages of the chat given to each agent.": "Agenti dei moduli: ultimi messaggi della chat dati a ogni agente.",
+  "Steps of an agent": "Passi di un agente",
+  "Module agents: most steps (tool calls) of one agent's job.": "Agenti dei moduli: passi massimi (chiamate agli strumenti) del lavoro di un agente.",
+  "• {0}: working…": "• {0}: al lavoro…",
+  "{0}: working…": "{0}: al lavoro…",
+  "  {0}: done": "  {0}: fatto",
+  "  {0}: failed": "  {0}: non riuscito",
+  "{0} at work: {1}": "{0} al lavoro: {1}",
+  "Web": "Web",
+  "Module agent": "Agente del modulo"
 }

@@ -290,3 +290,6 @@ use the chosen name (`{assistant}` through `hestia_common.i18n.t`, e.g. the setu
 Hestia» and other texts about the app keep «Hestia».
 
 **2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the bot takes the assistant's chosen name (`set_bot_identity`: `setMyName` only when it differs) and describes itself in «Lingua» («I'm {assistant}, your personal assistant…»); a change of name, she/he or language runs `setup_bot_profile` again (`on_personal_change`). `/start` greets the owner by name.
+
+## Module agents (Oracle operating mode «agents», 2026-11-17)
+The `agent` frame (a module agent at work) becomes one status line «<job>: al lavoro…» and one step per start/end in the reasoning block (`ReplyRenderer.on_agent`); the label is translated with `tr`. Dossier `docs/work/2026-11-06-moduli-come-agenti`.

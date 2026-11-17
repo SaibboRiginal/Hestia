@@ -72,7 +72,7 @@ def emit_thinking(
 
 
 def emit_final(reply: str, domain: str = "none", origin: dict | None = None, trace_id: str = "",
-               model: str = "") -> str:
+               model: str = "", operating_mode: str = "") -> str:
     """Return the terminal final-type NDJSON line. ``origin`` (Cindy 6) is set when the turn was not typed by the
     owner: clients show its ``label`` as a small tag («Da una tua routine»). ``trace_id`` names the turn: clients
     send it back with a 👍/👎 so the vote lands on this turn (docs/work/2026-10-30-dataset-allenamento)."""
@@ -81,9 +81,20 @@ def emit_final(reply: str, domain: str = "none", origin: dict | None = None, tra
         payload["model"] = model          # who answered: clients mark where it changes inside a conversation
     if trace_id:
         payload["trace_id"] = trace_id
+    if operating_mode:
+        payload["operating_mode"] = operating_mode   # «agents» only (classic turns keep today's frame)
     if origin:
         payload["origin"] = {k: origin.get(k, "") for k in ("kind", "level", "label")}
     return json.dumps(payload) + "\n"
+
+
+def emit_agent(event: str, *, agent_id: str, module: str, label: str = "", **fields) -> str:
+    """Module agent activity (operating mode ``agents``): ``event`` = ``start`` (``task``, ``model``,
+    ``provider``) · ``tool`` (``tool``, ``ok``, ``ms``) · ``end`` (``ok``, ``summary``, ``ms``, ``tools``).
+    ``label`` is the module's short English title: clients translate it at the edge. Unknown clients ignore it."""
+    payload = {"type": "agent", "event": event, "agent_id": agent_id, "module": module, "label": label}
+    payload.update({k: v for k, v in fields.items() if v is not None})
+    return json.dumps(payload, ensure_ascii=False) + "\n"
 
 
 def changes_from_log(tool_log: list[dict]) -> list[dict]:

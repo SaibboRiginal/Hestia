@@ -115,3 +115,16 @@ def test_a_line_says_when_another_model_answers(bot):
     assert "〜" not in shown()
     _renderer().on_final("cinque", None, "gemini-2.5-flash")
     assert "〜" not in shown()
+
+
+@pytest.mark.unit
+def test_module_agent_frames_become_status_and_steps(bot):
+    """Oracle operating mode «agents»: an agent at work shows one status line and a step each (moduli-come-agenti)."""
+    r = _renderer()
+    r.on_agent({"type": "agent", "event": "start", "agent_id": "a1", "module": "plutus", "label": "Expenses",
+                "task": "spese di novembre"})
+    assert "Expenses" in r.status_text or "Spese" in r.status_text
+    r.on_agent({"type": "agent", "event": "tool", "agent_id": "a1", "module": "plutus", "tool": "finance_search"})
+    r.on_agent({"type": "agent", "event": "end", "agent_id": "a1", "module": "plutus", "label": "Expenses",
+                "ok": True})
+    assert len(r.steps) == 2

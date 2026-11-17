@@ -248,6 +248,10 @@ _HUB_REGISTRATION_PAYLOAD = {
     "tags": ["core", "storage"],
     "topology_tags": ["layer:foundation", "domain:storage", "status:stable"],
     "capabilities": {
+        "when_to_use": "backups of the owner's data and feedback on answers",
+        "manual": "backup_status/backup_list read; backup_run only when the owner asks; feedback_submit stores a "
+                  "rating of an answer.",
+        "title": "Backup",
         "api_prefix": "/api",
         "commands": [
             {

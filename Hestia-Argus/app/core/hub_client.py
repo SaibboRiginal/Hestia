@@ -35,6 +35,10 @@ def register(*, quiet_success: bool = False) -> bool:
         # on every registration and was never reachable through Hub).
         "topology_tags": ["layer:foundation", "domain:observability", "status:stable"],
         "capabilities": {
+            "when_to_use": "health of the assistant: services up or down, incidents, logs, performance",
+            "manual": "system_status first; system_incidents, system_log, system_performance, system_analysis for "
+                      "details. Answer from live tools, never from memory.",
+            "title": "System health",
             # Owns the "system" tool domain without being layer:domain.
             "owns_tool_domains": ["system"],
             "argus_status": {

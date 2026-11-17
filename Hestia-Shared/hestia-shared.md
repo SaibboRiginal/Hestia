@@ -97,6 +97,8 @@ the FastAPI app (CORS, `/health` with mirror state, log router, errors: `Invalid
 `StoreUnavailable` → 503), the Hub client `kit.hub` (`ok`/`call` through `/route`, `notify(event)` = Hermes ingest,
 `llm(prompt, use_case=)` = Oracle `/api/llm/chat`, None on failure), the Archive mirror `kit.store`
 (`Store`: LWW rows by cursor, `items/data/upsert/delete`, epoch reset), `kit.settings` (Themis) and `kit.caps`.
+The registration sends `when_to_use`, `manual` and `title` in `capabilities`: in Oracle's operating mode `agents`
+they are the module's agent (job area, rules, label in the clients).
 `kit.tools(list, prefix=)` mounts the MCP router and one REST path per tool (`{api}/tools/<name without prefix>`,
 arguments coerced by the schema, errors as `{"error": …}`); `kit.finish()` mounts them **before** the module's own
 `{api}/{id}/…` routes (so `tools/done` is never read as an id) plus the settings router. `agenda_rules(fn)`,
@@ -168,6 +170,7 @@ Emitters: `Hestia-Oracle/app/core/services/stream_emitter.py`.
 |---|---|---|
 | `status` | `content` | transient progress line (replaced, never kept) |
 | `thinking` | `action` (reasoning/tool_call/tool_result), `content`, `tool`, `turn`, `metadata` | collapsible reasoning box |
+| `agent` | `event` (start/tool/end), `agent_id`, `module`, `label`, `task`, `model`, `provider`, `tool`, `ok`, `summary`, `ms` | module agent at work (Oracle operating mode `agents`): steps of the reasoning box, a status line on Telegram |
 | `token` | `text` | streamed answer |
 | `final` | `reply`, `session_id`, `domain` | the answer (exactly once) |
 | `notice` | `kind`, `level`, `icon`, `emoji`, `title`, `detail`, `data` | **system message**: visually distinct from chat (icon/pill), filtered by user settings |

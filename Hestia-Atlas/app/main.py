@@ -28,6 +28,10 @@ except ModuleNotFoundError:
 class FetchService(HestiaServiceBase):
     def build_capabilities(self) -> dict:
         return {
+            "when_to_use": "the web: search the internet, read a page, recipes from a link",
+            "manual": "web_search for searches, fetch_url to read a page the owner gave; quote what the page says, "
+                      "never invent it.",
+            "title": "Web",
             "health_check": "/health",
             "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
             "module_tool_domains": ["web"],

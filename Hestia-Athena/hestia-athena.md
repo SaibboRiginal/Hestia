@@ -436,3 +436,6 @@ as a person (pages, help, agenda titles, notes) write `{assistant}` and say the 
 app keep «Hestia».
 
 **2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the area «cognition» is shown with the assistant's name in Pensieri, «Yourself» in hidden text.
+
+## Module agent (Oracle operating mode «agents», 2026-11-17)
+The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-moduli-come-agenti`.

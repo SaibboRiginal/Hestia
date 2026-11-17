@@ -151,6 +151,10 @@ class ToolDefinition:
     writes: bool = False
     title: str = ""         # human label for notices (e.g. "📅 Crea evento")
     method: str = ""        # HTTP method of a module tool (origin gate: DELETE is destructive)
+    service: str = ""       # owner module of a module tool (operating mode «agents» groups tools by it)
+    # The tool's dict result ``answer`` IS the reply when it is the only call of a step (a module agent that
+    # answered in the assistant's voice): no extra model call to restate it.
+    direct: bool = False
 
 
 # ── Scratchpad message ─────────────────────────────────────────────────────────
@@ -450,8 +454,12 @@ def run_agent_loop(
     prior_actions: list[dict] | None = None,
     trace_out: dict | None = None,
     context_window: int = 0,
+    live_notes: Callable[[], str] | None = None,
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
+
+    *live_notes*: read again at every step and added after the scratchpad (module agents' turn board: what the
+    other agents of this turn found meanwhile).
 
     *context_window*: window of the model that answers (0 = the local model's). Budget and compaction follow
     it: a cloud model with a million tokens must not be compacted at the size of the local one.
@@ -583,6 +591,13 @@ def run_agent_loop(
             dynamic_parts.append(action_hint.strip())
         for msg in scratchpad:
             dynamic_parts.append(f"[{msg.role.upper()}]: {msg.content}")
+        if live_notes is not None:
+            try:
+                _notes = str(live_notes() or "").strip()
+            except Exception:
+                _notes = ""
+            if _notes:
+                dynamic_parts.append(_notes)
         _failed = _failed_writes(tool_log)
         if _failed:
             dynamic_parts.append(_FAILED_WRITES_NOTE.format(titles=", ".join(_failed)))
@@ -966,6 +981,18 @@ def run_agent_loop(
                     _force_final = True
             if _force_final:
                 scratchpad.append(ScratchMessage("tool", STOP_MESSAGE, turn))
+
+            # Direct answer (module agents): the turn's only call answered the owner itself.
+            if len(_results_list) == 1 and len(tool_log) == 1 and _results_list[0]["ok"]:
+                _only = _results_list[0]
+                _odef = tool_map.get(_only["name"])
+                _ores = _only["result"]
+                if getattr(_odef, "direct", False) and isinstance(_ores, dict) \
+                        and str(_ores.get("answer") or "").strip() and not _ores.get("ask"):
+                    final_answer = str(_ores["answer"]).strip()
+                    final_tokens = [final_answer]
+                    logger.info("event=agent_loop_direct_answer turn=%d tool=%s", turn, _only["name"])
+                    break
 
             _ask = next((e["ask"] for e in tool_log if e.get("turn") == turn and e.get("ask")), None)
             if _ask:

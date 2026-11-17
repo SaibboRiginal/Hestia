@@ -98,6 +98,20 @@ class ReplyRenderer:
         if self.thinking_mode == "live" and not self.tokens:
             self._live_edit()
 
+    def on_agent(self, evt: dict) -> None:
+        """Module agent at work (Oracle operating mode «agents»): one status line while it works, one step each."""
+        label = tr(str(evt.get("label") or evt.get("module") or ""))
+        event = str(evt.get("event") or "")
+        if event == "start":
+            self.steps.append(tr("• {0}: working…", label))
+            self.status_text = tr("{0}: working…", label)
+        elif event == "end":
+            self.steps.append(tr("  {0}: done", label) if evt.get("ok") else tr("  {0}: failed", label))
+        else:
+            return
+        if not self.tokens:
+            self._live_edit()
+
     def on_token(self, text: str) -> None:
         if not text:
             return

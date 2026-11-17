@@ -35,6 +35,12 @@ BRAIN_FALLBACK = "oracle.brain.fallback"
 BRAIN_MODES = [("interna", "Internal"), ("esterna", "External")]
 BRAIN_AGENTS = [("claude", "Claude Code (subscription)"), ("codex", "Codex (ChatGPT)")]
 BRAIN_FALLBACKS = [("interna", "Redo the turn in internal mode"), ("nessuno", "None: tell me it did not answer")]
+# Operating mode (dossier docs/work/2026-11-06-moduli-come-agenti): how a chat turn works. More values may come.
+OPERATING_MODE = "oracle.operating_mode"
+OPERATING_MODES = [("classic", "Classic"), ("agents", "Module agents")]
+AGENTS_MAX_PER_TURN = "oracle.agents.max_per_turn"
+AGENTS_HISTORY = "oracle.agents.history"
+AGENTS_STEPS = "oracle.agents.steps"
 
 settings = SettingsClient("oracle")
 
@@ -62,6 +68,14 @@ def _definitions() -> list[dict]:
                 help="E.g. sonnet, opus (Claude Code) or gpt-5-codex (Codex). Empty = the agent's default."),
         setting(BRAIN_FALLBACK, "If the external agent does not answer", "enum", "interna", group="Models", order=7,
                 options=BRAIN_FALLBACKS),
+        setting(OPERATING_MODE, "Operating mode", "enum", "classic", group="Models", order=8, options=OPERATING_MODES,
+                help="Classic: a classifier picks the domains, one loop holds their tools. Module agents: the brain sees one colleague per module and hands it a job; each agent works with its own tools and model chain. How many agents really run together is decided by the local model queue."),
+        setting(AGENTS_MAX_PER_TURN, "Agents per answer", "int", 4, group="Models", order=9, min=1, max=12,
+                unit="agents", advanced=True, help="Module agents: most agents one answer may call."),
+        setting(AGENTS_HISTORY, "Conversation an agent reads", "int", 6, group="Models", order=10, min=0, max=30,
+                unit="messages", advanced=True, help="Module agents: last messages of the chat given to each agent."),
+        setting(AGENTS_STEPS, "Steps of an agent", "int", 8, group="Models", order=11, min=1, max=40,
+                unit="steps", advanced=True, help="Module agents: most steps (tool calls) of one agent's job."),
         setting(USAGE_RETENTION, "Keep model usage for", "int", 90, group="Usage", order=0, min=1,
                 max=3650, unit="days", help="Each model call stays in the Usage panel for these days."),
         setting(PRICING_KEY, "Model prices", "object", {}, group="Usage", order=1,
@@ -528,3 +542,9 @@ def chat_mode(requested: str | None, *, client: str = "", session: str = "") -> 
         return explicit
     # user_values never raises: Themis down → declared defaults ([🔄] logged there).
     return normalize_mode(settings.user_values(client=client, session=session).get(MODE)) or "auto"
+
+
+def operating_mode() -> str:
+    """``classic`` or ``agents`` (live; unknown value = ``classic``)."""
+    value = str(settings.get(OPERATING_MODE) or "classic").strip().lower()
+    return value if value in {v for v, _ in OPERATING_MODES} else "classic"
