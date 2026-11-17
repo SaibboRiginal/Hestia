@@ -432,6 +432,18 @@ names only. Contract: swagger `DisplayBlock`. `file(blob_id, name, mime)` (≤ 1
 blobs (a generated document, an image); Telegram fetches it through Hub (`archive api/blobs/{id}/base64`) and sends
 it under the card, as a photo when the mime is `image/*`, otherwise as a document (W5).
 
+## Shaped outputs (`hestia_common.compact_output`, dossier `docs/work/2026-11-17-output-compatti`)
+Every output that goes back into a model (tool results in Oracle, Forge tests and searches, module agents) is shaped
+by one function, deterministic, no model:
+```python
+from hestia_common.compact_output import shape, shape_text
+s = shape(payload_or_text, max_chars)   # Shaped(text, cut, full, total_items)
+```
+JSON: empty values out (False/0 stay), a list of ≥ 3 same-shaped objects → `{"columns", "rows"}`, compact separators;
+over `max_chars` the longest lists keep the most items that fit, error items first, with `"more": "showing N of M"`.
+Text/logs: repeated lines → `line  [×N]`; over the budget head + error lines + tail. `full` = the whole output without
+loss (Oracle keeps it for `result_more`). `max_chars ≤ 0` = only the lossless shaping.
+
 ## Presence client (`hestia_common.presence_client`)
 
 Assistant activity state kept by Chronos (see `Hestia-Chronos/hestia-chronos.md`). Report facts, ask effects —

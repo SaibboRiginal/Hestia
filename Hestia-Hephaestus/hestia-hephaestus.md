@@ -389,6 +389,10 @@ one is clipped with a hint to read a smaller range. A stop is reported precisely
 (answer cut, `finish_reason=length` → raise num_ctx or use `claude`), `turn limit reached`, or
 `model stopped calling tools`. Coding on a local model needs a large window (≥32k tokens).
 
+Test runs and searches reach the model shaped by `hestia_common.compact_output.shape_text` (`t_run_tests` 4000
+chars, `t_search` 6000): repeated lines squeezed, head + failure lines + tail, so a failure in the middle of a long
+run is not lost (dossier `docs/work/2026-11-17-output-compatti`). The full test output stays for the Sviluppo page.
+
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Riparazioni: 5; sviluppo › Lavori: 10; sviluppo › Avanzate: 1; sviluppo › Impostazioni sviluppo: 3 (area › section: tools).
 

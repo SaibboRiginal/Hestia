@@ -28,7 +28,7 @@ import re
 import time
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Callable, Iterator
+from typing import Any, Callable, Iterator
 
 import requests
 
@@ -36,6 +36,7 @@ from core.services import prompt_config
 from core.services import stream_emitter as _stream_emitter
 from core.services import llm_bus as _llm_bus
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.compact_output import Shaped, shape as shape_output
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
@@ -107,6 +108,10 @@ class TokenCounter:
             return 0
         return max(1, int(len(text) / self._ratio))
 
+    @property
+    def chars_per_token(self) -> float:
+        return self._ratio
+
     def from_chars(self, chars: int) -> int:
         """Tokens of *chars* characters (same ratio as ``estimate``, without building a string)."""
         return int(max(0, int(chars or 0)) / self._ratio)
@@ -156,6 +161,7 @@ class ScratchMessage:
     content: str
     turn: int = -1        # loop turn that produced it
     stubbed: bool = False
+    ref: str = ""         # tool result kept whole for result_more ("r3"), "" = not kept
 
 
 # Context editing (Anthropic-style): once the prompt fills this share of the window, tool results
@@ -173,8 +179,9 @@ def _stub_old_tool_results(scratchpad: list[ScratchMessage], turn: int, after_tu
         if msg.role != "tool" or msg.stubbed or msg.turn < 0 or turn - msg.turn <= after_turns:
             continue
         head = msg.content.split("\n", 1)[0][:160]
-        scratchpad[i] = ScratchMessage(
-            "tool", f"{head} […older result shortened; call the tool again if you need it]", msg.turn, True)
+        again = (f'the whole result: {RESULT_MORE_TOOL}(ref="{msg.ref}")' if msg.ref
+                 else "call the tool again if you need it")
+        scratchpad[i] = ScratchMessage("tool", f"{head} […older result shortened; {again}]", msg.turn, True, msg.ref)
         count += 1
     return count
 
@@ -367,13 +374,62 @@ def _failed_writes(tool_log: list[dict]) -> list[str]:
     return out
 
 
-def _truncate_tool_result(result: str, max_chars: int | None = None) -> str:
-    if max_chars is None:
-        max_chars = _settings().get_int(_settings().TOOL_RESULT_MAX_CHARS, 1)
-    if len(result) <= max_chars:
-        return result
-    return result[:max_chars] + (f"\n[…result truncated at {max_chars} of {len(result)} chars: "
-                                 "the rest is missing. Never present this as complete.]")
+# A tool result may take this share of the window of the model that answers, when the setting
+# oracle.agent.tool_result_max_chars is 0 (automatic): 16k → ~2,000 chars (five results in a step = a fifth of the
+# window), 32k → ~3,900, 256k → the ceiling. A number in the setting forces it.
+_RESULT_WINDOW_SHARE = 0.04
+_RESULT_MIN_CHARS, _RESULT_CEILING_CHARS = 800, 24000
+_FALLBACK_WINDOW = 8192
+RESULT_MORE_TOOL = "result_more"
+_STUB_KEEP_MIN_CHARS = 200   # shorter results are never stubbed to less, so they need no kept copy
+
+
+def tool_result_budget(window_tokens: int, chars_per_token: float = 3.0) -> int:
+    """Characters one tool result may take in the prompt: the setting when it is a number, else a share of the
+    window (the same window that drives budget and compaction)."""
+    forced = _settings().get_int(_settings().TOOL_RESULT_MAX_CHARS, 0)
+    if forced > 0:
+        return forced
+    window = window_tokens if window_tokens > 0 else _FALLBACK_WINDOW
+    return max(_RESULT_MIN_CHARS, min(_RESULT_CEILING_CHARS, int(window * _RESULT_WINDOW_SHARE * chars_per_token)))
+
+
+def _shape_tool_result(result: Any, max_chars: int, ref: str = "") -> tuple[str, Shaped]:
+    """The tool result as the model reads it (``hestia_common.compact_output``: empty fields out, same-shaped
+    lists as tables, compact JSON; over *max_chars* fewer items with «showing N of M», logs head+errors+tail).
+    When something was left out, the note says how to get the rest (*ref*) and never to present it as complete."""
+    shaped = shape_output(result if result is not None else "", max_chars)
+    if not shaped.cut:
+        return shaped.text, shaped
+    rest = (f'The rest: {RESULT_MORE_TOOL}(ref="{ref}", part=2).' if ref else "The rest is missing.")
+    return (shaped.text + f"\n[…shortened to fit, {len(shaped.text)} of {len(shaped.full)} chars: not the whole "
+            f"result, never present it as complete. {rest}]"), shaped
+
+
+def _result_more_tool(store: dict[str, str], part_chars: int) -> ToolDefinition:
+    """Turn tool: a piece of a tool result that was shortened, from the copy kept for this turn (no new call to
+    the module, no extra side effect)."""
+    def _handler(ref: str = "", part: int = 1, **_ignored) -> tuple[bool, str]:
+        full = store.get(str(ref or "").strip())
+        if full is None:
+            return False, f"unknown ref {ref!r}: known {', '.join(sorted(store)) or 'none'}"
+        size = max(200, part_chars)
+        parts = max(1, -(-len(full) // size))
+        p = min(max(1, int(part or 1)), parts)
+        tail = f"\n[part {p} of {parts}" + (f'; next: {RESULT_MORE_TOOL}(ref="{ref}", part={p + 1})]'
+                                              if p < parts else "; last]")
+        return True, full[(p - 1) * size:p * size] + tail
+
+    return ToolDefinition(
+        name=RESULT_MORE_TOOL,
+        description="Read more of a tool result that was shortened in this turn. Use the ref and part the note gives.",
+        parameters={"type": "object", "properties": {
+            "ref": {"type": "string", "description": "ref of the shortened result, e.g. r2"},
+            "part": {"type": "integer", "description": "part to read, from 1"}},
+            "required": ["ref"]},
+        handler=_handler,
+        title="Read more of a result",
+    )
 
 
 def run_agent_loop(
@@ -415,13 +471,17 @@ def run_agent_loop(
     max_agent_tokens = _cfg.get_int(_cfg.MAX_TOKENS, 0)
     early_exit_no_tool_turns = _cfg.get_int(_cfg.EARLY_EXIT_NO_TOOL_TURNS, 1)
     max_parallel_tools = _cfg.get_int(_cfg.MAX_PARALLEL_TOOLS, 1)
+    # ── Token counter (model-aware, Ollama-calibrated) ───────────────────────
+    _counter = TokenCounter(window=context_window)
+    # Whole tool results of this turn, for result_more (the prompt gets them shaped to the window).
+    _full_results: dict[str, str] = {}
+    _result_chars = tool_result_budget(_counter.context_window, _counter.chars_per_token)
+    if tools and not any(t.name == RESULT_MORE_TOOL for t in tools):
+        tools = [*tools, _result_more_tool(_full_results, _result_chars)]
     # Deterministic order: the tool list is part of the cached prompt prefix.
     tools = sorted(tools, key=lambda t: t.name)
     tool_map = {t.name: t for t in tools}
     tool_names = sorted(tool_map.keys())
-
-    # ── Token counter (model-aware, Ollama-calibrated) ───────────────────────
-    _counter = TokenCounter(window=context_window)
 
     # ── TRACE: entry ──────────────────────────────────────────────────────────
     _est_tokens = _counter.estimate
@@ -820,11 +880,15 @@ def run_agent_loop(
                 ok = r["ok"]
                 result_raw = r["result"]
                 dur = r.get("duration_ms", 0)
-                result_str = str(result_raw) if result_raw is not None else ""
-                chars = len(result_str)
-
-                # Truncate for scratchpad
-                result_trunc = _truncate_tool_result(result_str)
+                # Shaped for the scratchpad; the whole result stays for result_more when something was left out
+                # (never for result_more itself: its pieces are already the kept copy).
+                _ref = "" if tn == RESULT_MORE_TOOL else f"r{len(_full_results) + 1}"
+                result_trunc, _shaped = _shape_tool_result(result_raw, _result_chars, _ref)
+                chars = len(_shaped.full)
+                if _ref and (_shaped.cut or len(_shaped.full) > _STUB_KEEP_MIN_CHARS):
+                    _full_results[_ref] = _shaped.full   # also uncut ones: a later stub points here
+                else:
+                    _ref = ""
                 result_count = 1
                 if isinstance(result_raw, list):
                     result_count = len(result_raw)
@@ -860,7 +924,7 @@ def run_agent_loop(
 
                 # Format scratchpad entry
                 _tool_scratch = f"[{tn}] → {'✅' if ok else '❌'} {result_trunc}"
-                scratchpad.append(ScratchMessage("tool", _tool_scratch, turn))
+                scratchpad.append(ScratchMessage("tool", _tool_scratch, turn, ref=_ref))
 
                 # Log for post-answer summary
                 _tdef = next((t for t in tools if t.name == tn), None)

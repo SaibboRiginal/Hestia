@@ -1530,7 +1530,7 @@ class OracleEngine:
         """Ask the analyst to format a structured service payload as human text (in ``locale``; empty → the
         owner's language setting)."""
         t0 = time.perf_counter()
-        payload_text = json.dumps(payload, ensure_ascii=False, indent=2)
+        payload_text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)   # no indent: spaces are tokens
         is_alert = str(command or "").startswith("alert:")
         is_multi_alert = bool(isinstance(payload, dict)
                               and payload.get("multiple_alerts"))

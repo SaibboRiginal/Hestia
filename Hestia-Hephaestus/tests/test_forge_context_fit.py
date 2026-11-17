@@ -79,3 +79,22 @@ def test_engines_import_like_the_container():
     res = subprocess.run([sys.executable, "-c", code, str(root), str(shared)], capture_output=True, text=True,
                          cwd="/", env={"PATH": "/usr/bin:/bin", "LOG_LEVEL": "WARNING"})
     assert res.returncode == 0, res.stderr[-800:]
+
+
+@pytest.mark.unit
+class TestShapedCommandOutput:
+    """Test and search output go back to the model shaped (hestia_common.compact_output), dossier 2026-11-17."""
+
+    def test_failure_in_the_middle_survives(self, tmp_path):
+        from app.forge.agent_tools import AgentTools
+        log = "\n".join([f"PASSED test_{i}" for i in range(400)] + ["E   AssertionError: 1 != 2", "FAILED t_x"]
+                        + [f"PASSED t2_{i}" for i in range(400)] + ["=== 1 failed, 800 passed ==="])
+        tools = AgentTools(tmp_path, lambda paths: (False, log))
+        out = tools.t_run_tests()
+        assert out.startswith("FAIL\n") and len(out) <= 4100
+        assert "AssertionError" in out and out.endswith("=== 1 failed, 800 passed ===")
+
+    def test_repeated_lines_squeezed(self, tmp_path):
+        from app.forge.agent_tools import AgentTools
+        tools = AgentTools(tmp_path, lambda paths: (True, "warning: x\n" * 50 + "ok"))
+        assert tools.t_run_tests() == "PASS\nwarning: x  [×50]\nok"

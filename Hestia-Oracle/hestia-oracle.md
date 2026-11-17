@@ -506,7 +506,7 @@ map (`agent_action_tool_policy`, overridable in the prompts file), not env.
 |---|---|
 | Modelli | `oracle.providers`, `oracle.chains`, `oracle.usecases` (object, editor Cervello → Modelli), `oracle.quota.cooldown_minutes` (60), `oracle.brain.mode` (interna), `.agent` (claude), `.model` (sonnet), `.fallback` (interna) |
 | Uso | `oracle.usage.retention_days` (90), `oracle.pricing` (`{"provider/model": {in, out, cached}}` $ per Mtok, `{}`) |
-| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (2000), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8); loop guard `oracle.agent.giri.{ripetizioni 4, finestra 12, attesa_secondi 30, verifiche 3}`; goal `oracle.obiettivo.giri` (8), `.giri_per_risposta` (3) |
+| Agente | `oracle.agent.max_turns` (25), `.max_tokens` (0 = no limit), `.tool_result_max_chars` (0 = 4 % of the window), `.early_exit_no_tool_turns` (2), `.max_parallel_tools` (8); loop guard `oracle.agent.giri.{ripetizioni 4, finestra 12, attesa_secondi 30, verifiche 3}`; goal `oracle.obiettivo.giri` (8), `.giri_per_risposta` (3) |
 | Contesto | `oracle.context.history_messages` (6), `.history_message_chars` (500), `.entities` (12), `.entity_field_chars` (280), `.compact_trigger_messages` (20), `.compact_keep_recent` (6), `.today_agenda` (on); `oracle.chat.consapevolezza_righe` (3); `oracle.provider.ollama.tool_call_mode` (auto/native/text), `.thinking_families` (gemma4, gemma3, qwen3…); `oracle.provider.llamacpp.slots` (3) |
 | Tempi | `oracle.timeouts.{foreground_chat 8, action_selection 12, action_service_route 25, memory_extraction 10, background_compaction 8, notification_formatting 12, gateway_chat 600}` s; `oracle.provider.ollama.timeout` (120 s), `.embed_timeout` (60 s); `oracle.provider.retries` (3), `.retry_delay` (1.0 s, doubles) |
 | Memoria | `oracle.memory.notice_wait` (8 s), `.domain_threshold` (0.55), `.preference_domains` (name → description, re-embedded on change), `.force_owner_target` (on); `oracle.hints.*` |
@@ -664,6 +664,13 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   (`ContextBuilder.stable_window`, per session, in memory) instead of sliding every turn.
 - **Context editing**: when a loop prompt passes 50 % of the window, tool results older than
   `oracle.context.tool_result_stub_after_turns` (2, 0 = off) become a one-line stub (no LLM call).
+- **Shaped tool results** (dossier `docs/work/2026-11-17-output-compatti`): every tool result goes through
+  `hestia_common.compact_output.shape` (empty fields out, same-shaped lists as tables, compact JSON, «showing N of M»,
+  error items kept; logs head + errors + tail). Budget `agent_loop.tool_result_budget`: setting
+  `oracle.agent.tool_result_max_chars` 0 = automatic = 4 % of the answering model's window (floor 800, ceiling 24,000
+  chars; 16k ≈ 2,000), a number forces it. A shortened result says so and gives `result_more(ref="rN", part=2)`:
+  a turn tool (always present when the turn has tools) that reads the whole copy kept for the turn, no new call to
+  the module. Stubbed old results point to it too. Prompt JSON (module entities, notification payloads) has no indent.
 - **Type `openai`** — "Compatibile OpenAI" (llama-server, vLLM, DeepSeek, OpenRouter): address in the provider
   (`…/v1`, default `llamacpp` = `http://host.docker.internal:8080/v1`), optional key `ORACLE_KEY_<NAME>`. Static prompt
   part goes in the system message; `cache_prompt` (setting `oracle.provider.openai.cache_prompt`) for llama-server;
