@@ -1,8 +1,8 @@
 /**
- * <oracle-brain> — "Cervello": what Oracle does inside. Recent turns (route, domains, tools, model/provider, ms,
+ * <oracle-brain> — "Brain": what Oracle does inside. Recent turns (route, domains, tools, model/provider, ms,
  * tokens), LLM use today per use case/model, tokens and cost per day, rolling stats per use case, Claude Code.
  * Reads GET /api/ui/activity · /api/ui/stats · /api/ui/code. Numbers are counted since Oracle started (in memory).
- * Tabs «Uso» (<oracle-usage>, calls kept in Archive) and «Modelli» (<oracle-models>, providers/chains/use cases).
+ * Tabs «Usage» (<oracle-usage>, calls kept in Archive) and «Models» (<oracle-models>, providers/chains/use cases).
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, ROUTES, ago, cost, dayLabel, ms, num, when } from './util';

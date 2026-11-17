@@ -87,7 +87,7 @@ def emit_final(reply: str, domain: str = "none", origin: dict | None = None, tra
 
 
 def changes_from_log(tool_log: list[dict]) -> list[dict]:
-    """«Cosa ho cambiato» (Cindy 13): one item per successful write of the turn; ``undo`` when the module declared
+    """«What I changed» (Cindy 13): one item per successful write of the turn; ``undo`` when the module declared
     how to undo it in its result (``{"tool", "args", "label"}``, or a tool name + the call's ``id``)."""
     out = []
     for entry in tool_log or []:
@@ -108,7 +108,7 @@ def changes_from_log(tool_log: list[dict]) -> list[dict]:
 
 
 def emit_changes(items: list[dict], session_id: str = "") -> str:
-    """Return the ``changes`` frame: what this answer changed, each with its Annulla (clients may ignore it)."""
+    """Return the ``changes`` frame: what this answer changed, each with its Undo (clients may ignore it)."""
     return json.dumps({"type": "changes", "items": items, "session_id": session_id}, ensure_ascii=False) + "\n"
 
 

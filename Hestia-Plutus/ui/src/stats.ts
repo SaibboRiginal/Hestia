@@ -37,7 +37,7 @@ export class PlutusStats extends HestiaElement {
         ${s.categories.length ? html`<div class="card col"><h2>${tr("By category")}</h2>
           <hxk-chart type="line" height="180" unit=${unit} .labels=${s.months.map((m: any) => m.label.split(' ')[0].slice(0, 3))}
             .series=${s.categories.slice(0, 6).map((c: any) => ({ name: c.label, values: s.months.map((m: any) => m.by_category[c.id] || 0) }))}></hxk-chart>
-          <div class="list">${s.categories.map((c: any) => html`<div class="li" @click=${() => this.host.navigate('transactions', { categoria: c.id })}>
+          <div class="list">${s.categories.map((c: any) => html`<div class="li" @click=${() => this.host.navigate('transactions', { category: c.id })}>
             ${catDot(c)}<span class="grow truncate">${c.label}</span><span class="small muted tnum">${tr("average")} ${money(c.avg, s.currency)}</span>
             <span class="tnum amt">${money(c.total, s.currency)}</span></div>`)}</div></div>` : nothing}
         ${s.merchants.length ? html`<div class="card col"><h2>${tr("Merchants")}</h2>${s.merchants.map((m: any) => html`<div class="between small" style="padding:4px 0">

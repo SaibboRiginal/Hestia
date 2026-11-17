@@ -12553,12 +12553,12 @@ paths:
             schema:
               type: object
               properties:
-                momento: {type: string, enum: [evening, morning], default: evening, description: "evening = day + next day; morning = previous day + day"}
+                moment: {type: string, enum: [evening, morning], default: evening, description: "evening = day + next day; morning = previous day + day"}
                 day: {type: string, format: date, description: "Default today (local)"}
                 deliver: {type: boolean, default: true}
                 trigger: {type: string, example: agenda}
       responses:
-        "200": {description: "{status: ok|empty, momento, day, next, text, fallback, delivered, pieces[]}"}
+        "200": {description: "{status: ok|empty, moment, day, next, text, fallback, delivered, pieces[]}"}
         "400": {description: "day must be YYYY-MM-DD"}
 
   /api/athena/recap/now:
@@ -12579,7 +12579,7 @@ paths:
       parameters:
         - {name: limit, in: query, schema: {type: integer, default: 20}}
       responses:
-        "200": {description: "{count, recaps[{id, created_at, momento, day, text, trigger, fallback, delivered, pieces}]}"}
+        "200": {description: "{count, recaps[{id, created_at, moment, day, text, trigger, fallback, delivered, pieces}]}"}
 
   /api/athena/recap/today:
     post:
@@ -12588,7 +12588,7 @@ paths:
       servers:
         - url: http://localhost:19009
       responses:
-        "200": {description: "{status: ok|empty, momento, day, text}"}
+        "200": {description: "{status: ok|empty, moment, day, text}"}
 
   /api/athena/learning:
     get:

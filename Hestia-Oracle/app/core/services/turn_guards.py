@@ -101,7 +101,7 @@ class TurnGuards:
             reason = self.check(tool, kw)
             if reason:
                 logger.info("[🔄] event=turn_guard_refused tool=%s reason=%s", tool.name, reason[:60])
-                if reason.startswith("ALREADY"):   # nothing to do, not a failure: no «Fatto», no «non riuscito»
+                if reason.startswith("ALREADY"):   # nothing to do, not a failure: no «Done», no «failed»
                     return True, {"already_known": True, "note": reason}
                 return False, reason
             ok, out = handler(**kw)

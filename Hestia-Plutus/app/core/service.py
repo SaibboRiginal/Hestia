@@ -21,7 +21,7 @@ from hestia_common.signals_client import iso_week, last_weeks, metric, signal
 
 from . import catalog, paypal, phone
 from .store import Store, now_iso
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_plutus.service")
 
@@ -237,7 +237,7 @@ class Plutus:
         if not kind and typed_category:
             kind = {"income": "income"}.get(self.category_map()[typed_category].get("kind"), "")
         if not kind and source in ("manual", "quick", "chat") and amount > 0:
-            kind = "expense"                     # «ho speso 12 €»: a typed positive amount is a spending
+            kind = "expense"                     # «I spent 12 €»: a typed positive amount is a spending
         if kind == "expense":
             amount = -abs(amount)
         elif kind == "income":
@@ -388,7 +388,7 @@ class Plutus:
                 if float(b.get("amount") or 0) > 0}
 
     def set_budget(self, category: str, amount: Any) -> dict:
-        target = "total" if catalog.slug(category) in ("total", "totale", "") else self.resolve_category(category)
+        target = "total" if (catalog.slug(category) or "") in {"", *word_set("plutus.total")} else self.resolve_category(category)
         if not target:
             raise Invalid(tr("unknown category «{0}»", category))
         value = catalog.parse_amount(amount)
@@ -652,7 +652,7 @@ class Plutus:
         if spent:
             top = sorted(by_cat.items(), key=lambda kv: -kv[1])[:3]
             done.append({"text": tr("Spent {0} (", money(spent))
-                                 + ", ".join(f"{(cats.get(c) or {}).get('label') or c or 'altro'} {money(v)}" for c, v in top)
+                                 + ", ".join(f"{(cats.get(c) or {}).get('label') or c or tr('other')} {money(v)}" for c, v in top)
                                  + ")"})
         income = sum(t["amount"] for t in counted if t["amount"] > 0)
         if income:
@@ -720,7 +720,7 @@ class Plutus:
         return out
 
     def signals(self) -> tuple[list[dict], list[dict]]:
-        """Deterministic signals + weekly metrics (12 ISO weeks) for the reflection layer. Texts say «Spese»."""
+        """Deterministic signals + weekly metrics (12 ISO weeks) for the reflection layer. Texts say «Expenses»."""
         sym, cats = self._sym(), self.category_map()
         sigs: list[dict] = []
         # budget pace / over budget (month and per category)

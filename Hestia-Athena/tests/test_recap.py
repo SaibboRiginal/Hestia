@@ -94,7 +94,7 @@ def test_offline_services_are_not_asked():
 
 def test_compose_writes_with_oracle_delivers_and_stores():
     hub = FakeHub({"hercules": HERCULES, "plutus": PLUTUS})
-    out = _composer(hub).compose(momento="evening", trigger="agenda")
+    out = _composer(hub).compose(moment="evening", trigger="agenda")
     assert out["status"] == "ok" and out["text"] == "<b>Oggi</b> bene." and not out["fallback"]
     assert out["delivered"] and out["day"] == "2026-10-20"
     oracle = next(j for s, j in hub.calls if s == "oracle")
@@ -110,7 +110,7 @@ def test_compose_writes_with_oracle_delivers_and_stores():
 
 def test_oracle_down_falls_back_to_template():
     hub = FakeHub({"hercules": HERCULES, "plutus": PLUTUS}, oracle=None)
-    out = _composer(hub).compose(momento="evening")
+    out = _composer(hub).compose(moment="evening")
     assert out["fallback"] and out["delivered"]
     assert "Push A" in out["text"] and "<b>Domani, mercoledì 21 ott</b>" in out["text"]
     assert "Pull B alle 18:30" in out["text"]
@@ -118,14 +118,14 @@ def test_oracle_down_falls_back_to_template():
 
 def test_quiet_day_sends_nothing():
     hub = FakeHub({"hercules": {"module": "hercules", "empty": True}})
-    out = _composer(hub).compose(momento="evening")
+    out = _composer(hub).compose(moment="evening")
     assert out["status"] == "empty" and not out["delivered"]
     assert not [s for s, _ in hub.calls if s in {"oracle", "hermes", "archive"}]
 
 
 def test_chat_request_is_not_delivered_nor_stored():
     hub = FakeHub({"hercules": HERCULES})
-    out = _composer(hub).compose(momento="morning", deliver=False, trigger="chat")
+    out = _composer(hub).compose(moment="morning", deliver=False, trigger="chat")
     assert out["text"] and not out["delivered"]
     assert not [s for s, _ in hub.calls if s in {"hermes", "archive"}]
     assert out["day"] == "2026-10-19"

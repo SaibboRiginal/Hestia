@@ -592,7 +592,7 @@ ui.webui(
            page("groceries", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="today")],
     widgets=[widget("today", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
                     open_page="today", icon="sparkle"),
-             widget("prossima", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="today",
+             widget("next", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="today",
                     icon="clock"),
              widget("products", "Expiring and to buy again", element="hygieia-alerts-widget", sizes=["m", "l"],
                     open_page="groceries", icon="drop"),

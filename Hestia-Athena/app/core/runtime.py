@@ -895,7 +895,7 @@ class AthenaRuntime:
                          t_start, t_end,
                          description="Thinking cycles (observe → evaluate → propose) only when you are not chatting. Skip/pause to stop Athena."),
             job_rule(JOB_EVENING, "Evening recap", service="athena", path="/api/athena/recap",
-                     body={"momento": "evening", "trigger": "agenda"}, recurrence="FREQ=DAILY",
+                     body={"moment": "evening", "trigger": "agenda"}, recurrence="FREQ=DAILY",
                      start_at=f"2026-01-01T{EVENING_AT}:00", flex=EVENING_FLEX, timeout_seconds=150,
                      description="How today went and what is on tomorrow, in one message. It can move earlier or later (20:00–23:30) to avoid your commitments."),
             *self._extra_rules(),
@@ -1356,10 +1356,10 @@ class AthenaRuntime:
             agenda_template(
             "recap", tr("Daily recap"), service="athena", path="/api/athena/recap",
             type="job", types=["job", "task"], icon="note", recurrence="FREQ=DAILY",
-            fields={"momento": {"type": "string", "label": tr("Moment"), "enum": ["morning", "evening"],
+            fields={"moment": {"type": "string", "label": tr("Moment"), "enum": ["morning", "evening"],
                                 "default": "morning",
                                 "description": tr("morning = yesterday in short + today; evening = today + tomorrow")}},
-            required=["momento"], body={"trigger": "agenda"}, title=tr("Recap ({momento})"),
+            required=["moment"], body={"trigger": "agenda"}, title=tr("Recap ({moment})"),
             description="A message with how it went and what awaits you. Add the morning one or a second recap.")])
         # Wait for Oracle inside the loop thread: blocking here would hold the
         # FastAPI startup (and /health) for up to 60 s.

@@ -92,7 +92,7 @@ hub = Hub(HUB_API_URL)
 store = Store(hub)
 
 
-# What Spese asks Oracle for (the chain is chosen by Marko in Oracle → Cervello → Modelli).
+# What Expenses asks Oracle for (the chain is chosen by the owner in Oracle → Brain → Models).
 LLM_USECASE = "plutus.reading"
 LLM_USECASES = [llm_usecase(LLM_USECASE, "Expenses · emails and statements", chain="fast",
                             help="Reads the emails or statements the automatic reader doesn't understand and proposes the categories.")]
@@ -315,7 +315,7 @@ def recurring_set(id: str, body: dict = Body(...)):
 
 @app.get(f"{API}/export")
 def export():
-    return {"filename": f"spese-{plutus.today().isoformat()}.json", "data": plutus.export()}
+    return {"filename": f"expenses-{plutus.today().isoformat()}.json", "data": plutus.export()}
 
 
 def _recap_piece(day, nxt) -> dict:
@@ -478,7 +478,7 @@ def phone_notification(body: dict = Body(...)):
 
 @app.post(f"{API}/mail/check")
 def mail_check(body: dict = Body(default={})):
-    """«Controlla email PayPal»: Iris passes again the last days' PayPal mails (dedup by id), then process."""
+    """«Check PayPal emails»: Iris passes again the last days' PayPal mails (dedup by id), then process."""
     days = int(body.get("days") or 7)
 
     def _run():
@@ -836,12 +836,12 @@ try:
                 handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "summary": True}),
         MCPTool(name="finance_search", description=("Search transactions: query (merchant/description), category, month or since/until YYYY-MM-DD, "
-                                                    "account (paypal, hype, contanti…), to_review. Also gives the total."),
+                                                    "account (paypal, hype, cash…), to_review. Also gives the total."),
                 parameters={"type": "object", "properties": {"query": S, "category": S, "month": S, "since": S,
                                                              "until": S, "account": S, "to_review": B, "limit": I}},
                 handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "primary": 2}),
-        MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category ristoranti) or an income (income=true). date YYYY-MM-DD (default today), account contanti (default) | hype | paypal."),
+        MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category restaurants) or an income (income=true). date YYYY-MM-DD (default today), account cash (default) | hype | paypal."),
                 parameters={"type": "object", "properties": {"amount": N, "category": S, "merchant": S, "date": S,
                                                              "account": S, "note": S, "income": B},
                             "required": ["amount"]},

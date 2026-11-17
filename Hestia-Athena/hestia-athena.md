@@ -266,7 +266,7 @@ One message a day, «com'è andata e cosa c'è domani». `app/core/recap.py` `Re
    only for its buttons (not in the text, not in the stored pieces). Example: «Racconta la giornata» (Hygieia, B9).
 
 When: agenda job `athena.recap.evening`, daily 21:30, `flex 20:00–23:30` (Chronos moves it around the user's
-events). Morning recap (previous day + today) = agenda template `recap` with `momento: mattina`, added by the user.
+events). Morning recap (previous day + today) = agenda template `recap` with `moment: morning`, added by the user.
 If the user deletes the evening job, «Attività standard» in the agenda puts it back in one click.
 WebUI: page **Recap** (order 132, text + facts per area), quick action «Recap adesso». Chat: tool `recap_today`.
 
@@ -297,7 +297,7 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/athena/memory/proposals` | Clean-up proposals still waiting for the owner (page «Cosa ho imparato») |
 | GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
-| POST | `/api/athena/recap` | Compose the daily recap `{momento: sera\|mattina, day?, deliver?, trigger?}` (agenda job `athena.recap.evening`, template `recap`) |
+| POST | `/api/athena/recap` | Compose the daily recap `{moment: evening\|morning, day?, deliver?, trigger?}` (agenda job `athena.recap.evening`, template `recap`) |
 | POST | `/api/athena/recap/now` | Quick action «Recap adesso» (evening, delivered) |
 | GET | `/api/athena/recaps?limit=` | Recap history (page Recap) |
 | POST | `/api/athena/recap/today` | MCP tool `recap_today` (chat: text only, not delivered nor stored) |

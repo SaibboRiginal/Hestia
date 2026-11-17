@@ -1,4 +1,4 @@
-/** <oracle-usage-widget> — "Uso modelli oggi": calls, tokens and cost of today, per model (GET /api/ui/stats). */
+/** <oracle-usage-widget> — "Model usage today": calls, tokens and cost of today, per model (GET /api/ui/stats). */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, cost, num } from './util';
 

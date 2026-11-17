@@ -32,11 +32,11 @@ interface LogsState { title: string; when: string; at: string; service: string; 
 export class ChronosAgenda extends HestiaElement {
   static properties = {
     ...HestiaElement.properties, tick: { state: true }, sideOpen: { state: true }, sel: { state: true }, selRect: { state: true },
-    editor: { state: true }, wizard: { state: true }, vistaRect: { state: true }, quick: { state: true }, quickBusy: { state: true },
+    editor: { state: true }, wizard: { state: true }, viewRect: { state: true }, quick: { state: true }, quickBusy: { state: true },
     logs: { state: true }, icsOpen: { state: true }, moveAsk: { state: true },
   };
   declare tick: number; declare sideOpen: boolean; declare sel: CalEvent | null; declare selRect: DOMRect | null;
-  declare editor: EditorSeed | null; declare wizard: Date | null; declare vistaRect: DOMRect | null;
+  declare editor: EditorSeed | null; declare wizard: Date | null; declare viewRect: DOMRect | null;
   declare quick: string; declare quickBusy: boolean; declare logs: LogsState | null; declare icsOpen: boolean;
   declare moveAsk: MoveRequest | null;
   private store!: CalStore;
@@ -84,10 +84,10 @@ export class ChronosAgenda extends HestiaElement {
     .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
     .view > * { flex: 1; min-height: 0; }
     .scrim { display: none; }
-    .vista { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
-    .vista h4 { font-size: 14px; font-weight: 600; margin: 0; }
-    .vista .lab { font-size: 12px; color: var(--text-2); font-weight: 500; display: flex; flex-direction: column; gap: 4px; }
-    .vista .lab small { color: var(--text-3); font-weight: 400; }
+    .view { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    .view h4 { font-size: 14px; font-weight: 600; margin: 0; }
+    .view .lab { font-size: 12px; color: var(--text-2); font-weight: 500; display: flex; flex-direction: column; gap: 4px; }
+    .view .lab small { color: var(--text-3); font-weight: 400; }
     .num { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--text-2); }
     .num input, .logs-bar select { width: 58px; height: 28px; padding: 2px 6px; text-align: center; font: inherit; color: var(--text);
       background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
@@ -114,7 +114,7 @@ export class ChronosAgenda extends HestiaElement {
 
   constructor() {
     super(); this.tick = 0; this.sideOpen = false; this.sel = null; this.selRect = null; this.editor = null; this.wizard = null;
-    this.vistaRect = null; this.quick = ''; this.quickBusy = false; this.logs = null; this.icsOpen = false; this.moveAsk = null;
+    this.viewRect = null; this.quick = ''; this.quickBusy = false; this.logs = null; this.icsOpen = false; this.moveAsk = null;
   }
 
   connectedCallback() {
@@ -131,7 +131,7 @@ export class ChronosAgenda extends HestiaElement {
   private onKey = (e: KeyboardEvent) => {
     const t = e.composedPath()[0] as HTMLElement | undefined;
     if (e.ctrlKey || e.metaKey || e.altKey || (t && ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
-    if (this.editor || this.wizard || this.logs || this.icsOpen || this.moveAsk || this.sel || this.vistaRect || !this.isConnected) return;
+    if (this.editor || this.wizard || this.logs || this.icsOpen || this.moveAsk || this.sel || this.viewRect || !this.isConnected) return;
     const s = this.store;
     const map: Record<string, () => void> = {
       t: () => s.today(), m: () => s.setView('month'), w: () => s.setView('week'), d: () => s.setView('day'), l: () => s.setView('list'),
@@ -343,7 +343,7 @@ export class ChronosAgenda extends HestiaElement {
     const s = this.store, vp = s.vp;
     const n = (key: NumKey, min: number, max: number) => html`<input type="number" min=${min} max=${max} .value=${String(vp[key])}
       @change=${(e: any) => this.num(key, e.target.value)}>`;
-    return html`<chronos-pop .open=${!!this.vistaRect} .anchor=${this.vistaRect} .width=${340} placement="below" @close=${() => (this.vistaRect = null)}>
+    return html`<chronos-pop .open=${!!this.viewRect} .anchor=${this.viewRect} .width=${340} placement="below" @close=${() => (this.viewRect = null)}>
       <div class="view">
         <h4>${tr("Calendar view")}</h4>
         <div class="lab">${tr("Windows (e.g. Athena when you are idle)")}
@@ -409,14 +409,14 @@ export class ChronosAgenda extends HestiaElement {
           <div class="search">${ic('search', 15)}<input placeholder=${tr("Search…")} .value=${s.search} @input=${(e: any) => s.setSearch(e.target.value)}></div>
           <button class="ib" aria-label=${tr("Refresh")} title=${tr("Refresh")} @click=${() => void s.load()}>${ic('refresh', 16)}</button>
           <button class="ib" aria-label=${tr("Seen")} title=${tr("View: windows, recurrences, what to show")}
-            @click=${(e: Event) => (this.vistaRect = this.vistaRect ? null : (e.currentTarget as HTMLElement).getBoundingClientRect())}>${ic('settings', 16)}</button>
+            @click=${(e: Event) => (this.viewRect = this.viewRect ? null : (e.currentTarget as HTMLElement).getBoundingClientRect())}>${ic('settings', 16)}</button>
           ${segmented(VIEWS, s.view, v => s.setView(v))}
         </header>
         ${s.error ? html`<div class="err">${ic('alert', 16)} ${s.error}<hxk-button size="sm" variant="ghost" @click=${() => void s.load()}>${tr("Try again")}</hxk-button></div>` : nothing}
         ${s.vp.focused && s.hiddenByPolicy() > 0 ? html`<div class="hint-bar">${ic('filter', 14)}
           <span>${s.hiddenByPolicy()} ${tr("next module entries hidden from the")} <b>${tr("focused view")}</b> ${tr('(beyond the set horizon).')}</span>
           <button class="lnk" @click=${() => s.setVp({ focused: false })}>${tr("Show everything")}</button>
-          <button class="lnk" @click=${(e: Event) => (this.vistaRect = (e.currentTarget as HTMLElement).getBoundingClientRect())}>${tr("Rules…")}</button></div>` : nothing}
+          <button class="lnk" @click=${(e: Event) => (this.viewRect = (e.currentTarget as HTMLElement).getBoundingClientRect())}>${tr("Rules…")}</button></div>` : nothing}
         <div class="view">${this.renderView()}</div>
       </section>
     </div>

@@ -1367,6 +1367,10 @@
  "plutus.statement.time_word": [
   "at"
  ],
+ "plutus.total": [
+  "total",
+  "all"
+ ],
  "scout.label.air_conditioning": [
   "air conditioning"
  ],

@@ -1,5 +1,5 @@
 /**
- * <plutus-import> — bank statement PDF (e.g. Hype «lista movimenti»): upload → preview (new / already there / linked to a
+ * <plutus-import> — bank statement PDF (e.g. Hype «movement list»): upload → preview (new / already there / linked to a
  *                   PayPal payment) → confirm; past imports can be undone. PayPal mails need nothing: they arrive alone.
  */
 import { HestiaElement, html, nothing, plural, locale, tr } from '@hestia/webui-sdk';

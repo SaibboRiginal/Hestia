@@ -1,5 +1,5 @@
 /**
- * <oracle-documents> — "Documenti": the files Hestia keeps for the chat (RAG). List with domain filter, semantic
+ * <oracle-documents> — "Documents": the files the assistant keeps for the chat (RAG). List with domain filter, semantic
  * search (same as the chat), add a file (archived like a chat attachment), keep for good, delete.
  * Reads/acts on /api/ui/documents… (Oracle → Archive through Hub). Ported from the built-in WebUI page (§A4).
  */

@@ -39,7 +39,7 @@ _AMOUNT = re.compile(r"(?:€|EUR)\s?(\d[\d.]*,\d{2}|\d+(?:\.\d{2})?)|(\d[\d.]*,
 
 
 def _named_dates() -> "re.Pattern[str]":
-    """«12 March 2027» / «12 marzo 2027»: month names of every language (``date.month.<n>``)."""
+    """«12 March 2027» or the same in another language: month names of every language (``date.month.<n>``)."""
     return word_regex(r"\b(\d{{1,2}})\s+(" + "|".join(f"{{{n}}}" for n in range(12)) + r")\s+(\d{{4}})\b",
                       *(f"date.month.{n}" for n in range(1, 13)))
 

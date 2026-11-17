@@ -32,7 +32,7 @@ from hestia_common.plugin_client import PluginClient, page, quick_action
 from hestia_common.settings_client import SettingsClient
 
 logger, log_buffer = setup_service_logging("hestia_iris")
-# «Lingua» (themis.personal.language): the fixed texts of this module follow the owner's language
+# «Language» (themis.personal.language): the fixed texts of this module follow the owner's language
 settings = SettingsClient("iris").follow_personal()
 
 app = FastAPI(title="Hestia-Iris", version="1.0.0")

@@ -414,10 +414,10 @@ def athena_observation() -> dict[str, Any]:
 @app.post("/api/athena/recap")
 def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
     """Compose the recap (agenda job, template, quick action). ``deliver`` false = return the text only."""
-    momento = str((body or {}).get("momento") or "evening")
+    moment = str((body or {}).get("moment") or "evening")
     day = str((body or {}).get("day") or "").strip() or None
     try:
-        return runtime.recap.compose(momento=momento, day=day, deliver=bool((body or {}).get("deliver", True)),
+        return runtime.recap.compose(moment=moment, day=day, deliver=bool((body or {}).get("deliver", True)),
                                      trigger=str((body or {}).get("trigger") or "manual"))
     except ValueError:
         raise HTTPException(status_code=400, detail="day must be YYYY-MM-DD")
@@ -426,7 +426,7 @@ def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
 @app.post("/api/athena/recap/now")
 def athena_recap_now() -> dict[str, Any]:
     """Quick action «Recap now»: evening recap now, delivered like the scheduled one."""
-    out = runtime.recap.compose(momento="evening", trigger="quick")
+    out = runtime.recap.compose(moment="evening", trigger="quick")
     label = (tr("Nothing to tell today") if out.get("status") == "empty"
              else tr("Recap sent") if out.get("delivered") else tr("Recap ready (late delivery)"))
     return {**out, "label": label}
@@ -438,14 +438,14 @@ def athena_recaps(limit: int = 20) -> dict[str, Any]:
     return {"count": len(rows), "recaps": rows}
 
 
-def _recap_today_handler(momento: str = "", **_kw) -> dict:
+def _recap_today_handler(moment: str = "", **_kw) -> dict:
     """Chat «give me the recap»: before 14:00 the morning view (yesterday + today), then the evening one."""
     from datetime import datetime as _dt
-    moment = momento if momento in {"evening", "morning"} else ("morning" if _dt.now().hour < 14 else "evening")
-    out = runtime.recap.compose(momento=moment, deliver=False, trigger="chat")
+    moment = moment if moment in {"evening", "morning"} else ("morning" if _dt.now().hour < 14 else "evening")
+    out = runtime.recap.compose(moment=moment, deliver=False, trigger="chat")
     if out.get("status") == "empty":
         return {"status": "empty", "text": tr("Nothing to tell: no area recorded anything.")}
-    return {"status": "ok", "momento": moment, "day": out.get("day"), "text": out.get("text")}
+    return {"status": "ok", "moment": moment, "day": out.get("day"), "text": out.get("text")}
 
 
 # ── MCP tools ──────────────────────────────────────────────────────────────────
@@ -475,7 +475,7 @@ try:
                           "what comes next. 'moment': evening = today + tomorrow, morning = yesterday + today (default by "
                           "the hour). Returns the ready text.")),
             parameters={"type": "object", "properties": {
-                "momento": {"type": "string", "enum": ["evening", "morning"],
+                "moment": {"type": "string", "enum": ["evening", "morning"],
                             "description": "evening = today and tomorrow; morning = yesterday and today"}}},
             handler=_recap_today_handler,
             title="Daily recap",

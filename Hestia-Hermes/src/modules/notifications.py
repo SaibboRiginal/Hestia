@@ -357,7 +357,7 @@ class NotificationCenter:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one.
         ``voice``: the sending module wants it also as audio (its ``<module>.notifications.voice``): the written
-        notification goes out first, the audio follows as an ``update`` with ``voice`` (dossier modulo-voce §7.3)."""
+        notification goes out first, the audio follows as an ``update`` with ``voice`` (voice dossier §7.3)."""
         if replaces:
             dedupe_key = replaces
         elif dedupe_key:

@@ -47,7 +47,7 @@ export class PlutusOverview extends HestiaElement {
           <b>${s.label}</b><hxk-button size="sm" variant="ghost" icon="chevron-right" @click=${() => this.shift(1)}></hxk-button></div>
         <div class="row wrap"><hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("Expense")}</hxk-button>
           <hxk-button icon="upload" @click=${() => this.host.navigate('import')}>${tr("Bank statement")}</hxk-button></div></div>
-      ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('transactions', { rivedere: '1' })}>
+      ${s.to_review ? html`<div class="note warning between click" @click=${() => this.host.navigate('transactions', { review: '1' })}>
         <span>${plural(s.to_review, 'transaction', 'transactions')} ${tr("with the category to check")}</span><span class="link">${tr("Review ›")}</span></div>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Spent'), value: money(s.spent, cur), hint: s.linked ? tr("{0} linked, counted once", plural(s.linked, 'transaction', 'transactions')) : '' },
@@ -60,7 +60,7 @@ export class PlutusOverview extends HestiaElement {
       ${s.budget ? html`<div class="card col"><div class="between"><span class="small muted">${tr("Monthly budget")}</span>
         <span class="small tnum">${money(s.spent, cur)} / ${money(s.budget, cur)}</span></div>${budgetBar(pct)}</div>` : nothing}
       <div class="card col"><div class="between"><h2>${tr("Categories")}</h2><button class="link" @click=${() => this.host.navigate('budget')}>${tr("Budget ›")}</button></div>
-        ${s.categories.length ? html`<div class="list">${s.categories.map((c: any, i: number) => html`<div class="li" @click=${() => this.host.navigate('transactions', { categoria: c.id, month: s.month })}>
+        ${s.categories.length ? html`<div class="list">${s.categories.map((c: any, i: number) => html`<div class="li" @click=${() => this.host.navigate('transactions', { category: c.id, month: s.month })}>
           <span class="dot" style="background:var(--cal-${(i % 8) + 1})" title=${tr("same color as the chart")}></span><div class="grow col" style="gap:4px"><div class="between"><span class="truncate">${c.label}</span>
             <span class="tnum small">${money(c.spent, cur)}${c.budget ? html`<span class="muted"> / ${money(c.budget, cur)}</span>` : nothing}</span></div>
             ${budgetBar(c.pct)}</div></div>`)}</div>` : html`<div class="empty">${tr("No expenses this month.")}</div>`}

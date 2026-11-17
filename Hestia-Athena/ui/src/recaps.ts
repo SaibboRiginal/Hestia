@@ -84,7 +84,7 @@ export class AthenaRecaps extends HestiaElement {
     const pieces: any[] = r.pieces || [];
     return html`<hxk-card>
       <div class="line"><b class="grow">${when(r.created_at)}</b>
-        <hxk-badge tone="neutral">${MOMENTS[r.momento] || r.momento}</hxk-badge>
+        <hxk-badge tone="neutral">${MOMENTS[r.moment] || r.moment}</hxk-badge>
         <span class="small muted">${TRIGGERS[r.trigger] || ''}</span>
         ${r.fallback ? html`<hxk-badge tone="warning">${tr("simple list")}</hxk-badge>` : nothing}
         ${r.delivered ? nothing : html`<hxk-badge tone="danger">${tr("not delivered")}</hxk-badge>`}</div>
