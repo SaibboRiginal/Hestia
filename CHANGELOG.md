@@ -4,6 +4,7 @@ One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-17
 - The apps take the name you gave her too: the site (tab, installed app, login, side bar), the Telegram bot (its name, description and menu button), notifications on the phone and the health alerts are called as you want, with she or he; they greet you by your name. «Hestia» stays only for updates, installer and backup files → `docs/work/2026-11-17-nome-dei-client/` [ext-chat]
+- New «Modo di funzionamento» in Cervello → Modelli: «Classico» is today's assistant (default, nothing changes), «Agenti dei moduli» makes every module a specialist agent inside the assistant — the brain sees one colleague per module instead of ~265 tools and no longer needs the classifier (small talk is one call), each agent works with only its own tools and its own model chain («Agente del modulo» on Modelli), with one agent its answer is the reply, with several they share a turn board and the local queue decides whether they work one at a time or together; Telegram and the site show each agent at work live → `docs/work/2026-11-06-moduli-come-agenti/` [ext-chat]
 
 ## 2026-11-16
 - No Italian left in the code: everything is written in English and the Italian lives only in its translation file; every module, email and web search included, follows «Lingua», and dates and amounts are written the way your language writes them → `docs/work/2026-11-14-backend-inglese/` [ext-chat]

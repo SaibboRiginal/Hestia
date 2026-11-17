@@ -398,8 +398,12 @@ def run_agent_loop(
     prior_actions: list[dict] | None = None,
     trace_out: dict | None = None,
     context_window: int = 0,
+    live_notes: Callable[[], str] | None = None,
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
+
+    *live_notes*: read again at every step and added after the scratchpad (module agents' turn board: what the
+    other agents of this turn found meanwhile).
 
     *context_window*: window of the model that answers (0 = the local model's). Budget and compaction follow
     it: a cloud model with a million tokens must not be compacted at the size of the local one.
@@ -527,6 +531,13 @@ def run_agent_loop(
             dynamic_parts.append(action_hint.strip())
         for msg in scratchpad:
             dynamic_parts.append(f"[{msg.role.upper()}]: {msg.content}")
+        if live_notes is not None:
+            try:
+                _notes = str(live_notes() or "").strip()
+            except Exception:
+                _notes = ""
+            if _notes:
+                dynamic_parts.append(_notes)
         _failed = _failed_writes(tool_log)
         if _failed:
             dynamic_parts.append(_FAILED_WRITES_NOTE.format(titles=", ".join(_failed)))

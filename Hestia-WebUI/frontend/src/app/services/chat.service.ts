@@ -264,6 +264,11 @@ export class ChatService {
         this.handleThinking(event);
         break;
 
+      case 'agent':
+        // Module agent at work (operating mode «agents»): shown as steps of the reasoning block.
+        this.handleAgent(event);
+        break;
+
       case 'reaction': {
         // Hestia reacts to the owner's message of this turn (the last user bubble before the answer).
         if (!event.emoji) break;
@@ -434,6 +439,20 @@ export class ChatService {
           ? { ...m, thinkingSteps: [...this.thinkingBuffer] }
           : m
       ));
+    }
+  }
+
+  private handleAgent(event: ServerEvent): void {
+    const label = tr(event.label || event.module || '');
+    if (event.event === 'start') {
+      this.handleThinking({ type: 'thinking', action: 'reasoning',
+        content: tr('{0} at work: {1}', label, event.task || '') } as ServerEvent);
+    } else if (event.event === 'tool' && event.tool) {
+      this.handleThinking({ type: 'thinking', action: 'tool_result', tool: event.tool,
+        metadata: { ok: event.ok, duration_ms: event.ms } } as ServerEvent);
+    } else if (event.event === 'end') {
+      this.handleThinking({ type: 'thinking', action: 'reasoning',
+        content: event.ok ? tr('{0}: done', label) : tr('{0}: failed', label) } as ServerEvent);
     }
   }
 

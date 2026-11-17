@@ -84,7 +84,10 @@ class ModuleToolRegistry:
                         when = str(capabilities.get("when_to_use") or "").strip()
                         if when and service_name:
                             guides[service_name] = {"when": when[:160],
-                                                    "manual": str(capabilities.get("manual") or "").strip()[:6000]}
+                                                    "manual": str(capabilities.get("manual") or "").strip()[:6000],
+                                                    # Short English name of the module's job (module agents' frame
+                                                    # label; clients translate it at the edge).
+                                                    "title": str(capabilities.get("title") or "").strip()[:40]}
                         for domain in capabilities.get("module_tool_domains", []) or []:
                             normalized_domain = str(domain).strip().lower()
                             if not normalized_domain or not service_name:

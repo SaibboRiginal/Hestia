@@ -82,6 +82,7 @@ export type ServerEventType =
   | 'token'
   | 'status'
   | 'thinking'
+  | 'agent'
   | 'signal'
   | 'question'
   | 'final'
@@ -94,6 +95,14 @@ export type ServerEventType =
 
 export interface ServerEvent {
   type: ServerEventType;
+  /** agent frame (Oracle operating mode «agents»): module agent at work. */
+  agent_id?: string;
+  module?: string;
+  label?: string;
+  task?: string;
+  summary?: string;
+  ok?: boolean;
+  ms?: number;
   text?: string;
   content?: string;
   reply?: string;

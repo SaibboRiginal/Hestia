@@ -41,6 +41,10 @@ plugin_quick_action = import_shared_symbol("hestia_common.plugin_client", "quick
 class AthenaService(HestiaServiceBase):
     def build_capabilities(self) -> dict[str, Any]:
         return {
+            "when_to_use": "the assistant's own thoughts: observations, commitments it made, today's recap",
+            "manual": "athena_thinking/athena_signals read observations; athena_commitments lists what the assistant "
+                      "promised, athena_commitment_resolve closes one; recap_today is the daily recap.",
+            "title": "Thoughts",
             "focus_brief_loop": True,
             "relevance_gate_fields": [
                 "urgency",

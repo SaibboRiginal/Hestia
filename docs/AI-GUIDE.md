@@ -58,7 +58,9 @@ serves the declared REST path of handler-only tools — call it after the app's 
 Turn safety (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`): whoever calls `/api/chat` without being the
 owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomo:<module>`, `hestia_common.origin`); write tools
 return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Annulla»; register
-`capabilities.when_to_use` + `manual` so the assistant knows when to use your module; text sent to a cloud model or
+`capabilities.when_to_use` + `manual` (+ a short English `title`) so the assistant knows when to use your module — in
+Oracle's operating mode `agents` they ARE your module's agent (its job area and its rules; dossier
+`docs/work/2026-11-06-moduli-come-agenti`); text sent to a cloud model or
 a Forge prompt goes through `hestia_common.redact`. Read `docs/REGOLE-DI-MARKO.md` before designing.
 
 ## 3. LLM access (Oracle only)

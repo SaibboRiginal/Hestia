@@ -4,17 +4,17 @@
 - [x] SPEC v1.0 draft
 - [x] SPEC v2.0 operating modes
 - [x] SPEC v3.0 bus LLM (one agent mode, bacheca del turno)
-- [ ] Marko approves the SPEC — NOT given yet (2026-11-17 Marko: «fermati, non ti ho dato l'ordine»). Do nothing more until he says go.
-- [ ] A1 agent registry from Hub (when_to_use/manual/tools) + use cases `agente.<modulo>`
-- [ ] A2 `when_to_use`/`manual` for core services missing them
-- [ ] A3 agent tool + agent loop (prompt, history, guards on owner's words, depth 1)
-- [ ] A0 setting oracle.funzionamento, classica = today
-- [ ] A4 main loop without classifier (agent modes), direct answer, bacheca del turno, contextvars copy
-- [ ] A5 `agent` frame live (worker thread + queue), swagger + docs
-- [ ] A6 WebUI reasoning block + Telegram status line
+- [x] Marko approves the SPEC (2026-11-17 11:00 «puoi iniziare a lavorarci»)
+- [x] A1 agent registry from Hub (when_to_use/manual/tools) + use cases `agente.<modulo>`
+- [x] A2 `when_to_use`/`manual` for core services missing them
+- [x] A3 agent tool + agent loop (prompt, history, guards on owner's words, depth 1)
+- [x] A0 setting oracle.funzionamento, classica = today
+- [x] A4 main loop without classifier (agents mode), direct answer, turn board, contextvars copy
+- [x] A5 `agent` frame live (worker thread + queue), swagger + docs
+- [x] A6 WebUI reasoning block + Telegram status line (ng build ok; .NET not built in cloud)
 - [ ] A7 tests, precheck, PR, CI green, merge
 
-## Checkpoint 2026-11-17 (WIP started too early, stopped at Marko's request)
+## Checkpoint 2026-11-17 (WIP started too early, stopped at Marko's request; resumed after his go)
 Done in code on this branch (not merged, no PR):
 - `oracle_settings.py`: `oracle.operating_mode` (classic|agents, default classic), `oracle.agents.max_per_turn|history|steps`, `operating_mode()`. Italian labels not yet in `locales/it/messages.json`.
 - `agent_loop.py`: `ToolDefinition.service` and `.direct`; direct answer when the turn's only call is a `direct` tool returning `{answer}`.

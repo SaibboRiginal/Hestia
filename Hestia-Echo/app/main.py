@@ -569,7 +569,10 @@ def voice_setup_apply(body: dict = Body(...)):
 
 # ── Hub registration ─────────────────────────────────────────────────────────
 def _registration() -> dict:
-    caps: dict = {"voice": {"api": API, "standards": list(STANDARDS)},
+    caps: dict = {"when_to_use": "voice: voices, speech engines and how the assistant speaks and listens",
+                  "manual": "Reads and explains voice settings and engines. Changes go through settings proposals.",
+                  "title": "Voice",
+                  "voice": {"api": API, "standards": list(STANDARDS)},
                   "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp", "module_tool_domains": ["voice"],
                   # Owner of the "voice" tools in chat: without it Oracle's domain gate dropped them (2026-10-30).
                   "owns_tool_domains": ["voice"], **downloads.capabilities()}

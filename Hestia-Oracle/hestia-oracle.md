@@ -239,6 +239,29 @@ or any error → `[🔄]` and the usual document analysis (nothing lost). Handle
 - Deterministic variant selection uses a stable bucketing seed (`session_id`, command/trace context, fixed salt).
 - Selected variant IDs are logged for regression and quality comparisons.
 
+### Operating mode: classic / agents (dossier `docs/work/2026-11-06-moduli-come-agenti`)
+Setting `oracle.operating_mode` (Models group, live): how a chat turn works. More values may come later.
+- `classic` (default): what follows in this document (classifier → quick chat or one agent loop with the domains' tools).
+- `agents`: **every module is a specialist agent inside Oracle** (`core/services/module_agents.py`). No classifier:
+  the main brain gets Oracle's own tools (memory, documents, chat, session, `ask_user`, goal tools) plus
+  `agenda_assistente_aggiungi` and `routine_create`, and **one tool `agent_<module>(task)` per module** (description =
+  the module's `when_to_use`). `module_manual` and the «MODULES» index are not used: the manual is in the agent's prompt.
+  - Small talk = one call, no tool. A job = the main brain hands it to an agent; the agent runs `run_agent_loop` with
+    **only its module's tools**, its manual, the owner's own words, the last `oracle.agents.history` messages, date,
+    origin line, at most `oracle.agents.steps` steps, on the chain of its use case `agent.<module>` (listed on Models
+    as «Module agent»; no chain of its own = «General use»), with the persona (`agent_for(..., voice=True)`).
+  - **Direct answer**: when the turn's only call is one agent, its answer is the reply (`ToolDefinition.direct`).
+    Several agents = the main brain joins their answers.
+  - **Parallel or serial = the LLM bus**: agents of one step start in threads (turn context copied); with
+    `oracle.bus.local_workers = 1` their local calls queue, cloud steps run together. **Turn board**: each finished
+    agent posts one line, read by the others at every step. `oracle.agents.max_per_turn` caps the agents of an answer.
+  - **Writes and safety unchanged**: tools are wrapped by the origin gate and `TurnGuards(owner's message)` *before*
+    grouping (a job text can't turn a question into a write); the agents' tool log joins the turn (`changes` +
+    Annulla, notices, confirm cards, turn trace, activity log route `agents`). An agent never calls another agent.
+  - The loop runs in a worker thread and its frames (`agent`, `thinking`) reach the client **live**. Brain mode
+    esterna gets the same small manifest; the agents run in Oracle.
+  - Logs `event=agent_start|agent_done|agent_failed module=… ms=…`, `event=chat_agents_manifest`.
+
 ### Agentic Tool Calling (Unified)
 - All tool execution flows through a single ReAct-style agent loop (`core/agent_loop.py`).
 - A single tool manifest is built per turn: domain search tools + all Hub-discovered commands + memory tools.
@@ -471,6 +494,7 @@ All interfaces consume the same event schema from Oracle:
 - `{"type":"reaction","emoji":"👍"}` — Hestia's emoji on the owner's message of this turn, before the text (webui/telegram owner turns; `final` then has `reaction`, and `reaction_only: true` when there is no text).
 - `{"type":"token","text":"..."}` — incremental LLM output tokens.
 - `{"type":"final","reply":"...","domain":"...","origin":{"kind":"routine","level":"routine","label":"..."},"trace_id":"..."}` — terminal answer event (`origin` only when the turn was not started by the owner's client; `trace_id` names the turn: clients send it back as `interaction_id` with a 👍/👎).
+- `{"type":"agent","event":"start|tool|end","agent_id":"a1","module":"plutus","label":"Expenses","task":"...","model":"...","provider":"...","tool":"finance_search","ok":true,"summary":"...","ms":1234,"tools":1}` — operating mode `agents` only: a module agent at work (`start` with task/model, one `tool` per tool call, `end` with outcome). `label` is the module's short English title (clients translate it). `final` then carries `"operating_mode":"agents"`.
 - `{"type":"changes","session_id":"...","items":[{"tool":"finance_add","title":"...","detail":"...","undo":{"tool":"finance_delete","args":{"id":"..."},"label":"Annulla"}}]}` — writes of the turn with their undo, after `final`.
 - `{"type":"signal","event":"memory.preference.added|...|tool.summary|...","content":"...","data":{...}}` — side-channel events including tool-call summary (machine/audit).
 - `{"type":"notice","kind":"memory.saved","level":"success","icon":"memory","emoji":"💾","title":"Ricordato","detail":"..."}` — **standard system message** for the user (memory saved/removed, write actions done/failed, subscriptions, documents). Every user-facing signal also emits its notice twin; write tools (`ToolDefinition.writes`) emit `action.done|failed` (successful `agenda_assistente*` writes → `agenda.planned`, `forge_develop` → `forge.task`, so WebUI pages reload live). Analyst rule 8: no tool can do it → propose a Forge task (new MCP tool / agenda template), ask, then `forge_develop` with `agenda_parent` when an agenda item is involved. Background-memory notices arrive after `final` (waits up to setting `oracle.memory.notice_wait`, default 8 s). Spec: `Hestia-Shared/hestia-shared.md` § Response packets.
@@ -494,6 +518,9 @@ or setting `training_off` (WebUI history «Non usare per l'allenamento», tool `
 drop that conversation's traces.
 
 ## Settings (Themis, all live)
+
+Operating mode: `oracle.operating_mode` (`classic` · `agents`), `oracle.agents.max_per_turn` (4),
+`oracle.agents.history` (6 messages), `oracle.agents.steps` (8) — see «Operating mode» above.
 
 Declared in `app/core/services/oracle_settings.py`, read at use time (no restart). Env keeps only infrastructure:
 endpoints/keys (`OLLAMA_URL`, provider keys `ORACLE_KEY_<NAME>`, `CLAUDE_CODE_OAUTH_TOKEN`), binaries/paths

@@ -436,7 +436,7 @@ class ModuleKit:
         self._extra_caps.append(fn)
 
     def registration(self) -> dict:
-        caps = {"when_to_use": self.when_to_use, "manual": self.manual,
+        caps = {"when_to_use": self.when_to_use, "manual": self.manual, "title": self.title,
                 "mcp_endpoint": f"{self.base_url.rstrip('/')}/mcp", "module_tool_domains": [self.domain], **self.caps}
         for fn in self._extra_caps:
             try:

@@ -8,9 +8,11 @@ services and orchestrate the two main user-facing flows:
 
 All business logic lives in the imported service/document modules.
 """
+import contextvars
 import json
 import logging
 import os
+import queue
 import re
 from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
@@ -59,6 +61,7 @@ from hestia_common.mcp_client import MCPClient, as_command
 from hestia_common import origin as origin_mod
 from hestia_common import ui_blocks
 from core.services import conversation_goal
+from core.services import module_agents
 from core.services import loop_guard
 
 
@@ -970,13 +973,21 @@ class OracleEngine:
         # ── Phase 2: CLASSIFY (single call: mode + domain + action_intent) ────
         temporal_context = self._current_datetime_context()
         t_classify = time.perf_counter()
-        intent = self._phase_classify(
-            user_message,
-            history_text,
-            available_domains,
-            schemas,
-            current_datetime_context=temporal_context,
-        )
+        # Operating mode «agents» (docs/work/2026-11-06-moduli-come-agenti): no classifier, the main brain sees one
+        # agent per module and decides itself (small talk = one call, no tool).
+        from core.services import oracle_settings as _opmode
+        agents_mode = _opmode.operating_mode() == "agents"
+        if agents_mode:
+            intent = SessionIntent(mode="domain_query", explicit_domain=None, confidence=1.0,
+                                   valid_domains=["general"])
+        else:
+            intent = self._phase_classify(
+                user_message,
+                history_text,
+                available_domains,
+                schemas,
+                current_datetime_context=temporal_context,
+            )
         logger.info(
             "event=chat_classify_result trace_id=%s session_id=%s mode=%s domain=%s conf=%.2f valid_domains=%s action_intent=%s",
             trace_id,
@@ -1151,7 +1162,8 @@ class OracleEngine:
             seed=session_id,
         )
 
-        build_domains = _turn_tool_domains(available_domains, intent)
+        build_domains = ([d for d in available_domains if d != "general"] if agents_mode
+                         else _turn_tool_domains(available_domains, intent))
         if not build_domains:
             logger.warning(
                 "event=chat_no_domain_tools_available session_id=%s available_domains=%s",
@@ -1178,12 +1190,24 @@ class OracleEngine:
         self._apply_origin_gate(domain_tools, origin)
         TurnGuards(user_message).wrap(domain_tools)   # fixed rules on writes, whatever the model decides
 
+        # ── Module agents: module tools go to their agents, the main brain keeps Oracle's own + one per agent ──
+        _live_q: "queue.Queue[str] | None" = None
+        _agent_log: list[dict] = []
+        if agents_mode:
+            _live_q = queue.Queue()
+            domain_tools = self._agent_manifest(
+                domain_tools, live=_live_q, nested_log=_agent_log, user_message=user_message,
+                history_text=history_text, session_id=session_id, origin=origin, mode=mode,
+                datetime_context=temporal_context)
+
         # Assemble agent loop client instructions
         agent_loop_client_instructions_parts: list[str] = []
         _origin_line = origin_mod.prompt_line(origin)
         if _origin_line:
             agent_loop_client_instructions_parts.append(_origin_line)
-        _module_index = self._module_registry.index_text()
+        _module_index = "" if agents_mode else self._module_registry.index_text()
+        if agents_mode:
+            agent_loop_client_instructions_parts.append(module_agents.main_instructions())
         if _module_index:
             agent_loop_client_instructions_parts.append(
                 "MODULES (when to use them; module_manual(module) for the manual):\n" + _module_index)
@@ -1219,7 +1243,10 @@ class OracleEngine:
         thinking_ndjson_lines: list[str] = []
 
         def _on_thinking(ndjson_line: str) -> None:
-            thinking_ndjson_lines.append(ndjson_line)
+            if _live_q is not None:
+                _live_q.put(ndjson_line)     # agents mode: live
+            else:
+                thinking_ndjson_lines.append(ndjson_line)
 
         # Streaming callback for the final answer turn
         def _stream_final(prompt: str) -> Iterator[str]:
@@ -1291,7 +1318,7 @@ class OracleEngine:
                     yield stream_emitter.emit_status(tr("🔄 External agent not available: I'll answer myself..."))
         if answer is None:
             external_agent.note_internal_turn(session_id)
-            answer, tokens, tool_log = run_agent_loop(
+            _loop_kwargs = dict(
                 user_message=user_message,
                 history_text=history_text,
                 preference_facts=preference_facts,
@@ -1309,7 +1336,19 @@ class OracleEngine:
                 trace_out=_loop_trace,
                 context_window=self._chat_window(),
             )
+            if _live_q is not None:
+                # Agents mode: the loop runs in a worker thread and its frames reach the client while it works.
+                _loop_out: list = []
+                yield from self._live_call(lambda: run_agent_loop(**_loop_kwargs), _live_q, _loop_out)
+                answer, tokens, tool_log = _loop_out[0]
+            else:
+                answer, tokens, tool_log = run_agent_loop(**_loop_kwargs)
             tool_log = list(_prior_actions) + list(tool_log)
+        if agents_mode:
+            while _live_q is not None and not _live_q.empty():
+                thinking_ndjson_lines.append(_live_q.get_nowait())   # external brain: frames after its turn
+            # Everything the agents did joins the turn: changes + Annulla, notices, confirm cards, traces.
+            tool_log = list(tool_log) + list(_agent_log)
 
         # ── Conversation goal rounds (Cindy 23): after the owner's message is answered ────────────
         if origin["level"] == "utente" and not any(e.get("ask") for e in tool_log):
@@ -1392,6 +1431,7 @@ class OracleEngine:
             origin=origin if origin.get("level") != "utente" or origin.get("kind") == "esterno" else None,
             trace_id=trace_id,
             model=llm_stats.last_model(session_id),
+            operating_mode="agents" if agents_mode else "",
         )
         # «Cosa ho cambiato» with Annulla per item (Cindy 13): clients draw it under the answer.
         _changes = stream_emitter.changes_from_log(tool_log)
@@ -1444,7 +1484,9 @@ class OracleEngine:
             _loop_trace = {"system": external_agent_system_prompt(preference_facts, agent_loop_client_instructions),
                            "tools": [{"name": t.name, "description": t.description, "parameters": t.parameters}
                                      for t in domain_tools]}
-        _record_turn("agent", list(intent.valid_domains or []), tool_log, answer=answer or "",
+        _record_turn("agents" if agents_mode else "agent",
+                     sorted({str(e["agent"]) for e in tool_log if e.get("agent")}) if agents_mode
+                     else list(intent.valid_domains or []), tool_log, answer=answer or "",
                      trace_parts=_loop_trace)
         logger.info(
             "event=chat_done_summary session_id=%s total_ms=%s mode=%s model=%s provider=%s thinking=%s tools=%s answer_len=%s tokens=%s trace_id=%s",
@@ -2604,6 +2646,54 @@ class OracleEngine:
         return tools
 
     # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-tutto-brainstorm-cindy) ─────────
+    def _agent_manifest(self, tools: list[ToolDefinition], *, live: "queue.Queue[str]", nested_log: list[dict],
+                        user_message: str, history_text: str, session_id: str, origin: dict, mode: str,
+                        datetime_context: str) -> list[ToolDefinition]:
+        """Operating mode «agents»: Oracle's own + cross-cutting tools stay, every module's tools go to its agent
+        (``core.services.module_agents``). The tools arrive already wrapped by the origin gate and the turn guards."""
+        from core.services import llm_chains, oracle_settings as _os
+        main, specs = module_agents.group(tools, self._module_registry.guides())
+        llm_chains.register_agent_usecases(specs)
+        run = module_agents.AgentRun(
+            run_loop=run_agent_loop, chain_for=lambda uc: llm_chains.agent_for(uc, voice=True), emit=live.put,
+            emit_frame=stream_emitter.emit_agent, owner_message=user_message, history_text=history_text,
+            preference_facts=[str(p.get("fact", "")).strip() for p in self._load_preferences(["general"])
+                              if p.get("fact")],
+            board=module_agents.TurnBoard(), nested_log=nested_log,
+            think="deep" if mode == "cot" else mode in ("thinking", "cot", "auto"),
+            steps=_os.get_int(_os.AGENTS_STEPS, 1), history_messages=_os.get_int(_os.AGENTS_HISTORY, 0),
+            max_agents=_os.get_int(_os.AGENTS_MAX_PER_TURN, 1), origin_line=origin_mod.prompt_line(origin) or "",
+            datetime_context=datetime_context, guard_checker=loop_guard.llm_checker)
+        logger.info("event=chat_agents_manifest session_id=%s agents=%s main_tools=%d module_tools=%d",
+                    session_id, [sp.module for sp in specs], len(main), sum(len(sp.tools) for sp in specs))
+        return main + [run.tool_for(sp) for sp in specs]
+
+    @staticmethod
+    def _live_call(fn, live: "queue.Queue[str]", out: list) -> Iterator[str]:
+        """Run *fn* in a worker thread (this turn's context copied: LLM bus priority) and yield the NDJSON lines it
+        puts on *live* while it works; its result lands in ``out[0]`` (an exception is raised here)."""
+        done = threading.Event()
+        box: dict = {}
+
+        def _work():
+            try:
+                box["result"] = fn()
+            except BaseException as exc:   # re-raised in the stream's thread
+                box["error"] = exc
+            finally:
+                done.set()
+
+        ctx = contextvars.copy_context()
+        threading.Thread(target=ctx.run, args=(_work,), daemon=True, name="agents-turn").start()
+        while not done.is_set() or not live.empty():
+            try:
+                yield live.get(timeout=0.2)
+            except queue.Empty:
+                continue
+        if "error" in box:
+            raise box["error"]
+        out.append(box["result"])
+
     def _origin_header(self, session_id: str) -> str:
         """``X-Hestia-Origin`` for the module calls of this turn; empty for the owner typing (X-Hestia-Client says it)."""
         o = self._session_origins.get(session_id) or {}

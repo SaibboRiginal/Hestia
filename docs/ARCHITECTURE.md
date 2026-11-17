@@ -125,6 +125,7 @@ Conversational reasoning layer with unified agentic tool calling.
 - **Memory tools:** `memory.save` and `memory.search` are first-class agent loop tools — the LLM decides when to persist or recall facts. Outside the chat (Telegram, site, other AIs) the doors are `memory_note` / `memory_recall` only.
 - **One tool per job:** two tools that do the same thing confuse the model; a double is removed, its endpoint stays (other modules call endpoints through Hub, not tools). Dossier `docs/work/2026-11-14-doppioni-strumenti`.
 - **Single classify call:** mode + domain + action_intent detected in one LLM call (no separate action intent detection).
+- **Operating mode** `oracle.operating_mode` (dossier `docs/work/2026-11-06-moduli-come-agenti`): `classic` (classifier + one loop) or `agents` — each module is a specialist agent inside Oracle (its `when_to_use`, `manual`, only its tools, its use case `agent.<module>`); the main brain sees one `agent_<module>(task)` tool per module, no classifier. Reasoning stays in Oracle; modules only declare `when_to_use` + `manual` + `title` and their tools. Serial or parallel agents = the LLM bus workers. Clients get the standard `agent` frame.
 - Handles chat sessions and long-term preferences via background memory extraction as safety net.
 - Uses Hub discovery + module tools for domain retrieval. Agent loop handles up to 25 turns with early exit for simple tasks.
 - Compiles user intents into generic subscription requests written to Archive.

@@ -3944,6 +3944,7 @@ paths:
             NDJSON stream with event types:
             - `{"type":"status","content":"..."}` — progress update
             - `{"type":"thinking","action":"reasoning|tool_call|tool_result","content":"...","turn":N,"tool":"...","metadata":{...}}` — agent loop visibility
+            - `{"type":"agent","event":"start|tool|end","agent_id":"a1","module":"plutus","label":"Expenses","task":"...","model":"...","provider":"...","tool":"finance_search","ok":true,"summary":"...","ms":1234,"tools":1}` — module agent at work (setting oracle.operating_mode = agents); `final` then has `operating_mode: agents`
             - `{"type":"token","text":"..."}` — incremental LLM token
             - `{"type":"final","reply":"...","domain":"...","origin":{"kind","level","label"}}` — terminal answer (`origin` when the turn was not the owner's); for the WebUI with a capable model `reply` may hold ```hestia-ui blocks (one JSON component per line, hestia_common.ui_blocks)
             - `{"type":"changes","session_id":"...","items":[{"tool","title","detail","undo":{"tool","args","label"}}]}` — writes of the turn with their undo (after final)

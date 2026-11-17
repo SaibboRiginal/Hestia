@@ -179,6 +179,10 @@ def register_on_hub_startup():
         "tags": ["core", "dispatch"],
         "topology_tags": ["layer:foundation", "domain:dispatch", "status:stable"],
         "capabilities": {
+            "when_to_use": "notifications to the owner: what was sent, delivery, quiet hours",
+            "manual": "Reads and manages the owner's notifications and their delivery. Never send a message the "
+                      "owner did not ask for.",
+            "title": "Notifications",
             "event_ingest": "/api/events/ingest",
             "notifications": "/api/notifications",
             **recap.capabilities(),

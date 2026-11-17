@@ -181,5 +181,23 @@ public record OracleEvent(
     bool? ReactionOnly = null,
     // final: the model that answered; the chat marks where it changes inside a conversation
     [property: JsonPropertyName("model")]
-    string? Model = null
+    string? Model = null,
+    // agent frame: a module agent at work (Oracle operating mode «agents», docs/work/2026-11-06-moduli-come-agenti)
+    [property: JsonPropertyName("agent_id")]
+    string? AgentId = null,
+    [property: JsonPropertyName("module")]
+    string? Module = null,
+    [property: JsonPropertyName("label")]
+    string? Label = null,
+    [property: JsonPropertyName("task")]
+    string? Task = null,
+    [property: JsonPropertyName("summary")]
+    string? Summary = null,
+    [property: JsonPropertyName("ok")]
+    bool? Ok = null,
+    [property: JsonPropertyName("ms")]
+    int? Ms = null,
+    // final: «agents» when the turn ran in that operating mode
+    [property: JsonPropertyName("operating_mode")]
+    string? OperatingMode = null
 );

@@ -42,6 +42,8 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
             renderer.on_status(str(data.get("content") or ""))
         elif kind == "thinking":
             renderer.on_thinking(data)
+        elif kind == "agent":
+            renderer.on_agent(data)
         elif kind == "token":
             renderer.on_token(str(data.get("text") or ""))
         elif kind == "reaction":

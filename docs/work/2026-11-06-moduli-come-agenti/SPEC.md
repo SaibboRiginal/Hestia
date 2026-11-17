@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Version** | 3.1 |
+| **Version** | 3.2 |
 | **Source** | user via project chat (Marko, 2026-11-06: «non sarebbe più giusto che ogni modulo fosse un agente collegato ad Oracle?») |
-| **Status** | Draft — waiting for Marko's approval |
+| **Status** | Approved by Marko 2026-11-17 («puoi iniziare a lavorarci»); implemented, PR open |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
 
@@ -36,7 +36,7 @@ clients see what each agent is doing through one standard stream frame.
 ## 3. Scope and design
 
 ### 3.0 Operating modes (Marko 2026-11-06: «una modalità di funzionamento, così possiamo tornare indietro»)
-One Themis setting `oracle.operating_mode` (live, scope profile → client → session like `oracle.chat.mode`) picks how a
+One Themis setting `oracle.operating_mode` (live, global, Models group next to the brain mode) picks how a
 turn works. It is not an on/off switch: it is a choice among ways of working, and more can be added later.
 - `classic` — today's flow, untouched (classifier + one loop with the domains' tools). **Default** until Marko's
   real run says otherwise; going back = choose it again.
@@ -132,6 +132,13 @@ Marko's PC is read from these logs in his real run (cloud tests use fake models)
 The Verity thread (branch `claude/project-thread-j7apmm`, dossier `docs/work/2026-11-06-hestia-viva`) keeps the classifier untouched and adds no «voice without classifier». Agents use its persona from `prompt_config.analyst_persona_default()` (key `analyst_persona_default`) and, on spoken turns, `voice_turn_contract()`. Its reaction marker is filtered in `main.py`, outside `chat()`.
 
 Names follow PR #113 (no Italian in code): keys and values in English, labels Italian through `tr`.
+
+### 3.7 Implementation notes (v3.2)
+- Agents have no `ask_user`: a missing detail goes back in the agent's answer and the main brain asks (one place
+  for questions). Confirm cards (Themis proposals) of an agent's tools still reach the client.
+- The agent frame's `label` is the module's short English `title` (new `capabilities.title`, ModuleKit sends its
+  `title`; the 8 core services got `when_to_use` + `manual` + `title`); clients translate it with `tr`.
+- The Models page lists each agent as «Module agent» with its module and its `when_to_use` as help.
 
 ## 4. New feature checklist (`docs/REGOLE-DI-MARKO.md`)
 1. Real job for the owner: faster chit-chat, domain answers that fit a local model, parallel work, visible agents.
