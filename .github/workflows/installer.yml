@@ -10,6 +10,7 @@ on:
       - "install.sh"
       - "install.ps1"
       - "Install-Hestia.cmd"
+      - "Hestia-Shared/hestia_common/locales/*/installer.tsv"
       - "up-all.sh"
       - "tools/init_env.py"
       - "tools/release/**"

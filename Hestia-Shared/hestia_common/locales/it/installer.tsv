@@ -1,0 +1,165 @@
+# Installer texts in Italian (install.sh, install.ps1, up-all.sh, up-all.bat): English source<TAB>translation, values {0} {1}. docs/LANGUAGES.md
+         Details: 	         Dettagli: 
+         Run the same command again when done: I pick up from here.	         Rilancia lo stesso comando quando hai fatto: riprendo da qui.
+         To update or repair: run this same command again (or Install-Hestia.cmd).	         Per aggiornare o riparare: rilancia questo stesso comando (o Install-Hestia.cmd).
+         You manage it from the central home: System -> Machines (also <<Use its graphics card>>).	         Lo gestisci dalla casa centrale: Sistema -> Macchine (anche «Usa la sua scheda video»).
+'curl' is missing and I cannot install it.	manca 'curl' e non riesco a installarlo.
+'docker compose' is missing and I cannot install it.	manca 'docker compose' e non riesco a installarlo.
+'sudo' is needed (or run as root).	serve 'sudo' (o lancia come root).
+--join also needs --central (the address of the central home, e.g. 192.168.1.10).	con --join serve anche --central (l'indirizzo della casa centrale, es. 192.168.1.10).
+--join is only for a satellite.	--join serve solo per un satellite.
+-Join also needs -Central (the address of the central home, e.g. 192.168.1.10).	con -Join serve anche -Central (l'indirizzo della casa centrale, es. 192.168.1.10).
+-Join is only for a satellite.	-Join serve solo per un satellite.
+...still waiting for Docker ({0} s)	...aspetto ancora Docker ({0} s)
+<<docker compose>> is missing: update Docker Desktop and run again.	manca «docker compose»: aggiorna Docker Desktop e rilancia.
+[Hestia] Restart now? [Y/n]	[Hestia] Riavvio adesso? [S/n]
+[Hestia] Type {0} to confirm	[Hestia] Scrivi {0} per confermare
+at least 20 GB free (better 30) are needed on drive {0}:, there are {1}. Free some space.	servono almeno 20 GB liberi (meglio 30) sul disco {0}:, ce ne sono {1}. Libera spazio.
+at least 20 GB free (better 30) are needed on {0}, there are {1}. Free some space.	servono almeno 20 GB liberi (meglio 30) su {0}, ce ne sono {1}. Libera spazio.
+Bringing up the stopped containers...	Avvio i container fermi...
+Building the modules	Costruzione dei moduli
+Building the modules (the first time takes a while, then it is quick)...	Costruisco i moduli (la prima volta ci vuole un po', poi è veloce)...
+Building the modules (the first time takes a while, then it is quick)…	Costruisco i moduli (la prima volta ci vuole un po', poi è veloce)…
+Checking the computer...	Controllo il computer...
+Checking the computer…	Controllo il computer…
+Clearing the Python cache...	Pulisco la cache di Python...
+Creating the shared Docker network: hestia_net	Creo la rete Docker condivisa: hestia_net
+DELETE	CANCELLA
+Details:	Dettagli:
+Docker Desktop does not answer: open it, accept the license, wait for «running» and run again.	Docker Desktop non risponde: aprilo, accetta la licenza, aspetta che dica «running» e rilancia.
+Docker Desktop does not answer: open it, wait for <<Engine running>> and run again. If it asks you to sign out of Windows and back in, do it.	Docker Desktop non risponde: aprilo, aspetta che dica «Engine running» e rilancia. Se chiede di uscire e rientrare in Windows, fallo.
+Docker Desktop does not install: download it from https://docker.com/products/docker-desktop and run again.	Docker Desktop non si installa: scaricalo da https://docker.com/products/docker-desktop e rilancia.
+Docker Desktop does not install: download it from https://docker.com/products/docker-desktop, install it and run again.	Docker Desktop non si installa: scaricalo da https://docker.com/products/docker-desktop, installalo e rilancia.
+Docker Desktop starts by itself with the computer: leave it so, Hestia comes back with it.	Docker Desktop parte da solo quando accendi il computer: lascialo così, Hestia si riaccende con lui.
+Docker does not answer: start Docker Desktop and run again.	Docker non risponde: avvia Docker Desktop e rilancia.
+Docker does not answer: start it and run again.	Docker non risponde: avvialo e rilancia.
+Docker is installed but does not start. Try: sudo systemctl start docker	Docker è installato ma non parte. Prova: sudo systemctl start docker
+Docker is not answering: start Docker Desktop, wait until it is running and launch again.	Docker non risponde: avvia Docker Desktop, aspetta che sia "running" e rilancia.
+Docker is not answering: start it (sudo systemctl start docker, or Docker Desktop) and run again.	Docker non risponde: avvialo (sudo systemctl start docker, o Docker Desktop) e rilancia.
+Downloading docker compose	Download di docker compose
+Downloading Docker Desktop	Download di Docker Desktop
+Downloading Hestia	Download di Hestia
+Downloading Hestia into {0}...	Scarico Hestia in {0}...
+Downloading Hestia into {0}…	Scarico Hestia in {0}…
+Downloading Ollama	Download di Ollama
+Downloading the model {0} (only once)...	Scarico il modello {0} (una volta sola)...
+Downloading the model {0} (only once)…	Scarico il modello {0} (una volta sola)…
+Downloading the modules	Download dei moduli
+Downloading the ready-made modules of version {0}...	Scarico i moduli pronti della versione {0}...
+Downloading the ready-made modules of version {0}…	Scarico i moduli pronti della versione {0}…
+Downloading {0}	Download di {0}
+Every module is on.	Tutti i moduli sono accesi.
+Free space: {0} GB. Enough for Hestia; it may not be enough for large local models.	Spazio libero: {0} GB. Basta per Hestia; per i modelli locali grandi potrebbe non bastare.
+FULL REBUILD (dependencies changed)...	RICOSTRUZIONE COMPLETA (dipendenze cambiate)...
+git did not install: I download Hestia as an archive (updates will use git once it is there).	git non si è installato: scarico Hestia come archivio (gli aggiornamenti useranno git quando ci sarà).
+Hestia and its data have been deleted.	Hestia e i suoi dati sono stati cancellati.
+Hestia is off and the containers removed. The data stay (folder {0} and Docker volumes); --purge to delete them.	Hestia è spenta e i container rimossi. I dati restano (cartella {0} e volumi Docker); --purge per cancellarli.
+Hestia is off and the containers removed. The data stay (folder {0} and Docker volumes); -Purge to delete them.	Hestia è spenta e i container rimossi. I dati restano (cartella {0} e volumi Docker); -Purge per cancellarli.
+Hestia is ready: {0} (the guided setup is at {1})	Hestia è pronta: {0} (il setup guidato è su {1})
+I added you to the 'docker' group: from your next login docker commands no longer ask for sudo.	Ti ho aggiunto al gruppo 'docker': dal prossimo accesso i comandi docker non chiedono più sudo.
+I cannot build: {0}. See {1}.	non riesco a costruire: {0}. Guarda {1}.
+I cannot build:{0}. See {1}.	non riesco a costruire:{0}. Guarda {1}.
+I cannot create the Docker network hestia_net.	non riesco a creare la rete Docker hestia_net.
+I cannot download Hestia from GitHub. Check the connection.	non riesco a scaricare Hestia da GitHub. Controlla la connessione.
+I cannot find Hestia in {0} (use --dir).	non trovo Hestia in {0} (usa --dir).
+I cannot find Hestia in {0} (use -Dir).	non trovo Hestia in {0} (usa -Dir).
+I cannot find this machine's address on the home network: connect it to Wi-Fi or cable and run again.	non trovo l'indirizzo di questa macchina sulla rete di casa: collegala al Wi-Fi o al cavo e rilancia.
+I cannot find this PC's address on the home network: connect it to Wi-Fi or cable and run again.	non trovo l'indirizzo di questo PC sulla rete di casa: collegalo al Wi-Fi o al cavo e rilancia.
+I cannot install Docker. Install it following https://docs.docker.com/engine/install/ and run again.	non riesco a installare Docker. Installalo seguendo https://docs.docker.com/engine/install/ e rilancia.
+I cannot prepare the configuration files (.env).	non riesco a preparare i file di configurazione (.env).
+I cannot reach github.com: check the internet connection.	non riesco a raggiungere github.com: controlla la connessione a internet.
+I cannot reach the central home at {0}: check that it is on and on the same network.	non raggiungo la casa centrale a {0}: controlla che sia accesa e sulla stessa rete.
+I could not download the code changes: I use the version already here.	Non ho potuto scaricare le novità del codice: uso la versione che c'è.
+I deleted nothing (no confirmation).	non ho cancellato niente (conferma non data).
+I stopped:	Mi sono fermato:
+I stopped: 	Mi sono fermato: 
+Installing Docker	Installazione di Docker
+Installing Docker (it takes a few minutes)…	Installo Docker (ci vuole qualche minuto)…
+Installing Docker Desktop	Installazione di Docker Desktop
+Installing Docker Desktop (a few minutes). Windows asks for administrator confirmation.	Installo Docker Desktop (qualche minuto). Windows ti chiede conferma di amministratore.
+Installing Docker Desktop…	Installo Docker Desktop…
+Installing git	Installazione di git
+Installing git...	Installo git...
+Installing git…	Installo git…
+Installing Hestia in {0} (channel {1}).	Installo Hestia in {0} (canale {1}).
+Installing Hestia in {0} (channel {1}). I will ask for the computer password at most once.	Installo Hestia in {0} (canale {1}). Ti chiederò la password del computer al massimo una volta.
+Installing Ollama	Installazione di Ollama
+Installing Ollama (the models on your computer)...	Installo Ollama (i modelli sul tuo computer)...
+Installing Ollama (the models on your computer)…	Installo Ollama (i modelli sul tuo computer)…
+Internet connection	Connessione a internet
+Linked to the central home.	Collegata alla casa centrale.
+Linking this machine to the central home ({0})…	Collego questa macchina alla casa centrale ({0})…
+Linking this PC to the central home ({0})...	Collego questo PC alla casa centrale ({0})...
+macOS needs git: confirm the «Command Line Tools» window that opened (or install Homebrew from https://brew.sh).	su macOS serve git: conferma la finestra «Strumenti da riga di comando» che si è aperta (oppure installa Homebrew da https://brew.sh).
+macOS needs Homebrew (https://brew.sh) or Docker Desktop (https://docker.com/products/docker-desktop).	su macOS serve Homebrew (https://brew.sh) oppure Docker Desktop (https://docker.com/products/docker-desktop).
+Ollama did not install: Hestia will use cloud models. You can install it from https://ollama.com.	Ollama non si è installato: Hestia userà i modelli nel cloud. Puoi installarlo da https://ollama.com.
+Ollama did not install: Hestia will use cloud models. You can install it later from https://ollama.com.	Ollama non si è installato: Hestia userà i modelli nel cloud. Puoi installarlo dopo da https://ollama.com.
+Ollama does not answer the containers: Hestia will use cloud models until you fix it.	Ollama non risponde ai container: Hestia userà i modelli nel cloud finché non lo sistemi.
+Ollama now also listens on the home network (port 11434): do not open that port on the router.	Ollama ora ascolta anche sulla rete di casa (porta 11434): non aprire quella porta sul router.
+Ollama now listens on the home network (port 11434): do not open that port on the router.	Ollama ora ascolta sulla rete di casa (porta 11434): non aprire quella porta sul router.
+Ollama now listens on the home network (port 11434): if Windows asks to allow it on private networks, answer Allow. Do not open that port on the router.	Ollama ora ascolta sulla rete di casa (porta 11434): se Windows chiede di consentirlo sulle reti private, rispondi Consenti. Non aprire quella porta sul router.
+Preparing the configuration	Preparazione della configurazione
+Press Enter to close	Premi Invio per chiudere
+Restarting ALL services to pick up the code changes...	Riavvio TUTTI i servizi per prendere le modifiche al codice...
+Restarting: 	Riavvio: 
+Resuming the install after the restart...	Riprendo l'installazione dopo il riavvio...
+Run the same command again when done: I pick up from here.	Rilancia lo stesso comando quando hai fatto: riprendo da qui.
+Some modules did not download: I build them here.	Alcuni moduli non si sono scaricati: li costruisco qui.
+Starting Docker Desktop: if it is the first time, accept the terms in its window.	Avvio Docker Desktop: se è la prima volta, accetta le condizioni nella sua finestra.
+Starting Docker…	Avvio Docker…
+Starting Hestia...	Avvio Hestia...
+Starting Hestia…	Avvio Hestia…
+Starting the modules	Avvio dei moduli
+Starting with a fresh build...	Avvio con una build nuova...
+Stopping the running containers first...	Prima fermo i container in esecuzione...
+Telegram is linked in the guided setup that opens in the browser.	Telegram si collega nel setup guidato che si apre nel browser.
+the central home	la casa centrale
+the central home gave no link key: ask for a new code and run again.	la casa centrale non ha dato la chiave di collegamento: chiedi un codice nuovo e rilancia.
+the central home refused the link (error {0}).	la casa centrale ha rifiutato il collegamento (errore {0}).
+the code is wrong or expired: ask the central home for a new one (System -> Machines).	il codice è sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema -> Macchine).
+the code is wrong or expired: ask the central home for a new one (System → Machines).	il codice è sbagliato o scaduto: sulla casa centrale chiedine uno nuovo (Sistema → Macchine).
+The containers cannot reach Ollama: start it with OLLAMA_HOST=0.0.0.0 ollama serve.	Ollama non è raggiungibile dai container: avvialo con OLLAMA_HOST=0.0.0.0 ollama serve.
+the heart of Hestia (Hub) does not answer after 5 minutes.	il centro di Hestia (Hub) non risponde dopo 5 minuti.
+The Hestia folder has local changes: I did not change the code version.	Nella cartella di Hestia ci sono modifiche locali: non ho cambiato versione del codice.
+The local code no longer follows GitHub: I left it as it is.	Il codice locale non segue più quello di GitHub: l'ho lasciato com'è.
+The model {0} did not download: run again later, meanwhile Hestia uses the cloud if you have a key.	Il modello {0} non si è scaricato: rilancia più tardi, nel frattempo Hestia usa il cloud se hai una chiave.
+the modules do not start. See {0} (last lines) or run again.	i moduli non partono. Guarda {0} (ultime righe) o rilancia.
+the modules do not start. See {0} or run again.	i moduli non partono. Guarda {0} o rilancia.
+There is no published version yet: I install the latest development one and build it here (slower, only once).	Non c'è ancora una versione pubblicata: installo l'ultima di sviluppo e la costruisco qui (più lento, una volta sola).
+These modules did not start: {0} (last lines in {1}). Hestia works without them anyway.	Questi moduli non sono partiti: {0} (ultime righe in {1}). Hestia funziona lo stesso senza di loro.
+These modules did not start: {0}(last lines in {1}). Hestia works without them anyway.	Questi moduli non sono partiti: {0}(ultime righe in {1}). Hestia funziona lo stesso senza di loro.
+these ports are already used by another program: {0}. Close it and run again.	queste porte sono già occupate da un altro programma: {0}. Chiudilo e rilancia.
+these ports are already used by another program:{0}. Close it and run again.	queste porte sono già occupate da un altro programma:{0}. Chiudilo e rilancia.
+this installer is for Linux and macOS. On Windows use Install-Hestia.cmd (or install.ps1).	questo installer è per Linux e macOS. Su Windows usa Install-Hestia.cmd (o install.ps1).
+This machine is a satellite of {0}: voice and training run here.	Questa macchina è un satellite di {0}: voce e allenamento girano qui.
+This PC is a satellite of {0}: voice and training run here.	Questo PC è un satellite di {0}: voce e allenamento girano qui.
+To let the other machines see it, start Ollama with: OLLAMA_HOST=0.0.0.0 ollama serve	Per farlo vedere alle altre macchine avvia Ollama con: OLLAMA_HOST=0.0.0.0 ollama serve
+to link this machine you need the code: on the central home open System → Machines → Link a machine, then run again with --join CODE --central ADDRESS.	per collegare questa macchina serve il codice: sulla casa centrale apri Sistema → Macchine → Collega una macchina, poi rilancia con --join CODICE --central INDIRIZZO.
+to link this PC you need the code: on the central home open System -> Machines -> Link a machine, then run again with -Join CODE -Central ADDRESS.	per collegare questo PC serve il codice: sulla casa centrale apri Sistema -> Macchine -> Collega una macchina, poi rilancia con -Join CODICE -Central INDIRIZZO.
+To update or repair: run this same command again.	Per aggiornare o riparare: rilancia questo stesso comando.
+Turning on WSL2	Attivazione di WSL2
+Turning on WSL2 (Docker needs it). Windows asks for administrator confirmation.	Attivo WSL2 (serve a Docker). Windows ti chiede conferma di amministratore.
+Type {0} to confirm	Scrivi {0} per confermare
+unknown channel: {0} (stable or latest)	canale sconosciuto: {0} (stabile o novita)
+Unknown channel: {0}. Use stable or latest.	Canale sconosciuto: {0}. Usa stabile o novita.
+unknown option: {0} (see --help)	opzione sconosciuta: {0} (vedi --help)
+unknown role: {0} (all, central or satellite)	ruolo sconosciuto: {0} (tutto, centrale o satellite)
+Unknown role: {0}. Use all, central or satellite.	Ruolo sconosciuto: {0}. Usa tutto, centrale o satellite.
+Updating the code	Aggiornamento del codice
+Version {0}	Versione {0}
+Virtualization does not look on in the BIOS: Docker usually does not need it on Linux, but if something does not start, turn it on.	La virtualizzazione non risulta attiva nel BIOS: a Docker di solito non serve su Linux, ma se qualcosa non parte attivala.
+virtualization is off in the BIOS/UEFI: restart, enter the BIOS and turn on <<Intel VT-x>> or <<AMD-V / SVM>>, then run again.	la virtualizzazione è spenta nel BIOS/UEFI: riavvia, entra nel BIOS e attiva «Intel VT-x» o «AMD-V / SVM», poi rilancia.
+Waiting for every module to answer...	Aspetto che tutti i moduli rispondano...
+Waiting for every module to answer…	Aspetto che tutti i moduli rispondano…
+WARNING: I delete Hestia AND ALL ITS DATA (memories, chats, settings). There is no way back.	ATTENZIONE: cancello Hestia E TUTTI I SUOI DATI (memorie, chat, impostazioni). Non si torna indietro.
+WSL2 does not turn on. Open PowerShell as administrator, run <<wsl --install>> and run this again.	WSL2 non si attiva. Apri PowerShell come amministratore, lancia «wsl --install» e rilancia.
+WSL2 needs a restart to finish. After the restart the install resumes by itself.	Per finire WSL2 serve un riavvio. Dopo il riavvio l'installazione riparte da sola.
+You have {0} GB of RAM: Hestia works, but local models need at least 16. Use cloud models.	Hai {0} GB di RAM: Hestia funziona, ma per i modelli locali ne servono almeno 16. Usa i modelli nel cloud.
+You manage it from the central home: System → Machines (also «Use its graphics card»).	La gestisci dalla casa centrale: Sistema → Macchine (anche «Usa la sua scheda video»).
+{0} exists and is not empty. Choose another folder with --dir.	{0} esiste e non è vuota. Scegli un'altra cartella con --dir.
+{0} exists and is not empty. Choose another folder with -Dir.	{0} esiste e non è vuota. Scegli un'altra cartella con -Dir.
+{0} exists but is not Hestia. Choose another folder with --dir.	{0} esiste ma non è Hestia. Scegli un'altra cartella con --dir.
+{0} exists but is not Hestia. Choose another folder with -Dir.	{0} esiste ma non è Hestia. Scegli un'altra cartella con -Dir.
+{0}: did not work, retrying in {1}s...	{0}: non è andata, riprovo tra {1}s...
+{0}: did not work, retrying in {1}s…	{0}: non è andata, riprovo tra {1}s…
+…still waiting for Docker ({0}s)	…aspetto ancora Docker ({0}s)
