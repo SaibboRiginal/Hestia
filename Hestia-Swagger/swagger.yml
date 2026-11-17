@@ -98,7 +98,7 @@ tags:
   - name: Archive — Self care store
     description: Generic (kind,id) records with last-write-wins and a cursor (only Hygieia calls it)
   - name: Wardrobe
-    description: Wardrobe — pieces, accessories, outfits, «Cosa mi metto», «Indossato», packing lists, stats, photos
+    description: Wardrobe — pieces, accessories, outfits, «What do I wear», «Worn», packing lists, stats, photos
   - name: Archive — Wardrobe store
     description: Same (kind,id) last-write-wins records as the Hercules store, for Wardrobe only
   - name: Plutus
@@ -126,7 +126,7 @@ tags:
   - name: Kairos
     description: Deadlines — bills, insurance, car tax…, recurrence, advice, calendar mirror, mail proposals, daily notices
   - name: Psyche
-    description: Mood («Umore») — check-ins (mood, energy, stress, labels, causes), quiet capture from chat by Oracle, trend and insights, signals for the reflection, evening check-in
+    description: Mood — check-ins (mood, energy, stress, labels, causes), quiet capture from chat by Oracle, trend and insights, signals for the reflection, evening check-in
   - name: Archive — Apollo store
     description: Same (kind,id) last-write-wins records and cursor, for Apollo only
   - name: Archive — Aphrodite store
@@ -346,7 +346,7 @@ components:
       properties:
         fact:
           type: string
-          example: Preferisce risposte brevi
+          example: Prefers short answers
         domain:
           type: string
           default: general
@@ -517,7 +517,7 @@ components:
         spoken:
           type: boolean
           default: false
-          description: "The turn was heard and is answered aloud (WebUI Parla, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-hestia-viva"
+          description: "The turn was heard and is answered aloud (WebUI Talk, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-hestia-viva"
 
     DisplayBlock:
       type: object
@@ -805,7 +805,7 @@ components:
           type: boolean
         gate_reason:
           type: string
-          description: Why the relevance gate accepted/discarded it (Italian, e.g. "punteggio 0.48 < soglia 0.55 (urgenza low)")
+          description: Why the relevance gate accepted/discarded it (in the owner's language, e.g. "score 0.48 < threshold 0.55 (urgency low)")
         outcome:
           type: string
           enum: ["", emitted, forge, forge_skipped, setting_proposed, setting_skipped, failed, discarded]
@@ -1081,7 +1081,7 @@ components:
           properties:
             kind: { type: string, enum: [confirm, single_choice, multi_choice, free_text] }
             options: { type: array, items: { type: object, properties: { value: { type: string }, label: { type: string } } } }
-            allow_other: { type: boolean, description: "A free answer is accepted too («Altro…»)" }
+            allow_other: { type: boolean, description: "A free answer is accepted too («Other…»)" }
         payload: { type: object, additionalProperties: true }
         state: { type: string, description: "update: seen | answered | expired | superseded (a newer occurrence of the same reminder replaced it: drop it)" }
         superseded_by: { type: string, description: "update superseded: id of the new occurrence" }
@@ -1089,7 +1089,7 @@ components:
           type: object
           nullable: true
           description: "Repeat chain counter, only from the second occurrence on; text = short Italian, readable aloud"
-          properties: { count: { type: integer }, skipped: { type: integer }, since: { type: string }, text: { type: string, example: "Saltato 2 volte · dal 12 ott" } }
+          properties: { count: { type: integer }, skipped: { type: integer }, since: { type: string }, text: { type: string, example: "Skipped 2 times · since 12 Oct" } }
         seen: { type: object, properties: { by: { type: string }, at: { type: string } } }
         answer: { type: object, properties: { action_id: { type: string }, label: { type: string }, by: { type: string }, status: { type: string }, outcome_text: { type: string } } }
         pending: { type: boolean }
@@ -1598,7 +1598,7 @@ paths:
                         icon: {type: string}
                         color: {type: string}
                         version: {type: string}
-                        kind: {type: string, enum: [domain, core], description: "core = system module (WebUI «Sistema»)"}
+                        kind: {type: string, enum: [domain, core], description: "core = system module (WebUI «System»)"}
                         online: {type: boolean}
                   contributions:
                     type: object
@@ -1632,7 +1632,7 @@ paths:
   /api/ui/map:
     get:
       tags: [Hub]
-      summary: Mappa read model (Hub WebUI plugin) — every service plus Hub itself
+      summary: Map read model (Hub WebUI plugin) — every service plus Hub itself
       description: |
         One row per service (newest instance) plus Hub: online = re-registered in the last 180 s, node
         (`capabilities.node` or base-URL host), version, last heartbeat, topology tags. `probe=true` also calls each
@@ -3197,7 +3197,7 @@ paths:
   /api/gateway/auth/google:
     get:
       tags: [Hecate]
-      summary: "«Google» card (Dispositivi and guided setup): OAuth client there, account linked, pending flow, redirect"
+      summary: "«Google» card (Devices and guided setup): OAuth client there, account linked, pending flow, redirect"
       servers:
         - url: http://localhost:19003
       responses:
@@ -3415,7 +3415,7 @@ paths:
   /api/gateway/weather/now:
     get:
       tags: [Hecate]
-      summary: "Current weather at place (query place: saved place name/id, city, empty = Casa)"
+      summary: "Current weather at place (query place: saved place name/id, city, empty = Home)"
       servers:
         - url: http://localhost:19003
       responses:
@@ -3469,7 +3469,7 @@ paths:
   /api/gateway/garmin/connect:
     post:
       tags: [Hecate]
-      summary: "«Collega Garmin»: Hermes secret form (email, password) to the owner {status: asked}"
+      summary: "«Link Garmin»: Hermes secret form (email, password) to the owner {status: asked}"
       servers:
         - url: http://localhost:19003
       responses:
@@ -3520,7 +3520,7 @@ paths:
   /api/gateway/garmin/login:
     post:
       tags: [Hecate]
-      summary: "Secret form target, and the Dispositivi page form ({direct: true}: the two-step code is asked in the page, no Hermes form) {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
+      summary: "Secret form target, and the Devices page form ({direct: true}: the two-step code is asked in the page, no Hermes form) {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
       servers:
         - url: http://localhost:19003
       responses:
@@ -3834,7 +3834,7 @@ paths:
   /api/email/subscriptions/{owner}/{key}/backfill:
     post:
       tags: [Iris]
-      summary: "Deliver the matching mails of the last days again (the module's «controlla ora»; Archive dedupes)"
+      summary: "Deliver the matching mails of the last days again (the module's «check now»; Archive dedupes)"
       servers:
         - url: http://localhost:19012
       parameters:
@@ -3884,7 +3884,7 @@ paths:
   /api/email/check:
     post:
       tags: [Iris]
-      summary: "«Controlla ora»: ask Hecate's watcher for one check (same as the agenda job)"
+      summary: "«Check now»: ask Hecate's watcher for one check (same as the agenda job)"
       servers:
         - url: http://localhost:19012
       responses:
@@ -3921,7 +3921,7 @@ paths:
         - url: http://localhost:19004
       responses:
         "200":
-          description: "{status, service, models: ok|limited|none} — models: how the assistant can answer now (first model of the general chain · only fallback steps · none usable); Argus turns it into «Limitato» / «Non disponibile» (oracle-offline v3 E)"
+          description: "{status, service, models: ok|limited|none} — models: how the assistant can answer now (first model of the general chain · only fallback steps · none usable); Argus turns it into «Limito» / «Non disponibile» (oracle-offline v3 E)"
 
   /api/chat:
     post:
@@ -3931,7 +3931,7 @@ paths:
         - url: http://localhost:19004
       parameters:
         - {name: X-Hestia-Origin, in: header, required: false, schema: {type: string}, description: "who started the turn, set by the caller's code (hestia_common.origin): user | external:<access> | routine:<rule> | autonomous:<module>. Missing = user for a user client (telegram, webui), else autonomous. routine cannot delete, autonomous can only propose/notify/ask."}
-        - {name: X-Hestia-Origin-Label, in: header, required: false, schema: {type: string}, description: "label clients show above the answer (e.g. Da una tua routine)"}
+        - {name: X-Hestia-Origin-Label, in: header, required: false, schema: {type: string}, description: "label clients show above the answer (e.g. From one of your routines)"}
       requestBody:
         required: true
         content:
@@ -4517,7 +4517,7 @@ paths:
   /oracle/api/ui/activity:
     get:
       tags: [Oracle]
-      summary: Recent chat turns (real path /api/ui/activity; page Cervello)
+      summary: Recent chat turns (real path /api/ui/activity; page Brain)
       description: In memory (last 200 turns, reset on restart). Newest first.
       servers:
         - url: http://localhost:19004
@@ -4529,7 +4529,7 @@ paths:
   /oracle/api/ui/stats:
     get:
       tags: [Oracle]
-      summary: LLM use per day and per use case/model (real path /api/ui/stats; page Cervello, widget Uso models today)
+      summary: LLM use per day and per use case/model (real path /api/ui/stats; page Brain, widget Model usage today)
       description: From the in-memory llm_stats (since Oracle started; days kept ≤ 31).
       servers:
         - url: http://localhost:19004
@@ -4541,7 +4541,7 @@ paths:
   /oracle/api/ui/code:
     get:
       tags: [Oracle]
-      summary: Claude Code status and recent runs (real path /api/ui/code; page Cervello)
+      summary: Claude Code status and recent runs (real path /api/ui/code; page Brain)
       servers:
         - url: http://localhost:19004
       responses:
@@ -4550,7 +4550,7 @@ paths:
   /oracle/api/ui/models:
     get:
       tags: [Oracle]
-      summary: Tab Modelli — providers (no keys), standards, chains with step state, use cases, overrides, modes (real path /api/ui/models)
+      summary: Tab Models — providers (no keys), standards, chains with step state, use cases, overrides, modes (real path /api/ui/models)
       servers:
         - url: http://localhost:19004
       responses:
@@ -4589,7 +4589,7 @@ paths:
   /oracle/api/ui/models/quota/reset:
     post:
       tags: [Oracle]
-      summary: «Riprova adesso» — forget the quota state of a provider/model (all when no provider)
+      summary: «Try again now» — forget the quota state of a provider/model (all when no provider)
       servers:
         - url: http://localhost:19004
       parameters:
@@ -4601,7 +4601,7 @@ paths:
   /oracle/api/ui/usage:
     get:
       tags: [Oracle]
-      summary: Tab Uso — same as /api/llm/usage (real path /api/ui/usage; also /api/ui/usage/calls)
+      summary: Tab Usage — same as /api/llm/usage (real path /api/ui/usage; also /api/ui/usage/calls)
       servers:
         - url: http://localhost:19004
       responses:
@@ -4793,7 +4793,7 @@ paths:
   /oracle/api/ui/memory:
     get:
       tags: [Oracle]
-      summary: Memoria page, active user memories with origin (real path /api/ui/memory)
+      summary: Memory page, active user memories with origin (real path /api/ui/memory)
       servers:
         - url: http://localhost:19004
       responses:
@@ -4814,7 +4814,7 @@ paths:
   /oracle/api/ui/documents:
     get:
       tags: [Oracle]
-      summary: Documents kept for RAG, from Archive via Hub (real path /api/ui/documents; page Documenti)
+      summary: Documents kept for RAG, from Archive via Hub (real path /api/ui/documents; page Documents)
       servers:
         - url: http://localhost:19004
       parameters:
@@ -4891,7 +4891,7 @@ paths:
   /api/llm/setup/catalog:
     get:
       tags: [Oracle]
-      summary: "Guided setup «Cervello» — programs for local models found at home (this PC and the computers in hosts: Ollama, LM Studio, Jan, llama.cpp, vLLM) with their real models, suggestions for the hardware (query vram_gb, ram_gb), cloud providers (no keys)"
+      summary: "Guided setup «Brain» — programs for local models found at home (this PC and the computers in hosts: Ollama, LM Studio, Jan, llama.cpp, vLLM) with their real models, suggestions for the hardware (query vram_gb, ram_gb), cloud providers (no keys)"
       servers:
         - url: http://localhost:19004
       parameters:
@@ -4915,7 +4915,7 @@ paths:
                 provider: {type: string}
                 model: {type: string, description: "empty = Hestia's default if the provider lists it, else its first chat model"}
       responses:
-        "200": {description: "{ok, detail, model, models[], recommended[], embed[]} (models = chat models only; embed = the embedding models for «Memoria»; recommended = the models preselected in order once the key works: defaults still listed, then the cheapest-looking chat models; never speech/picture ones)"}
+        "200": {description: "{ok, detail, model, models[], recommended[], embed[]} (models = chat models only; embed = the embedding models for «Memory»; recommended = the models preselected in order once the key works: defaults still listed, then the cheapest-looking chat models; never speech/picture ones)"}
 
   /api/llm/setup/reload-keys:
     post:
@@ -4946,7 +4946,7 @@ paths:
                 cloud_models: {type: object, additionalProperties: {oneOf: [{type: array, items: {type: string}}, {type: string}]}, description: "provider → models picked from its list, in order (the next takes over when the first fails); a single name is still accepted"}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}, description: "the memory's model (at home or a cloud one, e.g. gemini-embedding-001); only a different one changes the chain (re-index)"}
                 modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "strong|code|vision → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
-                order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Scelti» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
+                order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Chosen» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
       responses:
         "200": {description: "{ok, detail} (detail = one-sentence summary)"}
         "502": {description: Themis refused or unreachable}
@@ -5267,7 +5267,7 @@ paths:
   /api/agenda/coach/today:
     get:
       tags: [Chronos]
-      summary: "Today's plan items (widget «Oggi nel piano»)"
+      summary: "Today's plan items (widget «Today in the plan»)"
       servers:
         - url: http://localhost:19007
       responses:
@@ -5430,7 +5430,7 @@ paths:
       summary: "Standard activities: every default rule a module declared, with its state (recap dossier §3.9)"
       description: >
         Rules created by a module (not by the user), retired ones excluded. state = deleted | failed |
-        in pausa | edited | active; can_restore true for every state but active. Also lists the modules'
+        paused | edited | active; can_restore true for every state but active. Also lists the modules'
         templates. Rule fields: key, owner, title, type, recurrence, start_at, flex, state, can_restore, description.
       servers:
         - url: http://localhost:19007
@@ -5505,7 +5505,7 @@ paths:
   /api/agenda/runs:
     get:
       tags: [Chronos]
-      summary: Runs of the assistant agenda's jobs/tasks (WebUI plugin page Esecuzioni)
+      summary: Runs of the assistant agenda's jobs/tasks (WebUI plugin page Runs)
       description: |
         Every recorded run (`meta.runs`, last 50 per item) plus skipped past occurrences, newest first; summary and the
         rules registered per owner (module).
@@ -5524,7 +5524,7 @@ paths:
   /api/agenda/runs/failed:
     get:
       tags: [Chronos]
-      summary: Jobs whose last run failed — chips of the quick action «Riprova job» (POST /api/agenda/items/{id}/run)
+      summary: Jobs whose last run failed — chips of the quick action «Retry job» (POST /api/agenda/items/{id}/run)
       servers:
         - url: http://localhost:19007
       parameters:
@@ -5535,7 +5535,7 @@ paths:
   /api/agenda/logs:
     get:
       tags: [Chronos]
-      summary: A module's logs around an occurrence (Agenda «Log del modulo»)
+      summary: A module's logs around an occurrence (Agenda «Module log»)
       description: |
         Chronos reads `{service}/api/logs` through Hub (the module's in-memory buffer, last 2000 lines) and keeps the
         lines within `at ± minutes`. Old occurrences may return nothing (`oldest` says how far the buffer goes).
@@ -5558,8 +5558,8 @@ paths:
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/agenda/)
       description: |
         Pages `agenda` «Agenda di Hestia» (chronos-agenda, order 150; WebUI /calendar redirects here) and `runs`
-        (chronos-runs, order 151, parent agenda), widget `failed` «Job falliti» (chronos-failed-widget, auto),
-        quick action `retry` «Riprova job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
+        (chronos-runs, order 151, parent agenda), widget `failed` «Failed jobs» (chronos-failed-widget, auto),
+        quick action `retry` «Retry job» (source /api/agenda/runs/failed). Bundle file at /ui/webui/chronos.js.
       servers:
         - url: http://localhost:19007
       responses:
@@ -5619,7 +5619,7 @@ paths:
   /api/agenda/parse:
     post:
       tags: [Chronos]
-      summary: Natural-language quick add ("domani alle 15 dentista") → draft fields (nothing is created)
+      summary: Natural-language quick add ("tomorrow at 3 pm dentist") → draft fields (nothing is created)
       description: Oracle /api/llm/generate extracts the fields; Chronos validates dates and RRULE.
       servers:
         - url: http://localhost:19007
@@ -5752,7 +5752,7 @@ paths:
   /api/presence/dnd:
     post:
       tags: [Chronos — Presence]
-      summary: Non disturbare on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `presence_dnd_on`
+      summary: Do not disturb on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `presence_dnd_on`
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -5763,7 +5763,7 @@ paths:
         "200": {description: current state}
     delete:
       tags: [Chronos — Presence]
-      summary: Non disturbare off. MCP tool `presence_dnd_off`
+      summary: Do not disturb off. MCP tool `presence_dnd_off`
       servers:
         - url: http://localhost:19007
       responses:
@@ -5986,14 +5986,14 @@ paths:
   /api/agenda/special:
     get:
       tags: [Chronos — Life]
-      summary: "Same as GET /api/special (page Eventi speciali)"
+      summary: "Same as GET /api/special (page Special events)"
       servers:
         - url: http://localhost:19007
       responses:
         "200": {description: "{count, items}"}
     post:
       tags: [Chronos — Life]
-      summary: "Same as POST /api/special (page Eventi speciali)"
+      summary: "Same as POST /api/special (page Special events)"
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -6006,7 +6006,7 @@ paths:
   /api/agenda/special/{key}:
     delete:
       tags: [Chronos — Life]
-      summary: "Same as DELETE /api/special/{key} (page Eventi speciali)"
+      summary: "Same as DELETE /api/special/{key} (page Special events)"
       servers:
         - url: http://localhost:19007
       parameters:
@@ -6017,7 +6017,7 @@ paths:
   /api/special/propose:
     post:
       tags: [Chronos — Life]
-      summary: "The assistant found a date: Hermes card Aggiungi / No {title, day, kind, person?, evidence?}"
+      summary: "The assistant found a date: Hermes card Add / No {title, day, kind, person?, evidence?}"
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -6052,7 +6052,7 @@ paths:
   /api/calendar/smart/check:
     post:
       tags: [Chronos — Life]
-      summary: "Overlapping events of the next days → Hermes card «Sposta alle HH:MM» / «Lascia così» (never moves by itself)"
+      summary: "Overlapping events of the next days → Hermes card «Move to HH:MM» / «Leave it» (never moves by itself)"
       servers:
         - url: http://localhost:19007
       parameters:
@@ -6063,7 +6063,7 @@ paths:
   /api/calendar/smart/kept:
     post:
       tags: [Chronos — Life]
-      summary: "«Lascia così» {event_id}: not proposed again"
+      summary: "«Leave it» {event_id}: not proposed again"
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -6321,7 +6321,7 @@ paths:
       description: |
         Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `notifications` (hermes-inbox, order 140,
         badge {source: /api/ui/inbox/counts, field: unread}), sub-page `deliveries` (hermes-deliveries, order 141),
-        widget `today` «Consegne oggi» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
+        widget `today` «Deliveries today» (hermes-today-widget, auto). Bundle file at /ui/webui/hermes.js.
       servers:
         - url: http://localhost:19005
       responses:
@@ -6330,7 +6330,7 @@ paths:
   /hermes/api/ui/deliveries:
     get:
       tags: [Hermes]
-      summary: Delivery log (real path /api/ui/deliveries) — page Consegne, widget Consegne today
+      summary: Delivery log (real path /api/ui/deliveries) — page Deliveries, widget Deliveries today
       description: |
         Notifications newest first with their state on every client and what happened to them: held by presence
         (and released in the digest), quiet (inbox copy only), retracted from a chat, superseded (repeat chain),
@@ -6352,7 +6352,7 @@ paths:
   /hermes/api/ui/subscriptions:
     get:
       tags: [Hermes]
-      summary: Active subscriptions (real path /api/ui/subscriptions) — page Consegne
+      summary: Active subscriptions (real path /api/ui/subscriptions) — page Deliveries
       servers:
         - url: http://localhost:19005
       responses:
@@ -6371,7 +6371,7 @@ paths:
   /hermes/api/ui/inbox:
     get:
       tags: [Hermes]
-      summary: Inbox for the plugin page Notifiche (real path /api/ui/inbox; same as GET /api/notifications, client webui)
+      summary: Inbox for the plugin page Notifications (real path /api/ui/inbox; same as GET /api/notifications, client webui)
       servers:
         - url: http://localhost:19005
       parameters:
@@ -6387,7 +6387,7 @@ paths:
   /hermes/api/ui/inbox/counts:
     get:
       tags: [Hermes]
-      summary: Unread / pending counters (real path /api/ui/inbox/counts) — sidebar badge of Notifiche
+      summary: Unread / pending counters (real path /api/ui/inbox/counts) — sidebar badge of Notifications
       servers:
         - url: http://localhost:19005
       parameters:
@@ -6587,7 +6587,7 @@ paths:
   /api/notifications/remind-pending:
     post:
       tags: [Hermes]
-      summary: "Agenda job hermes.notifications.remind_pending: one grouped «Da decidere» reminder, once per notification"
+      summary: "Agenda job hermes.notifications.remind_pending: one grouped «To decide» reminder, once per notification"
       servers:
         - url: http://localhost:19005
       responses:
@@ -6614,7 +6614,7 @@ paths:
                   oneOf: [{type: string}, {type: array, items: {type: string}}]
       responses:
         "200": {description: "{status, answer}"}
-        "400": {description: "empty_answer · unknown_option (not an option and no «Altro…»)"}
+        "400": {description: "empty_answer · unknown_option (not an option and no «Other…»)"}
         "404": {description: "not_found · no_question"}
         "409": {description: "already_handled, with the winning answer"}
         "502": {description: "the module failed: the claim is released"}
@@ -6901,7 +6901,7 @@ paths:
   /api/scout/check:
     post:
       tags: [Scout]
-      summary: "«Controlla email» (MCP tool scout_fetch): Iris backfill of the last day + cycle (async)"
+      summary: "«Check email» (MCP tool scout_fetch): Iris backfill of the last day + cycle (async)"
       servers:
         - url: http://localhost:19006
       responses:
@@ -7001,7 +7001,7 @@ paths:
   /api/ui/cycle:
     post:
       tags: [Scout]
-      summary: "«Controlla email» from the plugin: Iris backfill of the last day + cycle (async)"
+      summary: "«Check email» from the plugin: Iris backfill of the last day + cycle (async)"
       servers:
         - url: http://localhost:19006
       responses:
@@ -7265,7 +7265,7 @@ paths:
           same data as before.
 
         **Public door for external AIs** (server 19015 = WebUI, the only service behind the tunnel): the same path
-        `POST /mcp` on the WebUI needs `Authorization: Bearer <token>` (an access from *Accessi AI*) and is forwarded
+        `POST /mcp` on the WebUI needs `Authorization: Bearer <token>` (an access from *AI access*) and is forwarded
         through Hub to `/mcp/external` below; no WebUI login there, always a token. GET/DELETE → 405.
       servers:
         - url: http://localhost:19013
@@ -7323,7 +7323,7 @@ paths:
   /api/mcp/ui/tools:
     get:
       tags: [MCP]
-      summary: Comandi page — the tools the WebUI sees (same list as /mcp tools/list for client webui), as commands
+      summary: Commands page — the tools the WebUI sees (same list as /mcp tools/list for client webui), as commands
       servers:
         - url: http://localhost:19013
       responses:
@@ -7332,7 +7332,7 @@ paths:
   /api/mcp/ui/tools/call:
     post:
       tags: [MCP]
-      summary: Comandi page — run one tool as client webui (same rules as /mcp tools/call, X-Hestia-Client webui, 20 s)
+      summary: Commands page — run one tool as client webui (same rules as /mcp tools/call, X-Hestia-Client webui, 20 s)
       servers:
         - url: http://localhost:19013
       requestBody:
@@ -7353,7 +7353,7 @@ paths:
   /api/mcp/ui/tools/format:
     post:
       tags: [MCP]
-      summary: Comandi page — readable text of a tool result (Oracle /api/format via Hub, plain text)
+      summary: Commands page — readable text of a tool result (Oracle /api/format via Hub, plain text)
       servers:
         - url: http://localhost:19013
       requestBody:
@@ -7373,7 +7373,7 @@ paths:
   /api/mcp/accesses:
     get:
       tags: [MCP]
-      summary: External AI accesses (Accessi AI page) — never tokens or hashes
+      summary: External AI accesses (AI access page) — never tokens or hashes
       servers:
         - url: http://localhost:19013
       responses:
@@ -7457,7 +7457,7 @@ paths:
   /api/mcp/outbound:
     get:
       tags: [MCP]
-      summary: Servizi external_ais — third-party MCP servers Hestia may use (from Hecate; names and status only)
+      summary: Services external_ais — third-party MCP servers Hestia may use (from Hecate; names and status only)
       servers:
         - url: http://localhost:19013
       responses:
@@ -7553,7 +7553,7 @@ paths:
   /api/mcp/oauth/requests/{request_id}/approve:
     post:
       tags: [MCP]
-      summary: Consenti — issue the code with the scope, tools and expiry picked on the card
+      summary: Allow — issue the code with the scope, tools and expiry picked on the card
       servers:
         - url: http://localhost:19013
       parameters:
@@ -7569,7 +7569,7 @@ paths:
   /api/mcp/oauth/requests/{request_id}/deny:
     post:
       tags: [MCP]
-      summary: Rifiuta — redirect with error=access_denied
+      summary: Reject — redirect with error=access_denied
       servers:
         - url: http://localhost:19013
       parameters:
@@ -7665,7 +7665,7 @@ paths:
   /api/argus/overview:
     get:
       tags: [Argus]
-      summary: Last monitor cycle in one look (no network) — widget Stato system
+      summary: Last monitor cycle in one look (no network) — widget System status
       servers:
         - url: http://localhost:19008
       responses:
@@ -7725,7 +7725,7 @@ paths:
   /api/argus/recheck-targets:
     get:
       tags: [Argus]
-      summary: Quick-action chips «Ricontrolla <servizio>» (services that are not up)
+      summary: Quick-action chips «Check <service> again» (services that are not up)
       servers:
         - url: http://localhost:19008
       responses:
@@ -7850,7 +7850,7 @@ paths:
                 cloud_models: {type: object, additionalProperties: {type: string}}
                 embedding: {type: object, properties: {provider: {type: string}, model: {type: string}}}
                 modes: {type: object, additionalProperties: {type: object, properties: {provider: {type: string}, model: {type: string}, steps: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}}}}, description: "strong|code|vision → {steps: [...]} the mode's own whole list in order (or one {provider, model} first, the general choice after)"}
-                order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Scelti» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
+                order: {type: array, items: {type: object, properties: {provider: {type: string}, model: {type: string}}}, description: "«Chosen» in the user's order (local and cloud mixed); model empty = every model of that service; unnamed steps stay after"}
                 keys: {type: object, description: "provider → key (written to Oracle's .env, then Oracle re-reads it; re-create only as fallback)"}
                 claude_token: {type: string}
       responses:
@@ -7876,7 +7876,7 @@ paths:
   /api/setup/brain/hello:
     post:
       tags: [Hephaestus]
-      summary: "«I modelli sono pronti»: the assistant's first message, written with the models just chosen (→ Oracle /api/llm/generate, use case hephaestus.setup)"
+      summary: "«The models are ready»: the assistant's first message, written with the models just chosen (→ Oracle /api/llm/generate, use case hephaestus.setup)"
       servers:
         - url: http://localhost:19010
       responses:
@@ -7894,7 +7894,7 @@ paths:
   /api/setup/machines:
     get:
       tags: [Hephaestus]
-      summary: "This machine (role, hardware) and its satellites (Macchine page)"
+      summary: "This machine (role, hardware) and its satellites (Machines page)"
       servers:
         - url: http://localhost:19010
       responses:
@@ -7947,7 +7947,7 @@ paths:
   /api/setup/update:
     get:
       tags: [Hephaestus]
-      summary: "Aggiorna Hestia: installed version, channel, newer version with notes, job, history"
+      summary: "Update Hestia: installed version, channel, newer version with notes, job, history"
       servers:
         - url: http://localhost:19010
       responses:
@@ -7999,7 +7999,7 @@ paths:
   /api/setup/update/answer:
     post:
       tags: [Hephaestus]
-      summary: "Answer of the Hermes question «Installo?» (si = install)"
+      summary: "Answer of the Hermes question «Install?» (yes = install)"
       servers:
         - url: http://localhost:19010
       requestBody:
@@ -8040,7 +8040,7 @@ paths:
   /api/setup/voice/catalog:
     get:
       tags: [Hephaestus]
-      summary: "Setup «Voce»: Echo's speech services per direction (→ Echo /api/voice/setup/catalog), hosts passed on"
+      summary: "Setup «Voice»: Echo's speech services per direction (→ Echo /api/voice/setup/catalog), hosts passed on"
       servers:
         - url: http://localhost:19010
       parameters:
@@ -8051,7 +8051,7 @@ paths:
   /api/setup/voice/preview:
     post:
       tags: [Hephaestus]
-      summary: "Setup «Ascolta» on a chosen voice (→ Echo /api/voice/setup/preview)"
+      summary: "Setup «Listen» on a chosen voice (→ Echo /api/voice/setup/preview)"
       servers:
         - url: http://localhost:19010
       responses:
@@ -8106,7 +8106,7 @@ paths:
   /api/downloads:
     get:
       tags: [Hephaestus]
-      summary: "Hephaestus' downloads (hestia_common.downloads): the cloudflared image of «Fuori casa»; pause/resume/retry/cancel as every module"
+      summary: "Hephaestus' downloads (hestia_common.downloads): the cloudflared image of «Away from home»; pause/resume/retry/cancel as every module"
       servers:
         - url: http://localhost:19010
       responses:
@@ -8362,7 +8362,7 @@ paths:
             schema:
               type: object
               properties:
-                reset_day: {type: string, description: mon..sun / lun..dom}
+                reset_day: {type: string, description: mon..sun (any language)}
                 reset_time: {type: string, description: "HH:MM"}
                 tz: {type: string}
                 window_hours: {type: integer}
@@ -8407,7 +8407,7 @@ paths:
                 requested_by: {type: string}
                 notify_target: {type: string}
                 workdoc: {type: string, description: "continue docs/work/<workdoc>/ of an earlier task"}
-                parent_task: {type: string, description: "follow-up of this task (Sviluppo page): inherits workdoc, services and its outcome as context"}
+                parent_task: {type: string, description: "follow-up of this task (Development page): inherits workdoc, services and its outcome as context"}
                 agenda_parent: {type: string, description: "agenda key this task serves: its mirror forge.task.<id> is linked to it (cancelling it rejects a proposed/scheduled task; a failed task marks it)"}
       responses:
         "200": {description: "{status, task}"}
@@ -8431,7 +8431,7 @@ paths:
   /api/hephaestus/forge/counts:
     get:
       tags: [Hephaestus]
-      summary: Forge tasks per state (Sviluppo page badge)
+      summary: Forge tasks per state (Development page badge)
       description: "`review` = awaiting_review + proposed (what waits for the owner) — the WebUI plugin page badge field. Over the newest 200 tasks."
       servers:
         - url: http://localhost:19010
@@ -8441,7 +8441,7 @@ paths:
   /api/hephaestus/forge/tasks/export:
     get:
       tags: [Hephaestus]
-      summary: «Copia per AI» — markdown of some Forge tasks for an external AI
+      summary: «Copy for AI» — markdown of some Forge tasks for an external AI
       description: "Built from the forge_task (`/tasks/{id}/overview`) and forge_tasks (`/tasks/brief`) views: request, state, origin, error, tests, dossier path `docs/work/<workdoc>/`, notes, recent history and how to hand a fix back via MCP (`forge_task_note`, `forge_submit_branch` when the state accepts a branch). Returned only (clipboard / .md download in the Sviluppo page): nothing is written to the repo."
       servers:
         - url: http://localhost:19010
@@ -8478,7 +8478,7 @@ paths:
   /api/hephaestus/forge/tasks/{task_id}/transcript:
     get:
       tags: [Hephaestus]
-      summary: "Engine conversation, normalized (Sviluppo page). Live while a Claude run is going"
+      summary: "Engine conversation, normalized (Development page). Live while a Claude run is going"
       servers:
         - url: http://localhost:19010
       parameters:
@@ -8964,7 +8964,7 @@ paths:
   /api/metis/tools/review:
     get:
       tags: [Metis]
-      summary: "Tool metis_review: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
+      summary: "Tool metis_review: «To review» card (next correction, Accept / I'll fix it / Discard)"
       servers:
         - url: http://localhost:19014
       responses:
@@ -8987,7 +8987,7 @@ paths:
     post:
       tags: [Metis]
       summary: "Training dataset export: zip of sft.jsonl, dpo.jsonl, eval.jsonl (OpenAI messages + tools) and card.json"
-      description: "plain false (default) hides names of Persone, e-mails, phones, IBAN and addresses; Persone not reachable → 503. Stored as an Archive blob (owner metis)."
+      description: "plain false (default) hides names of People, e-mails, phones, IBAN and addresses; People not reachable → 503. Stored as an Archive blob (owner metis)."
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -9000,7 +9000,7 @@ paths:
                 include_unreviewed: {type: boolean, default: false}
       responses:
         "200": {description: "{id, name, blob_id, size, sft, dpo, eval, skipped, corrected, turns, masked, routes, models, first, last, created_at}"}
-        "503": {description: "Archive or Persone not reachable"}
+        "503": {description: "Archive or People not reachable"}
     get:
       tags: [Metis]
       summary: "Recent training dataset exports"
@@ -9039,7 +9039,7 @@ paths:
   /api/metis/now:
     get:
       tags: [Metis]
-      summary: "«Adesso»: agenda items with a tool (next 3 h), habits at this hour/day, recents, the assistant's ideas"
+      summary: "«Now»: agenda items with a tool (next 3 h), habits at this hour/day, recents, the assistant's ideas"
       description: "Only tools of the Hub catalog the client can run; no delete/cancel tools. Each item says why."
       servers:
         - url: http://localhost:19014
@@ -9065,7 +9065,7 @@ paths:
   /api/metis/discover:
     get:
       tags: [Metis]
-      summary: "«Scopri»: tools never or rarely used (≤ 2 in 90 days), one per module first"
+      summary: "«Discover»: tools never or rarely used (≤ 2 in 90 days), one per module first"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -9077,7 +9077,7 @@ paths:
   /api/metis/tools/now:
     get:
       tags: [Metis]
-      summary: "Tool metis_now: the Adesso list as a display card with one button per item"
+      summary: "Tool metis_now: the Now list as a display card with one button per item"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -9088,7 +9088,7 @@ paths:
   /api/metis/tools/discover:
     get:
       tags: [Metis]
-      summary: "Tool metis_discover: the Scopri list as a display card"
+      summary: "Tool metis_discover: the Discover list as a display card"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -9261,7 +9261,7 @@ paths:
   /api/settings/history:
     get:
       tags: [Themis]
-      summary: Every setting change, all keys, newest first, paged (WebUI plugin page Registro)
+      summary: Every setting change, all keys, newest first, paged (WebUI plugin page Log)
       description: |
         Reads the newest 500 changes from Archive (which keeps the last 10 per key). `undoable` = latest change of its
         key/scope (what POST /api/settings/key/{key}/undo restores). Session copies are hidden unless `sessions=true`.
@@ -9349,7 +9349,7 @@ paths:
     post:
       tags: [Themis]
       summary: Assistant proposes a change (assistant tool settings_propose; Athena in autonomy) — never applied without the user
-      description: Themis stores it as pending and sends it to the user through Hermes (service.action_required, payload kind settings.proposal, _message, _actions Approva/Rifiuta with service/method/path). Born in a chat (X-Session-Id + X-Hestia-Client, or body origin) → the answer adds `confirm` (card for that chat, Oracle emits it as a question) and the Hermes copy is quiet (inbox only).
+      description: Themis stores it as pending and sends it to the user through Hermes (service.action_required, payload kind settings.proposal, _message, _actions Approve/Reject with service/method/path). Born in a chat (X-Session-Id + X-Hestia-Client, or body origin) → the answer adds `confirm` (card for that chat, Oracle emits it as a question) and the Hermes copy is quiet (inbox only).
       servers:
         - url: http://localhost:19016
       parameters:
@@ -9778,7 +9778,7 @@ paths:
   /api/hercules/sessions/log-text:
     post:
       tags: [Hercules]
-      summary: "Log sets from text: \"panca 80x8, 80x8; trazioni 8, 7\""
+      summary: "Log sets from text: \"bench 80x8, 80x8; pull-ups 8, 7\""
       servers:
         - url: http://localhost:19019
       responses:
@@ -10078,7 +10078,7 @@ paths:
   /api/hercules/activities/quick-run:
     post:
       tags: [Hercules]
-      summary: "Home quick action «Ho corso» {km?, date?} (DELETE = undo today)"
+      summary: "Home quick action «I ran» {km?, date?} (DELETE = undo today)"
       servers:
         - url: http://localhost:19019
       responses:
@@ -10114,7 +10114,7 @@ paths:
   /api/hercules/activities/{plan_id}/confirm:
     post:
       tags: [Hercules]
-      summary: "Confirm {slots?: numbers|ids|ISO times} → events in «Allenamenti» + «l'hai fatto?» agenda task"
+      summary: "Confirm {slots?: numbers|ids|ISO times} → events in «Workouts» + «did you do it?» agenda task"
       servers:
         - url: http://localhost:19019
       responses:
@@ -10132,7 +10132,7 @@ paths:
   /api/hercules/activities/{plan_id}/keep:
     post:
       tags: [Hercules]
-      summary: "«Tengo» / «Non oggi» from the morning message (no change)"
+      summary: "«Keep» / «Not today» from the morning message (no change)"
       servers:
         - url: http://localhost:19019
       responses:
@@ -10168,7 +10168,7 @@ paths:
   /api/hercules/activities/{plan_id}/slots/{slot_id}/ask:
     post:
       tags: [Hercules]
-      summary: "Agenda task: send «Hai fatto la corsa?» through Hermes"
+      summary: "Agenda task: send «Did you go for the run?» through Hermes"
       servers:
         - url: http://localhost:19019
       responses:
@@ -10446,7 +10446,7 @@ paths:
   /api/wardrobe/wears:
     get:
       tags: [Wardrobe]
-      summary: "«Indossato» marks (date_from, date_to, limit)"
+      summary: "«Worn» marks (date_from, date_to, limit)"
       servers:
         - url: http://localhost:19017
       responses:
@@ -10471,7 +10471,7 @@ paths:
   /api/wardrobe/suggest:
     post:
       tags: [Wardrobe]
-      summary: "«Cosa mi metto» {occasion, temp_c, rain, place, date, styles, count} (temp/rain empty → Hecate forecast) → items[{outfit_id?, name, pieces, score, reasons}]"
+      summary: "«What do I wear» {occasion, temp_c, rain, place, date, styles, count} (temp/rain empty → Hecate forecast) → items[{outfit_id?, name, pieces, score, reasons}]"
       servers:
         - url: http://localhost:19017
       responses:
@@ -10573,7 +10573,7 @@ paths:
   /api/wardrobe/attachments:
     post:
       tags: [Wardrobe]
-      summary: "Photo sent in chat with «guardaroba» (Oracle attachment hand-off) → piece saved with the photo"
+      summary: "Photo sent in chat with «wardrobe» (Oracle attachment hand-off) → piece saved with the photo"
       description: "Body {blob_id, filename?, mime?, message?, session_id?} → {handled, text, piece_id?}; not recognised → handled with a question, nothing saved"
       servers:
         - url: http://localhost:19017
@@ -10610,7 +10610,7 @@ paths:
   /api/wardrobe/quick/{id}:
     post:
       tags: [Wardrobe]
-      summary: "One-tap «Indossato» for a chip {date?, note?}"
+      summary: "One-tap «Worn» for a chip {date?, note?}"
       servers:
         - url: http://localhost:19017
       responses:
@@ -10635,7 +10635,7 @@ paths:
   /api/wardrobe/reminder/skip:
     post:
       tags: [Wardrobe]
-      summary: "No-op answer for «Salta» / «Tieni» buttons"
+      summary: "No-op answer for «Skip» / «Keep» buttons"
       servers:
         - url: http://localhost:19017
       responses:
@@ -10674,7 +10674,7 @@ paths:
   /api/module/recap:
     get:
       tags: [Wardrobe]
-      summary: "Daily recap piece (shared contract, capability recap_endpoint; Chronos, Hecate (tomorrow's weather at Casa), Scout, Hercules (gym + outdoor activities), Hygieia, Wardrobe, Plutus, Hermes, Athena, Dummy)"
+      summary: "Daily recap piece (shared contract, capability recap_endpoint; Chronos, Hecate (tomorrow's weather at Home), Scout, Hercules (gym + outdoor activities), Hygieia, Wardrobe, Plutus, Hermes, Athena, Dummy)"
       description: >
         Plain facts of the day, never an LLM call (hestia_common.recap.recap_router). Piece:
         {module, title, icon, emoji, order, done[{text, tone?, at?}], missed[...], next[...], note} or
@@ -11010,7 +11010,7 @@ paths:
   /api/finance/mail/check:
     post:
       tags: [Plutus]
-      summary: "«Controlla email PayPal»: Iris backfill of the last {days (7)} days, then process (async) {status: started, days}"
+      summary: "«Check PayPal emails»: Iris backfill of the last {days (7)} days, then process (async) {status: started, days}"
       servers:
         - url: http://localhost:19020
       responses:
@@ -11028,7 +11028,7 @@ paths:
   /api/finance/quick/categories:
     get:
       tags: [Plutus]
-      summary: "Home chips for the «Spesa veloce» quick action"
+      summary: "Home chips for the «Quick expense» quick action"
       servers:
         - url: http://localhost:19020
       responses:
@@ -11094,7 +11094,7 @@ paths:
   /api/finance/reminders/skip:
     post:
       tags: [Plutus]
-      summary: "«Non questo mese» answer {month}"
+      summary: "«Not this month» answer {month}"
       servers:
         - url: http://localhost:19020
       responses:
@@ -11177,7 +11177,7 @@ paths:
   /api/backup/drive/connect:
     post:
       tags: [Archive — Backup]
-      summary: "Start Google authorization (through Hecate) for the panel's «Collega Google Drive» → {ok, auth_url, user_code?}"
+      summary: "Start Google authorization (through Hecate) for the panel's «Link Google Drive» → {ok, auth_url, user_code?}"
       servers:
         - url: http://localhost:19002
       responses:
@@ -12311,7 +12311,7 @@ paths:
       summary: Put back what a maintenance reconcile deleted (Archive keeps the deleted rows per task_id)
       description: >-
         The reconcile response says details.undo_available=true when there is something to undo.
-        Used by Hephaestus «Annulla riparazione». Rows recreated meanwhile are kept (skipped_ids).
+        Used by Hephaestus «Undo repair». Rows recreated meanwhile are kept (skipped_ids).
       servers:
         - url: http://localhost:19002
       requestBody:
@@ -12564,7 +12564,7 @@ paths:
   /api/athena/recap/now:
     post:
       tags: [Athena]
-      summary: "Quick action «Recap adesso»: evening recap now, delivered"
+      summary: "Quick action «Recap now»: evening recap now, delivered"
       servers:
         - url: http://localhost:19009
       responses:
@@ -12617,7 +12617,7 @@ paths:
   /api/athena/memory/review:
     post:
       tags: [Athena]
-      summary: "«Rivedi cosa sai di me»: duplicates, contradictions, stale facts → proposals as Hermes cards (nothing changed)"
+      summary: "«Review what you know about me»: duplicates, contradictions, stale facts → proposals as Hermes cards (nothing changed)"
       servers:
         - url: http://localhost:19009
       responses:
@@ -12626,7 +12626,7 @@ paths:
   /api/athena/memory/proposals:
     get:
       tags: [Athena]
-      summary: "Clean-up proposals still waiting for the owner (page «Cosa ho imparato»)"
+      summary: "Clean-up proposals still waiting for the owner (page «What I learnt»)"
       servers:
         - url: http://localhost:19009
       responses:
@@ -12700,7 +12700,7 @@ paths:
   /api/athena/thinking/summary:
     get:
       tags: [Athena]
-      summary: Compact thinking cycles (page Pensieri, MCP tool athena_thinking)
+      summary: Compact thinking cycles (page Thoughts, MCP tool athena_thinking)
       description: >
         Newest first. Observation as counts (no services payload), every candidate (accepted or discarded) with
         its 5 gate signals, score, accepted, gate_reason and outcome.
@@ -12720,7 +12720,7 @@ paths:
         observe → think → gate → act → archive with trigger=manual, past the idle gate and the agenda window.
         One cycle at a time (shared with the loop). The record appears in /api/athena/thinking.
         track=life runs the life reflection instead (signals → links → details → observations for the recap).
-        track=talk = «Scrivimi ora»: she writes first now (reasons → Oracle /api/chat/opener → Hermes).
+        track=talk = «Write to me now»: she writes first now (reasons → Oracle /api/chat/opener → Hermes).
       servers:
         - url: http://localhost:19009
       parameters:
@@ -12732,7 +12732,7 @@ paths:
   /api/athena/talk:
     get:
       tags: [Athena]
-      summary: "What the assistant wrote first («parla con te»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identita-e-proattivita"
+      summary: "What the assistant wrote first («talks to you»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identita-e-proattivita"
       servers:
         - url: http://localhost:19009
       parameters:
@@ -12752,7 +12752,7 @@ paths:
   /api/athena/signals:
     get:
       tags: [Athena]
-      summary: What the life reflection reads (page Segnali, MCP tool athena_signals)
+      summary: What the life reflection reads (page Signals, MCP tool athena_signals)
       description: >
         Active module signals (Archive signals-store, worst first), weekly series of the last `weeks` weeks, the
         links found between areas (Pearson, closed weeks) and the observations of the last 14 days.
@@ -12770,7 +12770,7 @@ paths:
   /athena/api/module/recap:
     get:
       tags: [Athena]
-      summary: Athena's piece of the daily recap («Da tenere d'occhio») — real path /api/module/recap
+      summary: Athena's piece of the daily recap («To keep an eye on») — real path /api/module/recap
       description: >
         Recap contract (docs/work/2026-10-20-recap-giornaliero §3.2), advertised as capability recap_endpoint.
         The life observations stored that day; deterministic, no model call. Observations reach the user only here.
@@ -12780,7 +12780,7 @@ paths:
         - {name: day, in: query, schema: {type: string, format: date}, description: "default today (local)"}
         - {name: next, in: query, schema: {type: string, format: date}, description: "unused by Athena"}
       responses:
-        "200": {description: "{module: athena, title: Da tenere d'occhio, icon: eye, emoji, order: 900, done: [{text, tone}]} | {..., empty: true}"}
+        "200": {description: "{module: athena, title: To keep an eye on, icon: eye, emoji, order: 900, done: [{text, tone}]} | {..., empty: true}"}
 
   /athena/api/ui/manifest:
     get:
@@ -12788,7 +12788,7 @@ paths:
       summary: WebUI plugin manifest (real path /api/ui/manifest; kind core, api_prefix /api/athena/)
       description: |
         Plugin contract (docs/work/2026-10-17-client-plugins/SPEC.md §4): page `thoughts` (athena-thoughts, order 130,
-        tracks Vita/Sistema), page `signals` (athena-signals, order 131),
+        tracks life/system), page `signals` (athena-signals, order 131),
         widget `latest` (athena-last-widget, auto), quick action `pensa` (POST /api/athena/think). Bundle /ui/webui/athena.js.
       servers:
         - url: http://localhost:19009
@@ -13017,12 +13017,12 @@ paths:
   /api/webui/setup/{path}:
     get:
       tags: [WebUI]
-      summary: "Guided setup «Benvenuto» and Macchine reads: state, brain/catalog, brain/pulls, machines, tunnel, update (→ Hephaestus /api/setup/*)"
+      summary: "Guided setup «Welcome» and Machines reads: state, brain/catalog, brain/pulls, machines, tunnel, update (→ Hephaestus /api/setup/*)"
       responses:
         "200": {description: ok}
     post:
       tags: [WebUI]
-      summary: "Guided setup «Benvenuto» and Macchine writes: later, complete, brain/test|apply|pull, telegram/token|code, backup, machines/pair|revoke|brain, tunnel, update/check|apply|back (→ Hephaestus; telegram/claim is not forwarded)"
+      summary: "Guided setup «Welcome» and Machines writes: later, complete, brain/test|apply|pull, telegram/token|code, backup, machines/pair|revoke|brain, tunnel, update/check|apply|back (→ Hephaestus; telegram/claim is not forwarded)"
       responses:
         "200": {description: ok}
 
@@ -13068,19 +13068,19 @@ paths:
   /api/webui/presence/dnd:
     post:
       tags: [WebUI]
-      summary: Non disturbare on (body {minutes?, until?}; → Chronos)
+      summary: Do not disturb on (body {minutes?, until?}; → Chronos)
       responses:
         "200": {description: presence state}
     delete:
       tags: [WebUI]
-      summary: Non disturbare off (→ Chronos)
+      summary: Do not disturb off (→ Chronos)
       responses:
         "200": {description: presence state}
 
   /api/webui/notifications:
     get:
       tags: [WebUI]
-      summary: Notifiche page inbox (→ Hermes /api/notifications, client=webui)
+      summary: Notifications page inbox (→ Hermes /api/notifications, client=webui)
       parameters:
         - { name: filter, in: query, schema: { type: string, enum: [all, unread, pending] } }
         - { name: source, in: query, schema: { type: string } }
@@ -13216,7 +13216,7 @@ paths:
   /api/voice/models/prefetch:
     post:
       tags: [Echo]
-      summary: "Queue the local models of the first local step of the «ascolto» and «voce» chains → {queued[], downloads[]}"
+      summary: "Queue the local models of the first local step of the «listen» and «voice» chains → {queued[], downloads[]}"
       servers:
         - url: http://localhost:19021
       responses:
@@ -13225,7 +13225,7 @@ paths:
   /api/voice/setup/catalog:
     get:
       tags: [Echo]
-      summary: "Setup «Voce»: providers per direction (listen, voice), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Chatterbox 8004, Kokoro-FastAPI 8880, Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
+      summary: "Setup «Voice»: providers per direction (listen, voice), local first, with models/voices (cloud: once its key is there) and the chain's current first step; plus speech programs found at home (Chatterbox 8004, Kokoro-FastAPI 8880, Speaches 8000 / LocalAI 8080 with the OpenAI API, Wyoming 10300/10200) on this computer and the computers in hosts"
       servers:
         - url: http://localhost:19021
       parameters:
@@ -13259,7 +13259,7 @@ paths:
   /api/voice/setup/preview:
     post:
       tags: [Echo]
-      summary: "Setup «Ascolta»: a short sentence spoken by that provider and voice only (no chain, nothing saved)"
+      summary: "Setup «Listen»: a short sentence spoken by that provider and voice only (no chain, nothing saved)"
       servers:
         - url: http://localhost:19021
       requestBody:
@@ -13511,7 +13511,7 @@ paths:
   /api/voice/providers/options:
     get:
       tags: [Echo]
-      summary: "Options of «Motore esterno» (Themis options_source) → {options}"
+      summary: "Options of «External engine» (Themis options_source) → {options}"
       servers:
         - url: http://localhost:19021
       responses:
@@ -13806,7 +13806,7 @@ paths:
   /api/webui/voice/speak:
     post:
       tags: [WebUI]
-      summary: "«Ascolta» under a reply → Echo (use webui.listen, kept with the reply)"
+      summary: "«Listen» under a reply → Echo (use webui.listen, kept with the reply)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13819,7 +13819,7 @@ paths:
   /api/webui/voice/listen:
     post:
       tags: [WebUI]
-      summary: "Live «Parla»: open the mic stream (use webui.live.listening)"
+      summary: "Live «Talk»: open the mic stream (use webui.live.listening)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13832,7 +13832,7 @@ paths:
   /api/webui/voice/say:
     post:
       tags: [WebUI]
-      summary: "Live «Parla»: open the voice stream (use webui.live.voice)"
+      summary: "Live «Talk»: open the voice stream (use webui.live.voice)"
       servers:
         - url: http://localhost:19015
       requestBody:
@@ -13972,7 +13972,7 @@ paths:
       - url: http://localhost:19015
     get:
       tags: [WebUI]
-      summary: The restore point as .hestia JSON (imported with «Sostituisci»)
+      summary: The restore point as .hestia JSON (imported with «Replace»)
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
       responses:
@@ -14331,7 +14331,7 @@ paths:
   /api/home/quick:
     get:
       tags: [Lares]
-      summary: "Chips of the quick action «Casa»: [{id, label, icon, hint}] from the saved quick actions"
+      summary: "Chips of the quick action «Home»: [{id, label, icon, hint}] from the saved quick actions"
       servers:
         - url: http://localhost:19024
       responses:
@@ -14953,7 +14953,7 @@ paths:
   /api/mood/capture/undo:
     post:
       tags: [Psyche]
-      summary: "«Non segnarlo»: removes today's last chat capture"
+      summary: "«Don't log it»: removes today's last chat capture"
       servers:
         - url: http://localhost:19029
       requestBody:
