@@ -140,7 +140,7 @@ def emit_question(
     if timeout_sec is not None:
         payload["timeout_sec"] = timeout_sec
     if allow_other:
-        payload["allow_other"] = True  # choice kinds also accept a free answer («Altro…»)
+        payload["allow_other"] = True  # choice kinds also accept a free answer («Other…»)
     return json.dumps(payload, ensure_ascii=False) + "\n"
 
 

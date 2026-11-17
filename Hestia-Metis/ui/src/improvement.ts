@@ -142,7 +142,7 @@ export class MetisImprovement extends HestiaElement {
           @click=${() => this.exportNow(false)}>${tr("Download masked")}</hxk-button>
         <hxk-button variant="ghost" icon="download" ?loading=${this.busy === 'export-clear'}
           @click=${() => this.exportNow(true)}>${tr("Download in clear")}</hxk-button></div>
-      <p class="note">${tr("Masked: names of people, emails, phones, IBANs and addresses become <PERSONA_1>… In clear: the real data, don't share the file. The turns reviewed and kept or corrected are included.")}</p>
+      <p class="note">${tr("Masked: names of people, emails, phones, IBANs and addresses become <PERSON_1>… In clear: the real data, don't share the file. The turns reviewed and kept or corrected are included.")}</p>
       ${list.map((e: any) => html`<div class="item">
         <div class="top"><div class="grow"><b>${when(e.created_at)}</b>
           <span class="small muted"> · ${e.sft ?? 0} ${tr("examples ·")} ${e.eval ?? 0} ${tr("trial ·")} ${e.dpo ?? 0} ${tr("pairs")}</span></div>

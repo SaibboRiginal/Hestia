@@ -67,9 +67,9 @@ def test_masker_hides_people_contacts_and_puts_them_back():
     text = m.mask("Laura vive in via Roma 12, scrivile a laura@x.it o +39 333 123 4567; IBAN IT60X0542811101000000123456")
     for real in ("Laura", "via Roma 12", "laura@x.it", "333 123 4567", "IT60X0542811101000000123456"):
         assert real not in text
-    assert "<PERSONA_1>" in text and "<EMAIL_1>" in text and "<TEL_1>" in text and "<IBAN_1>" in text
-    assert m.unmask("Ciao <PERSONA_1>") == "Ciao Laura"
-    assert m.mask({"a": ["Laura"]}) == {"a": ["<PERSONA_1>"]}       # same value, same placeholder
+    assert "<PERSON_1>" in text and "<EMAIL_1>" in text and "<TEL_1>" in text and "<IBAN_1>" in text
+    assert m.unmask("Ciao <PERSON_1>") == "Ciao Laura"
+    assert m.mask({"a": ["Laura"]}) == {"a": ["<PERSON_1>"]}       # same value, same placeholder
 
 
 @pytest.mark.parametrize("raw,ok", [
@@ -91,12 +91,12 @@ def test_nothing_personal_leaves_and_sure_fix_is_accepted():
     seed(arc, user="Mia mamma si chiama Laura Rossi", answer="Ho salvato Laura in Persone e in memoria.",
          steps=[{"tool": "people_save", "params": {"name": "Laura Rossi"}, "ok": True, "result": "ok"},
                 {"tool": "memory_save", "params": {"fact": "mamma Laura Rossi"}, "ok": True, "result": "ok"}])
-    teacher = Teacher({"verdict": "fix", "confidence": 0.95, "answer": "Ho salvato <PERSONA_1> in Persone.",
+    teacher = Teacher({"verdict": "fix", "confidence": 0.95, "answer": "Ho salvato <PERSON_1> in Persone.",
                        "remove_steps": [1], "reasons": ["R3"]})
     out = Review(arc, llm=teacher).run()
     assert out["reviewed"] == 1 and out["accepted"] == 1
     prompt, kw = teacher.prompts[0]
-    assert "Laura" not in prompt and "<PERSONA_1>" in prompt and kw["use_case"] == "metis.dataset.review"
+    assert "Laura" not in prompt and "<PERSON_1>" in prompt and kw["use_case"] == "metis.dataset.review"
     rev = arc.rows[("review", "t1")]
     assert rev["ref_id"] == "accepted" and rev["data"]["answer"] == "Ho salvato Laura Rossi in Persone."
     assert rev["data"]["remove_steps"] == [1]

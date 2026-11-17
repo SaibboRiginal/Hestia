@@ -19,7 +19,7 @@ from .domain import Invalid
 from .hub import Hub
 from .store import Store, now_iso
 from .suggest import Suggester, season_of
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import languages, t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_wardrobe.service")
 
@@ -103,8 +103,8 @@ class Wardrobe:
         if values is None:
             return values
         items = re.split(r"[,;]", values) if isinstance(values, str) else list(values)
-        by_label = {domain.slug(lab): v["key"] for v in self.vocab(name)        # English label, owner's language, Italian
-                    for lab in (v.get("label"), tr(v.get("label")), tr(v.get("label"), lang="it")) if lab}
+        by_label = {domain.slug(lab): v["key"] for v in self.vocab(name)        # the label in every language
+                    for lab in (v.get("label"), *(tr(v.get("label"), lang=code) for code in languages())) if lab}
         keys = {v["key"] for v in self.vocab(name)}
         out = []
         for v in items:

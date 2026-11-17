@@ -94,7 +94,7 @@ def blocks_write(origin: Mapping[str, str], *, method: str = "POST", name: str =
     if level == "autonomous":
         return "Automatic initiative: changing data needs the owner to ask. Propose it instead of doing it."
     destructive = str(method or "").upper() == "DELETE" or any(
-        w in lname for w in ("delete", "remove", "elimina", "cancella", "rimuovi", "purge", "restore", "rollback"))
+        w in lname for w in ("delete", "remove", "purge", "restore", "rollback"))
     if level == "routine" and destructive:
         return "A routine does not delete or restore data: ask the owner."
     return ""

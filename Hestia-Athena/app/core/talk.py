@@ -9,7 +9,7 @@ Third output of Athena, next to the system briefs and the life observations (whi
    ``athena.talk.eagerness``. The drive grows with the silence between them and with what she has to say, drops
    when her messages get no answer, and is low in the first days, when she knows little;
 2. **why** — the reasons of today, read through Hub: his mood (Psyche), what the areas noticed (signals
-   ``alta``/``warning``), how long since they last talked; plus the **last days**: how he was, what she wrote
+   ``high``/``warning``), how long since they last talked; plus the **last days**: how he was, what she wrote
    and whether he answered;
 3. **what** — Oracle writes it (``POST /api/chat/opener``: persona + what it remembers of him); nothing true to
    say → no message;

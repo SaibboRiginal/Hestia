@@ -11,7 +11,7 @@ as an Archive blob the owner downloads (WebUI Improvement, Telegram: the file ar
 - ``card.json``  — counts, routes, models, date range, masked or not.
 
 The owner picks at each export (Marko 2026-10-30): **redacted** (default: names of People, e-mails, phones, IBAN,
-addresses → ``<PERSONA_1>``…, the same masking as the nightly review) or **plain** (the real text).
+addresses → ``<PERSON_1>``…, the same masking as the nightly review) or **plain** (the real text).
 """
 from __future__ import annotations
 

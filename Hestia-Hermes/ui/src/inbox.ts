@@ -190,7 +190,7 @@ export class HermesInbox extends HestiaElement {
     this.stopVoice();
   }
 
-  // ── voice (a module asked for its notifications also as audio, dossier modulo-voce §7.3) ──
+  // ── voice (a module asked for its notifications also as audio, voice dossier §7.3) ──
   private stopVoice() {
     this.audio?.pause();
     if (this.audio?.src) URL.revokeObjectURL(this.audio.src);

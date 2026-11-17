@@ -36,7 +36,7 @@ def reminder_settings(module: str, *, group: str = "Reminders", help: str = "", 
 
 
 def voice_setting(module: str, default: bool, *, group: str = "Reminders", help: str = "", order: int = 9) -> dict:
-    """``<module>.notifiche.voce``: whether this module's notifications also arrive as a voice message
+    """``<module>.notifications.voice``: whether this module's notifications also arrive as a voice message
     (dossier docs/work/2026-10-20-modulo-voce §7.3). Each module picks its own default: on where a notification
     reads well aloud (reminders, recaps), off where it is a list or numbers. Pass the value to
     ``reminder_event(voice=...)``; the written notification never changes."""

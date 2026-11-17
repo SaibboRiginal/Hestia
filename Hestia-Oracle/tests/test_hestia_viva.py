@@ -188,13 +188,13 @@ def test_agent_loop_preambles_speak_as_hestia():
 def test_ollama_native_tools_keep_the_persona_as_system(monkeypatch):
     from agents.universal_agent import UniversalAgent
     monkeypatch.setenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    agent = UniversalAgent(role_prompt="Sei Hestia. PERSONA", provider="ollama", model_name="m", thinking=False)
+    agent = UniversalAgent(role_prompt="Sei Hestia. PERSON", provider="ollama", model_name="m", thinking=False)
     resp = MagicMock()
     resp.json.return_value = {"message": {"content": "Bene, tu?"}}
     with patch("agents.universal_agent.requests.post", return_value=resp) as post:
         agent._ask_with_tools_ollama_native("ciao", [{"name": "t", "description": "d", "parameters": {}}])
     system = post.call_args.kwargs["json"]["messages"][0]["content"]
-    assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "TOOLS:" in system
+    assert system.startswith("Sei Hestia. PERSON") and "engine" not in system and "TOOLS:" in system
 
 
 # ── Identity: name, she/he, owner (docs/work/2026-11-12-identita-e-proattivita) ──────────────────────────────

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-from .i18n import bare, t
+from .i18n import bare, languages, t
 
 # Areas in order. `aliases`: other module group names that mean the same area.
 AREAS = [
@@ -80,9 +80,9 @@ def module_label(name: str) -> str:
 
 
 _BY_KEY = {a["key"]: a for a in AREAS}
-# People type an area by its key, its English name, its Italian name or an alias.
+# People type an area by its key, its name in any language or an alias.
 _ALIAS = {alias.lower(): a["key"] for a in AREAS
-          for alias in [a["key"], bare(a["label"]), t(a["label"], lang="it"), *a["aliases"]]}
+          for alias in [a["key"], bare(a["label"]), *(t(a["label"], lang=code) for code in languages()), *a["aliases"]]}
 
 
 def area(key: str) -> dict:

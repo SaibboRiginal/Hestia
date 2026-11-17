@@ -108,8 +108,8 @@ def _lines(reports: dict, labels: dict) -> list[str]:
         for r in (rep.get("sections") or {}).values():
             for k in totals:
                 totals[k] += int(r.get(k) or 0)
-        parts = [f"{totals[k]} {label}" for k, label in (("added", "new"), ("updated", "updated"),
-                                                         ("skipped", "ignored"), ("problems", "problems"))
+        parts = [tr(label, totals[k]) for k, label in (("added", "{0} new"), ("updated", "{0} updated"),
+                                                       ("skipped", "{0} ignored"), ("problems", "{0} problems"))
                  if totals[k]]
         lines.append(ui.item(name, parts or [tr("no changes")]))
     return lines

@@ -46,7 +46,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   stopped, Archive kind `state`) with their signals and votes (Archive feedback by session, `interaction_id`).
   Teacher = Oracle use case `metis.dataset.review` (default chain `cloud`, Marko's choice: a cloud model). Before the
   call everything is **masked**: names of Persone (Hera `GET /api/people`), e-mails, phones, IBAN, street addresses
-  → `<PERSONA_1>`…; the corrected text gets the real values back. Hera away → no turn is sent that night. The
+  → `<PERSON_1>`…; the corrected text gets the real values back. Hera away → no turn is sent that night. The
   teacher answers JSON `verdict keep|fix|drop, confidence, answer, remove_steps, reasons (R1–R8), needs_owner`; it may
   drop wrong tool calls and rewrite the answer, never invent a tool result. Kind `review` (id = trace, `ref_id` =
   status): `accepted` when confidence ≥ `metis.review.auto_accept` (0.85), no `needs_owner` and no 👎 with words;

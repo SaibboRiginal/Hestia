@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Hestia</title>
@@ -23,6 +23,7 @@
   </script>
   <!-- Fixed texts in the owner's language: the catalog is on globalThis before the app and the plugins run -->
   <script src="/api/webui/i18n.js"></script>
+  <script>document.documentElement.lang = (globalThis.__hestiaI18n && globalThis.__hestiaI18n.language) || "en";</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500&display=swap">

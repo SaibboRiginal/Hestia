@@ -29,7 +29,7 @@ from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
 from core.mail_watch import MailWatcher
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
                                   PERSONAL_PLACES, WEATHER_CACHE_MINUTES, settings as hecate_settings)
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import current, t as tr  # fixed texts in the owner's language
 
 load_dotenv()
 
@@ -1383,15 +1383,15 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
         msg = _html.escape(str(detail.get("error", "")))
         hint = _html.escape(str(detail.get("hint", "")))
         return HTMLResponse(
-            _OAUTH_CALLBACK_HTML.format(icon="❌", title=tr("Authorization failed"),
+            _OAUTH_CALLBACK_HTML.format(lang=current(), icon="❌", title=tr("Authorization failed"),
                                         detail=f"{msg}<br><br>{hint}"),
             status_code=exc.status_code)
     if result["status"] == "authorized":
         scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "none"
-        return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
+        return HTMLResponse(_OAUTH_CALLBACK_HTML.format(lang=current(),
             icon="✅", title=tr("Authorization completed!"),
             detail=tr("Google is connected to Hestia (scope: {0}). You can close this page and go back to Telegram.", _html.escape(scopes))))
-    return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
+    return HTMLResponse(_OAUTH_CALLBACK_HTML.format(lang=current(),
         icon="⚠️", title=tr("Token saved, provider not active"),
         detail=_html.escape(str(result.get("unavailable")))))
 
@@ -1399,7 +1399,7 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
 # ── HTML template for the OAuth callback page ──────────────────────────
 _OAUTH_CALLBACK_HTML = """\
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

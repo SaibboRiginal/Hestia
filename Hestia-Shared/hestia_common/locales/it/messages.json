@@ -3658,7 +3658,7 @@
   "Mascot": "Mascotte",
   "Mask": "Maschera",
   "masked": "oscurato",
-  "Masked: names of people, emails, phones, IBANs and addresses become <PERSONA_1>… In clear: the real data, don't share the file. The turns reviewed and kept or corrected are included.": "Oscurato: nomi delle persone, e-mail, telefoni, IBAN e indirizzi diventano <PERSONA_1>… In chiaro: i dati veri, non condividere il file. Entrano i turni riletti e tenuti o corretti.",
+  "Masked: names of people, emails, phones, IBANs and addresses become <PERSON_1>… In clear: the real data, don't share the file. The turns reviewed and kept or corrected are included.": "Oscurato: nomi delle persone, e-mail, telefoni, IBAN e indirizzi diventano <PERSON_1>… In chiaro: i dati veri, non condividere il file. Entrano i turni riletti e tenuti o corretti.",
   "Materials": "Materiali",
   "Max price": "Prezzo max",
   "Max reps": "Rip max",

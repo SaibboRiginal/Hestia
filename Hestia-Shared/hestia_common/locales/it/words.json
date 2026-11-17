@@ -31,6 +31,12 @@
   "no",
   "falso"
  ],
+ "common.none_word": [
+  "nessuno",
+  "nessuna",
+  "niente",
+  "nulla"
+ ],
  "common.yes": [
   "s[iì]",
   "va bene",

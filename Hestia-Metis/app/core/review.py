@@ -10,7 +10,7 @@ with their signals and Hestia's rules and says what the answer should have been:
 - ``drop``  — useless for training (broken turn, nothing to learn).
 
 **Masking** before anything leaves Hestia: names of the people in People (Hera), e-mail addresses, phone numbers,
-IBAN, street addresses become ``<PERSONA_1>``, ``<EMAIL_1>``…; the map stays in this process and the corrected text
+IBAN, street addresses become ``<PERSON_1>``, ``<EMAIL_1>``…; the map stays in this process and the corrected text
 gets the real values back. A turn whose masking fails is not sent.
 
 A verdict with confidence ≥ ``metis.review.auto_accept`` and no doubt is accepted; the others wait in the list
@@ -67,7 +67,7 @@ Answer ONLY JSON:
 {{"verdict":"keep|fix|drop","confidence":0.0-1.0,"answer":"corrected answer, in the language of the user's message (only if fix, else empty)",
 "remove_steps":[indexes of the wrong tools to remove],"reasons":["R2", ...],"needs_owner":false}}
 Constraints: never invent results of tools not called; if the right fix needs another writing tool set
-needs_owner=true. The placeholders <PERSONA_1>, <EMAIL_1>… stay identical."""
+needs_owner=true. The placeholders <PERSON_1>, <EMAIL_1>… stay identical."""
 
 
 # ── masking ─────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ class Masker:
         for kind, rx in _PATTERNS:
             text = rx.sub(lambda m, k=kind: self._slot(k, m.group(0)), text)
         if self._names:
-            text = self._names.sub(lambda m: self._slot("PERSONA", m.group(0)), text)
+            text = self._names.sub(lambda m: self._slot("PERSON", m.group(0)), text)
         return text
 
     def unmask(self, text: str) -> str:

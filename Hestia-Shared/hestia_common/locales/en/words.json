@@ -37,6 +37,12 @@
   "false",
   "0"
  ],
+ "common.none_word": [
+  "none",
+  "no",
+  "nothing",
+  "nobody"
+ ],
  "common.yes": [
   "yes",
   "yeah",

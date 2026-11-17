@@ -17,7 +17,7 @@ import requests
 from fastapi import Body, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from hestia_common.i18n import is_yes, t as tr, weekday_of  # owner language; owner words per language
+from hestia_common.i18n import is_yes, t as tr, weekday_of, word_set  # owner language; owner words per language
 
 try:
     from hestia_common.logging_utils import create_log_control_router, setup_service_logging
@@ -818,7 +818,7 @@ try:
         if favorite is not None:
             body["favorite"] = favorite
         if plan_with:
-            body["plan_with"] = "" if catalog.slug(plan_with) in ("none", "no", "none") else plan_with
+            body["plan_with"] = "" if catalog.slug(plan_with) in word_set("common.none_word") else plan_with
         if not body:
             return {"error": tr("no change given")}
         d = hygieia.save_routine(body, id=r["id"], reason=reason or tr("edited by the assistant"), source="assistant")
