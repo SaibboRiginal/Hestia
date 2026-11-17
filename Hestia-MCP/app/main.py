@@ -52,13 +52,13 @@ UI_DIST = os.getenv("MCP_UI_DIST", "/ui/dist")   # outside /code: the compose de
 
 # ── WebUI plugin (core module, Sistema section): Comandi & MCP + Accessi AI ──────────────────
 ui = PluginClient("mcp", title="Commands & MCP", icon="command", color="blue", kind="core", dist=UI_DIST,
-                  description="Hestia's tools and who can use them from outside (external AIs).",
+                  description="{assistant}'s tools and who can use them from outside (external AIs).",
                   version=SERVICE_VERSION)
 ui.webui(entry="mcp.js", api_prefix="/api/mcp/",
          pages=[page("comandi", "Commands & MCP", element="mcp-commands", icon="terminal", order=190,
-                     help="All the tools Hestia offers (the same as chat, Telegram and external AIs): search, read the parameters and run them."),
+                     help="All the tools {assistant} offers (the same as chat, Telegram and external AIs): search, read the parameters and run them."),
                 page("accessi", "AI access", element="mcp-accesses", icon="external", order=191, parent="comandi",
-                     help="Tokens to link Claude Code, Claude Desktop, Cursor or another AI to Hestia's tools (MCP). Revoke and renew in one tap.")])
+                     help="Tokens to link Claude Code, Claude Desktop, Cursor or another AI to {assistant}'s tools (MCP). Revoke and renew in one tap.")])
 
 # ── Service descriptor ───────────────────────────────────────────────────────
 

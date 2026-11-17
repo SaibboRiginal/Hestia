@@ -7,7 +7,7 @@ import { QuickActionsService } from './quick-actions.service';
 import { MetisService } from '../../services/metis.service';
 import { CentralSettingsStore, matches, moduleLabel } from '../settings/central-settings.store';
 import { PERSONAL_ROWS, PERSONAL_SECTIONS } from '../settings/personal-rows';
-import { tr, TrPipe } from '../../core/i18n';
+import { assistantName, tr, TrPipe } from '../../core/i18n';
 
 interface Entry { id: string; label: string; hint: string; icon: string; group: string; run: () => void;
   /** Extra text the search reads (help, key…). */ more?: string; }
@@ -76,7 +76,7 @@ export class CommandPaletteComponent {
         run: () => void this.router.navigateByUrl(this.plugins.link(p.module, p.local_id)) })),
       ...this.plugins.dashboards().map(d => ({ id: 'db:' + d.id, label: d.title, hint: tr('Dashboard'), icon: d.icon || 'grid', group: tr('Dashboard'),
         run: () => void this.router.navigateByUrl(d.id === 'home' ? '/home' : '/d/' + d.id) })),
-      ...APP_MODULES.filter(m => m.path !== 'home').map(m => ({ id: 'app:' + m.path, label: m.label, hint: 'Hestia', icon: m.icon, group: tr('Pages'),
+      ...APP_MODULES.filter(m => m.path !== 'home').map(m => ({ id: 'app:' + m.path, label: m.label, hint: assistantName(), icon: m.icon, group: tr('Pages'),
         run: () => void this.router.navigateByUrl('/' + m.path) })),
     ];
   });

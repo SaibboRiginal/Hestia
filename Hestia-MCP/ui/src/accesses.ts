@@ -141,7 +141,7 @@ export class McpAccesses extends HestiaElement {
       ${f.all ? nothing : html`<div class="tools">${visible.map(t => html`<label title=${t.description || ''}>
         <input type="checkbox" .checked=${f.tools.includes(t.name)} @change=${(e: any) => toggle(t.name, e.target.checked)}>
         ${t.title || t.name}${t.writes ? html` <span class="pill w">${tr("writes")}</span>` : nothing}</label>`)}</div>`}
-      <p class="note">${tr("Approving, merging or undoing a development always stays with you, on Hestia.")}</p>
+      <p class="note">${tr("Approving, merging or undoing a development always stays with you, on {assistant}.")}</p>
       <div class="acts"><hxk-button variant="primary" ?loading=${this.busy} @click=${() => this.create()}>${tr("Create token")}</hxk-button>
         <hxk-button variant="ghost" @click=${() => (this.form = null)}>${tr("Cancel")}</hxk-button></div>
     </div></hxk-card>`;
@@ -174,7 +174,7 @@ export class McpAccesses extends HestiaElement {
   private renderOutbound() {
     const o = this.outbound; if (!o) return nothing;
     const label: Record<string, string> = { configured: tr('configured'), invalid_url: tr('invalid address') };
-    return html`<h2>${tr("External services")}</h2><p class="sub">${tr("Third-party MCP servers Hestia can use. The keys stay in the .env (Hecate).")}</p>
+    return html`<h2>${tr("External services")}</h2><p class="sub">${tr("Third-party MCP servers {assistant} can use. The keys stay in the .env (Hecate).")}</p>
       ${o.servers.length ? html`<div class="card">${o.servers.map(s => html`<div class="acc"><div class="grow">
           <div><b>${s.name}</b> <span class="pill ${s.status === 'configured' ? '' : 'off'}">${label[s.status] || s.status}</span></div>
           <div class="small muted">${s.host || '–'} · ${s.auth === 'key' ? tr('with key') : tr('without key')}</div></div></div>`)}</div>`
@@ -196,7 +196,7 @@ export class McpAccesses extends HestiaElement {
     if (!this.accesses) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const list = this.accesses;
     return html`<div class="page">
-      <div class="head"><h1>${tr("AI access")}</h1><span class="sub">${tr("External AIs that can use Hestia via MCP")}</span><span class="grow"></span>
+      <div class="head"><h1>${tr("AI access")}</h1><span class="sub">${tr("External AIs that can use {assistant} via MCP")}</span><span class="grow"></span>
         ${this.form ? nothing : html`<hxk-button variant="primary" icon="plus"
           @click=${() => (this.form = { name: '', scope: 'read', days: '90', all: true, tools: [] })}>${tr("New token")}</hxk-button>`}</div>
       ${this.renderConsent()}${this.renderCreated()}${this.renderForm()}
@@ -214,7 +214,7 @@ export class McpAccesses extends HestiaElement {
       <hxk-card heading=${tr("{assistant} inside Claude Code")} subtitle=${tr("A bar above the prompt: turn it on only when you want")}>
         ${this.copyRow(tr('Install (Claude Code terminal)'), PLUGIN_INSTALL)}
         ${this.copyRow(tr('Address to give to the installation'), this.base())}
-        <p class="note">${tr("On first start Claude opens this page for consent. Personality, instructions and memories come from Hestia; what Claude learns about you comes back to the Memory page.")}</p>
+        <p class="note">${tr("On first start Claude opens this page for consent. Personality, instructions and memories come from {assistant}; what Claude learns about you comes back to the Memory page.")}</p>
       </hxk-card>
       ${this.renderOutbound()}
     </div>`;

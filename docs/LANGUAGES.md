@@ -101,8 +101,10 @@ that every `tr` literal of modules, WebUI and plugins has its Italian).
 **The assistant's name** (`docs/work/2026-11-16-nome-ovunque`): where a text speaks of the assistant as a person,
 write `{assistant}` and, for gendered words, `{g:her-form|his-form}` (source «What {assistant} thinks on {g:her|his}
 own», Italian «Cosa pensa {assistant} da {g:sola|solo}»), in the source and in the translation; `localize` fills them
-too. `tr` / `t` fill them with the name and she/he the owner chose. Where «Hestia»
-is the app (version, updates, files, installation, the whole system) write «Hestia».
+too. `tr` / `t` fill them with the name and she/he the owner chose. The clients are called with that name too
+(`docs/work/2026-11-17-nome-dei-client`): write «Hestia» only for the software itself (releases, updates, the
+installer, the transfer/backup file format, technical module names). Italian agreement uses `{g:…|…}` too
+(«da {g:sola|solo}», «{g:tutta|tutto} {assistant}»).
 
 ## Don't
 

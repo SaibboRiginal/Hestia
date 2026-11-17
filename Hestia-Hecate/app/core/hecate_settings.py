@@ -47,7 +47,7 @@ settings.declare([
             help="Shortest time between two identical notices (e.g. 'link Google again'), so you don't get duplicates."),
     setting(MAIL_WATCH_INTERVAL, "New email check", "int", 900, group="Email", min=60, max=86400,
             unit="s",
-            help="How often I look for new emails (one light check for all of Hestia: then Iris passes them to the interested modules). It is the default recurrence of the agenda job."),
+            help="How often I look for new emails (one light check for all of {assistant}: then Iris passes them to the interested modules). It is the default recurrence of the agenda job."),
     setting(MAIL_SAFETY_INTERVAL, "Safety check with Gmail push", "int", 21600, group="Email",
             min=300, max=86400, unit="s", advanced=True,
             help="When Gmail push notifications (Pub/Sub) are on, the periodic check is only a safety net and moves to this interval."),

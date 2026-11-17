@@ -27,7 +27,7 @@ REPEAT_RESET_AFTER_DAYS = "hermes.repeat.reset_after_days"
 PENDING_REMIND_HOURS = "hermes.attesa.richiamo_ore"
 ACTIVE_CLIENT_MINUTES = "hermes.consegna.client_attivo_minuti"
 NOTIFICATION_STYLE = "hermes.notifiche.stile"
-STYLES = [("scheda", "Workout plan"), ("frase", "Hestia's sentence")]
+STYLES = [("scheda", "Card"), ("frase", "{assistant}'s sentence")]
 
 settings = SettingsClient("hermes")
 settings.declare([
@@ -62,7 +62,7 @@ settings.declare([
             min=0, max=240, unit="min",
             help="If you used me from an app (Telegram, WebUI) in these minutes, the notification rings only there; in the others it arrives silently. 0 = rings everywhere."),
     setting(NOTIFICATION_STYLE, "Notification style", "enum", "scheda", group="Delivery", options=STYLES,
-            help="Card: as always. Hestia's sentence: informative notifications arrive as a short sentence of hers, as in chat; warnings, errors and those with buttons or questions stay cards."),
+            help="Card: as always. {assistant}'s sentence: informative notifications arrive as a short sentence of hers, as in chat; warnings, errors and those with buttons or questions stay cards."),
 ]).declare_log_level().follow_personal()   # assistant name, she/he, owner: the «frase» style speaks as her
 
 

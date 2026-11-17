@@ -299,7 +299,7 @@ class OAuthServer:
         req = self._request(request_id, pop=True)
         logger.info("event=mcp_oauth_consent_denied client=%s", req["client_id"])
         return {"redirect": with_query(req["redirect_uri"], {
-            "error": "access_denied", "error_description": tr("Refused on Hestia"), "state": req["state"],
+            "error": "access_denied", "error_description": tr("Refused on {assistant}"), "state": req["state"],
             "iss": req["base"]})}
 
     # ── token endpoint ─────────────────────────────────────────────────────

@@ -1,9 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { CentralSettingsApi } from '../features/settings/central-settings.api';
+import { assistantName } from '../core/i18n';
 
 /** Who the assistant is and whose it is, and the owner's language: five personal settings (Themis `themis.personal.*`, dossier
- * docs/work/2026-11-12-identita-e-proattivita). The pages that talk to the owner show the chosen name; the product
- * stays «Hestia». Settings unreachable → the defaults, nothing breaks. */
+ * docs/work/2026-11-12-identita-e-proattivita). The pages and the site itself show the chosen name
+ * (docs/work/2026-11-17-nome-dei-client). Settings unreachable → the defaults, nothing breaks. */
 export interface Identity { assistant: string; gender: 'lei' | 'lui'; ownerName: string; ownerCall: string; language: string; }
 
 /** The languages of `themis.personal.language` (notifications, recaps, messages she writes on her own). */
@@ -24,7 +25,7 @@ export class IdentityService {
   private api = inject(CentralSettingsApi);
   private asked = false;
 
-  readonly assistant = signal(DEFAULT_ASSISTANT);
+  readonly assistant = signal(assistantName());   // the catalog already knows it before the settings answer
   readonly gender = signal<'lei' | 'lui'>('lei');
   readonly ownerName = signal('');
   readonly ownerCall = signal('');

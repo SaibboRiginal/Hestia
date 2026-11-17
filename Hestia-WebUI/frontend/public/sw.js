@@ -10,7 +10,7 @@ const SHELL = 'hestia-shell-v1';
 const DATA = 'hestia-data-v1';
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => c.addAll(['/', '/manifest.webmanifest', '/icon.svg'])).catch(() => {}));
+  e.waitUntil(caches.open(SHELL).then(c => c.addAll(['/', '/api/webui/manifest.webmanifest', '/icon.svg'])).catch(() => {}));
   self.skipWaiting();
 });
 

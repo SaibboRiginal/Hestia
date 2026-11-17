@@ -286,3 +286,5 @@ Notifications below the presence `notify.level` (all/important/urgent) are **hel
 **2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+
+**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): a web push without a title is signed with the assistant's chosen name; the inbox uses it for messages with no source. The «frase» style is called «{assistant}'s sentence».

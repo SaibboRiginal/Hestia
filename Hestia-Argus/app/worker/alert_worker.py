@@ -148,7 +148,7 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
     narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():
         count = tr(" · {0} events", len(alerts)) if len(alerts) > 1 else ""
-        return f"🔔 <b>Hestia Monitor{count}</b>\n\n{narrated.strip()}"
+        return f"🔔 <b>{tr('{assistant} Monitor')}{count}</b>\n\n{narrated.strip()}"
 
     # Fallback: compact grouped plain text (still a single message, not one per alert)
     by_service: dict[str, list[str]] = {}
@@ -164,7 +164,7 @@ def _narrate_batch(alerts: list[ServiceAlert]) -> str:
 
     count = len(alerts)
     return (
-        f"⚠️ <b>Hestia Monitor — {count} alert{'s' if count > 1 else ''}</b>\n\n"
+        f"⚠️ <b>{tr('{assistant} Monitor')} — {tr('{0} alerts', count) if count > 1 else tr('1 alert')}</b>\n\n"
         + "\n".join(fallback_lines)
     )
 
@@ -207,9 +207,9 @@ def send_recovery(service: str) -> None:
     )
     narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():
-        text = f"✅ <b>Hestia Monitor</b>\n\n{narrated.strip()}"
+        text = f"✅ <b>{tr('{assistant} Monitor')}</b>\n\n{narrated.strip()}"
     else:
-        text = tr("✅ <b>Hestia Monitor</b>\n<code>{0}</code> is back online.", service)
+        text = tr("✅ <b>{assistant} Monitor</b>\n<code>{0}</code> is back online.", service)
 
     hermes_client.publish_event(
         domain="system",

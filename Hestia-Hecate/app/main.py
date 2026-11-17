@@ -1223,7 +1223,7 @@ def _mail_agenda_rules() -> list[dict]:
     rules = [job_rule(
         MAIL_WATCH_JOB, "Check new emails", service="hecate", path="/api/gateway/mail/watch/run",
         body={"trigger": "agenda"}, recurrence=f"FREQ=MINUTELY;INTERVAL={minutes}",
-        description="One light mailbox check for all of Hestia: new emails go to Iris, which passes them to the subscribed modules (Scout, Expenses…). With Gmail push on it is only a safety net.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
+        description="One light mailbox check for all of {assistant}: new emails go to Iris, which passes them to the subscribed modules (Scout, Expenses…). With Gmail push on it is only a safety net.", params={"interval_seconds": _mail_watch_seconds()}, timeout_seconds=110)]
     if gmail_pubsub.configured():
         rules.append(job_rule(
             MAIL_RENEW_JOB, "Renew the Gmail watch", service="hecate",
@@ -1383,27 +1383,33 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
         msg = _html.escape(str(detail.get("error", "")))
         hint = _html.escape(str(detail.get("hint", "")))
         return HTMLResponse(
-            _OAUTH_CALLBACK_HTML.format(icon="❌", title=tr("Authorization failed"),
+            _callback_html(icon="❌", title=tr("Authorization failed"),
                                         detail=f"{msg}<br><br>{hint}"),
             status_code=exc.status_code)
     if result["status"] == "authorized":
         scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "nessuno"
-        return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
+        return HTMLResponse(_callback_html(
             icon="✅", title=tr("Authorization completed!"),
-            detail=tr("Google is connected to Hestia (scope: {0}). You can close this page and go back to Telegram.", _html.escape(scopes))))
-    return HTMLResponse(_OAUTH_CALLBACK_HTML.format(
+            detail=tr("Google is connected to {assistant} (scope: {0}). You can close this page and go back to Telegram.", _html.escape(scopes))))
+    return HTMLResponse(_callback_html(
         icon="⚠️", title=tr("Token saved, provider not active"),
         detail=_html.escape(str(result.get("unavailable")))))
 
 
 # ── HTML template for the OAuth callback page ──────────────────────────
+def _callback_html(**kw) -> str:
+    """The Google sign-in result page, titled with the assistant's chosen name (docs/work/2026-11-17-nome-dei-client)."""
+    from hestia_common.i18n import identity_now
+    return _OAUTH_CALLBACK_HTML.format(name=identity_now().get("assistant") or "Hestia", **kw)
+
+
 _OAUTH_CALLBACK_HTML = """\
 <!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hestia — {title}</title>
+<title>{name} — {title}</title>
 <style>
   body {{
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1550,7 +1556,7 @@ def _initiate_google_redirect_flow() -> dict:
             tr("Open the link from any device (phone, PC) and grant access to Calendar and Gmail: the return goes through the public tunnel and the sign-in completes by itself (you'll get a confirmation on Telegram)."))
     else:
         instructions = (
-            tr("FROM PC (where Hestia runs): open the link, grant access — it completes by itself.\nFROM PHONE: open the link, grant access; the final page (localhost) does NOT load: that's normal. Copy the whole URL from the address bar (or just the value of code=) and paste it here in chat.\nTo complete from the phone without copy-paste start cloudflare-tunnel.bat."))
+            tr("FROM PC (where {assistant} runs): open the link, grant access — it completes by itself.\nFROM PHONE: open the link, grant access; the final page (localhost) does NOT load: that's normal. Copy the whole URL from the address bar (or just the value of code=) and paste it here in chat.\nTo complete from the phone without copy-paste start cloudflare-tunnel.bat."))
     logger.info("event=google_oauth_redirect_initiated redirect_uri=%s public=%s", redirect, public)
     return {
         "status": "initiated",
@@ -1618,7 +1624,7 @@ def _initiate_google_device_flow() -> dict:
         "verification_url": verification_url,
         "expires_in": expires_in,
         "instructions": (
-            tr("1. Open {0} on your phone or computer\n2. Enter this code: {1}\n3. Grant access to Calendar and Gmail\n4. Hestia completes by itself (or use 'Check completion').", verification_url, user_code)
+            tr("1. Open {0} on your phone or computer\n2. Enter this code: {1}\n3. Grant access to Calendar and Gmail\n4. {assistant} completes by {g:herself|himself} (or use 'Check completion').", verification_url, user_code)
         ),
     }
 
@@ -1725,7 +1731,7 @@ def _apply_google_token(token_data: dict) -> dict:
         gmail_ok = "https://www.googleapis.com/auth/gmail.readonly" in granted
         _notify_action_required(
             "google_reauth_complete",
-            tr("✅ <b>Google</b> is connected to Hestia.\n\n")
+            tr("✅ <b>Google</b> is connected to {assistant}.\n\n")
             + ("Calendar e Gmail operativi." if gmail_ok
                else tr("Calendar working. Gmail NOT authorized: sign in again granting email reading.")),
         )

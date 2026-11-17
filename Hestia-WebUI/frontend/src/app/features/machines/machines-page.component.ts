@@ -101,7 +101,7 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
             <div class="sub">
               @if (tunnel()?.on && tunnel()!.url) { <a [href]="tunnel()!.url" target="_blank" rel="noopener">{{ tunnel()!.url }}</a> {{ "· always asks for access; changes at every restart" | tr }}
               } @else if (tunnel()?.on) { {{ "The address appears shortly." | tr }}
-              } @else { {{ "A secure address (Cloudflare, free) to open Hestia from your phone when you are out." | tr }} }
+              } @else { {{ "A secure address (Cloudflare, free) to open {assistant} from your phone when you are out." | tr }} }
             </div>
           </div>
           <div class="acts">
@@ -110,7 +110,7 @@ const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
           </div>
         </section>
         @if (!state()!.nodes.length && !pairing()) {
-          <p class="note">{{ "Hestia runs entirely here. If you have another computer with a good graphics card, link it: voice and local models run there, the rest (memory, settings, this page) stays on this always-on machine." | tr }}</p>
+          <p class="note">{{ "{assistant} runs entirely here. If you have another computer with a good graphics card, link it: voice and local models run there, the rest (memory, settings, this page) stays on this always-on machine." | tr }}</p>
         }
       }
     </div>`,
@@ -250,8 +250,8 @@ export class MachinesPageComponent {
   }
 
   async switchTunnel(on: boolean) {
-    if (on && !await this.dialogs.confirm(tr('Open Hestia from outside home?'),
-      tr('Hestia will have an address on the internet. From there it always asks for access; you can turn it off whenever you want.'), tr('f::Active'))) return;
+    if (on && !await this.dialogs.confirm(tr('Open {assistant} from outside home?'),
+      tr('{assistant} will have an address on the internet. From there it always asks for access; you can turn it off whenever you want.'), tr('f::Active'))) return;
     this.busy.set('tunnel');
     try {
       const t = await firstValueFrom(this.http.post<TunnelState>('/api/webui/setup/tunnel', { on }));
@@ -268,7 +268,7 @@ export class MachinesPageComponent {
     const using = this.state()?.brain_on === n.address;
     const text = using
       ? tr('Local models go back to this machine. To link it again a new code is needed.')
-      : tr('It stops working for Hestia. To link it again a new code is needed.');
+      : tr('It stops working for {assistant}. To link it again a new code is needed.');
     if (!await this.dialogs.confirm(tr("Unlink {0}?", n.name), text, tr('Unlink'), true)) return;
     this.busy.set('revoke:' + n.id);
     try {

@@ -109,7 +109,7 @@ export class ArchiveBackupPanel extends HestiaElement {
     if (!st.passphrase_set) out.push(html`<div class="note" data-tone="danger"><hxk-icon name="alert" size="16" tone="danger"></hxk-icon>
       <span>${tr("The backup passphrase is missing: add")} <code>HESTIA_BACKUP_PASSPHRASE</code> ${tr("to the .env file and restart. Save it in a password manager too: without it, backups cannot be opened.")}</span></div>`);
     if (st.drive && !st.drive.connected || st.drive && st.drive.scope_ok === false) out.push(html`<div class="note" data-tone="warning">
-      <hxk-icon name="unlock" size="16" tone="warning"></hxk-icon><span class="grow">${tr("Google Drive not linked")}${st.drive.error ? html`: ${st.drive.error}` : nothing}${tr(". Link Google again granting access to Drive (it only sees the files Hestia creates).")}</span>
+      <hxk-icon name="unlock" size="16" tone="warning"></hxk-icon><span class="grow">${tr("Google Drive not linked")}${st.drive.error ? html`: ${st.drive.error}` : nothing}${tr(". Link Google again granting access to Drive (it only sees the files {assistant} creates).")}</span>
       <hxk-button size="sm" icon="link" ?loading=${this.busy === 'connect'} @click=${() => this.connect()}>${tr("Link Google Drive")}</hxk-button></div>`);
     if (st.problem) out.push(html`<div class="note" data-tone=${st.problem.code === 'drive' ? 'warning' : 'danger'}>
       <hxk-icon name="alert" size="16" tone=${st.problem.code === 'drive' ? 'warning' : 'danger'}></hxk-icon><span>${st.problem.text}</span></div>`);

@@ -288,3 +288,5 @@ A file sent without a caption asks the model in English and to answer in the own
 **2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): fixed texts that speak of the assistant as a person
 use the chosen name (`{assistant}` through `hestia_common.i18n.t`, e.g. the setup link «parlare con …»); «Apri
 Hestia» and other texts about the app keep «Hestia».
+
+**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the bot takes the assistant's chosen name (`set_bot_identity`: `setMyName` only when it differs) and describes itself in «Lingua» («I'm {assistant}, your personal assistant…»); a change of name, she/he or language runs `setup_bot_profile` again (`on_personal_change`). `/start` greets the owner by name.

@@ -325,7 +325,7 @@ export class AthenaThoughts extends HestiaElement {
     const cycles: any[] = d.cycles || [];
     const last = cycles[0];
     return html`<div class="page">
-      <div class="head"><h1>${tr("Thoughts")}</h1><span class="sub">${this.track === 'vita' ? tr('What she notices about your life: it ends up in the evening recap') : tr('How Hestia is: services, errors, improvements')}</span><span class="grow"></span>
+      <div class="head"><h1>${tr("Thoughts")}</h1><span class="sub">${this.track === 'vita' ? tr('What she notices about your life: it ends up in the evening recap') : tr('How {assistant} is: services, errors, improvements')}</span><span class="grow"></span>
         ${this.tabs()}
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button>
         <hxk-button variant="primary" icon="play" ?loading=${this.thinking} @click=${() => this.thinkNow()}>${this.thinking ? tr('alt::Thinking…') : tr('Think now')}</hxk-button></div>

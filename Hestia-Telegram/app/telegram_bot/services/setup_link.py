@@ -44,5 +44,5 @@ def try_claim(message) -> bool:
     elif payload.get("reason") == "wrong_code":
         core.bot.reply_to(message, tr("The code is not right. Check the one on the setup screen."))
     else:
-        core.bot.reply_to(message, tr("No active code: open the Hestia setup and ask for a new one."))
+        core.bot.reply_to(message, tr("No active code: open the setup of {assistant} and ask for a new one."))
     return True

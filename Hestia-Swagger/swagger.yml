@@ -12850,11 +12850,24 @@ paths:
       summary: The same catalog as a script for index.html (no token required to call it)
       description: >-
         `globalThis.__hestiaI18n = {language, messages};` with Cache-Control no-store. Loaded before any bundle, so
-        module-level constants of the shell and the plugins are translated too.
+        module-level constants of the shell and the plugins are translated too. It also sets document.title to the
+        assistant's chosen name.
       servers:
         - url: http://localhost:19015
       responses:
         "200": {description: "text/javascript"}
+
+  /api/webui/manifest.webmanifest:
+    get:
+      tags: [WebUI]
+      summary: The installed app's manifest, named with the assistant's chosen name (no token required to call it)
+      description: >-
+        name/short_name = the assistant's name from the catalog (Hestia when unknown), description and lang in «Lingua».
+        Cache-Control no-store (dossier docs/work/2026-11-17-nome-dei-client).
+      servers:
+        - url: http://localhost:19015
+      responses:
+        "200": {description: "application/manifest+json"}
 
   /api/webui/auth/telegram:
     post:

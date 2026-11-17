@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ButtonComponent, FieldComponent } from '../../ui';
-import { tr, TrPipe } from '../../core/i18n';
+import { assistantName, tr, TrPipe } from '../../core/i18n';
 
 @Component({
   selector: 'app-login-page',
@@ -13,7 +13,7 @@ import { tr, TrPipe } from '../../core/i18n';
     <div class="wrap">
       <form class="card hx-card" (ngSubmit)="submit()">
         <div class="logo">◈</div>
-        <h1>Hestia</h1>
+        <h1>{{ name }}</h1>
         <p class="sub">{{ "Enter the access token" | tr }}</p>
         <hx-field [error]="error()"  [hint]="'You get it with /webui_token on Telegram' | tr">
           <input class="hx-input mono" name="token" [(ngModel)]="token" type="password" autocomplete="off"
@@ -32,6 +32,8 @@ import { tr, TrPipe } from '../../core/i18n';
   `],
 })
 export class LoginPageComponent {
+  /** The name the owner gave the assistant (the site calls itself that, docs/work/2026-11-17-nome-dei-client). */
+  readonly name = assistantName();
   private auth = inject(AuthService);
   private router = inject(Router);
   /** Where the guard was going (e.g. the OAuth consent card): same-origin paths only. */

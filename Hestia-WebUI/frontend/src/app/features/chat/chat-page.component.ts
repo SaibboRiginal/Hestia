@@ -71,7 +71,7 @@ export function dayLabel(d: Date, now = new Date()): string {
           <div class="welcome hx-fade-in">
             <div class="logo">◈</div>
             <h1>{{ greeting() }}</h1>
-            <p>{{ "Ask something, plan in the agenda, have Hestia developed." | tr }}</p>
+            <p>{{ "Ask something, plan in the agenda, have {assistant} developed." | tr }}</p>
             <div class="chips">
               @for (s of suggestions; track s) { <button (click)="use(s)">{{ s }}</button> }
             </div>
@@ -379,7 +379,9 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   thinkingMode = computed(() => this.settings.settings().thinkingDisplay || 'compact');
   greeting = computed(() => {
     const h = new Date().getHours();
-    return h < 6 ? tr('Good night') : h < 13 ? tr('Good morning') : h < 18 ? tr('Good afternoon') : tr('Good evening');
+    const hello = h < 6 ? tr('Good night') : h < 13 ? tr('Good morning') : h < 18 ? tr('Good afternoon') : tr('Good evening');
+    const owner = this.identity.ownerCall() || this.identity.ownerName();   // how he asked to be called
+    return owner ? `${hello}, ${owner}` : hello;
   });
 
   constructor() {

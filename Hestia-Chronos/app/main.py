@@ -1304,7 +1304,7 @@ def agenda_ics(days: int = Query(60, ge=1, le=400), past_days: int = Query(7, ge
     wanted = {t.strip() for t in types.split(",") if t.strip()}
     rows = [o for o in assistant_agenda.agenda(now - timedelta(days=past_days), now + timedelta(days=days), owner=owner)
             if o.get("type") in wanted][:3000]
-    return Response(agenda_parse.to_ics(rows), media_type="text/calendar; charset=utf-8",
+    return Response(agenda_parse.to_ics(rows, name=tr("{assistant}'s agenda")), media_type="text/calendar; charset=utf-8",
                     headers={"Content-Disposition": 'inline; filename="hestia-agenda.ics"'})
 
 

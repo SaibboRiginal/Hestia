@@ -176,7 +176,7 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
     }
 
     @if (tab() === 'restore') {
-      <p class="hx-small hx-muted intro">{{ "Before every import Hestia saves how the sections involved were. Restore = reopens them in the import with «Replace». It keeps" | tr }} {{ keep() }} {{ "(setting «Restore points to keep»)." | tr }}</p>
+      <p class="hx-small hx-muted intro">{{ "Before every import {assistant} saves how the sections involved were. Restore = reopens them in the import with «Replace». It keeps" | tr }} {{ keep() }} {{ "(setting «Restore points to keep»)." | tr }}</p>
       @if (!points().length && !busy()) { <hx-empty icon="history"  [title]="'No restore point' | tr" /> }
       @for (p of points(); track p.id) {
         <div class="row point">

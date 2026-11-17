@@ -238,3 +238,48 @@ class TestSessionStore:
         s1 = session_store.get_session(state_file, "chat_1")
         s2 = session_store.get_session(state_file, "chat_2")
         assert s1 != s2
+
+
+# ── The bot is called as the owner wants (docs/work/2026-11-17-nome-dei-client) ─────────────────────────────
+
+@pytest.mark.unit
+class TestChosenName:
+    def _ident(self, monkeypatch, **values):
+        from hestia_common import i18n
+        keys = {"assistant_name": "themis.personal.assistant_name", "owner_call": "themis.personal.owner_call",
+                "language": "themis.personal.language"}
+        data = {keys[k]: v for k, v in values.items()}
+        monkeypatch.setattr(i18n, "_reader", data.get)
+
+    def test_home_greets_the_owner_by_name(self, monkeypatch):
+        self._ident(monkeypatch, owner_call="Marko", language="it")
+        bot = TestHome()._home(monkeypatch)
+        assert bot.send_message.call_args[0][1].startswith("<b>Ciao, Marko</b>")
+
+    def test_bot_takes_the_chosen_name_only_when_it_changed(self, monkeypatch):
+        import telegram_bot.core as core_module
+        import telegram_runtime
+        from telegram_bot import webapp
+        self._ident(monkeypatch, assistant_name="Leo", language="it")
+        bot = MagicMock()
+        bot.get_my_name.return_value = MagicMock(name="x")
+        bot.get_my_name.return_value.name = "Hestia"
+        monkeypatch.setattr(core_module, "bot", bot)
+        monkeypatch.setattr(webapp, "set_menu_button", lambda: None)
+        telegram_runtime.set_bot_identity()
+        bot.set_my_name.assert_called_once_with("Leo")
+        assert "Leo" in bot.set_my_description.call_args[0][0]
+        bot.get_my_name.return_value.name = "Leo"
+        bot.set_my_name.reset_mock()
+        telegram_runtime.set_bot_identity()
+        bot.set_my_name.assert_not_called()
+
+    def test_a_new_name_or_language_refreshes_the_bot(self, monkeypatch):
+        import telegram_runtime
+        calls = []
+        monkeypatch.setattr(telegram_runtime, "setup_bot_profile", lambda: calls.append(1))
+        monkeypatch.setattr(telegram_runtime.threading, "Thread",
+                            lambda target, daemon: MagicMock(start=lambda: target()))
+        telegram_runtime.on_personal_change({"themis.personal.week_start": "mon"})
+        telegram_runtime.on_personal_change({"themis.personal.assistant_name": "Leo"})
+        assert calls == [1]

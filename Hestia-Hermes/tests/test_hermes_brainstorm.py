@@ -156,3 +156,13 @@ class TestWebPush:
                                 "secret": {"fields": [{"name": "pin"}]}})
         assert p["body"].startswith("ciao") and len(p["body"]) == 300 and p["pending"] is True
         assert "secret" not in p
+
+
+@pytest.mark.unit
+def test_push_without_title_is_signed_with_the_chosen_name(monkeypatch):
+    """docs/work/2026-11-17-nome-dei-client: the phone shows the name the owner gave the assistant."""
+    from hestia_common import i18n
+    from modules import webpush
+    monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo"}.get)
+    assert webpush.payload_of({"message": "ciao"})["title"] == "Leo"
+    assert webpush.payload_of({"title": "Spese", "message": "x"})["title"] == "Spese"

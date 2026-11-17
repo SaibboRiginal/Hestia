@@ -83,7 +83,7 @@ export class IrisEmail extends HestiaElement {
     const st = w.watcher || {};
     const push = w.push || {};
     const auth = st.last_error === 'gmail_not_authorized' || String(st.last_error || '').includes('Re-authorize');
-    return html`<hxk-card heading=${tr("Mailbox check")} subtitle=${tr("Just one for all of Hestia, in Hecate")}>
+    return html`<hxk-card heading=${tr("Mailbox check")} subtitle=${tr("Just one for all of {assistant}, in Hecate")}>
       <div class="col" style="gap:6px">
         <div class="row wrap">
           ${push.active ? html`<hxk-badge tone="success">${tr("Gmail push active")}</hxk-badge>`

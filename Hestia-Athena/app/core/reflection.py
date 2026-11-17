@@ -38,7 +38,7 @@ logger = logging.getLogger("hestia_athena.reflection")
 USE_CASE = "athena.riflessione"
 SEVERITY_RANK = {"alta": 0, "attenzione": 1, "info": 2}
 DOMAIN_WORDS = {"fitness": "Training", "selfcare": "Self care", "finance": "Expenses", "wardrobe": "Wardrobe",
-                "real_estate": "Houses", "cognition": "Hestia"}
+                "real_estate": "Houses", "cognition": "Yourself"}
 
 
 def local_day(ts: datetime | None = None) -> str:

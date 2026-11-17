@@ -650,3 +650,5 @@ The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-
 `{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
 manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
 she/he reloads the page (`followIdentity`), except during the setup.
+
+**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the site calls itself with the assistant's chosen name: route titles (`assistantName()`), the tab (`i18n.js` sets `document.title`), the installed app (`GET /api/webui/manifest.webmanifest`, public, built from the catalog; the static manifest is gone), login, sidebar, setup brand and command palette. The chat greeting adds how the owner asked to be called (read from the settings, never from the public catalog).

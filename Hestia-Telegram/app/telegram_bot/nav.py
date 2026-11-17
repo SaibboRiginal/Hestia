@@ -133,7 +133,9 @@ def home(chat_id) -> None:
     if waiting:
         lines.append((tr("• 1 notification to see") if waiting == 1 else tr("• {0} notifications to see", waiting)))
     lines.append(ui.note(tr("Write what you need, or use the buttons below.")))
-    html = ui.card(tr("Hi"), lines, subtitle=_today_words())
+    from hestia_common.i18n import identity_now
+    owner = identity_now().get("owner") or ""          # how he asked to be called (docs/work/2026-11-17-nome-dei-client)
+    html = ui.card(tr("Hi, {0}", owner) if owner else tr("Hi"), lines, subtitle=_today_words())
     core.bot.send_message(chat_id, html, parse_mode="HTML", reply_markup=reply_keyboard(menu),
                           disable_web_page_preview=True)
 

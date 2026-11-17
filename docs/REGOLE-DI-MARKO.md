@@ -73,6 +73,9 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
 - (2026-11-16) The name you chose is everywhere it speaks of her as a person (buttons, pages, Telegram, voice);
   «Hestia» stays only for the app. What she wrote first stays in the conversation where you answer. Something
   clearly wrong is fixed, not asked about.
+- (2026-11-17) The clients take the name too: the site (tab, installed app, login), the Telegram bot and the
+  notifications are called as you want, and greet you with the name you chose. «Hestia» stays only for releases,
+  installer, file format and technical module names.
 
 ## R9 — Backend English, the owner reads his language (2026-11-14, 2026-11-16)
 - Everything the model reads is English; every fixed text a person reads comes from the catalog in the owner's

@@ -546,3 +546,5 @@ MCP tools (all on Telegram through the dynamic menus): `routine_list`, `routine_
 **2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».
+
+**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the iCalendar feed is named «{assistant}'s agenda».

@@ -84,7 +84,7 @@ export class ScopriPageComponent implements OnInit {
       icon: items[0].area_icon || 'puzzle', order: items[0].area_order ?? 999 }))
       .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
   });
-  readonly subtitle = computed(() => this.total() ? tr("{0} things to try", this.total()) : tr('What you can do with Hestia and haven\'t tried yet'));
+  readonly subtitle = computed(() => this.total() ? tr("{0} things to try", this.total()) : tr('What you can do with {assistant} and haven\'t tried yet'));
 
   ngOnInit(): void { void this.load(); }
 

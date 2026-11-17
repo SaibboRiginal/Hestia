@@ -32,7 +32,33 @@ public class I18nController : ControllerBase
     {
         var json = JsonSerializer.Serialize(await Catalog());
         Response.Headers.CacheControl = "no-store";
-        return Content($"globalThis.__hestiaI18n = {json};\n", "text/javascript; charset=utf-8");
+        // The tab is called with the assistant's name from the first paint (docs/work/2026-11-17-nome-dei-client).
+        return Content($"globalThis.__hestiaI18n = {json};\nif (globalThis.__hestiaI18n.assistant) document.title = globalThis.__hestiaI18n.assistant;\n",
+            "text/javascript; charset=utf-8");
+    }
+
+    /// <summary>The installed app (PWA) is called with the name the owner gave the assistant
+    /// (docs/work/2026-11-17-nome-dei-client): the manifest is written from the catalog, Hestia when unknown.</summary>
+    [HttpGet("~/api/webui/manifest.webmanifest")]
+    public async Task<IActionResult> Manifest()
+    {
+        var json = JsonSerializer.SerializeToElement(await Catalog());
+        var name = json.TryGetProperty("assistant", out var a) && a.ValueKind == JsonValueKind.String
+            && a.GetString() is { Length: > 0 } n ? n : "Hestia";
+        var lang = json.TryGetProperty("language", out var l) && l.ValueKind == JsonValueKind.String ? l.GetString() ?? "en" : "en";
+        var description = "Personal assistant";
+        if (json.TryGetProperty("messages", out var m) && m.ValueKind == JsonValueKind.Object
+            && m.TryGetProperty(description, out var t) && t.ValueKind == JsonValueKind.String && t.GetString() is { Length: > 0 } d)
+            description = d;
+        var manifest = new Dictionary<string, object>
+        {
+            ["name"] = name, ["short_name"] = name, ["description"] = $"{name}, {description.ToLowerInvariant()}",
+            ["lang"] = lang, ["start_url"] = "/home", ["scope"] = "/", ["display"] = "standalone",
+            ["background_color"] = "#121212", ["theme_color"] = "#121212",
+            ["icons"] = new[] { new Dictionary<string, string> { ["src"] = "/icon.svg", ["sizes"] = "any", ["type"] = "image/svg+xml", ["purpose"] = "any maskable" } },
+        };
+        Response.Headers.CacheControl = "no-store";
+        return Content(JsonSerializer.Serialize(manifest), "application/manifest+json; charset=utf-8");
     }
 
     private async Task<object> Catalog()
