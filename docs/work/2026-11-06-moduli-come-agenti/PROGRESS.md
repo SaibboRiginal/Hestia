@@ -12,7 +12,8 @@
 - [x] A4 main loop without classifier (agents mode), direct answer, turn board, contextvars copy
 - [x] A5 `agent` frame live (worker thread + queue), swagger + docs
 - [x] A6 WebUI reasoning block + Telegram status line (ng build ok; .NET not built in cloud)
-- [ ] A7 tests, precheck, PR, CI green, merge
+- [x] A7 tests + precheck (Oracle 764, Telegram 166, precheck 0 failed); PR #116 open
+- [ ] CI green, Marko ok, merge
 
 ## Checkpoint 2026-11-17 (WIP started too early, stopped at Marko's request; resumed after his go)
 Done in code on this branch (not merged, no PR):
