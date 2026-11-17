@@ -1,4 +1,4 @@
-"""Training dataset, phase D1 «Registra» (docs/work/2026-10-30-dataset-allenamento).
+"""Training dataset, phase D1 «Record» (docs/work/2026-10-30-dataset-allenamento).
 
 Oracle pushes one **trace** per finished chat turn the owner typed (``POST /api/metis/traces``): system prompt, the
 history text the model got, the user message, every tool call with arguments and result, the final answer, model
@@ -11,7 +11,7 @@ and route. Metis keeps them in Archive ``dataset-store`` (big rows: always read 
   starts with «no», «intendevo»…), ``tool_failed`` (a tool of the turn failed). Votes stay in Archive feedback
   (``interaction_id`` = trace_id); the review of phase D2 reads both.
 
-A conversation marked «non usare per l'allenamento» (Archive chat meta ``training_off``) is never stored;
+A conversation marked «don't use for training» (Archive chat meta ``training_off``) is never stored;
 deleting a conversation or marking it drops its rows (tombstones with empty data). Rows older than
 ``metis.traces.keep_days`` are dropped by the agenda job that already prunes the usage log. Nothing leaves Hestia.
 """
@@ -23,7 +23,7 @@ import json
 import logging
 import re
 
-from hestia_common.i18n import word_regex
+from hestia_common.i18n import is_yes, word_regex
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -76,7 +76,7 @@ class Traces:
         return int(out.get("count") or 0)
 
     def excluded(self, session_id: str) -> bool:
-        """«Non usare per l'allenamento». Archive unreachable → excluded (never store what may be private)."""
+        """«Don't use for training». Archive unreachable → excluded (never store what may be private)."""
         now = time.monotonic()
         with self._lock:
             hit = self._meta.get(session_id)
@@ -135,7 +135,7 @@ class Traces:
                 self._last.pop(next(iter(self._last)))
         if prev and 0 <= (at - prev["at"]).total_seconds() <= REPHRASE_SECONDS:
             ratio = _similar(user, prev["user"])
-            if ratio >= REPHRASE_RATIO and user.strip().lower() != "sì":
+            if ratio >= REPHRASE_RATIO and not is_yes(user):
                 sig(prev["trace_id"], "rephrase", -0.5, similarity=round(ratio, 2))
         if prev and _CORRECTION.search(user):
             sig(prev["trace_id"], "correction", -0.7, text=user[:300])

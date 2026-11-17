@@ -86,7 +86,7 @@ def notifications_line(payload: Any, limit: int, today: str | None = None) -> st
 
 
 def talk_line(payload: Any, today: str | None = None) -> str:
-    """What she wrote him first today (Athena «parla con te», kind ``athena.talk``): the whole sentence, so his
+    """What she wrote him first today (Athena «talk to you», kind ``athena.talk``): the whole sentence, so his
     answer in any chat has its context (docs/work/2026-11-12-identita-e-proattivita)."""
     items = (payload or {}).get("items") if isinstance(payload, dict) else None
     today = today or datetime.now(_tz()).date().isoformat()

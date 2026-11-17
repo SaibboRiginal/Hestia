@@ -12,7 +12,7 @@ Event types:
   - final    : terminal event carrying the assistant's full reply
   - signal   : side-channel event (e.g. memory update, tool summary, document saved)
   - question : interactive question frame for cross-client approval flows
-  - changes  : what the answer changed, each item with its «Annulla» (Cindy 13)
+  - changes  : what the answer changed, each item with its «Undo» (Cindy 13)
   - notice   : STANDARD system packet for every client (memory saved, action done,
                errors…): {type, kind, level, icon, emoji, title, detail, data}.
                Clients render it distinctly from chat text (see NOTICE_KINDS and
@@ -38,7 +38,7 @@ _THINK_TAGS = re.compile(r"</?\s*(?:think|thinking|reasoning)\s*>|<｜[^｜]*｜
 
 def clean_reasoning(text: str | None) -> str:
     """The model's reasoning as text to show, or "" when there is none. Some local models send only the
-    empty wrapper (``<think>\n\n</think>``): without this a client drew a «Ragionamento» block with nothing in it."""
+    empty wrapper (``<think>\n\n</think>``): without this a client drew a «Reasoning» block with nothing in it."""
     return _THINK_TAGS.sub("", str(text or "")).strip()
 
 
@@ -74,7 +74,7 @@ def emit_thinking(
 def emit_final(reply: str, domain: str = "none", origin: dict | None = None, trace_id: str = "",
                model: str = "") -> str:
     """Return the terminal final-type NDJSON line. ``origin`` (Cindy 6) is set when the turn was not typed by the
-    owner: clients show its ``label`` as a small tag («Da una tua routine»). ``trace_id`` names the turn: clients
+    owner: clients show its ``label`` as a small tag («From one of your routines»). ``trace_id`` names the turn: clients
     send it back with a 👍/👎 so the vote lands on this turn (docs/work/2026-10-30-dataset-allenamento)."""
     payload = {"type": "final", "reply": reply, "domain": domain}
     if model:

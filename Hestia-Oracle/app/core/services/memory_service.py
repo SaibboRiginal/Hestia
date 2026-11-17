@@ -504,7 +504,7 @@ class MemoryService:
                 fact_text = str(mem.get("fact", "")).strip().lower()
                 if not fact_text:
                     continue
-                # Stemmed words: «lavoro» finds «L'utente lavora…» (bench 2026-10-30: «dimentica dove lavoro»
+                # Stemmed words: «working» finds «The user works…» (bench 2026-10-30: «forget where I work»
                 # found nothing, so nothing was forgotten).
                 score = sum(1 for word in clean_query.split() if word in fact_text) + len(
                     _fact_tokens(clean_query) & _fact_tokens(fact_text))
@@ -586,7 +586,7 @@ class MemoryService:
                         "since": str(r.get("created_at") or "")[:10]} for r in rows[:RECALL_MAX]])
 
     def list_memories(self) -> list[dict]:
-        """Active user memories with their origin, newest first (Memoria page)."""
+        """Active user memories with their origin, newest first (Memory page)."""
         rows = self._get_active_memory(memory_class=MEMORY_CLASS_PREFERENCE) or []
         out = []
         for r in rows:
@@ -649,7 +649,7 @@ class MemoryService:
         # Selective memory (like Claude): the LLM extractor runs only when the message
         # can carry a durable fact; greetings/tests/questions never touch memory.
         # A module already stored what the turn said (person, routine, expense…): no second copy as a memory unless
-        # the user asked to remember it (small-model bench 2026-10-30: «mia mamma si chiama Laura» → person + memory).
+        # the user asked to remember it (small-model bench 2026-10-30: «my mum is called Laura» → person + memory).
         stored_by_action = bool(done_actions) and not asks_to_remember(user_message)
         should_extract_prefs = not memory_by_tool and not stored_by_action and is_memory_worthy(user_message)
         should_extract_subs = force_notification_compiler or has_notification_intent(

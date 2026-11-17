@@ -1040,6 +1040,18 @@
   "basta",
   "dimentic"
  ],
+ "oracle.documents_hint": [
+  "documento",
+  "documenti",
+  "allegato",
+  "salvato",
+  "salvati",
+  "archiviato",
+  "archiviati",
+  "caricato",
+  "caricati",
+  "hai"
+ ],
  "plutus.merchant_prefix": [
   "pagamento\\s+(?:pos|carta)\\s+"
  ],

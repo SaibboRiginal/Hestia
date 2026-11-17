@@ -3,7 +3,7 @@ chains + use case overrides (dossier ``2026-10-19-oracle-a-blocchi``).
 
 Runs when settings load: only if Marko changed an old value and neither ``oracle.chains`` nor
 ``oracle.usecases`` was stored yet (so it runs once). Each changed use case becomes a chain
-``<use case>-personale`` = [primary, fallback] and the use case points to it. The old rows stay in Archive
+``<use case>-personal`` = [primary, fallback] and the use case points to it. The old rows stay in Archive
 (Themis cannot delete undeclared keys) and are ignored from then on.
 """
 from __future__ import annotations
@@ -44,7 +44,7 @@ def plan(orphans: dict) -> tuple[dict, dict]:
             steps = [{"provider": _PROVIDER_NAME.get(cur[0], cur[0]), "model": cur[1]}]
             if cur[2] and cur[3] and uc != "embedding" and (cur[2], cur[3]) != cur[:2]:
                 steps.append({"provider": _PROVIDER_NAME.get(cur[2], cur[2]), "model": cur[3]})
-            name = f"{new_id.split('.', 1)[1]}-personale"
+            name = f"{new_id.split('.', 1)[1]}-personal"
             if uc == "embedding":
                 name = "embedding"
             chains[name] = {"label": f"{name.replace('-', ' ').capitalize()}", "steps": steps}

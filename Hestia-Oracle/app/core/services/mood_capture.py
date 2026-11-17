@@ -6,7 +6,7 @@ a clause counts only with a first-person present cue and a word of the mood lexi
 hypothetical, not negated, not about yesterday. Only then a short prompt reads it (the same chain as the memory
 extractor); a model that is offline or answers garbage falls back to the lexicon guess, a model that says NONE wins.
 The result goes to the module that declares the Hub capability ``mood_capture_endpoint`` (no module name here);
-«non segnarlo» calls ``<endpoint>/undo``. The reply never claims it: a quiet notice follows the answer.
+«don't log it» calls ``<endpoint>/undo``. The reply never claims it: a quiet notice follows the answer.
 Moods never go to long-term memory (memory rule 2c): that is the mood module's job.
 """
 from __future__ import annotations

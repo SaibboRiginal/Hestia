@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.settings_client import SettingsClient, preset, setting
@@ -20,7 +20,7 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
     from hestia_common.settings_client import SettingsClient, preset, setting
 
 # ── Models: providers · chains · use cases (dossier docs/work/2026-10-19-oracle-a-blocchi) ─────────
-# Three object settings edited by the WebUI page Modelli (Oracle → Cervello): named providers (keys stay in env
+# Three object settings edited by the WebUI page Models (Oracle → Brain): named providers (keys stay in env
 # ORACLE_KEY_<NAME>), reusable chains of provider/model steps, use case → chain/mode overrides.
 PROVIDERS_KEY = "oracle.providers"
 CHAINS_KEY = "oracle.chains"
@@ -401,7 +401,7 @@ def get_float(key_: str, minimum: float | None = None) -> float:
 def get_bool(key_: str) -> bool:
     value = settings.get(key_)
     if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "on", "si", "sì"}
+        return is_yes(value) or value.strip().lower() == "on"
     return bool(value)
 
 
@@ -478,7 +478,7 @@ def stub_after_turns() -> int:
 def ollama_request_options(model: str = "") -> dict:
     """Fields added to every Ollama request: ``keep_alive`` (avoid cold starts) and, only when the window is
     forced from Hestia (or Ollama's own is too small), the same ``num_ctx`` on every call (a different value
-    makes Ollama reload the model). On «automatica» no ``num_ctx`` is sent: Ollama keeps the owner's window."""
+    makes Ollama reload the model). On «automatic» no ``num_ctx`` is sent: Ollama keeps the owner's window."""
     from core.services import local_window
     keep = str(settings.get(KEEP_ALIVE) or "30m")
     num_ctx = local_window.ollama_num_ctx(model)

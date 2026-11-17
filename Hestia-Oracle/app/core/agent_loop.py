@@ -58,7 +58,7 @@ def _settings():
 _token_ratio_cache: dict[str, float] = {}
 _BENCHMARK_TEXT = (
     "The quick brown fox jumps over the lazy dog. "
-    "La volpe marrone veloce salta sopra il cane pigro. "
+    "Pack my box with five dozen liquor jugs. "
     "1234567890 " * 10
 )
 
@@ -143,7 +143,7 @@ class ToolDefinition:
     handler: Callable
     # Mutating tool (POST/PUT/PATCH/DELETE, memory.save…): clients get an action notice.
     writes: bool = False
-    title: str = ""         # human label for notices (e.g. "📅 Crea evento")
+    title: str = ""         # human label for notices (e.g. "📅 Create event")
     method: str = ""        # HTTP method of a module tool (origin gate: DELETE is destructive)
 
 
@@ -257,7 +257,7 @@ def _extract_tool_call(text: str) -> dict | None:
         except Exception:
             continue
 
-    # 4. The whole answer is a Python-style call: memory.search(query="caffè") (Gemini Flash-Lite writes this as
+    # 4. The whole answer is a Python-style call: memory.search(query="coffee") (Gemini Flash-Lite writes this as
     #    text instead of a native call; it reached the user as the answer, bench 2026-10-30).
     py_call = _python_style_call(text)
     if py_call:
@@ -312,7 +312,7 @@ def _python_style_call(text: str) -> dict | None:
 
 
 ALREADY_DONE = "ALREADY DONE this turn (same title): don't repeat it, answer the user."
-_WRITE_KEY_PARAMS = ("title", "name", "title", "nome", "text", "fact")
+_WRITE_KEY_PARAMS = ("title", "name", "text", "fact")
 
 
 def _write_key(tool: "ToolDefinition | None", call: dict) -> tuple[str, str] | None:
@@ -349,7 +349,7 @@ def _call_key(call: dict) -> tuple[str, str]:
 
 
 # A write that failed and was never redone: the model must not tell the user it is done (bench with a real
-# model, 2026-10-30: five failed create_event calls, answer «Dentista fissato per giovedì»).
+# model, 2026-10-30: five failed create_event calls, answer «Dentist booked for Thursday»).
 _FAILED_WRITES_NOTE = ("FAILED ACTIONS: {titles}. Don't say they are done: tell the user in one line that it "
                        "failed and why, and what they can do.")
 
@@ -405,7 +405,7 @@ def run_agent_loop(
 
     *guard_checker*: light model check of the loop guard (``core.services.loop_guard``); None = a suspected loop
     stops at once. *prior_actions*: tool log entries already executed for this same user message by an earlier
-    attempt (external agent that failed midway, Cindy 2): they go in the scratchpad as «già fatto» so the model
+    attempt (external agent that failed midway, Cindy 2): they go in the scratchpad as «already done» so the model
     continues from there instead of redoing them. *trace_out*: filled with the system prompt and the tool schemas
     of this loop (training dataset, ``core.services.turn_trace``).
     """
@@ -742,7 +742,7 @@ def run_agent_loop(
                 if not tool_calls_list:
                     _force_final = _all_repeated = True
             # The same write again (same tool, same title): already done, not run twice (bench with a real model,
-            # 2026-10-30: «ricordami ogni lunedì di pesarmi» created three identical routines).
+            # 2026-10-30: «remind me every Monday to weigh myself» created three identical routines).
             _again = [tc for tc in tool_calls_list if _write_key(tool_map.get(tc.get("name", "")), tc) in _done_writes]
             if _again:
                 for tc in _again:
@@ -873,11 +873,11 @@ def run_agent_loop(
                     # the next turn (docs/work/2026-10-19-oracle-offline v3 A).
                     "ask": result_raw.get("ask") if ok and isinstance(result_raw, dict)
                     and isinstance(result_raw.get("ask"), dict) else None,
-                    # «Cosa ho cambiato» with Annulla (Cindy 13): the module says how to undo its own write.
+                    # «What I changed» with Undo (Cindy 13): the module says how to undo its own write.
                     "undo": result_raw.get("undo") if ok and isinstance(result_raw, dict)
                     and result_raw.get("undo") else None,
                     "params": r.get("params") or {},
-                    # A write tool that changed nothing (a read call, a fact already known): no «Fatto».
+                    # A write tool that changed nothing (a read call, a fact already known): no «Done».
                     "unchanged": bool(ok and isinstance(result_raw, dict)
                                       and (result_raw.get("unchanged") or result_raw.get("already_known"))),
                     # Refused by the turn guards (turn_guards.py): the model was told why; not a failure

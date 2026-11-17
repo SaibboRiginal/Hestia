@@ -1,4 +1,4 @@
-"""The assistant writes first (docs/work/2026-11-12-identita-e-proattivita, «parla con te»).
+"""The assistant writes first (docs/work/2026-11-12-identita-e-proattivita, «talk to you»).
 
 Athena decides *when* and brings the reasons (mood, what the areas noticed, what she already wrote); Oracle, the
 only brain, writes the one or two sentences in the persona, with what it remembers of the owner. Hermes delivers.

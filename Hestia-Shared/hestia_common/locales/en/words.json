@@ -1100,6 +1100,18 @@
   "unlink",
   "stop"
  ],
+ "oracle.documents_hint": [
+  "document",
+  "file",
+  "pdf",
+  "attachment",
+  "saved",
+  "archived",
+  "uploaded",
+  "have",
+  "know about",
+  "remember"
+ ],
  "plutus.merchant_prefix": [
   "payment\\s+(?:pos|card)\\s+"
  ],

@@ -8,7 +8,7 @@ services:
     ports:
       - "${METIS_PORT:-19014}:19014"
     environment:
-      # Tunables (dataset cap/dedup/labels, log level) are central settings (Themis → WebUI Impostazioni);
+      # Tunables (dataset cap/dedup/labels, log level) are central settings (Themis → WebUI Settings);
       # the training window is an agenda window (Chronos). Env = infrastructure only.
       - SERVICE_NAME=metis
       - SERVICE_BASE_URL=http://hestia_metis:19014

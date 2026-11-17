@@ -1,4 +1,4 @@
-"""Recent chat turns — what Oracle did for each request (WebUI page *Cervello*, ``GET /api/ui/activity``).
+"""Recent chat turns — what Oracle did for each request (WebUI page *Brain*, ``GET /api/ui/activity``).
 
 One short row per finished chat turn: route (quick / quick_chat / agent), domains chosen, tools called (ok or not),
 model + provider, total ms and the LLM usage of the turn. In memory only (a bounded ring, lost on restart): it is a

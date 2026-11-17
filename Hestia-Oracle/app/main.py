@@ -1603,7 +1603,7 @@ def llm_generate_endpoint(req: dict):
                                       use_case=use_case)
             cfg = external_agent.brain()
             return {"response": text, "model": cfg["model"], "provider": cfg["agent"], "use_case": use_case,
-                    "chain": f"agente:{cfg['agent']}"}
+                    "chain": f"agent:{cfg['agent']}"}
         except external_agent.AgentError as exc:
             if external_agent.brain()["fallback"] != "internal":
                 raise HTTPException(status_code=503, detail=f"external agent: {exc}")

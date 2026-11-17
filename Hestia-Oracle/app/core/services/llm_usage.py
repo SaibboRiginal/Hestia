@@ -90,7 +90,7 @@ def finish(ctx: dict, outcome: str = "ok", detail: str = "") -> dict:
 def _label_usecase(label: str) -> str:
     from core.services.llm_chains import SLOTS
     label = str(label or "").strip()
-    return SLOTS.get(label, label if "." in label else f"oracle.{label or 'generale'}")
+    return SLOTS.get(label, label if "." in label else f"oracle.{label or 'general'}")
 
 
 def _session() -> str:
@@ -124,7 +124,7 @@ def _window(provider: str) -> int:
 
 
 def price(provider: str, model: str, inp: int, cached: int, out: int, reported: float = 0.0) -> tuple[float, str]:
-    """(cost in $, kind): Claude subscription → its own equivalent cost, «abbonamento»; a cost the provider
+    """(cost in $, kind): Claude subscription → its own equivalent cost, «subscription»; a cost the provider
     reported → «api»; a provider that costs nothing (local) → 0, «locale»; else ``oracle.pricing``."""
     from core.services import llm_gateway, llm_providers, oracle_settings
     ptype = llm_providers.type_of(provider)

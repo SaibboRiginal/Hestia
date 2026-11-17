@@ -3,13 +3,13 @@
 Local models often call the same tool again and again and burn every turn. Before the turn cap, a deterministic
 detector looks at the fingerprints (tool name + arguments) of the calls of this answer:
 
-- **ripetizione**: the same call N times in a row (``oracle.agent.rounds.repeats``, default 4);
+- **repetition**: the same call N times in a row (``oracle.agent.rounds.repeats``, default 4);
 - **ping-pong**: A-B-A-B… inside the last ``oracle.agent.rounds.window`` calls (at least 3 rounds);
-- **giro**: the same sequence of 3-4 calls repeated 3 times inside the window.
+- **loop**: the same sequence of 3-4 calls repeated 3 times inside the window.
 
 Real waits do not count: a repeated call made at least ``oracle.agent.rounds.wait_seconds`` after the previous
-one («controllo di nuovo tra poco») resets the run. On a suspicion an optional light check (use case
-``oracle.check_rounds``) decides «sta aspettando» or «gira a vuoto», at most ``oracle.agent.rounds.checks``
+one («I'll check again shortly») resets the run. On a suspicion an optional light check (use case
+``oracle.check_rounds``) decides «waiting» or «spinning», at most ``oracle.agent.rounds.checks``
 times per answer; no checker, a failure or the limit = stop. Always on: the tunables only shape it.
 """
 from __future__ import annotations
@@ -65,7 +65,7 @@ class LoopGuard:
         tail = self.calls[-self.repeat:]
         if len({fp for fp, _ in tail}) != 1:
             return False
-        # a real wait between two of them («ricontrollo tra poco») is not a loop
+        # a real wait between two of them («I'll check again shortly») is not a loop
         return all(b - a < self.wait_seconds for (_, a), (_, b) in zip(tail, tail[1:]))
 
     def _ping_pong(self) -> bool:

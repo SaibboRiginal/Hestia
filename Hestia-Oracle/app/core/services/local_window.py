@@ -4,7 +4,7 @@ docs/work/2026-11-12-contesto-e-scorciatoie §3.1).
 The owner sets the window once, in the program that runs the model (Ollama, LM Studio, llama-server…).
 Oracle reads it from there instead of imposing its own number:
 
-- **Ollama**: ``GET /api/ps`` → ``context_length`` of the loaded model. With the setting on «automatico»
+- **Ollama**: ``GET /api/ps`` → ``context_length`` of the loaded model. With the setting on «automatic»
   Oracle sends no ``num_ctx``, so Ollama keeps its own. Only when Ollama's own window is smaller than
   ``FLOOR`` (a bare install: 4096) Oracle asks for ``FLOOR``, because the prompts of an assistant with tools
   never fit under it (a cut prompt loses instructions without any error).

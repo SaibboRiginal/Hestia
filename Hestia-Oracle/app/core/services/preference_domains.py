@@ -1,6 +1,6 @@
 """Preference domain classifier — embedding-based, no LLM.
 
-Domain categories: setting ``oracle.memory.preference_domains`` (Impostazioni → Oracle → Memoria).
+Domain categories: setting ``oracle.memory.preference_domains`` (Settings → Oracle → Memory).
 Preferences are assigned 0→N domains via embedding cosine similarity
 against domain descriptions at creation time.  No dynamic domain creation.
 """

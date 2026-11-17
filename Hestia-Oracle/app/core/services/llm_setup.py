@@ -1,4 +1,4 @@
-"""Guided setup of the brain (docs/work/2026-10-30-setup-un-click §4.2 «Cervello»).
+"""Guided setup of the brain (docs/work/2026-10-30-setup-un-click §4.2 «Brain»).
 
 What the setup screen needs from Oracle, and only from Oracle (it owns the providers):
 - ``runtimes(vram_gb, hosts)``: the programs that run models at home (Ollama, LM Studio, Jan, llama.cpp, vLLM), on
@@ -326,7 +326,7 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     listed, error = _list_checked(provider)
     if error:
         return {"ok": False, "detail": error, "models": []}
-    # only chat models for «Modelli» (no speech, pictures, live audio); the embedding ones go to «Memoria»
+    # only chat models for «Models» (no speech, pictures, live audio); the embedding ones go to «Memory»
     models = None if listed is None else [m for m in listed if is_chat(m)]
     embed = [m for m in listed or [] if _is_embedding(m)]
     if models is not None:
@@ -345,7 +345,7 @@ _NOT_CHAT = ("tts", "image", "audio", "live", "native", "embed", "aqa", "imagen"
 
 
 def is_chat(name: str) -> bool:
-    """A model to chat with: not an embedding one, not speech/pictures/live audio (the «Modelli» step lists only these)."""
+    """A model to chat with: not an embedding one, not speech/pictures/live audio (the «Models» step lists only these)."""
     return not _is_embedding(name) and not any(w in name.lower() for w in _NOT_CHAT)
 
 
@@ -403,13 +403,13 @@ def _default_model(provider: str) -> str:
     return models[0] if models else ""
 
 
-# ── Applica la scelta ───────────────────────────────────────────────────────
+# ── Apply the choice ────────────────────────────────────────────────────────
 
 def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[str, dict],
                 local_provider: str = "ollama", cloud_models: dict[str, list[str] | str] | None = None,
                 embedding: dict[str, str] | None = None, modes: dict[str, dict] | None = None,
                 order: list[dict] | None = None) -> dict[str, dict]:
-    """New ``oracle.chains`` for a recipe. ``order``: the setup's «Scelti» list (``{provider, model}``, model empty =
+    """New ``oracle.chains`` for a recipe. ``order``: the setup's «Chosen» list (``{provider, model}``, model empty =
     every model of that service) to put the chosen steps in the user's order, the local one included; a step it does
     not name keeps its place after the named ones. ``modes``: per chat chain (``strong``, ``code``, ``vision``) a model
     chosen for that mode only (``{provider, model}``): it answers first there, the general choice follows as fallback. Pure function (tests): local steps use ``local_provider``/``local_model``;
@@ -442,7 +442,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
             steps = local_steps
         elif recipe == "cloud":
             steps = cloud_steps
-        else:   # entrambi, claude (the chains stay the fallback of the external brain)
+        else:   # both, claude (the chains stay the fallback of the external brain)
             steps = local_steps + cloud_steps
         steps = _in_order(steps, order)
         own = (modes or {}).get(name) or {}
@@ -470,7 +470,7 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
 
 
 def _in_order(steps: list[dict], order: list[dict] | None) -> list[dict]:
-    """``steps`` sorted by the user's «Scelti» order; steps it does not name stay after, in their own order."""
+    """``steps`` sorted by the user's «Chosen» order; steps it does not name stay after, in their own order."""
     wanted = [o for o in (order or []) if isinstance(o, dict) and o.get("provider")]
     if not wanted:
         return steps
@@ -496,7 +496,7 @@ def _as_lists(cloud_models: dict | None) -> dict[str, list[str]]:
 
 
 def summary(chains: dict[str, dict]) -> str:
-    """One sentence: who answers first, and who if not («Ti risponde X sul tuo computer; se non c'è, Y.»)."""
+    """One sentence: who answers first, and who if not («X answers you on your computer; if it is not there, Y.»)."""
     from core.services import llm_providers
     steps = (chains.get("fast") or {}).get("steps") or []
     if not steps:
@@ -580,7 +580,7 @@ def machine() -> dict[str, Any]:
 
 
 def use_machine(address: str, name: str = "") -> dict[str, Any]:
-    """«Usa la sua scheda video» on the Macchine page: the local provider ``ollama`` points at a satellite's Ollama
+    """«Use its graphics card» on the Machines page: the local provider ``ollama`` points at a satellite's Ollama
     (``http://<address>:11434``); empty address = back to this machine's own (infrastructure env)."""
     import re
     from core.services import llm_providers, oracle_settings
@@ -602,7 +602,7 @@ def use_machine(address: str, name: str = "") -> dict[str, Any]:
             else tr("Local models are back on this machine.")}
 
 
-# ── Download dei modelli (Ollama) — hestia_common.downloads, page «Download» ──────────────
+# ── Model downloads (Ollama) — hestia_common.downloads, page «Download» ──────────────
 
 _downloads = None
 _dlock = threading.Lock()
