@@ -14,3 +14,7 @@
 - v2.0 — 2026-11-16 — English source everywhere, Italian only in `locales/it/messages.json`; registration labels as
   plain English keys; Iris and Atlas follow «Lingua»; `locale()`, money and date words by language — Marko: «togli
   tutto l'italiano!! e devono usare tutti la lingua!!» — ext-chat
+- v3.0 — 2026-11-17 — everything English in code and data (stored values, ids, keys, tool and command names, file
+  names, dossier folders); the owner's words read in every language; WebUI backend, host tools and installers in
+  the owner's language; a language is a folder (`language.json`) — Marko: «cambia TUTTO non voglio ripeterlo una
+  QUARTA VOLTA… deve funzionare con italiano e inglese e forse in futuro qualsiasi altra lingua» — ext-chat

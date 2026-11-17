@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-17
+- Everything inside is English now, even what is saved (states, moods, categories, activities, themes, page names, commands, tool names, file names), and everything that reaches you is in your language: chat, notifications, buttons, voice, errors, the installer, the test bench and the backup and transfer tools. What you type is understood in Italian and in English («stanco», «tired», «bollo», «Rapida»…), and a new language is just a new translation folder, with no code to change → `docs/work/2026-11-14-english-backend/` [ext-chat]
+
 ## 2026-11-16
 - No Italian left in the code: everything is written in English and the Italian lives only in its translation file; every module, email and web search included, follows «Lingua», and dates and amounts are written the way your language writes them → `docs/work/2026-11-14-english-backend/` [ext-chat]
 - «Lingua» offers Italian and English only; one written rule for texts in every module (`docs/LANGUAGES.md`) and a check that finds any text still without its English translation, run before every push → `docs/work/2026-11-14-english-backend/` [ext-chat]

@@ -157,15 +157,19 @@ at runtime (`on_change`), `apply="restart"` ones are flagged until restart. Env 
 infrastructure (URLs, ports, paths). The assistant only *proposes* changes (Themis → Hermes → user).
 Details: `Hestia-Themis/hestia-themis.md`.
 
-## 5b2. Texts and languages — one catalog
+## 5b2. Texts and languages — English inside, the owner's language outside
 
-All the code is English. Texts a person reads are English in the code wrapped in `tr` (Python
-`hestia_common.i18n.t`, Angular `tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`) with the Italian text in
-`Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared once (manifests, capabilities, agenda rules,
-settings) are plain English keys translated at the edge (`i18n.localize`, `settings_client.translated`), never `tr`
-at import. Every module follows «Language» (`follow_personal()`); dates via `locale()` / `month_name`, money via
-`display.money`. Languages: English (source) and Italian («Language»). Full standard,
-examples and how to add a language: `docs/LANGUAGES.md`; gate `python tools/governance/check_i18n.py`.
+All the code is English: prompts, ids, stored values and enums, keys, tool names, file names, comments. Texts a
+person reads are English in the code wrapped in `tr` (Python `hestia_common.i18n.t`, C# `Texts.Tr`, Angular
+`tr`/`| tr`, plugins `tr` of `@hestia/webui-sdk`, host tools `tools/_texts.py`, installers `t`/`T`/`say`) with
+their translations in `Hestia-Shared/hestia_common/locales/<code>/` (`messages.json`, `tools.json`,
+`installer.tsv`). What the owner types or says is read in every language from `words.json` (`word_regex`,
+`word_set`, `is_yes`, `weekday_of`); a value he types is matched against the stored English id and its label in
+every catalog. Labels declared once (manifests, capabilities, agenda rules, settings) are plain English keys
+translated at the edge (`i18n.localize`, `settings_client.translated`), never `tr` at import. Every module follows
+«Language» (`follow_personal()`); dates via `locale()` / `month_name`, money via `display.money`. A language is a
+folder with `language.json` (today English and Italian): adding one needs no code. Full standard and examples:
+`docs/LANGUAGES.md`; gate `python tools/governance/check_i18n.py`.
 
 ## 5c. Export and import — every module moves its own data
 

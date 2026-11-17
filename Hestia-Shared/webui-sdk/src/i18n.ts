@@ -24,7 +24,7 @@ export function named(text: string): string {
 export function language(): string { return catalog().language || 'it'; }
 
 /** The date/number locale of the owner's language (`toLocaleDateString(locale(), …)`), never a hardcoded 'it-IT'. */
-export function locale(): string { return language() === 'en' ? 'en-GB' : 'it-IT'; }
+export function locale(): string { const l = language(); return l === 'en' ? 'en-GB' : l; }
 
 /** Keys whose string value is never a people text (same list as `hestia_common.i18n.KEEP_KEYS`). */
 const KEEP_KEYS = new Set(['id', 'key', 'value', 'status', 'state', 'type', 'kind', 'slug', 'path', 'url', 'href',

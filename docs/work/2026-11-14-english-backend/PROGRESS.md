@@ -26,4 +26,9 @@
       follow «Lingua»; `locale()`, `display.money`, `month_name`/`weekday_name`; tests rewritten for the Italian
       catalog; Angular build and plugin `tsc` clean; LANGUAGES.md, CLAUDE.md, AI-GUIDE, ARCHITECTURE rule 15,
       REGOLE R9, module docs
-- [ ] Open, for Marko to decide: tool merges (~40) and English tool names for `cibo_*` / `casa_*` / `scadenze_*`
+- [x] Phase 4 (v3.0): stored values, enums, ids, keys, tool and command names, use cases, file names and dossier
+      folders in English; owner words from `words.json` of every language and labels of every catalog; WebUI
+      backend `Texts.Tr`, host tools `tools/_texts.py`, installers `installer.tsv`; languages from
+      `locales/<code>/language.json`; comments and docstrings English; tests updated with English cases; Angular
+      build and plugin `tsc` clean; LANGUAGES.md, CLAUDE.md, AI-GUIDE 5b2, ARCHITECTURE rule 15, MARKO-RULES R9
+- [ ] Open, for Marko to decide: tool merges (~40)

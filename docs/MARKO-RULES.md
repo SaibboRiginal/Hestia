@@ -74,13 +74,18 @@ Each rule: the decision · what it means in code · allowed exceptions · how to
   «Hestia» stays only for the app. What she wrote first stays in the conversation where you answer. Something
   clearly wrong is fixed, not asked about.
 
-## R9 — Backend English, the owner reads his language (2026-11-14, 2026-11-16)
+## R9 — Backend English, the owner reads his language (2026-11-14, 2026-11-16, 2026-11-17)
 - Everything the model reads is English; every fixed text a person reads comes from the catalog in the owner's
-  language; chat answers follow the language he writes in, what she writes on her own follows «Lingua».
-- (2026-11-16) Only **Italian and English** are needed: «Lingua» offers those two. Another language only if he asks.
+  language; chat answers follow the language he writes in, what she writes on her own follows «Language».
+- (2026-11-16) Only **Italian and English** are needed today; another language only if he asks.
 - (2026-11-16) «Togli tutto l'italiano»: the code has no Italian texts. English is the source, Italian lives only in
-  `locales/it/messages.json`; every module (Iris and Atlas too) follows «Lingua». Stored ids and parsers of his words
-  keep their Italian words.
+  `locales/it/`; every module (Iris and Atlas too) follows «Language».
+- (2026-11-17, fourth time) «Cambia TUTTO»: nothing is in production, so stored values, enums, ids, keys, tool and
+  command names, file names, comments and dossier folders are English too; never Italian kept «for compatibility».
+  It must work for Italian, English and any future language: the model thinks in English and every form of
+  communication or interaction toward him (chat, notifications, buttons, voice, errors, installer, host tools)
+  follows his language. A language is a folder in `locales/`; his words are read from `words.json` of every
+  language. Nothing in the code may name a language.
 - How, for every module: `docs/LANGUAGES.md`. Check: `python tools/governance/check_i18n.py` (precheck and CI).
 
 ## R7 — Working style (2026-10-22, 2026-10-24)
