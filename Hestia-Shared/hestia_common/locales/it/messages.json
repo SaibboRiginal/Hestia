@@ -7605,5 +7605,11 @@
   "{assistant} doesn't answer: check that the computer is on.": "{assistant} non risponde: controlla che il computer sia acceso.",
   "Personal assistant": "Assistente personale",
   "1. Open {0} on your phone or computer\n2. Enter this code: {1}\n3. Grant access to Calendar and Gmail\n4. {assistant} completes by {g:herself|himself} (or use 'Check completion').": "1. Apri {0} sul tuo telefono o computer\n2. Inserisci questo codice: {1}\n3. Concedi l'accesso a Calendar e Gmail\n4. {assistant} completa da {g:sola|solo} (o usa 'Verifica completamento').",
-  "Tell me what to create or change: I do it with my tools. If a tool is missing, I propose a development.": "Dimmi cosa creare o cambiare: lo faccio io con i miei strumenti. Se manca uno strumento, ti propongo uno sviluppo."
+  "Tell me what to create or change: I do it with my tools. If a tool is missing, I propose a development.": "Dimmi cosa creare o cambiare: lo faccio io con i miei strumenti. Se manca uno strumento, ti propongo uno sviluppo.",
+  "Local models · answers prepared together": "Modelli locali · risposte preparate insieme",
+  "How many requests the local model works on at the same time; the others wait in line and your messages always go ahead of background work. 1 = one at a time. Raise it only if the program running the model can handle more at once (Ollama: OLLAMA_NUM_PARALLEL, llama-server: --parallel).": "Quante richieste il modello locale lavora nello stesso momento; le altre aspettano in fila e i tuoi messaggi passano sempre davanti ai lavori in sottofondo. 1 = una alla volta. Alzalo solo se il programma del modello ne regge di più insieme (Ollama: OLLAMA_NUM_PARALLEL, llama-server: --parallel).",
+  "Great day for a run: {0}–{1}": "Ottimo giorno per la corsa: {0}–{1}",
+  "Great day for a ride: {0}–{1}": "Ottimo giorno per la bici: {0}–{1}",
+  "Great day for a walk: {0}–{1}": "Ottimo giorno per una camminata: {0}–{1}",
+  "Great day for a swim: {0}–{1}": "Ottimo giorno per il nuoto: {0}–{1}"
 }

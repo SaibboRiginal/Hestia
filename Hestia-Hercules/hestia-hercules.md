@@ -196,3 +196,5 @@ as a person (pages, help, agenda titles, notes) write `{assistant}` and say the 
 app keep «Hestia».
 
 **2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).
+
+**2026-11-17 (fix while merging the LLM bus, dossier `docs/work/2026-11-16-bus-llm`)**: the morning coach line has one phrase per activity (`GOOD_DAY` in `core/activities.py`), so each language puts its own article («Ottimo giorno per la corsa», «per il nuoto»); the English-source change had dropped «la».

@@ -466,6 +466,8 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
 3. No direct DB access outside Archive.
 3b. Only Oracle calls LLM providers; only Echo calls speech engines (speech-to-text, text-to-speech). Everybody else
     goes through them via the Hub (`/api/llm/*`, `/api/voice/*`).
+    Calls to local models wait in one queue in Oracle (LLM bus, `oracle.bus.local_workers` workers, default 1):
+    the owner's turn goes before background work; nobody adds its own LLM queue or lock (dossier `2026-11-16-bus-llm`).
 4. No giant single-file services: modular packages only.
 5. Every service must include:
    - project markdown summary
