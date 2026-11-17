@@ -1,6 +1,6 @@
-"""«Riconosci la mia voce» (Cindy 10, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4).
+"""«Recognise my voice» (Cindy 10, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4).
 
-The owner records ~10 s of speech once (page «Voce» or Telegram «Registra la mia voce»): Echo computes a speaker
+The owner records ~10 s of speech once (page «Voice» or Telegram «Record my voice»): Echo computes a speaker
 embedding and keeps it in Archive (``echo-store`` row ``kind=voiceprint``, the recording as a kept ``recording``).
 From then on, on the uses listed in ``echo.voiceprint.uses`` (live mode, voice notes), every 1.5 s window of speech
 that does not sound like the owner (cosine similarity under ``echo.voiceprint.threshold``) becomes silence **before**

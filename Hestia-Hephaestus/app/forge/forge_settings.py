@@ -36,7 +36,7 @@ REPAIR_RETRY_MINUTES = "hephaestus.remediate.retry_minutes"
 REPAIR_MAX_ATTEMPTS = "hephaestus.remediate.max_attempts"
 UPDATE_CHANNEL = "hephaestus.update.channel"
 
-_ENGINES = [("oracle", "Oracle (chain «Forge · sviluppo»)"), ("claude", "Claude Code")]
+_ENGINES = [("oracle", "Oracle (chain «Forge · development»)"), ("claude", "Claude Code")]
 _MODES = [("ask", "Always ask"), ("auto", "Develops by itself, the merge asks"),
           ("full_auto", "Everything by itself if the tests pass")]
 _FORGE = "Development (Forge)"
@@ -53,7 +53,7 @@ settings.declare([
             help="If a module proposes a task equal or very similar to one of the last days (even rejected) I don't create another. 0 = check off. Your requests are not filtered."),
     setting(ENGINE, "Default development engine", "enum", "oracle", group=_FORGE,
             options=_ENGINES, order=0,
-            help="Who writes the code when you ask for a change. Oracle uses the chain of the use «Forge · sviluppo» (Oracle → Models). If it is not available the next one is used."),
+            help="Who writes the code when you ask for a change. Oracle uses the chain of the use «Forge · development» (Oracle → Models). If it is not available the next one is used."),
     # Safety switches: the assistant can read them but never propose a change.
     setting(MODE["local"], "Permissions · local engine", "enum", "auto", group=_FORGE,
             options=_MODES, order=1, oracle="read",

@@ -1,5 +1,15 @@
 {
  "_about": "Words people write, per list (regex fragments): read with hestia_common.i18n.words/alt/word_regex. docs/LANGUAGES.md",
+ "address.street_word": [
+  "street",
+  "road",
+  "avenue",
+  "lane",
+  "square",
+  "st\\.",
+  "rd\\.",
+  "ave\\."
+ ],
  "common.next_week": [
   "next",
   "next week"

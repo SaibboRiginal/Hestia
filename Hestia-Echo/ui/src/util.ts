@@ -1,5 +1,5 @@
 import { locale, tr } from '@hestia/webui-sdk';
-/** Helpers shared by the Voce page: API prefix, labels, audio in the browser (play base64, record the mic). */
+/** Helpers shared by the Voice page: API prefix, labels, audio in the browser (play base64, record the mic). */
 export const API = '/api/voice';
 
 export const STATES: Record<string, { label: string; tone: string }> = {

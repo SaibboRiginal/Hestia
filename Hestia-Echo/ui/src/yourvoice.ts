@@ -1,5 +1,5 @@
 /**
- * <echo-your-voice> — tab «La tua voce» of the page «Voce»: the voiceprint (record it once, at least 6 seconds of
+ * <echo-your-voice> — tab «Your voice» of the page «Voice»: the voiceprint (record it once, at least 6 seconds of
  * speech, so the TV and other people do not end up in what you dictate; forget it) and the personal dictionary
  * (names and words passed to every listening engine; the ones learnt from your corrections become sure after a few
  * times). Calls GET/POST/DELETE /api/voice/voiceprint, GET/POST /api/voice/dictionary, DELETE /dictionary/{word}.

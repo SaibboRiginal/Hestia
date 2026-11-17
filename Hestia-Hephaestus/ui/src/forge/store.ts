@@ -1,5 +1,5 @@
 /**
- * State of the Sviluppo page: task list, selected task (detail, transcript, side panels) and live polling (no
+ * State of the Development page: task list, selected task (detail, transcript, side panels) and live polling (no
  * streaming: the task + transcript are polled every 4 s while the engine works, the list every 15 s).
  * Port of the WebUI forge.store; `onChange` re-renders the page and its child elements (`rev`).
  */

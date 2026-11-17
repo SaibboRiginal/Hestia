@@ -5,7 +5,7 @@ Hephaestus owns it because it already holds the repo (``/repo``, where the ``.en
 setup screen. The brain itself is Oracle's (catalog, «Prova», chains, model downloads): this file only forwards.
 
 State (``data/setup.json``): when the setup was completed, the steps left for later. Hardware: what the installer
-detected (``/repo/.hestia-install/hardware.json``, git-ignored), so the screen can say «Scheda video da 16 GB».
+detected (``/repo/.hestia-install/hardware.json``, git-ignored), so the screen can say «16 GB graphics card».
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ class SetupService:
         return {k: data.get(k) for k in ("os", "ram_gb", "gpu", "vram_gb", "free_gb", "lan_ip") if k in data}
 
     def role(self) -> str:
-        """«tutto» (whole stack here), «centrale» (always-on core) or «satellite»: written by the installer."""
+        """«all» (whole stack here), «central» (always-on core) or «satellite»: written by the installer."""
         return str(self.hardware_raw().get("role") or "all")
 
     def hardware_raw(self) -> dict[str, Any]:
@@ -204,7 +204,7 @@ class SetupService:
         if local_model and recipe != "cloud" and local_provider == "ollama":
             pulls.append(local_model)
         if (emb.get("provider") or "ollama") == "ollama" and (emb or (local_model and recipe != "cloud")):
-            # The memory's model: the installer already pulls the default one, so this is usually «già presente».
+            # The memory's model: the installer already pulls the default one, so this is usually «already there».
             pulls.append(emb.get("model") or EMBEDDING_MODEL)
         for v in (modes or {}).values():
             for step in ([s for s in v.get("steps") or [] if isinstance(s, dict)] or [v]):
@@ -226,7 +226,7 @@ class SetupService:
         return {"ok": True, "detail": result.get("detail", "")}
 
     def brain_hello(self) -> dict[str, Any]:
-        """«I modelli sono pronti»: the assistant writes its first message with the models just chosen, so the user
+        """«The models are ready»: the assistant writes its first message with the models just chosen, so the user
         sees them answer (Oracle's general chain through the use case ``hephaestus.setup``)."""
         prompt = ("This is your very first message to the owner: you have just been set up. 2 short warm "
                   "sentences: you are there, ask where to start. No emoji, no lists.")
@@ -249,7 +249,7 @@ class SetupService:
         return self.hub_call("echo", path, method=method, body=body, query=query, timeout=timeout)
 
     def voice_key(self, provider: str, key: str) -> bool:
-        """«Salva e prova» of a speech service: ``ECHO_KEY_<NAME>`` into Echo's .env, which Echo re-reads at once
+        """«Save and try» of a speech service: ``ECHO_KEY_<NAME>`` into Echo's .env, which Echo re-reads at once
         (re-created and waited for only when that fails)."""
         name = "ECHO_KEY_" + "".join(c if c.isalnum() else "_" for c in provider.upper())
         echo = self.set_secrets({name: key})["services"].get("echo", {})

@@ -158,4 +158,4 @@ def run_test_command(root: Path, template: str, paths: list[str], timeout: int =
     # pytest exit 5 = no tests collected (e.g. marker filter) -> not a failure
     if proc.returncode == 5:
         return None, output[-3000:]
-    return proc.returncode == 0, output[-60000:]  # full-ish: shown in the Sviluppo page
+    return proc.returncode == 0, output[-60000:]  # full-ish: shown in the Development page

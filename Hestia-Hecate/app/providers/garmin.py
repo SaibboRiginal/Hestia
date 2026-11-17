@@ -2,7 +2,7 @@
 
 Garmin has no official API for personal use: the ``garminconnect`` library logs in like the Garmin Connect app and
 keeps its tokens (``garmin_tokens.json``, garminconnect ≥ 0.3) in ``HECATE_GARMIN_TOKENS`` (default ``/code/data/garmin``, a data folder, never in
-git). The password is used once and never stored: Marko types it in the secret form (Hermes «Collega Garmin») or
+git). The password is used once and never stored: Marko types it in the secret form (Hermes «Link Garmin») or
 sets ``GARMIN_EMAIL``/``GARMIN_PASSWORD`` in Hecate's ``.env``; a two-step code (MFA) is asked with a second form.
 
 ``day(date)`` returns one normalised day: sleep, steps, resting heart rate, body battery, HRV, training readiness,

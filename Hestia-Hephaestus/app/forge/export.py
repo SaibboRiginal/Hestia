@@ -1,4 +1,4 @@
-"""«Copia per AI» of the Sviluppo page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B5).
+"""«Copy for AI» of the Development page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B5).
 
 Markdown of some Forge tasks for an AI working elsewhere (claude.ai, a PC checkout…): request, state, error,
 dossier path and how to hand a fix back through Hestia's MCP (forge_task_note / forge_submit_branch). Built from the

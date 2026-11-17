@@ -1,5 +1,5 @@
 /**
- * <hecate-devices> — «Dispositivi»: the accounts and devices that send data by themselves, as one list where every
+ * <hecate-devices> — «Devices»: the accounts and devices that send data by themselves, as one list where every
  * service has the same card (<hecate-connections>: Google, Garmin, the Android phone… a new one is one more
  * connector in Hecate, no new card). The guided setup mounts the same list with `place="setup"`.
  */

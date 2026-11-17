@@ -136,7 +136,7 @@ def is_public_redirect(uri: str) -> bool:
 
 def client_credentials() -> tuple[str, str]:
     """The OAuth client: ``GOOGLE_CLIENT_ID``/``GOOGLE_CLIENT_SECRET`` from env, else the one typed in the WebUI
-    («Collega Google» in Dispositivi or in the guided setup), kept next to the token in Hecate's data folder."""
+    («Link Google» in Devices or in the guided setup), kept next to the token in Hecate's data folder."""
     cid, secret = os.getenv("GOOGLE_CLIENT_ID", "").strip(), os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
     if cid and secret:
         return cid, secret

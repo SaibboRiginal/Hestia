@@ -1,8 +1,8 @@
 /**
- * <echo-voice> — page «Voce» (dossier docs/work/2026-10-20-modulo-voce §8): how Hestia listens and speaks.
- * Tabs: «Prova» (record the mic → text, text → voice, with the chain and provider that answered), «Motori»
- * (<echo-blocks>: providers, chains, uses), «Uso» (calls, minutes, characters, cost, errors by use and engine),
- * «Audio conservati» (space by class, recordings to listen/download/delete), «La tua voce» (<echo-your-voice>:
+ * <echo-voice> — page «Voice» (dossier docs/work/2026-10-20-modulo-voce §8): how Hestia listens and speaks.
+ * Tabs: «Try» (record the mic → text, text → voice, with the chain and provider that answered), «Engines»
+ * (<echo-blocks>: providers, chains, uses), «Usage» (calls, minutes, characters, cost, errors by use and engine),
+ * «Kept audio» (space by class, recordings to listen/download/delete), «Your voice» (<echo-your-voice>:
  * voiceprint + personal dictionary). In «Prova» a wrong transcript can be corrected: the words go to the dictionary.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
@@ -90,7 +90,7 @@ export class EchoVoice extends HestiaElement {
     this.heard = r.data;
   }
 
-  /** «Correggi»: the corrected text teaches the personal dictionary (new words become sure after a few times). */
+  /** «Correct»: the corrected text teaches the personal dictionary (new words become sure after a few times). */
   private async learn() {
     const corrected = (this.fix || '').trim();
     if (!corrected || corrected === this.heard?.text) { this.fix = null; return; }
@@ -171,7 +171,7 @@ export class EchoVoice extends HestiaElement {
       : tr('Everything is ready already, there is nothing to download'), 'success');
   }
 
-  // ── Uso ────────────────────────────────────────────────────────────────
+  // ── Usage ──────────────────────────────────────────────────────────────
   private usageTab() {
     if (this.error) return html`<hxk-state kind="error" text=${this.error} @retry=${() => this.loadTab()}></hxk-state>`;
     const u = this.usage;
@@ -202,7 +202,7 @@ export class EchoVoice extends HestiaElement {
       </hxk-card>`;
   }
 
-  // ── Audio conservati ───────────────────────────────────────────────────
+  // ── Kept audio ─────────────────────────────────────────────────────────
   private async listen(id: string) {
     const r = await this.host.api('GET', `${API}/audio/${id}`);
     if (!r.ok) { this.host.toast(r.error || tr('Audio not found'), 'danger'); return; }

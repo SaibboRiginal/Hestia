@@ -1,5 +1,5 @@
 /**
- * Types, labels and formatters of the Sviluppo page (ported from the WebUI's built-in features/forge, SPEC
+ * Types, labels and formatters of the Development page (ported from the WebUI's built-in features/forge, SPEC
  * docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4). Every call goes to /api/hephaestus/forge|repo/* directly.
  */
 import type { HestiaHost } from '@hestia/webui-sdk';
@@ -30,7 +30,7 @@ export interface ForgeTask {
 }
 
 /** Independent automatic review before the diff reaches you (Cindy 3): only issues with evidence. */
-export interface ForgeReviewIssue { priority: 'high' | 'media' | 'low'; file: string; problem: string; evidence: string; }
+export interface ForgeReviewIssue { priority: 'high' | 'medium' | 'low'; file: string; problem: string; evidence: string; }
 export interface ForgeReview { verdict: 'ok' | 'problems' | 'unavailable'; issues: ForgeReviewIssue[]; blocking: number;
   rounds?: number; first?: ForgeReviewIssue[]; }
 
@@ -96,7 +96,7 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
 
 export const ENGINES = ['', 'oracle', 'claude'];
-// oracle = Oracle's chain of use case forge.codice (Cervello → Modelli); local/cloud = old names of old tasks.
+// oracle = Oracle's chain of use case forge.code (Brain → Models); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
   '': tr('Default'), auto: tr('Default'), oracle: tr('Oracle chain'), local: tr('Oracle chain'), cloud: tr('Oracle chain'),
   claude: tr('Claude Code'),

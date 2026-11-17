@@ -33,7 +33,7 @@ WHITELIST: dict[str, Target] = {
     "HF_TOKEN": Target("Hestia-Oracle/app/.env", ("oracle",)),
 }
 _ORACLE_KEY = re.compile(r"^ORACLE_KEY_[A-Z0-9_]{1,40}$")
-_ECHO_KEY = re.compile(r"^ECHO_KEY_[A-Z0-9_]{1,40}$")     # speech services' keys (setup «Voce»)
+_ECHO_KEY = re.compile(r"^ECHO_KEY_[A-Z0-9_]{1,40}$")     # speech services' keys (setup «Voice»)
 _VALUE_OK = re.compile(r"^[\x21-\x7e]{1,4096}$")          # printable ASCII, no spaces, no newlines, no quotes issues
 _USER_IDS = re.compile(r"^\d{1,20}(,\d{1,20}){0,9}$")
 
@@ -131,7 +131,7 @@ def merged_env(env: list[str], updates: dict[str, str]) -> list[str]:
 def recreate_with_env(service: str, updates: dict[str, str], start: bool = True, client=None,
                       image: str = "") -> tuple[bool, str]:
     """Re-create ``hestia_<service>`` with ``updates`` applied to its environment (and on ``image`` when given:
-    «Aggiorna Hestia»). Returns (ok, detail)."""
+    «Update Hestia»). Returns (ok, detail)."""
     import docker
     name = f"hestia_{service}"
     api = (client or docker.from_env()).api

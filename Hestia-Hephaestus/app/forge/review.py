@@ -3,11 +3,11 @@
 - **Reviewer** (Cindy 3): after Forge's own tests, a fresh model with no memory of the work and no tools (Oracle
   ``/api/llm/generate``, use case ``forge.review``) gets only labelled evidence: the request, the acceptance
   criteria of the dossier SPEC, the diff and the real test output. The engine's own story is marked «unverified
-  self-declaration». It answers with prioritised issues; blocking ones (alta/media) go back to the engine for one
+  self-declaration». It answers with prioritised issues; blocking ones (high/medium) go back to the engine for one
   automatic round of fixes. The owner still approves: the review only means less work for them.
 - **Team plan** (Cindy 31): a large task (≥ ``hephaestus.forge.team.min_services`` services) is split by the
   model (use case ``forge.plan``) into up to 4 pieces run one after the other in the same worktree, each with the
-  engine its difficulty asks for (semplice → the local chain, difficile → Claude), then the reviewer on the result.
+  engine its difficulty asks for (simple → the local chain, hard → Claude), then the reviewer on the result.
 Never blocking: when the model is not reachable the step is skipped with a ``[🔄]`` log.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ logger = logging.getLogger("hestia_hephaestus.forge.review")
 
 REVIEW_USECASE = "forge.review"
 PLAN_USECASE = "forge.plan"
-BLOCKING = ("high", "media")
+BLOCKING = ("high", "medium")
 MAX_PIECES = 4
 _DIFF_CHARS = 40000
 
@@ -63,8 +63,8 @@ Services: {services}
 """
 
 # Model answers in English; stored values stay the ones the rest of Forge (and its cards) already use.
-_PRIORITY = {"high": "high", "medium": "media", "low": "low", "high": "high", "media": "media", "low": "low"}
-_HARD = ("hard", "hard")
+_PRIORITY = {"high": "high", "medium": "medium", "low": "low"}
+_HARD = ("hard",)
 
 
 def _owner_language() -> str:
@@ -135,7 +135,7 @@ class ForgeReviewer:
         issues = []
         for i in data.get("issues") or []:
             if isinstance(i, dict) and str(i.get("problem") or "").strip():
-                prio = _PRIORITY.get(str(i.get("priority") or "medium").lower(), "media")
+                prio = _PRIORITY.get(str(i.get("priority") or "medium").lower(), "medium")
                 issues.append({"priority": prio,
                                "file": str(i.get("file") or "")[:200], "problem": str(i["problem"])[:600],
                                "evidence": str(i.get("evidence") or "")[:400]})

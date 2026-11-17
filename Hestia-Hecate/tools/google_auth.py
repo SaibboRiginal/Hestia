@@ -13,7 +13,7 @@ Usage:
     python tools/google_auth.py            # Windows: double-click google-oauth.bat
     python tools/google_auth.py --force    # ignore existing token, re-consent
 
-Alternative without host Python: ask Hestia "collega Google Calendar" in
+Alternative without host Python: ask Hestia "link Google Calendar" in
 Telegram (Hecate runs the same flow server-side).
 """
 import json

@@ -1,4 +1,4 @@
-/** Icons of the Sviluppo page missing from the kit's hxk-icon set (same stroke style); the rest go to hxk-icon. */
+/** Icons of the Development page missing from the kit's hxk-icon set (same stroke style); the rest go to hxk-icon. */
 import { html, svg, tr } from '@hestia/webui-sdk';
 
 const EXTRA: Record<string, string> = {

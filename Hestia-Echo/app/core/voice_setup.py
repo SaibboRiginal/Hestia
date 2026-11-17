@@ -1,14 +1,14 @@
-"""Guided setup «Voce» (docs/work/2026-10-30-setup-un-click §4.2): the same shape as the models screen.
+"""Guided setup «Voice» (docs/work/2026-10-30-setup-un-click §4.2): the same shape as the models screen.
 
 Echo owns the speech providers, so the screen asks Echo only:
-- ``catalog(blocks, language, hosts)``: for each direction (``ascolto`` = listening, ``voice`` = speaking) the providers
+- ``catalog(blocks, language, hosts)``: for each direction (``listen`` = listening, ``voice`` = speaking) the providers
   that can do it, local first, each with what it offers (Whisper sizes, Kokoro/Piper voices, a cloud service's
   models and voices once its key is there) and the step the chain uses now; plus the speech programs found at home
   (Speaches/LocalAI with the OpenAI API, Home Assistant's Wyoming servers) on this computer and on the other
   computers the user names, like the models screen finds Ollama or LM Studio;
 - ``check(blocks, name, language)``: «Prova» without spending anything: a cloud service's model or voice list read
   with its key proves the key;
-- ``plan(chains, listen, speak)``: the chosen steps first, in order, in the ``ascolto`` / ``voice`` chains (one local
+- ``plan(chains, listen, speak)``: the chosen steps first, in order, in the ``listen`` / ``voice`` chains (one local
   engine, then any cloud services as fallbacks), the other steps kept after them (pure, for the tests); ``apply``
   writes it through Themis.
 """
@@ -35,7 +35,7 @@ logger = logging.getLogger("hestia_echo.voice_setup")
 LOCAL_TYPES = {"whisper_local", "piper", "kokoro"}
 # Shown first and preselected when nothing is chosen yet.
 PREFERRED = {"listen": ("whisper_local", "small"), "voice": ("kokoro", "")}
-# One line per engine, so the user knows what to pick (Marko: «che ne so se scegliere Kokoro o Piper?»).
+# One line per engine, so the user knows what to pick (Marko: «how do I know whether to pick Kokoro or Piper?»).
 ENGINE_NOTES = {
     "whisper_local": "Understands what you say on your computer, free and private. Bigger = more accurate and slower.",
     "kokoro": "The most natural voice, almost human. About 350 MB, fine even without a graphics card. Recommended.",
@@ -52,7 +52,7 @@ WHISPER_NOTES = {"tiny": "The lightest, makes more mistakes.", "base": "Light.",
 # ``host.docker.internal`` (compose ``extra_hosts``).
 THIS_COMPUTER = "host.docker.internal"
 # ``site``/``note``/``dirs``: a free program the setup offers to install when it is not found (Marko 2026-11-07:
-# «mettiamo tutte le voci locali»). ``model``: its speech model when it has no ``/v1/models`` list.
+# «let's put all the local voices»). ``model``: its speech model when it has no ``/v1/models`` list.
 SPEECH_PROGRAMS = [
     {"name": "chatterbox", "label": "Chatterbox", "port": 8004, "type": "openai", "model": "chatterbox",
      "site": "https://github.com/devnen/Chatterbox-TTS-Server", "dirs": ("voice",),
@@ -192,7 +192,7 @@ def _items(rows: list[dict]) -> list[dict]:
 
 
 def catalog(blocks, language: str = "it", hosts: str | list[str] | None = None) -> dict[str, Any]:
-    """``{ascolto: {providers[], current, steps}, voce: {…}}``. A provider row: ``{name, label, type, local, note,
+    """``{listen: {providers[], current, steps}, voice: {…}}``. A provider row: ``{name, label, type, local, note,
     needs_key, key, state, models[], voices[], found?, url?}`` (models/voices only when usable: a cloud service needs
     its key). ``local`` = Echo's own engines and every program at home (a private address); ``found`` = a program
     that answered at home and becomes a block when chosen (its ``url`` comes back with the step)."""

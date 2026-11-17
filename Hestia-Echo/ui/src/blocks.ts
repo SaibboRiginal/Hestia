@@ -1,7 +1,7 @@
 /**
- * <echo-blocks> — Voce, tab «Motori» (dossier docs/work/2026-10-20-modulo-voce §5): named providers (keys stay in
- * .env as ECHO_KEY_<NAME>), chains of ascolto or voce (order = fallback, quota state per step), every use declared by
- * a module → chain / mode. Built like Oracle's «Modelli». Saves through Themis (PUT /api/voice/blocks/<part>).
+ * <echo-blocks> — Voice, tab «Engines» (dossier docs/work/2026-10-20-modulo-voce §5): named providers (keys stay in
+ * .env as ECHO_KEY_<NAME>), chains of listen or voice (order = fallback, quota state per step), every use declared by
+ * a module → chain / mode. Built like Oracle's «Models». Saves through Themis (PUT /api/voice/blocks/<part>).
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, DIRECTIONS, STATES, clone, slug } from './util';

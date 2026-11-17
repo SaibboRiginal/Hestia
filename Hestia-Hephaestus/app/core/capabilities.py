@@ -13,9 +13,9 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
     from hestia_common.oracle_usecases import capabilities as llm_capabilities, usecase as llm_usecase
 
 # What Forge asks Oracle for: the built-in engine ``oracle`` walks this use case's chain
-# (chosen by Marko in Oracle → Cervello → Modelli; a ``claude`` step there also sets Claude Code's model).
+# (chosen by the owner in Oracle → Brain → Models; a ``claude`` step there also sets Claude Code's model).
 FORGE_USECASE = "forge.code"
-LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · sviluppo", chain="code",
+LLM_USECASES = [llm_usecase(FORGE_USECASE, "Forge · development", chain="code",
                             help="The model that writes the code when Forge uses the Oracle engine."),
                 llm_usecase("forge.review", "Forge · automatic review", chain="strong",
                             help="The independent reviewer that reads diff and tests before you approve."),
@@ -54,5 +54,5 @@ def build_capabilities() -> dict[str, Any]:
         },
         "self_development": True,
         **llm_capabilities(LLM_USECASES),
-        "downloads": {"endpoint": "/api/downloads"},   # the cloudflared image of «Fuori casa» (setup/tunnel.py)
+        "downloads": {"endpoint": "/api/downloads"},   # the cloudflared image of «Away from home» (setup/tunnel.py)
     }

@@ -1,11 +1,11 @@
-"""Hestia-Echo — the voice of Hestia: speech → text (ascolto) and text → speech (voce), files and streams in blocks.
+"""Hestia-Echo — the voice of Hestia: speech → text (listen) and text → speech (voice), files and streams in blocks.
 
-SPEC docs/work/2026-10-20-modulo-voce. Built like Oracle a blocchi: named providers (Themis ``echo.providers``,
+SPEC docs/work/2026-10-20-modulo-voce. Built like Oracle's blocks: named providers (Themis ``echo.providers``,
 keys only in env ``ECHO_KEY_<NAME>``), reusable chains with a direction, uses declared by callers, an external
 mode where Echo is only the door (proxy to a speech engine). Echo converts sound ↔ text and nothing else: it never
 calls Oracle and never decides what to answer. Audio is kept in Archive (blobs + ``echo-store``) by the rule
 «never throw away what cannot be made again»; settings in Themis; the daily cleanup is an agenda job (Chronos);
-the space warning goes through Hermes; the UI is a core plugin (page «Voce»).
+the space warning goes through Hermes; the UI is a core plugin (page «Voice»).
 """
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ settings.declare([
     setting("echo.audio.generated_days", "Days for generated audio", "int", 30, group="Audio kept",
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
-    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
+    # ── Your voice (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
     setting("echo.voiceprint.threshold", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
@@ -239,7 +239,7 @@ def providers():
 
 @app.get(f"{API}/providers/options")
 def provider_options():
-    """Options of «Motore esterno» (Themis ``options_source``)."""
+    """Options of «External engine» (Themis ``options_source``)."""
     return {"options": [{"value": "", "label": "—"}] + [
         {"value": p["name"], "label": p["label"]} for p in blocks.providers().values()]}
 
@@ -265,7 +265,7 @@ _PARTS = {"providers": PROVIDERS_KEY, "chains": CHAINS_KEY, "usecases": USECASES
 
 @app.put(API + "/blocks/{part}")
 def blocks_write(part: str, body: dict = Body(...)):
-    """Marko's edit from the page Voce (providers | chains | usecases): stored through Themis."""
+    """The owner's edit from the page Voice (providers | chains | usecases): stored through Themis."""
     key = _PARTS.get(part)
     value = body.get("value")
     if not key:
@@ -309,7 +309,7 @@ def usage(days: int = 30):
 
 @app.get(f"{API}/live")
 def live_config():
-    """What a client needs for live mode («Parla», /live): the pause that closes a turn."""
+    """What a client needs for live mode («Talk», /live): the pause that closes a turn."""
     return {"silence_ms": int(settings.get("echo.live.silence_ms", 1250) or 1250), "language": echo.language(),
             "voiceprint": voiceprint.applies("webui.live.listening")}
 
@@ -499,7 +499,7 @@ app.include_router(downloads.router())
 
 @app.post(f"{API}/models/prefetch")
 def models_prefetch():
-    """Queue the local models of the first steps of the «ascolto» and «voce» chains (guided setup, Download page),
+    """Queue the local models of the first steps of the «listen» and «voice» chains (guided setup, Download page),
     so the first spoken sentence does not wait for them. Cloud steps need nothing."""
     return _prefetch()
 
@@ -520,7 +520,7 @@ def _prefetch(chains: dict | None = None) -> dict:
     return {"queued": queued, "downloads": downloads.list()}
 
 
-# ── Setup guidato «Voce» (core/voice_setup.py): same shape as the models screen ─────────────
+# ── Guided setup «Voice» (core/voice_setup.py): same shape as the models screen ─────────────
 @app.get(f"{API}/setup/catalog")
 def voice_setup_catalog(hosts: str = ""):
     """Providers per direction (listening, speaking), local first, with their models/voices and the current step;
@@ -538,7 +538,7 @@ def voice_setup_test(body: dict = Body(...)):
 
 @app.post(f"{API}/setup/preview")
 def voice_setup_preview(body: dict = Body(...)):
-    """«Ascolta» in the setup: a short sentence with that provider and voice, before the choice is saved."""
+    """«Listen» in the setup: a short sentence with that provider and voice, before the choice is saved."""
     return {"status": "ok", **echo.setup_preview(body)}
 
 

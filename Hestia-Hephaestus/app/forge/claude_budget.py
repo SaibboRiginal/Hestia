@@ -34,7 +34,7 @@ def _parse_hhmm(text: str) -> time:
 
 @dataclass
 class ClaudeSchedule:
-    reset_day: str = "mon"          # weekday of the weekly reset (mon..sun / lun..dom)
+    reset_day: str = "mon"          # weekday of the weekly reset (mon..sun)
     reset_time: str = "09:00"       # local time of the reset
     tz: str = "Europe/Rome"
     window_hours: int = 48          # autonomous use only in the last N hours before reset

@@ -1,17 +1,17 @@
-"""WebUI plugin of Hephaestus (core module, «Sistema» section of the sidebar).
+"""WebUI plugin of Hephaestus (core module, «System» section of the sidebar).
 
 SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3: the module ships its own "inside view" on the
 client plugin contract (hestia_common.plugin_client). Bundle: Hestia-Hephaestus/ui → <dist>/webui/hephaestus.js,
 built in the Docker image (Node stage) and copied to /ui/dist, outside /code (the compose dev mount of app/
 would hide it).
 
-- page *Riparazioni*: remediation tasks (runbook, consent, dry-run, outcome, rollback) — read only; approving
+- page *Repairs*: remediation tasks (runbook, consent, dry-run, outcome, rollback) — read only; approving
   or undoing a repair keeps its consent path (chat/Telegram tools hephaestus_approve / hephaestus_rollback).
 - widget *Forge*: state, queue, waiting review, Claude budget window; the only button is the existing
   manual brake (POST /api/hephaestus/forge/pause), after a confirm.
-- page *Sviluppo* (SPEC §A4, ported from the WebUI's built-in /forge page): Forge tasks (list + filters, engine
+- page *Development* (SPEC §A4, ported from the WebUI's built-in /forge page): Forge tasks (list + filters, engine
   conversation, files/diff/dossier/tests/logs/branch, approve/reject/start with engine, pause, new task, follow-up)
-  and the read-only repository browser; *Copia per AI* (§B5, GET forge/tasks/export). Badge = tasks waiting for you
+  and the read-only repository browser; *Copy for AI* (§B5, GET forge/tasks/export). Badge = tasks waiting for you
   (GET forge/counts → ``review``). Deep links: ``?task=<id>`` (also a short id), ``?view=repo``.
 Every path is under /api/hephaestus/ (remediation and Forge share it), so no duplicate endpoint is needed.
 """

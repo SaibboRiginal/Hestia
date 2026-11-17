@@ -11,5 +11,5 @@ class HephaestusService(HestiaServiceBase):
     def build_capabilities(self) -> dict[str, Any]:
         caps = build_capabilities()
         caps["mcp_endpoint"] = f"{self.descriptor.base_url.rstrip('/')}/mcp"
-        caps.update(ui.capabilities(self.descriptor.base_url))   # WebUI plugin manifest (Sistema)
+        caps.update(ui.capabilities(self.descriptor.base_url))   # WebUI plugin manifest (System)
         return caps

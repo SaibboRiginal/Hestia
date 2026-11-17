@@ -1,4 +1,4 @@
-"""Per-task detail for the WebUI "Sviluppo" page: changed files, diff, dossier,
+"""Per-task detail for the WebUI "Development" page: changed files, diff, dossier,
 tests, logs, timeline.  Read-only; works for live tasks (worktree on disk:
 uncommitted changes included) and for finished ones (git objects in the repo)."""
 from __future__ import annotations

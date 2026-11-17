@@ -37,7 +37,7 @@ class BrainApply(BaseModel):
     embedding: dict[str, str] = Field(default_factory=dict)
     local_runtime: dict[str, str] = Field(default_factory=dict)
     modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode potente/codice/visione: {steps: [{provider, model}]}
-    order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
+    order: list[dict[str, str]] = Field(default_factory=list)   # «Chosen» in the user's order: [{provider, model}]
     keys: dict[str, str] = Field(default_factory=dict)
     claude_token: str = ""
 
@@ -167,7 +167,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
     def complete():
         return {"status": "ok", **service.mark(completed=True)}
 
-    # ── Cervello ──
+    # ── Brain ──
     @router.get("/brain/catalog")
     def brain_catalog(hosts: str = ""):
         """``hosts``: other computers of the home network to look on too (comma separated)."""
@@ -190,14 +190,14 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         return service.oracle("POST", "/api/llm/setup/test", body={"provider": req.provider, "model": req.model},
                               timeout=60)
 
-    # ── Voce (Echo owns the speech providers: /api/voice/setup/*) ──
+    # ── Voice (Echo owns the speech providers: /api/voice/setup/*) ──
     @router.get("/voice/catalog")
     def voice_catalog(hosts: str = ""):
         return service.echo("GET", "/api/voice/setup/catalog", timeout=30, query={"hosts": hosts} if hosts else None)
 
     @router.post("/voice/preview")
     def voice_preview(body: dict):
-        """«Ascolta» on a voice of the setup (→ Echo, nothing saved)."""
+        """«Listen» on a voice of the setup (→ Echo, nothing saved)."""
         keep = {k: body.get(k) for k in ("provider", "model", "voice", "text") if body.get(k)}
         return service.echo("POST", "/api/voice/setup/preview", body=keep, timeout=90)
 
@@ -270,7 +270,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         except secrets.SecretRefused as exc:
             refused(exc)
 
-    # ── Macchine: central and satellites (Hub /api/nodes, §4.0) ──
+    # ── Machines: central and satellites (Hub /api/nodes, §4.0) ──
     def hub_own(method: str, path: str) -> dict:
         resp = requests.request(method, f"{hub_api_url}/{path}", timeout=10)
         if resp.status_code >= 400:
@@ -307,7 +307,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         """Local models on that satellite's video card (empty address = back on this machine)."""
         return service.oracle("POST", "/api/llm/setup/machine", body={"address": req.address, "name": req.name})
 
-    # ── Aggiorna Hestia (setup/updater.py) ──
+    # ── Update Hestia (setup/updater.py) ──
     def refused_update(exc: UpdateRefused):
         raise HTTPException(status_code=409, detail=str(exc))
 
@@ -336,7 +336,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
 
     @router.post("/update/back")
     def update_back():
-        """«Torna alla versione di prima» (the one before the last update)."""
+        """«Back to the previous version» (the one before the last update)."""
         try:
             return {"status": "ok", **updater.apply(back=True)}
         except UpdateRefused as exc:
@@ -353,7 +353,7 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
             return {"status": "ok", "message": str(exc)}
         return {"status": "ok", "message": tr("I'm installing the update: I'll write when I'm done.")}
 
-    # ── Da fuori casa (Cloudflare quick tunnel, setup/tunnel.py) ──
+    # ── Away from home (Cloudflare quick tunnel, setup/tunnel.py) ──
     @router.get("/tunnel")
     def tunnel_status():
         """Whether the WebUI is reachable from outside home, and at which address."""

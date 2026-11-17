@@ -142,7 +142,7 @@ def test_blocking_issues_get_one_round_of_fixes(monkeypatch, tmp_path):
 
 def test_auto_merge_waits_when_blocking_issues_remain(monkeypatch, tmp_path):
     forge = _forge(monkeypatch, tmp_path)
-    issue = {"priority": "media", "file": "x.py", "problem": "bug", "evidence": ""}
+    issue = {"priority": "medium", "file": "x.py", "problem": "bug", "evidence": ""}
     forge.reviewer = _Reviewer([{"verdict": "problems", "issues": [issue], "blocking": 1}])
     merged = []
     monkeypatch.setattr(Forge, "_merge_and_deploy", lambda self, task, by: merged.append(by))

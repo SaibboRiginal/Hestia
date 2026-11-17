@@ -1,4 +1,4 @@
-"""«Da fuori casa» — the WebUI reachable from outside home through a Cloudflare quick tunnel (§4.2, P5b).
+"""«Away from home» — the WebUI reachable from outside home through a Cloudflare quick tunnel (§4.2, P5b).
 
 Single responsibility: start, stop and read the ``hestia_tunnel`` container. It is created here through the Docker API
 (not in compose: ``up-all`` and the installer must never open Hestia to the internet by themselves), on ``hestia_net``,
