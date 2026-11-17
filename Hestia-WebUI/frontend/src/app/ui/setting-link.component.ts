@@ -6,7 +6,7 @@ import { tr } from '../core/i18n';
 /** Where a value is set: a central setting (`key`), a module's settings (`module`) or a personal row. */
 export interface SettingTarget { key?: string; module?: string; section?: string; row?: string; }
 
-/** Query of the Impostazioni page for a target (the page opens the right view, scrolls and highlights). */
+/** Query of the Settings page for a target (the page opens the right view, scrolls and highlights). */
 export function settingQuery(t: SettingTarget): Record<string, string> {
   if (t.key) return { key: t.key };
   if (t.section) return t.row ? { section: t.section, row: t.row } : { section: t.section };
@@ -15,7 +15,7 @@ export function settingQuery(t: SettingTarget): Record<string, string> {
 
 /**
  * <hx-setting-link key="oracle.chat.mode" /> — the one shortcut next to a value that comes from a setting:
- * a small «cambia» that opens Impostazioni already on that setting, highlighted. Same component everywhere
+ * a small «change» that opens Settings already on that setting, highlighted. Same component everywhere
  * (dossier docs/work/2026-11-12-contesto-e-scorciatoie §3.3). `key` = central setting · `module` = that module's
  * settings · `section` (+ `row`) = a personal one. `label=""` shows the gear alone.
  */
@@ -39,7 +39,7 @@ export class SettingLinkComponent {
   module = input('');
   section = input('');
   row = input('');
-  label = input('cambia');
+  label = input(tr('change'));
   /** Tooltip (what opens). */
   title = input('');
   /** Emitted on click, so a popover that hosts the link can close. */

@@ -16,9 +16,9 @@ export interface UpdateStatus {
 }
 
 /**
- * «Aggiornamenti» (docs/work/2026-10-30-setup-un-click §4.4): the installed version, the new one with what it brings,
- * «Installa» (Hestia moves to it and comes back by itself if something does not answer), «Torna alla versione di
- * prima», the history. Browser → WebUI → Hub → Hephaestus /api/setup/update*.
+ * «Updates» (docs/work/2026-10-30-setup-un-click §4.4): the installed version, the new one with what it brings,
+ * «Install» (it moves to it and comes back by itself if something does not answer), «Back to the previous
+ * version», the history. Browser → WebUI → Hub → Hephaestus /api/setup/update*.
  */
 @Component({
   selector: 'app-updates-page',
@@ -71,7 +71,7 @@ export interface UpdateStatus {
 
         @if (job().state === 'error' || job().state === 'done') {
           @if (job().detail) {
-            <p class="note"><hx-icon [name]="job().state === 'errore' ? 'alert' : 'info'" [size]="14" [tone]="job().state === 'errore' ? 'warning' : 'info'" /> {{ job().detail }}</p>
+            <p class="note"><hx-icon [name]="job().state === 'error' ? 'alert' : 'info'" [size]="14" [tone]="job().state === 'error' ? 'warning' : 'info'" /> {{ job().detail }}</p>
           }
         }
 

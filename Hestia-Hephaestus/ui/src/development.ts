@@ -23,7 +23,7 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 type Size = 'wide' | 'mid' | 'phone';
 
-export class HephaestusSviluppo extends HestiaElement {
+export class HephaestusDevelopment extends HestiaElement {
   static properties = {
     ...HestiaElement.properties,
     rev: { state: true }, mode: { state: true }, size: { state: true }, centerTab: { state: true }, repoNav: { state: true },

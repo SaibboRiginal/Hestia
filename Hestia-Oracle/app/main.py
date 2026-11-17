@@ -438,7 +438,7 @@ def llm_setup_pulls():
 
 @app.post("/api/ui/models/quota/reset")
 def ui_models_quota_reset(provider: str = "", model: str = ""):
-    """«Riprova adesso»: forget a model's quota state (all when no provider)."""
+    """«Try again now»: forget a model's quota state (all when no provider)."""
     from core.services import llm_chains
     llm_chains.clear_exhausted(provider, model)
     return {"status": "ok"}

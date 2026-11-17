@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { UI } from '../../ui';
-import { MetisService, ScopriItem } from '../../services/metis.service';
+import { MetisService, DiscoverItem } from '../../services/metis.service';
 import { tr, TrPipe } from '../../core/i18n';
 
 /**
- * «Scopri» (dossier 2026-10-24-tutto-brainstorm-cindy C14, W7): the things Hestia can do that you never or rarely
- * use, what each does and «Prova» to open it (GET /api/metis/discover — usage stats against the tool catalog).
+ * «Discover» (dossier 2026-10-24-tutto-brainstorm-cindy C14, W7): the things the assistant can do that you never or rarely
+ * use, what each does and «Try» to open it (GET /api/metis/discover — usage stats against the tool catalog).
  */
 @Component({
   selector: 'app-discover-page',
@@ -35,7 +35,7 @@ import { tr, TrPipe } from '../../core/i18n';
                   <div class="t">{{ it.title }}</div>
                   @if (it.description) { <div class="d">{{ it.description }}</div> }
                   <div class="f">
-                    <span class="r">{{ it.reason || (it.uses ? ('Used ' | tr) + it.uses + (it.uses === 1 ? ' volta' : ' volte') : ('Never used' | tr)) }}</span>
+                    <span class="r">{{ it.reason || (it.uses ? (it.uses === 1 ? ('Used once' | tr) : ('Used {0} times' | tr: it.uses)) : ('Never used' | tr)) }}</span>
                     <button hx-btn size="sm" variant="primary" icon="play" (click)="metis.open(it.tool, {}, it.title)">{{ "alt::Test" | tr }}</button>
                   </div>
                 </article>
@@ -64,9 +64,9 @@ import { tr, TrPipe } from '../../core/i18n';
     @media (max-width: 860px) { hx-page-header { padding-left: 56px; } }   /* room for the shell's menu button */
   `],
 })
-export class ScopriPageComponent implements OnInit {
+export class DiscoverPageComponent implements OnInit {
   metis = inject(MetisService);
-  readonly items = signal<ScopriItem[]>([]);
+  readonly items = signal<DiscoverItem[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly error = signal(false);
@@ -76,9 +76,9 @@ export class ScopriPageComponent implements OnInit {
     const q = this.query().trim().toLowerCase();
     return q ? this.items().filter(i => `${i.title} ${i.description}`.toLowerCase().includes(q)) : this.items();
   });
-  /** Grouped by area as people know them (Allenamento, Casa…), never by module. */
+  /** Grouped by area as people know them (Training, Home…), never by module. */
   readonly groups = computed(() => {
-    const by = new Map<string, ScopriItem[]>();
+    const by = new Map<string, DiscoverItem[]>();
     for (const it of this.shown()) { const k = it.area || 'other'; by.set(k, [...(by.get(k) ?? []), it]); }
     return [...by.entries()].map(([key, items]) => ({ key, items, title: items[0].area_label || tr('Other'),
       icon: items[0].area_icon || 'puzzle', order: items[0].area_order ?? 999 }))
@@ -90,7 +90,7 @@ export class ScopriPageComponent implements OnInit {
 
   async load(): Promise<void> {
     this.loading.set(true);
-    const r = await this.metis.scopri();
+    const r = await this.metis.discover();
     this.loading.set(false);
     this.error.set(!r.ok);
     if (r.ok) { this.items.set(r.items); this.total.set(r.total || r.items.length); }

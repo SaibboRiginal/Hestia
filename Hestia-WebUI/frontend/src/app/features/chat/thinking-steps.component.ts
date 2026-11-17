@@ -4,10 +4,10 @@ import { IconComponent } from '../../ui';
 import { tr } from '../../core/i18n';
 
 /**
- * Reasoning / tool trace of an assistant answer. The title says what is inside: «Ragionamento · 2 passi ·
- * 1 strumento» only when the model really reasoned (steps of type `reasoning`), «Strumenti usati · 1» when the
+ * Reasoning / tool trace of an assistant answer. The title says what is inside: «Reasoning · 2 steps ·
+ * 1 tool» only when the model really reasoned (steps of type `reasoning`), «Tools used · 1» when the
  * trace holds tool calls alone, so a block never reads as thinking that did not happen.
- * `display` (Impostazioni → Ragionamento): compact = closed, one line per step · detailed = open,
+ * `display` (Settings → Reasoning): compact = closed, one line per step · detailed = open,
  * full reasoning text and tool results · live = open while working, closes when the answer arrives.
  * A click on the header always wins over the automatic open/close.
  */

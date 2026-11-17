@@ -207,7 +207,7 @@ export class DashboardPageComponent {
   live = inject(LiveVoiceService);
   readonly sizeLabel = SIZE_LABEL;
 
-  /** «Parla» from the Home (brainstorm C12): the live overlay follows you on every page. */
+  /** «Talk» from the Home (brainstorm C12): the live overlay follows you on every page. */
   toggleLive(): void {
     if (this.live.on) { this.live.stop(); return; }
     void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });

@@ -5,7 +5,7 @@ import { PluginsService } from './plugins.service';
 import { tr, TrPipe } from '../../core/i18n';
 
 /**
- * Impostazioni → Personali → Moduli e Home: what each module contributes to THIS WebUI (pages, widgets, quick
+ * Settings → Personal → Modules and Home: what each module contributes to THIS WebUI (pages, widgets, quick
  * actions) with show/hide switches. Saved as this client's setting `webui.plugins.hidden` (other clients unaffected).
  */
 @Component({

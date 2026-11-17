@@ -5,7 +5,7 @@
  * - catalog + settings reads: network first, last copy when offline
  * Everything else (/api/* writes, chat, images) goes straight to the network: no silent queue.
  * Web Push (brainstorm C15): Hermes sends {id, title, body, level, link:{module,page,params?}, pending}; a tap opens
- * the link's plugin page (or «Notifiche»), focusing an open tab when there is one. No secret ever travels here. */
+ * the link's plugin page (or «Notifications»), focusing an open tab when there is one. No secret ever travels here. */
 const SHELL = 'hestia-shell-v1';
 const DATA = 'hestia-data-v1';
 

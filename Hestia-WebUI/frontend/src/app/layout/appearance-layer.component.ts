@@ -20,7 +20,7 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
  * confetti, hearts, stars, pumpkins, a warm sun) — only on Home, and the falling bits fade out after about ten
  * seconds so reading is never disturbed (dossier 2026-10-29-revisione-e-test-frontend §6.4) — and the pet in the
  * corner on every page: a tap makes it happy, at night it sleeps (dossier 2026-10-24-tutto-brainstorm-cindy A2, W7).
- * With «riduci movimento» or the «Animazioni: ridotte» knob the effect is off.
+ * With «reduce motion» or the «Animations: reduced» knob the effect is off.
  */
 @Component({
   selector: 'hx-appearance-layer',

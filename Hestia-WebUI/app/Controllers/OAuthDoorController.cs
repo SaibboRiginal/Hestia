@@ -10,7 +10,7 @@ using Hestia.WebUI.Services;
 /// connectors, ChatGPT). Like <c>/mcp</c> it is not under /api/webui (no WebUI login): metadata, registration, token
 /// and revoke go as they are through Hub to Hestia-MCP, with the public address this request came in on in
 /// <c>X-Hestia-Public-Base</c> (issuer, metadata URLs). <c>/oauth/authorize</c> never issues a code here: it parks the
-/// request on Hestia-MCP and sends the browser to the consent card on the Accessi AI page (<c>/p/mcp/accessi?oauth=…</c>),
+/// request on Hestia-MCP and sends the browser to the consent card on the AI access page (<c>/p/mcp/access?oauth=…</c>),
 /// which sits behind the normal WebUI login. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3.
 /// </summary>
 [ApiController]
@@ -134,18 +134,18 @@ public class OAuthDoorController : ControllerBase
         string Str(string key) => payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty(key, out var v)
             && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
         if (status < 400 && Str("status") == "consent")
-            return Redirect($"/p/mcp/accessi?oauth={Uri.EscapeDataString(Str("request_id"))}");
+            return Redirect($"/p/mcp/access?oauth={Uri.EscapeDataString(Str("request_id"))}");
         var redirect = Str("redirect");
         if (status < 400 && redirect.Length > 0)
             return Redirect(redirect);   // the client's registered redirect_uri, checked by Hestia-MCP
         _logger.LogInformation("event=oauth_door_authorize_refused status={Status} error={Error}", status, Str("error"));
-        var message = System.Net.WebUtility.HtmlEncode(Str("error_description") is { Length: > 0 } d ? d : "Hestia non raggiungibile");
+        var message = System.Net.WebUtility.HtmlEncode(Str("error_description") is { Length: > 0 } d ? d : Texts.Tr("Not available"));
         return new ContentResult
         {
             StatusCode = status >= 400 ? status : 400,
             ContentType = "text/html; charset=utf-8",
             Content = $"<!doctype html><meta charset=utf-8><title>Hestia</title><body style=\"font-family:sans-serif;padding:24px\">" +
-                      $"<h1>Collegamento non riuscito</h1><p>{message}</p><p>Riprova dall'app che stai collegando.</p></body>",
+                      $"<h1>{Texts.Tr("Connection failed")}</h1><p>{message}</p><p>{Texts.Tr("Try again from the app you are connecting.")}</p></body>",
         };
     }
 }

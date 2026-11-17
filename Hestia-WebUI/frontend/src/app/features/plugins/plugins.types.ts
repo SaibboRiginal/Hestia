@@ -10,7 +10,7 @@ export interface PluginModule {
   description: string;
   version: string;
   online: boolean;
-  kind?: 'domain' | 'core';  // core = system module, shown under «Sistema» in the sidebar
+  kind?: 'domain' | 'core';  // core = system module, shown under «System» in the sidebar
 }
 
 interface Contribution {
@@ -55,7 +55,7 @@ export interface QuickActionDef extends Contribution {
   order: number;
 }
 
-/** A panel shown inside the module's own settings (Impostazioni → Sistema → <module>), e.g. the backup history. */
+/** A panel shown inside the module's own settings (Settings → System → <module>), e.g. the backup history. */
 export interface PluginSettingsPanel extends Contribution {
   element: string;
   order: number;
@@ -85,8 +85,8 @@ export interface Dashboard {
   title: string;
   icon?: string;
   auto?: boolean;                       // Home before the user edits it: composed from auto widgets
-  kind?: 'domain' | 'core';             // which auto widgets an automatic dashboard takes (Home: domain, Sistema: core)
-  removed?: boolean;                    // the user deleted the ready-made «Sistema»: kept as a marker so it does not come back
+  kind?: 'domain' | 'core';             // which auto widgets an automatic dashboard takes (Home: domain, System: core)
+  removed?: boolean;                    // the user deleted the ready-made «System»: kept as a marker so it does not come back
   created_by?: 'user' | 'oracle' | string;
   items: DashboardItem[];
   dismissed?: string[];                 // auto widgets the user removed from an automatic dashboard

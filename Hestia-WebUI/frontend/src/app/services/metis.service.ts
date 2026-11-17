@@ -5,8 +5,8 @@ import { PluginsService } from '../features/plugins/plugins.service';
 
 /** One suggestion of the «Now» row (GET /api/metis/now). */
 export interface NowItem { tool: string; title: string; module: string; args: Record<string, unknown>; reason: string; source: string; }
-/** One feature of «Scopri» (GET /api/metis/discover). */
-export interface ScopriItem { tool: string; title: string; description: string; module: string; uses: number; reason: string;
+/** One feature of «Discover» (GET /api/metis/discover). */
+export interface DiscoverItem { tool: string; title: string; description: string; module: string; uses: number; reason: string;
   area?: string; area_label?: string; area_icon?: string; area_order?: number; }
 
 type TapKind = 'tool' | 'page' | 'action';
@@ -18,7 +18,7 @@ const MAX_BATCH = 40;
 /**
  * Usage taps and suggestions of the WebUI (dossier 2026-10-24-tutto-brainstorm-cindy C11 + C14, W7): every page
  * opened and every action run becomes a tap, sent in batches to Metis (`POST /api/metis/usage`) so «Now» learns
- * from this client too; reads «Now» and «Scopri». Everything goes through the Metis plugin door (api_prefix
+ * from this client too; reads «Now» and «Discover». Everything goes through the Metis plugin door (api_prefix
  * /api/metis/), never a new URL.
  */
 @Injectable({ providedIn: 'root' })
@@ -75,12 +75,12 @@ export class MetisService {
     this.nowLoaded.set(true);
   }
 
-  async scopri(): Promise<{ ok: boolean; items: ScopriItem[]; total: number; tools: number }> {
-    const r = await this.plugins.call<{ items?: ScopriItem[]; total?: number; tools?: number }>('metis', 'GET', '/api/metis/discover', { query: { client: 'webui', limit: 50 } });
+  async discover(): Promise<{ ok: boolean; items: DiscoverItem[]; total: number; tools: number }> {
+    const r = await this.plugins.call<{ items?: DiscoverItem[]; total?: number; tools?: number }>('metis', 'GET', '/api/metis/discover', { query: { client: 'webui', limit: 50 } });
     return { ok: r.ok, items: r.data?.items ?? [], total: r.data?.total ?? 0, tools: r.data?.tools ?? 0 };
   }
 
-  /** Opens a tool on the «Comandi» page with its arguments filled (and run at once when it needs nothing more). */
+  /** Opens a tool on the «Commands» page with its arguments filled (and run at once when it needs nothing more). */
   open(tool: string, args: Record<string, unknown> = {}, label?: string): void {
     this.tap('tool', tool, label);
     const params: Record<string, string> = { command: tool, run: '1' };

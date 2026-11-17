@@ -89,7 +89,7 @@ export class NotificationsService {
     this.started = true;
     this.signalR.notifications$.subscribe(push => this.onPush(push));
     this.signalR.reconnected$.subscribe(() => void this.refresh());
-    // The Notifiche plugin page is open: new items are shown there (and seen) instead of toasted.
+    // The Notifications plugin page is open: new items are shown there (and seen) instead of toasted.
     const atPage = (url: string) => url.split('?')[0].startsWith(PAGE);
     this.pageOpen.set(atPage(this.router.url));
     this.router.events.subscribe(e => { if (e instanceof NavigationEnd) this.pageOpen.set(atPage(e.urlAfterRedirects)); });

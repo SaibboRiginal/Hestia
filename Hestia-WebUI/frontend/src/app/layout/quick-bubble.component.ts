@@ -10,8 +10,8 @@ import { TrPipe } from '../core/i18n';
 /**
  * The bubble at the bottom right of every page (docs/work/2026-11-13-sidebar-e-chat §3.4): the two ways to reach the
  * assistant without leaving the page, each with one line that says what it does.
- * - «Scrivi qui»: the side panel that knows which page you are on (Ctrl+J).
- * - «Parla»: the continuous voice conversation, which goes on while you move around (Ctrl+Shift+Space).
+ * - «Write here»: the side panel that knows which page you are on (Ctrl+J).
+ * - «Talk»: the continuous voice conversation, which goes on while you move around (Ctrl+Shift+Space).
  * Hidden on the Chat page (it has both in its own bar) and while the side panel is open.
  */
 @Component({
@@ -55,7 +55,7 @@ import { TrPipe } from '../core/i18n';
     .acts i { font-style: normal; font-size: 12.5px; color: var(--text-3); line-height: 1.35; }
     .acts kbd { font: 10.5px var(--font-mono, monospace); color: var(--text-3); margin-top: 3px; white-space: nowrap; }
     @media (max-width: 860px) { .wrap { right: 14px; bottom: 14px; } .fab { width: 48px; height: 48px; } .acts kbd { display: none; }
-      .wrap.up { bottom: 84px; } }   /* above the «Parla» bar */
+      .wrap.up { bottom: 84px; } }   /* above the «Talk» bar */
     @media (prefers-reduced-motion: reduce) { .fab { animation: none !important; transition: none; } }
   `],
 })

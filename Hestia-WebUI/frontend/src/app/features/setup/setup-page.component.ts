@@ -18,7 +18,7 @@ type Screen = 'welcome' | 'who' | 'models' | 'memory' | 'brain' | 'listen' | 'vo
  * (Claude Code as the whole brain) is not offered here: the Claude subscription is one of the cloud services. */
 type Recipe = 'locale' | 'cloud' | 'both';
 type VoiceDir = 'listen' | 'voice';
-/** A mode with its own list: the same four choices as the step of Generale. */
+/** A mode with its own list: the same four choices as the step of General. */
 interface ModeChoice { home: string; order: string[]; picks: Record<string, string[]>; rank: string[]; }
 const CLAUDE_TYPE = 'claude_cli';
 /** Where to get a key, by provider type or name. */
@@ -34,7 +34,7 @@ const HOSTS_KEY = 'hestia_setup_hosts';
 /** The steps list (from the bar on top): one line per screen. */
 const TITLES: Record<Screen, string> = {
   benvenuto: tr('Start'), who: tr('You and me'), models: tr('Models'), memory: tr('Memory'), brain: tr('Models ready'), listen: tr('Listening'),
-  voce: tr('Voice'), telegram: 'Telegram', backup: tr('Backup'), external_ais: tr('Calendar and Garmin'), away: tr('Outside home'), ready: tr('End'),
+  voice: tr('Voice'), telegram: 'Telegram', backup: tr('Backup'), external_ais: tr('Calendar and Garmin'), away: tr('Outside home'), ready: tr('End'),
 };
 /** No address after this long: say so instead of a spinner forever. */
 const TUNNEL_PATIENCE_MS = 90_000;
@@ -48,8 +48,8 @@ function store(key: string, value: string): void {
 
 /**
  * Guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click §4.2, layout of round 7): full screen, one column, one
- * question per screen with the buttons always at the bottom; on top the step («3/11 Memoria») opens the list of the
- * steps and the downloads. The recommended answer is preselected, «Più tardi» on the optional ones. Every answer is
+ * question per screen with the buttons always at the bottom; on top the step («3/11 Memory») opens the list of the
+ * steps and the downloads. The recommended answer is preselected, «Later» on the optional ones. Every answer is
  * saved at once (server side), and the screen is remembered, so closing the browser resumes where it was. Secrets go
  * to Hephaestus and never come back. Local models come from the programs found on the PC (Ollama, LM Studio, Jan,
  * llama.cpp, vLLM), cloud models from the service's own list: Hestia keeps no model list of its own.
@@ -91,8 +91,8 @@ function store(key: string, value: string): void {
           <ul class="dl">
             @for (d of downloads(); track (d.module || '') + d.id) {
               <li>
-                <hx-icon [name]="d.state === 'fatto' ? 'check-circle' : d.state === 'errore' ? 'alert' : 'download'" [size]="16"
-                         [tone]="d.state === 'fatto' ? 'success' : d.state === 'errore' ? 'danger' : 'info'" />
+                <hx-icon [name]="d.state === 'done' ? 'check-circle' : d.state === 'error' ? 'alert' : 'download'" [size]="16"
+                         [tone]="d.state === 'done' ? 'success' : d.state === 'error' ? 'danger' : 'info'" />
                 <span><b>{{ d.what }}</b><small>{{ downloadText(d) }}</small>
                   @if (d.state === 'running' && d.size) { <span class="meter"><span [style.width.%]="100 * d.done / d.size"></span></span> }
                 </span>
@@ -468,7 +468,7 @@ export class SetupPageComponent {
   readonly claudeType = CLAUDE_TYPE;
   /** The list of the steps + the downloads, opened from the step on the bar at the top. */
   panel = signal(false);
-  /** «Modelli»: the field for another Ollama model. */
+  /** «Models»: the field for another Ollama model. */
   otherOpen = signal(false);
 
   state = signal<SetupState | null>(null);
@@ -481,14 +481,14 @@ export class SetupPageComponent {
   code = signal('');
   searching = signal(false);
 
-  /** The home choice of «Modelli» as «program|model» ('' = nothing at home). */
+  /** The home choice of «Models» as «program|model» ('' = nothing at home). */
   localKey = signal('');
   localProvider = computed(() => this.localKey().split('|')[0] || 'ollama');
   localModel = computed(() => this.localKey().split('|').slice(1).join('|'));
   useLocal = computed(() => !!this.localModel());
   useCloud = computed(() => this.cloudPicked().length > 0);
   recipe = computed<Recipe>(() => this.useLocal() && this.useCloud() ? 'both' : this.useLocal() ? 'locale' : 'cloud');
-  /** «Memoria»: one model, at home («program|model») or one cloud service with one model. */
+  /** «Memory»: one model, at home («program|model») or one cloud service with one model. */
   embedHome = signal('');
   embedOrder = signal<string[]>([]);
   embedPicks = signal<Record<string, string[]>>({});
@@ -500,7 +500,7 @@ export class SetupPageComponent {
   cloudModel = signal<Record<string, string[]>>({});
   cloudReady = signal<Record<string, boolean>>({});
   cloudTokens = signal<Record<string, string>>({});
-  /** «Scelti» of Modelli in the user's order (local and cloud mixed), sent as ``order``. */
+  /** «Chosen» of Models in the user's order (local and cloud mixed), sent as ``order``. */
   cloudRank = signal<string[]>([]);
   botToken = '';
   passphrase = '';
@@ -517,7 +517,7 @@ export class SetupPageComponent {
   screen = signal<Screen>('welcome');
   /** The furthest screen reached in this run: the summary jumps back freely, forward only up to here. */
   reached = signal(0);
-  /** The screens: Modelli, Memoria, Ascolto and Voce are the same step (app-setup-chain) on a different module. */
+  /** The screens: Models, Memory, Listening and Voice are the same step (app-setup-chain) on a different module. */
   screens = signal<Screen[]>(['welcome', 'who', 'models', 'memory', 'brain', 'listen', 'voice', 'telegram', 'backup', 'external_ais', 'away', 'ready']);
   index = computed(() => Math.max(0, this.screens().indexOf(this.screen())));
   optional = computed(() => (['listen', 'voice'].includes(this.screen()) && !this.voiceQueued())
@@ -538,12 +538,12 @@ export class SetupPageComponent {
     return ph === 'download' ? 0 : ph === 'start' ? 1 : ph === 'address' ? 2 : ph === 'ready' ? 3 : 1;
   });
 
-  // ── Voce (Echo's blocks, the same cards as the cloud services) ──
+  // ── Voice (Echo's blocks, the same cards as the cloud services) ──
   readonly voiceDirs = [
     { id: 'listen' as const, question: tr('How does it listen to you?'), lead: tr('To understand what you say by voice.') },
     { id: 'voice' as const, question: tr('With which voice does it answer you?'), lead: tr('It speaks in the language you write in: if you write in English, it answers with an English voice.') },
   ];
-  /** The voice screen open now (Ascolto or Voce): the same step, one direction each. */
+  /** The voice screen open now (Listening or Voice): the same step, one direction each. */
   voiceDir = computed(() => this.voiceDirs.find(d => d.id === this.screen()) || null);
   voiceCat = signal<VoiceCatalog | null>(null);
   voiceError = signal('');
@@ -591,7 +591,7 @@ export class SetupPageComponent {
       this.voiceError.set(setupError(e));
     }
   }
-  // «Prova» on a voice (hear it) or listening engine (speak, see what it understood), chosen or still in the lists:
+  // «Try» on a voice (hear it) or listening engine (speak, see what it understood), chosen or still in the lists:
   // nothing saved.
   trialState = signal<{ key: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   private mic: MicRecorder | null = null;
@@ -659,7 +659,7 @@ export class SetupPageComponent {
       name: p.name, label: p.label, kind: p.needs_key ? 'key' as const : 'none' as const, keySet: p.key, note: p.note || '' }));
   }
   private voiceTesters: Partial<Record<VoiceDir, (name: string, key: string) => Promise<ServiceCheck>>> = {};
-  /** «Prova» of a voice service (a typed key is saved first, then its list is read: nothing spent). */
+  /** «Try» of a voice service (a typed key is saved first, then its list is read: nothing spent). */
   voiceTester(dir: VoiceDir) {
     return this.voiceTesters[dir] ||= async (name: string, key: string): Promise<ServiceCheck> => {
       const toCheck = (r: { ok: boolean; detail?: string; models?: VoiceOption[]; voices?: VoiceOption[]; recommended?: Record<string, string[]> }): ServiceCheck => {
@@ -704,7 +704,7 @@ export class SetupPageComponent {
   }
 
   constructor() {
-    inject(PluginsService).start();   // the «Google» and «Garmin» cards of the esterni screen are Hecate's plugin elements
+    inject(PluginsService).start();   // the «Google» and «Garmin» cards of the external AIs screen are Hecate's plugin elements
     const timer = setInterval(() => this.poll(), 3000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     void this.load();
@@ -765,12 +765,12 @@ export class SetupPageComponent {
         if (steps.length) own[k] = this.modeFromSteps(steps.map(x => ({ provider: x.provider || 'ollama', model: x.model || '' })));
       }
       this.modeOwn.set(own);
-      // «Scelti» in the saved order (local and cloud mixed)
+      // «Chosen» in the saved order (local and cloud mixed)
       const lk = this.localKey();
       const rank = (state.brain.order || []).map(o => lk && o.provider === this.localProvider() && o.model === this.localModel() ? 'h'
         : o.model ? `m:${o.provider}:${o.model}` : `s:${o.provider}`);
       this.cloudRank.set(rank.length && lk && !rank.includes('h') ? ['h', ...rank] : rank);
-      // «Memoria»: the model in use (at home or in the cloud), else the recommended one at home
+      // «Memory»: the model in use (at home or in the cloud), else the recommended one at home
       const now = catalog.embedding;
       const nowProvider = now?.provider || 'ollama';
       if (now?.model && cloud.some(p => p.name === nowProvider)) {
@@ -809,7 +809,7 @@ export class SetupPageComponent {
   back() { const list = this.screens(); this.go(list[Math.max(0, this.index() - 1)]); }
   private forward() { const list = this.screens(); this.go(list[Math.min(list.length - 1, this.index() + 1)]); }
 
-  /** «Finisco dopo»: the Home shows a card to come back; the guard does not bring the browser here again this session. */
+  /** «Finish later»: the Home shows a card to come back; the guard does not bring the browser here again this session. */
   leave() { try { sessionStorage.setItem('hestia_setup_seen', '1'); } catch { /* ignore */ } }
 
   // ── The steps list (from the bar) ──
@@ -858,7 +858,7 @@ export class SetupPageComponent {
     }
   }
 
-  // ── «I modelli sono pronti»: the assistant's first message, written with the models just chosen ──
+  // ── «The models are ready»: the assistant's first message, written with the models just chosen ──
   hello = signal<{ ok: boolean; text?: string; html?: string; model?: string; detail?: string } | null>(null);
   helloBusy = signal(false);
   async sayHello() {
@@ -876,7 +876,7 @@ export class SetupPageComponent {
   /** It failed while a model was downloading: write again once the downloads are over (once). */
   private helloWait = false;
 
-  /** «Tutto pronto»: one row per choice, a tap goes back to it. */
+  /** «All ready»: one row per choice, a tap goes back to it. */
   recapSteps(): Screen[] { return ['who', 'models', 'memory', 'voice', 'telegram', 'backup', 'away']; }
   recapText(s: Screen): string {
     const st = this.state()!;
@@ -967,13 +967,13 @@ export class SetupPageComponent {
     this.forward();
   }
 
-  // ── Modello sul computer ──
+  // ── Model on the computer ──
   gb(n: number): string { return String(n).replace('.', ','); }
   found = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => r.found));
   missing = computed<Runtime[]>(() => (this.catalog()?.runtimes || []).filter(r => !r.found && !r.host));
   foundNames(): string { const l = this.found().map(r => r.label); return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || ''; }
   hasOllama = computed(() => this.found().some(r => r.name === 'ollama'));
-  /** The programs to install when none is found at home (the same list for Modelli and Memoria). */
+  /** The programs to install when none is found at home (the same list for Models and Memory). */
   programs = computed<HomeProgram[]>(() => this.missing().map(r => ({ name: r.name, label: r.label, site: r.site, note: this.runtimeText(r) })));
   /** Every model of every program found, in one searchable list; an empty Ollama gets the suggestions to download. */
   localItems = computed<PickItem[]>(() => {
@@ -1013,7 +1013,7 @@ export class SetupPageComponent {
       : tr('The models are downloaded from there.');
   }
   runtimeLabel(name: string): string { return (this.catalog()?.runtimes || []).find(r => r.name === name)?.label || name; }
-  /** «Cerca di nuovo» / another computer added: the models and the speech programs are looked for again. */
+  /** «Search again» / another computer added: the models and the speech programs are looked for again. */
   async searchAgain() {
     this.searching.set(true);
     try {
@@ -1039,7 +1039,7 @@ export class SetupPageComponent {
     await this.searchAgain();
   }
 
-  // ── Memoria: the same step on the embedding models ──
+  // ── Memory: the same step on the embedding models ──
   /** At home: the model in use (when it still runs there), every embedding model the programs have, and Ollama's
    * recommended one when Ollama has none. */
   embedHomeItems = computed<PickItem[]>(() => {
@@ -1085,7 +1085,7 @@ export class SetupPageComponent {
     return r?.host && !r.configured ? { url: r.url, type: r.type, label: r.label } : {};
   }
 
-  // ── Modalità: Ragionamento, Codice, Immagini use Generale's list unless one gets its own (the same step) ──
+  // ── Modes: Reasoning, Code, Images use General's list unless one gets its own (the same step) ──
   readonly modeList = [
     { id: 'general', label: tr('General'), help: '' },
     { id: 'strong', label: tr('Reasoning'), help: tr('For the hard questions.') },
@@ -1093,9 +1093,9 @@ export class SetupPageComponent {
     { id: 'vision', label: tr('Images'), help: tr('Photos and documents to look at.') },
   ];
   modeTab = signal('general');
-  /** Per mode with its own list: the same choices as Generale (local, services in order, models, «Scelti» order). */
+  /** Per mode with its own list: the same choices as General (local, services in order, models, «Chosen» order). */
   modeOwn = signal<Record<string, ModeChoice>>({});
-  /** «Gli stessi di Generale» off → a copy of Generale to change; on → back to Generale. */
+  /** «Same as General» off → a copy of General to change; on → back to General. */
   toggleMode(mode: string) {
     const next = { ...this.modeOwn() };
     if (next[mode]) delete next[mode];
@@ -1118,7 +1118,7 @@ export class SetupPageComponent {
     }
     return out;
   }
-  /** What to send for each mode with its own list: its steps in the «Scelti» order (a program elsewhere with its address). */
+  /** What to send for each mode with its own list: its steps in the «Chosen» order (a program elsewhere with its address). */
   private modeSteps(): BrainChoice['modes'] {
     const out: BrainChoice['modes'] = {};
     for (const [mode, c] of Object.entries(this.modeOwn())) {
@@ -1131,7 +1131,7 @@ export class SetupPageComponent {
     return out;
   }
 
-  // ── Servizi cloud (the same cards as the voice's cloud services) ──
+  // ── Cloud services (the same cards as the voice's cloud services) ──
   keyLink(p: CloudProvider): string { return KEY_LINKS[p.type] || KEY_LINKS[p.name] || ''; }
   cloudLabel(name: string): string { const p = this.catalog()?.cloud.find(c => c.name === name); return p?.label || name; }
   cloudRows = computed<ServiceRow[]>(() => (this.catalog()?.cloud || []).map(p => p.type === CLAUDE_TYPE ? {
@@ -1142,10 +1142,10 @@ export class SetupPageComponent {
       name: p.name, label: p.label || p.name, kind: 'key' as const, keySet: p.key_set, keyLink: this.keyLink(p),
       tag: p.type === 'gemini' ? tr('alt::Free') : '', note: p.type === 'gemini' ? tr('Free key from Google.') : '',
     }));
-  /** Per cloud service: its chat models (for «Per modalità») and its memory models, read by «Prova». */
+  /** Per cloud service: its chat models (for «Per mode») and its memory models, read by «Try». */
   private embedLists: Record<string, string[]> = {};
-  /** «Prova» of a brain service: a typed key is saved once (the module re-reads it in a second), then its model list is
-   * read (no tokens spent). The same check serves Modelli (chat models) and Memoria (embedding models). */
+  /** «Try» of a brain service: a typed key is saved once (the module re-reads it in a second), then its model list is
+   * read (no tokens spent). The same check serves Models (chat models) and Memory (embedding models). */
   private async brainCheck(name: string, key: string) {
     const markKey = () => this.catalog.set({ ...this.catalog()!, cloud: this.catalog()!.cloud.map(c => c.name === name ? { ...c, key_set: true } : c) });
     try {
@@ -1218,7 +1218,7 @@ export class SetupPageComponent {
     this.showPass.set(true);
   }
 
-  // ── Fuori casa ──
+  // ── Away from home ──
   async switchTunnel(on: boolean) {
     this.busy.set(true);
     this.formError.set('');
@@ -1269,7 +1269,7 @@ export class SetupPageComponent {
   }
 
   downloadText(d: Download): string {
-    if (d.state === 'done') return 'Scaricato.';
+    if (d.state === 'done') return tr('Downloaded.');
     if (d.state === 'error') return d.error || tr('I couldn\'t download it: I\'ll retry from the Downloads page.');
     if (d.state === 'queued') return tr('Queued.');
     if (d.state === 'paused') return tr('Paused.');

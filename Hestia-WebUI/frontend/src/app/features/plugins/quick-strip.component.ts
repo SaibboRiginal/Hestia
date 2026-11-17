@@ -9,7 +9,7 @@ import { TrPipe } from '../../core/i18n';
 const today = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); };
 
 /**
- * Home strip of one-tap quick actions (SPEC §4.2b): tap = done (toast with «Annulla»), ★ pins (WebUI setting
+ * Home strip of one-tap quick actions (SPEC §4.2b): tap = done (toast with «Undo»), ★ pins (WebUI setting
  * webui.home.quick), ⋯ another day / note / params. Drawn by the WebUI, so it is instant even before any bundle loads.
  */
 @Component({

@@ -96,12 +96,12 @@ public record ChatHubMessage
     [JsonPropertyName("answer")]
     public string? Answer { get; init; }
 
-    /// <summary>"Crea con Hestia" drawer: page context packet (where the user is, what is selected).
+    /// <summary>"Create with the assistant" drawer: page context packet (where the user is, what is selected).
     /// Appended to the client instructions of this turn only.</summary>
     [JsonPropertyName("context")]
     public string? Context { get; init; }
 
-    /// <summary>Live mode «Parla»: the turn was heard and is answered aloud (Oracle keeps it short and speakable,
+    /// <summary>Live mode «Talk»: the turn was heard and is answered aloud (Oracle keeps it short and speakable,
     /// docs/work/2026-11-06-hestia-viva F1).</summary>
     [JsonPropertyName("spoken")]
     public bool? Spoken { get; init; }
@@ -150,7 +150,7 @@ public record OracleEvent(
     bool? Required = null,
     [property: JsonPropertyName("timeout_sec")]
     int? TimeoutSec = null,
-    // Choice questions that also accept a free answer («Altro…», oracle-offline v3 A)
+    // Choice questions that also accept a free answer («Other…», oracle-offline v3 A)
     [property: JsonPropertyName("allow_other")]
     bool? AllowOther = null,
     // needs_input frames (non-interactive callers)

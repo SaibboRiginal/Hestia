@@ -15,7 +15,7 @@ interface Entry { id: string; label: string; hint: string; icon: string; group: 
 /**
  * Ctrl/⌘+K palette: «Now» (what makes sense now, from Metis), every quick action (one tap, same as the Home
  * strip), module pages, dashboards and the WebUI's own pages. Type to filter, ↑/↓ + Enter to run. Also opened by
- * the sidebar «Cerca» (`open()`).
+ * the sidebar «Search» (`open()`).
  */
 @Component({
   selector: 'hx-command-palette',
@@ -105,7 +105,7 @@ export class CommandPaletteComponent {
     effect(() => { if (this.open()) queueMicrotask(() => this.input()?.nativeElement.focus()); });
   }
 
-  /** The sidebar «Cerca» button. */
+  /** The sidebar «Search» button. */
   @HostListener('window:hestia:palette')
   fromSidebar() { if (!this.open()) this.show(); }
 
@@ -129,7 +129,7 @@ export class CommandPaletteComponent {
     this.query.set(''); this.sel.set(0); this.open.set(true);
     void this.qa.reload();
     void this.metis.loadAdesso();
-    if (!this.settings.items().length) void this.settings.loadItems();   // one read; the Impostazioni page keeps it fresh
+    if (!this.settings.items().length) void this.settings.loadItems();   // one read; the Settings page keeps it fresh
   }
 
   exec(e: Entry) { this.close(); e.run(); }

@@ -6,7 +6,7 @@ import { TrPipe, tr } from '../../core/i18n';
 
 const LABELS: Record<string, string> = { brain: tr('models'), voice: tr('voice'), telegram: 'Telegram', backup: tr('backup'), external_ais: tr('external accounts') };
 
-/** Home card «Da finire»: what the guided setup left for later (no nag, it just stays here until done). */
+/** Home card «To finish»: what the guided setup left for later (no nag, it just stays here until done). */
 @Component({
   selector: 'hx-setup-card',
   imports: [TrPipe, ...UI, RouterLink],

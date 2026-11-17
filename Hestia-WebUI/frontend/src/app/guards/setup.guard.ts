@@ -3,7 +3,7 @@ import { CanActivateFn, Router } from '@angular/router';
 import { SetupApi } from '../features/setup/setup.api';
 
 /** First visit after the install: the guided setup «Benvenuto» opens once per browser session until it is completed.
- *  Only when opening Hestia itself (home): a link to a page (Download, Dispositivi, opened from the setup in another
+ *  Only when opening the WebUI itself (home): a link to a page (Downloads, Devices, opened from the setup in another
  *  tab) opens that page. Hestia not answering → straight in (the setup must never lock the app). */
 export const setupGuard: CanActivateFn = async (_route, state) => {
   const router = inject(Router);

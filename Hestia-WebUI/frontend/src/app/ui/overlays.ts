@@ -10,7 +10,7 @@ import { tr, TrPipe } from '../core/i18n';
 // ── Modal ──────────────────────────────────────────────────────────────────
 
 /**
- * <hx-modal [open]="show()" title="Nuovo evento" size="md" (closed)="show.set(false)">
+ * <hx-modal [open]="show()" title="New event" size="md" (closed)="show.set(false)">
  *   body…
  *   <ng-container footer> <button hx-btn>…</button> </ng-container>
  * </hx-modal>
@@ -196,7 +196,7 @@ export class MenuComponent {
 
 export interface Toast { id: number; text: string; tone: 'info' | 'success' | 'danger' | 'warning'; action?: { label: string; run: () => void }; }
 
-/** inject(ToastService).show('Salvato', 'success') — rendered by <hx-toast-host> (once, in the shell). */
+/** inject(ToastService).show('Saved', 'success') — rendered by <hx-toast-host> (once, in the shell). */
 @Injectable({ providedIn: 'root' })
 export class ToastService {
   readonly toasts = signal<Toast[]>([]);
@@ -245,8 +245,8 @@ export interface ChoiceOption<T = string> { value: T; label: string; variant?: B
 interface ChoiceRequest { title: string; message: string; options: ChoiceOption<unknown>[]; resolve: (v: unknown) => void; }
 
 /**
- * const ok = await inject(DialogService).confirm('Annullare la regola?', 'Non verrà più eseguita.');
- * const which = await dialogs.choose('Spostare…', '', [{value:'one',label:'Solo questa'},{value:'all',label:'Tutta la serie'}]);
+ * const ok = await inject(DialogService).confirm('Cancel the rule?', 'It will not run any more.');
+ * const which = await dialogs.choose('Move…', '', [{value:'one',label:'Only this one'},{value:'all',label:'The whole series'}]);
  * Resolves null on cancel. Rendered by <hx-dialog-host> (once, in the shell).
  */
 @Injectable({ providedIn: 'root' })

@@ -14,8 +14,8 @@ const STATE: Record<DownloadRow['state'], { label: string; icon: string; tone: s
   queued: { label: tr('Queued'), icon: 'clock', tone: 'muted' },
   running: { label: tr('In progress'), icon: 'download', tone: 'info' },
   paused: { label: tr('Paused'), icon: 'pause', tone: 'warning' },
-  fatto: { label: tr('Done'), icon: 'check-circle', tone: 'success' },
-  errore: { label: tr('alt::Failed'), icon: 'alert', tone: 'danger' },
+  done: { label: tr('Done'), icon: 'check-circle', tone: 'success' },
+  error: { label: tr('alt::Failed'), icon: 'alert', tone: 'danger' },
 };
 const SOURCE: Record<string, string> = { ollama: tr('Model'), whisper: tr('Listening'), http: tr('File'), docker: tr('Program') };
 const ORDER: DownloadRow['state'][] = ['running', 'queued', 'paused', 'error', 'done'];
@@ -142,7 +142,7 @@ export class DownloadsPageComponent {
 
   detail(d: DownloadRow): string {
     if (d.state === 'error') return d.error || tr('Failed.');
-    if (d.state === 'done') return d.size ? bytes(d.size) : 'Pronto.';
+    if (d.state === 'done') return d.size ? bytes(d.size) : tr('Ready.');
     const parts = [d.size ? `${bytes(d.done)} di ${bytes(d.size)}` : this.state(d).label];
     if (d.state === 'running' && d.speed) parts.push(`${bytes(d.speed)}/s`);
     if (d.state === 'running' && d.eta_s) parts.push(d.eta_s < 60 ? tr('less than a minute') : tr("{0} min left", Math.round(d.eta_s / 60)));

@@ -47,15 +47,15 @@ def _hub_default() -> str:
 
 
 def ago(minutes: float | None) -> str:
-    """Italian, short: "adesso", "12 min fa", "3 h fa", "2 giorni fa"."""
+    """Short, in the owner's language: "now", "12 min ago", "3 h ago", "2 days ago"."""
     if minutes is None:
         return tr("never")
     if minutes < 1:
-        return "now"
+        return tr("now")
     if minutes < 60:
-        return f"{int(minutes)} min fa"
+        return tr("{0} min ago", int(minutes))
     if minutes < 48 * 60:
-        return f"{int(minutes // 60)} h fa"
+        return tr("{0} h ago", int(minutes // 60))
     return tr("{0} days ago", int(minutes // 1440))
 
 

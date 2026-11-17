@@ -1,5 +1,5 @@
 import { tr } from '../../core/i18n';
-/** The personal settings of this client (Impostazioni → Personali): sections and rows, as data, so the page search
+/** The personal settings of this client (Settings → Personal): sections and rows, as data, so the page search
  *  and the Ctrl+K palette find them without loading the page. */
 export interface PersonalSection { id: string; label: string; icon: string; }
 export interface PersonalRow { id: string; section: string; label: string; help: string; keywords: string; wide?: boolean; }

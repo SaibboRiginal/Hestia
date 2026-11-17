@@ -6,9 +6,9 @@ import { PluginPage } from '../plugins/plugins.types';
 import { TrPipe } from '../../core/i18n';
 
 /**
- * «Sistema» (brainstorm C13, W7): the one sidebar entry of the system modules. Every page of the core modules,
- * grouped by module with its counter, plus the ready-made *Sistema* dashboard. A page can still be pinned in the
- * sidebar from here (it then shows in «Fissati»).
+ * «System» (brainstorm C13, W7): the one sidebar entry of the system modules. Every page of the core modules,
+ * grouped by module with its counter, plus the ready-made *System* dashboard. A page can still be pinned in the
+ * sidebar from here (it then shows in «Pinned»).
  */
 @Component({
   selector: 'app-system-page',

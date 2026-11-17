@@ -36,7 +36,7 @@ export class QuickActionsService {
     };
     return [...this.chips()].sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label));
   });
-  /** What Home shows before "Altre": pins, favourites, due today; everything when nothing qualifies. */
+  /** What Home shows before "Others": pins, favourites, due today; everything when nothing qualifies. */
   readonly primary = computed(() => {
     const pins = this.plugins.quickPins();
     const main = this.sorted().filter(c => pins.includes(c.key) || c.favorite || c.state === 'todo' || c.state === 'late');
@@ -68,7 +68,7 @@ export class QuickActionsService {
     }));
   }
 
-  /** Runs a chip (optionally with {date, note, …params}); toast with «Annulla» when the action has an undo. */
+  /** Runs a chip (optionally with {date, note, …params}); toast with «Undo» when the action has an undo. */
   async run(chip: QuickChipView, body?: Record<string, unknown>): Promise<boolean> {
     const a = chip.action;
     if (a.confirm && !(await this.dialogs.confirm(chip.label, a.confirm, tr('Confirm')))) return false;

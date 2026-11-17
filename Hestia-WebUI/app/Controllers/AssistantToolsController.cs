@@ -32,10 +32,10 @@ public class AssistantToolsController : ControllerBase
         new
         {
             name = "webui_widgets",
-            title = "🧩 Widget disponibili",
-            description = "Widget dei moduli per le dashboard della WebUI: id, nome, modulo, misure (s m l xl), " +
-                          "parametri. Usa prima di proporre una dashboard.",
-            inputSchema = new { type = "object", properties = new { q = new { type = "string", description = "filtro (nome, modulo)" } } },
+            title = "🧩 Available widgets",
+            description = "Module widgets for the WebUI dashboards: id, name, module, sizes (s m l xl), " +
+                          "params. Use before proposing a dashboard.",
+            inputSchema = new { type = "object", properties = new { q = new { type = "string", description = "filter (name, module)" } } },
             path = "/api/ai/widgets",
             clients = new[] { "ui" },
             telegram_visible = false,
@@ -44,10 +44,10 @@ public class AssistantToolsController : ControllerBase
         new
         {
             name = "webui_dashboards",
-            title = "🧩 Dashboard della WebUI",
-            description = "Dashboard attuali (Home + altre) con i loro widget. Per creare/cambiare: settings_propose " +
-                          "key=webui.dashboards, value = TUTTO l'oggetto {dashboards:[{id,title,icon,created_by:'oracle'," +
-                          "items:[{widget:'<modulo>.<id>',size,params,title}]}]} (tieni le esistenti). L'utente conferma in chat.",
+            title = "🧩 WebUI dashboards",
+            description = "Current dashboards (Home + others) with their widgets. To create/change: settings_propose " +
+                          "key=webui.dashboards, value = the WHOLE object {dashboards:[{id,title,icon,created_by:'oracle'," +
+                          "items:[{widget:'<module>.<id>',size,params,title}]}]} (keep the existing ones). The user confirms in chat.",
             inputSchema = new { type = "object", properties = new { } },
             path = "/api/ai/dashboards",
             clients = new[] { "ui" },
@@ -133,15 +133,15 @@ public class AssistantToolsController : ControllerBase
             query: new Dictionary<string, string> { ["client"] = PluginCatalog.Client }, timeoutSeconds: 8,
             ct: HttpContext.RequestAborted);
         if (status >= 400 || payload.ValueKind != JsonValueKind.Object || !payload.TryGetProperty("value", out var value))
-            return new { error = "impostazioni non raggiungibili", key = DashboardsKey };
+            return new { error = "settings not reachable", key = DashboardsKey };
         var node = JsonNode.Parse(value.GetRawText());
         var dashboards = node?["dashboards"] as JsonArray ?? [];
         return new
         {
             key = DashboardsKey,
             note = dashboards.Count == 0
-                ? "Nessuna dashboard salvata: la Home mostra in automatico i widget 'auto'."
-                : "Per cambiare proponi l'oggetto completo (settings_propose).",
+                ? "No dashboard saved: Home shows the 'auto' widgets by itself."
+                : "To change, propose the whole object (settings_propose).",
             value = node,
         };
     }

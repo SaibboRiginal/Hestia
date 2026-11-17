@@ -76,7 +76,7 @@ def test_adesso_habit_at_this_hour_and_day_beats_others():
     for weeks in (1, 2, 3):
         _tap(u, "gym_today", now - timedelta(days=7 * weeks))
     _tap(u, "expenses_add", now - timedelta(days=2, hours=6))
-    out = u.adesso("telegram", now=now)
+    out = u.now("telegram", now=now)
     assert out["items"][0]["tool"] == "gym_today"
     assert out["items"][0]["source"] == "habit" and "Di solito" in out["items"][0]["reason"]
 
@@ -86,7 +86,7 @@ def test_adesso_drops_tools_the_client_cannot_run_and_deletes():
     now = datetime.now(TZ)
     for ref in ("webui_only", "expenses_delete", "sparita"):
         _tap(u, ref, now - timedelta(hours=1))
-    names = [i["tool"] for i in u.adesso("telegram", now=now)["items"]]
+    names = [i["tool"] for i in u.now("telegram", now=now)["items"]]
     assert "webui_only" not in names and "expenses_delete" not in names and "sparita" not in names
 
 
@@ -95,7 +95,7 @@ def test_adesso_agenda_item_with_tool_comes_first():
     u, _ = _usage(FakeAgenda([{"title": "Palestra", "start_at": start, "params": {"tool": "gym_today"}},
                               {"title": "Lontano", "start_at": (datetime.now(timezone.utc) + timedelta(hours=9))
                                .isoformat(), "params": {"tool": "weather_today"}}]))
-    items = u.adesso("telegram")["items"]
+    items = u.now("telegram")["items"]
     assert items[0]["tool"] == "gym_today" and items[0]["source"] == "agenda"
     assert "weather_today" not in [i["tool"] for i in items]
 
@@ -105,14 +105,14 @@ def test_ideas_are_validated_stored_and_shown():
                            '{"tool":"inventato","reason":"x"},{"tool":"expenses_delete","reason":"no"}]')
     assert u.refresh_ideas("telegram") == {"ideas": 1}
     assert hub.prompts[0][1]["use_case"] == "metis.now"
-    items = u.adesso("telegram")["items"]
+    items = u.now("telegram")["items"]
     assert [(i["tool"], i["source"], i["reason"]) for i in items] == [("diary_write", "idea", "Fine giornata")]
 
 
 def test_ideas_fail_soft_when_the_model_is_away():
     u, _ = _usage(answer=None)
     assert u.refresh_ideas("telegram") == {"ideas": 0}
-    assert u.adesso("telegram")["items"] == []
+    assert u.now("telegram")["items"] == []
 
 
 def test_scopri_lists_unused_one_per_module_first():
@@ -120,7 +120,7 @@ def test_scopri_lists_unused_one_per_module_first():
     now = datetime.now(TZ)
     for _ in range(3):
         _tap(u, "gym_today", now)
-    out = u.scopri("telegram")
+    out = u.discover("telegram")
     names = [i["tool"] for i in out["items"]]
     assert "gym_today" not in names and "expenses_delete" not in names and "webui_only" not in names
     assert set(names) == {"expenses_add", "weather_today", "diary_write"}
@@ -168,8 +168,8 @@ def test_endpoints_and_tool_cards():
         assert c.get("/api/metis/now", params={"client": "telegram"}).json()["items"][0]["tool"] == "gym_today"
         card = c.get("/api/metis/tools/now", params={"client": "telegram"}).json()
         assert card["display"]["title"] == "Adesso" and card["display"]["actions"][0]["tool"] == "gym_today"
-        scopri = c.get("/api/metis/tools/discover").json()
-        assert scopri["display"]["title"] == "Scopri" and scopri["items"]
+        found = c.get("/api/metis/tools/discover").json()
+        assert found["display"]["title"] == "Scopri" and found["items"]
         assert c.get("/api/metis/usage/stats").json()["taps"] == 1
         assert "pruned" in c.post("/api/metis/now/refresh", json={}).json()
     rules = main._agenda_rules()

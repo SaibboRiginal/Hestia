@@ -5,8 +5,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'subt
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 /**
- * <button hx-btn variant="primary" icon="plus">Nuovo</button>
- * <button hx-btn variant="ghost" icon="x" iconOnly aria-label="Chiudi"></button>
+ * <button hx-btn variant="primary" icon="plus">New</button>
+ * <button hx-btn variant="ghost" icon="x" iconOnly aria-label="Close"></button>
  * Works on <button> and <a>. Variants: primary | secondary | ghost | danger | subtle.
  */
 @Component({

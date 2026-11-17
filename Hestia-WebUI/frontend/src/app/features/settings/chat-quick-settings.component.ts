@@ -10,9 +10,9 @@ const KEYS = ['oracle.chat.tone', 'oracle.chat.instructions'];
 
 /**
  * <hx-chat-quick-settings /> — chat header button: personal settings for THIS conversation
- * (Themis scope session). Defaults stay in Impostazioni → Personali; "Come predefinito" drops
- * the override so the conversation follows the defaults again. "Ragionamento" is how this browser
- * shows the reasoning (WebUI presentation, same value as Personali).
+ * (Themis scope session). Defaults stay in Settings → Personal; "As default" drops
+ * the override so the conversation follows the defaults again. "Reasoning" is how this browser
+ * shows the reasoning (WebUI presentation, same value as Personal).
  */
 @Component({
   selector: 'hx-chat-quick-settings',

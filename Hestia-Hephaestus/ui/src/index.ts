@@ -5,7 +5,7 @@
 import { definePlugin } from '@hestia/webui-sdk';
 import { HephaestusRepairs } from './repairs';
 import { HephaestusForgeWidget } from './forge-widget';
-import { HephaestusSviluppo } from './development';
+import { HephaestusDevelopment } from './development';
 import { HephaestusTaskPanel } from './forge/panel';
 import { HephaestusRepo } from './forge/repo';
 import { HephaestusTranscript } from './forge/transcript';
@@ -14,6 +14,6 @@ import { HephaestusMd } from './forge/md';
 
 definePlugin({
   'hephaestus-repairs': HephaestusRepairs, 'hephaestus-forge-widget': HephaestusForgeWidget,
-  'hephaestus-development': HephaestusSviluppo, 'hephaestus-task-panel': HephaestusTaskPanel, 'hephaestus-repo': HephaestusRepo,
+  'hephaestus-development': HephaestusDevelopment, 'hephaestus-task-panel': HephaestusTaskPanel, 'hephaestus-repo': HephaestusRepo,
   'hephaestus-transcript': HephaestusTranscript, 'hephaestus-diff': HephaestusDiff, 'hephaestus-md': HephaestusMd,
 });

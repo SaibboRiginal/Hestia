@@ -4,23 +4,23 @@ import { SignalRService } from './signalr.service';
 import { tr } from '../core/i18n';
 
 /**
- * Context packet of "Crea con Hestia": where the user opened the assistant from.
+ * Context packet of "Create with the assistant": where the user opened the assistant from.
  * `label` is shown in the drawer; the rest goes to Oracle as client instructions of the turn.
  */
 export interface AssistantContext {
   page: 'calendar' | 'forge' | 'commands' | 'chat' | 'documents' | 'settings' | string;
   intent?: 'create' | 'modify' | 'explain' | 'ask' | string;
-  label?: string;                       // e.g. "Agenda · lun 6 ott, 15:00"
+  label?: string;                       // e.g. "Agenda · Mon 6 Oct, 15:00"
   hints?: Record<string, string | number | boolean | null | undefined>;
   suggestions?: string[];               // starter prompts for this context
   prompt?: string;                      // prefill (not sent automatically)
 }
 
-/** Notice kinds that change data shown by pages (calendar, Sviluppo, commands). */
+/** Notice kinds that change data shown by pages (calendar, Development, commands). */
 const CHANGE_KINDS = ['agenda.planned', 'action.done', 'forge.task', 'subscription.added', 'subscription.changed', 'subscription.removed'];
 
 /**
- * Opens the "Crea con Hestia" drawer from any page (`open(ctx)`) and tells pages when the
+ * Opens the "Create with the assistant" drawer from any page (`open(ctx)`) and tells pages when the
  * assistant changed something (`changed$`: agenda/Forge/action notices), so they reload live.
  */
 @Injectable({ providedIn: 'root' })

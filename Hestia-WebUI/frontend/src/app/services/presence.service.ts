@@ -6,8 +6,8 @@ import { tr } from '../core/i18n';
 
 /**
  * Assistant presence (SPEC docs/work/2026-10-10-assistant-presence): the state Chronos computes
- * from signals (last interaction, running jobs, night window…) — "Sveglio · Occupato: Forge".
- * Read-only here except «Non disturbare». Refreshed every minute and when the tab comes back.
+ * from signals (last interaction, running jobs, night window…) — "Awake · Busy: Forge".
+ * Read-only here except «Do not disturb». Refreshed every minute and when the tab comes back.
  */
 export interface PresenceActivity { key: string; label?: string; load?: string; resource?: string; kind?: string; since?: string; }
 export interface PresenceState {

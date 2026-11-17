@@ -19,9 +19,9 @@ export const HEALTH: Record<string, { tone: Tone; label: string }> = {
 interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingItem>; }
 
 /**
- * Impostazioni → Sistema content: every module's settings (Themis). Overview = module status cards
+ * Settings → System content: every module's settings (Themis). Overview = module status cards
  * ("mezza dashboard"); a module = its groups, presets, settings; a search shows every match.
- * The sidebar and the search box live in the page (shared with Personali).
+ * The sidebar and the search box live in the page (shared with Personal).
  */
 @Component({
   selector: 'app-system-settings',
@@ -56,7 +56,7 @@ interface Grid { rows: string[]; columns: string[]; cell: Map<string, SettingIte
               <div class="cm">{{ m.definitions }} {{ "settings" | tr }}@if (m.groups?.length) { · {{ m.groups!.join(', ') }} }</div>
               <div class="cf">
                 @if (m.version) { <span>v{{ m.version }}</span> }
-                @if (m.pending_proposals) { <hx-badge tone="accent">{{ m.pending_proposals === 1 ? '1 proposta' : m.pending_proposals + ' proposte' }}</hx-badge> }
+                @if (m.pending_proposals) { <hx-badge tone="accent">{{ m.pending_proposals === 1 ? ('1 proposal' | tr) : ('{0} proposals' | tr: m.pending_proposals) }}</hx-badge> }
               </div>
             </button>
           }
@@ -244,7 +244,7 @@ export class SystemSettingsComponent {
     if (id !== 'custom') void this.store.applyPreset(pg, id);
   }
 
-  /** Settings declaring row+column become a table (e.g. Oracle use cases × fornitore/modello). */
+  /** Settings declaring row+column become a table (e.g. Oracle use cases × provider/model). */
   grid(items: SettingItem[]): Grid | null {
     const cells = items.filter(i => i.row && i.column);
     if (cells.length < 2) return null;

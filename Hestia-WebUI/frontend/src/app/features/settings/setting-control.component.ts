@@ -10,7 +10,7 @@ import { tr, TrPipe } from '../../core/i18n';
  * <hx-setting-control [item] [disabled] (commit)="store.set(item, $event)" />
  * The input for one central setting, chosen by its declared type. Emits only a complete value
  * (on toggle/select, or when a text field is confirmed): Themis validates and answers.
- * Reusable anywhere a setting is shown (Impostazioni, chat quick menu…).
+ * Reusable anywhere a setting is shown (Settings, chat quick menu…).
  */
 @Component({
   selector: 'hx-setting-control',

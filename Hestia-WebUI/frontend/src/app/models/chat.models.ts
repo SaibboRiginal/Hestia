@@ -17,11 +17,11 @@ export interface ChatMessage {
   icon?: string;
   /** The answer failed: drawn with an alert icon in the danger colour. */
   error?: boolean;
-  /** A voice message (dossier modulo-voce §7.2): local recording, shown as an audio bubble with its transcript. */
+  /** A voice message (voice dossier §7.2): local recording, shown as an audio bubble with its transcript. */
   audio?: { url: string; seconds: number };
   /** The voice message is being transcribed (the text arrives, then it is sent like a typed one). */
   transcribing?: boolean;
-  /** What this answer changed, each with its «Annulla» (Oracle `changes` frame, Cindy 13). */
+  /** What this answer changed, each with its «Undo» (Oracle `changes` frame, Cindy 13). */
   changes?: ChatChange[];
   /** Who started this turn when it was not you typing (routine, module, external AI — Cindy 6). */
   origin?: { kind: string; level: string; label: string };
@@ -34,7 +34,7 @@ export interface ChatMessage {
   model?: string;
 }
 
-/** One write of an answer: `undo` runs a tool through Hestia-MCP («Annulla»); `done` once undone. */
+/** One write of an answer: `undo` runs a tool through Hestia-MCP («Undo»); `done` once undone. */
 export interface ChatChange {
   tool: string;
   title: string;
@@ -116,7 +116,7 @@ export interface ServerEvent {
   detail?: string;
   required?: boolean;
   timeout_sec?: number;
-  /** question: choice kinds that also take a free answer («Altro…»). */
+  /** question: choice kinds that also take a free answer («Other…»). */
   allow_other?: boolean;
   missing_fields?: string[];
   data?: any;
@@ -147,7 +147,7 @@ export interface PendingQuestion {
   kind: 'free_text' | 'single_choice' | 'multi_choice' | 'confirm';
   options: { label: string; value: string }[];
   required: boolean;
-  /** Choice kinds: also accept a free answer («Altro…»). */
+  /** Choice kinds: also accept a free answer («Other…»). */
   allowOther?: boolean;
   expiresAt?: number;
 }
@@ -162,9 +162,9 @@ export interface ClientMessage {
   model?: string;
   question_id?: string;
   answer?: string;
-  /** "Crea con Hestia" drawer: page context packet, appended to this turn's client instructions. */
+  /** "Create with the assistant" drawer: page context packet, appended to this turn's client instructions. */
   context?: string;
-  /** Live mode «Parla»: the turn is heard and answered aloud (short, speakable). */
+  /** Live mode «Talk»: the turn is heard and answered aloud (short, speakable). */
   spoken?: boolean;
 }
 

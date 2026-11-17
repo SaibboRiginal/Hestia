@@ -36,7 +36,7 @@ export interface BrainCatalog {
   cloud: CloudProvider[];
 }
 /** Any module's download (models through Ollama, voices in Hestia's data folder), as the Download page lists them. */
-/** A speech service of the setup «Voce» (Echo's blocks): local engines first, then cloud ones (key needed). */
+/** A speech service of the setup «Voice» (Echo's blocks): local engines first, then cloud ones (key needed). */
 export interface VoiceOption { id: string; label: string; note?: string; lang?: string; lang_label?: string; }
 export interface VoiceProvider { name: string; label: string; type: string; local: boolean; needs_key: boolean; key: boolean;
   state: string; models: VoiceOption[]; voices: VoiceOption[]; note?: string; found?: boolean; url?: string; }
@@ -46,19 +46,19 @@ export interface VoiceStep { provider: string; model: string; voice: string; url
 export interface VoiceDirection { providers: VoiceProvider[]; current: VoiceStep; steps?: VoiceStep[];
   /** Free speech programs not found at home, offered to install (Chatterbox, Kokoro, Speaches). */
   programs?: { name: string; label: string; site: string; note: string }[]; }
-export interface VoiceCatalog { listen: VoiceDirection; voce: VoiceDirection; }
+export interface VoiceCatalog { listen: VoiceDirection; voice: VoiceDirection; }
 export interface Download { module?: string; id: string; what: string; source?: string;
   state: 'queued' | 'running' | 'paused' | 'done' | 'error'; size: number; done: number;
   speed?: number; eta_s?: number | null; error?: string; }
 export interface Outcome { ok: boolean; detail?: string; }
-/** «Prova»: the model tried ('' = pick another) and the chat models the service really has. */
+/** «Try»: the model tried ('' = pick another) and the chat models the service really has. */
 export interface TestOutcome extends Outcome { model?: string; models?: string[]; recommended?: string[]; embed?: string[]; }
 type RuntimeRef = { url?: string; type?: string; label?: string };
 export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>;
   embedding: ({ provider: string; model: string } & RuntimeRef) | null; local_runtime: RuntimeRef;
-  /** «Per modalità»: potente / codice / visione with their own model (first there, the general choice after). */
+  /** «Per mode»: strong / code / vision with their own model (first there, the general choice after). */
   modes: Record<string, { steps: ({ provider: string; model: string } & RuntimeRef)[] }>;
-  /** «Scelti» in the user's order, local and cloud mixed. */
+  /** «Chosen» in the user's order, local and cloud mixed. */
   order?: { provider: string; model: string }[]; }
 export interface TunnelState { on: boolean; url: string; detail?: string; phase?: '' | 'start' | 'download' | 'address' | 'ready' | 'error'; }
 
@@ -75,14 +75,14 @@ export class SetupApi {
   complete() { return this.post<SetupState>('complete'); }
   /** ``hosts``: other computers of the house to look on too. */
   catalog(hosts: string[] = []) { return this.get<BrainCatalog>('brain/catalog' + (hosts.length ? `?hosts=${encodeURIComponent(hosts.join(','))}` : '')); }
-  /** «Ascolta» on a chosen voice / «Prova» of listening, with that provider only (nothing saved). */
+  /** «Listen» on a chosen voice / «Try» of listening, with that provider only (nothing saved). */
   voicePreview(provider: string, voice: string, model = '') {
     return this.post<{ ok: boolean; audio_b64?: string; mime_type?: string; detail?: string }>('voice/preview', { provider, voice, model });
   }
   voiceHear(provider: string, model: string, audio_b64: string, mime_type: string) {
     return this.post<{ ok: boolean; text?: string; detail?: string }>('voice/hear', { provider, model, audio_b64, mime_type });
   }
-  /** «I modelli sono pronti»: the assistant's first message, written with the models just chosen. */
+  /** «The models are ready»: the assistant's first message, written with the models just chosen. */
   hello() { return this.post<{ ok: boolean; text?: string; model?: string; provider?: string; detail?: string }>('brain/hello'); }
   test(provider: string, key = '', model = '') { return this.post<TestOutcome>('brain/test', { provider, key, model }); }
   apply(recipe: string, local_model: string, cloud: string[], claude_token: string, choice: BrainChoice) {
@@ -90,7 +90,7 @@ export class SetupApi {
       cloud_models: choice.cloud_models, embedding: choice.embedding || {}, local_runtime: choice.local_runtime || {},
       modes: choice.modes || {}, order: choice.order || [] });
   }
-  /** Setup «Voce»: the speech services (Echo), «Prova» (a typed key is saved first), the choice → Echo's chains. */
+  /** Setup «Voice»: the speech services (Echo), «Try» (a typed key is saved first), the choice → Echo's chains. */
   voiceCatalog(hosts: string[] = []) { return this.get<VoiceCatalog>('voice/catalog' + (hosts.length ? `?hosts=${encodeURIComponent(hosts.join(','))}` : '')); }
   voiceTest(provider: string, key = '') {
     return this.post<Outcome & { models?: VoiceOption[]; voices?: VoiceOption[]; recommended?: Record<string, string[]> }>('voice/test', { provider, key });
@@ -107,7 +107,7 @@ export class SetupApi {
   telegramToken(token: string) { return this.post<Outcome & { code?: string; expires_in?: number }>('telegram/token', { token }); }
   telegramCode() { return this.post<{ code: string; expires_in: number }>('telegram/code'); }
   backup(passphrase: string) { return this.post<Outcome>('backup', { passphrase }); }
-  /** «Da fuori casa»: the Cloudflare quick tunnel to this WebUI (Hephaestus starts/stops it). */
+  /** «Away from home»: the Cloudflare quick tunnel to this WebUI (Hephaestus starts/stops it). */
   tunnel() { return this.get<TunnelState>('tunnel'); }
   setTunnel(on: boolean) { return this.post<TunnelState>('tunnel', { on }); }
 }

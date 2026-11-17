@@ -118,7 +118,7 @@ export function tokens(n: number | undefined | null): string {
                 <div class="models">
                   @for (m of models(); track m.provider + m.model) {
                     <div class="mrow"><span class="model">{{ m.model }}</span>
-                      <span>{{ m.calls === 1 ? '1 chiamata' : m.calls + ' chiamate' }} · {{ fmt(m.input_tokens) }}@if (m.estimated) { <em  [title]="'The local program doesn\\'t say how much prompt it reused: input and cache are computed from the text length' | tr"> {{ "estimated" | tr }}</em> }</span></div>
+                      <span>{{ m.calls === 1 ? ('1 call' | tr) : ('{0} calls' | tr: m.calls) }} · {{ fmt(m.input_tokens) }}@if (m.estimated) { <em  [title]="'The local program doesn\\'t say how much prompt it reused: input and cache are computed from the text length' | tr"> {{ "estimated" | tr }}</em> }</span></div>
                   }
                 </div>
               }
@@ -129,10 +129,10 @@ export function tokens(n: number | undefined | null): string {
           <div class="acts">
             <button hx-btn size="sm" variant="ghost" icon="refresh" (click)="load()">{{ "Refresh" | tr }}</button>
             <button hx-btn size="sm" [disabled]="!s.compaction_available || compacting()" (click)="compact()"
-                     [title]="'Summarises the oldest messages and frees context' | tr">{{ compacting() ? 'Compatto…' : ('f::Compact' | tr) }}</button>
+                     [title]="'Summarises the oldest messages and frees context' | tr">{{ compacting() ? ('Compacting…' | tr) : ('f::Compact' | tr) }}</button>
           </div>
         } @else {
-          <div class="note">{{ error() || 'Carico…' }}</div>
+          <div class="note">{{ error() || ('Loading…' | tr) }}</div>
         }
       </div>
     </hx-popover>`,
