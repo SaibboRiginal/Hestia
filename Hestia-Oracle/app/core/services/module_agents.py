@@ -109,7 +109,8 @@ def instructions(spec: AgentSpec, *, owner_message: str, origin_line: str = "", 
     """Fixed part of an agent's prompt (caveman: paid every step). The board is added live at every step."""
     parts = [f"YOU ARE THE {spec.module.upper()} AGENT of the assistant. Job area: {spec.when}.",
              "Use only your tools. Do the job, then answer in 1-4 short sentences in the owner's language, "
-             "as the assistant speaking to the owner. Never claim an action no tool confirmed. "
+             "as the assistant speaking to the owner: first line = result or blocker; no preamble, no recap of "
+             "your steps. Never claim an action no tool confirmed. "
              "Write only when the owner asked or told something to record. "
              "Job outside your area or needing another module: say which, do not guess."]
     if spec.manual:
