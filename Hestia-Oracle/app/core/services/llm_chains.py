@@ -143,39 +143,73 @@ def reset_at(exc: BaseException, now: float | None = None) -> float:
 
 
 def mark_exhausted(provider: str, model: str, exc: BaseException) -> float:
+    """The pair answered «limit reached»: skip it until the provider's hint, learn the limit it names
+    (``llm_limits``: next time the step is skipped before the request) and keep both across restarts."""
+    from core.services import llm_limits
     until = reset_at(exc)
     with _lock:
         _exhausted[(provider, model)] = until
     logger.warning("[🔄] event=llm_chain_step_exhausted provider=%s model=%s until=%s error=%s",
                    provider, model, datetime.fromtimestamp(until).isoformat(timespec="minutes"), str(exc)[:200])
+    if not llm_limits.learn(provider, model, str(exc)):
+        llm_limits.save(provider, model)
     return until
 
 
+def exhausted_raw(provider: str, model: str) -> float:
+    """Epoch the pair was marked usable again after a 429 (0 = not marked), without the learned limits."""
+    with _lock:
+        return _exhausted.get((provider, model), 0.0)
+
+
+def restore_exhausted(provider: str, model: str, until: float) -> None:
+    """Stored state read back after a restart (``llm_limits``)."""
+    with _lock:
+        _exhausted[(provider, model)] = max(until, _exhausted.get((provider, model), 0.0))
+
+
 def exhausted_until(provider: str, model: str) -> float:
+    """When the pair can be used again (0 = now): after a 429, or when a learned limit is already reached."""
+    from core.services import llm_limits
     with _lock:
         until = _exhausted.get((provider, model), 0.0)
         if until and until <= time.time():
             _exhausted.pop((provider, model), None)
-            return 0.0
-        return until
+            until = 0.0
+    return max(until, llm_limits.ahead(provider, model))
 
 
 def exhausted_for(provider: str) -> dict[str, str]:
     """Models of *provider* out of quota now → ISO time they come back."""
-    now = time.time()
     with _lock:
-        return {m: datetime.fromtimestamp(t).isoformat(timespec="minutes")
-                for (p, m), t in _exhausted.items() if p == provider and t > now}
+        models = {m for (p, m) in _exhausted if p == provider}
+    from core.services import llm_limits
+    with llm_limits._lock:
+        models |= {m for (p, m) in llm_limits._limits if p == provider}
+    out = {}
+    for m in sorted(models):
+        until = exhausted_until(provider, m)
+        if until:
+            out[m] = datetime.fromtimestamp(until).isoformat(timespec="minutes")
+    return out
 
 
 def clear_exhausted(provider: str = "", model: str = "") -> None:
-    """Forget the quota state (all, or one provider/model pair: «riprova adesso» in the WebUI)."""
+    """Forget the quota state (all, or one provider/model pair: «Try again now» in the WebUI), learned limits too."""
+    from core.services import llm_limits
     with _lock:
         if not provider:
             _exhausted.clear()
+            keys = []
         else:
-            for key in [k for k in _exhausted if k[0] == provider and (not model or k[1] == model)]:
+            keys = [k for k in _exhausted if k[0] == provider and (not model or k[1] == model)]
+            for key in keys:
                 del _exhausted[key]
+    with llm_limits._lock:
+        keys = set(keys) | {k for k in llm_limits._limits if provider and k[0] == provider and (not model or k[1] == model)}
+    llm_limits.forget(provider, model)
+    for p, m in keys:
+        llm_limits.save(p, m)
 
 
 _outcomes: dict[str, dict] = {}   # use case → {ok_at, ok_index, failed_at} of its last chain calls
@@ -653,10 +687,12 @@ def chains_view() -> dict:
         for step in chain["steps"]:
             ok, detail = llm_providers.available(step["provider"])
             until = exhausted_until(step["provider"], step["model"])
+            from core.services import llm_limits
             rows.append({**step, "available": ok, "detail": detail,
                          "exhausted_until": datetime.fromtimestamp(until).isoformat(timespec="minutes")
-                         if until else ""})
-        out[name] = {"label": chain["label"], "steps": rows, "single_step": name == EMBEDDING_CHAIN}
+                         if until else "", "limits": llm_limits.learned(step["provider"], step["model"])})
+        out[name] = {"label": chain["label"], "steps": rows, "single_step": name == EMBEDDING_CHAIN,
+                     "use": "embedding" if name == EMBEDDING_CHAIN else "chat"}
     return out
 
 

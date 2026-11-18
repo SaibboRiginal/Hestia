@@ -20,6 +20,8 @@ export { HxkChart } from './kit/chart';
 export type { ChartSeries } from './kit/chart';
 export { HxkField, HxkImagePicker } from './kit/forms';
 export { HxkQuicklog } from './kit/quicklog';
+export { HxkChain } from './kit/chain';
+export type { ChainOpt, ChainStep, ChainStepState } from './kit/chain';
 export type { QuickAction } from './kit/quicklog';
 
 import { definePlugin } from './base';
@@ -27,12 +29,13 @@ import { HxkBadge, HxkButton, HxkCard, HxkIcon, HxkList, HxkStat, HxkState } fro
 import { HxkChart } from './kit/chart';
 import { HxkField, HxkImagePicker } from './kit/forms';
 import { HxkQuicklog } from './kit/quicklog';
+import { HxkChain } from './kit/chain';
 
 /** Kit elements, registered once for every plugin (prefix `hxk-` so they never clash with the WebUI's own `hx-*`). */
 definePlugin({
   'hxk-icon': HxkIcon, 'hxk-button': HxkButton, 'hxk-badge': HxkBadge, 'hxk-card': HxkCard, 'hxk-stat': HxkStat,
   'hxk-state': HxkState, 'hxk-list': HxkList, 'hxk-chart': HxkChart, 'hxk-field': HxkField,
-  'hxk-image-picker': HxkImagePicker, 'hxk-quicklog': HxkQuicklog,
+  'hxk-image-picker': HxkImagePicker, 'hxk-quicklog': HxkQuicklog, 'hxk-chain': HxkChain,
 });
 
 export const SDK_VERSION = '1';

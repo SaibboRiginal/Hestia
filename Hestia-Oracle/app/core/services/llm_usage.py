@@ -47,7 +47,10 @@ def reset_client(token: contextvars.Token) -> None:
 
 @contextmanager
 def step(use_case: str, chain: str, index: int, provider: str, model: str) -> Iterator[dict]:
-    """Run one chain step with its usage context bound (token counts collected into it)."""
+    """Run one chain step with its usage context bound (token counts collected into it). Every request to a
+    provider passes here, so it is also counted for the learned limits (``llm_limits``)."""
+    from core.services import llm_limits
+    llm_limits.note_call(provider, model)
     ctx = {"use_case": use_case, "chain": chain, "step": index, "provider": provider, "model": model,
            "stats": [], "t0": time.monotonic(), "elapsed": 0.0}
     token = _ctx.set(ctx)

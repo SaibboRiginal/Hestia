@@ -102,7 +102,7 @@ never changes.
   **Parla** (live): the browser notices start and end of speech (`echo.live.silence_ms`), streams the mic to `listen`,
   sends the answer to `say` while it is written and plays it sentence by sentence; speaking again interrupts.
 - **Page «Voce»** (plugin): Prova (mic → text, text → voice, with provider and chain that answered), Motori
-  (providers, chains, uses), Uso (operations, minutes, characters, cost from `echo.pricing`, errors by use and
+  (providers, chains in the SDK `<hxk-chain>` editor shared with the brain models — only the engines of the chain direction, their models or voices —, uses), Uso (operations, minutes, characters, cost from `echo.pricing`, errors by use and
   engine), Audio conservati (space by class, listen, download, delete). **La tua voce** (`<echo-your-voice>`, W7): record the voiceprint
   (≥ 6 s, a sentence to read, «Togli l'impronta»), the personal dictionary (sure words and candidates «n di N»,
   add, remove with «Annulla»). In Prova «Correggi la trascrizione» sends `{heard, corrected}` to `/dictionary/learn`.

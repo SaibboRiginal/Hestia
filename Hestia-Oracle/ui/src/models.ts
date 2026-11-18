@@ -7,6 +7,15 @@ import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API } from './util';
 
 type Opt = { value: string; label: string };
+/** «at 14:05» today, «on 19/11 at 09:00» another day. */
+function when(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? tr('at {0}', time)
+    : tr('on {0} at {1}', d.toLocaleDateString([], { day: '2-digit', month: '2-digit' }), time);
+}
+
 const THINKING: Opt[] = [{ value: '', label: tr('As suggested') }, { value: 'auto', label: tr('Automatic') },
   { value: 'true', label: tr('Yes') }, { value: 'false', label: 'No' }];
 
@@ -19,34 +28,28 @@ function slug(s: string): string {
 export class OracleModels extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, error: { state: true }, providers: { state: true },
                         chains: { state: true }, overrides: { state: true }, dirty: { state: true }, saving: { state: true },
-                        models: { state: true } };
+                        models: { state: true }, advanced: { state: true } };
   declare data: any; declare error: string; declare providers: Record<string, any>; declare chains: Record<string, any>;
   declare overrides: Record<string, any>; declare dirty: Record<string, boolean>; declare saving: string;
-  declare models: Record<string, string[]>;
+  declare models: Record<string, string[]>; declare advanced: boolean;
 
   static styles = [...HestiaElement.styles, css`
     .section { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
     .section h2 { margin: 0; font-size: 16px; }
     .hint { font-size: 12.5px; color: var(--text-3); }
     .grid2 { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
-    .step { display: grid; grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: end;
-      padding: 8px 0; border-top: 1px solid var(--border); }
-    .step:first-of-type { border-top: 0; }
-    .idx { font-variant-numeric: tabular-nums; color: var(--text-3); padding-bottom: 8px; }
-    .tools { display: flex; gap: 2px; }
-    .state { grid-column: 2 / -1; font-size: 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .uc { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end;
+    .uc { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(var(--cols, 1), minmax(0, 1fr)); gap: 8px; align-items: end;
       padding: 8px 0; border-top: 1px solid var(--border); }
     .uc:first-of-type { border-top: 0; }
+    .state { font-size: 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .key { font-family: var(--font-mono, monospace); font-size: 12px; }
     .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-    @media (max-width: 560px) { .uc { grid-template-columns: 1fr 1fr; } .step { grid-template-columns: 20px 1fr; }
-      .step > :nth-child(3), .step > .tools { grid-column: 2; } }
+    @media (max-width: 560px) { .uc { grid-template-columns: 1fr 1fr; } }
   `];
 
   constructor() {
     super(); this.data = null; this.error = ''; this.providers = {}; this.chains = {}; this.overrides = {};
-    this.dirty = {}; this.saving = ''; this.models = {};
+    this.dirty = {}; this.saving = ''; this.models = {}; this.advanced = false;
   }
 
   connectedCallback() {
@@ -84,10 +87,42 @@ export class OracleModels extends HestiaElement {
     window.setTimeout(() => this.load(), 800);   // Themis pushes the new value back to Oracle
   }
 
-  private async loadModels(provider: string) {
-    if (!provider || this.models[provider]) return;
-    const r = await this.host.api('GET', `${API}/models/list`, { query: { provider } });
-    this.models = { ...this.models, [provider]: r.ok ? r.data.models || [] : [] };
+  /** Models of *provider* that fit *use* (chat | embedding): the chain editor shows only those. */
+  private async loadModels(provider: string, use: string) {
+    const key = `${provider}|${use}`;
+    if (!provider || this.models[key]) return;
+    if (this.asking.has(key)) return;
+    this.asking.add(key);                                   // no second request while this one runs
+    const r = await this.host.api('GET', `${API}/models/list`, { query: { provider, use } });
+    this.asking.delete(key);
+    this.models = { ...this.models, [key]: r.ok ? r.data.models || [] : [] };
+  }
+
+  private asking = new Set<string>();
+
+  private useOf(chain: string): string { return this.data?.chains?.[chain]?.use || 'chat'; }
+
+  /** {provider: options} of the models listed for this chain's use; undefined = not loaded yet. */
+  private choicesFor(chain: string): Record<string, { value: string; label: string }[] | undefined> {
+    const use = this.useOf(chain);
+    const out: Record<string, any> = {};
+    for (const p of Object.keys(this.providers)) {
+      const list = this.models[`${p}|${use}`];
+      if (list) out[p] = list.map(m => ({ value: m, label: m }));
+    }
+    return out;
+  }
+
+  /** One sentence per step that is not usable now (or «available again at …»). */
+  private statesFor(chain: string) {
+    const live = this.data?.chains?.[chain]?.steps || [];
+    return (this.chains[chain]?.steps || []).map((s: any) => {
+      const l = live.find((x: any) => x.provider === s.provider && x.model === s.model);
+      if (!l) return null;
+      if (l.exhausted_until) return { tone: 'warning', text: tr('Limit reached: available again {0}', when(l.exhausted_until)), retry: true };
+      if (!l.available) return { tone: 'neutral', text: tr('Skipped: {0}', l.detail) };
+      return null;
+    });
   }
 
   private async retry(provider: string, model: string) {
@@ -134,35 +169,6 @@ export class OracleModels extends HestiaElement {
   }
 
   // ── chains ─────────────────────────────────────────────────────────────
-  private stepRow(chain: string, i: number, step: any) {
-    const steps = this.chains[chain].steps as any[];
-    const live = this.data?.chains?.[chain]?.steps?.find((s: any) => s.provider === step.provider && s.model === step.model);
-    const provOpts: Opt[] = Object.entries<any>(this.providers).map(([n, p]) => ({ value: n, label: p.label || n }));
-    const update = (patch: any) => { const next = steps.slice(); next[i] = { ...step, ...patch }; this.setSteps(chain, next); };
-    const move = (d: number) => { const next = steps.slice(); const [s] = next.splice(i, 1); next.splice(i + d, 0, s); this.setSteps(chain, next); };
-    const listId = `m-${chain}-${i}`;
-    return html`<div class="step">
-      <span class="idx">${i + 1}</span>
-      <hxk-field type="enum" label=${tr("Provider")} .options=${provOpts} .value=${step.provider}
-        @change=${(e: CustomEvent) => update({ provider: e.detail })}></hxk-field>
-      <div @focusin=${() => this.loadModels(step.provider)}>
-        <label class="small muted">${tr("Model")}</label>
-        <input list=${listId} .value=${step.model} style="font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:7px 10px;width:100%;box-sizing:border-box"
-          @change=${(e: any) => update({ model: String(e.target.value).trim() })}>
-        <datalist id=${listId}>${(this.models[step.provider] || []).map(m => html`<option value=${m}></option>`)}</datalist>
-      </div>
-      <div class="tools">
-        <hxk-button variant="ghost" ?disabled=${i === 0} @click=${() => move(-1)} title=${tr("Before")}>↑</hxk-button>
-        <hxk-button variant="ghost" ?disabled=${i === steps.length - 1} @click=${() => move(1)} title=${tr("After")}>↓</hxk-button>
-        <hxk-button variant="ghost" icon="trash" @click=${() => this.setSteps(chain, steps.filter((_, j) => j !== i))} title=${tr("Remove")}></hxk-button>
-      </div>
-      ${live && (!live.available || live.exhausted_until) ? html`<div class="state">
-        ${live.exhausted_until ? html`<hxk-badge tone="warning">${tr("no quota until")} ${live.exhausted_until.slice(11, 16)}</hxk-badge>
-          <hxk-button variant="ghost" @click=${() => this.retry(step.provider, step.model)}>${tr("Try again now")}</hxk-button>` : nothing}
-        ${!live.available ? html`<span class="muted">${tr("skipped: {0}", live.detail)}</span>` : nothing}</div>` : nothing}
-    </div>`;
-  }
-
   private setSteps(chain: string, steps: any[]) {
     this.chains = { ...this.chains, [chain]: { ...this.chains[chain], steps } };
     this.touch('chains');
@@ -170,15 +176,16 @@ export class OracleModels extends HestiaElement {
 
   private chainCard(name: string) {
     const c = this.chains[name];
-    const single = !!this.data?.chains?.[name]?.single_step;
-    const firstProvider = Object.keys(this.providers)[0] || 'ollama';
-    return html`<hxk-card heading=${c.label || name} subtitle=${single ? tr("{0} · a single model (the vectors must stay comparable)", name) : name}>
+    const provOpts = Object.entries<any>(this.providers).map(([n, p]) => ({ value: n, label: p.label || n }));
+    const embedding = this.useOf(name) === 'embedding';
+    return html`<hxk-card heading=${c.label || name} subtitle=${embedding ? tr('For the memory: finding notes and documents again') : ''}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Delete")}</hxk-button>
-      <hxk-field label=${tr("Visible name")} .value=${c.label}
-        @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>
-      ${c.steps.map((s: any, i: number) => this.stepRow(name, i, s))}
-      ${single && c.steps.length >= 1 ? nothing : html`<hxk-button variant="ghost" icon="plus"
-        @click=${() => this.setSteps(name, [...c.steps, { provider: firstProvider, model: '' }])}>${tr("Add a model")}</hxk-button>`}
+      <hxk-chain .steps=${c.steps} .providers=${provOpts} .choices=${this.choicesFor(name)} .states=${this.statesFor(name)}
+        @need-choices=${(e: CustomEvent) => this.loadModels(e.detail, this.useOf(name))}
+        @steps-change=${(e: CustomEvent) => this.setSteps(name, e.detail)}
+        @retry=${(e: CustomEvent) => this.retry(e.detail.step.provider, e.detail.step.model)}></hxk-chain>
+      ${this.advanced ? html`<hxk-field label=${tr("Visible name")} .value=${c.label}
+        @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>` : nothing}
     </hxk-card>`;
   }
 
@@ -209,12 +216,12 @@ export class OracleModels extends HestiaElement {
       const all: Record<string, any> = { ...this.overrides, [u.id]: next }; if (!Object.keys(next).length) delete all[u.id];
       this.overrides = all; this.touch('usecases');
     };
-    return html`<div class="uc">
+    return html`<div class="uc" style=${this.advanced ? '--cols:3' : '--cols:1'}>
       <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">${tr("not declared")}</hxk-badge>` : nothing}</div>
-        <div class="small muted truncate" title=${u.help || ''}>${u.id}${u.help ? ` · ${u.help}` : ''}</div></div>
+        <div class="small muted truncate" title=${u.help || ''}>${u.help || (this.advanced ? u.id : '')}</div></div>
       <hxk-field type="enum" label=${tr("Chain")} .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
-      <hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode || ''} @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
-      <hxk-field type="enum" label=${tr("Reasoning")} .options=${THINKING} .value=${o.thinking || ''} @change=${(e: CustomEvent) => set('thinking', e.detail)}></hxk-field>
+      ${this.advanced ? html`<hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode || ''} @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
+      <hxk-field type="enum" label=${tr("Reasoning")} .options=${THINKING} .value=${o.thinking || ''} @change=${(e: CustomEvent) => set('thinking', e.detail)}></hxk-field>` : nothing}
     </div>`;
   }
 
@@ -234,11 +241,13 @@ export class OracleModels extends HestiaElement {
     if (this.error) return html`<hxk-state kind="error" text=${this.error} @retry=${() => this.load()}></hxk-state>`;
     if (!this.data) return html`<hxk-state kind="loading"></hxk-state>`;
     return html`
-      <div class="section"><h2>${tr("Module uses")}</h2>
-        <div class="hint">${tr("Each module declares its uses; here you choose the chain and the mode (Internal = Oracle chain, External = external agent like Claude Code). Empty = what the module suggests.")}</div>
+      <div class="actions"><hxk-field type="bool" label=${tr("Show the advanced settings")} .value=${this.advanced}
+        @change=${(e: CustomEvent) => { this.advanced = !!e.detail; }}></hxk-field></div>
+      <div class="section"><h2>${tr("What each function uses")}</h2>
+        <div class="hint">${tr("Each function has a suggested list of models; change it only if you want another one.")}</div>
         ${this.usecases()}${this.saveBar('usecases')}</div>
       <div class="section"><h2>${tr("Model chains")}</h2>
-        <div class="hint">${tr("Like a font list: the first ready model is used; if its quota ends I move to the next and skip it until it reloads.")}</div>
+        <div class="hint">${tr("The first model of a list is used; when it is not available (or its limit is reached) the next one answers.")}</div>
         ${Object.keys(this.chains).map(n => this.chainCard(n))}
         <div class="actions"><hxk-button variant="ghost" icon="plus" @click=${() => this.addChain()}>${tr("New chain")}</hxk-button></div>
         ${this.saveBar('chains')}</div>

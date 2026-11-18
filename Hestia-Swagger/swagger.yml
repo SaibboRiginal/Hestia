@@ -4290,6 +4290,11 @@ paths:
           name: provider
           required: true
           schema: { type: string, example: ollama }
+        - in: query
+          name: use
+          required: false
+          description: "chat | embedding: only the models that fit (provider capabilities, else the name); empty = all"
+          schema: { type: string, example: chat }
       responses:
         "200":
           description: "{options: [{value, label}]} — Ollama installed models, Gemini curated list, Anthropic Models API, OpenAI-compatible /models, Claude CLI haiku/sonnet/opus"
@@ -4571,8 +4576,9 @@ paths:
         - url: http://localhost:19004
       parameters:
         - {name: provider, in: query, required: true, schema: {type: string}}
+        - {name: use, in: query, required: false, description: "chat | embedding: only the models that fit", schema: {type: string}}
       responses:
-        "200": {description: "{status, provider, models: [string]}"}
+        "200": {description: "{status, provider, use, models: [string]}"}
         "404": {description: Unknown provider}
 
   /oracle/api/ui/models/{part}:

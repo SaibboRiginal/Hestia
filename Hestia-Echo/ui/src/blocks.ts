@@ -22,20 +22,13 @@ export class EchoBlocks extends HestiaElement {
     .section h2 { margin: 0; font-size: 16px; }
     .hint { font-size: 12.5px; color: var(--text-3); }
     .grid2 { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
-    .step { display: grid; grid-template-columns: 24px minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: end;
-      padding: 8px 0; border-top: 1px solid var(--border); }
-    .idx { font-variant-numeric: tabular-nums; color: var(--text-3); padding-bottom: 8px; }
-    .tools { display: flex; gap: 2px; }
     .state { grid-column: 2 / -1; font-size: 12px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
     .uc { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end;
       padding: 8px 0; border-top: 1px solid var(--border); }
     .uc:first-of-type { border-top: 0; }
     .key { font-family: var(--font-mono, monospace); font-size: 12px; }
     .actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-    input.pick { font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border-strong);
-      border-radius: var(--radius-sm); padding: 7px 10px; width: 100%; box-sizing: border-box; }
-    @media (max-width: 560px) { .uc { grid-template-columns: 1fr 1fr; } .uc > :first-child { grid-column: 1 / -1; }
-      .step { grid-template-columns: 20px 1fr; } .step > :nth-child(3), .step > .tools { grid-column: 2; } }
+    @media (max-width: 560px) { .uc { grid-template-columns: 1fr 1fr; } .uc > :first-child { grid-column: 1 / -1; } }
   `];
 
   constructor() {
@@ -138,38 +131,26 @@ export class EchoBlocks extends HestiaElement {
   }
 
   // ── chains ─────────────────────────────────────────────────────────────
-  private stepRow(chain: string, i: number, step: any) {
+  /** The engines (and their models or voices) that fit this chain's direction, for the one chain editor. */
+  private chainProps(chain: string) {
     const c = this.chains[chain];
-    const steps = c.steps as any[];
-    const live = this.live?.chains?.[chain]?.steps?.[i];
-    const provOpts: Opt[] = Object.entries<any>(this.providers)
+    const speaking = c.direction === 'voce';
+    const providers = Object.entries<any>(this.providers)
       .filter(([, p]) => (this.std(p.type).directions || []).includes(c.direction))
       .map(([n, p]) => ({ value: n, label: p.label || n }));
-    const lp = this.liveProvider(step.provider);
-    const speaking = c.direction === 'voce';
-    const choices: any[] = speaking ? lp.voices || [] : lp.models || [];
-    const update = (patch: any) => { const next = steps.slice(); next[i] = { ...step, ...patch }; this.setSteps(chain, next); };
-    const move = (d: number) => { const next = steps.slice(); const [s] = next.splice(i, 1); next.splice(i + d, 0, s); this.setSteps(chain, next); };
-    const listId = `l-${chain}-${i}`;
-    const st = live ? STATES[live.state] : null;
-    return html`<div class="step">
-      <span class="idx">${i + 1}</span>
-      <hxk-field type="enum" label=${tr("Provider")} .options=${provOpts} .value=${step.provider}
-        @change=${(e: CustomEvent) => update({ provider: e.detail })}></hxk-field>
-      <div>
-        <label class="small muted">${speaking ? tr('Voice') : tr('Model')}</label>
-        <input class="pick" list=${listId} .value=${speaking ? step.voice : step.model}
-          @change=${(e: any) => update(speaking ? { voice: String(e.target.value).trim() } : { model: String(e.target.value).trim() })}>
-        <datalist id=${listId}>${choices.map((m: any) => html`<option value=${m.id}>${m.label || m.id}</option>`)}</datalist>
-      </div>
-      <div class="tools">
-        <hxk-button variant="ghost" ?disabled=${i === 0} @click=${() => move(-1)} title=${tr("Before")}>↑</hxk-button>
-        <hxk-button variant="ghost" ?disabled=${i === steps.length - 1} @click=${() => move(1)} title=${tr("After")}>↓</hxk-button>
-        <hxk-button variant="ghost" icon="trash" @click=${() => this.setSteps(chain, steps.filter((_, j) => j !== i))} title=${tr("Remove")}></hxk-button>
-      </div>
-      ${live && live.state !== 'ready' && st ? html`<div class="state"><hxk-badge tone=${st.tone}>${st.label}${live.until ? tr(" until {0}", String(live.until).slice(11, 16)) : ''}</hxk-badge>
-        ${live.state === 'quota' ? html`<hxk-button variant="ghost" @click=${() => this.retry(step.provider)}>${tr("Try again now")}</hxk-button>` : nothing}</div>` : nothing}
-    </div>`;
+    const choices: Record<string, any> = {};
+    for (const { value } of providers) {
+      const lp = this.liveProvider(value);
+      choices[value] = ((speaking ? lp.voices : lp.models) || []).map((m: any) => ({ value: m.id, label: m.label || m.id }));
+    }
+    const live = this.live?.chains?.[chain]?.steps || [];
+    const states = c.steps.map((_: any, i: number) => {
+      const l = live[i];
+      const st = l ? STATES[l.state] : null;
+      if (!l || l.state === 'ready' || !st) return null;
+      return { tone: st.tone, text: `${st.label}${l.until ? tr(" until {0}", String(l.until).slice(11, 16)) : ''}`, retry: l.state === 'quota' };
+    });
+    return { providers, choices, states, field: speaking ? 'voice' : 'model' };
   }
 
   private setSteps(chain: string, steps: any[]) {
@@ -179,14 +160,15 @@ export class EchoBlocks extends HestiaElement {
 
   private chainCard(name: string) {
     const c = this.chains[name];
-    const first = Object.entries<any>(this.providers).find(([, p]) => (this.std(p.type).directions || []).includes(c.direction));
+    const cp = this.chainProps(name);
     return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voce' ? tr('voice') : tr('listening')}`}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Delete")}</hxk-button>
       <hxk-field label=${tr("Visible name")} .value=${c.label}
         @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>
-      ${c.steps.map((s: any, i: number) => this.stepRow(name, i, s))}
-      <hxk-button variant="ghost" icon="plus" ?disabled=${!first}
-        @click=${() => this.setSteps(name, [...c.steps, { provider: first?.[0] || '', model: '', voice: '', options: {} }])}>${tr("Add a step")}</hxk-button>
+      <hxk-chain .steps=${c.steps} .providers=${cp.providers} .choices=${cp.choices} .states=${cp.states} field=${cp.field}
+        pick-label=${cp.field === 'voice' ? tr('Voice') : tr('Model')} add-label=${tr('Add a step')}
+        @steps-change=${(e: CustomEvent) => this.setSteps(name, e.detail.map((st: any) => ({ model: '', voice: '', options: {}, ...st })))}
+        @retry=${(e: CustomEvent) => this.retry(e.detail.step.provider)}></hxk-chain>
     </hxk-card>`;
   }
 

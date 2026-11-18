@@ -313,6 +313,7 @@ client and the answer reaches `path` as `{...body, answer, answers, client, noti
 ## Plugin client (`hestia_common.plugin_client`) + WebUI SDK (`webui-sdk/`)
 
 `<hxk-icon name size tone>`: same icon names and paths as the WebUI `hx-icon` (checked by `tools/governance/check_icons.py`); `tone` = success · warning · danger · info · accent · muted. Plugins draw no emoji. Added 2026-10-20: `bookmark` (Oracle Memoria page).
+`hxk-chain` is the one editor of an ordered «provider + model» list (brain chains, memory, voice engines; 2026-11-18): chevrons to move, a picker with only the models that fit, a one-sentence state per step and «Try again now».
 `hxk-stat` items take `list` (entries shown in a panel under the tiles) or `open` (the plugin's action): a tile that
 counts things opens them (2026-11-18). A plain `title` gets the site's one tooltip (WebUI `ui/tooltip.ts`).
 

@@ -142,6 +142,8 @@ export class NotesPageComponent {}
   included, the same tooltip (hover after 450 ms, keyboard focus, long press on touch). Never build a tooltip of your own.
 - **Numbers that count things open them**: an `hxk-stat` tile that counts items gets `list` (the items, shown in a
   panel under the tiles) or `open` (go to the page that lists them). A dead number is bad UX.
+- **Model lists** (brain chains, memory, voice engines): always the SDK `<hxk-chain>` (ordered list, chevrons to move,
+  a picker that lists only the models that fit). Rarely needed choices sit behind «Show the advanced settings».
 - **Breadcrumb**: every piece is a link back (section → its overview or first page, parent → its page).
 - **Pinned** sidebar entries sit in their own block above the scroll area and never scroll away.
 - **Chat box**: no instruction line under it; the hints live in the placeholder and the tooltips. Mic (tap dictates

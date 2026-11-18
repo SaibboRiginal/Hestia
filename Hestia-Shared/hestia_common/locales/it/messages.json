@@ -7630,5 +7630,20 @@
  "Stopped.": "Fermato.",
  "Just one for all of {assistant}": "Uno solo per {g:tutta|tutto} {assistant}",
  "No delivery since the last start": "Nessuna consegna dall'ultimo avvio",
- "Nothing here yet": "Ancora niente qui"
+ "Nothing here yet": "Ancora niente qui",
+ "on {0} at {1}": "il {0} alle {1}",
+ "Limit reached: available again {0}": "Limite raggiunto: di nuovo disponibile {0}",
+ "Skipped: {0}": "Saltato: {0}",
+ "For the memory: finding notes and documents again": "Per la memoria: ritrovare note e documenti",
+ "Show the advanced settings": "Mostra le impostazioni avanzate",
+ "What each function uses": "Cosa usa ogni funzione",
+ "Each function has a suggested list of models; change it only if you want another one.": "Ogni funzione ha una lista di modelli suggerita; cambiala solo se ne vuoi un'altra.",
+ "The first model of a list is used; when it is not available (or its limit is reached) the next one answers.": "Si usa il primo modello della lista; quando non è disponibile (o ha raggiunto il limite) risponde il successivo.",
+ "Name of the model": "Nome del modello",
+ "Another one (write its name)…": "Un altro (scrivi il nome)…",
+ "No model yet: add the first one.": "Ancora nessun modello: aggiungi il primo.",
+ "Used first": "Usato per primo",
+ "Used when the ones above are not available": "Usato quando quelli sopra non sono disponibili",
+ "Move up": "Sposta su",
+ "Move down": "Sposta giù"
 }
