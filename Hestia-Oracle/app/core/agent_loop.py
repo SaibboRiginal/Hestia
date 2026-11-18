@@ -453,9 +453,12 @@ def run_agent_loop(
     context_window: int = 0,
     live_notes: Callable[[], str] | None = None,
     loop_label: str = "chat",
+    turn_notes: str = "",
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
 
+    *turn_notes*: what changes at every message (time, hints, this message's intent): placed after the history, so
+    the fixed part and the history stay byte-identical between messages and the model server reuses its cache.
     *loop_label*: which loop of the conversation this is (``chat``, ``agent.<module>``): the prefix watch
     (``core.services.prefix_watch``) compares each turn's fixed part with the previous turn of the same loop.
     *live_notes*: read again at every step and added after the scratchpad (module agents' turn board: what the
@@ -586,6 +589,8 @@ def run_agent_loop(
         dynamic_parts: list[str] = []
         if history_text:
             dynamic_parts.append(f"CONVERSATION HISTORY:\n{history_text}")
+        if turn_notes:
+            dynamic_parts.append(turn_notes.strip())
         dynamic_parts.append(f"USER: {user_message}")
         if action_hint:
             dynamic_parts.append(action_hint.strip())

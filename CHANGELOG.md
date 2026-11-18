@@ -3,6 +3,7 @@
 One line per finished task (details in `docs/work/<task>/`).
 
 ## 2026-11-18
+- The local model no longer re-reads the whole conversation at every message: the lines that change each time (current time, hints, presence and voice notes, the request handed to a module agent) were near the top of the prompt and now come after the history, so the model reuses the work already done on the rest → `docs/work/2026-11-17-output-compatti/` [ext-chat]
 - The assistant's log now says when the fixed start of her prompt changes between two messages of the same conversation, and where: that is what makes the local model re-read everything and answer slower, so the cause can be found and moved → `docs/work/2026-11-17-output-compatti/` [ext-chat]
 - The size of a model's memory (its context window) is no longer set in Hestia: it is read from where the model runs, for local and cloud models alike (Gemini and online services that declare it included), and the module agents use the one of their own model, like the chat. The settings «Modello locale · finestra di contesto» and «Lunghezza massima del risultato di uno strumento» are gone → `docs/work/2026-11-17-output-compatti/` [ext-chat]
 

@@ -47,3 +47,26 @@ class TestPrefixWatch:
             llm_stats._current_session.reset(token)
         key = "sess|chat"
         assert key in prefix_watch._last and "style B" in prefix_watch._last[key][0]
+
+    def test_turn_notes_stay_out_of_the_fixed_part(self):
+        """Regression 2026-11-18: time, hints and the request's lines sat in the fixed part and broke the cache at
+        every message. As turn notes they go after the history and the fixed part stays the same."""
+        tool = ToolDefinition("t", "d", {"type": "object", "properties": {}}, handler=lambda **_: (True, "ok"))
+        prompts: list[str] = []
+
+        def ask(p):
+            prompts.append(p)
+            return "fine"
+
+        token = llm_stats._current_session.set("sess2")
+        changes = []
+        try:
+            for minute in ("10:00", "10:05"):
+                run_agent_loop("ciao", "user: hi\nassistant: hi", [], [tool], ask_fn=ask,
+                               client_instructions="MODULES: x", turn_notes=f"CURRENT_DATETIME_CONTEXT:\n{minute}")
+                changes.append(prefix_watch._last["sess2|chat"][0])
+        finally:
+            llm_stats._current_session.reset(token)
+        assert changes[0] == changes[1] and "10:0" not in changes[0]
+        p = prompts[-1]
+        assert p.index("CONVERSATION HISTORY") < p.index("CURRENT_DATETIME_CONTEXT") < p.index("USER: ciao")

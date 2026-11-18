@@ -699,6 +699,11 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   (system prompt) and tool names with the previous turn of the same conversation and loop (`loop_label`: `chat`,
   `agent.<module>`); a change logs `event=prompt_prefix_changed where=<section|tools> kept_chars of_chars detail`,
   so whatever breaks the model's cache can be found and moved below the fixed part. Log only, in memory.
+  Per-message lines (current date and time, action/advisory/skill hints, domain and reasoning hints, the client's
+  presence/awareness/quoted/voice lines; for module agents the owner's message and the time) are **turn notes**
+  (`run_agent_loop(turn_notes=...)`): they go after CONVERSATION HISTORY, just before USER, never in the system part.
+  In classic mode the tool list still follows the domain of each message, so a domain change re-reads the prompt;
+  agents mode keeps the same tools every turn.
 - **Context editing**: when a loop prompt passes 50 % of the window, tool results older than
   `oracle.context.tool_result_stub_after_turns` (2, 0 = off) become a one-line stub (no LLM call).
 - **Shaped tool results** (dossier `docs/work/2026-11-17-output-compatti`): every tool result goes through

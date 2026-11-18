@@ -1218,26 +1218,28 @@ class OracleEngine:
             agent_loop_client_instructions_parts.append(ui_blocks.PROMPT)
         if planner_contract:
             agent_loop_client_instructions_parts.append(planner_contract)
-        action_tool_policy = prompt_config.prompt("agent_action_tool_policy").strip()
-        if intent.action_intent and action_tool_policy:
-            agent_loop_client_instructions_parts.append(action_tool_policy)
-        if athena_hint_prompt_block:
-            agent_loop_client_instructions_parts.append(
-                f"ATHENA_ADVISORY_HINTS:\n{athena_hint_prompt_block}")
-        if _skill_hint_block:
-            agent_loop_client_instructions_parts.append(_skill_hint_block)
-        if temporal_context:
-            agent_loop_client_instructions_parts.append(
-                f"CURRENT_DATETIME_CONTEXT:\n{temporal_context}")
-        if "system" in intent.valid_domains:
-            agent_loop_client_instructions_parts.append(prompt_config.prompt("system_domain_instruction"))
-        if mode == "cot":
-            agent_loop_client_instructions_parts.append(prompt_config.prompt("cot_instruction"))
-        if client_instructions and str(client_instructions).strip():
-            agent_loop_client_instructions_parts.append(
-                str(client_instructions).strip())
         agent_loop_client_instructions = "\n\n".join(
             agent_loop_client_instructions_parts) or None
+        # What changes at every message (time, hints, this message's intent) goes after the history, not in the fixed
+        # part: there it made the model re-read the whole prompt at every message (prefix watch, 2026-11-18).
+        agent_loop_turn_notes_parts: list[str] = []
+        action_tool_policy = prompt_config.prompt("agent_action_tool_policy").strip()
+        if intent.action_intent and action_tool_policy:
+            agent_loop_turn_notes_parts.append(action_tool_policy)
+        if athena_hint_prompt_block:
+            agent_loop_turn_notes_parts.append(f"ATHENA_ADVISORY_HINTS:\n{athena_hint_prompt_block}")
+        if _skill_hint_block:
+            agent_loop_turn_notes_parts.append(_skill_hint_block)
+        if temporal_context:
+            agent_loop_turn_notes_parts.append(f"CURRENT_DATETIME_CONTEXT:\n{temporal_context}")
+        if "system" in intent.valid_domains:
+            agent_loop_turn_notes_parts.append(prompt_config.prompt("system_domain_instruction"))
+        if mode == "cot":
+            agent_loop_turn_notes_parts.append(prompt_config.prompt("cot_instruction"))
+        if client_instructions and str(client_instructions).strip():
+            # The request's own lines (presence, awareness, quoted message, voice turn…) change per message too.
+            agent_loop_turn_notes_parts.append(str(client_instructions).strip())
+        agent_loop_turn_notes = "\n\n".join(agent_loop_turn_notes_parts)
 
         # ── Collect thinking events emitted during the agent loop ─────────────
         thinking_ndjson_lines: list[str] = []
@@ -1327,6 +1329,7 @@ class OracleEngine:
                 ask_tools_fn=_ask_tools_bound,
                 stream_fn=_stream_final,
                 client_instructions=agent_loop_client_instructions,
+                turn_notes=agent_loop_turn_notes,
                 max_turns=resolved_max_turns,
                 on_thinking=_on_thinking,
                 action_intent=intent.action_intent,
@@ -3355,10 +3358,10 @@ class OracleEngine:
                     "OWNER PREFERENCES", "\n".join(f"- {f}" for f in (preference_facts or [])[:10])
                 ).strip(),
                 prompt_config.optional_section(
-                    "CURRENT_DATETIME_CONTEXT", current_datetime_context
-                ).strip(),
-                prompt_config.optional_section(
                     "CONVERSATION HISTORY", history_text
+                ).strip(),
+                prompt_config.optional_section(   # after the history: it changes every minute (cache, 2026-11-18)
+                    "CURRENT_DATETIME_CONTEXT", current_datetime_context
                 ).strip(),
                 prompt_config.optional_section(
                     "EXTRA CONTEXT", extra_context

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.2 |
+| **Version** | 1.3 |
 | **Source** | user via external chat (thread «Valutare trucchi per risparmiare token»; evaluation `valutazioni/trucchi-risparmio-token.md`, ideas 1, 2, 4 approved 2026-11-17) |
 | **Status** | Implemented (owner's real run pending) |
 
@@ -79,6 +79,11 @@ follow the window of the model that answers, so 16k works today and 256k tomorro
   system prompt and tool names with the previous turn: a change logs `event=prompt_prefix_changed` with the section
   where it starts (closest `TITLE:` line) or `tools` (+added −removed). Log only, nothing changes in the prompt;
   ≤ 200 conversations in memory; no session (background jobs) = not watched.
+- v1.3 — causes found in the code, moved out of the fixed part as **turn notes** (`run_agent_loop(turn_notes=...)`,
+  placed after CONVERSATION HISTORY, before USER): current date/time, action/advisory/skill hints, domain and
+  reasoning hints, request client lines (presence, awareness, quoted message, voice); module agents: owner's message
+  and time (`module_agents.turn_notes`), `instructions()` keeps only the fixed part. Quick chat: date/time after the
+  history. Still breaking: classic mode picks tools per domain each message (by design; agents mode keeps them fixed).
 - Idea 5 (clear writing / STE) dropped by the owner: the Verity persona prompt already improved the answers.
 
 ### 3.7 Module agents (idea 4)
