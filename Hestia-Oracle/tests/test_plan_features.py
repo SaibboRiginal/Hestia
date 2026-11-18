@@ -27,6 +27,9 @@ def engine():
         bundle.reasoning.ask_with_tools.return_value = {"tool_call": None, "text": "R."}
         bundle.code.ask.return_value = "Code."
         bundle.embedding.embed.return_value = [0.1] * 768
+        bundle.embedding.embed_tagged.return_value = ([0.1] * 768, "ollama/mock-embed")
+        bundle.embedding.embed_all.return_value = [{"model": "ollama/mock-embed", "vector": [0.1] * 768}]
+        bundle.embedding.primary_tag.return_value = "ollama/mock-embed"
         bundle.generic_model_name = "mock-generic"
         mock_create.return_value = bundle
 

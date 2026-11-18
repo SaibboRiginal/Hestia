@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, database
+from .. import models, schemas, database, vectors
 
 router = APIRouter(tags=["memory"])
 logger = logging.getLogger("hestia_archive")
@@ -96,6 +96,15 @@ def search_similar_memories(
     Ranking runs inside Postgres (pgvector ``<=>``) and only the top rows leave the DB: it used to load every
     candidate with its 768 floats and score them one by one in Python (docs/work/2026-11-06-ricerca-memorie-in-db).
     """
+    query_vectors = body.get("query_vectors")
+    if isinstance(query_vectors, list) and query_vectors:
+        # One memory, several embedding models (app/vectors.py): each row against the query of its own model.
+        dist = vectors.distance(models.UserPreference.embedding, models.UserPreference.embedding_model,
+                                query_vectors=query_vectors, untagged_model=str(body.get("untagged_model") or ""),
+                                measure="cosine")
+        if dist is None:
+            return []
+        return _similar(db, dist, body)
     query_embedding = body.get("embedding")
     if not isinstance(query_embedding, list) or not query_embedding:
         raise HTTPException(status_code=400, detail="embedding vector required")
@@ -112,15 +121,20 @@ def search_similar_memories(
         return []
     if not any(query_embedding):
         return []  # zero vector: cosine similarity undefined
+    return _similar(db, models.UserPreference.embedding.cosine_distance(query_embedding), body)
 
+
+def _similar(db: Session, distance_expr, body: dict) -> list[dict]:
+    """Top active memories by *distance_expr* (filters memory_class / domain from *body*)."""
     memory_class = body.get("memory_class")
     domain = body.get("domain")
     limit = max(1, min(int(body.get("limit", 5)), 20))
 
-    distance = models.UserPreference.embedding.cosine_distance(query_embedding).label("distance")
+    distance = distance_expr.label("distance")
     q = db.query(models.UserPreference, distance).filter(
         models.UserPreference.is_active == True,  # noqa: E712
         models.UserPreference.embedding.isnot(None),
+        distance_expr.isnot(None),
     )
     if memory_class:
         q = q.filter(models.UserPreference.memory_class == memory_class)

@@ -197,8 +197,8 @@ function store(key: string, value: string): void {
 
             @case ('memoria') {
               <h1>{{ "With which model does it remember?" | tr }}</h1>
-              <p class="lead">{{ "It's used to find memories and documents again. Only one: if you change it later, {assistant} rereads the memory." | tr }}</p>
-              <app-setup-chain [single]="true" [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
+              <p class="lead">{{ "It's used to find memories and documents again. You can choose more than one: the next ones answer when the first is not available." | tr }}</p>
+              <app-setup-chain [homeItems]="embedHomeItems()" [(home)]="embedHome" [programs]="programs()"
                                [homeEmpty]="'No program for the models found. Install one (they are free) and press «Search again», or choose a cloud service.' | tr"
                                [hosts]="hosts()" [searching]="searching()" (addHost)="addHost($event)" (removeHost)="removeHost($event)" (again)="searchAgain()"
                                [services]="embedRows()" [tester]="embedTester" [cloudEmpty]="'No cloud service with models for the memory.' | tr"
@@ -771,13 +771,16 @@ export class SetupPageComponent {
         : o.model ? `m:${o.provider}:${o.model}` : `s:${o.provider}`);
       this.cloudRank.set(rank.length && lk && !rank.includes('h') ? ['h', ...rank] : rank);
       // «Memoria»: the model in use (at home or in the cloud), else the recommended one at home
-      const now = catalog.embedding;
-      const nowProvider = now?.provider || 'ollama';
-      if (now?.model && cloud.some(p => p.name === nowProvider)) {
-        this.embedOrder.set([nowProvider]);
-        this.embedPicks.set({ [nowProvider]: [now.model] });
-        this.embedHome.set('');
+      const steps = catalog.embedding_steps?.length ? catalog.embedding_steps : catalog.embedding?.model ? [catalog.embedding] : [];
+      const order: string[] = []; const picks: Record<string, string[]> = {}; let home = '';
+      for (const s of steps) {
+        const provider = s.provider || 'ollama';
+        if (cloud.some(p => p.name === provider)) {
+          if (!order.includes(provider)) order.push(provider);
+          picks[provider] = [...(picks[provider] || []), s.model];
+        } else if (!home) home = `${provider}|${s.model}`;
       }
+      this.embedOrder.set(order); this.embedPicks.set(picks); this.embedHome.set(home);
     }
     if (!this.embedOrder().length && !this.embedItemsHas(this.embedHome())) this.embedHome.set(this.embedHomeItems()[0]?.id || '');
   }
@@ -849,7 +852,7 @@ export class SetupPageComponent {
     if (!st) return '';
     switch (s) {
       case 'modelli': return [this.localModel(), ...this.cloudPicked().map(n => this.cloudLabel(n))].filter(Boolean).join(', ');
-      case 'memoria': { const c = this.embeddingWanted(); return c ? c.model : ''; }
+      case 'memoria': return this.embeddingList().map(c => c.model).join(', ');
       case 'ascolto': case 'voce': return this.voiceQueued() ? tr('Choice') : st.later.includes('voce') ? tr('Later') : '';
       case 'telegram': return st.telegram.linked ? tr('Linked') : st.later.includes('telegram') ? tr('Later') : '';
       case 'backup': return st.backup.passphrase ? tr('Ready') : st.later.includes('backup') ? tr('Later') : '';
@@ -883,7 +886,7 @@ export class SetupPageComponent {
     switch (s) {
       case 'chi': return this.identity.ownerName() ? tr("{0} and {1}.", this.identity.ownerCall() || this.identity.ownerName(), this.identity.assistant()) : tr('You haven\'t told me your name yet.');
       case 'modelli': return st.brain.summary || tr('pl::Not chosen yet.');
-      case 'memoria': { const c = this.embeddingWanted() || this.catalog()?.embedding; return c?.model || tr('Not chosen yet.'); }
+      case 'memoria': { const list = this.embeddingList(); return list.length ? list.map(c => c.model).join(', ') : this.catalog()?.embedding?.model || tr('Not chosen yet.'); }
       case 'voce': return this.voiceQueued() ? tr('Chosen.') : tr('Later.');
       case 'telegram': return st.telegram.linked ? tr('Linked.') : tr('Later.');
       case 'backup': return st.backup.passphrase ? tr('Ready.') : tr('Later.');
@@ -1065,19 +1068,20 @@ export class SetupPageComponent {
     const t = this.catalog()?.cloud.find(c => c.name === r.name)?.type;
     return t !== CLAUDE_TYPE && t !== 'anthropic';
   }));
-  /** The memory model chosen: at home, or the one model of the cloud service. */
-  embeddingWanted(): { provider: string; model: string } | null {
-    if (this.embedHome()) { const [provider, ...rest] = this.embedHome().split('|'); return { provider, model: rest.join('|') }; }
-    const n = this.embedOrder()[0];
-    const m = n ? (this.embedPicks()[n] || [])[0] : '';
-    return n && m ? { provider: n, model: m } : null;
+  /** The memory models chosen, in order: the one at home first, then the cloud services in their order. */
+  embeddingList(): { provider: string; model: string }[] {
+    const out: { provider: string; model: string }[] = [];
+    if (this.embedHome()) { const [provider, ...rest] = this.embedHome().split('|'); out.push({ provider, model: rest.join('|') }); }
+    for (const n of this.embedOrder()) for (const m of this.embedPicks()[n] || []) out.push({ provider: n, model: m });
+    return out;
   }
-  /** What to send: nothing when it stays the one in use (the memory is not re-read). */
-  private embeddingChoice(): ({ provider: string; model: string } & { url?: string; type?: string; label?: string }) | null {
-    const sel = this.embeddingWanted();
-    const now = this.catalog()?.embedding;
-    if (!sel || (now?.model && sel.provider === (now.provider || 'ollama') && sel.model === now.model)) return null;
-    return { ...sel, ...this.runtimeOf(sel.provider) };
+  embeddingWanted(): { provider: string; model: string } | null { return this.embeddingList()[0] || null; }
+  /** What to send: nothing when the list stays the one in use. */
+  private embeddingChoice(): { steps: ({ provider: string; model: string } & { url?: string; type?: string; label?: string })[] } | null {
+    const list = this.embeddingList();
+    const now = (this.catalog()?.embedding_steps || []).map(s => `${s.provider || 'ollama'}|${s.model}`).join(',');
+    if (!list.length || list.map(s => `${s.provider}|${s.model}`).join(',') === now) return null;
+    return { steps: list.map(s => ({ ...s, ...this.runtimeOf(s.provider) })) };
   }
   /** A program on another computer of the house: its address goes with the choice, so it becomes a block. */
   private runtimeOf(name: string): { url?: string; type?: string; label?: string } {

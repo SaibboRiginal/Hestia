@@ -17,8 +17,14 @@
       exhausted state + limits kept in Archive `oracle-store` kind `llm_quota`), one SDK chain editor `<hxk-chain>` used by
       Oracle «Modelli» and Echo «Motori» (chevrons, filtered picker, «available again at …»; mode/reasoning/chain name
       behind «Show the advanced settings»). Test `test_llm_limits.py`.
-- [ ] E2 — memory (embedding) chain with fallback models: each vector records its model, search compares each row
-      with the query embedded by the same model; context settings simplified
+- [x] E2 — memory (embedding) chain with fallback models: Archive `embedding_model` on entities, user_preferences,
+      document_records, document_chunks + `app/vectors.py` (one SQL `CASE`: each row against the query of its own
+      model; untagged rows → the chain's first model); Oracle `ChainAgent.embed_tagged/embed_all/embed_with/primary_tag`,
+      `_embed` returns a `TaggedVector`, `_query_vectors` for every search (RAG, retrieval, skills), `/api/embed` returns
+      `model` (+ `all`); preference domains re-embedded with the model of the text; Athena clusters/dedups per model;
+      setup «Memoria» takes several models (`embedding: {steps}`), Hephaestus pulls each Ollama one. Tests
+      `test_embedding_chain.py`, Archive `test_vectors.py`. Context settings: already reduced by PR #118 (window read
+      from the model); nothing else to remove.
 - [ ] F — Deliveries, Development, Argus on `[🔄]`
 - [ ] B — queue, steering, «/» commands
 - [ ] G — mascot

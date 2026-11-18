@@ -178,7 +178,7 @@ class SetupService:
 
     def apply_brain(self, recipe: str, local_model: str, cloud: list[str], keys: dict[str, str],
                     claude_token: str = "", local_provider: str = "ollama",
-                    cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
+                    cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, Any] | None = None,
                     local_runtime: dict[str, str] | None = None,
                     modes: dict[str, dict[str, Any]] | None = None,
                     order: list[dict[str, str]] | None = None) -> dict[str, Any]:
@@ -194,6 +194,9 @@ class SetupService:
                 self._wait_oracle()
         local_provider = local_provider or "ollama"
         emb = {k: v for k, v in (embedding or {}).items() if v}
+        # memory models in order ({steps: [...]}, or one {provider, model} from an older page)
+        emb_steps = [s for s in (emb.get("steps") if isinstance(emb.get("steps"), list) else [emb])
+                     if isinstance(s, dict) and s.get("model")]
         result = self.oracle("POST", "/api/llm/setup/apply",
                              body={"recipe": recipe, "local_model": local_model, "local_provider": local_provider,
                                    "cloud": cloud, "cloud_models": cloud_models or {}, "embedding": emb,
@@ -203,9 +206,12 @@ class SetupService:
         pulls = []
         if local_model and recipe != "cloud" and local_provider == "ollama":
             pulls.append(local_model)
-        if (emb.get("provider") or "ollama") == "ollama" and (emb or (local_model and recipe != "cloud")):
+        for step in emb_steps:
+            if (step.get("provider") or "ollama") == "ollama" and step["model"] not in pulls:
+                pulls.append(step["model"])
+        if not emb_steps and local_model and recipe != "cloud":
             # The memory's model: the installer already pulls the default one, so this is usually «già presente».
-            pulls.append(emb.get("model") or EMBEDDING_MODEL)
+            pulls.append(EMBEDDING_MODEL)
         for v in (modes or {}).values():
             for step in ([s for s in v.get("steps") or [] if isinstance(s, dict)] or [v]):
                 if (step.get("provider") or "ollama") == "ollama" and step.get("model") and step["model"] not in pulls:

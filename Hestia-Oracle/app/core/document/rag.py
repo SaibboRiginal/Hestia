@@ -35,9 +35,12 @@ _DOC_AWARENESS_KEYWORDS: frozenset[str] = frozenset([
 class DocumentRAG:
     """Semantic retrieval and catalogue helpers for archived documents."""
 
-    def __init__(self, hub_client: HubClient, embed_fn: Callable[[str], list[float]]) -> None:
+    def __init__(self, hub_client: HubClient, embed_fn: Callable[[str], list[float]],
+                 query_fn: Callable[[str], dict] | None = None) -> None:
         self._hub = hub_client
         self._embed = embed_fn
+        # query embedded by every model of the chain → Archive compares each chunk with the query of its own model
+        self._query = query_fn
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -49,12 +52,12 @@ class DocumentRAG:
         limit: int = 4,
     ) -> list[dict]:
         """Return semantically matching document chunks for *user_message*."""
-        query_vector = self._embed(user_message)
-        if not query_vector:
+        query = self._query(user_message) if self._query else {"query_vector": self._embed(user_message)}
+        if not query or not (query.get("query_vectors") or query.get("query_vector")):
             return []
         try:
             body = {
-                "query_vector": query_vector,
+                **query,
                 "chat_id": chat_id,
                 "session_id": session_id,
                 "limit": limit,

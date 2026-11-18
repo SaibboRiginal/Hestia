@@ -41,6 +41,7 @@ class EntityUpsert(BaseModel):
                                     description="The structured house data")
     embedding: Optional[List[float]] = Field(
         None, description="The mathematical vector for RAG")
+    embedding_model: Optional[str] = Field(None, description="Model that made the vector")
 
 
 def _vector_to_list(value):
@@ -73,6 +74,9 @@ class AdvancedSearchRequest(BaseModel):
     domain: Optional[str] = None
     limit: int = 20
     query_vector: Optional[List[float]] = None
+    # One memory, several embedding models (app/vectors.py): the query embedded by each model it reached.
+    query_vectors: Optional[List[Dict[str, Any]]] = None
+    untagged_model: Optional[str] = None
     filters: Optional[Dict[str, Any]] = None
     filters_gt: Optional[Dict[str, float]] = None
     filters_lt: Optional[Dict[str, float]] = None
@@ -155,6 +159,7 @@ class PreferenceCreate(BaseModel):
     weight: float = 1.0
     memory_class: Optional[str] = None
     embedding: Optional[list[float]] = None
+    embedding_model: Optional[str] = None
     domains: Optional[list[str]] = None
     extra_data: Optional[dict] = None
 
@@ -176,6 +181,7 @@ class PreferenceResponse(BaseModel):
     updated_at: Optional[datetime]
     memory_class: Optional[str] = None
     embedding: Optional[list[float]] = None
+    embedding_model: Optional[str] = None
     domains: Optional[list[str]] = None
     extra_data: Optional[dict] = None
 
@@ -402,6 +408,7 @@ class DocumentChunkIngest(BaseModel):
     chunk_text: str
     embedding: Optional[List[float]] = Field(
         None, description="Pre-computed embedding vector for this chunk")
+    embedding_model: Optional[str] = None
 
 
 class DocumentIngest(BaseModel):
@@ -424,6 +431,7 @@ class DocumentIngest(BaseModel):
         None, description="Truncated full extracted text (max ~40k chars)")
     embedding: Optional[List[float]] = Field(
         None, description="Document-level summary embedding")
+    embedding_model: Optional[str] = Field(None, description="Model that made the vectors (chunks without their own)")
     is_permanent: bool = False
     # Hestia domain this document belongs to (LLM-assigned)
     domain: Optional[str] = Field(
@@ -464,7 +472,10 @@ class DocumentPermanentUpdate(BaseModel):
 
 class DocumentSearchRequest(BaseModel):
     """Semantic chunk search request."""
-    query_vector: List[float]
+    query_vector: Optional[List[float]] = None
+    # One memory, several embedding models (app/vectors.py): the query embedded by each model it reached.
+    query_vectors: Optional[List[Dict[str, Any]]] = None
+    untagged_model: Optional[str] = None
     chat_id: Optional[str] = None
     session_id: Optional[str] = None
     is_permanent: Optional[bool] = None

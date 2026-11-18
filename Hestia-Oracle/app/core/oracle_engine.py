@@ -80,6 +80,14 @@ def _resolve_task_lifecycle_store() -> type:
 TaskLifecycleStore = _resolve_task_lifecycle_store()
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
+
+
+class TaggedVector(list):
+    """An embedding vector that remembers the model that made it (``provider/model``)."""
+
+    def __init__(self, values, model: str = ""):
+        super().__init__(values)
+        self.model = model
 _STARTUP_TS = time.time()
 
 # A quick answer (no tools) that says it did or will do something: «ho registrato», «riduco gli impegni».
@@ -292,11 +300,13 @@ class OracleEngine:
             hub_api_url=self._hub_url,
             module_registry=self._module_registry,
             embedder=self._embed,
+            query_fn=self._query_vectors,
         )
 
         # ── Preference domain classifier (embedding-based, no LLM) ──────────
         from core.services.preference_domains import PreferenceDomainClassifier
-        _pref_classifier = PreferenceDomainClassifier(embed_fn=self._embed)
+        _pref_classifier = PreferenceDomainClassifier(
+            embed_fn=self._embed, embed_with_fn=lambda model, text: self._agents.embedding.embed_with(model, text))
 
         self._memory_service = MemoryService(
             archive_url=self._archive_url,
@@ -328,6 +338,7 @@ class OracleEngine:
         self._doc_rag = DocumentRAG(
             hub_client=self._hub,
             embed_fn=self._embed,
+            query_fn=self._query_vectors,
         )
 
         self._doc_analyser = DocumentAnalyser(
@@ -3014,6 +3025,7 @@ class OracleEngine:
                 "domain": domain,
                 "user_message": user_message[:500],
                 "embedding": embedding,
+                "embedding_model": getattr(embedding, "model", "") or None,
                 "tool_sequence": [
                     {"tool": t.get("tool", ""), "ok": t.get("ok", False)}
                     for t in tool_log
@@ -3060,13 +3072,15 @@ class OracleEngine:
         Called ONCE per session, not per turn.
         """
         try:
-            embedding = self._embed(user_message)
+            query = self._query_vectors(user_message)
+            if not query:
+                return []
             results = self._hub.route_to_service(
                 service="archive",
                 path="/api/memory/search/similar",
                 method="POST",
                 body={
-                    "embedding": embedding,
+                    **query,
                     "memory_class": "skill",
                     "domain": domain,
                     "limit": 5,
@@ -3257,14 +3271,30 @@ class OracleEngine:
         }
 
     def _embed(self, text: str) -> list[float]:
-        """Embed *text* via the primary embedding agent.  Rulebook 1.6: WORKS or LOG AND FAIL."""
+        """Embed *text* along the embedding chain.  Rulebook 1.6: WORKS or LOG AND FAIL.
+        The vector carries ``.model`` (``provider/model`` that made it): whoever stores it keeps the model, so a
+        search compares it only with a query of the same model (dossier 2026-11-18-problemi-del-test E2)."""
         try:
-            vector = self._agents.embedding.embed(text)
+            vector, model = self._agents.embedding.embed_tagged(text)
             if vector:
-                return vector
+                return TaggedVector(vector, model)
         except Exception:
             logger.error("event=embed_failed text_len=%d", len(text or ""), exc_info=True)
         return []
+
+    def _query_vectors(self, text: str) -> dict:
+        """The search side: *text* embedded by every model of the chain usable now → Archive compares each stored
+        row with the query of its own model (``query_vectors``); rows stored before models were recorded belong to the
+        chain's first model (``untagged_model``). ``{}`` when no model answers."""
+        try:
+            rows = self._agents.embedding.embed_all(text)
+        except Exception:
+            logger.error("event=embed_failed text_len=%d", len(text or ""), exc_info=True)
+            return {}
+        rows = [r for r in rows if r.get("vector")]
+        if not rows:
+            return {}
+        return {"query_vectors": rows, "untagged_model": self._agents.embedding.primary_tag()}
 
     def _resolve_agent(self, model: str):
         """Return the UniversalAgent for the given use case. Falls back to generic."""

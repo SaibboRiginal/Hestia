@@ -34,6 +34,7 @@ class EntityRecord(Base):
     payload = Column(JSONB, nullable=False)
     # RAG: Vettori a 768 dimensioni per Nomic-Embed-Text
     embedding = Column(Vector(768), nullable=True)
+    embedding_model = Column(String, nullable=True)      # model that made the vector (app/vectors.py)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True),
@@ -83,6 +84,7 @@ class UserPreference(Base):
     is_active = Column(Boolean, default=True)
     memory_class = Column(String, index=True, nullable=True)
     embedding = Column(Vector(768), nullable=True)
+    embedding_model = Column(String, nullable=True)      # model that made the vector (app/vectors.py)
     domains = Column(JSONB, nullable=True)
     extra_data = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -298,6 +300,7 @@ class DocumentRecord(Base):
     extracted_text = Column(String, nullable=True)
     # Document-level summary embedding for coarse-grained semantic search
     embedding = Column(Vector(768), nullable=True)
+    embedding_model = Column(String, nullable=True)      # model that made the vector (app/vectors.py)
     chunk_count = Column(Integer, default=0, nullable=False)
     # If True the document is never auto-expired and is always included in RAG
     is_permanent = Column(Boolean, default=False, nullable=False, index=True)
@@ -336,6 +339,7 @@ class DocumentChunk(Base):
     chunk_text = Column(String, nullable=False)
     # Contextualised chunk embedding (title+summary prepended before embedding)
     embedding = Column(Vector(768), nullable=True)
+    embedding_model = Column(String, nullable=True)      # model that made the vector (app/vectors.py)
 
 
 # ── Settings storage (logic lives in Themis; Archive only stores) ─────────────

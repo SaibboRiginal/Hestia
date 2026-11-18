@@ -33,7 +33,9 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   skipped *before* the request until its window resets. Nothing is declared or hardcoded: a learned limit is trusted
   for one day, then the next 429 teaches it again. Exhausted pairs and learned limits are kept in Archive
   (`oracle-store`, kind `llm_quota`), so a restart keeps «available again at …». All steps failing → `ChainExhausted` (503 on `/api/llm/generate`). Defaults: `veloce`, `potente`,
-  `codice`, `visione`, `embedding` (one model only: vectors must stay comparable), `cloud` (Gemini only, for the
+  `codice`, `visione`, `embedding` (the memory: several models allowed — every stored vector keeps the model that made it, `embedding_model`,
+  and a search embeds the query with every model it can reach, so Archive compares each row with the query of its own
+  model; rows stored before models were recorded belong to the first model; nothing is re-read when the list changes), `cloud` (Gemini only, for the
   Metis dataset review `metis.dataset.review`, 2026-10-30; an owner who saved his own chains adds it in Sistema). Gemini steps use the aliases
   `gemini-flash-latest` / `gemini-flash-lite-latest` (Google stops serving dated models to new keys: 2.0-flash and
   2.5-flash-lite in 2026-10). Gemini native tools send each tool's JSON Schema as `parameters_json_schema` (the
@@ -412,7 +414,8 @@ Setting `oracle.operating_mode` (Models group, live): how a chat turn works. Mor
 | `POST` | `/api/llm/generate` | Plain generation for services `{prompt, use_case?}` — the use case's chain (default `oracle.generale`; esterna → external agent one shot) → `{response, model, provider, use_case, chain}`; every step failing → 503 |
 | `GET` | `/api/llm/models?provider=` | Model choices of a named provider (Ollama installed models, Gemini curated list, Anthropic Models API, OpenAI-compatible `/models`, Claude CLI haiku/sonnet/opus) → `{options:[{value,label}]}` |
 | `GET` | `/api/llm/providers` | Named providers: type, address, `key_env`, `key_set`, available, exhausted models (never a key) |
-| `GET` | `/api/llm/chains` | Chains with each step's state (available, out of quota until) |
+| `GET` | `/api/llm/chains` | Chains with each step's state (available, out of quota until, learned limits) and `use` (chat / embedding) |
+| `POST` | `/api/embed` | `{text, all?}` → `{embedding, dimensions, model}` (the model that made it: store it with the vector); `all: true` → also `query_vectors` (every model usable now) + `untagged_model`, for a search |
 | `GET` | `/api/llm/usecases` · `/api/llm/usecases/{id}` | Every use case (Oracle's, declared by modules, undeclared seen) with effective chain/mode/thinking · what one would use now (first usable step, window, billed) — Forge engine `oracle` |
 | `GET` | `/api/llm/usage?group=module\|session\|usecase\|model\|step\|day&days=&module=&session_id=&use_case=` | Sums of the usage rows kept in Archive |
 | `GET` | `/api/llm/usage/calls?session_id=&days=&limit=` | Latest single calls (detail of a session) |

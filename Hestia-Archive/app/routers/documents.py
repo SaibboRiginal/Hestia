@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import or_, text
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, database
+from .. import models, schemas, database, vectors
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
@@ -48,6 +48,7 @@ def store_document(
         summary=doc.summary,
         extracted_text=doc.extracted_text,
         embedding=_fit_vector(doc.embedding, models.DocumentRecord.embedding),
+        embedding_model=vectors.tag(_fit_vector(doc.embedding, models.DocumentRecord.embedding), doc.embedding_model),
         is_permanent=doc.is_permanent,
         domain=doc.domain or "documents",
         tags=doc.tags,
@@ -60,6 +61,8 @@ def store_document(
             chunk_index=chunk.chunk_index,
             chunk_text=chunk.chunk_text,
             embedding=_fit_vector(chunk.embedding, models.DocumentChunk.embedding),
+            embedding_model=vectors.tag(_fit_vector(chunk.embedding, models.DocumentChunk.embedding),
+                                        chunk.embedding_model or doc.embedding_model),
         ))
     db.commit()
     db.refresh(db_doc)
@@ -142,15 +145,18 @@ def search_document_chunks(
     Returns at most 2 chunks per document to avoid flooding context.
     Optionally tracks access stats when *track_access* is True.
     """
-    if not _fit_vector(req.query_vector, models.DocumentChunk.embedding):
+    dist = vectors.distance(models.DocumentChunk.embedding, models.DocumentChunk.embedding_model,
+                            query_vectors=req.query_vectors, untagged_model=req.untagged_model or "",
+                            query_vector=req.query_vector)
+    if dist is None:
         return []
 
-    dist_col = models.DocumentChunk.embedding.l2_distance(
-        req.query_vector).label("distance")
+    dist_col = dist.label("distance")
     q = (
         db.query(models.DocumentChunk, models.DocumentRecord, dist_col)
         .join(models.DocumentRecord, models.DocumentRecord.document_id == models.DocumentChunk.document_id)
         .filter(models.DocumentChunk.embedding.isnot(None))
+        .filter(dist.isnot(None))
     )
     if req.session_id:
         q = q.filter(models.DocumentRecord.session_id == req.session_id)
