@@ -20,17 +20,6 @@ export function todayStart(): string {
   return d.toISOString();
 }
 
-export const CLIENT_STATE: Record<string, { text: string; tone: string }> = {
-  delivered: { text: 'consegnata', tone: 'success' },
-  skipped: { text: tr('list only'), tone: 'neutral' },
-  failed: { text: tr('f::failed'), tone: 'danger' },
-  dead: { text: 'abbandonata', tone: 'danger' },
-};
-
-export const LEVEL_TONE: Record<string, string> = {
-  info: 'info', success: 'success', warning: 'warning', error: 'danger', critical: 'danger',
-};
-
 export const hermesStyles = css`
   .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 1px 8px; border-radius: 99px;
     background: var(--surface-2); color: var(--text-2); white-space: nowrap; }

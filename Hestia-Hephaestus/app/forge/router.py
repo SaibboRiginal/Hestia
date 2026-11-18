@@ -19,6 +19,9 @@ logger = logging.getLogger("hestia_hephaestus.forge")
 
 class ForgeTaskRequest(BaseModel):
     request: str = Field(..., description="What to build or fix, in natural language")
+    title: str = Field("", description="Short title for the owner, in his language (empty = the request)")
+    origin: dict[str, Any] = Field(default_factory=dict, description="Where a proposal comes from (Argus: what, "
+                                   "where, how often, when, redacted sample): shown as «Where it comes from»")
     services: list[str] = Field(default_factory=list)
     engine: str = ""
     source: str = "user"
@@ -267,7 +270,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
     return router
 
 
-_PUBLIC_KEYS = ("id", "state", "request", "services", "engine", "engine_requested", "source", "requested_by",
+_PUBLIC_KEYS = ("id", "state", "request", "title", "origin", "services", "engine", "engine_requested", "source", "requested_by",
                 "summary", "diff_stat", "workdoc", "deploy_plan", "changed_files", "touched_services", "tests",
                 "merge_sha", "branch", "error", "created_at", "updated_at", "cost_usd", "turns", "parent_task", "agenda_parent", "duplicate",
                 "review", "team", "limit_restarts")

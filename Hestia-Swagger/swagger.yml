@@ -6378,6 +6378,16 @@ paths:
       responses:
         "200": {description: "{module: hermes, title, icon, color, description, kind: core, clients.webui{entry, api_prefix, page[], widget[], quick_action[]}, version}"}
 
+  /hermes/api/ui/deliveries/retry:
+    post:
+      tags: [Hermes]
+      summary: «Try again now» on the Deliveries page (real path /api/ui/deliveries/retry) — failed deliveries sent again now
+      servers:
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{status, <counts of the retry pass>}"}
+        "502": {description: retry failed}
+
   /hermes/api/ui/deliveries:
     get:
       tags: [Hermes]
@@ -6396,7 +6406,7 @@ paths:
         - {name: client, in: query, schema: {type: string}, description: "only rows delivered (any state) to this client"}
         - {name: source, in: query, schema: {type: string}}
       responses:
-        "200": {description: "{items: [{id, created_at, updated_at, state, title, preview, level, source, event_type, audience, origin_client, actions[], clients{<name>: {state: delivered|skipped|failed|dead, at, attempts, retracted, detail}}, answer{by, action_id, label, status, outcome_text, at}, seen{by, at}, repeat{count, skipped}, flags{held, held_released, quiet, retracted, failed, answered, superseded, pending}}], summary{total, held, quiet, retracted, failed, answered, superseded, pending, clients{<name>: {delivered, skipped, failed}}}, next_before}"}
+        "200": {description: "{items: [{id, created_at, updated_at, state, title (HTML stripped), area{key, label, icon} (the part of Hestia it comes from, never a module name), preview, level, source, event_type, audience, origin_client, actions[], clients{<name>: {state: delivered|skipped|failed|dead, at, attempts, retracted, detail}}, answer{by, action_id, label, status, outcome_text, at}, seen{by, at}, repeat{count, skipped}, flags{held, held_released, quiet, retracted, failed, answered, superseded, pending}}], summary{total, held, quiet, retracted, failed, answered, superseded, pending, clients{<name>: {delivered, skipped, failed}}}, next_before}"}
         "400": {description: bad flag or date}
         "502": {description: Archive unavailable}
 
@@ -8449,6 +8459,8 @@ paths:
               required: [request]
               properties:
                 request: {type: string}
+                title: {type: string, description: "Short title for the owner, in his language (a module's proposal); empty = the request"}
+                origin: {type: object, description: "Where a proposal comes from (Argus: kind recurring_error|recurring_fallback, service, area, count, window_minutes, first_seen, last_seen, line, sample — redacted); Development page «Where it comes from»"}
                 services: {type: array, items: {type: string}}
                 engine: {type: string, enum: [auto, local, cloud, claude], description: empty/auto = default + fallback}
                 auto_start: {type: boolean, description: "omit = user source starts; athena/argus follow permission mode; false = proposal"}

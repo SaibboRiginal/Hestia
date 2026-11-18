@@ -212,6 +212,14 @@ Recurring errors become fix *proposals* for Hephaestus Forge (`app/core/forge_pr
   Forge's permission mode decides (`ask` / `auto` / `full_auto`, defaults local=auto, cloud=ask).
 - One proposal per signature per `argus.forge.cooldown` (86400 s). Failed posts retry on next occurrence.
 - Disable with setting `argus.forge.enabled=false`. Hephaestus/Argus own errors are excluded.
+- **Recurring fallbacks count too** (2026-11-18, dossier `docs/work/2026-11-18-problemi-del-test` F): a `[🔄]` line
+  (a recovery path, usually WARNING) that keeps coming means the main path stopped working, mostly because something
+  outside changed (a provider's answer, an API, a model). Same threshold/window/cooldown; the request asks to find why
+  the main path broke. Nothing is declared in advance («si rompe? si aggiusta»).
+- The proposal carries a `title` for the owner (one short model call `argus.analisi` with `voice: true` from the
+  redacted log line, in his language, no module names; a plain sentence when the model does not answer) and an
+  `origin` (kind, service, area, count, window, first/last seen, redacted line + sample) shown by the Development
+  page as «Where it comes from». The proposal runs off the monitor loop (thread).
 - Log dedupe key now includes the row timestamp: each occurrence counts once (alert spam still bounded by alert cooldown).
 
 ## Repair follow-up (assistant agenda)

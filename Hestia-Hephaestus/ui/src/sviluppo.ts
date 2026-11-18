@@ -12,7 +12,7 @@ import { ForgeStore, Filter } from './forge/store';
 import type { RepoNav } from './forge/repo';
 import {
   Dossier, ENGINES, ForgeApi, ForgeTask, ago, byModule, copyText, downloadText, engineLabel, engineOf, errText, meta,
-  saveWidth, savedWidth, sourceLabel,
+  saveWidth, savedWidth, shortDate, sourceLabel, titleOf,
 } from './forge/models';
 import { PHASE, when } from './util';
 
@@ -95,7 +95,11 @@ export class HephaestusSviluppo extends HestiaElement {
     .tmeta .by { color: var(--accent); }
     .center-col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
     .thead { display: flex; align-items: flex-start; gap: 10px; padding: 12px 18px 10px; border-bottom: 1px solid var(--border); }
-    .ttitle { font-size: 15px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ttitle { font-size: 15px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+    .origin { display: flex; gap: 10px; padding: 10px 12px; margin-bottom: 14px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface-2); font-size: 13.5px; }
+    .origin b { display: block; margin-bottom: 3px; } .origin .facts { color: var(--text-2); font-size: 12.5px; margin-top: 2px; }
+    .origin details { margin-top: 6px; } .origin summary { cursor: pointer; color: var(--text-2); font-size: 12.5px; }
+    .origin pre { white-space: pre-wrap; word-break: break-word; font-family: var(--font-mono); font-size: 11.5px; margin: 6px 0 0; max-height: 220px; overflow: auto; }
     .tsub { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); margin-top: 4px; min-width: 0; flex-wrap: wrap; }
     .mono { font-family: var(--font-mono); font-size: 11.5px; }
     .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; align-items: center; }
@@ -223,7 +227,7 @@ export class HephaestusSviluppo extends HestiaElement {
   private askHestia() {
     const t = this.store.task;
     this.host.assistant(t ? {
-      label: tr("Development · {0}", t.request.slice(0, 60)),
+      label: tr("Development · {0}", titleOf(t).slice(0, 60)),
       hints: { page: 'forge', task: t.id, state: t.state, workdoc: t.workdoc || '', services: (t.services ?? []).join(','), request: t.request.slice(0, 300) },
       suggestions: [tr('Explain to me what this task changed'), tr('Why did it fail and what do I propose?'), tr('Create a follow-up development that…')],
     } : {
@@ -354,7 +358,7 @@ export class HephaestusSviluppo extends HestiaElement {
               @click=${() => this.picking ? this.togglePick(t.id) : this.select(t.id)}>
             ${this.picking ? html`<input type="checkbox" .checked=${this.picked.has(t.id)} tabindex="-1" @click=${(e: Event) => e.preventDefault()}>`
               : html`<span class="sdot ${['running', 'merging', 'approved'].includes(t.state) ? 'pulse' : ''}" data-tone=${m.tone}></span>`}
-            <div class="tmain"><div class="treq">${t.request}</div>
+            <div class="tmain"><div class="treq" title=${titleOf(t)}>${titleOf(t)}</div>
               <div class="tmeta">${m.label} · <span class=${byModule(t) ? 'by' : ''}>${sourceLabel(t.source)}</span> · ${engineOf(t)} · ${ago(t.created_at)}${t.parent_task ? html` · <span title=${tr("Follows a previous task")}>↳</span>` : nothing}</div>
             </div></button>`;
         })}
@@ -397,7 +401,7 @@ export class HephaestusSviluppo extends HestiaElement {
       <div class="thead">
         ${this.size === 'phone' ? html`<hxk-button variant="ghost" size="sm" title=${tr("Back")} @click=${() => this.select(null)}>${icon('arrow-left', 15)}</hxk-button>` : nothing}
         <div class="grow">
-          <div class="ttitle" title=${t.request}>${t.request}</div>
+          <div class="ttitle">${titleOf(t)}</div>
           <div class="tsub"><hxk-badge tone=${m.tone}>${m.label}</hxk-badge><span class="mono">${t.id.slice(0, 6)}</span> · ${engineOf(t)}
             · <span title=${t.requested_by || ''}>${byModule(t) ? tr('proposed by ') + sourceLabel(t.source) : tr('asked by you')}</span>
             ${t.workdoc ? html` · <span class="mono truncate">${t.workdoc}</span>` : nothing}</div>
@@ -409,6 +413,7 @@ export class HephaestusSviluppo extends HestiaElement {
         <button class=${this.centerTab === 'details' ? 'on' : ''} @click=${() => (this.centerTab = 'details')}>${icon('info', 14)} ${tr("Details")}</button></div></div>` : nothing}
       ${this.size === 'wide' || this.centerTab === 'chat' ? html`
         <div class="chat" @scroll=${(e: Event) => { const el = e.currentTarget as HTMLElement; this.stick = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
+          ${this.originBlock(t)}
           ${t.summary && !s.active ? html`<div class="summary">${icon('sparkle', 15)}<div><b>${tr("Engine summary")}</b><div class="pre-wrap">${t.summary}</div></div></div>` : nothing}
           <hephaestus-transcript .events=${s.transcript} ?working=${working}></hephaestus-transcript>
         </div>
@@ -420,6 +425,27 @@ export class HephaestusSviluppo extends HestiaElement {
             <hxk-button size="sm" variant="primary" ?disabled=${this.followUp.trim().length < 8} ?loading=${s.busy} @click=${() => this.sendFollowUp(t)}>${icon('send', 14)} ${tr("Send")}</hxk-button>
           </div>
         </div>` : this.panel()}`;
+  }
+
+  /** «Where it comes from»: who proposed the task and why (a recurring error or backup path: where, how often,
+   * when, the log line), or that you asked for it. The engine's own request stays under «What it was asked». */
+  private originBlock(t: any) {
+    const o = t.origin || {};
+    const asked = t.title && t.title !== t.request;
+    if (!byModule(t) && !asked) return nothing;
+    const what = o.kind === 'recurring_fallback' ? tr('A backup way used again and again: the normal way stopped working.')
+      : o.kind === 'recurring_error' ? tr('An error that keeps coming back.') : '';
+    const facts = [o.area ? tr('In «{0}»', tr(o.area)) : '',
+      o.count ? tr('{0} times in {1} min', o.count, o.window_minutes || '?') : '',
+      o.first_seen ? tr('first {0}', shortDate(o.first_seen)) : '', o.last_seen ? tr('last {0}', shortDate(o.last_seen)) : '']
+      .filter(Boolean).join(' · ');
+    return html`<div class="origin">${icon('info', 15)}<div class="grow">
+      <b>${tr('Where it comes from')}</b>
+      <div>${byModule(t) ? tr('Proposed by «{0}».', sourceLabel(t.source)) : tr('Asked by you.')} ${what}</div>
+      ${facts ? html`<div class="facts">${facts}</div>` : nothing}
+      ${o.line ? html`<details><summary>${tr('What the log says')}</summary><pre>${o.sample || o.line}</pre></details>` : nothing}
+      ${asked ? html`<details><summary>${tr('What it was asked')}</summary><div class="pre-wrap">${t.request}</div></details>` : nothing}
+    </div></div>`;
   }
 
   private placeholder() {

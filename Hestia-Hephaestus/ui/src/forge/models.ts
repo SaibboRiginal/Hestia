@@ -16,7 +16,7 @@ export interface ForgeEvent { ts: string; state: string; note: string; }
 export interface ForgeNote { ts: string; by: string; text: string; }
 
 export interface ForgeTask {
-  id: string; state: ForgeState; request: string; services?: string[]; engine?: string; engine_requested?: string;
+  id: string; state: ForgeState; request: string; title?: string; origin?: TaskOrigin; services?: string[]; engine?: string; engine_requested?: string;
   source?: string; requested_by?: string; summary?: string; diff_stat?: string; workdoc?: string;
   deploy_plan?: { restart: string[]; rebuild: string[]; restart_self: boolean };
   changed_files?: string[]; touched_services?: string[];
@@ -42,6 +42,15 @@ export interface TranscriptEvent {
 export interface TranscriptPage { total: number; offset: number; live: boolean; events: TranscriptEvent[]; state?: string; }
 
 export interface FileStat { path: string; old_path?: string; added: number | null; deleted: number | null; binary: boolean; status?: string; }
+/** Where a proposal comes from (Argus: a recurring error or fallback, with how often and when). */
+export interface TaskOrigin {
+  kind?: string; service?: string; area?: string; count?: number; window_minutes?: number;
+  first_seen?: string; last_seen?: string; line?: string; sample?: string;
+}
+
+/** The title a person reads: the module's own title (in the owner's language) or the request. */
+export const titleOf = (t: ForgeTask) => (t.title || t.request || '').trim();
+
 export interface TaskFiles {
   live: boolean; base?: string; head?: string; files: FileStat[]; diff: string; truncated?: boolean;
   totals?: { files: number; added: number; deleted: number }; error?: string;
@@ -107,10 +116,10 @@ export const engineOf = (t: ForgeTask) => ENGINE_LABEL[t.engine || t.engine_requ
 /** Who asked for a task (Forge ``source``): you, or a module that proposed it on its own. */
 export const USER_SOURCES = ['user', 'telegram', 'ui', 'oracle'];
 const SOURCE_LABEL: Record<string, string> = {
-  user: 'Tu', telegram: tr('You (Telegram)'), ui: tr('You (WebUI)'), oracle: tr('You (chat)'), external: tr('External AI'),
-  athena: 'Athena', argus: 'Argus', 'hephaestus.remediation': tr('Repairs'), metis: 'Metis',
+  user: tr('You'), telegram: tr('You (Telegram)'), ui: tr('You (WebUI)'), oracle: tr('You (chat)'), external: tr('External AI'),
+  athena: tr('Thoughts'), argus: tr('System health'), 'hephaestus.remediation': tr('Repairs'), metis: tr('Improvement'),
 };
-export const sourceLabel = (source?: string) => SOURCE_LABEL[source || 'user'] ?? (source || 'Tu');
+export const sourceLabel = (source?: string) => SOURCE_LABEL[source || 'user'] ?? (source || tr('You'));
 export const byModule = (t: ForgeTask) => !USER_SOURCES.includes(t.source || 'user');
 
 export const FILE_STATUS: Record<string, string> = {
@@ -131,9 +140,9 @@ export function ago(iso?: string | null): string {
   if (isNaN(t)) return '';
   const s = Math.round((Date.now() - t) / 1000);
   if (s < 60) return tr('just now');
-  if (s < 3600) return `${Math.floor(s / 60)} min fa`;
-  if (s < 86400) return `${Math.floor(s / 3600)} h fa`;
-  if (s < 86400 * 7) return `${Math.floor(s / 86400)} g fa`;
+  if (s < 3600) return tr('{0} min ago', Math.floor(s / 60));
+  if (s < 86400) return tr('{0} h ago', Math.floor(s / 3600));
+  if (s < 86400 * 7) return tr('{0} d ago', Math.floor(s / 86400));
   return shortDate(iso);
 }
 export function duration(ms?: number | null): string {

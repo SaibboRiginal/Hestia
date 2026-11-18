@@ -41,6 +41,13 @@ class TestDeliveryView:
                                          "detail": "timeout"}
         assert "ref" not in v["clients"]["telegram"]
 
+    def test_title_plain_and_area_not_module(self):
+        """Deliveries page (dossier 2026-11-18-problemi-del-test F): no HTML in the title, the area instead of the module."""
+        from modules.ui_view import delivery_view
+        v = delivery_view(_row("n9", n={"title": "<b>Nuova casa</b> a Udine"}))
+        assert v["title"] == "Nuova casa a Udine"
+        assert v["area"]["key"] == "case" and v["area"]["icon"] == "home"
+
     def test_answer_and_pending(self):
         from modules.ui_view import delivery_view
         answered = delivery_view(_row("n2", "answered", n={"actions": [{"id": "ok", "label": "Approva"}]},

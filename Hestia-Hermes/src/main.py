@@ -526,6 +526,16 @@ def ui_deliveries(since: str = "", before: str = "", limit: int = 50, flag: str 
                      flag=flag, client=client, source=source)
 
 
+@app.post("/api/ui/deliveries/retry")
+def ui_deliveries_retry():
+    """«Try again now» on the Deliveries page: the failed deliveries are sent again right away."""
+    try:
+        return {"status": "ok", **(service.retry_failed_deliveries() or {})}
+    except Exception as exc:
+        logger.warning("[🔄] event=hermes_ui_retry_failed error=%s", exc)
+        raise HTTPException(status_code=502, detail="retry failed")
+
+
 @app.get("/api/ui/subscriptions")
 def ui_subscriptions():
     """Active subscriptions (what makes an event become a notification)."""
