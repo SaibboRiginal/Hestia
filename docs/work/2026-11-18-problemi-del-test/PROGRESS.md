@@ -5,7 +5,8 @@
       `ollama_post`, `_in_line` requeue, `widen_threadpool` (Oracle + Hub), status «Finishing a background job», WebUI
       status line + stop/clear free the box, «Not available right now». Tests `test_llm_bus.py`, `test_ollama_preempt.py`.
       Not done: preemption for llama-server / OpenAI-compatible local servers (they finish their call).
-- [ ] C — language (`alt::`, English labels)
+- [x] C — language: `localize` walks lists/objects under KEEP_KEYS except `DATA_KEYS` (TS + Python), plugin `host.api`
+      answers and site notification pushes localized, download notice title `tr`. Test in Themis `test_themis_personal.py`.
 - [ ] D — WebUI one pattern
 - [ ] E — chains, compatible models, Gemini limits, context settings
 - [ ] F — Deliveries, Development, Argus on `[🔄]`

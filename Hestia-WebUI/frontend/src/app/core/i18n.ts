@@ -77,6 +77,8 @@ const KEEP_KEYS = new Set(['id', 'key', 'value', 'status', 'state', 'type', 'kin
   'code', 'icon', 'color', 'tone', 'module', 'service', 'method', 'tool', 'command', 'domain', 'source', 'role', 'lang',
   'language', 'page', 'link', 'view', 'tab', 'event', 'event_type', 'use_case', 'provider', 'model', 'format', 'mime',
   'unit_code', 'action', 'name_id', 'entity_id', 'dedupe_key', 'replaces', 'query', 'q', 'args', 'params']);
+/** Kept keys whose value is the owner's data even as a list or object (same list as `hestia_common.i18n.DATA_KEYS`). */
+const DATA_KEYS = new Set(['id', 'key', 'value', 'query', 'q', 'args', 'params', 'replaces']);
 const TAG = /^[a-z][a-z0-9.]*::/;
 
 /** A copy of an API payload whose people texts are in the owner's language: every string value that is a catalog
@@ -91,7 +93,9 @@ export function localize<T>(payload: T): T {
     if (Array.isArray(node)) return node.map(walk);
     if (node && typeof node === 'object') {
       const out: any = {};
-      for (const [k, v] of Object.entries(node)) out[k] = KEEP_KEYS.has(k) ? v : walk(v);
+      // KEEP_KEYS protect string values (ids, keys, states); a list or object under such a key (a plugin's `page`
+      // list, an `action` button) still holds people texts and is walked.
+      for (const [k, v] of Object.entries(node)) out[k] = KEEP_KEYS.has(k) && (typeof v === 'string' || DATA_KEYS.has(k)) ? v : walk(v);
       return out;
     }
     return typeof node === 'string' ? text(node) : node;

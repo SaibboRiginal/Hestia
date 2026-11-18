@@ -642,7 +642,9 @@ Every fixed text of the shell and of the plugins follows «Lingua» (`themis.per
 templates `{{ 'Text' | tr }}` / `[title]="'Text' | tr"` (`TrPipe`); plugins `tr` of `@hestia/webui-sdk`. The English
 text is the key of `Hestia-Shared/hestia_common/locales/<lang>/messages.json` (2026-11-16: source flipped to
 English); missing → the English source. Dates and numbers use `locale()` (`it-IT` | `en-GB`), never a literal.
-The HTTP interceptor localizes API payloads (labels declared in English by the modules). Themis unreachable →
+The HTTP interceptor localizes API payloads (labels declared in English by the modules); the plugins' `host.api`
+(fetch) and the notifications pushed over SignalR are localized too (dossier `2026-11-18-problemi-del-test` C: raw
+`alt::` keys were showing). Themis unreachable →
 English texts, never an error page. Saving «Lingua» (`CentralSettingsApi.set/reset/undo`) reloads the
 page once. «Lingua» offers Italian and English (`LANGUAGES` in `identity.service.ts`, names never translated); the
 standard for texts is `docs/LANGUAGES.md`. `TokenAuthMiddleware` lets GET `/api/webui/i18n` and `/api/webui/i18n.js` through (the login page needs

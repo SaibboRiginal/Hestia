@@ -10,7 +10,7 @@ import { CentralSettingsApi, apiError } from '../settings/central-settings.api';
 import {
   Dashboard, DashboardItem, PluginBundle, PluginCatalog, PluginModule, PluginPage, PluginWidget, QuickActionDef, WidgetSize,
 } from './plugins.types';
-import { tr, named } from '../../core/i18n';
+import { tr, named, localize } from '../../core/i18n';
 
 /** WebUI settings that hold this client's plugin configuration (Themis, user scope, client layer "webui"). */
 export const CFG = {
@@ -313,6 +313,9 @@ export class PluginsService {
       const text = await resp.text();
       let data: any = null;
       try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+      // Plugin data carries English source texts too (labels, titles, areas): same translation as every API answer
+      // (the HTTP interceptor does not see fetch).
+      if (data && typeof data === 'object') data = localize(data);
       const error = resp.ok ? undefined
         : resp.status === 403 ? 'forbidden'
         : resp.status === 502 || resp.status === 503 ? 'unreachable'

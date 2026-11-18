@@ -40,8 +40,10 @@ line = tr("Recheck {0}", tr(module_label(name)))  # a label passed as argument i
 - **Texts declared once at import or registration** (manifests, pages, widgets, capabilities, `llm_usecases`,
   agenda rules, setting definitions, area and module labels, catalog constants): write plain English, **never**
   `tr`. `tr` at import freezes the language of that moment. These are translated at the edge:
-  `i18n.localize(payload)` translates every string that is a catalog key (except under `KEEP_KEYS`: id, key,
-  value, status…); the WebUI HTTP interceptor and Telegram run it; Themis serves settings through
+  `i18n.localize(payload)` translates every string that is a catalog key (except a string under `KEEP_KEYS`: id, key,
+  value, status…; a list or object under such a key, like a plugin's `page` list, is still walked, except the owner's data under `DATA_KEYS`: value, args, query…) and strips the
+  context tag of a source it does not know; the WebUI HTTP interceptor, the plugins' `host.api`, the notifications
+  pushed to the site and Telegram run it; Themis serves settings through
   `settings_client.translated(definition, lang)`.
 - A module-level constant shown at runtime is translated where it is used: `LABEL = "Save"` … `tr(LABEL)`.
 - Data seeded once for the owner (default categories, accounts) is written with `tr(label)` at seeding time: it is
