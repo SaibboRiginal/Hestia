@@ -347,6 +347,9 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Same Oracle stream (SignalR) and packets as the chat (reasoning, questions, notices), but its own `ChatService`
   instance on channel `assistant` and its own session id. ChatHub runs one stream per connection: the chat that
   sends last owns the events (`SignalRService.claim`), the other one stops its placeholder.
+- Chat status and stop (dossier `docs/work/2026-11-18-problemi-del-test` A): Oracle `status` frames show under the
+  answer being prepared (emoji stripped, dot instead); «Stop» frees the box at once (it does not wait for a frame) and
+  `clearMessages` (new conversation, another conversation opened) stops a running answer first.
 - The packet goes as `context` (`page=calendar; intent=create; giorno=…; ora=…; tz=…`) → ChatHub appends it to
   the client instructions with "act with the tools; if no tool can do it, propose a Forge task".
 - Live refresh: `AssistantService.changed$` fires on `agenda.planned` / `action.done` / `forge.task` /
