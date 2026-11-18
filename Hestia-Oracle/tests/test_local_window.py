@@ -7,12 +7,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import core.agent_loop as al
-from core.services import llm_stats, local_window, oracle_settings
+from core.services import cloud_window, llm_stats, local_window, oracle_settings
 
 
 @pytest.fixture(autouse=True)
 def _clean():
     local_window.reset()
+    cloud_window.reset()
     llm_stats.reset()
     al._token_ratio_cache[""] = 3.0
     yield
@@ -69,13 +70,6 @@ class TestOllamaWindow:
         assert local_window.ollama_num_ctx("m") == 0                   # one call without num_ctx
         _call("m", _ps(("m", 65536)))                                  # the owner raised it in Ollama
         assert local_window.ollama_window("m") == 65536 and local_window.source("m") == "runtime"
-
-    def test_forced_setting_wins(self, monkeypatch):
-        _call("m", _ps(("m", 65536)))
-        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
-        assert local_window.ollama_window("m") == 16384
-        assert local_window.ollama_num_ctx("m") == 16384
-        assert local_window.source("m") == "setting"
 
     def test_window_loaded_by_a_previous_run_is_used_until_the_first_call(self):
         with patch("core.services.local_window.requests.get", return_value=_ps(("m", 32768))):
@@ -201,17 +195,16 @@ class TestContextStats:
                                                "results": 400, "other": 0})
         stats = self._engine("ollama", "m").estimate_context_stats("s")
         assert stats["context_window"] == 16384 and stats["window_source"] == "runtime"
-        assert stats["window_setting_key"] == oracle_settings.NUM_CTX
         assert stats["breakdown_measured"] is True and stats["over_window"] is True
         assert sum(r["tokens"] for r in stats["breakdown"]) == stats["context_used_tokens"] == 20000
         assert [r["id"] for r in stats["breakdown"]] == ["system", "tools", "history", "message", "results"]
         assert stats["session_usage"]["by_model"][0]["estimated"] is True
 
-    def test_cloud_model_has_its_own_window_and_no_local_setting(self):
+    def test_cloud_model_has_its_own_window(self):
         self._turn("c", "gemini", "flash", 5000, {"system": 1000, "tools": 4000})
         stats = self._engine("gemini", "flash").estimate_context_stats("c")
         assert stats["context_window"] == 1_048_576 and stats["window_source"] == "provider"
-        assert stats["window_setting_key"] == "" and stats["over_window"] is False
+        assert "window_setting_key" not in stats and stats["over_window"] is False
 
     def test_before_the_first_turn_it_is_a_rough_estimate(self):
         stats = self._engine("ollama", "m").estimate_context_stats("new")
@@ -226,3 +219,49 @@ def test_final_frame_and_session_name_the_model_that_answered():
     assert "model" not in json.loads(stream_emitter.emit_final("ciao"))
     assert json.loads(stream_emitter.emit_final("ciao", model="qwen3:14b"))["model"] == "qwen3:14b"
     assert llm_stats.last_model("nessuna") == ""
+
+
+@pytest.mark.unit
+class TestCloudWindow:
+    """Cloud models: the window is read from the service when it declares it (no setting, 2026-11-18)."""
+
+    def _resp(self, data):
+        r = MagicMock()
+        r.json.return_value = data
+        r.raise_for_status.return_value = None
+        return r
+
+    def test_gemini_input_token_limit(self):
+        with patch("core.services.llm_providers.api_key", return_value="k"), \
+                patch("core.services.cloud_window.requests.get",
+                      return_value=self._resp({"inputTokenLimit": 1_048_576})) as get:
+            assert cloud_window.read("gemini", "gemini-2.5-flash") == 1_048_576
+        assert get.call_args.args[0].endswith("/v1beta/models/gemini-2.5-flash")
+
+    def test_openai_cloud_models_row(self):
+        rows = {"data": [{"id": "other", "context_length": 8000}, {"id": "deepseek/r1", "context_length": 163840}]}
+        with patch("core.services.llm_providers.type_of", return_value="openai"), \
+                patch("core.services.llm_providers.url", return_value="https://openrouter.ai/api/v1"), \
+                patch("core.services.llm_providers.is_local", return_value=False), \
+                patch("core.services.llm_providers.api_key", return_value="k"), \
+                patch("core.services.cloud_window.requests.get", return_value=self._resp(rows)):
+            assert cloud_window.read("openrouter", "deepseek/r1") == 163840
+
+    def test_service_that_does_not_say_gives_zero_and_never_raises(self):
+        with patch("core.services.llm_providers.api_key", return_value="k"), \
+                patch("core.services.cloud_window.requests.get", side_effect=OSError("down")):
+            assert cloud_window.read("gemini", "x") == 0
+
+    def test_read_window_wins_over_the_usual_value(self):
+        from agents.providers import model_window, runtime_info
+        cloud_window._found[("gemini", "flash")] = 500_000
+        cloud_window._read_at[("gemini", "flash")] = 1e18   # fresh: no background read
+        info = runtime_info("gemini", 0, "flash")
+        assert info["context_window"] == 500_000 and info["window_source"] == "service"
+        assert model_window("gemini", "flash") == 500_000
+
+    def test_not_declared_uses_the_usual_value(self):
+        from agents.providers import runtime_info
+        with patch("core.services.cloud_window.window", return_value=0):
+            info = runtime_info("gemini", 0, "unknown")
+        assert info["context_window"] == 1_048_576 and info["window_source"] == "provider"

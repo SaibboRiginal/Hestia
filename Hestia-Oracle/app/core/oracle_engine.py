@@ -1664,14 +1664,12 @@ class OracleEngine:
         return out
 
     def _chat_window(self) -> int:
-        """Window of the model that answers the chat (cloud: the service's own; local: forced in Hestia or read
-        from the program that runs it)."""
+        """Window of the model that answers the chat, read from its provider (cloud service or local program;
+        never set in Hestia)."""
         try:
-            from agents.providers import runtime_info
-            from core.services import oracle_settings
+            from agents.providers import model_window
             generic = self._agents.generic
-            return int(runtime_info(generic.provider, oracle_settings.context_window(generic.model_name),
-                                    generic.model_name)["context_window"])
+            return model_window(generic.provider, generic.model_name)
         except Exception as exc:
             logger.debug("event=chat_window_unavailable error=%s", exc)
             return 0
@@ -1679,8 +1677,8 @@ class OracleEngine:
     def estimate_context_stats(self, session_id: str) -> dict:
         """Return context-window usage for *session_id*.
 
-        Window = the answering model's (``runtime_info``): a cloud service's own, or the local model's (forced by
-        the setting oracle.provider.ollama.num_ctx, else read from its program, ``core.services.local_window``).
+        Window = the answering model's (``runtime_info``), read from its provider: the local program
+        (``core.services.local_window``) or the cloud service (``core.services.cloud_window``).
         ``breakdown`` = what the last prompt was made of (measured by the agent loop, scaled to the size the
         provider reported); before the first turn it is a rough estimate (``breakdown_measured`` false).
         ``runtime`` = measured per-agent stats of the last calls (prompt size, cache reuse, speed).
@@ -1710,8 +1708,7 @@ class OracleEngine:
         total_tokens = history_tokens + tools_tokens + pref_tokens + system_tokens
 
         active = {"use_case": "generic", "model": generic.model_name,
-                  **runtime_info(generic.provider, oracle_settings.context_window(generic.model_name),
-                                 generic.model_name)}
+                  **runtime_info(generic.provider, 0, generic.model_name)}
         _window = active["context_window"]
         usage = llm_stats.session_usage(session_id)
         measured = int(usage.get("last_prompt_tokens") or 0)
@@ -1740,7 +1737,6 @@ class OracleEngine:
         return {
             "context_window": _window,
             "window_source": active.get("window_source", ""),
-            "window_setting_key": oracle_settings.NUM_CTX if active.get("window_source") != "provider" else "",
             "over_window": bool(_window and used_tokens > _window),
             "breakdown": breakdown,
             "breakdown_measured": part_sum > 0,
@@ -2651,11 +2647,13 @@ class OracleEngine:
                         datetime_context: str) -> list[ToolDefinition]:
         """Operating mode «agents»: Oracle's own + cross-cutting tools stay, every module's tools go to its agent
         (``core.services.module_agents``). The tools arrive already wrapped by the origin gate and the turn guards."""
+        from agents.providers import model_window
         from core.services import llm_chains, oracle_settings as _os
         main, specs = module_agents.group(tools, self._module_registry.guides())
         llm_chains.register_agent_usecases(specs)
         run = module_agents.AgentRun(
             run_loop=run_agent_loop, chain_for=lambda uc: llm_chains.agent_for(uc, voice=True), emit=live.put,
+            window_for=lambda chain: model_window(getattr(chain, "provider", ""), getattr(chain, "model_name", "")),
             emit_frame=stream_emitter.emit_agent, owner_message=user_message, history_text=history_text,
             preference_facts=[str(p.get("fact", "")).strip() for p in self._load_preferences(["general"])
                               if p.get("fact")],

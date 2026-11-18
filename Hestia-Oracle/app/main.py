@@ -722,14 +722,9 @@ def _log_ollama_context():
     """Read the window of the models Ollama has loaded (core.services.local_window) and log what Oracle sends."""
     from core.services import local_window
     opts = _oracle_settings.ollama_request_options()
-    forced = _oracle_settings.forced_num_ctx()
     loaded = local_window.refresh_ollama()
-    logger.info("event=ollama_context_config mode=%s num_ctx=%s keep_alive=%s loaded=%s",
-                "forced" if forced else "automatic", forced or "runtime", opts["keep_alive"], loaded or "none")
-    for name, ctx in loaded.items():
-        if forced and ctx < forced:
-            logger.warning("[🔄] event=ollama_context_smaller model=%s loaded_ctx=%s wanted=%s "
-                           "— reloads with the right size on the next Oracle call", name, ctx, forced)
+    logger.info("event=ollama_context_config mode=runtime keep_alive=%s loaded=%s", opts["keep_alive"],
+                loaded or "none")
 
 
 def _register_on_hub():
@@ -1645,7 +1640,7 @@ def get_context_stats(session_id: str):
     """Return context-window usage stats for *session_id*.
 
     Token counts via Ollama /api/tokenize (cached) with heuristic fallback.
-    Context window = setting oracle.provider.ollama.num_ctx (sent to Ollama on every call);
+    Context window = the answering model's, read from its provider (local program or cloud service);
     ``runtime`` = measured per-agent stats of the last calls (prompt size, cache reuse, speed).
     """
     try:

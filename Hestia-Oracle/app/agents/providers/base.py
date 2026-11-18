@@ -59,7 +59,7 @@ class LLMProvider:
     LABEL: str = ""
     CONFIG_FIELDS: tuple[ConfigField, ...] = ()
     CAPABILITIES: frozenset[str] = frozenset()
-    CONTEXT_WINDOW: int = 0   # tokens; 0 = the local window setting (oracle.provider.ollama.num_ctx)
+    CONTEXT_WINDOW: int = 0   # tokens: usual value when the provider does not declare it; 0 = read from the runtime
     BILLING: str = ""         # how use is paid: shown next to the chat context gauge
     label: str = ""  # use case of the agent using it (runtime stats)
 

@@ -41,13 +41,17 @@ def _resp(payload: dict) -> MagicMock:
 @pytest.mark.unit
 class TestOllamaOptions:
     def test_defaults(self):
-        # «automatica»: no num_ctx, Ollama keeps the window the owner set there
+        # no window setting: no num_ctx, Ollama keeps the window the owner set there
         assert oracle_settings.ollama_request_options() == {"options": {}, "keep_alive": "30m"}
 
-    def test_settings_and_always(self, monkeypatch):
-        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
+    def test_keep_alive_always(self, monkeypatch):
         monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.KEEP_ALIVE, "always")
-        assert oracle_settings.ollama_request_options() == {"options": {"num_ctx": 16384}, "keep_alive": -1}
+        assert oracle_settings.ollama_request_options() == {"options": {}, "keep_alive": -1}
+
+    def test_no_window_setting_left(self):
+        assert not hasattr(oracle_settings, "NUM_CTX") and not hasattr(oracle_settings, "forced_num_ctx")
+        keys = {d["key"] for d in oracle_settings._definitions()}
+        assert "oracle.provider.ollama.num_ctx" not in keys and "oracle.agent.tool_result_max_chars" not in keys
 
     def test_automatic_call_sends_no_window(self):
         agent = UniversalAgent("SYS", "ollama", "m1", thinking=False)
@@ -56,21 +60,13 @@ class TestOllamaOptions:
         body = post.call_args.kwargs["json"]
         assert "num_ctx" not in body["options"] and body["keep_alive"] == "30m"
 
-    def test_every_forced_call_sends_it(self, monkeypatch):
-        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
-        agent = UniversalAgent("SYS", "ollama", "m1", thinking=False)
-        with patch("agents.universal_agent.requests.post", return_value=_resp({"response": "ok"})) as post:
-            agent.ask("ciao")
-        assert post.call_args.kwargs["json"]["options"]["num_ctx"] == 16384
-
-    def test_tool_call_sends_them(self, monkeypatch):
-        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.NUM_CTX, 16384)
+    def test_tool_call_sends_no_window_either(self):
         agent = UniversalAgent("SYS", "ollama", "m1", thinking=False)
         data = {"message": {"content": "", "tool_calls": [{"function": {"name": "t", "arguments": {}}}]}}
         with patch("agents.universal_agent.requests.post", return_value=_resp(data)) as post:
             out = agent.ask_with_tools("q", [{"name": "t", "description": "d"}])
         assert out["tool_call"]["name"] == "t"
-        assert post.call_args.kwargs["json"]["options"]["num_ctx"] == 16384
+        assert "num_ctx" not in post.call_args.kwargs["json"]["options"]
 
 
 # ── B: stats ────────────────────────────────────────────────────────────────

@@ -106,7 +106,6 @@ _CHAT = [
 ]
 
 # Context & local runtimes (dossier docs/work/2026-10-10-oracle-local-context). Endpoints stay in env.
-NUM_CTX = "oracle.provider.ollama.num_ctx"
 KEEP_ALIVE = "oracle.provider.ollama.keep_alive"
 COMPACT_THRESHOLD = "oracle.context.compact_threshold"
 STUB_AFTER_TURNS = "oracle.context.tool_result_stub_after_turns"
@@ -122,9 +121,6 @@ _CONTEXT = [
     setting(PROFILE_MAX_TOKENS, "{assistant} in other AIs · most space", "int", 1500, group="Context", order=20,
             min=300, max=8000, unit="token",
             help="How much {assistant}'s personality weighs at most (with instructions and memories) when you turn it on inside another AI, for example Claude."),
-    setting(NUM_CTX, "Local model · context window", "int", 0, group="Context", min=0, max=262144,
-            unit="token", order=0,
-            help="0 = automatic: {assistant} uses the window set in the program that runs the model (Ollama, LM Studio, llama-server) and reads it from there. A number forces it from here: higher = remembers more but uses more VRAM; changing it reloads the model."),
     setting(KEEP_ALIVE, "Ollama · model in memory", "enum", "30m", group="Context", options=_KEEP_ALIVE,
             order=1, help="How long the model stays loaded after the last request: avoids a cold start."),
     setting(COMPACT_THRESHOLD, "Compact the context beyond", "float", 0.8, group="Context", min=0.3, max=0.95,
@@ -145,7 +141,6 @@ _CONTEXT = [
 MAX_TURNS = "oracle.agent.max_turns"
 ASK_TIMEOUT = "oracle.ask.timeout"
 MAX_TOKENS = "oracle.agent.max_tokens"
-TOOL_RESULT_MAX_CHARS = "oracle.agent.tool_result_max_chars"
 EARLY_EXIT_NO_TOOL_TURNS = "oracle.agent.early_exit_no_tool_turns"
 MAX_PARALLEL_TOOLS = "oracle.agent.max_parallel_tools"
 # Conversation context
@@ -225,10 +220,6 @@ _AGENT = [
             unit="hours", order=3, help="When the assistant asks you something (choice, confirmation, free text), after this time without an answer the question closes."),
     setting(MAX_TOKENS, "Most tokens per answer", "int", 0, group="Agent", min=0, max=2_000_000,
             unit="token", order=1, advanced=True, help="Limit of tokens used in one reasoning. 0 = no limit."),
-    setting(TOOL_RESULT_MAX_CHARS, "Longest tool result", "int", 0,
-            group="Agent", min=0, max=50000, unit="characters", order=2, advanced=True,
-            help="Beyond this length the result is shortened before giving it to the model (fewer items, "
-                 "the rest on request). 0 = automatic: a share of the model's context window."),
     setting(EARLY_EXIT_NO_TOOL_TURNS, "Close after steps without tools", "int", 2, group="Agent", min=1,
             max=10, unit="steps", order=3, advanced=True,
             help="If the model uses no tools for these steps in a row (and has already done something), it answers."),
@@ -466,18 +457,9 @@ def prompt_ab(surface: str) -> dict:
             "forced": str(settings.get(f"{prefix}.force") or "").strip()}
 
 
-def forced_num_ctx() -> int:
-    """Window the owner forced from Hestia (0 = automatic: the local program decides)."""
-    try:
-        value = int(settings.get(NUM_CTX) or 0)
-    except (TypeError, ValueError):
-        return 0
-    return max(512, value) if value > 0 else 0
-
-
 def context_window(model: str = "") -> int:
-    """Real context window (tokens) of the local model: budgeting, compaction, gauge. Forced by the setting, or
-    read from the program that runs the model (``core.services.local_window``)."""
+    """Real context window (tokens) of the local model: budgeting, compaction, gauge. Read from the program that
+    runs the model (``core.services.local_window``); never set in Hestia."""
     from core.services import local_window
     return local_window.ollama_window(model)
 
@@ -497,9 +479,9 @@ def stub_after_turns() -> int:
 
 
 def ollama_request_options(model: str = "") -> dict:
-    """Fields added to every Ollama request: ``keep_alive`` (avoid cold starts) and, only when the window is
-    forced from Hestia (or Ollama's own is too small), the same ``num_ctx`` on every call (a different value
-    makes Ollama reload the model). On «automatica» no ``num_ctx`` is sent: Ollama keeps the owner's window."""
+    """Fields added to every Ollama request: ``keep_alive`` (avoid cold starts) and, only when Ollama's own window is
+    too small for an assistant with tools (a bare install), the same ``num_ctx`` = the floor on every call (a
+    different value makes Ollama reload the model). Otherwise no ``num_ctx``: Ollama keeps the owner's window."""
     from core.services import local_window
     keep = str(settings.get(KEEP_ALIVE) or "30m")
     num_ctx = local_window.ollama_num_ctx(model)

@@ -4461,8 +4461,7 @@ paths:
              history_tokens_est, tool_count, preference_count,
              total_tokens_est, context_used_pct, compaction_available,
              context_used_tokens, context_measured,
-             window_source (provider | runtime | setting | floor | default), window_setting_key
-             (central setting that forces the window, "" for a cloud model), over_window,
+             window_source (runtime | service | floor | provider | default), over_window,
              breakdown: [{id: system|tools|history|message|results|other, label, tokens}] (adds up to
              context_used_tokens when breakdown_measured), breakdown_measured,
              active: {use_case, provider, provider_label, model, billing, context_window, window_source},
@@ -4472,9 +4471,11 @@ paths:
              estimated}]} ({} before the first counted call),
              runtime: {<use case>: {calls, provider, model, avg_prompt_tokens, max_prompt_tokens,
              cache_hit_pct, cache_estimated, avg_load_ms, avg_prompt_ms, tokens_per_second, last_at}}}.
-            context_window = window of the chat provider in use (local Ollama / OpenAI-compatible server:
-            read from the program itself, or forced by the setting oracle.provider.ollama.num_ctx when it is
-            not 0; Gemini 1,048,576; Claude 200,000). context_used_tokens = real
+            context_window = window of the chat model in use, read from its provider, never set in Hestia:
+            runtime = the local program (Ollama /api/ps, LM Studio, llama-server, vLLM), service = declared by the
+            cloud service (Gemini inputTokenLimit, OpenAI-compatible /models), floor = the local program's own is
+            under 8192 so Oracle asks 8192, provider = the service does not declare it (usual value: Gemini
+            1,048,576, Claude 200,000), default = not read yet. context_used_tokens = real
             prompt size of this conversation's last call when measured, else the estimate.
 
   /api/chat/compact:

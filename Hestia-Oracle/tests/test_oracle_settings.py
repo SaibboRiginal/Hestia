@@ -11,7 +11,6 @@ from core.services import oracle_settings as o
 EXPECTED = {
     "ORACLE_MAX_AGENT_TURNS": ("oracle.agent.max_turns", 25),
     "ORACLE_MAX_AGENT_TOKENS": ("oracle.agent.max_tokens", 0),
-    "ORACLE_TOOL_RESULT_MAX_CHARS": ("oracle.agent.tool_result_max_chars", 0),   # 0 = share of the window
     "ORACLE_AGENT_EARLY_EXIT_NO_TOOL_TURNS": ("oracle.agent.early_exit_no_tool_turns", 2),
     "ORACLE_MAX_PARALLEL_TOOLS": ("oracle.agent.max_parallel_tools", 8),
     "ORACLE_HISTORY_LIMIT": ("oracle.context.history_messages", 6),

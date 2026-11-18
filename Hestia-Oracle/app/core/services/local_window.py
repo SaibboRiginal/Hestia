@@ -4,15 +4,16 @@ docs/work/2026-11-12-contesto-e-scorciatoie §3.1).
 The owner sets the window once, in the program that runs the model (Ollama, LM Studio, llama-server…).
 Oracle reads it from there instead of imposing its own number:
 
-- **Ollama**: ``GET /api/ps`` → ``context_length`` of the loaded model. With the setting on «automatico»
-  Oracle sends no ``num_ctx``, so Ollama keeps its own. Only when Ollama's own window is smaller than
+- **Ollama**: ``GET /api/ps`` → ``context_length`` of the loaded model. Oracle sends no ``num_ctx``, so Ollama
+  keeps its own. Only when Ollama's own window is smaller than
   ``FLOOR`` (a bare install: 4096) Oracle asks for ``FLOOR``, because the prompts of an assistant with tools
   never fit under it (a cut prompt loses instructions without any error).
 - **OpenAI-compatible local servers**: LM Studio ``/api/v0/models`` (``loaded_context_length``),
   llama-server ``/props`` (``n_ctx``), vLLM ``/v1/models`` (``max_model_len``).
 
-A number in the setting ``oracle.provider.ollama.num_ctx`` still wins (forced). Everything here is best
-effort and cached: a runtime that does not answer never blocks or slows a call.
+There is no setting for the window (owner, 2026-11-18: read it from the provider, for every one). Cloud services that
+declare it are read by ``core.services.cloud_window``; ``window_of`` answers for any provider. Everything here is
+best effort and cached: a runtime that does not answer never blocks or slows a call.
 """
 from __future__ import annotations
 
@@ -47,24 +48,16 @@ def _base(model: str) -> str:
 
 
 def reset() -> None:
-    """Forget everything read so far (tests; a changed setting re-reads by itself)."""
+    """Forget everything read so far (tests)."""
     global _last_model
     with _lock:
         _loaded.clear(), _native.clear(), _native_at.clear(), _sent.clear(), _read_at.clear(), _openai.clear()
         _last_model = ""
 
 
-def _forced() -> int:
-    from core.services import oracle_settings
-    return oracle_settings.forced_num_ctx()
-
-
 # ── Ollama ────────────────────────────────────────────────────────────────────────────────────────────
 def ollama_num_ctx(model: str = "") -> int:
     """``num_ctx`` to send with a call to *model* (0 = send none: Ollama keeps its own window)."""
-    forced = _forced()
-    if forced:
-        return forced
     with _lock:
         key = _base(model) or _last_model
         native = _native.get(key, 0)
@@ -76,9 +69,6 @@ def ollama_num_ctx(model: str = "") -> int:
 
 def ollama_window(model: str = "") -> int:
     """Window the Ollama model really runs with (budget, compaction, gauge)."""
-    forced = _forced()
-    if forced:
-        return forced
     with _lock:
         key = _base(model) or _last_model
         native, loaded = _native.get(key, 0), _loaded.get(key, 0)
@@ -90,10 +80,8 @@ def ollama_window(model: str = "") -> int:
 
 
 def source(model: str = "") -> str:
-    """Where the Ollama window comes from: ``setting`` (forced) · ``runtime`` (read) · ``floor`` (Ollama's own is
-    too small, Oracle asks for the minimum) · ``default`` (not read yet)."""
-    if _forced():
-        return "setting"
+    """Where the Ollama window comes from: ``runtime`` (read) · ``floor`` (Ollama's own is too small, Oracle asks
+    for the minimum) · ``default`` (not read yet)."""
     with _lock:
         key = _base(model) or _last_model
         native, loaded = _native.get(key, 0), _loaded.get(key, 0) or (max(_loaded.values()) if not key and _loaded else 0)
@@ -221,15 +209,15 @@ def openai_window(address: str, model: str = "") -> int:
 
 # ── any provider ────────────────────────────────────────────────────────────────────────────────────
 def window_of(provider: str, model: str = "") -> tuple[int, str]:
-    """``(window, source)`` of a named provider: local ones are read from their program."""
-    from core.services import llm_providers
+    """``(window, source)`` of a named provider, read from the provider itself: local ones from their program
+    (``runtime``, ``floor``, ``default`` before the first read), cloud services from their models API when they
+    declare it (``service``). ``(0, "")`` = it does not say: the caller uses the service's usual value."""
+    from core.services import cloud_window, llm_providers
     ptype = llm_providers.type_of(provider) or str(provider or "").strip().lower()
     if ptype == "ollama":
         return ollama_window(model), source(model)
     if ptype in ("openai", "llamacpp") and llm_providers.is_local(provider):
         found = openai_window(llm_providers.url(provider), model)
-        if found:
-            return found, "runtime"
-        forced = _forced()
-        return (forced, "setting") if forced else (FLOOR, "default")
-    return 0, "provider"
+        return (found, "runtime") if found else (FLOOR, "default")
+    found = cloud_window.window(provider, model)
+    return (found, "service") if found else (0, "")

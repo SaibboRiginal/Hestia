@@ -445,7 +445,8 @@ s = shape(payload_or_text, max_chars)   # Shaped(text, cut, full, total_items)
 JSON: empty values out (False/0 stay), a list of ≥ 3 same-shaped objects → `{"columns", "rows"}`, compact separators;
 over `max_chars` the longest lists keep the most items that fit, error items first, with `"more": "showing N of M"`.
 Text/logs: repeated lines → `line  [×N]`; over the budget head + error lines + tail. `full` = the whole output without
-loss (Oracle keeps it for `result_more`). `max_chars ≤ 0` = only the lossless shaping.
+loss (Oracle keeps it for `result_more`). `max_chars ≤ 0` = only the lossless shaping. Callers pass a budget derived from the
+window of the model that answers, read from its provider (Oracle: 4 % of it); there is no setting for it.
 
 ## Presence client (`hestia_common.presence_client`)
 

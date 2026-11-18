@@ -109,18 +109,18 @@ def _row(use_case: str, chain: str, index: int, provider: str, model: str, stats
             "use_case": use_case, "chain": chain or None, "step": int(index or 0), "provider": provider or None,
             "model": model or None, "client": _client.get() or None, "session_id": _session() or None,
             "input_tokens": inp, "cached_tokens": cached, "output_tokens": out,
-            "context_window": _window(provider), "duration_ms": max(0, int(duration_ms)),
+            "context_window": _window(provider, model), "duration_ms": max(0, int(duration_ms)),
             "cost_usd": round(cost, 6), "cost_kind": kind or None, "outcome": outcome,
             "detail": (detail or "")[:300] or None}
 
 
-def _window(provider: str) -> int:
-    from core.services import local_window
+def _window(provider: str, model: str = "") -> int:
+    """Window of the model that answered, read from its provider (``agents.providers.model_window``)."""
     try:
-        return int(local_window.window_of(provider)[0])
+        from agents.providers import model_window
+        return model_window(provider, model)
     except Exception:
-        pass
-    return 0
+        return 0
 
 
 def price(provider: str, model: str, inp: int, cached: int, out: int, reported: float = 0.0) -> tuple[float, str]:

@@ -44,9 +44,8 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 # (oracle.agent.*), read at every run (live): see _settings().
 
 # ── Token counting ───────────────────────────────────────────────────────────────
-# Window and compaction threshold are Themis settings (oracle.provider.ollama.num_ctx,
-# oracle.context.compact_threshold): the same num_ctx is sent to Ollama on every call, so the
-# budget below is the model's real window.
+# The window is read from the provider of the model that answers (local program or cloud service, never set in
+# Hestia); the compaction threshold is a Themis setting (oracle.context.compact_threshold).
 
 
 def _settings():
@@ -378,9 +377,8 @@ def _failed_writes(tool_log: list[dict]) -> list[str]:
     return out
 
 
-# A tool result may take this share of the window of the model that answers, when the setting
-# oracle.agent.tool_result_max_chars is 0 (automatic): 16k → ~2,000 chars (five results in a step = a fifth of the
-# window), 32k → ~3,900, 256k → the ceiling. A number in the setting forces it.
+# A tool result may take this share of the window of the model that answers (read from its provider, never set in
+# Hestia): 16k → ~2,000 chars (five results in a step = a fifth of the window), 32k → ~3,900, 256k → the ceiling.
 _RESULT_WINDOW_SHARE = 0.04
 _RESULT_MIN_CHARS, _RESULT_CEILING_CHARS = 800, 24000
 _FALLBACK_WINDOW = 8192
@@ -389,11 +387,8 @@ _STUB_KEEP_MIN_CHARS = 200   # shorter results are never stubbed to less, so the
 
 
 def tool_result_budget(window_tokens: int, chars_per_token: float = 3.0) -> int:
-    """Characters one tool result may take in the prompt: the setting when it is a number, else a share of the
-    window (the same window that drives budget and compaction)."""
-    forced = _settings().get_int(_settings().TOOL_RESULT_MAX_CHARS, 0)
-    if forced > 0:
-        return forced
+    """Characters one tool result may take in the prompt: a share of the window (the same window that drives budget
+    and compaction)."""
     window = window_tokens if window_tokens > 0 else _FALLBACK_WINDOW
     return max(_RESULT_MIN_CHARS, min(_RESULT_CEILING_CHARS, int(window * _RESULT_WINDOW_SHARE * chars_per_token)))
 
