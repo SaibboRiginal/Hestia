@@ -56,8 +56,6 @@ export function dayLabel(d: Date, now = new Date()): string {
               [attr.aria-pressed]="chats.historyOpen()"  [title]="'All conversations' | tr">{{ "alt2::History" | tr }}</button>
       <span class="ttl">{{ chat.messages().length ? ('Conversation' | tr) : '' }}</span>
       <div class="hx-grow"></div>
-      <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" (click)="toggleLive()"
-              [attr.aria-pressed]="live.on" [title]="('Talk with ' | tr) + identity.assistant() + (' by voice' | tr)">{{ "Talk" | tr }}</button>
       <hx-chat-context />
       <hx-chat-quick-settings />
       <hx-menu [items]="menu" (select)="onMenu($event)">
@@ -206,11 +204,13 @@ export function dayLabel(d: Date, now = new Date()): string {
                     [loading]="dictBusy()" [attr.aria-pressed]="dictating()" [attr.aria-label]="micLabel()" [title]="micLabel()"
                     (pointerdown)="micDown($event)" (pointermove)="micMove($event)" (pointerup)="micUp()"
                     (pointercancel)="micCancel()" (contextmenu)="$event.preventDefault()" (click)="micKey($event)"></button>
+            <!-- «Talk» lives with the other voice button, in the box (dossier 2026-11-18-problemi-del-test D). -->
+            <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" iconOnly (click)="toggleLive()"
+                    [attr.aria-pressed]="live.on" [attr.aria-label]="('Talk with ' | tr) + identity.assistant() + (' by voice' | tr)"></button>
             @if (text.trim() && !recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly  [attr.aria-label]="'Send' | tr" (click)="send()"></button> }
           }
         </div>
       </div>
-      <p class="disc">{{ "Enter to send · Shift+Enter for a new line · microphone: tap to dictate, hold for a voice message" | tr }}</p>
     </div>
   `,
   styles: [`
@@ -255,7 +255,6 @@ export function dayLabel(d: Date, now = new Date()): string {
     textarea { width: 100%; border: 0; outline: 0; resize: none; background: transparent; font-size: 15.5px; line-height: 1.5; max-height: 240px; color: var(--text); }
     textarea::placeholder { color: var(--text-3); }
     .tools { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-    .disc { text-align: center; font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
     .offline { display: flex; align-items: center; gap: 8px; background: var(--warning-soft); color: var(--text);
                border-radius: var(--radius-lg); padding: 9px 14px; margin-bottom: 10px; font-size: 13.5px; }
     .offline .oe { font-size: 16px; }
@@ -432,9 +431,14 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
     this.toast.success(tr('Cancelled'));
   }
 
+  /** Cursor position when dictation started (null = end of the text). */
+  private dictAt: number | null = null;
+
   /** Dictation (brainstorm C12): speak, the text lands in the box to read again; nothing is sent or kept. */
   async toggleDictation() {
     if (!this.dictating()) {
+      const el = this.ta()?.nativeElement;
+      this.dictAt = el && document.activeElement === el ? el.selectionStart : null;   // where the words go
       try { await this.dict.start(); } catch { this.toast.error(tr('The browser does not give me the microphone')); return; }
       this.dictating.set(true);
       return;
@@ -447,8 +451,13 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
       const heard = await this.voice.dictate(out.blob, this.dict.mime);
       const t = (heard.text || '').trim();
       if (!t) { this.toast.show(tr('I heard nothing'), 'warning'); return; }
-      this.text = this.text.trim() ? `${this.text.trim()} ${t}` : t;
-      queueMicrotask(() => { this.grow(); this.ta()?.nativeElement.focus(); });
+      // Added where the cursor was (end of the text otherwise): what is already written stays.
+      const at = this.dictAt ?? this.text.length;
+      const before = this.text.slice(0, at), after = this.text.slice(at);
+      const piece = `${before && !/\s$/.test(before) ? ' ' : ''}${t}${after && !/^\s/.test(after) ? ' ' : ''}`;
+      this.text = before + piece + after;
+      const caret = (before + piece).length;
+      queueMicrotask(() => { this.grow(); const el = this.ta()?.nativeElement; if (el) { el.focus(); el.setSelectionRange(caret, caret); } });
     } catch {
       this.toast.error(tr('Dictation not available now'));
     } finally {

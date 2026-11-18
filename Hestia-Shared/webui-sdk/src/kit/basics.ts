@@ -220,21 +220,57 @@ export class HxkCard extends LitElement {
   }
 }
 
-/** KPI tiles: items [{label, value, unit?, delta?, tone?, hint?}]. */
+/** One entry of the list a tile opens: a plain text or {title, subtitle?}. */
+export type StatListItem = string | { title: string; subtitle?: string };
+/** KPI tiles: items [{label, value, unit?, delta?, tone?, hint?, list?, open?}].
+ *  A tile that counts things opens them (dossier 2026-11-18-problemi-del-test D): `list` shows the items in a panel
+ *  under the tiles, `open` runs the plugin's own action (e.g. navigate to the page that lists them). */
 export class HxkStat extends LitElement {
-  static properties = { items: { attribute: false } };
-  declare items: Array<{ label: string; value: string | number; unit?: string; delta?: string; tone?: string; hint?: string }>;
-  constructor() { super(); this.items = []; }
+  static properties = { items: { attribute: false }, opened: { state: true } };
+  declare items: Array<{ label: string; value: string | number; unit?: string; delta?: string; tone?: string; hint?: string;
+                         list?: StatListItem[]; open?: () => void }>;
+  declare opened: number;
+  constructor() { super(); this.items = []; this.opened = -1; }
   static styles = [tokens, css`
     :host { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-    .tile { background: var(--surface-2); border-radius: var(--radius-md); padding: 10px 12px; }
-    .l { font-size: 12px; color: var(--text-3); } .v { font-size: 22px; font-weight: 600; font-family: var(--font-serif); }
+    .tile { background: var(--surface-2); border-radius: var(--radius-md); padding: 10px 12px; text-align: left; border: 1px solid transparent;
+      font: inherit; color: inherit; min-width: 0; }
+    button.tile { cursor: pointer; position: relative; transition: border-color var(--dur, .15s), background var(--dur, .15s); }
+    button.tile:hover { border-color: var(--border); background: var(--surface-3); }
+    button.tile:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
+    button.tile[aria-expanded=true] { border-color: var(--accent); }
+    .chev { position: absolute; top: 10px; right: 10px; color: var(--text-3); }
+    .l { font-size: 12px; color: var(--text-3); padding-right: 16px; } .v { font-size: 22px; font-weight: 600; font-family: var(--font-serif); }
     .u { font-size: 13px; color: var(--text-3); margin-left: 3px; } .d { font-size: 12px; font-weight: 600; }
+    .panel { grid-column: 1 / -1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; }
+    .ph { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .ph span { flex: 1; } .x { background: none; border: 0; color: var(--text-3); cursor: pointer; padding: 4px; border-radius: var(--radius-sm, 6px); }
+    .x:hover { background: var(--surface-2); color: var(--text); }
+    ul { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+    li { padding: 6px 2px; border-top: 1px solid var(--border); font-size: 13.5px; } li:first-child { border-top: 0; }
+    .sub { font-size: 12px; color: var(--text-3); } .empty { font-size: 13px; color: var(--text-3); }
   `];
+  private pick(i: number) {
+    const it = this.items[i];
+    if (it.open) { it.open(); return; }
+    this.opened = this.opened === i ? -1 : i;
+  }
   render() {
-    return this.items.map(i => html`<div class="tile" title=${i.hint ?? ''}><div class="l">${i.label}</div>
-      <div><span class="v">${i.value}</span>${i.unit ? html`<span class="u">${i.unit}</span>` : nothing}</div>
-      ${i.delta ? html`<div class="d" style="color:${toneColor(i.tone)[0]}">${i.delta}</div>` : nothing}</div>`);
+    const tiles = this.items.map((i, n) => {
+      const inner = html`<div class="l">${i.label}</div>
+        <div><span class="v">${i.value}</span>${i.unit ? html`<span class="u">${i.unit}</span>` : nothing}</div>
+        ${i.delta ? html`<div class="d" style="color:${toneColor(i.tone)[0]}">${i.delta}</div>` : nothing}`;
+      return i.list || i.open
+        ? html`<button class="tile" title=${i.hint ?? ''} aria-expanded=${i.list ? String(this.opened === n) : nothing}
+              @click=${() => this.pick(n)}>${inner}<hxk-icon class="chev" name=${i.open ? 'chevron-right' : this.opened === n ? 'chevron-up' : 'chevron-down'} size="13"></hxk-icon></button>`
+        : html`<div class="tile" title=${i.hint ?? ''}>${inner}</div>`;
+    });
+    const open = this.opened >= 0 ? this.items[this.opened] : undefined;
+    return html`${tiles}${open?.list ? html`<div class="panel" role="region" aria-label=${open.label}>
+      <div class="ph"><span>${open.label}</span><button class="x" aria-label=${tr('Close')} @click=${() => { this.opened = -1; }}><hxk-icon name="x" size="14"></hxk-icon></button></div>
+      ${open.list.length ? html`<ul>${open.list.map(x => typeof x === 'string' ? html`<li>${x}</li>`
+          : html`<li>${x.title}${x.subtitle ? html`<div class="sub">${x.subtitle}</div>` : nothing}</li>`)}</ul>`
+        : html`<div class="empty">${tr('Nothing here yet')}</div>`}</div>` : nothing}`;
   }
 }
 

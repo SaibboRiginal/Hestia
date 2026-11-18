@@ -137,6 +137,15 @@ export class NotesPageComponent {}
   Reload page data on `AssistantService.changed$` (agenda / Forge / action notices).
 - **Side panels are resizable** (the owner likes it): every side column/drawer gets `<hx-resize>` with a `key`
   (shell sidebar, Crea con Hestia, Sviluppo list + context panel, Calendario filters, Impostazioni → Sistema modules).
+- **Tooltips** (dossier `docs/work/2026-11-18-problemi-del-test` D): write a plain `title` (or the `aria-label` of an
+  icon-only button) and nothing else: `ui/tooltip.ts` (started by `AppComponent`) gives every one of them, plugins
+  included, the same tooltip (hover after 450 ms, keyboard focus, long press on touch). Never build a tooltip of your own.
+- **Numbers that count things open them**: an `hxk-stat` tile that counts items gets `list` (the items, shown in a
+  panel under the tiles) or `open` (go to the page that lists them). A dead number is bad UX.
+- **Breadcrumb**: every piece is a link back (section → its overview or first page, parent → its page).
+- **Pinned** sidebar entries sit in their own block above the scroll area and never scroll away.
+- **Chat box**: no instruction line under it; the hints live in the placeholder and the tooltips. Mic (tap dictates
+  at the cursor, hold = voice message) and «Talk» sit together in the box.
 - **Random ids**: `uid()` from `core/uid.ts` (`crypto.randomUUID` is missing on plain-http LAN addresses).
 
 ## 6. Calendar module (reference implementation)

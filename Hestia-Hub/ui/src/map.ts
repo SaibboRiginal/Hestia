@@ -98,9 +98,10 @@ export class HubMap extends HestiaElement {
         <hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
       ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last map", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
-        { label: tr('Services'), value: d.services_count },
-        { label: tr('Online'), value: d.online_count, tone: 'success' },
+        { label: tr('Services'), value: d.services_count, list: (d.services || []).map((s: any) => ({ title: s.name, subtitle: s.node || '' })) },
+        { label: tr('Online'), value: d.online_count, tone: 'success', list: (d.services || []).filter((s: any) => s.online).map((s: any) => s.name) },
         { label: tr('Offline'), value: d.offline_count, tone: d.offline_count ? 'danger' : 'neutral',
+          list: (d.services || []).filter((s: any) => !s.online).map((s: any) => s.name),
           delta: d.offline_count ? tr('no signal for 3 min') : '', hint: tr("Online = registered in the last {0} minutes", Math.round(d.online_window_seconds / 60)) },
         { label: tr('Review'), value: d.revision, hint: tr('It grows with every registration or change of a service') },
       ]}></hxk-stat>

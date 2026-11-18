@@ -7,7 +7,10 @@
       Not done: preemption for llama-server / OpenAI-compatible local servers (they finish their call).
 - [x] C — language: `localize` walks lists/objects under KEEP_KEYS except `DATA_KEYS` (TS + Python), plugin `host.api`
       answers and site notification pushes localized, download notice title `tr`. Test in Themis `test_themis_personal.py`.
-- [ ] D — WebUI one pattern
+- [x] D — WebUI one pattern: `ui/tooltip.ts` (global, plugins via composedPath), pinned block, solid collapse/burger,
+      breadcrumb links, composer (no hint line, Talk in the box, dictation at the cursor), `hxk-stat` `list`/`open`
+      applied to Iris (subscribed modules, emails seen), Hub map (services/online/offline), Argus (unhealthy, incidents).
+      Other count tiles: to apply when their page is touched (rule in DESIGN-SYSTEM §5).
 - [ ] E — chains, compatible models, Gemini limits, context settings
 - [ ] F — Deliveries, Development, Argus on `[🔄]`
 - [ ] B — queue, steering, «/» commands
