@@ -128,7 +128,8 @@ def test_sends_what_oracle_wrote_through_hermes_and_keeps_it(monkeypatch):
     assert event["payload"]["_message"] == "Giornata pesante al lavoro?" and event["payload"]["_title"] == ""
     assert not event["payload"].get("_actions")
     assert by["archive"][2]["rows"][0]["kind"] == "talk"
-    assert talk.due(datetime.now(timezone.utc) + timedelta(hours=1)) is False        # the pause started
+    # one minute later, so the check never crosses midnight UTC (the day counter starts again there)
+    assert talk.due(datetime.now(timezone.utc) + timedelta(minutes=1)) is False      # the pause started
 
 
 def test_nothing_to_say_sends_nothing(monkeypatch):

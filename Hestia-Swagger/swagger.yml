@@ -1905,6 +1905,8 @@ paths:
           type: string
         description: |
           Service name, comma-separated list, or ``*`` wildcard.
+          The Hub sends the target ``X-Hestia-Deadline`` (epoch seconds = now + timeout_seconds): work still waiting
+          when the caller has given up can be skipped (Oracle's LLM bus does).
 
           | Value | Mode | Example |
           |-------|------|---------|
@@ -4324,6 +4326,8 @@ paths:
           description: "{response, model, provider, use_case, chain} — provider/model of the chain step that answered"
         "503":
           description: "Every step of the chain failed or is out of quota (detail names the chain and each step)"
+        "504":
+          description: "The caller's deadline (Hub header X-Hestia-Deadline) passed while the call waited for the local model: it was not run"
 
   /api/llm/providers:
     get:

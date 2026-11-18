@@ -191,3 +191,89 @@ def test_chain_agent_takes_a_slot_for_local_steps_but_not_for_embeddings(monkeyp
     taken.clear()
     assert agent.embed("hi") == [0.1]
     assert taken == ["usage"]
+
+
+# ── dossier 2026-11-18-problemi-del-test A: deadline and the owner's turn over a running call ──────────────
+
+@pytest.mark.unit
+def test_call_whose_caller_gave_up_never_runs():
+    release, started = threading.Event(), threading.Event()
+    holder = threading.Thread(target=_hold, args=(release, started))
+    holder.start()
+    assert started.wait(3)
+    ran = []
+    try:
+        with llm_bus.deadline(time.time() + 1.3):    # 1 s margin: gives up after ~0.3 s
+            with pytest.raises(llm_bus.Expired):
+                with llm_bus.slot("loc"):
+                    ran.append(1)
+    finally:
+        release.set()
+        holder.join(5)
+    assert ran == []
+    assert llm_bus.status()["waiting"] == {"chat": 0, "background": 0}
+
+
+@pytest.mark.unit
+def test_deadline_header_read_case_insensitive():
+    assert llm_bus.deadline_from_headers({"X-Hestia-Deadline": "123.5"}) == 123.5
+    assert llm_bus.deadline_from_headers({"x-hestia-deadline": "bad"}) == 0.0
+    assert llm_bus.deadline_from_headers({}) == 0.0
+
+
+@pytest.mark.unit
+def test_owner_turn_asks_the_running_background_call_to_stop():
+    started, stopped, order = threading.Event(), threading.Event(), []
+
+    def background():
+        with llm_bus.priority(llm_bus.BACKGROUND):
+            with llm_bus.slot("loc"):
+                started.set()
+                end = time.monotonic() + 5
+                while time.monotonic() < end and not llm_bus.cancel_requested():
+                    time.sleep(0.01)
+                if llm_bus.cancel_requested():
+                    stopped.set()
+
+    def chat():
+        with llm_bus.priority(llm_bus.CHAT):
+            with llm_bus.slot("loc"):
+                order.append("chat")
+
+    bg = threading.Thread(target=background)
+    bg.start()
+    assert started.wait(3)
+    ch = threading.Thread(target=chat)
+    ch.start()
+    for t in (bg, ch):
+        t.join(5)
+    assert stopped.is_set() and order == ["chat"]
+
+
+@pytest.mark.unit
+def test_chain_puts_a_stopped_call_back_in_line(monkeypatch):
+    from core.services import llm_chains
+    calls = []
+
+    def run():
+        calls.append(1)
+        if len(calls) == 1:
+            raise llm_bus.Preempted("owner")
+        return "done"
+
+    assert llm_chains._in_line("loc", "test", run) == "done"
+    assert len(calls) == 2
+
+
+@pytest.mark.unit
+def test_busy_with_background():
+    release, started = threading.Event(), threading.Event()
+    holder = threading.Thread(target=_hold, args=(release, started))
+    holder.start()
+    assert started.wait(3)
+    try:
+        assert llm_bus.busy_with_background()
+    finally:
+        release.set()
+        holder.join(5)
+    assert not llm_bus.busy_with_background()

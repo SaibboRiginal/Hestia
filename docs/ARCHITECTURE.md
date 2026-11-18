@@ -470,6 +470,8 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
     goes through them via the Hub (`/api/llm/*`, `/api/voice/*`).
     Calls to local models wait in one queue in Oracle (LLM bus, `oracle.bus.local_workers` workers, default 1):
     the owner's turn goes before background work; nobody adds its own LLM queue or lock (dossier `2026-11-16-bus-llm`).
+    The Hub sends every routed call the caller's deadline (`X-Hestia-Deadline`, epoch seconds): work still waiting when
+    the caller has given up is not started. The owner's turn may stop a running background call, which runs again after.
 4. No giant single-file services: modular packages only.
 5. Every service must include:
    - project markdown summary

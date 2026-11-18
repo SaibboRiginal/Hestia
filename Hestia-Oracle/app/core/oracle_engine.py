@@ -970,6 +970,12 @@ class OracleEngine:
             len(available_domains or []),
         )
 
+        # The local model is busy with background work (dossier 2026-11-18-problemi-del-test A): say so, the owner
+        # goes first (the bus stops that call when it can) instead of a silent wait.
+        from core.services import llm_bus
+        if llm_bus.current() == llm_bus.CHAT and llm_bus.busy_with_background():
+            yield stream_emitter.emit_status(tr("⏳ Finishing a background job, then it's you..."))
+
         # ── Phase 2: CLASSIFY (single call: mode + domain + action_intent) ────
         temporal_context = self._current_datetime_context()
         t_classify = time.perf_counter()

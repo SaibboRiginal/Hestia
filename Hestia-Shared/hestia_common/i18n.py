@@ -155,6 +155,9 @@ KEEP_KEYS = frozenset({"id", "key", "value", "status", "state", "type", "kind", 
                        "domain", "source", "role", "lang", "language", "page", "link", "view", "tab", "event",
                        "event_type", "use_case", "provider", "model", "format", "mime", "unit_code", "action",
                        "name_id", "entity_id", "dedupe_key", "replaces", "query", "q", "args", "params"})
+# Kept keys whose value is the owner's data even as a list or object (a setting value, tool arguments): never walked.
+# Under the other kept keys a list or object (a plugin's ``page`` list, an ``action`` button) holds people texts.
+DATA_KEYS = frozenset({"id", "key", "value", "query", "q", "args", "params", "replaces"})
 
 
 def localize(payload: Any, lang: str | None = None) -> Any:
@@ -171,7 +174,10 @@ def localize(payload: Any, lang: str | None = None) -> Any:
 
     def walk(node: Any, key: str = "") -> Any:
         if isinstance(node, dict):
-            return {k: (v if k in KEEP_KEYS else walk(v, k)) for k, v in node.items()}
+            # KEEP_KEYS protect string values (ids, keys, states); a list or object under such a key (a plugin's
+            # ``page`` list, an ``action`` button) still holds people texts and is walked.
+            return {k: (v if k in KEEP_KEYS and (isinstance(v, str) or k in DATA_KEYS) else walk(v, k))
+                    for k, v in node.items()}
         if isinstance(node, list):
             return [walk(v, key) for v in node]
         if isinstance(node, str):

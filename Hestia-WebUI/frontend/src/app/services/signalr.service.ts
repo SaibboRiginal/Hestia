@@ -3,7 +3,7 @@ import * as signalR from '@microsoft/signalr';
 import { AuthService } from './auth.service';
 import { Subject, Observable } from 'rxjs';
 import { ServerEvent, ClientMessage } from '../models/chat.models';
-import { tr } from '../core/i18n';
+import { tr, localize } from '../core/i18n';
 
 /** Raw Hermes push (snake_case, as Hermes sends it). */
 export interface HermesPush { kind: 'notification' | 'update' | string; notification_id: string; [k: string]: unknown; }
@@ -52,7 +52,7 @@ export class SignalRService {
     });
 
     this.hub.on('ReceiveNotification', (push: HermesPush) => {
-      this.notificationSubject.next(push);
+      this.notificationSubject.next(localize(push));   // module texts (titles, actions) in the owner's language
     });
 
     this.hub.onreconnecting(() => this.connectionState.set('connecting'));

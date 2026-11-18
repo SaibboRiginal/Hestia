@@ -299,7 +299,7 @@ class Downloads:
                 text += tr(" You can try again from the Downloads page.")
             self.hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
                 module=self.module, domain="system", key=f"download.{self.module}.{job.id}",
-                title="alt::Download" if level == "info" else tr("Download failed"), text=text, actions=[],
+                title=tr("alt::Download") if level == "info" else tr("Download failed"), text=text, actions=[],
                 page=self.page, level=level), timeout=8)
         except Exception as exc:
             logger.warning("[🔄] event=download_notify_failed module=%s id=%s error=%s", self.module, job.id, exc)

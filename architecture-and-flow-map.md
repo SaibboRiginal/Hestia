@@ -133,6 +133,12 @@ flowchart LR
 
 ## Practical Flows
 
+### Model call deadline flow (dossier `docs/work/2026-11-18-problemi-del-test` A)
+1. Module → Hub `POST /api/route/oracle/api/llm/generate` with `timeout_seconds` → Hub adds `X-Hestia-Deadline` (now + timeout).
+2. Oracle LLM bus: the call waits for the local worker; deadline passed while waiting → not run, `504` to the caller.
+3. The owner's chat arrives while a background call runs → that call is stopped (Ollama connection closed), the owner
+   is served, the stopped call runs again after.
+
 ### Calendar flow
 1. Oracle/Telegram triggers calendar action.
 2. Chronos handles calendar domain logic.

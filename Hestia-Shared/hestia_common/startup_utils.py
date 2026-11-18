@@ -182,3 +182,22 @@ def start_hub_keepalive(
     thread = threading.Thread(target=_loop, daemon=True, name=name)
     thread.start()
     return thread
+
+
+def widen_threadpool(app, tokens: int = 200) -> None:
+    """Give the web server more worker threads than Starlette's default 40 (dossier 2026-11-18-problemi-del-test A).
+
+    Sync endpoints and streamed answers each hold one thread while they run. A module that waits for something long
+    (Oracle: a model call in line on the LLM bus; Hub: the routed call it is waiting for) must not leave the pages,
+    the health check and the owner's chat without a thread. Waiting threads cost almost nothing."""
+
+    @app.on_event("startup")
+    async def _widen() -> None:
+        try:
+            import anyio.to_thread
+            limiter = anyio.to_thread.current_default_thread_limiter()
+            if limiter.total_tokens < tokens:
+                limiter.total_tokens = tokens
+        except Exception as exc:   # never block a start for this
+            logging.getLogger("hestia_common.startup").warning(
+                "[🔄] event=threadpool_widen_failed tokens=%s error=%s", tokens, exc)

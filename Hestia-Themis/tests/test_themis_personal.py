@@ -183,3 +183,20 @@ def test_setting_labels_with_the_name_are_rendered_in_italian_too(monkeypatch):
     spec = {"key": "x.y", "label": "{assistant} in other AIs · most space", "help": "How {assistant} answers you, on every client."}
     out = settings_client.translated(spec, "it")
     assert out["label"] == "Leo in altre AI · spazio massimo" and out["help"] == "Come ti risponde Leo, su ogni client."
+
+
+@pytest.mark.unit
+def test_localize_walks_lists_under_kept_keys(monkeypatch):
+    """Dossier 2026-11-18-problemi-del-test C: a plugin's ``page`` list and an ``action`` object hold people texts;
+    only string values under KEEP_KEYS stay as they are. A tag never reaches people."""
+    from hestia_common import i18n
+    values = {"themis.personal.language": "it"}
+    monkeypatch.setattr(i18n, "_reader", values.get)
+    out = i18n.localize({"page": [{"id": "consegne", "label": "Deliveries"}], "action": {"label": "Plan"},
+                         "status": "Deliveries", "area_label": "alt::Day", "args": {"q": "Deliveries"}})
+    assert out["page"] == [{"id": "consegne", "label": "Consegne"}]
+    assert out["status"] == "Deliveries"                 # a string under a kept key is an id, never translated
+    assert out["area_label"] == "Giornata"
+    assert out["args"] == {"q": "Deliveries"}            # the owner's data stays as it is
+    values["themis.personal.language"] = "en"
+    assert i18n.localize({"area_label": "alt::Day"}) == {"area_label": "Day"}

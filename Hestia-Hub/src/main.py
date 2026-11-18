@@ -61,6 +61,8 @@ logger, log_buffer = setup_service_logging("hestia_hub")
 # ── Singletons ────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Hestia Hub", version="1.0.0")
+from hestia_common.startup_utils import widen_threadpool  # noqa: E402
+widen_threadpool(app)   # a call waiting for a model or a routed reply never starves the pages
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 registry = ServiceRegistry()

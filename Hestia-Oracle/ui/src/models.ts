@@ -57,7 +57,7 @@ export class OracleModels extends HestiaElement {
 
   async load() {
     const r = await this.host.api('GET', `${API}/models`);
-    if (!r.ok) { this.error = r.error || tr('Oracle not reachable'); return; }
+    if (!r.ok) { this.error = r.error || tr('Not available right now'); return; }
     this.error = '';
     this.data = r.data;
     const provs: Record<string, any> = {};

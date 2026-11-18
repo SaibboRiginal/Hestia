@@ -61,7 +61,7 @@ export class OracleDocuments extends HestiaElement {
 
   private async load() {
     const r = await this.host.api('GET', `${API}/documents`, { query: { limit: 200 } });
-    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? tr('Oracle not reachable') : r.error || tr('Oracle not reachable'); return; }
+    if (!r.ok) { this.error = r.status === 0 || r.status >= 500 ? tr('Not available right now') : r.error || tr('Not available right now'); return; }
     this.error = '';
     this.docs = r.data.documents || [];
     const ids = new Set(this.docs!.map(d => d.document_id));
@@ -76,7 +76,7 @@ export class OracleDocuments extends HestiaElement {
     this.searching = true;
     const r = await this.host.api('GET', `${API}/documents/search`, { query: { query: q, limit: 10 } });
     this.searching = false;
-    if (!r.ok) { this.host.toast(r.status === 0 ? tr('Oracle not reachable') : r.error || tr('Search failed'), 'danger'); return; }
+    if (!r.ok) { this.host.toast(r.status === 0 ? tr('Not available right now') : r.error || tr('Search failed'), 'danger'); return; }
     this.hits = r.data.chunks || [];
   }
 

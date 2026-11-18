@@ -103,6 +103,7 @@ export function dayLabel(d: Date, now = new Date()): string {
               @if (m.thinkingSteps?.length && thinkingMode() !== 'hidden') {
                 <chat-thinking [steps]="m.thinkingSteps!" [live]="!!m.isStreaming && !m.content" [display]="thinkingMode()" />
               }
+              @if (m.isStreaming && !m.content && m.status) { <div class="status" role="status"><span class="sdot"></span>{{ m.status }}</div> }
               @if (m.origin; as o) { <div class="origin"><hx-icon name="zap" [size]="13" />{{ o.label || ('Started automatically' | tr) }}</div> }
               @if (m.error) { <div class="err"><hx-icon name="alert" tone="danger" [size]="15" /><span>{{ m.content }}</span></div> }
               @else { <hx-assistant-text [html]="m.content" [streaming]="!!m.isStreaming" [queued]="!!m.queuedId" (send)="use($event)" /> }
@@ -284,6 +285,8 @@ export function dayLabel(d: Date, now = new Date()): string {
     .dhint { font-size: 12.5px; color: var(--text-3); margin-right: 4px; }
     .fb.busy { color: var(--accent); }
     .micbtn { touch-action: none; user-select: none; -webkit-user-select: none; }
+    .status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-3); margin: 2px 0 6px; }
+    .status .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: hx-pulse 1.4s ease-in-out infinite; }
     .live { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--accent);
             border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 10px; box-shadow: var(--shadow-1); }
     .ldot { width: 12px; height: 12px; border-radius: 50%; background: var(--text-3); flex: none; }
