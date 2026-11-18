@@ -202,47 +202,111 @@ def is_local(name: str) -> bool:
         return False
 
 
-def _gemini_models(name: str) -> list[str]:
-    """Google's own list for this key (``models.list``): only models that can chat (``generateContent``) or embed,
-    so a retired alias never shows up. Curated list when it cannot be read."""
+# ── What a model is for (dossier 2026-11-18-problemi-del-test E): pickers show only the models that fit ──────────
+USES = ("chat", "embedding")
+# Names that are not for chatting (speech, pictures, live audio…), when the provider does not say it itself.
+_NOT_CHAT = ("tts", "image", "audio", "live", "native", "embed", "aqa", "imagen", "veo", "computer-use", "robotics",
+             "whisper", "dall-e", "moderation", "transcribe", "rerank")
+
+
+def is_embedding_name(name: str, family: str = "") -> bool:
+    """An embedding model judged by its name (used when the provider does not declare what its models do)."""
+    low = f"{name} {family}".lower()
+    return "embed" in low or "bert" in low or "bge-" in low
+
+
+def is_chat_name(name: str) -> bool:
+    """A model to chat with judged by its name: not embedding, not speech, pictures or live audio."""
+    return not is_embedding_name(name) and not any(w in name.lower() for w in _NOT_CHAT)
+
+
+def _fits(use: str, name: str, caps: set[str] | None) -> bool:
+    """*name* fits *use*: from the capabilities the provider declares when there are some, else from the name."""
+    if not use:
+        return True
+    if caps:
+        if use == "embedding":
+            return "embedding" in caps
+        return "completion" in caps and "embedding" not in caps
+    return is_embedding_name(name) if use == "embedding" else is_chat_name(name)
+
+
+def _gemini_models(name: str, use: str = "") -> list[str]:
+    """Google's own list for this key (``models.list``) with what each model supports: chat = ``generateContent`` and
+    not a speech/picture/live model, embedding = ``embedContent``. A retired alias never shows up. Curated list when
+    it cannot be read."""
     import requests
     key = api_key(name)
+    curated = [m for m in GEMINI_MODELS if _fits(use, m, None)]
     if not key:
-        return list(GEMINI_MODELS)
+        return curated
     try:
         resp = requests.get(f"{url(name).rstrip('/')}/v1beta/models", params={"key": key, "pageSize": 1000}, timeout=8)
         resp.raise_for_status()
         out = []
         for m in (resp.json() or {}).get("models") or []:
-            methods = m.get("supportedGenerationMethods") or []
+            methods = set(m.get("supportedGenerationMethods") or [])
             model = str(m.get("name") or "").removeprefix("models/")
-            if model and ("generateContent" in methods or "embedContent" in methods):
-                out.append(model)
-        return out or list(GEMINI_MODELS)
+            if not model or not methods & {"generateContent", "embedContent"}:
+                continue
+            if use == "embedding" and "embedContent" not in methods:
+                continue
+            if use == "chat" and ("generateContent" not in methods or not is_chat_name(model)):
+                continue
+            out.append(model)
+        return out or curated
     except Exception as exc:
         logger.warning("[🔄] event=llm_list_models_failed provider=%s error=%s fallback=curated", name, str(exc)[:160])
-        return list(GEMINI_MODELS)
+        return curated
 
 
-def list_models(name: str) -> list[str]:
-    """Model names of a provider, from the provider itself (Ollama: installed models; Gemini, OpenAI-compatible servers
-    such as LM Studio, Jan, vLLM, DeepSeek: their ``models`` API; Claude: its CLI/API list)."""
+_ollama_caps_cache: dict[str, set[str]] = {}
+
+
+def _ollama_caps(base: str, model: str, digest: str = "") -> set[str] | None:
+    """What an installed Ollama model can do (``/api/show`` ``capabilities``: completion, tools, vision, embedding,
+    thinking), cached per model and digest. None when this Ollama does not say (older versions): the name decides."""
     import requests
+    key = f"{base}|{model}|{digest}"
+    if key in _ollama_caps_cache:
+        return _ollama_caps_cache[key] or None
+    try:
+        resp = requests.post(f"{base}/api/show", json={"model": model}, timeout=4)
+        resp.raise_for_status()
+        caps = {str(c) for c in (resp.json() or {}).get("capabilities") or []}
+    except Exception as exc:
+        logger.info("[🔄] event=ollama_caps_unknown model=%s error=%s", model, str(exc)[:120])
+        return None
+    _ollama_caps_cache[key] = caps
+    return caps or None
+
+
+def list_models(name: str, use: str = "") -> list[str]:
+    """Model names of a provider, from the provider itself (Ollama: installed models; Gemini, OpenAI-compatible servers
+    such as LM Studio, Jan, vLLM, DeepSeek: their ``models`` API; Claude: its CLI/API list).
+    *use* (``chat`` | ``embedding``, empty = all): only the models that fit, from what the provider declares (Gemini
+    methods, Ollama capabilities) or else from the name."""
+    import requests
+    use = use if use in USES else ""
     ptype = type_of(name)
     if ptype == "ollama":
         try:
-            resp = requests.get(f"{url(name)}/api/tags", timeout=5)
+            base = url(name)
+            resp = requests.get(f"{base}/api/tags", timeout=5)
             resp.raise_for_status()
-            return sorted(m.get("name", "") for m in (resp.json() or {}).get("models", []) if m.get("name"))
+            rows = [m for m in (resp.json() or {}).get("models", []) if m.get("name")]
+            if use:
+                rows = [m for m in rows if _fits(use, m["name"], _ollama_caps(base, m["name"], str(m.get("digest") or "")))]
+            return sorted(m["name"] for m in rows)
         except Exception as exc:
             logger.warning("[🔄] event=llm_list_models_failed provider=%s error=%s", name, exc)
             return []
     if ptype == "gemini":
-        return _gemini_models(name)
+        return _gemini_models(name, use)
     if ptype:
         from agents.providers import get_provider
         try:
-            return list(get_provider(name).list_models())
+            return [m for m in get_provider(name).list_models() if _fits(use, m, None)]
         except Exception as exc:
             logger.warning("[🔄] event=llm_list_models_failed provider=%s error=%s", name, exc)
     return []

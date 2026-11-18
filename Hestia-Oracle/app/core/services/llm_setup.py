@@ -113,8 +113,8 @@ OLLAMA_SITE = "https://ollama.com/download"
 
 
 def _is_embedding(name: str, family: str = "") -> bool:
-    low = f"{name} {family}".lower()
-    return "embed" in low or "bert" in low or "bge-" in low
+    from core.services import llm_providers   # one rule for every picker (llm_providers.is_embedding_name)
+    return llm_providers.is_embedding_name(name, family)
 
 
 def _host() -> str:
@@ -340,13 +340,10 @@ def test(provider: str, model: str = "") -> dict[str, Any]:
     return _tiny_call(provider, model or _default_model(provider))
 
 
-# Names that are not for chatting (speech, pictures, live audio…): never preselected.
-_NOT_CHAT = ("tts", "image", "audio", "live", "native", "embed", "aqa", "imagen", "veo", "computer-use", "robotics")
-
-
 def is_chat(name: str) -> bool:
     """A model to chat with: not an embedding one, not speech/pictures/live audio (the «Modelli» step lists only these)."""
-    return not _is_embedding(name) and not any(w in name.lower() for w in _NOT_CHAT)
+    from core.services import llm_providers
+    return llm_providers.is_chat_name(name)
 
 
 def recommended(provider: str, listed: list[str], limit: int = 2) -> list[str]:

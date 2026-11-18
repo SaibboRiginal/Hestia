@@ -315,12 +315,12 @@ def ui_models():
 
 
 @app.get("/api/ui/models/list")
-def ui_models_list(provider: str):
-    """Model names a provider offers (picker of the chain editor)."""
+def ui_models_list(provider: str, use: str = ""):
+    """Model names a provider offers (picker of the chain editor); ``use`` = chat | embedding → only those that fit."""
     from core.services import llm_providers
     if not llm_providers.get(provider):
         raise HTTPException(status_code=404, detail="unknown provider")
-    return {"status": "ok", "provider": provider, "models": llm_providers.list_models(provider)}
+    return {"status": "ok", "provider": provider, "use": use, "models": llm_providers.list_models(provider, use)}
 
 
 @app.put("/api/ui/models/{part}")
@@ -605,10 +605,10 @@ def ui_documents_delete(document_id: str):
 
 
 @app.get("/api/llm/models")
-def llm_models_endpoint(provider: str = "ollama"):
-    """Model choices of a named provider (chain editor in Modelli)."""
+def llm_models_endpoint(provider: str = "ollama", use: str = ""):
+    """Model choices of a named provider (chain editor in Modelli); ``use`` = chat | embedding → only those that fit."""
     from core.services import llm_providers
-    return {"provider": provider, "options": [{"value": m, "label": m} for m in llm_providers.list_models(provider)]}
+    return {"provider": provider, "options": [{"value": m, "label": m} for m in llm_providers.list_models(provider, use)]}
 
 
 @app.get("/api/llm/providers")

@@ -54,8 +54,10 @@ os.environ.setdefault("LOG_LEVEL", "WARNING")     # quiet during tests
 def _llm_chains_isolated(monkeypatch):
     """No Hub in tests: no module use cases from the registry, usage rows kept in ``llm_usage.captured``
     instead of pushed to Archive; quota state and caches start empty."""
-    from core.services import llm_chains, llm_usage
+    from core.services import llm_chains, llm_limits, llm_usage
     captured: list = []
+    monkeypatch.setattr(llm_limits, "_loaded", True)
+    monkeypatch.setattr(llm_limits, "_send", lambda rows: None)
     monkeypatch.setattr(llm_usage, "captured", captured, raising=False)
     monkeypatch.setattr(llm_usage, "push", captured.append)
     monkeypatch.setattr(llm_chains, "_registry_services", lambda: [])
