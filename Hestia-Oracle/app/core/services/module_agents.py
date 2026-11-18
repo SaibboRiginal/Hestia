@@ -221,6 +221,7 @@ class AgentRun:
                 guard_checker=self.guard_checker,
                 live_notes=lambda: (f"TURN BOARD (other agents' results):\n{board.text()}" if board.text() else ""),
                 context_window=window,
+                loop_label=f"agent.{spec.module}",
             )
         except Exception as exc:
             ms = int((time.perf_counter() - t0) * 1000)

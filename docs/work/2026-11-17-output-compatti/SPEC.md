@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.1 |
+| **Version** | 1.2 |
 | **Source** | user via external chat (thread «Valutare trucchi per risparmiare token»; evaluation `valutazioni/trucchi-risparmio-token.md`, ideas 1, 2, 4 approved 2026-11-17) |
 | **Status** | Implemented (owner's real run pending) |
 
@@ -73,7 +73,15 @@ follow the window of the model that answers, so 16k works today and 256k tomorro
   (`AgentRun.window_for` → `run_agent_loop(context_window=…)`, as the chat), `/api/llm/usecases` (Forge), usage rows.
   `window_source`: `runtime` · `service` · `floor` · `provider` · `default`.
 
-### 3.6 Module agents (idea 4)
+### 3.6 Prefix watch (v1.2, idea 3, owner 2026-11-18 «if you think it works, ok»)
+- `core/services/prefix_watch.py`: `check(key, fixed, tools)` at the first step of every turn of `run_agent_loop`
+  (key = conversation from `llm_stats.current_session()` + `loop_label`: `chat` or `agent.<module>`). Compares the
+  system prompt and tool names with the previous turn: a change logs `event=prompt_prefix_changed` with the section
+  where it starts (closest `TITLE:` line) or `tools` (+added −removed). Log only, nothing changes in the prompt;
+  ≤ 200 conversations in memory; no session (background jobs) = not watched.
+- Idea 5 (clear writing / STE) dropped by the owner: the Verity persona prompt already improved the answers.
+
+### 3.7 Module agents (idea 4)
 - Not on main yet (thread «Rendere ogni modulo un agente di Oracle»): the answer contract for an agent («first line
   = result or blocker, then only the data the task needs, compact, no preamble, no recap, no advice not asked») and
   the rule «agent results go through `shape()` with the same budget» were handed to that thread.

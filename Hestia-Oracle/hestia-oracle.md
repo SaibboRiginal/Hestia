@@ -694,7 +694,11 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
 - **Cache-friendly prompts**: the model server reuses the KV cache only for a byte-identical prefix. Agent-loop tools
   are sorted by name; the per-request ACTION INTENT hint moved after the user message (dynamic part); the history
   window grows from a fixed first message up to N + N/2 messages and then jumps to the last N
-  (`ContextBuilder.stable_window`, per session, in memory) instead of sliding every turn.
+  (`ContextBuilder.stable_window`, per session, in memory) instead of sliding every turn. **Prefix watch**
+  (`core/services/prefix_watch.py`, 2026-11-18): at the first step of every turn the loop compares its fixed part
+  (system prompt) and tool names with the previous turn of the same conversation and loop (`loop_label`: `chat`,
+  `agent.<module>`); a change logs `event=prompt_prefix_changed where=<section|tools> kept_chars of_chars detail`,
+  so whatever breaks the model's cache can be found and moved below the fixed part. Log only, in memory.
 - **Context editing**: when a loop prompt passes 50 % of the window, tool results older than
   `oracle.context.tool_result_stub_after_turns` (2, 0 = off) become a one-line stub (no LLM call).
 - **Shaped tool results** (dossier `docs/work/2026-11-17-output-compatti`): every tool result goes through
