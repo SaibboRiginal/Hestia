@@ -13,6 +13,7 @@ using Hestia.WebUI.Services;
 /// Protocol (browser → server):
 ///   {"type":"chat","message":"...","session_id":"...","mode":"auto|quick|thinking|cot|","model":"generic","spoken":false}
 ///   {"type":"cancel"}
+///   {"type":"steer","message":"...","session_id":"...","id":"..."}   «Add now» while the answer runs
 ///   {"type":"retry"}
 ///   {"type":"question_answer","question_id":"...","answer":"..."}
 ///
@@ -26,6 +27,7 @@ using Hestia.WebUI.Services;
 ///   {"type":"question","question_id":"...","header":"...","prompt":"..."}
 ///   {"type":"final","reply":"...","session_id":"...","domain":"..."}
 ///   {"type":"error","content":"..."}
+///   {"type":"steer","id":"...","accepted":true|false}   false = no answer running: the browser sends it next
 ///   {"type":"queued","queue_id":N,"position":N,"content":"..."}   Oracle offline: message queued
 ///   {"type":"queued_answer","queue_id":N,"session_id":"...","message":"...","reply":"..."}  (to every tab)
 /// </summary>
@@ -97,6 +99,9 @@ public class ChatHub : Hub
                 CancelStream(Context.ConnectionId);
                 await Clients.Caller.SendAsync("ReceiveEvent",
                     new { type = "status", content = "Cancelled" });
+                break;
+            case "steer":
+                await HandleSteer(message);
                 break;
             case "retry":
                 await HandleRetry();
@@ -213,6 +218,31 @@ public class ChatHub : Hub
         {
             _activeStreams.TryRemove(Context.ConnectionId, out _);
         }
+    }
+
+    /// <summary>«Add now»: the text joins the answer that is running (Oracle reads it at its next step); refused
+    /// when nothing runs, and the browser then sends it as the next message (dossier problemi-del-test B).</summary>
+    private async Task HandleSteer(ChatHubMessage message)
+    {
+        var text = message.Message?.Trim() ?? "";
+        var sessionId = message.SessionId?.Trim() ?? "";
+        var accepted = false;
+        if (text.Length > 0 && sessionId.Length > 0 && _activeStreams.ContainsKey(Context.ConnectionId))
+        {
+            try
+            {
+                var (status, payload) = await _hubClient.RouteRawAsync("oracle", "/api/chat/steer", HttpMethod.Post,
+                    new { session_id = sessionId, text, id = message.Id ?? "" });
+                accepted = status < 400 && payload.ValueKind == JsonValueKind.Object
+                    && payload.TryGetProperty("accepted", out var a) && a.ValueKind == JsonValueKind.True;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("[🔄] event=chat_steer_failed connection={Conn} error={Err}",
+                    Context.ConnectionId, ex.Message);
+            }
+        }
+        await Clients.Caller.SendAsync("ReceiveEvent", new { type = "steer", id = message.Id ?? "", accepted });
     }
 
     private async Task HandleRetry()

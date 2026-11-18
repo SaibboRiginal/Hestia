@@ -6,7 +6,7 @@ import { UI } from '../../ui';
 import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
 import { PluginsService } from '../plugins/plugins.service';
 import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
-import { SetupPickComponent, PickItem, family } from './setup-pick.component';
+import { PickItem, family } from './setup-pick.component';
 import { AssistantTextComponent } from '../chat/assistant-text.component';
 import { MicRecorder, VoiceService, b64ToBlob, blobToB64 } from '../../services/voice.service';
 import { DEFAULT_ASSISTANT, IdentityService, LANGUAGES } from '../../services/identity.service';
@@ -56,7 +56,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [TrPipe, ...UI, FormsModule, RouterLink, SetupPickComponent, SetupChainComponent, PluginOutletComponent, AssistantTextComponent],
+  imports: [TrPipe, ...UI, FormsModule, RouterLink, SetupChainComponent, PluginOutletComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="bar">

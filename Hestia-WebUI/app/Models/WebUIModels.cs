@@ -78,6 +78,10 @@ public record ChatHubMessage
     [JsonPropertyName("type")]
     public string Type { get; init; } = "";
 
+    /// <summary>«Add now» (type steer): the browser's id of the text, given back when the assistant takes it.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 

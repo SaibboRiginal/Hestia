@@ -830,6 +830,12 @@ class QuestionAnswerRequest(BaseModel):
     client: Optional[str] = None  # e.g. "telegram", "web", "voice"
 
 
+class SteerRequest(BaseModel):
+    session_id: str
+    text: str
+    id: Optional[str] = None   # the client's id of the text: the signal chat.steer_taken gives it back
+
+
 class UserControlsPatch(BaseModel):
     proactive_enabled: Optional[bool] = None
     allowed_categories: Optional[list[str]] = None
@@ -1350,6 +1356,16 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
         logger.exception(
             "event=unhandled_error_question_answer_endpoint Unhandled error in question-answer endpoint")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/chat/steer")
+def steer_endpoint(req: SteerRequest):
+    """«Add now»: a text for the chat turn of this session that is still running (dossier problemi-del-test B).
+
+    ``accepted: false`` = no turn is running (or it is ending): the client sends the text as the next message.
+    """
+    from core.services import steering
+    return {"accepted": steering.add(req.session_id, req.text, req.id or "")}
 
 
 @app.get("/api/chat/questions")

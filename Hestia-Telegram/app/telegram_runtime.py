@@ -9,7 +9,7 @@ import threading
 
 from telegram_bot import actions, catalog, core, nav, store
 from telegram_bot.menu import editor, model
-from telegram_bot.services import answer_extras, assistant_questions, chat_service, chat_settings, voice_service
+from telegram_bot.services import answer_extras, assistant_questions, chat_service, chat_settings, chat_wait, voice_service
 from telegram_bot.services.control_service import run_control_api
 from telegram_bot.services.notifications import handle_callback as handle_notification_callback
 from telegram_bot.services.notifications import answer_by_reply as answer_notification_by_reply
@@ -54,6 +54,8 @@ def _route_callback(call) -> None:
         handle_notification_callback(call)
     elif data.startswith(("confirm:", "cancel:", "confirm_cmd:", "cancel_cmd:")):
         chat_service.handle_confirmation(call)
+    elif chat_wait.is_callback(data):
+        chat_wait.handle_callback(call)
     elif assistant_questions.is_callback(data):
         assistant_questions.handle_callback(call)
     elif answer_extras.is_callback(data):

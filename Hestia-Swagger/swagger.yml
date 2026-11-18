@@ -4105,6 +4105,32 @@ paths:
         "404":
           description: "question not found, already resolved or expired (oracle.ask.timeout)"
 
+  /api/chat/steer:
+    post:
+      tags: [Oracle]
+      summary: "«Add now»: a text for the chat turn of this session that is still running (dossier 2026-11-18-problemi-del-test B)"
+      description: "The chat agent loop reads it at its next step and emits the signal {type: signal, event: chat.steer_taken, data: {ids}}. A text that arrives when no chat loop runs is refused; one not taken before the loop ends is dropped: in both cases the client sends it as the next message."
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id, text]
+              properties:
+                session_id:
+                  type: string
+                text:
+                  type: string
+                id:
+                  type: string
+                  description: the client's id of the text, given back in chat.steer_taken
+      responses:
+        "200":
+          description: "{accepted: bool} — false = no chat turn of this session is running"
+
   /api/chat/reaction:
     post:
       tags: [Oracle]

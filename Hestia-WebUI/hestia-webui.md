@@ -517,6 +517,19 @@ push `queued_answer` to every tab, which replaces the bubble. The Chat page show
 the presence effect `chat.reply` is `queued`; the badge popover lists the overlay. The «Crea con Hestia» drawer does
 not queue (it answers «riprova appena torna»).
 
+**Writing while the answer runs** (dossier `docs/work/2026-11-18-problemi-del-test` B): Enter while an answer
+streams puts the text in a «waiting» list above the box (`ChatService.waiting`); when the stream ends
+(`stream_done`, not after «Stop») the waiting texts go as one next message, in order. Each one has «Aggiungi ora»:
+`ChatHub` type `steer` → Oracle `POST /api/chat/steer`; the answer takes it at its next step (signal
+`chat.steer_taken` → the text becomes the owner's bubble above the answer), `{type:"steer", accepted:false}` = it
+stays waiting. «Stop» puts the waiting texts back in the box. Edit / remove each one.
+
+**«/» commands** (`features/chat/chat-commands.component.ts`): a box starting with «/» lists the tools the WebUI can
+run (Hestia-MCP `GET /api/mcp/ui/tools`, same list and rules as the Comandi page), filtered while typing; arrows,
+Tab/Enter, Esc. A tool without arguments runs at once, one with arguments shows its fields (enums as choices,
+required marked); writes ask confirmation. The result (`/api/mcp/ui/tools/call`, worded by `tools/format` when the
+tool answers in natural language) goes in the conversation as «/Title» + answer.
+
 **v3** (same SPEC): the drain sends all the queued messages of one chat to Oracle in one turn (`queued`), the
 assistant decides how to answer (each, merged, or asks); `queued_answer` carries `queue_ids` and the reply goes under
 the last bubble. Questions of the assistant (`question` frames with `ask_…` ids, also during a drain) are drawn by

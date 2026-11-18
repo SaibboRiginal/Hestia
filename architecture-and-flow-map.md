@@ -220,6 +220,11 @@ flowchart LR
    chat + Notifiche; the owner's answer is a normal `/api/chat` turn (awareness line «Oggi gli hai scritto tu»).
 7. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
    Telegram `POST /api/webapp/verify` (bot-token HMAC, owner only) → 12-hour session token.
+8. Writing while she answers (dossier `docs/work/2026-11-18-problemi-del-test` B): the client holds the text (one
+   answer at a time per chat) and sends it as the next `/api/chat` turn; «Add now» → WebUI `ChatHub` `steer` / Telegram
+   callback `cw:` → Oracle `POST /api/chat/steer` → the chat agent loop reads it at its next step → stream signal
+   `chat.steer_taken {ids}` (not taken = sent next). WebUI «/» in the chat box → Hestia-MCP `GET /api/mcp/ui/tools` →
+   `POST /api/mcp/ui/tools/call` (+ `tools/format`) → result in the conversation.
 
 ### Plugin flow (module pages and widgets)
 1. A module with a UI declares its pages, widgets and quick actions (`hestia_common.plugin_client`) in its Hub

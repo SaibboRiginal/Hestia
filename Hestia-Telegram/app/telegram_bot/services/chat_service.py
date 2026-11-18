@@ -17,7 +17,7 @@ from typing import Any
 import requests
 
 from telegram_bot import core, store, ui
-from telegram_bot.services import assistant_questions, chat_queue, reactions, voice_service
+from telegram_bot.services import assistant_questions, chat_queue, chat_wait, reactions, voice_service
 from telegram_bot.services.reply_renderer import ReplyRenderer
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
@@ -197,7 +197,29 @@ def _typing(chat_id) -> threading.Event:
 def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: bool = False,
                   quoted: dict | None = None) -> None:
     """One chat turn: Oracle streams the reply into ``status_msg`` (queued while unavailable). ``spoken``: the
-    text came from a voice note (live mode answers it by voice too)."""
+    text came from a voice note (live mode answers it by voice too).
+
+    One answer at a time per chat (dossier problemi-del-test B): a text written meanwhile waits with «Add now»
+    (``chat_wait``) and goes as the next turn when the answer ends."""
+    while not chat_wait.start(chat_id, core.get_session(chat_id)):
+        if chat_wait.hold(message, chat_id, user_text, status_msg=status_msg):
+            return                       # else the answer ended in between: this text goes now
+    try:
+        while True:
+            signals = _one_turn(message, chat_id, user_text, status_msg=status_msg, spoken=spoken, quoted=quoted)
+            held = chat_wait.finish(chat_id, signals)
+            if not held:
+                return
+            logger.info("event=chat_held_messages_sent chat_id=%s count=%d", chat_id, len(held))
+            message, user_text, status_msg, spoken, quoted = None, chat_wait.joined(held), None, False, None
+    except BaseException:
+        chat_wait.release(chat_id)
+        raise
+
+
+def _one_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: bool = False,
+              quoted: dict | None = None) -> list[dict]:
+    """The turn itself; returns Oracle's signals (which «Add now» texts it took)."""
     session_id = core.get_session(chat_id)
     if status_msg is None:
         if message is not None:
@@ -218,6 +240,7 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
         except Exception as exc:              # the text reply is already there: voice is an addition
             logger.warning("[🔄] event=voice_after_reply_failed chat_id=%s error=%s", chat_id, exc)
         send_oracle_questions(chat_id, session_id, result.signals, result.questions)
+        return result.signals
     except Exception as error:
         if isinstance(error, OracleUnavailable):
             queued = chat_queue.enqueue(chat_id, session_id, str(user_text or ""),
@@ -225,10 +248,11 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
             if queued is not None:
                 core.bot.edit_message_text(chat_queue.queued_text(queued), chat_id=chat_id,
                                            message_id=status_msg.message_id, parse_mode="HTML")
-                return
+                return []
         logger.warning("event=chat_turn_failed chat_id=%s error=%s", chat_id, error)
         core.bot.edit_message_text(ui.error(tr("I couldn't answer"), tr("Write to me again in a moment.")),
                                    chat_id=chat_id, message_id=status_msg.message_id, parse_mode="HTML")
+        return []
     finally:
         stop_typing.set()
 
