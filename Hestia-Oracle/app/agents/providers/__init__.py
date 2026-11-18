@@ -47,19 +47,21 @@ _INLINE = {
 }
 
 
-def runtime_info(name: str, local_window: int, model: str = "") -> dict:
+def runtime_info(name: str, local_window: int = 0, model: str = "") -> dict:
     """Label, context window (with where it comes from) and billing kind of a named provider (chat context
-    gauge). ``window_source``: ``provider`` (fixed by the service) · ``runtime`` (read from the local program) ·
-    ``setting`` (forced in Hestia) · ``floor`` (the program's own is too small) · ``default`` (not read yet)."""
+    gauge, budget and compaction). The window is read from the provider itself, never set in Hestia:
+    ``window_source`` = ``runtime`` (read from the local program) · ``service`` (declared by the cloud service) ·
+    ``floor`` (the local program's own is too small) · ``provider`` (the service does not declare it: the usual
+    value of its type) · ``default`` (not read yet: *local_window*, else the floor)."""
     from core.services import llm_providers
     from core.services import local_window as _lw
     name = str(name or "").strip().lower()
     ptype = llm_providers.type_of(name) or name
     if ptype in PROVIDER_TYPES:
         cls = PROVIDER_TYPES[ptype]
-        label, window, billing = cls.LABEL, cls.CONTEXT_WINDOW, cls.BILLING
+        label, usual, billing = cls.LABEL, cls.CONTEXT_WINDOW, cls.BILLING
     else:
-        label, window, billing = _INLINE.get(ptype, (name, 0, ""))
+        label, usual, billing = _INLINE.get(ptype, (name, 0, ""))
     prov = llm_providers.get(name)
     if prov:
         label = prov["label"]
@@ -67,10 +69,20 @@ def runtime_info(name: str, local_window: int, model: str = "") -> dict:
         billing = tr("Local server · free")
     elif ptype == "openai":
         billing = tr("API · pay per use")
-    source = "provider"
+    window, source = _lw.window_of(name, model)
+    if not window and usual:
+        window, source = usual, "provider"
     if not window:
-        window, source = _lw.window_of(name, model)
-        if not window:
-            window, source = local_window, "default"
+        window, source = (local_window or _lw.FLOOR), "default"
     return {"provider": name, "provider_label": label, "context_window": int(window), "window_source": source,
             "billing": billing}
+
+
+def model_window(provider: str, model: str = "") -> int:
+    """Context window (tokens) of one model, read from its provider: the same answer for the chat, the module
+    agents and every loop (``run_agent_loop(context_window=…)``)."""
+    try:
+        return int(runtime_info(provider, 0, model)["context_window"])
+    except Exception:
+        from core.services import local_window as _lw
+        return _lw.FLOOR

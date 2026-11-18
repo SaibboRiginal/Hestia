@@ -18,11 +18,10 @@ interface SessionUsage {
 interface Part { id: string; label: string; tokens: number; }
 interface ContextStats {
   context_window: number;
-  /** provider (the service's own) · runtime (read from the local program) · setting (forced in Hestia) ·
-   *  floor (the program's own is too small) · default (not read yet). */
+  /** Always read from the provider, never set in Hestia: runtime (the local program) · service (declared by the
+   *  cloud service) · floor (the program's own is too small) · provider (not declared: the usual value) ·
+   *  default (not read yet). */
   window_source?: string;
-  /** Central setting that forces the window ('' for a cloud model). */
-  window_setting_key?: string;
   over_window?: boolean;
   breakdown?: Part[];
   breakdown_measured?: boolean;
@@ -37,10 +36,10 @@ interface ContextStats {
 
 const WINDOW_SOURCE: Record<string, string> = {
   runtime: tr('read from the program that runs the model'),
-  setting: tr('set in the settings'),
+  service: tr('declared by the service'),
   floor: tr('the local program set one too small: I use the minimum'),
   default: tr('not read by the local program yet: starting value'),
-  provider: tr('the service\'s own'),
+  provider: tr('the usual value of the service (it does not declare it)'),
 };
 
 /** 12345 → "12,3k" · 1048576 → "1,05M" */
@@ -88,7 +87,6 @@ export function tokens(n: number | undefined | null): string {
             </div>
             <div class="note win">
               <span>{{ 'Window:' | tr }} {{ windowSource() }}</span>
-              @if (s.window_setting_key) { <hx-setting-link [key]="s.window_setting_key"  [title]="'Change the context window' | tr" (go)="open.set(false)" /> }
             </div>
             @if (s.over_window) {
               <div class="over"><hx-icon name="alert" [size]="14" />

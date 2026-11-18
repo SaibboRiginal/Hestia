@@ -8,4 +8,5 @@
 - [x] Idea 4 (agent answer contract) handed to the module-agents thread
 - [x] Tests: `Hestia-Oracle/tests/test_compact_output.py`, `test_agent_loop.py`, `test_oracle_settings.py`, `Hestia-Hephaestus/tests/test_forge_context_fit.py`
 - [x] Docs: hestia-shared.md, hestia-oracle.md, hestia-hephaestus.md, root CHANGELOG
+- [x] v1.1: settings `oracle.provider.ollama.num_ctx` and `oracle.agent.tool_result_max_chars` removed; `cloud_window.py`; `model_window` for chat, agents, usecases, usage; WebUI gauge without the window shortcut; swagger, docs, tests
 - [ ] Owner's real run with the local model

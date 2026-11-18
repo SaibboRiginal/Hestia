@@ -53,7 +53,11 @@
 - ✅ JSON: prune keeps False/0; same-shaped lists → table; short/different lists stay; lossless shaping < 40 %;
   over budget keeps error items and «showing N of M», full copy whole; top-level list notes the count; bad JSON = text
 - ✅ Text: repeated lines squeezed; log keeps head + errors + tail; one huge line cut with note
-- ✅ Budget follows the window (16k ≈ 2000, 256k = ceiling), fallback window and floor, a number forces it
+- ✅ Budget follows the window (16k ≈ 2000, 256k = ceiling), fallback window and floor (no setting, v1.1)
+- ✅ test_local_window.py TestCloudWindow (v1.1): Gemini inputTokenLimit, OpenAI-compatible cloud /models row,
+  silent service = 0, read window wins over the usual value, not declared = usual value
+- ✅ test_module_agents.py: an agent's loop gets its own model's window
+- ✅ test_local_context.py: no window setting left, no num_ctx sent
 - ✅ result_more parts and unknown ref; stubs point to the kept copy
 
 ### §1.3 run_agent_loop (17 cases)
@@ -361,7 +365,7 @@ Oracle Enhancement Plan (P1-P3) feature tests. 20 cases, all passing.
 
 ### §12.3 Token Counting (3 cases)
 - `test_fallback_heuristic` — Falls back to ~3 chars/token when Ollama unreachable
-- `test_context_window_from_setting` — setting `oracle.provider.ollama.num_ctx` controls window
+- `test_context_window_from_the_caller` — the window is the one the caller read from the provider (no setting)
 - `test_context_pct` — Percentage calculation correct
 
 ### §12.4 Preference Domains (5 cases)

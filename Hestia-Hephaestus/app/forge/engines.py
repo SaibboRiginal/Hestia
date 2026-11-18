@@ -238,7 +238,7 @@ class BuiltinEngine(Engine):
         if finish_reason == "length":
             window = f" ({self.context_window} token)" if self.context_window else ""
             return (f"model context full{window}: the answer was cut before finish — raise "
-                    "the window in the local program (or oracle.provider.ollama.num_ctx) or use engine claude")
+                    "the window in the local program or use engine claude")
         if turn >= max_turns:
             return f"turn limit reached ({max_turns}) without finish"
         return "model stopped calling tools without finish"

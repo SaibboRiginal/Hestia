@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (thread «Valutare trucchi per risparmiare token»; evaluation `valutazioni/trucchi-risparmio-token.md`, ideas 1, 2, 4 approved 2026-11-17) |
 | **Status** | Implemented (owner's real run pending) |
 
@@ -39,7 +39,7 @@ follow the window of the model that answers, so 16k works today and 256k tomorro
 - `full` is the whole output, shaped without loss, for «the rest on request».
 
 ### 3.2 Oracle agent loop
-- `tool_result_budget(window, chars_per_token)`: setting `oracle.agent.tool_result_max_chars` default **0 =
+- (v1.1: no setting any more, see §3.5) `tool_result_budget(window, chars_per_token)`: setting `oracle.agent.tool_result_max_chars` default **0 =
   automatic** = 4 % of the answering model's window (the same window as budget and compaction), floor 800, ceiling
   24,000 chars. 16k → ~2,000 (today's value), 32k → ~3,900, 256k → 24,000. A number in the setting forces it.
 - Every tool result goes through `shape()`; when cut, the note says «not the whole result, never present it as
@@ -58,7 +58,22 @@ follow the window of the model that answers, so 16k works today and 256k tomorro
 ### 3.4 JSON in prompts without indent
 - `ContextBuilder.compact_entities_for_prompt` and `OracleEngine.format_payload` dump compact JSON.
 
-### 3.5 Module agents (idea 4)
+### 3.5 Window read from the provider for everyone (v1.1, owner 2026-11-18)
+- Owner: «that setting OUT, read it from the provider if possible, for all»; agents «must do the same as Oracle».
+- Removed settings: `oracle.provider.ollama.num_ctx` (forced local window) and `oracle.agent.tool_result_max_chars`
+  (the result budget is always 4 % of the window). The chat gauge no longer has a «change the window» shortcut.
+- Local models: read from their program as before (`local_window`); the 8192 floor for a bare Ollama stays (not a
+  setting: a safety net so an assistant with tools fits).
+- Cloud models: `core/services/cloud_window.py` reads the window from the service in the background (cached 24 h,
+  retried after 10 min): Gemini `models.get` → `inputTokenLimit`; OpenAI-compatible cloud `/models` →
+  `context_length` / `context_window` / `max_model_len` / `max_context_length`. Not declared (Claude CLI,
+  Anthropic, DeepSeek) → the type's usual `CONTEXT_WINDOW` (`window_source: provider`). Before, an
+  OpenAI-compatible cloud service had no window at all and fell back to the local one.
+- One answer for every loop: `agents.providers.model_window(provider, model)`: chat (`_chat_window`), module agents
+  (`AgentRun.window_for` → `run_agent_loop(context_window=…)`, as the chat), `/api/llm/usecases` (Forge), usage rows.
+  `window_source`: `runtime` · `service` · `floor` · `provider` · `default`.
+
+### 3.6 Module agents (idea 4)
 - Not on main yet (thread «Rendere ogni modulo un agente di Oracle»): the answer contract for an agent («first line
   = result or blocker, then only the data the task needs, compact, no preamble, no recap, no advice not asked») and
   the rule «agent results go through `shape()` with the same budget» were handed to that thread.

@@ -2,6 +2,9 @@
 
 One line per finished task (details in `docs/work/<task>/`).
 
+## 2026-11-18
+- The size of a model's memory (its context window) is no longer set in Hestia: it is read from where the model runs, for local and cloud models alike (Gemini and online services that declare it included), and the module agents use the one of their own model, like the chat. The settings «Modello locale · finestra di contesto» and «Lunghezza massima del risultato di uno strumento» are gone → `docs/work/2026-11-17-output-compatti/` [ext-chat]
+
 ## 2026-11-17
 - With a small local model the assistant reads tool results whole instead of half: lists become short tables that say «12 of 40», errors are never dropped, and she can ask for the rest; the room a result takes now follows the size of the model's window (16k today, 256k tomorrow) instead of a fixed number; development reads the failure of a long test run instead of only its end → `docs/work/2026-11-17-output-compatti/` [ext-chat]
 - The apps take the name you gave her too: the site (tab, installed app, login, side bar), the Telegram bot (its name, description and menu button), notifications on the phone and the health alerts are called as you want, with she or he; they greet you by your name. «Hestia» stays only for updates, installer and backup files → `docs/work/2026-11-17-nome-dei-client/` [ext-chat]

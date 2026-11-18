@@ -326,8 +326,8 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Header `<hx-chat-context>`: ring with the % of the context window of the provider in use; popover with
   provider/model and billing kind, a coloured bar of what the last prompt was made of (instructions, tools of the
   turn, history, your message, tool results, free space) with a legend whose rows add up to the total, where the
-  window comes from (read from the local program, forced in Hestia, the service's own) with a «cambia» shortcut to
-  that setting, a warning when the prompt is larger than the window, this conversation's tokens (input / cache /
+  window comes from (read from the local program, declared by the cloud service, or the service's usual value when
+  it does not declare it; never set in Hestia since 2026-11-18, so no shortcut), a warning when the prompt is larger than the window, this conversation's tokens (input / cache /
   output, calls, API-equivalent cost for Claude CLI) split per model («stimati» only on the model whose numbers
   are estimated) and *Compatta*. Refreshed when an answer ends or the conversation changes.
 - **Shortcuts to settings** (2026-11-12, `docs/work/2026-11-12-contesto-e-scorciatoie/`): one component,

@@ -69,13 +69,8 @@ def usecase_status(use_case: str) -> dict[str, Any]:
         return {"use_case": use_case, "chain": cfg["chain"], "available": False,
                 "detail": f"no usable step in chain '{cfg['chain']}' (keys, addresses or quota)"}
     _, first = steps[0]
-    window = 0
-    if llm_providers.type_of(first["provider"]) == "ollama":
-        from core.services import oracle_settings
-        window = oracle_settings.context_window(first["model"])
-    elif llm_providers.is_local(first["provider"]):
-        from core.services import local_window
-        window = local_window.window_of(first["provider"], first["model"])[0]
+    from agents.providers import model_window
+    window = model_window(first["provider"], first["model"])   # read from the provider, local or cloud
     return {"use_case": use_case, "chain": cfg["chain"], "available": True, "detail": "ok",
             "provider": first["provider"], "model": first["model"], "context_window": window,
             "billed": any(billed(step["provider"]) for _, step in steps),
@@ -237,5 +232,5 @@ def _chat_ollama(provider: str, model: str, body: dict[str, Any]) -> dict[str, A
                 provider, model, num_ctx, prompt_tokens, data.get("eval_count"), data.get("done_reason"))
     if num_ctx and prompt_tokens >= int(num_ctx) * 0.95:
         logger.warning("[🔄] event=llm_gateway_context_full provider=%s num_ctx=%s prompt_tokens=%s "
-                       "hint=raise the window in Ollama (or oracle.provider.ollama.num_ctx) or send a shorter prompt", provider, num_ctx, prompt_tokens)
+                       "hint=raise the window in Ollama or send a shorter prompt", provider, num_ctx, prompt_tokens)
     return _openai_response(data, model)

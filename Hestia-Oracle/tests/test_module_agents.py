@@ -104,6 +104,21 @@ class TestAgentRun:
         assert "TURN BOARD" in cb.prompts[0] and "plutus: Speso 42." in cb.prompts[0]
         assert "TURN BOARD" not in ca.prompts[0]
 
+    def test_agent_loop_gets_its_own_models_window(self):
+        """Like the chat: the agent's loop budgets and shapes with the window of the model that answers it."""
+        seen = {}
+
+        def loop(**kw):
+            seen["window"] = kw.get("context_window")
+            return "ok", [], []
+
+        spec = module_agents.AgentSpec("plutus", "expenses", tools=[_tool("finance_search", "plutus")])
+        chain = FakeChain([])
+        chain.provider, chain.model_name = "gemini", "flash"
+        run, _, _ = _run({"agent.plutus": chain}, window_for=lambda c: 1_000_000 if c.provider == "gemini" else 0)
+        run.run_loop = loop
+        assert run.run(spec, "spese")[0] is True and seen["window"] == 1_000_000
+
     def test_max_agents_per_turn(self):
         spec = module_agents.AgentSpec("plutus", "expenses", tools=[_tool("finance_search", "plutus")])
         run, _, _ = _run({"agent.plutus": FakeChain([])}, max_agents=1)

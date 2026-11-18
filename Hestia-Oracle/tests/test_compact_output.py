@@ -3,11 +3,9 @@ window, and result_more (the rest of a shortened result on request). Dossier doc
 from __future__ import annotations
 
 import json
-from unittest.mock import patch
 
 import pytest
 
-from core import agent_loop
 from core.agent_loop import (
     RESULT_MORE_TOOL,
     ScratchMessage,
@@ -80,9 +78,8 @@ class TestTextShaping:
 
 @pytest.mark.unit
 class TestBudgetFollowsWindow:
-    def _budget(self, window, forced=0):
-        with patch.object(agent_loop._settings(), "get_int", return_value=forced):
-            return tool_result_budget(window, 3.0)
+    def _budget(self, window):
+        return tool_result_budget(window, 3.0)
 
     def test_automatic_scales_with_window(self):
         small, mid, big = self._budget(16384), self._budget(32768), self._budget(262144)
@@ -90,9 +87,6 @@ class TestBudgetFollowsWindow:
 
     def test_unknown_window_uses_fallback_and_floor(self):
         assert self._budget(0) == self._budget(8192) >= 800
-
-    def test_number_in_setting_forces_it(self):
-        assert self._budget(262144, forced=1500) == 1500
 
 
 @pytest.mark.unit

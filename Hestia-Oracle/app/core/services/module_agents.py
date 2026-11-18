@@ -150,6 +150,9 @@ class AgentRun:
     origin_line: str = ""
     datetime_context: str = ""
     guard_checker: Callable | None = None
+    # ChainAgent → its model's window (agents.providers.model_window): the agent's loop budgets and shapes with
+    # the window of the model that answers it, exactly like the chat. None = the local model's.
+    window_for: Callable[[object], int] | None = None
     _count: int = 0
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -195,6 +198,12 @@ class AgentRun:
                                           ms=int(meta.get("duration_ms") or 0)))
 
         board = self.board
+        window = 0
+        if self.window_for is not None:
+            try:
+                window = int(self.window_for(chain) or 0)
+            except Exception:
+                window = 0
         try:
             answer, _tokens, log = self.run_loop(
                 user_message=task,
@@ -211,6 +220,7 @@ class AgentRun:
                 on_thinking=_on_thinking,
                 guard_checker=self.guard_checker,
                 live_notes=lambda: (f"TURN BOARD (other agents' results):\n{board.text()}" if board.text() else ""),
+                context_window=window,
             )
         except Exception as exc:
             ms = int((time.perf_counter() - t0) * 1000)
