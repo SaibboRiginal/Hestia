@@ -57,6 +57,8 @@
 - ✅ test_local_window.py TestCloudWindow (v1.1): Gemini inputTokenLimit, OpenAI-compatible cloud /models row,
   silent service = 0, read window wins over the usual value, not declared = usual value
 - ✅ test_module_agents.py: an agent's loop gets its own model's window
+- ✅ test_prefix_watch.py (v1.2): first turn/same prefix silent, changed section named, tool list change, loops and
+  conversations separate, the agent loop checks once per turn
 - ✅ test_local_context.py: no window setting left, no num_ctx sent
 - ✅ result_more parts and unknown ref; stubs point to the kept copy
 

@@ -35,6 +35,8 @@ import requests
 from core.services import prompt_config
 from core.services import stream_emitter as _stream_emitter
 from core.services import llm_bus as _llm_bus
+from core.services import llm_stats as _llm_stats
+from core.services import prefix_watch as _prefix_watch
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 from hestia_common.compact_output import Shaped, shape as shape_output
 
@@ -450,9 +452,15 @@ def run_agent_loop(
     trace_out: dict | None = None,
     context_window: int = 0,
     live_notes: Callable[[], str] | None = None,
+    loop_label: str = "chat",
+    turn_notes: str = "",
 ) -> tuple[str, list[str], list[dict]]:
     """Run the ReAct agent loop.
 
+    *turn_notes*: what changes at every message (time, hints, this message's intent): placed after the history, so
+    the fixed part and the history stay byte-identical between messages and the model server reuses its cache.
+    *loop_label*: which loop of the conversation this is (``chat``, ``agent.<module>``): the prefix watch
+    (``core.services.prefix_watch``) compares each turn's fixed part with the previous turn of the same loop.
     *live_notes*: read again at every step and added after the scratchpad (module agents' turn board: what the
     other agents of this turn found meanwhile).
 
@@ -581,6 +589,8 @@ def run_agent_loop(
         dynamic_parts: list[str] = []
         if history_text:
             dynamic_parts.append(f"CONVERSATION HISTORY:\n{history_text}")
+        if turn_notes:
+            dynamic_parts.append(turn_notes.strip())
         dynamic_parts.append(f"USER: {user_message}")
         if action_hint:
             dynamic_parts.append(action_hint.strip())
@@ -625,6 +635,10 @@ def run_agent_loop(
                     history_text = _compacted
 
         prompt = _build_prompt(is_final=is_last_turn)
+        if turn == 0:   # prefix watch: did the fixed part change since this conversation's previous turn?
+            _sid = _llm_stats.current_session()
+            if _sid:
+                _prefix_watch.check(f"{_sid}|{loop_label}", system_prompt, tuple(tool_names))
         _stubbed = _stub_old_tool_results(scratchpad, turn, _settings().stub_after_turns(),
                                           _counter.context_pct(_est_tokens(prompt)))
         if _stubbed:

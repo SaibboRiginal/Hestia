@@ -9,4 +9,6 @@
 - [x] Tests: `Hestia-Oracle/tests/test_compact_output.py`, `test_agent_loop.py`, `test_oracle_settings.py`, `Hestia-Hephaestus/tests/test_forge_context_fit.py`
 - [x] Docs: hestia-shared.md, hestia-oracle.md, hestia-hephaestus.md, root CHANGELOG
 - [x] v1.1: settings `oracle.provider.ollama.num_ctx` and `oracle.agent.tool_result_max_chars` removed; `cloud_window.py`; `model_window` for chat, agents, usecases, usage; WebUI gauge without the window shortcut; swagger, docs, tests
-- [ ] Owner's real run with the local model
+- [x] v1.2: `prefix_watch.py` + `loop_label` in `run_agent_loop` (agents pass `agent.<module>`); tests `test_prefix_watch.py`
+- [x] v1.3: turn notes after the history (chat, quick chat, module agents); regression test `test_turn_notes_stay_out_of_the_fixed_part`
+- [ ] Owner's real run with the local model (look for `event=prompt_prefix_changed` in Oracle's log)

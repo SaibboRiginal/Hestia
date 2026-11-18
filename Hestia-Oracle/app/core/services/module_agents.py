@@ -105,8 +105,9 @@ def history_tail(history_text: str, messages: int) -> str:
     return "\n".join(lines[-messages:])
 
 
-def instructions(spec: AgentSpec, *, owner_message: str, origin_line: str = "", datetime_context: str = "") -> str:
-    """Fixed part of an agent's prompt (caveman: paid every step). The board is added live at every step."""
+def instructions(spec: AgentSpec, *, origin_line: str = "") -> str:
+    """Fixed part of an agent's prompt (caveman: paid every step), the same at every message so the model server
+    reuses its cache; what changes per message is in ``turn_notes``. The board is added live at every step."""
     parts = [f"YOU ARE THE {spec.module.upper()} AGENT of the assistant. Job area: {spec.when}.",
              "Use only your tools. Do the job, then answer in 1-4 short sentences in the owner's language, "
              "as the assistant speaking to the owner: first line = result or blocker; no preamble, no recap of "
@@ -115,9 +116,14 @@ def instructions(spec: AgentSpec, *, owner_message: str, origin_line: str = "", 
              "Job outside your area or needing another module: say which, do not guess."]
     if spec.manual:
         parts.append(f"RULES OF YOUR MODULE:\n{spec.manual}")
-    parts.append(f"OWNER'S OWN WORDS: {owner_message}")
     if origin_line:
         parts.append(origin_line)
+    return "\n\n".join(parts)
+
+
+def turn_notes(*, owner_message: str, datetime_context: str = "") -> str:
+    """What changes at every message for an agent: the owner's words and the time (after the history)."""
+    parts = [f"OWNER'S OWN WORDS: {owner_message}"]
     if datetime_context:
         parts.append(f"CURRENT_DATETIME_CONTEXT:\n{datetime_context}")
     return "\n\n".join(parts)
@@ -213,14 +219,14 @@ class AgentRun:
                 ask_fn=lambda p: chain.ask(p, thinking=self.think),
                 ask_tools_fn=lambda p, tm: chain.ask_with_tools(p, tm, thinking=self.think),
                 stream_fn=None,
-                client_instructions=instructions(spec, owner_message=self.owner_message,
-                                                 origin_line=self.origin_line,
-                                                 datetime_context=self.datetime_context),
+                client_instructions=instructions(spec, origin_line=self.origin_line),
+                turn_notes=turn_notes(owner_message=self.owner_message, datetime_context=self.datetime_context),
                 max_turns=self.steps,
                 on_thinking=_on_thinking,
                 guard_checker=self.guard_checker,
                 live_notes=lambda: (f"TURN BOARD (other agents' results):\n{board.text()}" if board.text() else ""),
                 context_window=window,
+                loop_label=f"agent.{spec.module}",
             )
         except Exception as exc:
             ms = int((time.perf_counter() - t0) * 1000)
