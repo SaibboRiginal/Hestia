@@ -174,3 +174,10 @@ body.hx-resizing * { transition: none !important; }
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='6'%3E%3Cpath d='M0 3 Q4 0 8 3 T16 3' fill='none' stroke='black' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x center;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='6'%3E%3Cpath d='M0 3 Q4 0 8 3 T16 3' fill='none' stroke='black' stroke-width='1.2'/%3E%3C/svg%3E") repeat-x center; }
 .hx-divider hx-icon { margin-right: -4px; }
+
+/* One tooltip for the whole site, plugins included (app/ui/tooltip.ts). */
+.hx-tip { position: fixed; top: 0; left: 0; z-index: 10000; max-width: min(320px, calc(100vw - 12px)); padding: 6px 10px;
+  border-radius: var(--radius-md, 8px); background: var(--text); color: var(--bg); font: 500 12px/1.4 var(--font-sans);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .22); pointer-events: none; opacity: 0; visibility: hidden;
+  transition: opacity 120ms var(--ease, ease); white-space: pre-line; overflow-wrap: anywhere; }
+.hx-tip.on { opacity: 1; visibility: visible; }

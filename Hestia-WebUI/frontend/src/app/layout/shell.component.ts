@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { APP_MODULES } from '../app.modules';
 import { AuthService } from '../services/auth.service';
 import { SignalRService } from '../services/signalr.service';
@@ -47,7 +47,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
  *  above the page. «Scrivi qui» and «Parla» live in the bubble (layout/quick-bubble), not in the sidebar. */
 @Component({
   selector: 'app-shell',
-  imports: [TrPipe, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent],
+  imports: [TrPipe, NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="shell" [class.collapsed]="collapsed()" [class.mobile-open]="mobileOpen()">
@@ -76,7 +76,12 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             <hx-icon name="search" [size]="18" /><span>{{ "Search" | tr }}</span><kbd>{{ "Ctrl K" | tr }}</kbd>
           </button>
         </div>
-        <!-- One scroll area between the fixed top and bottom (A5): sections, collapsible, with pinned entries first. -->
+        <!-- Pinned entries stay where they are (dossier 2026-11-18-problemi-del-test D): their own block above the scroll
+             area, scrolling by itself only when it holds many. -->
+        @if (pinnedSection(); as ps) {
+          <div class="pinned-block"><ng-container *ngTemplateOutlet="section; context: { $implicit: ps }" /></div>
+        }
+        <!-- One scroll area between the fixed top and bottom (A5): the other sections, collapsible. -->
         <div class="scroll">
           @for (sec of view(); track sec.key) {
             @if (sec.key === 'dashboards') {
@@ -106,38 +111,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
                 </nav>
               }
             }
-            @if (sec.items.length) {
-              <button type="button" class="sect" (click)="plugins.toggleNavSection(sec.key)"
-                      [attr.aria-expanded]="!sec.closed">
-                <span>{{ sec.label }}</span><hx-icon [name]="sec.closed ? 'chevron-right' : 'chevron-down'" [size]="13" />
-              </button>
-              @if (!sec.closed || collapsed()) {
-                <nav>
-                  @for (e of sec.items; track e.id) {
-                    <div class="row" [class.child]="e.child" [class.dragging]="dragId() === e.id"
-                         [attr.draggable]="sec.key === 'pinned' && !collapsed()"
-                         (dragstart)="dragStart(e.id, sec.key)" (dragover)="dragOver($event, e.id, sec.key)"
-                         (drop)="drop($event)" (dragend)="dragId.set(null)">
-                      <a class="item" [class.child]="e.child" [class.off]="!e.online" [class.within]="e.within" [class.kids]="e.kids" [routerLink]="e.link" routerLinkActive="active"
-                         (click)="mobileOpen.set(false)" [attr.title]="e.online ? e.label : e.label + (' (not reachable)' | tr)">
-                        <hx-icon [name]="e.icon" [size]="e.child ? 16 : 18" /><span>{{ e.label }}</span>
-                        @if (e.badge) { <b class="count">{{ e.badge > 99 ? '99+' : e.badge }}</b> }
-                      </a>
-                      @if (e.kids) {
-                        <button type="button" class="fold" (click)="plugins.toggleNavSection('m:' + e.id)" [attr.aria-expanded]="e.open"
-                                [attr.aria-label]="(e.open ? ('Close the pages of ' | tr) : ('Open the pages of ' | tr)) + e.label" [attr.title]="e.open ? ('Close' | tr) : ('Open' | tr)">
-                          <hx-icon [name]="e.open ? 'chevron-down' : 'chevron-right'" [size]="13" /></button>
-                      }
-                      <button type="button" class="pin" [class.on]="sec.key === 'pinned'" (click)="plugins.toggleNavPin(e.id)"
-                              [attr.aria-label]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)"
-                              [attr.title]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)">
-                        <hx-icon name="pin" [size]="14" />
-                      </button>
-                    </div>
-                  }
-                </nav>
-              }
-            }
+            @if (sec.key !== 'pinned') { <ng-container *ngTemplateOutlet="section; context: { $implicit: sec }" /> }
           }
         </div>
         <nav>
@@ -238,6 +212,40 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
     @defer (when live.on) { <hx-live-overlay /> }
     <hx-toast-host />
     <hx-dialog-host />
+    <ng-template #section let-sec>
+        @if (sec.items.length) {
+          <button type="button" class="sect" (click)="plugins.toggleNavSection(sec.key)"
+                  [attr.aria-expanded]="!sec.closed">
+            <span>{{ sec.label }}</span><hx-icon [name]="sec.closed ? 'chevron-right' : 'chevron-down'" [size]="13" />
+          </button>
+          @if (!sec.closed || collapsed()) {
+            <nav>
+              @for (e of sec.items; track e.id) {
+                <div class="row" [class.child]="e.child" [class.dragging]="dragId() === e.id"
+                     [attr.draggable]="sec.key === 'pinned' && !collapsed()"
+                     (dragstart)="dragStart(e.id, sec.key)" (dragover)="dragOver($event, e.id, sec.key)"
+                     (drop)="drop($event)" (dragend)="dragId.set(null)">
+                  <a class="item" [class.child]="e.child" [class.off]="!e.online" [class.within]="e.within" [class.kids]="e.kids" [routerLink]="e.link" routerLinkActive="active"
+                     (click)="mobileOpen.set(false)" [attr.title]="e.online ? e.label : e.label + (' (not reachable)' | tr)">
+                    <hx-icon [name]="e.icon" [size]="e.child ? 16 : 18" /><span>{{ e.label }}</span>
+                    @if (e.badge) { <b class="count">{{ e.badge > 99 ? '99+' : e.badge }}</b> }
+                  </a>
+                  @if (e.kids) {
+                    <button type="button" class="fold" (click)="plugins.toggleNavSection('m:' + e.id)" [attr.aria-expanded]="e.open"
+                            [attr.aria-label]="(e.open ? ('Close the pages of ' | tr) : ('Open the pages of ' | tr)) + e.label" [attr.title]="e.open ? ('Close' | tr) : ('Open' | tr)">
+                      <hx-icon [name]="e.open ? 'chevron-down' : 'chevron-right'" [size]="13" /></button>
+                  }
+                  <button type="button" class="pin" [class.on]="sec.key === 'pinned'" (click)="plugins.toggleNavPin(e.id)"
+                          [attr.aria-label]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)"
+                          [attr.title]="sec.key === 'pinned' ? ('Remove from Pinned' | tr) : ('Pin to the top' | tr)">
+                    <hx-icon name="pin" [size]="14" />
+                  </button>
+                </div>
+              }
+            </nav>
+          }
+        }
+    </ng-template>
   `,
   styles: [`
     .offline { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--warning, #d9a441); padding: 2px 8px; border-radius: 999px; background: var(--surface-2, transparent); border: 1px solid var(--border); }
@@ -271,8 +279,14 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
     .name { font-family: var(--font-serif); font-size: 19px; font-weight: 500; flex: 1; white-space: nowrap; }
     .icon-btn { width: 32px; height: 32px; border-radius: var(--radius-md); display: inline-grid; place-items: center; color: var(--text-3); }
     .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+    /* Open/close the side bar: a solid button that reads on any page background (it was almost transparent). */
+    .icon-btn.collapse, .icon-btn.burger { background: var(--surface); border: 1px solid var(--border-strong, var(--border)); color: var(--text-2);
+                                           box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,.18)); }
+    .icon-btn.collapse:hover, .icon-btn.burger:hover { background: var(--surface-2); color: var(--text); }
     nav { display: flex; flex-direction: column; gap: 2px; }
     .brand, .nav > nav, .presence-wrap, .conn { flex-shrink: 0; }
+    .pinned-block { flex-shrink: 0; max-height: 34vh; overflow-y: auto; overflow-x: hidden; margin: 0 -8px; padding: 0 8px 6px;
+                    border-bottom: 1px solid var(--border); scrollbar-width: thin; display: flex; flex-direction: column; gap: 2px; }
     .scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 2px;
               margin: 0 -8px; padding: 0 8px 8px; scrollbar-width: thin; }
     .sect { display: flex; align-items: center; gap: 4px; width: 100%; background: none; border: 0; cursor: pointer; text-align: left;
@@ -428,6 +442,9 @@ export class ShellComponent {
   });
 
   /** What the sidebar draws: a closed section or module opens by itself while the page on screen is inside it. */
+  /** «Fissati», drawn above the scroll area (it never scrolls away); null when nothing is pinned. */
+  readonly pinnedSection = computed(() => this.view().find(sec => sec.key === 'pinned' && sec.items.length) ?? null);
+
   readonly view = computed(() => {
     const active = this.activeId();
     const folded = this.plugins.navCollapsed();
@@ -452,7 +469,11 @@ export class ShellComponent {
       const e = sec.items.find(x => x.id === active);
       if (!e || !CRUMB_SECTIONS.includes(sec.key)) continue;
       const parent = e.child ? sec.items.find(x => x.id === e.parent) : undefined;
-      return [{ label: sec.label }, ...(parent ? [{ label: parent.label, link: parent.link }] : []), { label: e.label }];
+      // Every piece is a way back (dossier 2026-11-18-problemi-del-test D): the section opens its overview (Sistema) or
+      // its first page, the parent its own page.
+      const sectionLink = sec.key === 'system' ? '/sistema' : sec.items.find(x => !x.child)?.link;
+      return [{ label: sec.label, link: sectionLink }, ...(parent ? [{ label: parent.label, link: parent.link }] : []),
+              { label: e.label }];
     }
     return [];
   });

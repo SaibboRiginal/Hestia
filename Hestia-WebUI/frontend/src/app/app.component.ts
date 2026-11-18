@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { AuthService } from './services/auth.service';
 import { ThemeService } from './core/theme/theme.service';
+import { TooltipService } from './ui/tooltip';
 
 @Component({
   selector: 'app-root',
@@ -15,6 +16,7 @@ export class AppComponent {
   private theme = inject(ThemeService);
 
   constructor() {
+    inject(TooltipService).init();   // one tooltip for every title on the site, plugins included
     const t = new URLSearchParams(window.location.search).get('token');
     if (t) {
       void this.auth.login(t).then(ok => {

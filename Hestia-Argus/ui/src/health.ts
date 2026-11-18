@@ -176,8 +176,10 @@ export class ArgusHealth extends HestiaElement {
       ${this.error ? html`<hxk-state kind="error" text="${tr("{0}: showing the last data", this.error)}" @retry=${() => this.load()}></hxk-state>` : nothing}
       <hxk-stat .items=${[
         { label: tr('Healthy services'), value: `${ov.healthy}/${ov.total}`, tone: ov.unhealthy ? 'warning' : 'success' },
-        { label: tr('Unhealthy'), value: ov.unhealthy, tone: ov.unhealthy ? 'danger' : 'neutral' },
-        { label: tr('Open incidents'), value: ov.open_incidents, tone: ov.open_incidents ? 'danger' : 'neutral' },
+        { label: tr('Unhealthy'), value: ov.unhealthy, tone: ov.unhealthy ? 'danger' : 'neutral',
+          list: Object.entries(this.hist?.services || {}).filter(([, s]: [string, any]) => s.status !== 'up').map(([n]) => n) },
+        { label: tr('Open incidents'), value: ov.open_incidents, tone: ov.open_incidents ? 'danger' : 'neutral',
+          list: open.map((i: any) => ({ title: String(i.service || ''), subtitle: String(i.error || '') })) },
         { label: tr('Checks'), value: ov.cycles, hint: tr('Check cycles since Argus started') },
       ]}></hxk-stat>
       ${open.length ? html`<section><h2>${tr("Open incidents")}</h2>${open.map(i => this.renderIncident(i, true))}</section>` : nothing}

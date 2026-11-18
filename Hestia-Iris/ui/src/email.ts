@@ -28,6 +28,13 @@ function rule(s: any): string {
   return parts.join(' · ') || tr('no rule');
 }
 
+/** «Subscribed modules» opens them: each with what it asks for (dossier 2026-11-18-problemi-del-test D). */
+function owners(subs: any[]): { title: string; subtitle: string }[] {
+  const by = new Map<string, string[]>();
+  for (const s of subs) by.set(s.owner, [...(by.get(s.owner) || []), s.title || s.key]);
+  return [...by].map(([owner, what]) => ({ title: owner, subtitle: what.join(' · ') }));
+}
+
 export class IrisEmail extends HestiaElement {
   static properties = { ...HestiaElement.properties, data: { state: true }, error: { state: true }, busy: { state: true } };
   declare data: any; declare error: string; declare busy: string;
@@ -83,7 +90,7 @@ export class IrisEmail extends HestiaElement {
     const st = w.watcher || {};
     const push = w.push || {};
     const auth = st.last_error === 'gmail_not_authorized' || String(st.last_error || '').includes('Re-authorize');
-    return html`<hxk-card heading=${tr("Mailbox check")} subtitle=${tr("Just one for all of {assistant}, in Hecate")}>
+    return html`<hxk-card heading=${tr("Mailbox check")} subtitle=${tr("Just one for all of {assistant}")}>
       <div class="col" style="gap:6px">
         <div class="row wrap">
           ${push.active ? html`<hxk-badge tone="success">${tr("Gmail push active")}</hxk-badge>`
@@ -115,7 +122,7 @@ export class IrisEmail extends HestiaElement {
 
   private renderLog(rows: any[]) {
     return html`<hxk-card heading=${tr("Latest deliveries")}>
-      ${!rows.length ? html`<hxk-state kind="empty" text=${tr("No delivery since Iris started")}></hxk-state>` : rows.map(d => html`<div class="r">
+      ${!rows.length ? html`<hxk-state kind="empty" text=${tr("No delivery since the last start")}></hxk-state>` : rows.map(d => html`<div class="r">
         <div class="grow col" style="gap:3px">
           <div class="row wrap"><span class="t">${d.count} → ${d.owner}</span>
             ${d.ring_ok === false ? html`<hxk-badge tone="warning">${tr("module unreachable")}</hxk-badge>` : nothing}
@@ -136,8 +143,10 @@ export class IrisEmail extends HestiaElement {
         <hxk-button icon="refresh" ?loading=${this.busy === 'check'} @click=${() => this.check()}>${tr("alt2::Check now")}</hxk-button></div>
       ${!d ? html`<hxk-state kind="loading"></hxk-state>` : html`
         <hxk-stat .items=${[
-          { label: tr('Subscribed modules'), value: new Set((d.subscriptions || []).map((s: any) => s.owner)).size },
-          { label: tr('Emails seen'), value: d.stats?.incoming_messages ?? 0 },
+          { label: tr('Subscribed modules'), value: new Set((d.subscriptions || []).map((s: any) => s.owner)).size,
+            list: owners(d.subscriptions || []) },
+          { label: tr('Emails seen'), value: d.stats?.incoming_messages ?? 0,
+            list: (d.deliveries || []).flatMap((x: any) => (x.subjects || []).map((t: string) => ({ title: t, subtitle: when(x.at) }))) },
           { label: tr('Not for anyone'), value: d.stats?.unmatched ?? 0 },
         ]}></hxk-stat>
         ${this.renderWatcher(d.watcher)}

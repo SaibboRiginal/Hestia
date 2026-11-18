@@ -7627,5 +7627,8 @@
  "Module agent": "Agente del modulo",
  "Not available right now": "Non disponibile adesso",
  "⏳ Finishing a background job, then it's you...": "⏳ Finisco un lavoro in sottofondo, poi tocca a te...",
- "Stopped.": "Fermato."
+ "Stopped.": "Fermato.",
+ "Just one for all of {assistant}": "Uno solo per {g:tutta|tutto} {assistant}",
+ "No delivery since the last start": "Nessuna consegna dall'ultimo avvio",
+ "Nothing here yet": "Ancora niente qui"
 }
