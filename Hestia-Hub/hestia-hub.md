@@ -101,7 +101,7 @@ read model), bundle `ui/` (Lit, `@hestia/webui-sdk`) built in the Docker image's
 
 | Contribution | Element | What |
 |---|---|---|
-| Page *Mappa* (`mappa`) | `hub-map` | Every service: online/offline, node, version, last heartbeat, topology tags, instances, UI/MCP badges; group by layer / node / type, search; *Verifica salute* = `GET /api/ui/map?probe=true`. Hub unreachable → "Hub non raggiungibile" state |
+| Page *Mappa* (`mappa`) | `hub-map` | Every service: online/offline, node, version, last heartbeat, topology tags, instances, UI/MCP badges; group by layer / node / type, search; *Verifica salute* = `GET /api/ui/map?probe=true`. Tiles Services / Online / Offline open their list. Hub unreachable → "Hub non raggiungibile" state |
 | Widget *Servizi online* (`online`, auto, s/m) | `hub-online-widget` | online / total + the offline ones by name |
 
 Hub never registers with itself, so two things are done in-process:

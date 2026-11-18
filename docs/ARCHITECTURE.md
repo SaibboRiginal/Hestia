@@ -624,7 +624,8 @@ Source folders named like a generic `.gitignore` rule (`downloads/`, `build/`, `
    (2026-10-30, real-model bench round 2).
 3. Canonical payloads/signals remain rich at source; each client applies its own rendering policy (`minimal|compact|rich`) without mutating source semantics.
 4. **Client plugins**: a module that has a UI ships it inside the module (Web Components bundle built from
-   `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`) and advertises it with `hestia_common.plugin_client`
+   `Hestia-<Name>/ui/` with `Hestia-Shared/webui-sdk`; one tooltip for every `title` and count tiles that open their
+   list, `Hestia-WebUI/frontend/DESIGN-SYSTEM.md` §5) and advertises it with `hestia_common.plugin_client`
    (`capabilities.ui_manifest` in its Hub registration, next to `mcp_endpoint`). Hub exposes ONE catalog organized by
    client × type (`/api/discovery/catalog`: tool, command, page, widget, quick_action, settings_panel — a panel shown inside the
    module's own settings). Clients load what they support
