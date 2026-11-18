@@ -129,7 +129,7 @@ def parse(text: str, now: datetime | None = None, tz_name: str | None = None) ->
         raise
     except Exception as exc:
         logger.warning("[🔄] event=agenda_parse_oracle_failed error=%s", exc)
-        raise ParseError(tr("Oracle not reachable"), 503) from exc
+        raise ParseError(tr("Not available right now"), 503) from exc
     draft = normalize(_extract_json(raw), text, now, tz)
     logger.info("event=agenda_parsed type=%s recurring=%s", draft["type"], bool(draft["recurrence"]))
     return draft

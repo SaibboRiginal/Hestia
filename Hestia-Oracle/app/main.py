@@ -32,6 +32,8 @@ except ModuleNotFoundError:
 logger, log_buffer = setup_service_logging("hestia_oracle")
 
 app = FastAPI(title="Hestia Oracle Microservice", version="1.0")
+from hestia_common.startup_utils import widen_threadpool  # noqa: E402
+widen_threadpool(app)   # a call waiting for a model or a routed reply never starves the pages
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 engine = OracleEngine()
@@ -1612,8 +1614,11 @@ def llm_generate_endpoint(req: dict, request: Request):
     from hestia_common import origin as _origin
     level = llm_bus.module_priority(_origin.parse(dict(request.headers)))
     try:
-        with llm_bus.priority(level):
+        # The caller's deadline (Hub header): still in line when it has given up → never run (llm_bus Expired).
+        with llm_bus.priority(level), llm_bus.deadline(llm_bus.deadline_from_headers(dict(request.headers))):
             text = agent.ask(prompt)
+    except llm_bus.Expired as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
     except llm_chains.ChainExhausted as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:

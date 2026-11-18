@@ -491,8 +491,10 @@ class ChainAgent:
                     if method == "embed":    # embeddings never queue (llm_bus docstring)
                         result = agent.embed(*args, **kwargs)
                     else:
-                        with llm_bus.slot(step["provider"], self.use_case):
-                            result = getattr(agent, method)(*args, **kwargs)
+                        result = _in_line(step["provider"], self.use_case,
+                                          lambda: getattr(agent, method)(*args, **kwargs))
+                except llm_bus.Expired:
+                    raise    # the caller gave up: no other step either
                 except Exception as exc:
                     self._failed(step, exc, errors, usage)
                     continue
@@ -535,14 +537,15 @@ class ChainAgent:
                 continue
             with self._usage(index, step) as usage:
                 try:
-                    with llm_bus.slot(step["provider"], self.use_case):
+                    def run():
                         if sees:
-                            result = agent.ask_with_attachment(file_bytes, mime_type, user_message)
-                        else:
-                            logger.info("event=vision_bridge_used use_case=%s model=%s", self.use_case,
-                                        step["model"])
-                            result = agent.ask(f"[Attached image, described by a model that sees]\n{description}"
-                                               f"\n\n{user_message}")
+                            return agent.ask_with_attachment(file_bytes, mime_type, user_message)
+                        logger.info("event=vision_bridge_used use_case=%s model=%s", self.use_case, step["model"])
+                        return agent.ask(f"[Attached image, described by a model that sees]\n{description}"
+                                         f"\n\n{user_message}")
+                    result = _in_line(step["provider"], self.use_case, run)
+                except llm_bus.Expired:
+                    raise
                 except Exception as exc:
                     self._failed(step, exc, errors, usage)
                     continue
@@ -591,6 +594,22 @@ class ChainAgent:
             llm_usage.finish(usage)
             return
         raise self._exhausted(errors)
+
+
+def _in_line(provider: str, use_case: str, run):
+    """One model call through the bus. Stopped for the owner's turn (``Preempted``) → back in line, run again."""
+    while True:
+        try:
+            with llm_bus.slot(provider, use_case):
+                return run()
+        except llm_bus.Preempted:
+            logger.info("[🔄] event=llm_call_requeued use_case=%s provider=%s reason=owner_turn", use_case, provider)
+        except Exception as exc:
+            if isinstance(exc.__cause__, llm_bus.Preempted):
+                logger.info("[🔄] event=llm_call_requeued use_case=%s provider=%s reason=owner_turn",
+                            use_case, provider)
+                continue
+            raise
 
 
 _chain_agents: dict[str, ChainAgent] = {}

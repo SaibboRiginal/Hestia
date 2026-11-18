@@ -14,6 +14,9 @@ import { tr } from '../core/i18n';
  * Chat state over the SignalR stream. Root instance = the Chat page ("main" channel);
  * the "Crea con Hestia" drawer provides its own instance with channel "assistant".
  */
+/** Status frames that only echo a cancel (the chat is already freed by `cancelStream`). */
+const STATUS_IGNORED = new Set(['Cancelled', 'Stream cancelled']);
+
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   /** Which chat this instance is: events are routed to the channel that sent last. */
@@ -183,9 +186,12 @@ export class ChatService {
     }
   }
 
+  /** «Stop»: the server stops the answer and the chat is free at once — never wait for a frame that may not come
+   * (the server answers a cancel with a status frame, not with `stream_done`). */
   cancelStream(): void {
-    if (this.signalR.activeChannel !== this.channel) return;
-    this.signalR.send({ type: 'cancel' }).catch(() => {});
+    const id = this.currentStreamingId();
+    if (this.signalR.activeChannel === this.channel) this.signalR.send({ type: 'cancel' }).catch(() => {});
+    if (id) this.finalizeStreaming(id, null, undefined, undefined, false, true);
   }
 
   retry(): void {
@@ -244,7 +250,15 @@ export class ChatService {
       { id: uid(), role: 'assistant', content: html, timestamp: new Date() }]);
   }
 
+  /** Empties the chat (new conversation, another conversation opened): an answer still running is stopped, so the
+   * box is never left locked by a stream of the chat that is gone. */
   clearMessages(): void {
+    if (this.currentStreamingId() || this.isStreaming()) {
+      if (this.signalR.activeChannel === this.channel) this.signalR.send({ type: 'cancel' }).catch(() => {});
+      this.currentStreamingId.set(null);
+      this.isStreaming.set(false);
+      this.pendingQuestion.set(null);
+    }
     this.messages.set([]);
     this.thinkingBuffer = [];
     this.lastAssistantId = null;
@@ -324,7 +338,12 @@ export class ChatService {
         break;
 
       case 'status':
-        // Status updates are logged but not displayed inline
+        // What the assistant is doing while no text has arrived yet («Loading history…», «Finishing a background
+        // job…»): shown under the answer being prepared. Emoji are Telegram's; the site draws its own dot.
+        if (streamId && event.content && !STATUS_IGNORED.has(event.content)) {
+          const status = String(event.content).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+          if (status) this.patch(streamId, { status });
+        }
         break;
 
       case 'signal':
@@ -497,12 +516,14 @@ export class ChatService {
     }
   }
 
-  private finalizeStreaming(streamId: string, content: string | null, domain?: string, sessionId?: string, error = false): void {
+  private finalizeStreaming(streamId: string, content: string | null, domain?: string, sessionId?: string, error = false,
+                            stopped = false): void {
     this.messages.update(msgs => msgs.map(m =>
       m.id === streamId
         ? {
             ...m,
-            content: content ?? m.content,
+            content: content ?? (stopped && !m.content ? tr('Stopped.') : m.content),
+            status: undefined,
             isStreaming: false,
             ...(error ? { error: true } : {}),
             domain: domain || m.domain,

@@ -53,6 +53,14 @@ Three object settings (Themis, live; edited in WebUI → Oracle → **Cervello �
   promoted to `chat` (it is that tool's work). Cloud steps and embeddings never wait; a nested call on the thread that
   holds a worker never waits (no deadlock with 1 worker); a stream holds its worker until it ends. Log
   `event=llm_bus_wait priority=… use_case=… waited_ms=…` when a call waited ≥ 0.5 s.
+  Since `docs/work/2026-11-18-problemi-del-test` (A): a call still in line when its caller gave up never runs
+  (Hub header `X-Hestia-Deadline` → `llm_bus.Expired`, `/api/llm/generate` answers 504, log `[🔄] event=llm_bus_expired`);
+  an owner turn that finds every worker busy with background work asks the newest one to stop (`[🔄]
+  event=llm_bus_preempt`): an Ollama call made by a background thread is read as a stream (`universal_agent.ollama_post`)
+  and its connection is closed, then the chain puts it back in line (`[🔄] event=llm_call_requeued`); other providers
+  finish their call. While the owner waits for background work the chat says so (status «Finishing a background job,
+  then it's you»). Oracle and Hub run with 200 server threads (`startup_utils.widen_threadpool`), so calls waiting in
+  line never leave the pages and the chat without a thread.
 - One-time migration: old `oracle.models.*` values (before 2026-10-19) become chains `<use case>-personale` when neither
   `oracle.chains` nor `oracle.usecases` was ever stored (`core/services/llm_migration.py`).
 - Claude Code for Forge (`/api/llm/code`) uses the first `claude_cli` step of use case `forge.codice` (none → CLI default).

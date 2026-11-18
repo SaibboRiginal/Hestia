@@ -12,6 +12,63 @@ from agents.providers import get_provider, is_provider_type
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
+def ollama_post(url: str, payload: dict, timeout: float) -> dict:
+    """One Ollama call (``/api/generate`` or ``/api/chat``) that the owner's turn can stop (llm_bus ``Preempted``).
+
+    A background call holding the local worker is sent as a stream and read chunk by chunk: when the bus asks it
+    to stop, the connection is closed (Ollama stops generating, the GPU is free) and ``Preempted`` is raised.
+    The chunks are merged back into the same dict a non-streamed answer has (text, thinking, tool calls, stats).
+    Any other call is sent as before."""
+    from core.services import llm_bus
+    if getattr(llm_bus._held, "cancel", None) is None or llm_bus.current() == llm_bus.CHAT:
+        response = requests.post(url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        return response.json() or {}
+    body = {**payload, "stream": True}
+    started = time.monotonic()
+    texts: list[str] = []
+    thoughts: list[str] = []
+    contents: list[str] = []
+    msg_thoughts: list[str] = []
+    tool_calls: list = []
+    final: dict = {}
+    has_message = False
+    with requests.post(url, json=body, timeout=timeout, stream=True) as resp:
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            llm_bus.check_cancel()    # leaving the with-block closes the connection
+            if time.monotonic() - started > float(timeout):
+                raise requests.Timeout(f"Ollama answer longer than {timeout}s")
+            if not line:
+                continue
+            try:
+                chunk = json.loads(line)
+            except ValueError:
+                continue
+            texts.append(str(chunk.get("response") or ""))
+            thoughts.append(str(chunk.get("thinking") or ""))
+            msg = chunk.get("message")
+            if isinstance(msg, dict):
+                has_message = True
+                contents.append(str(msg.get("content") or ""))
+                msg_thoughts.append(str(msg.get("thinking") or ""))
+                if isinstance(msg.get("tool_calls"), list):
+                    tool_calls.extend(msg["tool_calls"])
+            if chunk.get("done"):
+                final = chunk
+                break
+    llm_bus.check_cancel()
+    out = dict(final)
+    out["response"] = "".join(texts)
+    if any(thoughts):
+        out["thinking"] = "".join(thoughts)
+    if has_message:
+        out["message"] = {"role": "assistant", "content": "".join(contents),
+                          **({"thinking": "".join(msg_thoughts)} if any(msg_thoughts) else {}),
+                          **({"tool_calls": tool_calls} if tool_calls else {})}
+    return out
+
+
 _OPENAPI_KEYS = {"type", "description", "enum", "properties", "required", "items", "format", "nullable",
                  "minimum", "maximum", "minItems", "maxItems", "anyOf", "default", "title"}
 
@@ -126,9 +183,12 @@ class UniversalAgent:
         base_delay = oracle_settings.get_float(oracle_settings.LLM_RETRY_DELAY, 0.0)
         from core.services import llm_chains
         last_exc = None
+        from core.services import llm_bus
         for attempt in range(max_retries):
             try:
                 return fn(*args, **kwargs)
+            except llm_bus.Preempted:
+                raise    # stopped for the owner's turn: the bus puts it back in line
             except Exception as exc:
                 last_exc = exc
                 if llm_chains.is_quota_error(exc):  # out of quota: retrying is useless, the chain moves on
@@ -181,7 +241,8 @@ class UniversalAgent:
                 try:
                     return self._ask_with_tools_ollama_native(user_message, tools, thinking=thinking)
                 except Exception as exc:
-                    if self.ollama_tool_call_mode == "native":
+                    from core.services import llm_bus
+                    if self.ollama_tool_call_mode == "native" or isinstance(exc, llm_bus.Preempted):
                         raise
                     logger.trace(
                         "event=ollama_native_tool_call_fallback Ollama native tool calling unavailable, falling back to prompt mode: %s", exc)
@@ -217,13 +278,7 @@ class UniversalAgent:
                 payload["think"] = True
             else:
                 payload["think"] = False
-            response = requests.post(
-                self.ollama_url,
-                json=payload,
-                timeout=self.ollama_timeout_sec
-            )
-            response.raise_for_status()
-            data = response.json() or {}
+            data = ollama_post(self.ollama_url, payload, self.ollama_timeout_sec)
             self._ollama_stats(data, len(payload["prompt"]))
             raw = str(data.get("response", "") or "").strip()
             reasoning_raw = str(data.get("reasoning_content") or data.get("thinking") or "").strip()
@@ -336,13 +391,7 @@ class UniversalAgent:
             len(_TOOL_CALLING_SYSTEM))
 
         t_req = time.time()
-        response = requests.post(
-            chat_url,
-            json=payload,
-            timeout=self.ollama_timeout_sec,
-        )
-        response.raise_for_status()
-        data = response.json() or {}
+        data = ollama_post(chat_url, payload, self.ollama_timeout_sec)
         elapsed_ms = int((time.time() - t_req) * 1000)
         # Tool schemas are part of the prompt too; their JSON length approximates their tokens.
         self._ollama_stats(data, len(_TOOL_CALLING_SYSTEM) + len(user_message)
@@ -572,13 +621,7 @@ class UniversalAgent:
             else:
                 payload["think"] = False
             try:
-                response = requests.post(
-                    self.ollama_url,
-                    json=payload,
-                    timeout=self.ollama_timeout_sec,
-                )
-                response.raise_for_status()
-                return response.json().get("response", "").strip()
+                return str(ollama_post(self.ollama_url, payload, self.ollama_timeout_sec).get("response", "")).strip()
             except Exception as exc:
                 raise RuntimeError(f"Ollama vision error: {exc}") from exc
 

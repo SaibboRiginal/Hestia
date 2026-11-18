@@ -55,7 +55,7 @@ export class OracleBrain extends HestiaElement {
       this.host.api('GET', `${API}/code`),
     ]);
     this.loading = false;
-    if (!a.ok && !s.ok) { this.error = a.status === 0 ? tr('Oracle not reachable') : a.error || tr('Oracle not reachable'); return; }
+    if (!a.ok && !s.ok) { this.error = a.status === 0 ? tr('Not available right now') : a.error || tr('Not available right now'); return; }
     this.error = '';
     this.activity = a.ok ? a.data : null;
     this.stats = s.ok ? s.data : null;

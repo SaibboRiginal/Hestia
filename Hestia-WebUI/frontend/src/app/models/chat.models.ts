@@ -7,6 +7,8 @@ export interface ChatMessage {
   timestamp: Date;
   thinkingSteps?: ThinkingStep[];
   isStreaming?: boolean;
+  /** What the assistant is doing before the first word (Oracle `status` frame), cleared when the answer ends. */
+  status?: string;
   domain?: string;
   sessionId?: string;
   /** System notices (memory saved, action done…) attached to this answer. */
