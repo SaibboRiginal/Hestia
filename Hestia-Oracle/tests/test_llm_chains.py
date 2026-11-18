@@ -158,13 +158,14 @@ class TestChainAgent:
         with pytest.raises(RuntimeError, match="cut"):
             list(agent.ask_stream("x"))
 
-    def test_embedding_chain_has_one_step(self, monkeypatch, fake_agents):
+    def test_embedding_chain_falls_back_to_the_next_model(self, monkeypatch, fake_agents):
+        """The memory chain has real fallback models (dossier 2026-11-18-problemi-del-test E2): every stored vector
+        keeps the model that made it, so the next model can answer."""
         agent = self._chain(monkeypatch, [{"provider": "ollama", "model": "e1"}, {"provider": "gemini", "model": "e2"}],
                             uc="oracle.embedding", chain="embedding")
         fake_agents.plan = {"e1": RuntimeError("down")}
-        with pytest.raises(llm_chains.ChainExhausted):
-            agent.embed("x")
-        assert fake_agents.asked == ["e1"]
+        agent.embed("x")
+        assert fake_agents.asked == ["e1", "e2"]
 
     def test_unknown_chain_falls_back_to_general(self, monkeypatch, fake_agents):
         _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.annunci": {"chain": "nope"}})

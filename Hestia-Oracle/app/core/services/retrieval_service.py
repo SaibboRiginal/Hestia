@@ -7,11 +7,12 @@ logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 
 class RetrievalService:
-    def __init__(self, archive_url: str, hub_api_url: str, module_registry, embedder):
+    def __init__(self, archive_url: str, hub_api_url: str, module_registry, embedder, query_fn=None):
         self.archive_url = archive_url
         self.hub_api_url = hub_api_url.rstrip("/")
         self.module_registry = module_registry
         self.embedder = embedder
+        self.query_fn = query_fn   # query embedded by every model of the chain (Archive matches each row's own model)
 
     def retrieve_entities(
         self,
@@ -26,11 +27,16 @@ class RetrievalService:
         sort_order: str,
     ) -> list:
         all_entities = []
-        query_vector = self.embedder(user_message) if any(
-            d != "general" for d in valid_domains) else None
+        wanted = any(d != "general" for d in valid_domains)
+        if wanted and self.query_fn:
+            query_vector = self.query_fn(user_message) or None
+        else:
+            query_vector = {"query_vector": self.embedder(user_message)} if wanted else None
+            if query_vector and not query_vector["query_vector"]:
+                query_vector = None
         if query_vector:
-            logger.info("event=embedding_generated_with_dimensions Embedding generated with %s dimensions",
-                        len(query_vector))
+            logger.info("event=embedding_generated_with_dimensions Embedding generated with %s model(s)",
+                        len(query_vector.get("query_vectors") or [1]))
         else:
             logger.info(
                 "event=embedding_used_this_query_general No embedding used for this query (general-only route)")
@@ -106,7 +112,7 @@ class RetrievalService:
                         "filters_lt": filters_lt,
                         "sort_by": sort_by,
                         "sort_order": sort_order,
-                        "query_vector": query_vector,
+                        **(query_vector or {}),
                     },
                     "timeout_seconds": 8,
                 },

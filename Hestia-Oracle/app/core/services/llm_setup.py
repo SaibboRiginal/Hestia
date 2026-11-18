@@ -9,8 +9,8 @@ What the setup screen needs from Oracle, and only from Oracle (it owns the provi
 - ``recommend(vram_gb, ram_gb)``: the tier for this PC and its preselected models;
 - ``test(provider, model)``: one tiny real call with a model the provider really lists, answer in plain words;
 - ``apply(...)``: adds a found program as a provider block, writes ``oracle.chains`` from the user's choice (local
-  program + model, cloud services in order with their models, embedding only when the user changed it: a new
-  embedding model re-indexes the memory);
+  program + model, cloud services in order with their models, memory (embedding) models in order, only when the user
+  changed them: every stored vector keeps the model that made it, so nothing is re-read);
 - ``pull`` / ``pulls``: Ollama downloads in the background with progress (``/api/pull`` stream), so the screen can
   show them while the user answers the next questions.
 """
@@ -241,10 +241,12 @@ def catalog(vram_gb: float = 0, ram_gb: float = 0, hosts: str | list[str] | None
               "key_set": p["key_set"], "available": p["available"]}
              for p in llm_providers.public_view() if not llm_providers.is_local(p["name"])]
     found = runtimes(vram_gb, hosts)
-    embedding = ((llm_chains.chains().get(llm_chains.EMBEDDING_CHAIN) or {}).get("steps") or [{}])[0]
+    emb_steps = (llm_chains.chains().get(llm_chains.EMBEDDING_CHAIN) or {}).get("steps") or []
+    embedding = (emb_steps or [{}])[0]
     return {"recommended": recommend(vram_gb, ram_gb), "tiers": CATALOG, "installed": installed,
             "local": next((r["models"] for r in found if r["name"] == "ollama"), []), "runtimes": found,
             "embedding": {"provider": embedding.get("provider", ""), "model": embedding.get("model", "")},
+            "embedding_steps": [{"provider": s.get("provider", ""), "model": s.get("model", "")} for s in emb_steps],
             "ollama": found[0]["found"], "cloud": cloud, "recipes": list(RECIPES)}
 
 
@@ -404,7 +406,7 @@ def _default_model(provider: str) -> str:
 
 def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[str, dict],
                 local_provider: str = "ollama", cloud_models: dict[str, list[str] | str] | None = None,
-                embedding: dict[str, str] | None = None, modes: dict[str, dict] | None = None,
+                embedding: dict | None = None, modes: dict[str, dict] | None = None,
                 order: list[dict] | None = None) -> dict[str, dict]:
     """New ``oracle.chains`` for a recipe. ``order``: the setup's «Scelti» list (``{provider, model}``, model empty =
     every model of that service) to put the chosen steps in the user's order, the local one included; a step it does
@@ -457,12 +459,27 @@ def plan_chains(recipe: str, local_model: str, cloud: list[str], current: dict[s
         steps = _in_order(cloud_steps_of(llm_chains.DEFAULT_CHAINS["cloud"]["steps"]), order)
         if steps:
             out["cloud"] = {"label": out["cloud"].get("label") or "Cloud", "steps": steps}
+    wanted = [{"provider": s["provider"], "model": s["model"]} for s in embedding_steps(embedding)]
+    if wanted:
+        now = [{"provider": s.get("provider"), "model": s.get("model")}
+               for s in (out.get(llm_chains.EMBEDDING_CHAIN) or {}).get("steps") or []]
+        if now != wanted:
+            out[llm_chains.EMBEDDING_CHAIN] = {"label": "Embedding", "steps": wanted}
+    return out
+
+
+def embedding_steps(embedding: dict | None) -> list[dict]:
+    """The memory models chosen in the setup, in order: ``{steps: [{provider, model, url?, type?, label?}]}`` (the
+    first is used, the next ones when it is not available) or one ``{provider, model}`` (older clients)."""
     emb = embedding or {}
-    if emb.get("model"):
-        step = {"provider": emb.get("provider") or "ollama", "model": emb["model"]}
-        now = (out.get(llm_chains.EMBEDDING_CHAIN) or {}).get("steps") or []
-        if now[:1] != [step]:
-            out[llm_chains.EMBEDDING_CHAIN] = {"label": "Embedding", "steps": [step]}
+    raw = emb.get("steps") if isinstance(emb.get("steps"), list) else [emb]
+    out = []
+    for s in raw:
+        if isinstance(s, dict) and s.get("model"):
+            step = {"provider": s.get("provider") or "ollama", "model": str(s["model"])}
+            step.update({k: s[k] for k in ("url", "type", "label") if s.get(k)})
+            if not any(o["provider"] == step["provider"] and o["model"] == step["model"] for o in out):
+                out.append(step)
     return out
 
 
@@ -528,7 +545,7 @@ def _live_models(cloud: list[str], picked: dict[str, list[str]]) -> dict[str, li
 
 
 def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, local_provider: str = "ollama",
-          cloud_models: dict[str, list[str] | str] | None = None, embedding: dict[str, str] | None = None,
+          cloud_models: dict[str, list[str] | str] | None = None, embedding: dict | None = None,
           local_runtime: dict | None = None, modes: dict[str, dict] | None = None,
           order: list[dict] | None = None) -> dict[str, Any]:
     from core.services import llm_chains, oracle_settings
@@ -537,10 +554,9 @@ def apply(recipe: str, local_model: str = "", cloud: list[str] | None = None, lo
     local_provider = local_provider or "ollama"
     if recipe != "cloud" and local_model and not ensure_runtime(local_provider, local_runtime):
         return {"ok": False, "detail": tr("I can't add that program to the settings.")}
-    emb = embedding or {}
-    if emb.get("model") and not ensure_runtime(emb.get("provider") or "ollama",
-                                               {k: emb.get(k, "") for k in ("url", "type", "label")}):
-        return {"ok": False, "detail": tr("I can't add that program to the settings.")}
+    for emb in embedding_steps(embedding):
+        if not ensure_runtime(emb["provider"], {k: emb.get(k, "") for k in ("url", "type", "label")}):
+            return {"ok": False, "detail": tr("I can't add that program to the settings.")}
     modes = {k: v for k, v in (modes or {}).items()
              if k in CHAT_CHAINS and isinstance(v, dict) and (v.get("model") or v.get("steps"))}
     for own in modes.values():

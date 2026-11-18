@@ -357,8 +357,9 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    in order per direction (one local engine, then cloud services) → Themis `echo.chains` (those first, others kept) →
    Echo queues the local models (download source `http`/`whisper`). The brain's cloud services work the same way:
    Oracle `setup/test` returns `recommended`, `setup/apply` takes `cloud_models {service: [models]}` in order.
-   The page has one step component for Modelli (chat models only), Memoria (embedding models, at home or a cloud
-   one such as Gemini's), Ascolto and Voce; `setup/apply` also takes `modes` (Ragionamento/Codice/Immagini with their
+   The page has one step component for Modelli (chat models only), Memoria (embedding models in order, at home or in
+   the cloud such as Gemini's; `embedding: {steps}`; every stored vector keeps its `embedding_model` and a search sends
+   `query_vectors` from each model, Archive `app/vectors.py`), Ascolto and Voce; `setup/apply` also takes `modes` (Ragionamento/Codice/Immagini with their
    own model first in `potente/codice/visione`) and `order` (the «Scelti» list in the user's order, local and cloud
    mixed, Hephaestus → Oracle `plan_chains` sorts the chat steps by it); a mode can carry its own `steps` list.
    «I modelli sono pronti»: WebUI `setup/brain/hello` → Hephaestus → Hub → Oracle `/api/llm/generate`

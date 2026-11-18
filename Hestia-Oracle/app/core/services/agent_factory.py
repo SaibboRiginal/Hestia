@@ -9,7 +9,7 @@ from any client needs no restart and no reconfiguration.
   reasoning → oracle.ragionamento deep thinking, complex multi-step analysis
   code      → oracle.codice       code generation, debugging, technical tasks
   documents → oracle.documenti    documents, images, audio (vision-capable chain)
-  embedding → oracle.embedding    vector embeddings (one model: vectors must stay comparable)
+  embedding → oracle.embedding    vector embeddings (several models: each vector keeps its model)
 
 Mode (quick/auto/thinking) controls orchestration; use case controls which brain.
 """

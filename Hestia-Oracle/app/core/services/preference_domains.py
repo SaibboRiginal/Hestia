@@ -60,23 +60,31 @@ class PreferenceDomainClassifier:
     Preference embeddings are computed at classification time via *embed_fn*.
     """
 
-    def __init__(self, embed_fn: Callable[[str], list[float]]) -> None:
+    def __init__(self, embed_fn: Callable[[str], list[float]],
+                 embed_with_fn: Callable[[str, str], list[float]] | None = None) -> None:
         self._embed = embed_fn
+        # The domain vectors must come from the model that embedded the text (the embedding chain can fall back to
+        # another model): ``embed_with_fn(model, text)`` re-makes them with that model when it changes.
+        self._embed_with = embed_with_fn
         self._domain_embeddings: dict[str, list[float]] = {}
         self._warmed_for: dict[str, str] = {}
+        self._warmed_model = ""
         self._warm()
 
-    def _warm(self) -> None:
-        """Pre-compute domain description embeddings (again when the domains setting changes)."""
+    def _warm(self, model: str = "") -> None:
+        """Pre-compute domain description embeddings (again when the domains setting or the model changes)."""
         domains = _parse_domains()
-        if domains == self._warmed_for:
+        if domains == self._warmed_for and (not model or model == self._warmed_model):
             return
         self._domain_embeddings = {}
         self._warmed_for = dict(domains)
+        self._warmed_model = model
         for key in sorted(domains):
             desc = domains.get(key, key)
             try:
-                vec = self._embed(desc)
+                vec = self._embed_with(model, desc) if model and self._embed_with else self._embed(desc)
+                if not model:
+                    self._warmed_model = getattr(vec, "model", "") or self._warmed_model
                 self._domain_embeddings[key] = vec
                 logger.debug(
                     "event=pref_domain_embedding_cached domain=%s dims=%d",
@@ -108,7 +116,8 @@ class PreferenceDomainClassifier:
         if not vec:
             return ["general"]
 
-        self._warm()
+        model = getattr(vec, "model", "")
+        self._warm(model if self._embed_with else "")
         threshold = similarity_threshold()
         matches: list[str] = []
         for key in sorted(self._domain_embeddings):

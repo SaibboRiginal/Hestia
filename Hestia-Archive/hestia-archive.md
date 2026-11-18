@@ -204,6 +204,12 @@ It stores and serves all persistent state through generic APIs.
   the DB, `_similarity = 1 - cosine distance`. Non-numeric embedding → 400; wrong size or zero vector → `[]`
   (`[🔄] event=memory_search_dim_mismatch`). Exact search, no HNSW index on purpose (filters + approximate index can
   drop matches) → `docs/work/2026-11-06-ricerca-memorie-in-db`.
+- **One memory, several embedding models** (2026-11-18, `app/vectors.py`): `entities`, `user_preferences`,
+  `document_records`, `document_chunks` keep `embedding_model` (the model that made the vector, `provider/model`).
+  `POST /api/memory/search/similar`, `/api/documents/search` and `/api/entities/search` take `query_vectors`
+  (`[{model, vector}]`) + `untagged_model`: each row is compared with the query of its own model in one SQL `CASE`;
+  rows of a model the query was not embedded with are left out, rows without a model use `untagged_model`'s vector.
+  `query_vector` / `embedding` alone keep the old behaviour.
 - `POST /api/entities/search`: numeric filters (`filters_gt/lt`) evaluated over a wider window (was LIMIT 100 before
   filtering) and parsed leniently (`"350.000 €"`); unparsable values exclude the row instead of failing the search.
 - `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda

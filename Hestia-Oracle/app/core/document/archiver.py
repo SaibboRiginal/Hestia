@@ -147,6 +147,7 @@ class DocumentArchiver:
                 "chunk_index": i,
                 "chunk_text": chunk_text,
                 "embedding": emb or None,
+                "embedding_model": getattr(emb, "model", "") or None,   # the model that made it (E2)
             })
 
         doc_emb_text = f"{title or ''}\n{summary or ''}\n{extracted_text[:400]}".strip(
@@ -165,6 +166,7 @@ class DocumentArchiver:
             "summary": summary,
             "extracted_text": extracted_text,
             "embedding": doc_embedding or None,
+            "embedding_model": getattr(doc_embedding, "model", "") or None,
             "is_permanent": False,
             "domain": domain,
             "tags": json.dumps(tags) if tags else None,

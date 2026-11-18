@@ -357,7 +357,7 @@ class SetupApply(BaseModel):
     local_provider: str = "ollama"
     cloud: list[str] = Field(default_factory=list)
     cloud_models: dict[str, list[str] | str] = Field(default_factory=dict)
-    embedding: dict[str, str] = Field(default_factory=dict)
+    embedding: dict[str, Any] = Field(default_factory=dict)   # {steps: [{provider, model, url?…}]} memory models in order
     local_runtime: dict[str, str] = Field(default_factory=dict)   # {url, type, label}: a program on another computer
     modes: dict[str, dict[str, Any]] = Field(default_factory=dict)   # per mode (potente, codice, visione): {steps: [...]} its own list, or one model
     order: list[dict[str, str]] = Field(default_factory=list)   # «Scelti» in the user's order: [{provider, model}]
@@ -1688,6 +1688,7 @@ def get_session_info():
 
 class EmbedRequest(BaseModel):
     text: str
+    all: bool = False   # True = for a search: the text embedded by every model of the chain usable now
 
 
 @app.post("/api/embed")
@@ -1695,10 +1696,18 @@ def embed_endpoint(req: EmbedRequest):
     """Return embedding vector for *text* via Oracle's embedding model.
 
     The ONLY embedding endpoint in Hestia. All services route through here.
+    Every vector keeps the model that made it (``model`` = ``provider/model``): store it with the vector, and search
+    with ``all: true`` → ``query_vectors`` (one per model) + ``untagged_model`` for Archive (dossier
+    2026-11-18-problemi-del-test E2).
     """
     try:
+        if req.all:
+            query = engine._query_vectors(req.text)
+            first = (query.get("query_vectors") or [{}])[0]
+            return {"embedding": first.get("vector") or [], "dimensions": len(first.get("vector") or []),
+                    "model": first.get("model") or "", **query}
         vector = engine._embed(req.text)
-        return {"embedding": vector, "dimensions": len(vector)}
+        return {"embedding": list(vector), "dimensions": len(vector), "model": getattr(vector, "model", "")}
     except Exception as e:
         logger.exception("event=unhandled_error_embed")
         raise HTTPException(status_code=500, detail=str(e))

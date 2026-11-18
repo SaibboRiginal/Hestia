@@ -249,6 +249,11 @@ def models_state(use_case: str = GENERAL) -> dict:
     return {"state": state, "use_case": use_case, "usable_steps": len(usable), "steps": len(steps)}
 
 
+def step_tag(step: dict) -> str:
+    """``provider/model``: the name a stored vector keeps of the model that made it."""
+    return f"{step.get('provider', '')}/{step.get('model', '')}"
+
+
 def last_answered() -> dict | None:
     """Step that answered the last chain call in this context (use case, chain, index, provider, model)."""
     return _answered.get()
@@ -268,8 +273,6 @@ def chains() -> dict[str, dict]:
             continue
         steps = [s for s in (raw.get("steps") or []) if isinstance(s, dict)
                  and str(s.get("provider") or "").strip() and str(s.get("model") or "").strip()]
-        if name == EMBEDDING_CHAIN:
-            steps = steps[:1]
         out[str(name)] = {"label": str(raw.get("label") or name), "steps": steps}
     return out
 
@@ -591,6 +594,57 @@ class ChainAgent:
     def embed(self, text: str) -> list[float]:
         return self._call("embed", text)
 
+    # ── one memory, several embedding models (dossier 2026-11-18-problemi-del-test E2) ─────────────────────
+    # A vector is only comparable with vectors of the same model: what is stored records its model
+    # (``embed_tagged``), a search embeds the query with every model it can reach (``embed_all``) and Archive
+    # compares each row with the query of its own model. Rows stored before models were recorded belong to the
+    # chain's first model (``primary_tag``).
+    def primary_tag(self) -> str:
+        steps = chain_steps(self.use_case)
+        return step_tag(steps[0]) if steps else ""
+
+    def embed_tagged(self, text: str) -> tuple[list[float], str]:
+        """Vector of the first step that answers, with the model that made it (``provider/model``)."""
+        vector = self._call("embed", text)
+        answered = last_answered() or {}
+        return vector, step_tag(answered) if answered.get("provider") else ""
+
+    def embed_all(self, text: str) -> list[dict]:
+        """``[{model, vector}]`` from every step usable now (a search compares each stored row with its own model)."""
+        from core.services import llm_usage
+        out: list[dict] = []
+        errors: list[str] = []
+        for index, step, agent in self.steps():
+            with self._usage(index, step) as usage:
+                try:
+                    vector = agent.embed(text)
+                except Exception as exc:
+                    self._failed(step, exc, errors, usage)
+                    continue
+            llm_usage.finish(usage)
+            if vector:
+                out.append({"model": step_tag(step), "vector": vector})
+        if not out:
+            raise self._exhausted(errors)
+        note_outcome(self.use_case, 0)
+        return out
+
+    def embed_with(self, tag: str, text: str) -> list[float]:
+        """Vector made by one given model of the chain (``provider/model``); [] when it is not usable now."""
+        for index, step, agent in self.steps():
+            if step_tag(step) != tag:
+                continue
+            with self._usage(index, step) as usage:
+                try:
+                    vector = agent.embed(text)
+                except Exception as exc:
+                    self._failed(step, exc, [], usage)
+                    return []
+            from core.services import llm_usage
+            llm_usage.finish(usage)
+            return vector
+        return []
+
     def ask_stream(self, user_message: str) -> Iterator[str]:
         """Stream from the first step that produces a token; a step failing before its first token passes
         to the next one; after the first token a failure ends the stream (callers keep what they got)."""
@@ -691,8 +745,7 @@ def chains_view() -> dict:
             rows.append({**step, "available": ok, "detail": detail,
                          "exhausted_until": datetime.fromtimestamp(until).isoformat(timespec="minutes")
                          if until else "", "limits": llm_limits.learned(step["provider"], step["model"])})
-        out[name] = {"label": chain["label"], "steps": rows, "single_step": name == EMBEDDING_CHAIN,
-                     "use": "embedding" if name == EMBEDDING_CHAIN else "chat"}
+        out[name] = {"label": chain["label"], "steps": rows, "use": "embedding" if name == EMBEDDING_CHAIN else "chat"}
     return out
 
 

@@ -564,8 +564,9 @@ to play says so (never a silent play); every sound goes through the site's one p
 new try stops the one playing (chat included), a second tap on the same voice stops it, and a late answer never
 plays over a newer one. Voce says it speaks in the language you write in; voices are filtered by a language selector next to the
 search (`setup-pick`, items with `lang`; default the chosen voice's language), never the language in every name, and under the local list (in every step) «Altri programmi gratis» lists the programs not found yet
-(Modelli: LM Studio…; Voce: Chatterbox, Kokoro-FastAPI, Speaches) with their site. Memoria is the same step with `single`: one embedding model in all,
-local or one cloud model (Gemini's `gemini-embedding-001` too). The recipe comes from what is chosen. Ascolto and
+(Modelli: LM Studio…; Voce: Chatterbox, Kokoro-FastAPI, Speaches) with their site. Memoria is the same step on embedding models, several in order like
+Modelli (2026-11-18: each stored vector keeps the model that made it, so the next ones are a real fallback and nothing
+is re-read; Gemini's `gemini-embedding-001` too); it sends `embedding: {steps}` only when the list changed. The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
 Voce writes both chains and queues the downloads. The «I tuoi servizi» screen mounts Hecate's one list of
 services `<hecate-connections>` (ctx `params.place = setup`) through `hx-plugin-outlet`, the same list as the

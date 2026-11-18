@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import String, cast, desc, or_
 from sqlalchemy.orm import Session
 
-from .. import models, schemas, database
+from .. import models, schemas, database, vectors
 
 router = APIRouter(tags=["entities"])
 
@@ -121,6 +121,7 @@ def upsert_entity(entity: schemas.EntityUpsert, db: Session = Depends(database.g
             db_entity.payload = entity.payload
         if entity.embedding:
             db_entity.embedding = entity.embedding
+            db_entity.embedding_model = entity.embedding_model
     else:
         db_entity = models.EntityRecord(**entity.model_dump())
         db.add(db_entity)
@@ -192,18 +193,18 @@ def search_entities(req: schemas.AdvancedSearchRequest, db: Session = Depends(da
                              String).ilike(f"%{str(value)}%")
                     )
 
-        # Vector ordering (semantic reranking)
-        dims = models.EntityRecord.embedding.type.dim
-        if req.query_vector and len(req.query_vector) != dims:
-            # Embedding model mismatch (e.g. 1024-dim model vs Vector(768)) used to
-            # raise inside pgvector -> 500 -> callers got no results at all.
+        # Vector ordering (semantic reranking), each row against the query of its own model (app/vectors.py).
+        # A vector of the wrong size used to raise inside pgvector -> 500 -> no results at all: it is skipped.
+        dist = vectors.distance(models.EntityRecord.embedding, models.EntityRecord.embedding_model,
+                                query_vectors=req.query_vectors, untagged_model=req.untagged_model or "",
+                                query_vector=req.query_vector)
+        if req.query_vector and dist is None:
             import logging
             logging.getLogger("hestia_archive").warning(
                 "[🔄] event=search_vector_dim_mismatch got=%d expected=%d (vector ordering skipped)",
-                len(req.query_vector), dims)
-        if req.query_vector and len(req.query_vector) == dims:
-            q = q.order_by(
-                models.EntityRecord.embedding.l2_distance(req.query_vector))
+                len(req.query_vector), models.EntityRecord.embedding.type.dim)
+        if dist is not None:
+            q = q.order_by(dist.asc().nulls_last(), desc(models.EntityRecord.id))
         else:
             q = q.order_by(desc(models.EntityRecord.id))
 

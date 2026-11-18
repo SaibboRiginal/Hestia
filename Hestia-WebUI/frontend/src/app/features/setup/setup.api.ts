@@ -30,8 +30,9 @@ export interface BrainCatalog {
   installed: string[];
   local?: LocalModel[];
   runtimes?: Runtime[];
-  /** The memory's model now (one step: changing it re-indexes the memory). */
+  /** The memory's first model now, and all its models in order (each stored vector keeps the model that made it). */
   embedding?: { provider: string; model: string };
+  embedding_steps?: { provider: string; model: string }[];
   ollama: boolean;
   cloud: CloudProvider[];
 }
@@ -55,7 +56,8 @@ export interface Outcome { ok: boolean; detail?: string; }
 export interface TestOutcome extends Outcome { model?: string; models?: string[]; recommended?: string[]; embed?: string[]; }
 type RuntimeRef = { url?: string; type?: string; label?: string };
 export interface BrainChoice { local_provider: string; cloud_models: Record<string, string[]>;
-  embedding: ({ provider: string; model: string } & RuntimeRef) | null; local_runtime: RuntimeRef;
+  /** Memory models in order (the first is used, the next ones when it is not available); null = unchanged. */
+  embedding: { steps: ({ provider: string; model: string } & RuntimeRef)[] } | null; local_runtime: RuntimeRef;
   /** «Per modalità»: potente / codice / visione with their own model (first there, the general choice after). */
   modes: Record<string, { steps: ({ provider: string; model: string } & RuntimeRef)[] }>;
   /** «Scelti» in the user's order, local and cloud mixed. */

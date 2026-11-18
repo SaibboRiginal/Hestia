@@ -304,6 +304,13 @@ components:
     EntitySearchRequest:
       type: object
       properties:
+        query_vectors:
+          type: array
+          description: "One memory, several embedding models: the query embedded by each model reached, [{model, vector}]; each row is compared with the vector of its own model (embedding_model)"
+          items: {type: object, properties: {model: {type: string}, vector: {type: array, items: {type: number}}}}
+        untagged_model:
+          type: string
+          description: Model of the rows stored before models were recorded (the chain's first model)
         domain:
           type: string
         limit:
@@ -2323,13 +2330,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [embedding]
               properties:
+                query_vectors:
+                  type: array
+                  description: "One memory, several embedding models: the query embedded by each model reached, [{model, vector}]; each row is compared with the vector of its own model (embedding_model)"
+                  items: {type: object, properties: {model: {type: string}, vector: {type: array, items: {type: number}}}}
+                untagged_model:
+                  type: string
+                  description: Model of the rows stored before models were recorded (the chain's first model)
                 embedding:
                   type: array
                   items:
                     type: number
-                  description: 768-dim query embedding vector
+                  description: 768-dim query embedding vector (one model; used when query_vectors is absent)
                 memory_class:
                   type: string
                   description: Filter by memory class (e.g. "skill")
@@ -3012,8 +3025,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [query_vector]
               properties:
+                query_vectors:
+                  type: array
+                  description: "One memory, several embedding models: the query embedded by each model reached, [{model, vector}]; each row is compared with the vector of its own model (embedding_model)"
+                  items: {type: object, properties: {model: {type: string}, vector: {type: array, items: {type: number}}}}
+                untagged_model:
+                  type: string
+                  description: Model of the rows stored before models were recorded (the chain's first model)
                 query_vector:
                   type: array
                   items:
@@ -4567,6 +4586,25 @@ paths:
         - url: http://localhost:19004
       responses:
         "200": {description: "{status, providers[], types[{value,label}], chains{}, usecases[], overrides{}, modes[{value,label}]}"}
+
+  /oracle/api/embed:
+    post:
+      tags: [Oracle]
+      summary: Embedding of a text along the memory chain (real path /api/embed; the only embedding endpoint)
+      servers:
+        - url: http://localhost:19004
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: {type: string}
+                all: {type: boolean, default: false, description: "true = for a search: query_vectors from every model of the chain usable now + untagged_model"}
+      responses:
+        "200": {description: "{embedding, dimensions, model: provider/model that made it (store it with the vector)} + with all: {query_vectors, untagged_model}"}
 
   /oracle/api/ui/models/list:
     get:

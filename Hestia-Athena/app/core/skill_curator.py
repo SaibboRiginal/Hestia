@@ -22,6 +22,11 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 logger = logging.getLogger("hestia_athena.skill_curator")
 
 
+def _model(row: dict) -> str:
+    """The embedding model that made a row's vector ("" = stored before models were recorded)."""
+    return str((row or {}).get("embedding_model") or "")
+
+
 def _cosine(a: list[float], b: list[float]) -> float:
     if not a or not b or len(a) != len(b):
         return 0.0
@@ -172,7 +177,10 @@ class SkillCurator:
             best_idx = -1
             best_sim = 0.0
             for i, cluster in enumerate(clusters):
-                # Compare against cluster centroid (first session's embedding)
+                # Compare against cluster centroid (first session's embedding); vectors of different embedding
+                # models are not comparable (Oracle's embedding chain can fall back to another model)
+                if _model(cluster[0]) != _model(session):
+                    continue
                 cluster_emb = cluster[0].get("embedding")
                 if isinstance(cluster_emb, list):
                     sim = _cosine(emb, cluster_emb)
@@ -226,8 +234,9 @@ class SkillCurator:
         skill_name = f"{domain}_{'_'.join(tool_names[:3])}".replace(".", "_")[:64]
         description = tr("Sequence {0} for domain {1}", ', '.join(tool_names), domain)
 
+        model = _model(cluster[0])
         # Check if similar skill already exists
-        existing = self._find_similar_skill(centroid, domain)
+        existing = self._find_similar_skill(centroid, domain, model)
         if existing:
             self._update_skill(existing["id"], use_count=existing.get("use_count", 0))
             return "updated"
@@ -239,16 +248,18 @@ class SkillCurator:
             tool_sequence=best_seq,
             embedding=centroid,
             domain=domain,
+            embedding_model=model,
         )
         return "created"
 
-    def _find_similar_skill(self, embedding: list[float], domain: str) -> dict | None:
-        """Find existing skill with similar embedding."""
+    def _find_similar_skill(self, embedding: list[float], domain: str, model: str = "") -> dict | None:
+        """Find existing skill with similar embedding (only skills of the same embedding model when it is known)."""
         try:
+            query = {"query_vectors": [{"model": model, "vector": embedding}]} if model else {"embedding": embedding}
             result = self._route_archive(
                 "POST", "/api/memory/search/similar",
                 body={
-                    "embedding": embedding,
+                    **query,
                     "memory_class": "skill",
                     "domain": domain,
                     "limit": 3,
@@ -265,7 +276,7 @@ class SkillCurator:
 
     def _create_skill(
         self, name: str, description: str,
-        tool_sequence: list[dict], embedding: list[float], domain: str,
+        tool_sequence: list[dict], embedding: list[float], domain: str, embedding_model: str = "",
     ) -> None:
         """Create a new skill in Archive."""
         try:
@@ -279,6 +290,7 @@ class SkillCurator:
                 "weight": 1.0,
                 "memory_class": "skill",
                 "embedding": embedding,
+                "embedding_model": embedding_model or None,
                 "extra_data": {
                     "skill_name": name,
                     "description": description,
@@ -367,7 +379,7 @@ class SkillCurator:
             # Dedup check
             if isinstance(emb, list):
                 for prev_emb, prev_skill in seen_embeddings:
-                    if _cosine(emb, prev_emb) >= self._dedup_threshold:
+                    if _model(prev_skill) == _model(skill) and _cosine(emb, prev_emb) >= self._dedup_threshold:
                         self._merge_skills(prev_skill.get("id"), sid, use_count)
                         result["merged"] += 1
                         break

@@ -365,7 +365,8 @@ and curating skills from Oracle session summaries.
 
 **Daily cycle addition (alongside memory consolidation):**
 1. Read session summaries from Archive (`entity_type=session_summary`, last 24h)
-2. Cluster by domain + embedding similarity
+2. Cluster by domain + embedding similarity (only vectors of the same `embedding_model`: the memory chain can fall back
+   to another model; a skill keeps the model of its sessions and is matched only with that model)
 3. For clusters with ≥3 similar sessions: extract most common tool_sequence, create/update skill in Archive
 4. Lifecycle management: deprecate stale (30d unused), hard-delete dead (90d, <3 uses), merge near-duplicates (sim >0.95), promote core (50+ uses, >95% success)
 
