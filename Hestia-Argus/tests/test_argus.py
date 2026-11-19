@@ -121,10 +121,12 @@ class TestArgusHealth:
 
 
 @pytest.mark.unit
-def test_back_online_message_uses_the_chosen_name(monkeypatch):
-    """docs/work/2026-11-17-client-names: «Monitor di Leo», never a fixed «Hestia Monitor»."""
-    from hestia_common import i18n
-    monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo",
-                                          "themis.personal.language": "it"}.get)
-    assert i18n.t("✅ <b>{assistant} Monitor</b>\n<code>{0}</code> is back online.", "chronos").startswith(
-        "✅ <b>Monitor di Leo</b>")
+def test_back_online_message_names_the_area_not_the_module(monkeypatch):
+    """docs/work/2026-11-19-telegram-real-test-errors: the owner reads an area, never «chronos» or HTML code."""
+    from worker import alert_worker
+    sent = []
+    monkeypatch.setattr(alert_worker.oracle_watch, "is_offline", lambda: True)
+    monkeypatch.setattr(alert_worker.hermes_client, "publish_event", lambda **kw: sent.append(kw) or True)
+    alert_worker.send_recovery("chronos")
+    payload = sent[0]["payload"]
+    assert "chronos" not in payload["_message"] and "<code>" not in payload["_message"] and payload["_title"]

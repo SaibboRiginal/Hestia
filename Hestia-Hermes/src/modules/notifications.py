@@ -115,6 +115,34 @@ def public_link(raw: Any) -> dict[str, Any] | None:
             "params": {str(k)[:40]: str(v)[:300] for k, v in list(params.items())[:8]}}
 
 
+def plain(text: Any) -> str:
+    """Text a person reads in a list: HTML tags dropped, entities decoded, spaces collapsed."""
+    import html as _html
+    return " ".join(_html.unescape(re.sub(r"<[^>]+>", " ", str(text or ""))).split())
+
+
+def clip(text: str, limit: int) -> str:
+    """At most ``limit`` characters, cut at a word with «…», never in the middle of a word."""
+    text = str(text or "").strip()
+    if len(text) <= limit:
+        return text
+    cut = text[:limit - 1].rsplit(" ", 1)[0].rstrip(" ,.;:-–—")
+    return (cut or text[:limit - 1]) + "…"
+
+
+def digest_line(spec: dict[str, Any], limit: int = 90) -> str:
+    """One line for a notification in a summary: its title in plain words or, without one, the first line of its
+    message that says something (emoji-only and bare-id lines skipped). Never the module that sent it."""
+    title = plain(spec.get("title"))
+    if title:
+        return clip(title, limit)
+    for line in str(spec.get("message") or "").splitlines():
+        text = plain(line).strip("•·-* ")
+        if len(re.sub(r"[\W_]+", "", text)) >= 3:
+            return clip(text, limit)
+    return ""
+
+
 def public_repeat(repeat: Any) -> dict[str, Any] | None:
     """Client-facing counter of a repeat chain, only from the second occurrence on.
     ``text`` is short, in the owner's language, ready to show or read aloud: «Skipped 3 times · since 12 Oct»."""
@@ -756,7 +784,7 @@ class NotificationCenter:
             self.archive.patch_outbound_event(str(row["outbound_event_id"]), str(row.get("lifecycle_state")),
                                               payload_merge={"reminded_at": now.isoformat()})
         import html
-        lines = [f"• {html.escape(v['title'] or v['message'][:80])}" for _, v in due[:8]]
+        lines = [f"• {html.escape(digest_line(v))}" for _, v in due[:8]]
         more = len(due) - len(lines)
         message = (tr("Still waiting for your answer:\n") + "\n".join(lines)
                    + (tr("\n…and {0} more.", more) if more > 0 else ""))
@@ -875,7 +903,7 @@ class NotificationCenter:
             if important:
                 text += tr(" · important: ") + ", ".join(dict.fromkeys(important[:3]))
             done.append({"text": text})
-        waiting = [v["title"] or v["message"][:60] for v in views if v["pending"]]
+        waiting = [digest_line(v, 60) for v in views if v["pending"]]
         if waiting:
             missed.append({"text": tr("Waiting for your answer: ") + ", ".join(dict.fromkeys(waiting[:4]))
                                    + (tr(" and {0} more", len(waiting) - 4) if len(waiting) > 4 else ""),
@@ -954,9 +982,7 @@ class NotificationCenter:
             lines = []
             for row in unread[:10]:
                 spec = (row.get("payload") or {}).get("notification") or {}
-                title = spec.get("title") or str(spec.get("message") or "")[:80] or row.get("event_type") or ""
-                source = spec.get("source") or ""
-                lines.append(f"• {html.escape(str(title))}" + (f" <i>({html.escape(str(source))})</i>" if source else ""))
+                lines.append(f"• {html.escape(digest_line(spec))}")
             more = len(unread) - len(lines)
             message = ((tr("<b>1 notification</b> while I was resting:\n") if len(unread) == 1
                         else tr("<b>{0} notifications</b> while I was resting:\n", len(unread)))

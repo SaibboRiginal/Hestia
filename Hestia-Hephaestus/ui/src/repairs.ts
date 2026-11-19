@@ -42,6 +42,14 @@ export class HephaestusRepairs extends HestiaElement {
 
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
 
+  /** Approve or undo a repair with a button (never a command to type). */
+  private async act(t: any, verb: 'approve' | 'rollback') {
+    const body = verb === 'approve' ? { approved_by: 'owner' } : { requested_by: 'owner' };
+    const r = await this.host.api('POST', `${API}/remediate/${t.task_id}/${verb}`, { body });
+    if (!r.ok) this.host.toast(tr("It didn't work: try again in a moment."), 'warning');
+    this.load();
+  }
+
   private async load() {
     const [t, r, s] = await Promise.all([
       this.host.api('GET', `${API}/tasks`, { query: { limit: 200 } }),
@@ -88,8 +96,8 @@ export class HephaestusRepairs extends HestiaElement {
       ${(t.notifications || []).length ? html`<div><div class="small muted">${tr("alt2::History")}</div><div class="notes">
         ${t.notifications.map((n: any) => html`<div><span class="muted">${when(n.ts)}</span> · ${n.note}</div>`)}</div></div>` : nothing}
       ${res ? html`<div><div class="small muted">${tr("Outcome")}</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
-      ${t.state === 'pending_approval' ? html`<p class="note">${tr("To approve it write to {assistant} «approva la riparazione")} ${t.task_id}${tr("» (chat or Telegram).")}</p>`
-        : t.state === 'succeeded' && t.undoable ? html`<p class="note">${tr("To undo it write to {assistant} «undo the repair")} ${t.task_id}».</p>` : nothing}
+      ${t.state === 'pending_approval' ? html`<div class="row"><hxk-button variant="primary" icon="check" @click=${() => this.act(t, 'approve')}>${tr("Approve")}</hxk-button></div>`
+        : t.state === 'succeeded' && t.undoable ? html`<div class="row"><hxk-button variant="ghost" icon="undo" @click=${() => this.act(t, 'rollback')}>${tr("alt::Undo")}</hxk-button></div>` : nothing}
     </div>`;
   }
 

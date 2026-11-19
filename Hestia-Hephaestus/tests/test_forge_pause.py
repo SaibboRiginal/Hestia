@@ -33,7 +33,7 @@ def _forge(monkeypatch, paused: bool) -> Forge:
     monkeypatch.setattr(forge_service.git_ops, "is_repo", lambda _p: True)
     monkeypatch.setattr(Forge, "_save", lambda self: None)
     monkeypatch.setattr(Forge, "_engine_name_for", lambda self, _e: "local")
-    monkeypatch.setattr(Forge, "_notify", lambda self, task, text: self.notified.append(text))
+    monkeypatch.setattr(Forge, "_notify", lambda self, task, text, **kw: self.notified.append(text))
     monkeypatch.setattr(forge_settings.settings, "get",
                         lambda key, default=None: paused if key == forge_settings.PAUSED
                         else forge_settings.settings._defs[key]["default"])

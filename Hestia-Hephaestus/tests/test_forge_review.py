@@ -82,7 +82,7 @@ def _forge(monkeypatch, tmp_path) -> Forge:
     forge.notified = []
     monkeypatch.setattr(Forge, "_save", lambda self: None)
     monkeypatch.setattr(Forge, "_save_settings", lambda self: None)
-    monkeypatch.setattr(Forge, "_notify", lambda self, task, text: self.notified.append(text))
+    monkeypatch.setattr(Forge, "_notify", lambda self, task, text, **kw: self.notified.append(text))
     monkeypatch.setattr(Forge, "_cleanup", lambda self, task, delete_branch: None)
     monkeypatch.setattr(forge_settings.settings, "get",
                         lambda key, default=None: forge_settings.settings._defs[key]["default"])

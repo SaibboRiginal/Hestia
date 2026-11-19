@@ -31,7 +31,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
 | Input | Automatic | Manual |
 |---|---|---|
 | PayPal mails | Iris subscription `plutus:paypal` (senders = `plutus.mail.senders`) stores the mail in Archive under `finance` and rings `POST /api/finance/mail`; Plutus reads `archive/finance/unevaluated`, parses (deterministic, Oracle fallback), marks evaluated | «Recheck PayPal emails» (`POST /api/finance/mail/check`, Iris backfill N days) |
-| Bank statement PDF | Sent in chat: Oracle hands the blob to `POST /api/finance/attachments` (declared in `attachment_handlers`), reply = preview + «Li registro?» + import id; «yes» → `finance_import_statement(import_id, commit=true)` | Page *Importa*: upload → preview → confirm; undo |
+| Bank statement PDF | Sent in chat: Oracle hands the blob to `POST /api/finance/attachments` (declared in `attachment_handlers`), reply = preview + «Li registro?» (no id in the text); «yes» → `finance_import_statement(commit=true)` commits the latest preview (`import_id` optional) | Page *Importa*: upload → preview → confirm; undo |
 | Bank app notifications | Phone → Hecate → feed `phone.notification` (`hestia_common.feeds`, `capabilities.feeds`) → `POST /api/finance/phone`; `app/core/phone.py` (deterministic: amount + «pagamento/addebito…» or «ricevuto/accredito…», merchant after «presso/da/a») → transaction `source: phone`, always `to_review`, `external_ref` `phone:` hash (no duplicates); anything else ignored (dossier `2026-10-24-whole-cindy-brainstorm` W4, Cindy 32) | — (choose the apps in Hecate's setting «Apps to listen to») |
 | Single expense | — | Quick action «Quick expense» (amount + category chip, undo), form in the plugin, chat «ho speso 12 € al bar» (`finance_add`) |
 

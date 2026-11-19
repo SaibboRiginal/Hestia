@@ -100,7 +100,8 @@ subscription compile), `rating_paused`.
 ## Chat (`services/chat_service.py`, `reply_renderer.py`)
 
 - One Oracle stream → **one answer message** (status → steps «• Uso: <azione>» → streamed tokens → final); split
-  only above 4000 characters. Reasoning in an expandable quote «Ragionamento · N passi»;
+  only above 4000 characters. A card with a plain list (digest, recap) stays one message: bullets become separate
+  messages only when they carry links (link previews), docs/work/2026-11-19-telegram-real-test-errors. Reasoning in an expandable quote «Ragionamento · N passi»;
   with tool calls and no reasoning the quote is «Strumenti usati · N» (never «Reasoning» for a model that
   did not reason).
 - Notices from Oracle are italic lines inside the answer (🔴 only for errors), per the notice setting.

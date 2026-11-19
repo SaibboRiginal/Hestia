@@ -52,6 +52,7 @@ logger = logging.getLogger("hestia_hephaestus.forge")
 
 ACTIVE_STATES = {"queued", "running", "reviewing", "approved", "merging"}  # "scheduled" = waiting for Claude window
 TERMINAL_STATES = {"failed", "rejected", "rolled_back", "deployed", "merged", "no_changes"}
+OPEN_STATES = ACTIVE_STATES | {"new", "proposed", "scheduled", "awaiting_review"}  # one proposal per trouble while open
 
 
 # Permission modes (like Claude Code / Codex), one per group:
@@ -241,6 +242,20 @@ class Forge:
                 continue
             other = self._words(f"{task.get('request', '')} {str(task.get('context') or '')[:600]}")
             if other and len(words & other) / len(words | other) >= 0.6:
+                return task
+        return None
+
+    def find_open_twin(self, origin: dict | None, source: str) -> dict[str, Any] | None:
+        """A module's proposal about the same thing (same service and kind of trouble, e.g. Argus «keeps using its
+        backup way») while an earlier one is still open: the owner gets one proposal, not one per log line."""
+        if source in USER_SOURCES or not isinstance(origin, dict) or not origin.get("service"):
+            return None
+        key = (str(origin.get("service")), str(origin.get("kind") or ""))
+        with self._lock:
+            tasks = list(self._tasks.values())
+        for task in tasks:
+            o = task.get("origin") or {}
+            if task.get("state") in OPEN_STATES and (str(o.get("service")), str(o.get("kind") or "")) == key:
                 return task
         return None
 
@@ -439,7 +454,8 @@ class Forge:
                 logger.exception("[🔄] event=forge_task_crashed task_id=%s", task_id)
                 task["error"] = str(exc)[:1000]
                 self._set_state(task, "failed", f"crash: {exc}")
-                self._notify(task, tr("❌ Forge task <code>{0}</code> failed: {1}", task_id, exc))
+                self._notify(task, tr("The development stopped because of an error. You can retry it from the Development page."),
+                             title=tr("Development failed"), level="warning")
 
     # ── public API ──────────────────────────────────────────────────────────
     def status(self) -> dict[str, Any]:
@@ -505,7 +521,7 @@ class Forge:
             services = services or parent.get("services") or []
             context = (f"Follows Forge task {parent['id']} ({parent.get('state')}): {str(parent.get('request') or '')[:600]}\nOutcome: {str(parent.get('summary') or '')[:1200]}\n"
                        + str(context or ""))
-        duplicate = self.find_duplicate(request, source, services, context)
+        duplicate = self.find_open_twin(origin, source) or self.find_duplicate(request, source, services, context)
         if duplicate:
             logger.info("event=forge_duplicate_skipped source=%s duplicate_of=%s state=%s",
                         source, duplicate["id"], duplicate.get("state"))
@@ -552,8 +568,8 @@ class Forge:
             self._enqueue(task, f"submitted by {requested_by} ({source})")
         else:
             self._set_state(task, "proposed", f"proposed by {source} ({why})")
-            self._notify(task, (
-                tr("💡 <b>Development proposal</b> <code>{0}</code>\n{1}\n\nAnswer \"approva sviluppo {2}\" to start it, \"rifiuta {3}\" to discard it.", task_id[:6], _esc(title_of(task)[:600]), task_id[:6], task_id[:6])))
+            self._notify(task, _esc(title_of(task)[:600]), title=tr("Development proposal"),
+                         actions=self._decision_actions(task, tr("alt::Start"), tr("Discard")))
         return task
 
     def approve(self, task_id: str, approved_by: str = "user", now: bool = False,
@@ -685,8 +701,9 @@ class Forge:
         self.agenda.show_task(task["id"], title_of(task), nights.get("next_open") or st["next_reset"],
                               f"Forge task scheduled (Claude Pro). id={task['id']}",
                               parent=task.get("agenda_parent"))
-        self._notify(task, (
-            tr("🌙 <b>Scheduled development</b> <code>{0}</code> (Claude Pro)\n{1}\nIt starts in the night window before the reset ({2}). To start it now: \"approva sviluppo {3} subito\".", task['id'][:6], _esc(title_of(task)[:300]), _esc(st['next_reset'][:16]), task['id'][:6])))
+        self._notify(task, tr("{0}\nIt starts in the night window before the reset ({1}).", _esc(title_of(task)[:300]),
+                              _esc(st['next_reset'][:16])), title=tr("Development scheduled"),
+                     actions=[self._action(task, "approve", tr("Start now"), {"by": "owner", "now": True})])
 
     def claude_window(self) -> tuple[bool, str]:
         """Agenda windows first (user can move/skip them), built-in schedule as fallback."""
@@ -804,7 +821,8 @@ class Forge:
         if engine is None:
             task["error"] = reason
             self._set_state(task, "failed", reason)
-            self._notify(task, tr("❌ Forge: no engine available — {0}", _esc(reason)))
+            self._notify(task, tr("No model can develop it right now: {0}", _esc(reason)), title=tr("Development on hold"),
+                         level="warning")
             return
 
         worktree = self.cfg.worktrees_path / task["id"]
@@ -819,8 +837,7 @@ class Forge:
             task.update({"worktree": str(worktree), "base_branch": base_branch,
                          "base_sha": base_sha, "engine": engine.name})
         self._set_state(task, "running", f"engine={engine.name} base={base_branch}@{base_sha[:8]}")
-        self._notify(task, (
-            tr("🔨 <b>Forge at work</b> <code>{0}</code> ({1})\n{2}", task['id'][:6], engine.name, _esc(title_of(task)[:400]))))
+        self._notify(task, _esc(title_of(task)[:400]), title=tr("Development started"))
 
         def test_runner(paths: list[str] | None):
             changed = git_ops.git(worktree, "status", "--porcelain").splitlines()
@@ -844,7 +861,8 @@ class Forge:
             with self._lock:
                 task["team"] = [{"title": p["title"], "difficulty": p["difficulty"], "state": "queued"}
                                 for p in pieces]
-            self._notify(task, tr("🧩 Forge <code>{0}</code>: work split into {1} pieces.", task['id'][:6], len(pieces)))
+            self._notify(task, tr("{0}\nWork split into {1} pieces.", _esc(title_of(task)[:300]), len(pieces)),
+                         title=tr("Development in progress"))
             summaries, all_ok = [], True
             for n, piece in enumerate(pieces):
                 piece_engine = self._engine_for_piece(piece, engine)
@@ -882,8 +900,8 @@ class Forge:
             self._cleanup(task, delete_branch=True)
             task["error"] = None if result.ok else result.summary[:500]
             self._set_state(task, "no_changes", "engine produced no diff")
-            self._notify(task, (
-                tr("⚠️ Forge <code>{0}</code>: no change produced.\n{1}", task['id'][:6], _esc(result.summary[:500]))))
+            self._notify(task, tr("{0}\nNo change produced.\n{1}", _esc(title_of(task)[:300]), _esc(result.summary[:500])),
+                         title=tr("Development without changes"), level="warning")
             return
 
         self._review(task, worktree, base_sha, sha, result.summary, result.ok, engine=engine,
@@ -930,7 +948,8 @@ class Forge:
         if restarts >= self.LIMIT_MAX_RESTARTS:
             task["error"] = "Claude usage limit reached, no progress after 3 restarts"
             self._set_state(task, "failed", f"Claude usage limit: {restarts} restarts without progress")
-            self._notify(task, tr("⛔ Forge <code>{0}</code>: stopped at the Claude limit {1} times without progress. Retry by hand when you want.", task['id'][:6], restarts))
+            self._notify(task, tr("{0}\nStopped at the Claude limit {1} times without progress. Retry it from the Development page when you want.", _esc(title_of(task)[:300]), restarts),
+                         title=tr("Development stopped"), level="warning")
             return
         if task.get("budgeted"):
             self._set_state(task, "scheduled", f"Claude usage limit: paused until {until}")
@@ -944,7 +963,8 @@ class Forge:
                                      "path": f"/api/hephaestus/forge/tasks/{task['id']}/resume",
                                      "timeout_seconds": 30},
                              description="Resumes the development task stopped by Claude's limit.")
-        self._notify(task, tr("⏸ Claude limit reached. The job <code>{0}</code> resumes from where it was at {1}.", task['id'][:6], _esc(str(until)[11:16] or str(until)[:16])))
+        self._notify(task, tr("{0}\nClaude limit reached: it resumes from where it was at {1}.", _esc(title_of(task)[:300]), _esc(str(until)[11:16] or str(until)[:16])),
+                     title=tr("Development paused"))
 
     def resume(self, task_id: str, by: str = "agenda") -> dict[str, Any]:
         """One-off agenda task at the Claude reset (or the owner): a task waiting for the limit starts again."""
@@ -1019,10 +1039,10 @@ class Forge:
 
         self._set_state(task, "awaiting_review", f"engine_ok={engine_ok} tests_ok={tests_ok}")
         tests_label = {True: tr("✅ tests ok"), False: tr("❌ tests failed"), None: tr("➖ no tests")}[tests_ok]
-        heading = heading or tr("Forge: change ready")
-        short = task["id"][:6]
-        self._notify(task, (
-            tr("🧩 <b>{0}</b> <code>{1}</code> · {2}\n{3}\n\n{4}\n\n<pre>{5}</pre>\nAnswer \"approve development {6}\" to apply it, \"reject {7}\" to discard it.", _esc(heading), short, tests_label, _esc(summary[:900]), _esc(forge_review.card(review)), _esc(task['diff_stat'][-900:]), short, short)))
+        heading = heading or tr("Change ready")
+        self._notify(task, tr("{0} · {1}\n{2}\n\n{3}", _esc(title_of(task)[:300]), tests_label, _esc(summary[:900]),
+                              _esc(forge_review.card(review))), title=heading,
+                     actions=self._decision_actions(task, tr("Apply"), tr("Discard")))
 
         if task.get("auto_merge") and tests_ok is True and engine_ok and not review.get("blocking"):
             with self._lock:
@@ -1046,7 +1066,8 @@ class Forge:
                 ext["pending"] = False
                 task["error"] = f"fetch {branch}: {exc}"[:1000]
             self._set_state(task, "failed", f"external branch {branch} not fetched: {exc}")
-            self._notify(task, tr("❌ Forge <code>{0}</code>: branch <code>{1}</code> not downloaded from origin — {2}", task['id'][:6], _esc(branch), _esc(str(exc)[:300])))
+            self._notify(task, tr("{0}\nThe branch {1} could not be downloaded: {2}", _esc(title_of(task)[:300]), _esc(branch), _esc(str(exc)[:300])),
+                         title=tr("Development failed"), level="warning")
             return
         git_ops.create_worktree(repo, worktree, task["branch"], head)
         with self._lock:
@@ -1058,14 +1079,15 @@ class Forge:
             with self._lock:
                 ext["pending"] = False
             self._set_state(task, "no_changes", f"branch {branch} has nothing new on {base_branch}")
-            self._notify(task, tr("⚠️ Forge <code>{0}</code>: the branch <code>{1}</code> changes nothing compared to {2}.", task['id'][:6], _esc(branch), _esc(base_branch)))
+            self._notify(task, tr("{0}\nThe branch {1} changes nothing compared to {2}.", _esc(title_of(task)[:300]), _esc(branch), _esc(base_branch)),
+                         title=tr("Development without changes"), level="warning")
             return
         summary = ext.get("summary") or tr("Branch {0}", branch)
         with self._lock:
             ext["pending"] = False
             task["summary"] = tr("{0}\n\n(branch {1} of {2})", summary, branch, by)
         self._review(task, worktree, base_sha, head, task["summary"], True,
-                     heading=tr("Forge: external fix ready ({0})", by))
+                     heading=tr("Change ready"))
 
     def _check_mergeable(self, task: dict) -> None:
         repo = self.cfg.repo_path
@@ -1083,7 +1105,8 @@ class Forge:
         except ForgeError as exc:
             task["error"] = str(exc)
             self._set_state(task, "awaiting_review", f"not mergeable: {exc}")
-            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: " + tr("merge not possible: {0}", _esc(str(exc))))
+            self._notify(task, tr("{0}\nIt could not be applied: {1}", _esc(title_of(task)[:300]), _esc(str(exc)[:300])),
+                         title=tr("Development not applied"), level="warning")
             return
         self._set_state(task, "merging", f"approved by {approved_by}")
         try:
@@ -1093,7 +1116,8 @@ class Forge:
         except git_ops.GitError as exc:
             task["error"] = str(exc)[:1000]
             self._set_state(task, "awaiting_review", f"merge failed: {exc}")
-            self._notify(task, tr("⚠️ Forge <code>{0}</code>: merge failed (conflict?) — {1}", task['id'][:6], _esc(str(exc)[:300])))
+            self._notify(task, tr("{0}\nIt could not be applied (a conflict with other changes?): {1}", _esc(title_of(task)[:300]), _esc(str(exc)[:300])),
+                         title=tr("Development not applied"), level="warning")
             return
         with self._lock:
             task["merge_sha"] = merge_sha
@@ -1107,10 +1131,7 @@ class Forge:
         rebuild_note = (tr("\n🔧 To rebuild by hand: <code>up-all.bat --build {0}</code>", ' '.join(dplan.rebuild))
                         if dplan.rebuild else "")
         if not self.cfg.deploy_cmd or not (services or dplan.restart_self):
-            self._notify(task, (
-                tr("✅ <b>Forge: applied</b> <code>{0}</code> (merge {1}).\n", task['id'][:6], merge_sha[:8])
-                + (tr("Restart: {0}.", ', '.join(services + (['hephaestus'] if dplan.restart_self else [])))
-                   if (services or dplan.restart_self) else "") + rebuild_note))
+            self._notify(task, _esc(title_of(task)[:300]) + rebuild_note, title=tr("Development applied"))
             return
 
         ok, out = self._deploy(services) if services else (True, "")
@@ -1119,8 +1140,8 @@ class Forge:
         unhealthy = self._unhealthy(services) if ok and services else ([] if ok else services)
         if ok and not unhealthy:
             self._set_state(task, "deployed", f"{dplan.summary()}")
-            self._notify(task, (
-                tr("🚀 <b>Forge: in production</b> <code>{0}</code> → {1}.\nRollback: \"rollback development {2}\".", task['id'][:6], _esc(dplan.summary()), task['id'][:6]) + rebuild_note))
+            self._notify(task, _esc(title_of(task)[:300]) + rebuild_note, title=tr("Development in use"),
+                         actions=[self._action(task, "rollback", tr("alt::Undo"), {"by": "owner"}, style="danger")])
             if dplan.restart_self:
                 self._restart_self()
             return
@@ -1128,7 +1149,9 @@ class Forge:
         if forge_settings.get_bool(forge_settings.AUTO_ROLLBACK):
             self._do_rollback(task, f"auto: {why}")
         else:
-            self._notify(task, f"⚠️ Forge <code>{task['id'][:6]}</code>: " + tr("deploy in trouble ({0}).", _esc(why)))
+            self._notify(task, tr("{0}\nAfter the update something does not answer.", _esc(title_of(task)[:300])),
+                         title=tr("Development in trouble"), level="warning",
+                         actions=[self._action(task, "rollback", tr("alt::Undo"), {"by": "owner"}, style="danger")])
 
     def _restart_self(self) -> None:
         """Hephaestus restarts itself last (state already saved; resumes on boot)."""
@@ -1146,7 +1169,7 @@ class Forge:
         if self.cfg.deploy_cmd and services:
             self._deploy(services)
         self._set_state(task, "rolled_back", f"revert {revert_sha[:8]} {note}")
-        self._notify(task, f"↩️ <b>Forge: rollback</b> <code>{task['id'][:6]}</code> ({_esc(note[:200])}).")
+        self._notify(task, _esc(title_of(task)[:300]), title=tr("Development undone"))
 
     def _deploy(self, services: list[str]) -> tuple[bool, str]:
         if self.cfg.deploy_cmd == "builtin":
@@ -1196,29 +1219,37 @@ class Forge:
         except Exception as exc:
             logger.warning("[🔄] event=forge_cleanup_failed task_id=%s error=%s", task["id"], exc)
 
-    def _notify(self, task: dict, text: str) -> None:
-        """Hermes direct send to the requester + system event for subscriptions.
+    def _action(self, task: dict, verb: str, label: str, body: dict, *, style: str = "") -> dict:
+        """A notification button that calls this task's endpoint (Hermes routes it through the Hub)."""
+        return {"id": verb, "label": label, "service": "hephaestus", "method": "POST",
+                "path": f"/api/hephaestus/forge/tasks/{task['id']}/{verb}", "body": body, "resolves": True,
+                **({"style": style} if style else {})}
 
-        A concrete target (the Telegram chat that asked) → only that client;
-        otherwise ``owner`` → every client (Hermes global notifications)."""
+    def _decision_actions(self, task: dict, yes: str, no: str) -> list[dict]:
+        return [self._action(task, "approve", yes, {"by": "owner"}),
+                self._action(task, "reject", no, {"by": "owner"}, style="danger")]
+
+    def _notify(self, task: dict, text: str, *, title: str = "", level: str = "info",
+                actions: list[dict] | None = None) -> None:
+        """ONE notification through Hermes (title in plain words, the task in the owner's words, buttons instead of
+        commands to type; never the task id or module names). The requester's Telegram chat gets it as the origin,
+        otherwise every client of the owner."""
         hub = self.cfg.hub_api_url
-        target = task.get("notify_target") or self.cfg.notify_target or "owner"
-
-        def _route(path: str, body: dict) -> None:
-            requests.post(f"{hub}/route/hermes/{path}",
-                          json={"method": "POST", "headers": {}, "query": {}, "body": body,
-                                "timeout_seconds": 8}, timeout=10)
-
+        target = str(task.get("notify_target") or self.cfg.notify_target or "owner")
+        payload: dict[str, Any] = {
+            "_title": title, "_message": text, "_level": level, "_source": "hephaestus", "service": "hephaestus",
+            "target": "owner", "task_id": task["id"], "state": task.get("state"), "_actions": list(actions or []),
+            "_link": {"module": "hephaestus", "page": "development"},
+            "dedupe_key": f"forge.{task['id']}.{task.get('state')}.{title}"}
+        if target != "owner":
+            payload["_origin"] = {"client": "telegram", "session_id": target}
         try:
-            _route("api/dispatch/send", {"channel": "telegram" if target != "owner" else "",
-                                         "target": str(target), "message": text,
-                                         "metadata": {"source": "hephaestus", "type": "hephaestus.forge"}})
-            _route("api/events/ingest", {
-                "domain": "system", "event_type": "hephaestus.forge", "entity_id": task["id"],
-                "payload": {"_message": text, "task_id": task["id"], "state": task.get("state")}})
+            requests.post(f"{hub}/route/hermes/api/events/ingest",
+                          json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 8, "body": {
+                              "domain": "system", "event_type": "hephaestus.forge", "entity_id": task["id"],
+                              "payload": payload}}, timeout=10)
         except Exception as exc:
             logger.warning("[🔄] event=forge_notify_failed task_id=%s error=%s", task["id"], exc)
-
 
 def _esc(text: str) -> str:
     import html

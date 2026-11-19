@@ -380,7 +380,7 @@ The **only** place in Hestia that looks for new mail; no module polls mail (rule
 - Iris unreachable → cursor **kept**, ids saved as `pending` and offered again at the next check (nothing lost).
 - History expired (Gmail keeps ~a week) → `[🔄] event=mail_watch_history_expired`: search since the last good check
   (`-in:sent -in:drafts`) and a fresh `historyId`.
-- Gmail not authorized / auth error → run recorded as `skipped` with `action_required=reauth_google` (no crash loop).
+- Gmail not authorized / auth error → run recorded as `skipped` with `action_required=reauth_google` (no crash loop). The owner gets ONE notice (`_title` «Gmail not connected», `dedupe_key hecate.<action>`) in plain words with the sign-in button — never the internal reason («no refresh token…», which stays in the log).
 - Logs: `event=mail_watch_pushed new= source= trigger=`, `[🔄] event=mail_watch_push_failed`, `event=mail_watch_initialized`.
 
 ### Gmail push via Pub/Sub (`core/gmail_pubsub.py`, optional)
