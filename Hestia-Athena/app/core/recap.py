@@ -1,6 +1,6 @@
 """Daily recap — collect every module's piece, have Oracle write it, Hermes deliver it.
 
-Dossier ``docs/work/2026-10-20-recap-giornaliero``. Independent from the thinking loop: the recap runs when its
+Dossier ``docs/work/2026-10-20-daily-recap``. Independent from the thinking loop: the recap runs when its
 agenda job fires (``athena.recap.evening`` by default, or a «Recap» template the user adds), when the user asks
 in chat (tool ``recap_today``) or from the quick action.
 
@@ -34,7 +34,7 @@ USE_CASE = "athena.recap"
 ARCHIVE_DOMAIN = "recap"
 REPLACES_KEY = "athena.recap"
 JOB_EVENING = "athena.recap.evening"
-MOMENTS = ("sera", "mattina")
+MOMENTS = ("evening", "morning")
 # Evening by default (Marko 2026-10-20): 21:30, free to move 20:00–23:30 around his own events (Chronos flex).
 EVENING_AT = "21:30"
 EVENING_FLEX = {"earliest": "20:00", "latest": "23:30"}
@@ -43,14 +43,14 @@ _TAG = re.compile(r"</?(?!b>|/b>|i>|/i>)[a-zA-Z][^>]*>")
 
 
 def day_label(d: date, lang: str | None = None) -> str:
-    """«mercoledì 21 ott» in the owner's language (``lang="en"`` for the hidden prompt)."""
+    """«Wednesday 21 Oct» in the owner's language (``lang="en"`` for the hidden prompt)."""
     return f"{weekday_name(d.weekday(), lang)} {d.day} {month_name(d.month, lang)[:3].lower()}"
 
 
-def moment_days(momento: str, day: date | None = None, *, today: date | None = None) -> tuple[date, date]:
-    """``sera``: the day that ends (today) + tomorrow. ``mattina``: yesterday + today."""
+def moment_days(moment: str, day: date | None = None, *, today: date | None = None) -> tuple[date, date]:
+    """``evening``: the day that ends (today) + tomorrow. ``morning``: yesterday + today."""
     base = today or datetime.now().date()
-    if momento == "mattina":
+    if moment == "morning":
         d = day or base - timedelta(days=1)
     else:
         d = day or base
@@ -75,9 +75,9 @@ def _lines(rows: list[dict] | None) -> list[str]:
     return [str(r.get("text") or "").strip() for r in rows or [] if str(r.get("text") or "").strip()]
 
 
-def template_text(pieces: list[dict], momento: str, day: date, nxt: date) -> str:
+def template_text(pieces: list[dict], moment: str, day: date, nxt: date) -> str:
     """Deterministic recap (Oracle unavailable): the pieces as a short HTML list, Telegram-safe."""
-    head = tr("How today went") if momento == "sera" else tr("Yesterday, {0}", day_label(day))
+    head = tr("How today went") if moment == "evening" else tr("Yesterday, {0}", day_label(day))
     out = [f"<b>{head}</b>"]
     upcoming: list[str] = []
     for p in pieces:
@@ -92,12 +92,12 @@ def template_text(pieces: list[dict], momento: str, day: date, nxt: date) -> str
         if nxt_rows:
             upcoming.append(f"{title}: " + "; ".join(html.escape(t) for t in nxt_rows))
     if upcoming:
-        label = tr("Tomorrow") if momento == "sera" else tr("Today")
+        label = tr("Tomorrow") if moment == "evening" else tr("Today")
         out.append(f"<b>{label}, {day_label(nxt)}</b>\n" + "\n".join(f"• {u}" for u in upcoming))
     return "\n\n".join(out)
 
 
-def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: str, max_chars: int) -> str:
+def build_prompt(pieces: list[dict], moment: str, day: date, nxt: date, style: str, max_chars: int) -> str:
     """Caveman prompt: facts as compact lines, rules short. Every token is paid each call."""
     facts: list[str] = []
     for p in pieces:
@@ -107,12 +107,12 @@ def build_prompt(pieces: list[dict], momento: str, day: date, nxt: date, style: 
                 facts.append(f"[{title}|{tag}] {t}")
         if p.get("note"):
             facts.append(f"[{title}|note] {p['note']}")
-    when = (f"today={day_label(day, 'en')} tomorrow={day_label(nxt, 'en')}" if momento == "sera"
+    when = (f"today={day_label(day, 'en')} tomorrow={day_label(nxt, 'en')}" if moment == "evening"
             else f"yesterday={day_label(day, 'en')} today={day_label(nxt, 'en')}")
-    tone = ("friendly, warm, one short opening sentence" if style == "amichevole"
+    tone = ("friendly, warm, one short opening sentence" if style == "friendly"
             else "dry, facts only, no courtesy phrases")
     return (
-        f"Write the owner the {'evening' if momento == 'sera' else 'morning'} recap.\n{when}\nParts: 1) how it went ({'today' if momento == 'sera' else 'yesterday'}): done/skipped by area; 2) {'tomorrow' if momento == 'sera' else 'today'}: what is planned, in time order.\nTone: {tone}. Max {max_chars} characters. Format: HTML, only <b> for small titles, no Markdown, one emoji at most per title. Nothing beyond the facts. Never name programs or modules.\nFACTS:\n" + "\n".join(facts)
+        f"Write the owner the {'evening' if moment == 'evening' else 'morning'} recap.\n{when}\nParts: 1) how it went ({'today' if moment == 'evening' else 'yesterday'}): done/skipped by area; 2) {'tomorrow' if moment == 'evening' else 'today'}: what is planned, in time order.\nTone: {tone}. Max {max_chars} characters. Format: HTML, only <b> for small titles, no Markdown, one emoji at most per title. Nothing beyond the facts. Never name programs or modules.\nFACTS:\n" + "\n".join(facts)
     )
 
 
@@ -193,11 +193,11 @@ class RecapComposer:
         return pieces
 
     # ── 2. write ──────────────────────────────────────────────────────────────
-    def write(self, pieces: list[dict], momento: str, day: date, nxt: date) -> tuple[str, bool]:
+    def write(self, pieces: list[dict], moment: str, day: date, nxt: date) -> tuple[str, bool]:
         """→ (text, fallback_used)."""
         max_chars = get_int(RECAP_MAX_CHARS)
-        style = str(settings.get(RECAP_STYLE) or "amichevole")
-        prompt = build_prompt(pieces, momento, day, nxt, style, max_chars)
+        style = str(settings.get(RECAP_STYLE) or "friendly")
+        prompt = build_prompt(pieces, moment, day, nxt, style, max_chars)
         try:
             status, payload = self._route("oracle", "POST", "api/llm/generate",
                                           body={"prompt": prompt, "use_case": USE_CASE, "voice": True},
@@ -212,16 +212,16 @@ class RecapComposer:
             logger.warning("[🔄] event=recap_fallback_template reason=oracle_status_%s", status)
         except Exception as exc:
             logger.warning("[🔄] event=recap_fallback_template reason=oracle_error error=%s", exc)
-        return clean_text(template_text(pieces, momento, day, nxt), max(max_chars, 1500)), True
+        return clean_text(template_text(pieces, moment, day, nxt), max(max_chars, 1500)), True
 
     # ── 3. deliver + store ────────────────────────────────────────────────────
-    def deliver(self, text: str, momento: str, day: date, actions: list[dict] | None = None) -> bool:
-        title = tr("Evening recap") if momento == "sera" else tr("Morning recap")
+    def deliver(self, text: str, moment: str, day: date, actions: list[dict] | None = None) -> bool:
+        title = tr("Evening recap") if moment == "evening" else tr("Morning recap")
         event = {"event_type": "service.action_required", "domain": "system",
-                 "entity_id": f"athena-recap-{day.isoformat()}-{momento}",
+                 "entity_id": f"athena-recap-{day.isoformat()}-{moment}",
                  "payload": {"kind": "athena.recap", "service": "athena", "source": "athena", "domain": "recap",
                              "_source": "athena", "_title": title, "_message": text, "level": "info",
-                             "target": "owner", "replaces": REPLACES_KEY, "emoji": "🌙" if momento == "sera" else "☀️",
+                             "target": "owner", "replaces": REPLACES_KEY, "emoji": "🌙" if moment == "evening" else "☀️",
                              "icon": "note", "tone": "info", "_actions": list(actions or []),
                              "_link": {"module": "athena", "page": "recap"}}}
         try:
@@ -262,27 +262,27 @@ class RecapComposer:
             return list(self._recent[:limit])
 
     # ── all together ──────────────────────────────────────────────────────────
-    def compose(self, *, momento: str = "sera", day: str | None = None, deliver: bool = True,
+    def compose(self, *, moment: str = "evening", day: str | None = None, deliver: bool = True,
                 trigger: str = "manual") -> dict[str, Any]:
-        momento = momento if momento in MOMENTS else "sera"
+        moment = moment if moment in MOMENTS else "evening"
         today = self._now().date()
-        d, n = moment_days(momento, date.fromisoformat(day) if day else None, today=today)
+        d, n = moment_days(moment, date.fromisoformat(day) if day else None, today=today)
         with self._compose_lock:
-            return self._compose(momento, d, n, deliver, trigger)
+            return self._compose(moment, d, n, deliver, trigger)
 
-    def _compose(self, momento: str, d: date, n: date, deliver: bool, trigger: str) -> dict[str, Any]:
+    def _compose(self, moment: str, d: date, n: date, deliver: bool, trigger: str) -> dict[str, Any]:
         pieces = self.collect(d, n)
-        base = {"id": f"athena-recap-{d.isoformat()}-{momento}", "day": d.isoformat(), "next": n.isoformat(),
-                "momento": momento, "trigger": trigger, "pieces": [p for p in pieces if not p.get("empty")],
+        base = {"id": f"athena-recap-{d.isoformat()}-{moment}", "day": d.isoformat(), "next": n.isoformat(),
+                "moment": moment, "trigger": trigger, "pieces": [p for p in pieces if not p.get("empty")],
                 "created_at": datetime.now(timezone.utc).isoformat()}
         if not has_content(pieces):
-            logger.info("event=recap_empty day=%s momento=%s trigger=%s", d, momento, trigger)
+            logger.info("event=recap_empty day=%s moment=%s trigger=%s", d, moment, trigger)
             return {**base, "status": "empty", "text": "", "delivered": False, "fallback": False}
-        text, fallback = self.write(pieces, momento, d, n)
-        delivered = self.deliver(text, momento, d, piece_actions(pieces)) if deliver else False
+        text, fallback = self.write(pieces, moment, d, n)
+        delivered = self.deliver(text, moment, d, piece_actions(pieces)) if deliver else False
         record = {**base, "status": "ok", "text": text, "delivered": delivered, "fallback": fallback}
         if deliver:   # a chat request is an answer, not a recap of the day: not stored, not delivered
             self.store(record)
-        logger.info("event=recap_composed day=%s momento=%s pieces=%d chars=%d fallback=%s delivered=%s trigger=%s",
-                    d, momento, len(pieces), len(text), fallback, delivered, trigger)
+        logger.info("event=recap_composed day=%s moment=%s pieces=%d chars=%d fallback=%s delivered=%s trigger=%s",
+                    d, moment, len(pieces), len(text), fallback, delivered, trigger)
         return record

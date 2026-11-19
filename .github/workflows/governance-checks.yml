@@ -54,6 +54,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: python tools/governance/check_i18n.py
 
+      - name: No Italian in the code
+        if: ${{ !cancelled() }}
+        run: python tools/governance/check_english.py
+
       - name: Install gate dependencies
         if: ${{ !cancelled() }}
         env:

@@ -39,7 +39,7 @@ def register_on_hub(
             # Module agent (Oracle operating mode «agents») + module index: what it is for, its rules.
             "when_to_use": "calendar events, the assistant's agenda (reminders, planned jobs), routines and the week plan",
             "manual": "Calendar: agenda/agenda_today read, create_event/calendar_update_event/calendar_delete_event change "
-                      "events. Assistant agenda (agenda_assistente*): one-off reminders and planned jobs, move, skip, "
+                      "events. Assistant agenda (agenda_assistant*): one-off reminders and planned jobs, move, skip, "
                       "cancel. Coach week plan: coach_week, coach_move, coach_skip, coach_replan. Delete only when the "
                       "owner asks; times in the owner's timezone.",
             "title": "Agenda",
@@ -50,13 +50,13 @@ def register_on_hub(
             },
             "mcp_endpoint": f"{service_base_url.rstrip('/')}/mcp",
             "module_tool_domains": ["calendar", "coach"],
-            # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Modelli.
-            "llm_usecases": [{"id": "chronos.agenda", "label": "Agenda · reading requests", "chain": "veloce",
+            # LLM use cases (hestia_common.oracle_usecases shape): chain/mode chosen in Oracle → Models.
+            "llm_usecases": [{"id": "chronos.agenda", "label": "Agenda · reading requests", "chain": "fast",
                               "help": "Turns a sentence into an appointment or an agenda rule.",
-                              "thinking": "auto", "mode": "segui"},
-                             {"id": "chronos.coach", "label": "Week plan · message", "chain": "veloce",
+                              "thinking": "auto", "mode": "follow"},
+                             {"id": "chronos.coach", "label": "Week plan · message", "chain": "fast",
                               "help": "Writes the message with the week plan starting from the plan already made.",
-                              "thinking": "off", "mode": "segui"}],
+                              "thinking": "off", "mode": "follow"}],
             **(extra_capabilities or {}),   # WebUI plugin manifest (ui_manifest, ui_version)
         },
     }

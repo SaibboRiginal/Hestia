@@ -1,4 +1,4 @@
-"""Read-only git browser for the WebUI "Sviluppo" page (/api/hephaestus/repo/*).
+"""Read-only git browser for the WebUI "Development" page (/api/hephaestus/repo/*).
 
 Everything is ``git`` plumbing on the mounted checkout (``HEPHAESTUS_REPO_PATH``):
 no writes, refs and paths validated, secret files never served, big outputs capped.

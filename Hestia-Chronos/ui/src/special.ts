@@ -1,8 +1,8 @@
 /**
- * <chronos-special> — «Eventi speciali»: birthdays, anniversaries and the dates that matter, with how many days
- * before the notice comes; who added them (you, Persone, a proposal you confirmed). Your birthday comes from the
+ * <chronos-special> — «Special events»: birthdays, anniversaries and the dates that matter, with how many days
+ * before the notice comes; who added them (you, People, a proposal you confirmed). Your birthday comes from the
  * personal settings. Reads GET /api/agenda/special; POST /api/agenda/special; DELETE /api/agenda/special/{key}.
- * Dossier 2026-10-24-tutto-brainstorm-cindy B6 (W2) + W7.
+ * Dossier 2026-10-24-whole-cindy-brainstorm B6 (W2) + W7.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 import { API } from './util';
@@ -10,8 +10,8 @@ import { API } from './util';
 const KINDS = [{ value: 'birthday', label: tr('Birthday') }, { value: 'anniversary', label: tr('Anniversary') },
                { value: 'custom', label: tr('Important event') }];
 const ICON: Record<string, string> = { birthday: 'star', anniversary: 'heart', custom: 'event' };
-const SOURCE: Record<string, string> = { utente: '', persone: tr('from People'), "proposta dell'assistente": tr('proposed and confirmed'),
-                                         'impostazioni personali': tr('from personal settings') };
+const SOURCE: Record<string, string> = { user: '', people: tr('from People'), assistant_proposal: tr('proposed and confirmed'),
+                                         personal_settings: tr('from personal settings') };
 
 function dayLabel(iso?: string | null): string {
   if (!iso) return '';
@@ -91,7 +91,7 @@ export class ChronosSpecial extends HestiaElement {
           · ${s.lead_days ? tr("notice {0} days before", s.lead_days) : tr('notice only on the day')}${src ? ` · ${src}` : ''}</div>
         ${s.note ? html`<div class="small muted">${s.note}</div>` : nothing}
       </div>
-      ${s.source === 'impostazioni personali' ? nothing
+      ${s.source === 'personal_settings' ? nothing
         : html`<hxk-button size="sm" variant="ghost" icon="trash" ?loading=${this.busy === s.key} @click=${() => this.dropEvent(s)}>${tr("Remove")}</hxk-button>`}
     </div>`;
   }

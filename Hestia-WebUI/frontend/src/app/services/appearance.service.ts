@@ -13,7 +13,7 @@ export interface AppearanceNow {
 const REFRESH_MS = 30 * 60_000;
 
 /**
- * What the site looks like now (dossier 2026-10-24-tutto-brainstorm-cindy A2 Aphrodite, W7): one call,
+ * What the site looks like now (dossier 2026-10-24-whole-cindy-brainstorm A2 Aphrodite, W7): one call,
  * `GET /api/appearance/now?client=webui` through the Aphrodite plugin door; the profile's accents go over the
  * user's own light/dark theme, the light effect and the pet are drawn by `<hx-appearance-layer>`. Read again when
  * the tab comes back after a while (a new day can bring a new profile). No Aphrodite = the standard look.
@@ -56,7 +56,7 @@ export class AppearanceService {
     this.theme.setPalette(now?.profile.palette ?? {});
   }
 
-  /** The mascots to choose from (built-in ones first), for Impostazioni → Personali → «Mascotte». */
+  /** The mascots to choose from (built-in ones first), for Settings → Personal → «Mascot». */
   readonly pets = signal<{ id: string; name: string; builtin?: boolean }[]>([]);
   readonly hasLook = this.hasModule;
 

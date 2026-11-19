@@ -1,4 +1,4 @@
-"""External brain mode (dossier 2026-10-19-oracle-a-blocchi §D): mode per use case, the MCP bridge, the session
+"""External brain mode (dossier 2026-10-19-oracle-blocks §D): mode per use case, the MCP bridge, the session
 cache, Claude Code and Codex adapters with fake CLIs, engine fallback. No real CLI or network."""
 from __future__ import annotations
 
@@ -47,8 +47,8 @@ class _FakeAgent:
         cls.runs.append({"prompt": prompt, "resume": resume, "bridge": bridge, "system": system})
         if bridge:   # the agent calls a tool through the bridge's token
             token = bridge["env"]["HESTIA_BRIDGE_URL"].rsplit("/", 1)[1]
-            external_agent.call_tool(token, "calendar_list", {"day": "oggi"})
-        return {"text": "fatto", "session_id": cls.session, "usage": {"input": 50, "cached": 10, "output": 5}}
+            external_agent.call_tool(token, "calendar_list", {"day": "today"})
+        return {"text": "done", "session_id": cls.session, "usage": {"input": 50, "cached": 10, "output": 5}}
 
 
 @pytest.fixture
@@ -63,11 +63,11 @@ def fake(monkeypatch):
 @pytest.mark.unit
 class TestMode:
     def test_global_and_per_use_case(self, monkeypatch):
-        assert external_agent.mode_for("oracle.generale") == "interna"
-        _set(monkeypatch, oracle_settings.BRAIN_MODE, "esterna")
-        assert external_agent.mode_for("oracle.generale") == "esterna"
-        _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.annunci": {"mode": "interna"}})
-        assert external_agent.mode_for("scout.annunci") == "interna"
+        assert external_agent.mode_for("oracle.general") == "internal"
+        _set(monkeypatch, oracle_settings.BRAIN_MODE, "external")
+        assert external_agent.mode_for("oracle.general") == "external"
+        _set(monkeypatch, oracle_settings.USECASES_KEY, {"scout.listings": {"mode": "internal"}})
+        assert external_agent.mode_for("scout.listings") == "internal"
 
 
 @pytest.mark.unit
@@ -77,7 +77,7 @@ class TestTurn:
         tool, calls = _tool()
         answer, log = external_agent.run_turn(session_id="s1", user_message="cosa ho oggi?", system_prompt="SYS",
                                               primer="CONVERSATION HISTORY:\nUSER: ciao", tools=[tool])
-        assert answer == "fatto" and calls == [{"day": "oggi"}]
+        assert answer == "done" and calls == [{"day": "today"}]
         assert log[0]["tool"] == "calendar_list" and log[0]["ok"]
         assert "CONVERSATION HISTORY" in fake.runs[0]["prompt"] and fake.runs[0]["resume"] == ""
         assert not external_agent._runs   # the token dies with the turn
@@ -86,7 +86,7 @@ class TestTurn:
         assert fake.runs[1]["resume"] == "agent-s1" and fake.runs[1]["prompt"] == "e domani?"
         row = llm_usage.captured[-1]
         assert (row["chain"], row["provider"], row["input_tokens"], row["cost_kind"]) == (
-            "agente:claude", "claude", 50, "abbonamento")
+            "agent:claude", "claude", 50, "subscription")
 
     def test_internal_turn_invalidates_cache(self, fake):
         tool, _ = _tool()

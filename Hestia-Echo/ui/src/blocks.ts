@@ -1,14 +1,14 @@
 /**
- * <echo-blocks> — Voce, tab «Motori» (dossier docs/work/2026-10-20-modulo-voce §5): named providers (keys stay in
- * .env as ECHO_KEY_<NAME>), chains of ascolto or voce (order = fallback, quota state per step), every use declared by
- * a module → chain / mode. Built like Oracle's «Modelli». Saves through Themis (PUT /api/voice/blocks/<part>).
+ * <echo-blocks> — Voice, tab «Engines» (dossier docs/work/2026-10-20-voice-module §5): named providers (keys stay in
+ * .env as ECHO_KEY_<NAME>), chains of listen or voice (order = fallback, quota state per step), every use declared by
+ * a module → chain / mode. Built like Oracle's «Models». Saves through Themis (PUT /api/voice/blocks/<part>).
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, DIRECTIONS, STATES, clone, slug } from './util';
 
 type Opt = { value: string; label: string };
 type Part = 'providers' | 'chains' | 'usecases';
-const MODES: Opt[] = [{ value: 'interna', label: tr('Internal') }, { value: 'esterna', label: tr('External') }];
+const MODES: Opt[] = [{ value: 'internal', label: tr('Internal') }, { value: 'external', label: tr('External') }];
 
 export class EchoBlocks extends HestiaElement {
   static properties = { ...HestiaElement.properties, live: { state: true }, error: { state: true }, providers: { state: true },
@@ -58,7 +58,7 @@ export class EchoBlocks extends HestiaElement {
                     steps: ch.steps.map((st: any) => ({ provider: st.provider, model: st.model || '', voice: st.voice || '', options: st.options || {} })) };
     this.chains = chains;
     const ov: Record<string, any> = {};
-    for (const x of this.live.usecases) if (x.overridden) ov[x.id] = { ...(x.chain !== x.suggested_chain ? { chain: x.chain } : {}), ...(x.mode !== 'segui' ? { mode: x.mode } : {}) };
+    for (const x of this.live.usecases) if (x.overridden) ov[x.id] = { ...(x.chain !== x.suggested_chain ? { chain: x.chain } : {}), ...(x.mode !== 'follow' ? { mode: x.mode } : {}) };
     this.overrides = clone(ov);
     this.dirty = {};
   }
@@ -88,7 +88,7 @@ export class EchoBlocks extends HestiaElement {
     const setOpt = (k: string, v: any) => set('options', { ...p.options, [k]: v });
     const st = STATES[live.state] || { label: live.state || '–', tone: 'neutral' };
     const types: Opt[] = (this.live?.standards || []).map((s: any) => ({ value: s.id, label: s.label }));
-    return html`<hxk-card heading=${p.label || name} subtitle=${`${name} · ${(std.directions || []).join(' e ')}`}>
+    return html`<hxk-card heading=${p.label || name} subtitle=${`${name} · ${(std.directions || []).join(' · ')}`}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeProvider(name)}>${tr("alt::Remove")}</hxk-button>
       <div class="grid2">
         <hxk-field label=${tr("Visible name")} .value=${p.label} @change=${(e: CustomEvent) => set('label', e.detail)}></hxk-field>
@@ -134,7 +134,7 @@ export class EchoBlocks extends HestiaElement {
   /** The engines (and their models or voices) that fit this chain's direction, for the one chain editor. */
   private chainProps(chain: string) {
     const c = this.chains[chain];
-    const speaking = c.direction === 'voce';
+    const speaking = c.direction === 'voice';
     const providers = Object.entries<any>(this.providers)
       .filter(([, p]) => (this.std(p.type).directions || []).includes(c.direction))
       .map(([n, p]) => ({ value: n, label: p.label || n }));
@@ -161,7 +161,7 @@ export class EchoBlocks extends HestiaElement {
   private chainCard(name: string) {
     const c = this.chains[name];
     const cp = this.chainProps(name);
-    return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voce' ? tr('voice') : tr('listening')}`}>
+    return html`<hxk-card heading=${c.label || name} subtitle=${`${name} · ${c.direction === 'voice' ? tr('voice') : tr('listening')}`}>
       <hxk-button slot="actions" variant="ghost" icon="trash" @click=${() => this.removeChain(name)}>${tr("Delete")}</hxk-button>
       <hxk-field label=${tr("Visible name")} .value=${c.label}
         @change=${(e: CustomEvent) => { this.chains = { ...this.chains, [name]: { ...c, label: e.detail } }; this.touch('chains'); }}></hxk-field>
@@ -177,7 +177,7 @@ export class EchoBlocks extends HestiaElement {
     const name = slug(raw || '');
     if (!name || this.chains[name]) return;
     const voice = window.confirm(tr('Is it a voice chain (text → voice)? Cancel = listening.'));
-    this.chains = { ...this.chains, [name]: { label: raw!.trim(), direction: voice ? 'voce' : 'ascolto', steps: [] } };
+    this.chains = { ...this.chains, [name]: { label: raw!.trim(), direction: voice ? 'voice' : 'listen', steps: [] } };
     this.touch('chains');
   }
 
@@ -204,7 +204,7 @@ export class EchoBlocks extends HestiaElement {
       <div><div class="truncate"><b>${u.label}</b>${u.undeclared ? html` <hxk-badge tone="warning">${tr("not declared")}</hxk-badge>` : nothing}</div>
         <div class="small muted truncate" title=${u.help || ''}>${u.direction} · ${u.id}${u.help ? ` · ${u.help}` : ''}</div></div>
       <hxk-field type="enum" label=${tr("Chain")} .options=${chainOpts} .value=${o.chain || ''} @change=${(e: CustomEvent) => set('chain', e.detail)}></hxk-field>
-      <hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode && o.mode !== 'segui' ? o.mode : ''}
+      <hxk-field type="enum" label=${tr("alt::Mode")} .options=${modeOpts} .value=${o.mode && o.mode !== 'follow' ? o.mode : ''}
         @change=${(e: CustomEvent) => set('mode', e.detail)}></hxk-field>
     </div>`;
   }

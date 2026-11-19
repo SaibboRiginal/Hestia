@@ -1,4 +1,4 @@
-"""Athena inside view (WebUI plugin «Pensieri», SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/§B4):
+"""Athena inside view (WebUI plugin «Pensieri», SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/§B4):
 every candidate kept with the gate's reason and outcome, «Pensa ora», compact summary, manifest, MCP tool."""
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ class TestGateHistory:
         assert rt._thinking_records[-1]["candidates"][0]["outcome"] == "forge_skipped"
 
     def test_improvement_without_proof_is_kept_collecting_not_proposed(self, rt, monkeypatch):
-        """First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone)."""
+        """First observe, then propose (docs/work/2026-11-13-observe-first-then-propose)."""
         c = ActionCandidate(title="Migliora prompt", kind="improvement", signals=HIGH)
         sent = []
         monkeypatch.setattr(rt, "_send_to_forge", lambda *a: sent.append(a) or True)
@@ -128,7 +128,7 @@ class TestThinkNow:
     def test_summary_is_compact(self, rt):
         with patch.object(rt.strategist, "reason", return_value=_cands()):
             rt._run_once()
-        out = rt.thinking_summary(limit=5, track="sistema")
+        out = rt.thinking_summary(limit=5, track="system")
         assert out["count"] == 1 and out["running"] is False and out["threshold"] == rt.emit_threshold
         assert set(out["weights"]) == {"urgency", "usefulness", "novelty", "confidence", "interruption_cost"}
         cyc = out["cycles"][0]
@@ -155,9 +155,9 @@ class TestAthenaUiApi:
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/athena/" and web["entry"] == "/ui/webui/athena.js"
         page = web["page"][0]
-        assert (page["id"], page["element"], page["order"]) == ("pensieri", "athena-thoughts", 130)
+        assert (page["id"], page["element"], page["order"]) == ("thoughts", "athena-thoughts", 130)
         w = web["widget"][0]
-        assert w["element"] == "athena-last-widget" and w["auto"] is True and w["open_page"] == "pensieri"
+        assert w["element"] == "athena-last-widget" and w["auto"] is True and w["open_page"] == "thoughts"
         qa = web["quick_action"][0]
         assert qa["method"] == "POST" and qa["path"] == "/api/athena/think"
 

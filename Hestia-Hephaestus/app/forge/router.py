@@ -64,12 +64,12 @@ class ForgePause(BaseModel):
 class ForgeDecision(BaseModel):
     by: str = "user"
     reason: str = ""
-    now: bool = False   # approve: skip the Claude budget window (user asked "subito")
+    now: bool = False   # approve: skip the Claude budget window (user asked to run it now)
     engine: str = ""    # approve: who develops it (local | cloud | claude), empty = as proposed
 
 
 class ClaudeScheduleChange(BaseModel):
-    reset_day: str | None = Field(None, description="mon..sun / lun..dom")
+    reset_day: str | None = Field(None, description="mon..sun")
     reset_time: str | None = Field(None, description="HH:MM local")
     tz: str | None = None
     window_hours: int | None = None
@@ -141,12 +141,12 @@ def create_forge_router(forge: Forge) -> APIRouter:
 
     @router.get("/counts")
     def forge_counts() -> dict[str, Any]:
-        """Tasks per state + what waits for the owner (Sviluppo page badge: ``review``)."""
+        """Tasks per state + what waits for the owner (Development page badge: ``review``)."""
         return {"status": "ok", **counts(forge.list(limit=200))}
 
     @router.get("/tasks/export")
     def forge_export(ids: str = "") -> dict[str, Any]:
-        """«Copia per AI» (Sviluppo page): markdown of the chosen tasks from the forge_task / forge_tasks views.
+        """«Copy for AI» (Development page): markdown of the chosen tasks from the forge_task / forge_tasks views.
         Returned only, never written anywhere."""
         wanted = [i.strip() for i in ids.split(",") if i.strip()][:MAX_EXPORT]
         if not wanted:
@@ -196,7 +196,7 @@ def create_forge_router(forge: Forge) -> APIRouter:
     def forge_diff(task_id: str) -> str:
         return _guard(forge.diff, task_id)
 
-    # ── Sviluppo page: task detail ─────────────────────────────────────────
+    # ── Development page: task detail ─────────────────────────────────────────
     inspector = TaskInspector(forge)
 
     def _inspect(fn, task_id: str, *args) -> Any:

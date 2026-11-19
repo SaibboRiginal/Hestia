@@ -27,9 +27,9 @@ export const SIZE_SPAN: Record<WidgetSize, { c: number; r: number }> = { s: { c:
 
 type HostEvent = 'refresh' | 'theme' | 'visible' | 'hidden' | 'online' | 'offline';
 const BASE = '/api/webui/plugins';
-/** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A6). */
-/** Titled «Stato del sistema» (2026-10-29): «Sistema» is the sidebar page of the system modules, only one of each name. */
-const SYSTEM_DASHBOARD: Dashboard = { id: 'sistema', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
+/** Ready-made dashboard of the core modules' `auto` widgets (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A6). */
+/** Titled «System status» (2026-10-29): «System» is the sidebar page of the system modules, only one of each name. */
+const SYSTEM_DASHBOARD: Dashboard = { id: 'system', title: tr('alt::System status'), icon: 'pulse', auto: true, kind: 'core', created_by: 'user', items: [] };
 
 /**
  * Client plugins runtime (SPEC docs/work/2026-10-17-client-plugins §4): Hub catalog for client=webui, this client's
@@ -81,14 +81,14 @@ export class PluginsService {
   readonly quickActions = computed(() => this.allQuick().filter(q => !this.isHidden(q.id)));
 
   /** Dashboards: the saved ones (or the automatic Home built from the domain modules' visible `auto` widgets), plus
-   *  the ready-made «Sistema» built from the core modules' `auto` widgets until the user deletes it. */
+   *  the ready-made «System» built from the core modules' `auto` widgets until the user deletes it. */
   readonly dashboards = computed<Dashboard[]>(() => {
     const saved = this.dashboardsCfg() ?? [];
     const list: Dashboard[] = saved.length ? saved : [{ id: 'home', title: tr('alt::Home'), icon: 'home', auto: true, created_by: 'user', items: [] }];
     const savedSystem = list.some(d => d.id === SYSTEM_DASHBOARD.id);
     return [...list, ...(savedSystem ? [] : [SYSTEM_DASHBOARD])]
       .filter(d => !d.removed)
-      .map(d => d.id === SYSTEM_DASHBOARD.id && d.title === 'Sistema' ? { ...d, title: SYSTEM_DASHBOARD.title } : d)
+      .map(d => d.id === SYSTEM_DASHBOARD.id && d.title === 'System' ? { ...d, title: SYSTEM_DASHBOARD.title } : d)
       .map(d => d.auto ? { ...d, items: this.autoItems(d.items, d.dismissed, d.kind ?? 'domain') } : d)
       .filter(d => savedSystem || d.id !== SYSTEM_DASHBOARD.id || d.items.length > 0);   // no core widget yet: no empty tab
   });
@@ -229,7 +229,7 @@ export class PluginsService {
 
   async saveDashboards(list: Dashboard[]): Promise<boolean> {
     const prev = this.dashboardsCfg();
-    // Deleting the ready-made «Sistema» leaves a marker (kept on later saves), otherwise it would be offered again at once.
+    // Deleting the ready-made «System» leaves a marker (kept on later saves), otherwise it would be offered again at once.
     const sys = SYSTEM_DASHBOARD.id;
     const wasRemoved = (prev ?? []).some(d => d.id === sys && d.removed) || this.dashboards().some(d => d.id === sys);
     if (!list.some(d => d.id === sys) && wasRemoved) list = [...list, { ...SYSTEM_DASHBOARD, items: [], removed: true }];
@@ -478,8 +478,8 @@ function kvStore(dbName: string) {
 }
 
 
-/** Module texts written with `{assistant}` («Agenda di {assistant}», «Quello che {assistant} ricorda di te») show the
- * chosen name; nothing else changes (docs/work/2026-11-16-nome-ovunque). */
+/** Module texts written with `{assistant}` («{assistant}'s agenda», «What {assistant} remembers about you») show the
+ * chosen name; nothing else changes (docs/work/2026-11-16-name-everywhere). */
 function namedCatalog(cat: PluginCatalog): PluginCatalog {
   if (!cat) return cat;
   const fix = <T extends Record<string, any>>(x: T): T => {

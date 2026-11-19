@@ -26,7 +26,7 @@ public class WebUISettings
 
     public bool Loaded => _loaded;
 
-    /// <summary>Restore points kept by «Esporta e importa» (newest first, older ones deleted).</summary>
+    /// <summary>Restore points kept by «Export and import» (newest first, older ones deleted).</summary>
     public int TransferRestorePoints => _restorePoints;
 
     private static readonly object[] Definitions =
@@ -34,12 +34,12 @@ public class WebUISettings
         new Dictionary<string, object?>
         {
             ["key"] = LocalWithoutTokenKey,
-            ["label"] = "Accesso senza token in rete locale",
+            ["label"] = "Access without token on the home network",
             ["type"] = "bool",
             ["default"] = true,
-            ["group"] = "Accesso",
-            ["help"] = "Da casa (rete locale o localhost) la WebUI si apre senza token. Dal tunnel Cloudflare " +
-                       "il token resta sempre obbligatorio. Spegni per chiedere il token ovunque.",
+            ["group"] = "Access",
+            ["help"] = "At home (local network or localhost) the WebUI opens without a token. Through the Cloudflare " +
+                       "tunnel the token is always required. Turn off to ask for the token everywhere.",
             ["apply"] = "live",
             ["scope"] = "system",
             ["oracle"] = "none",   // safety switch: the assistant can't even propose it
@@ -49,14 +49,14 @@ public class WebUISettings
         new Dictionary<string, object?>
         {
             ["key"] = TransferRestorePointsKey,
-            ["label"] = "Punti di ripristino da tenere",
+            ["label"] = "Restore points to keep",
             ["type"] = "int",
             ["default"] = 5,
             ["min"] = 1,
             ["max"] = 20,
-            ["group"] = "Esporta e importa",
-            ["help"] = "Prima di ogni importazione {assistant} salva una copia di ciò che verrà cambiato. Tiene le più " +
-                       "recenti, le altre vengono eliminate.",
+            ["group"] = "Export and import",
+            ["help"] = "Before every import {assistant} saves a copy of what will change. It keeps the most " +
+                       "recent ones and deletes the others.",
             ["apply"] = "live",
             ["scope"] = "system",
             ["oracle"] = "propose",
@@ -66,28 +66,28 @@ public class WebUISettings
         // Client plugins (docs/work/2026-10-17-client-plugins §4.6): this client's own configuration of what
         // modules contribute. User scope → Themis layers profile → client "webui"; the frontend writes the
         // client layer. Oracle may only propose (dashboards are confirmed in the chat card).
-        UserSetting("webui.plugins.hidden", "Plugin nascosti", "list", Array.Empty<string>(), 10,
-            "Pagine e widget dei moduli nascosti in questa WebUI (es. scout.case, scout.*). Vuoto = tutto visibile."),
-        UserSetting("webui.plugins.order", "Ordine delle pagine dei moduli", "list", Array.Empty<string>(), 11,
-            "Ordine delle pagine dei moduli nella barra laterale."),
-        UserSetting("webui.home.quick", "Azioni rapide in Home", "list", Array.Empty<string>(), 12,
-            "Azioni rapide fissate (★) in Home, in ordine. Vuoto = quelle preferite e da fare oggi."),
+        UserSetting("webui.plugins.hidden", "Hidden plugins", "list", Array.Empty<string>(), 10,
+            "Module pages and widgets hidden in this WebUI (e.g. scout.houses, scout.*). Empty = all visible."),
+        UserSetting("webui.plugins.order", "Order of the module pages", "list", Array.Empty<string>(), 11,
+            "Order of the module pages in the sidebar."),
+        UserSetting("webui.home.quick", "Quick actions on Home", "list", Array.Empty<string>(), 12,
+            "Quick actions pinned (★) on Home, in order. Empty = the favourite ones and those due today."),
         UserSetting("webui.dashboards", "Dashboard", "object", new Dictionary<string, object?> { ["dashboards"] = Array.Empty<object>() }, 13,
-            "Dashboard della WebUI: titolo e widget dei moduli con posizione, misura e parametri.", oracle: "propose"),
-        UserSetting("webui.plugins.prefs", "Preferenze dei plugin", "object", new Dictionary<string, object?>(), 14,
-            "Preferenze che ogni plugin salva per questa WebUI."),
-        // Sidebar arranged by the user (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A5): pinned entries move
-        // into «Fissati» and leave their own section (the list is computed, never stored twice).
-        UserSetting("webui.sidebar.pinned", "Voci fissate nella barra laterale", "list", Array.Empty<string>(), 15,
-            "Voci della barra laterale fissate in cima, in ordine (es. app.chat, scout.case, dash.casa)."),
-        UserSetting("webui.sidebar.collapsed", "Sezioni compresse della barra laterale", "list", Array.Empty<string>(), 16,
-            "Sezioni della barra laterale chiuse (pinned, app, dashboards, modules, system)."),
+            "WebUI dashboards: title and module widgets with position, size and params.", oracle: "propose"),
+        UserSetting("webui.plugins.prefs", "Plugin preferences", "object", new Dictionary<string, object?>(), 14,
+            "Preferences each plugin saves for this WebUI."),
+        // Sidebar arranged by the user (docs/work/2026-10-18-core-modules-and-external-mcp §A5): pinned entries move
+        // into «Pinned» and leave their own section (the list is computed, never stored twice).
+        UserSetting("webui.sidebar.pinned", "Pinned sidebar entries", "list", Array.Empty<string>(), 15,
+            "Sidebar entries pinned on top, in order (e.g. app.chat, scout.houses, dash.home)."),
+        UserSetting("webui.sidebar.collapsed", "Collapsed sidebar sections", "list", Array.Empty<string>(), 16,
+            "Closed sidebar sections (pinned, app, dashboards, modules, system)."),
     };
 
     private static Dictionary<string, object?> UserSetting(string key, string label, string type, object? def,
         int order, string help, string oracle = "read") => new()
     {
-        ["key"] = key, ["label"] = label, ["type"] = type, ["default"] = def, ["group"] = "Plugin e dashboard",
+        ["key"] = key, ["label"] = label, ["type"] = type, ["default"] = def, ["group"] = "Plugins and dashboards",
         ["help"] = help, ["apply"] = "live", ["scope"] = "user", ["oracle"] = oracle, ["advanced"] = true,
         ["order"] = order,
     };

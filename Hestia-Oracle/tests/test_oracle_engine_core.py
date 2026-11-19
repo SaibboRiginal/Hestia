@@ -1307,15 +1307,15 @@ class TestEndToEndTelegramCalendarFlow:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Brain mode esterna (dossier 2026-10-19-oracle-a-blocchi §D)
+# Brain mode esterna (dossier 2026-10-19-oracle-blocks §D)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 @pytest.mark.unit
 class TestChatExternalBrain:
-    def _external(self, monkeypatch, fallback="interna"):
+    def _external(self, monkeypatch, fallback="internal"):
         from core.services import oracle_settings
-        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_MODE, "esterna")
+        monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_MODE, "external")
         monkeypatch.setitem(oracle_settings.settings._effective, oracle_settings.BRAIN_FALLBACK, fallback)
 
     def test_agent_answers_even_a_quick_chat(self, engine, monkeypatch):

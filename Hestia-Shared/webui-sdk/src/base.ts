@@ -53,7 +53,7 @@ export function fillPath(path: string, values: Record<string, string | number>):
   return path.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(String(values[k] ?? '')));
 }
 
-/** `plural(3, 'exercise', 'exercises')` → «3 esercizi»: count plus the right form, both written in English and
+/** `plural(3, 'exercise', 'exercises')` → «3 exercises»: count plus the right form, both written in English and
  * translated (it and en: only 1 is singular). */
 export function plural(n: number | null | undefined, one: string, many: string): string {
   const v = Number(n ?? 0);

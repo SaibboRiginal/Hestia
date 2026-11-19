@@ -1,7 +1,7 @@
-"""Hestia-Calliope — real documents («Documenti», port 19027, Cindy 21, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5).
+"""Hestia-Calliope — real documents («Documents», port 19027, Cindy 21, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5).
 
 HTML draft → PDF / Word / Excel with three shared themes and a final check; files in Archive blobs, records in
-``/api/office-store``; tool ``documento_crea`` for the assistant and Telegram (the file arrives under the card).
+``/api/office-store``; tool ``document_create`` for the assistant and Telegram (the file arrives under the card).
 """
 from __future__ import annotations
 
@@ -30,10 +30,10 @@ from .core.service import Documents
 API = "/api/office"
 kit = ModuleKit("calliope", port=19027, api=API, domain="office", title="Documents", store="office-store",
                 when_to_use="create real documents: PDF, Word, Excel (letters, reports, tables, summaries)",
-                manual="documento_crea: write the content in simple HTML (h1-h3, p, ul/ol, table with th/td, b, i) and pick format pdf|docx|xlsx (xlsx: each table becomes a sheet). must_contain = phrases or numbers that must be there: the file is checked again before delivery.")
+                manual="document_create: write the content in simple HTML (h1-h3, p, ul/ol, table with th/td, b, i) and pick format pdf|docx|xlsx (xlsx: each table becomes a sheet). must_contain = phrases or numbers that must be there: the file is checked again before delivery.")
 app = kit.app
 kit.settings.declare([
-    setting("calliope.tema", "Document style", "enum", "moderno", group="Documents", order=0,
+    setting("calliope.theme", "Document style", "enum", "modern", group="Documents", order=0,
             options=[(k, v["label"]) for k, v in THEMES.items()],
             help="The style used when you don't ask for one: Classic, Modern or Sober."),
 ])
@@ -85,7 +85,7 @@ def _create(title: str, html: str, format: str = "pdf", theme: str = "", must_co
                                lines=[tr("{0} pages, {1} KB · checked", out['pages'], max(1, out['size'] // 1024)) if out['format'] == 'pdf'
                                      else tr("{0} parts, {1} KB · checked", out['pages'], max(1, out['size'] // 1024))],
                                files=[file(out["blob_id"], out["name"], out["mime"])],
-                               actions=[action(tr("Delete"), "documento_creato_elimina", {"document": out["id"]})])}
+                               actions=[action(tr("Delete"), "document_created_delete", {"document": out["id"]})])}
 
 
 def _list() -> dict:
@@ -104,10 +104,10 @@ def _send(document: str) -> dict:
 
 
 S = {"type": "string"}
-G = "documenti"
+G = "documents"
 kit.tools([
-    MCPTool(name="documento_crea", description=("Create a PDF, Word or Excel file: title, html (h1-h3, p, ul/ol/li, table/tr/th/td, b, i), "
-                                                "format pdf|docx|xlsx, theme classico|moderno|sobrio, must_contain (texts that must appear, "
+    MCPTool(name="document_create", description=("Create a PDF, Word or Excel file: title, html (h1-h3, p, ul/ol/li, table/tr/th/td, b, i), "
+                                                "format pdf|docx|xlsx, theme classic|modern|sober, must_contain (texts that must appear, "
                                                 "checked again)."),
             parameters={"type": "object", "properties": {
                 "title": S, "html": {"type": "string", "description": "content in simple HTML"},
@@ -115,25 +115,25 @@ kit.tools([
                 "must_contain": {"type": "array", "items": S}}, "required": ["title", "html"]},
             handler=_create, title="Create document", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Documents", "primary": 1}),
-    MCPTool(name="documento_creati", description="The documents created recently.",
+    MCPTool(name="document_created_list", description="The documents created recently.",
             parameters={"type": "object", "properties": {}}, handler=_list, title="Documents created",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents", "primary": 2}),
-    MCPTool(name="documento_creato_invia", description="Send again the file of a created document.",
+    MCPTool(name="document_created_send", description="Send again the file of a created document.",
             parameters={"type": "object", "properties": {"document": S}, "required": ["document"]}, handler=_send,
             title="Send document", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents"}),
-    MCPTool(name="documento_creato_elimina", description="Delete a created document (and its file).",
+    MCPTool(name="document_created_delete", description="Delete a created document (and its file).",
             parameters={"type": "object", "properties": {"document": S}, "required": ["document"]},
             handler=lambda document: docs.delete(document), title="Delete created document", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Documents"}),
-], prefix="documento_")
+], prefix="document_")
 
 transfer = Transfer("calliope", kit.hub, sections=[
-    StoreSection("documenti", "Documents created", kit.store, ["document"], icon="file",
+    StoreSection("documents", "Documents created", kit.store, ["document"], icon="file",
                  title=lambda r: r["data"].get("title", ""), file_fields=["blob_id"]),
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="file", color="indigo", description="Real PDF, Word and Excel files, checked before delivery.",
-          pages=[page("documenti", "Documents created", element="calliope-docs", icon="file", order=200,
+          pages=[page("documents", "Documents created", element="calliope-docs", icon="file", order=200,
                       help="The documents the assistant created for you (PDF, Word, Excel): download them or create a new one. You can also ask in chat: «make me a PDF with…».")])
 kit.finish()

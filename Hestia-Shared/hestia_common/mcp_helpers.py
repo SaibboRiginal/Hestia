@@ -26,10 +26,10 @@ logger = logging.getLogger("hestia_common.mcp")
 
 
 def undo(tool: str, label: str = "Cancel", **args) -> dict:
-    """How to undo a write, put in the write tool's result as ``"undo"`` (Cindy 13, «Ho fatto» with Annulla).
+    """How to undo a write, put in the write tool's result as ``"undo"`` (Cindy 13, «Done» with Undo).
 
     ``return {"saved": True, "id": tx_id, "undo": undo("finance_delete", id=tx_id)}`` — the clients show one
-    «Annulla» button per change; a tap calls ``tool`` with ``args`` through Hestia-MCP."""
+    «Undo» button per change; a tap calls ``tool`` with ``args`` through Hestia-MCP."""
     return {"tool": tool, "args": args, "label": label}
 
 
@@ -48,12 +48,12 @@ class MCPTool:
     response_mode: str = "oracle_natural"  # oracle_natural | direct | raw_json
     response_prompt: str = ""     # Prompt for Oracle LLM formatting
     telegram_visible: bool = True # Ignored by Telegram since 2026-10-24: every tool is on Telegram
-    telegram_group: str = "altro" # Telegram area (giornata, allenamento, selfcare, guardaroba, spese, case,
-                                  # posta, memoria, sviluppo, sistema, notifiche)
-    # Telegram presentation hints (docs/work/2026-10-23-telegram-da-zero §5.7): section, order, primary,
+    telegram_group: str = "other" # Telegram area (day, training, selfcare, wardrobe, expenses, houses,
+                                  # mail, memory, development, system, notifications)
+    # Telegram presentation hints (docs/work/2026-10-23-telegram-from-scratch §5.7): section, order, primary,
     # summary (area card header), label (short button text, ≤ 24 chars). The user's layout can override them.
     telegram: dict | None = None
-    summary: str = ""             # one sentence for people (Scopri, Comandi); empty = cleaned description
+    summary: str = ""             # one sentence for people (Discover, Commands); empty = cleaned description
                                   # (hestia_common.areas.for_people)
 
 
@@ -96,7 +96,7 @@ def create_mcp_router(tools: list[MCPTool], service_name: str) -> APIRouter:
                     desc["response_prompt"] = t.response_prompt
                 if not t.telegram_visible:
                     desc["telegram_visible"] = False
-                if t.telegram_group != "altro":
+                if t.telegram_group != "other":
                     desc["telegram_group"] = t.telegram_group
                 if t.telegram:
                     desc["telegram"] = t.telegram

@@ -80,7 +80,7 @@ def template(id: str, label: str, *, service: str, path: str, type: str = "task"
              fields: dict | None = None, required: list[str] | None = None, method: str = "POST",
              body: dict | None = None, title: str = "", duration_minutes: int = 0,
              recurrence: str = "", timeout_seconds: float = 60) -> dict:
-    """What the user can create for this module from the calendar wizard (WebUI "Da un modulo…").
+    """What the user can create for this module from the calendar wizard (WebUI "From a module…").
 
     ``fields``: JSON-schema-like ``{name: {type, label?, description, enum?, default?, format?, in?}}``
     (``in: path`` fills ``{name}`` in ``path``; default ``body``). ``title`` may use ``{field}``.

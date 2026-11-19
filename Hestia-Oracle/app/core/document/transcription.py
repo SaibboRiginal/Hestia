@@ -1,8 +1,8 @@
 """Audio inside documents → text, asked to the voice module Echo (Oracle only calls LLMs).
 
-Dossier ``docs/work/2026-10-20-modulo-voce`` §7: Whisper left Oracle. Echo runs its listening chain for the use
-``oracle.documenti`` (declared in Oracle's Hub registration, suggested chain ``ascolto-preciso``); Marko chooses
-the chain in the «Voce» page. Empty string = Echo unreachable or nothing heard: the caller falls back to a model
+Dossier ``docs/work/2026-10-20-voice-module`` §7: Whisper left Oracle. Echo runs its listening chain for the use
+``oracle.documents`` (declared in Oracle's Hub registration, suggested chain ``listening-precise``); Marko chooses
+the chain in the «Voice» page. Empty string = Echo unreachable or nothing heard: the caller falls back to a model
 that hears audio natively, if the document chain has one.
 """
 import logging
@@ -13,9 +13,9 @@ from hestia_common.voice_usecases import capabilities as voice_capabilities, use
 
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
-USE_CASE = "oracle.documenti"
-VOICE_USECASES = [voice_usecase(USE_CASE, "Oracle · audio in documents", direction="ascolto",
-                                chain="ascolto-preciso",
+USE_CASE = "oracle.documents"
+VOICE_USECASES = [voice_usecase(USE_CASE, "Oracle · audio in documents", direction="listen",
+                                chain="listening-precise",
                                 help="Audio and video sent in chat or uploaded to Documents.")]
 
 _client: VoiceClient | None = None

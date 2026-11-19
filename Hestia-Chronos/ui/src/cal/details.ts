@@ -125,7 +125,7 @@ export class ChronosCalDetails extends LitElement {
         ${e.item?.action && e.occ.status !== 'cancelled' ? html`<hxk-button size="sm" icon="play" @click=${() => this.act('run')}>${tr("alt::Run now")}</hxk-button>` : nothing}
         ${e.occ.status === 'paused' ? html`<hxk-button size="sm" variant="primary" icon="play" @click=${() => this.act('resume')}>${tr("Turn back on")}</hxk-button>` : nothing}
         ${e.occ.status === 'cancelled' ? html`<hxk-button size="sm" variant="primary" icon="undo" @click=${() => this.act('restore')}>${tr("Restore rule")}</hxk-button>` : nothing}
-        ${forge ? html`<hxk-button size="sm" @click=${() => this.host.navigate('sviluppo', { task: forge }, 'hephaestus')}>${tr("Open in Development")}</hxk-button>` : nothing}
+        ${forge ? html`<hxk-button size="sm" @click=${() => this.host.navigate('development', { task: forge }, 'hephaestus')}>${tr("Open in Development")}</hxk-button>` : nothing}
         <hxk-button size="sm" variant="ghost" icon="sparkle" title=${tr("Edit or explain this item in words")} @click=${() => this.act('ask')}>${tr("Ask {assistant}")}</hxk-button>
       </div>`;
   }

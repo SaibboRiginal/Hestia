@@ -22,7 +22,7 @@
 | File | What |
 |---|---|
 | `test_crypto.py` | `hestia_common.crypto`: round trip (sizes around the chunk), wrong passphrase, truncated/reordered/tampered file |
-| `test_backup_service.py` | fake Postgres + fake Drive: encrypted upload, Drive down → pending copy then upload, at most 3 pending, no passphrase, retention plan, verify ok/tampered/wrong passphrase, restore + swap + undo, failed restore changes nothing, restore of a hand-copied file, one job at a time, CLI asks `RIPRISTINA` |
+| `test_backup_service.py` | fake Postgres + fake Drive: encrypted upload, Drive down → pending copy then upload, at most 3 pending, no passphrase, retention plan, verify ok/tampered/wrong passphrase, restore + swap + undo, failed restore changes nothing, restore of a hand-copied file, one job at a time, CLI asks `RESTORE` |
 | `test_backup_pg_live.py` (`integration`) | real Postgres (`ARCHIVE_TEST_PG_URL`, pgvector, pg client tools): backup → verify in scratch DB → restore → undo → redo |
 
 ## API Tests (`api`)

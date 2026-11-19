@@ -1,9 +1,9 @@
 /**
- * <hermes-inbox> — «Notifiche»: the Hermes inbox, shared by every client (read here = read on Telegram).
- * Filters (da leggere / da decidere / tutte, modulo, altri client), answers with the notification's buttons
- * (first answer wins; a button that opens a tool goes to its form in «Comandi»), the secret form (values go to the
- * module that asked, never stored: Cindy 4), seen / all seen, «Apri» on a module page (`_link`), load more.
- * Ported from the WebUI built-in page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4).
+ * <hermes-inbox> — «Notifications»: the Hermes inbox, shared by every client (read here = read on Telegram).
+ * Filters (to read / to decide / all, module, other clients), answers with the notification's buttons
+ * (first answer wins; a button that opens a tool goes to its form in «Commands»), the secret form (values go to the
+ * module that asked, never stored: Cindy 4), seen / all seen, «Open» on a module page (`_link`), load more.
+ * Ported from the WebUI built-in page (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4).
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
  */
@@ -101,7 +101,7 @@ export class HermesInbox extends HestiaElement {
   declare busy: string; declare toastMode: ToastMode; declare playing: string; declare voiceBusy: string;
   /** Values typed in a secret form, per notification; cleared as soon as they are sent. */
   declare secrets: Record<string, Record<string, string>>;
-  /** A notification question (2026-10-30-domande-nelle-notifiche): options picked (multiple) and the free answer. */
+  /** A notification question (2026-10-30-questions-in-notifications): options picked (multiple) and the free answer. */
   declare picks: Record<string, string[]>;
   declare others_text: Record<string, string>;
   private audio: HTMLAudioElement | null = null;
@@ -171,7 +171,7 @@ export class HermesInbox extends HestiaElement {
     super.connectedCallback();
     const q = this.ctx?.query || {};
     if (q.filter === 'unread' || q.filter === 'pending' || q.filter === 'all') this.filter = q.filter;
-    // «Rispondi»/«Apri» on a toast: that notification, first and highlighted, whatever the filter would hide.
+    // «Answer»/«Open» on a toast: that notification, first and highlighted, whatever the filter would hide.
     if (q.focus) { this.focusId = String(q.focus); this.filter = 'all'; }
     if (q.source) this.source = q.source;
     this.reload();
@@ -190,7 +190,7 @@ export class HermesInbox extends HestiaElement {
     this.stopVoice();
   }
 
-  // ── voice (a module asked for its notifications also as audio, dossier modulo-voce §7.3) ──
+  // ── voice (a module asked for its notifications also as audio, voice dossier §7.3) ──
   private stopVoice() {
     this.audio?.pause();
     if (this.audio?.src) URL.revokeObjectURL(this.audio.src);
@@ -299,9 +299,9 @@ export class HermesInbox extends HestiaElement {
     const r = await this.host.api('POST', `${API}/inbox/${encodeURIComponent(n.id)}/answer`, { body: { action_id: a.id } });
     this.busy = '';
     if (r.ok && r.data?.execute === 'command' && r.data.command) {
-      // A button that starts a tool (e.g. «Racconta la giornata»): its form opens in «Comandi».
+      // A button that starts a tool (e.g. «Tell me about the day»): its form opens in «Commands».
       this.applyAnswer(n.id, { label: a.label, by: 'webui', status: 'done' });
-      this.host.navigate('comandi', { command: String(r.data.command) }, 'mcp');
+      this.host.navigate('commands', { command: String(r.data.command) }, 'mcp');
     } else if (r.ok) {
       this.applyAnswer(n.id, r.data?.answer ?? { label: a.label, by: 'webui', status: 'done' });
       this.host.toast(r.data?.answer?.outcome_text || a.label, 'success');
@@ -372,7 +372,7 @@ export class HermesInbox extends HestiaElement {
     }
   }
 
-  /** The same card as a question in the chat: buttons, toggles + «Invia», a field for a free answer. */
+  /** The same card as a question in the chat: buttons, toggles + «Send», a field for a free answer. */
   private questionCard(n: any) {
     const q = n.question;
     const busy = this.busy === n.id;

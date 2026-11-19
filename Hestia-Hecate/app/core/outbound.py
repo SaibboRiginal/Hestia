@@ -1,4 +1,4 @@
-"""Outbound MCP servers: third-party MCP servers Hestia itself may use (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3).
+"""Outbound MCP servers: third-party MCP servers Hestia itself may use (docs/work/2026-10-18-core-modules-and-external-mcp §B3).
 
 Hecate owns external providers, so it owns their credentials too. A server is infrastructure + a secret, so it lives
 in ``.env`` only, two keys per server::

@@ -1,8 +1,8 @@
 /**
- * <themis-log> — «Registro»: every setting change and every proposal. Who (tu, Athena, Oracle, a client, an
- * external AI «external:<name>»), when, old → new. «Annulla» = Themis' existing undo of the latest change of a
- * key (the same as «Annulla ultima» in Impostazioni); proposals still wait for your Approva / Rifiuta.
- * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
+ * <themis-log> — «Log»: every setting change and every proposal. Who (you, Athena, Oracle, a client, an
+ * external AI «external:<name>»), when, old → new. «Undo» = Themis' existing undo of the latest change of a
+ * key (the same as «Undo last» in Settings); proposals still wait for your Approve / Reject.
+ * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 

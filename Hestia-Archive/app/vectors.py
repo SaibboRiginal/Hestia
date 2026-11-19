@@ -1,4 +1,4 @@
-"""One memory, several embedding models (dossier docs/work/2026-11-18-problemi-del-test, E2).
+"""One memory, several embedding models (dossier docs/work/2026-11-18-real-test-problems, E2).
 
 The embedding chain can have fallback models: each stored vector records the model that made it
 (``embedding_model``), and a search sends the query embedded by every model it can reach (``query_vectors``:

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Impostazioni → Sistema: central settings owned by Themis (schema, values, state, presets,
+/// Settings → System: central settings owned by Themis (schema, values, state, presets,
 /// history/undo, pending proposals). Thin proxy: browser → WebUI → Hub → Themis /api/settings*.
 /// Every change made here is the user's ("webui"); the assistant can only propose via Themis.
 /// </summary>
@@ -156,7 +156,7 @@ public class CentralSettingsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "event=webui_central_settings_call_error");
-            return StatusCode(502, new { detail = "Impostazioni non raggiungibili (Themis)" });
+            return StatusCode(502, new { detail = Texts.Tr("Settings not reachable") });
         }
     }
 }

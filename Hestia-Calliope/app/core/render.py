@@ -11,9 +11,9 @@ from .parse import plain, text_of
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 THEMES = {
-    "classico": {"label": "Classic", "font": "Times", "accent": "1F3A5F", "muted": "5B6573", "fill": "E8EDF3"},
-    "moderno": {"label": "Modern", "font": "Helvetica", "accent": "0F766E", "muted": "52606D", "fill": "E6F4F1"},
-    "sobrio": {"label": "Plain", "font": "Helvetica", "accent": "2B2B2B", "muted": "6B6B6B", "fill": "EFEFEF"},
+    "classic": {"label": "Classic", "font": "Times", "accent": "1F3A5F", "muted": "5B6573", "fill": "E8EDF3"},
+    "modern": {"label": "Modern", "font": "Helvetica", "accent": "0F766E", "muted": "52606D", "fill": "E6F4F1"},
+    "sober": {"label": "Plain", "font": "Helvetica", "accent": "2B2B2B", "muted": "6B6B6B", "fill": "EFEFEF"},
 }
 FORMATS = {"pdf": ("application/pdf", "pdf"),
            "docx": ("application/vnd.openxmlformats-officedocument.wordprocessingml.document", "docx"),
@@ -231,5 +231,5 @@ def check(fmt: str, data: bytes, title: str, must: list[str]) -> dict:
 def render(fmt: str, blocks: list[dict], title: str, theme_key: str) -> bytes:
     if fmt not in RENDERERS:
         raise RenderError(tr("format: pdf, docx or xlsx"))
-    theme = THEMES.get(theme_key) or THEMES["moderno"]
+    theme = THEMES.get(theme_key) or THEMES["modern"]
     return RENDERERS[fmt](blocks, title, theme)

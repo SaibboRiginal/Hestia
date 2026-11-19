@@ -1,4 +1,4 @@
-"""Fixed texts follow the owner's language setting (dossier docs/work/2026-11-14-backend-inglese)."""
+"""Fixed texts follow the owner's language setting (dossier docs/work/2026-11-14-english-backend)."""
 from __future__ import annotations
 
 import re
@@ -35,10 +35,10 @@ def test_buttons_cards_and_notes_follow_english(english):
 def test_bottom_keyboard_matches_both_languages(english):
     from telegram_bot.menu import model as menu_model
     menu = menu_model.Menu.__new__(menu_model.Menu)
-    menu.doors = {"oggi": "Today"}
-    assert menu.door_for_text("Today") == "oggi" and menu.door_for_text("today") == "oggi"
+    menu.doors = {"today": "Today"}
+    assert menu.door_for_text("Today") == "today" and menu.door_for_text("today") == "today"
     i18n.use(None)
-    assert menu.door_for_text("Oggi") == "oggi"
+    assert menu.door_for_text("Oggi") == "today"
 
 
 @pytest.mark.unit

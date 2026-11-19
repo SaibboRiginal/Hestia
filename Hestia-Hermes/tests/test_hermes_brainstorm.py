@@ -1,4 +1,4 @@
-"""Brainstorm + Cindy wave 2 (docs/work/2026-10-24-tutto-brainstorm-cindy): active client, «Da decidere»
+"""Brainstorm + Cindy wave 2 (docs/work/2026-10-24-whole-cindy-brainstorm): active client, «Da decidere»
 reminder, secret form, Web Push."""
 from __future__ import annotations
 
@@ -52,7 +52,7 @@ class TestActiveClient:
         assert not bodies["telegram"]["silent"]
 
     def test_unknown_client_rings_everywhere(self, center):
-        center.presence.get.return_value = {"last_interaction_client": "voce", "idle_minutes": 1}
+        center.presence.get.return_value = {"last_interaction_client": "voice", "idle_minutes": 1}
         bodies = _bodies(center)
         assert not bodies["telegram"]["silent"] and not bodies["webui"]["silent"]
 
@@ -160,7 +160,7 @@ class TestWebPush:
 
 @pytest.mark.unit
 def test_push_without_title_is_signed_with_the_chosen_name(monkeypatch):
-    """docs/work/2026-11-17-nome-dei-client: the phone shows the name the owner gave the assistant."""
+    """docs/work/2026-11-17-client-names: the phone shows the name the owner gave the assistant."""
     from hestia_common import i18n
     from modules import webpush
     monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo"}.get)

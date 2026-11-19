@@ -1,9 +1,9 @@
 /**
- * <athena-learning> — «Cosa ho imparato»: the learning log of the memory (added, merged, let go, weaker), each with
- * the owner's own sentence it comes from and «Annulla»; the clean-up proposals still waiting («Applica» / «Lascia»);
- * «Rivedi cosa sai di me» asks for new proposals (they also arrive as notifications).
+ * <athena-learning> — «What I learned»: the learning log of the memory (added, merged, let go, weaker), each with
+ * the owner's own sentence it comes from and «Undo»; the clean-up proposals still waiting («Apply» / «Keep»);
+ * «Review what you know about me» asks for new proposals (they also arrive as notifications).
  * Reads GET /api/athena/learning, GET /api/athena/memory/proposals; POST /learning/{id}/undo, /memory/review,
- * /memory/proposals/{id}/apply|dismiss. Dossier 2026-10-24-tutto-brainstorm-cindy Cindy 8 + 18 (W3) + W7.
+ * /memory/proposals/{id}/apply|dismiss. Dossier 2026-10-24-whole-cindy-brainstorm Cindy 8 + 18 (W3) + W7.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, when } from './util';
@@ -14,7 +14,7 @@ const ACTION: Record<string, { label: string; icon: string; tone: string }> = {
   retire: { label: tr('Let go'), icon: 'minus', tone: 'neutral' },
   decay: { label: tr('Less important'), icon: 'trend-down', tone: 'neutral' },
 };
-const PROPOSAL: Record<string, string> = { doppione: tr('alt::Duplicate'), contraddizione: tr('Contradiction') };
+const PROPOSAL: Record<string, string> = { duplicate: tr('alt::Duplicate'), contradiction: tr('Contradiction') };
 const UNDO_ERROR: Record<string, string> = {
   changed_since: tr('Changed afterwards: it stays as it is'), memory_gone: tr('It\'s no longer there'), already_undone: tr('Already undone'),
 };

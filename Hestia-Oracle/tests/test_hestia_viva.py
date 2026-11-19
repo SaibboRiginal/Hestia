@@ -1,4 +1,4 @@
-"""Hestia viva (docs/work/2026-11-06-hestia-viva): persona, spoken turns, controls gate, awareness lines, reactions.
+"""Hestia viva (docs/work/2026-11-06-living-hestia): persona, spoken turns, controls gate, awareness lines, reactions.
 
 No LLM, no network: Hub, engine and settings are mocked. Markers: unit, api."""
 from __future__ import annotations
@@ -74,15 +74,15 @@ def test_controls_extraction_skips_the_llm_without_a_hint():
 def test_awareness_lines_from_three_sources():
     now = datetime.now(timezone.utc)
     payloads = {
-        "psyche": {"summary": {"mood_word": "giù", "energy": 2, "stress": 4, "causes": ["lavoro"]}},
+        "psyche": {"summary": {"mood_word": "giù", "energy": 2, "stress": 4, "causes": ["work"]}},
         "hermes": {"items": [{"title": "Allenamento di oggi", "created_at": now.isoformat()},
                              {"title": "Vecchia", "created_at": (now - timedelta(days=2)).isoformat()}]},
-        "metis": {"items": [{"client": "webui", "kind": "page", "ref": "spese", "label": "Spese",
+        "metis": {"items": [{"client": "webui", "kind": "page", "ref": "expenses", "label": "Spese",
                              "at": now.isoformat()}]},
     }
     lines = awareness.build_lines(lambda service, path, query: payloads[service], limit=3)
     assert len(lines) == 3 and all(line.startswith(awareness.PREFIX) for line in lines)
-    assert "giù, energy 2/5, stress 4/5, because of lavoro" in lines[0]
+    assert "giù, energy 2/5, stress 4/5, because of work" in lines[0]
     assert "«Allenamento di oggi»" in lines[1] and "Vecchia" not in lines[1]
     assert "Spese (website" in lines[2]
 
@@ -188,16 +188,16 @@ def test_agent_loop_preambles_speak_as_hestia():
 def test_ollama_native_tools_keep_the_persona_as_system(monkeypatch):
     from agents.universal_agent import UniversalAgent
     monkeypatch.setenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-    agent = UniversalAgent(role_prompt="Sei Hestia. PERSONA", provider="ollama", model_name="m", thinking=False)
+    agent = UniversalAgent(role_prompt="Sei Hestia. PERSON", provider="ollama", model_name="m", thinking=False)
     resp = MagicMock()
     resp.json.return_value = {"message": {"content": "Bene, tu?"}}
     with patch("agents.universal_agent.requests.post", return_value=resp) as post:
         agent._ask_with_tools_ollama_native("ciao", [{"name": "t", "description": "d", "parameters": {}}])
     system = post.call_args.kwargs["json"]["messages"][0]["content"]
-    assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "TOOLS:" in system
+    assert system.startswith("Sei Hestia. PERSON") and "engine" not in system and "TOOLS:" in system
 
 
-# ── Identity: name, she/he, owner (docs/work/2026-11-12-identita-e-proattivita) ──────────────────────────────
+# ── Identity: name, she/he, owner (docs/work/2026-11-12-identity-and-proactivity) ──────────────────────────────
 
 @pytest.fixture
 def ident(monkeypatch):
@@ -220,7 +220,7 @@ def test_identity_defaults_to_hestia_she_and_asks_the_name():
 
 @pytest.mark.unit
 def test_identity_follows_the_personal_settings(ident):
-    ident(assistant_name="Leo", assistant_gender="lui", owner_name="Marco", owner_call="Marko")
+    ident(assistant_name="Leo", assistant_gender="he", owner_name="Marco", owner_call="Marko")
     text = prompt_config.analyst_persona_default()
     assert text.startswith("You are Leo, the personal assistant of Marko:")
     assert "a man" in text and "a woman" not in text
@@ -242,10 +242,10 @@ def test_chain_agent_reads_the_persona_at_every_call(ident):
 def test_style_lets_her_chat_and_bans_bot_phrases():
     text = prompt_config.conversation_style_contract()
     assert "ONE real question about them" in text and "Task or data: go to the point" in text
-    assert "one-word greeting" not in text and "sono qui" in text and "Fammi sapere" in text
+    assert "one-word greeting" not in text and "I am here" in text and "Let me know" in text
 
 
-# ── She writes first («parla con te», docs/work/2026-11-12-identita-e-proattivita) ───────────────────────────
+# ── She writes first («parla con te», docs/work/2026-11-12-identity-and-proactivity) ───────────────────────────
 
 @pytest.mark.unit
 def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
@@ -264,7 +264,7 @@ def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("answer", ["NIENTE", "niente.", "", "NIENTE: è tardi"])
+@pytest.mark.parametrize("answer", ["NOTHING", "nothing.", "", "NOTHING: it is late"])
 def test_opener_nothing_to_say_sends_nothing(answer):
     from core.services import opener
     assert opener.write(lambda p: answer, reasons=[], avoid=[]) == {"text": "", "skip": "nothing_to_say"}
@@ -294,15 +294,15 @@ def test_opener_endpoint_writes_or_stays_silent(client):
     with patch.object(main, "_no_usable_model", return_value=False), \
             patch.object(main, "_awareness_lines", return_value=[]):
         main.engine._ask_analyst.return_value = "Hai poi finito quel libro?"
-        res = http.post("/api/chat/opener", json={"reasons": ["nessuno"], "avoid": []})
+        res = http.post("/api/chat/opener", json={"reasons": ["none"], "avoid": []})
         assert res.status_code == 200 and res.json() == {"text": "Hai poi finito quel libro?"}
-        main.engine._ask_analyst.return_value = "NIENTE"
+        main.engine._ask_analyst.return_value = "NOTHING"
         assert http.post("/api/chat/opener", json={}).json()["text"] == ""
     with patch.object(main, "_no_usable_model", return_value=True):
         assert http.post("/api/chat/opener", json={}).status_code == 503
 
 
-# ── Her first message stays in the conversation; transcripts use her name (docs/work/2026-11-16-nome-ovunque) ──
+# ── Her first message stays in the conversation; transcripts use her name (docs/work/2026-11-16-name-everywhere) ──
 
 class _Hub:
     def __init__(self, items):

@@ -1,4 +1,4 @@
-"""Hephaestus WebUI plugin (core module, SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3).
+"""Hephaestus WebUI plugin (core module, SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3).
 
 Markers: unit, api
 """
@@ -28,16 +28,16 @@ class TestManifest:
 
     def test_page_riparazioni_order_decade_170(self):
         pages = {p["id"]: p for p in _manifest()["clients"]["webui"]["page"]}
-        assert set(pages) == {"sviluppo", "riparazioni"}
-        assert pages["riparazioni"]["element"] == "hephaestus-repairs"
-        assert 170 <= pages["riparazioni"]["order"] < 180
+        assert set(pages) == {"development", "repairs"}
+        assert pages["repairs"]["element"] == "hephaestus-repairs"
+        assert 170 <= pages["repairs"]["order"] < 180
 
     def test_page_sviluppo_first_with_review_badge(self):
         """SPEC §A4: the built-in Sviluppo page becomes this plugin's first page; badge = tasks waiting for you."""
         pages = {p["id"]: p for p in _manifest()["clients"]["webui"]["page"]}
-        sv = pages["sviluppo"]
-        assert sv["element"] == "hephaestus-sviluppo" and sv["order"] == 170 and not sv["parent"]
-        assert sv["order"] < pages["riparazioni"]["order"]
+        sv = pages["development"]
+        assert sv["element"] == "hephaestus-development" and sv["order"] == 170 and not sv["parent"]
+        assert sv["order"] < pages["repairs"]["order"]
         assert sv["badge"] == {"source": "/api/hephaestus/forge/counts", "field": "review"}
 
     def test_widget_forge_auto(self):
@@ -45,14 +45,14 @@ class TestManifest:
         assert set(widgets) == {"forge"}
         assert widgets["forge"]["element"] == "hephaestus-forge-widget"
         assert widgets["forge"]["auto"] is True
-        assert widgets["forge"]["open_page"] == "sviluppo"
+        assert widgets["forge"]["open_page"] == "development"
 
     def test_no_quick_actions_no_new_destructive_paths(self):
         assert _manifest()["clients"]["webui"].get("quick_action") == []
 
     def test_bundle_registers_declared_elements(self):
         index = (UI_SRC / "index.ts").read_text(encoding="utf-8")
-        for el in ("hephaestus-repairs", "hephaestus-forge-widget", "hephaestus-sviluppo", "hephaestus-task-panel",
+        for el in ("hephaestus-repairs", "hephaestus-forge-widget", "hephaestus-development", "hephaestus-task-panel",
                    "hephaestus-repo", "hephaestus-transcript", "hephaestus-diff", "hephaestus-md"):
             assert f"'{el}'" in index
 

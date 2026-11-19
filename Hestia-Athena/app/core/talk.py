@@ -1,5 +1,5 @@
-"""«Parla con te»: the assistant writes first, like a person (docs/work/2026-11-12-identita-e-proattivita,
-timing and memory: docs/work/2026-11-13-prima-osserva-poi-propone).
+"""«Talk to you»: the assistant writes first, like a person (docs/work/2026-11-12-identity-and-proactivity,
+timing and memory: docs/work/2026-11-13-observe-first-then-propose).
 
 Third output of Athena, next to the system briefs and the life observations (which stay in the evening recap):
 
@@ -9,7 +9,7 @@ Third output of Athena, next to the system briefs and the life observations (whi
    ``athena.talk.eagerness``. The drive grows with the silence between them and with what she has to say, drops
    when her messages get no answer, and is low in the first days, when she knows little;
 2. **why** — the reasons of today, read through Hub: his mood (Psyche), what the areas noticed (signals
-   ``alta``/``attenzione``), how long since they last talked; plus the **last days**: how he was, what she wrote
+   ``high``/``warning``), how long since they last talked; plus the **last days**: how he was, what she wrote
    and whether he answered;
 3. **what** — Oracle writes it (``POST /api/chat/opener``: persona + what it remembers of him); nothing true to
    say → no message;
@@ -20,6 +20,7 @@ Third output of Athena, next to the system briefs and the life observations (whi
 from __future__ import annotations
 
 import logging
+import re
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -152,8 +153,8 @@ class Talk:
         except Exception as exc:
             logger.info("[🔄] event=talk_reason_failed source=mood error=%s fallback=skip", exc)
         try:
-            signals = [s for s in self.reader.signals() if s.get("severity") in ("alta", "attenzione")]
-            signals.sort(key=lambda s: 0 if s.get("severity") == "alta" else 1)
+            signals = [s for s in self.reader.signals() if s.get("severity") in ("high", "warning")]
+            signals.sort(key=lambda s: 0 if s.get("severity") == "high" else 1)
             for s in signals[:3]:
                 out.append(f"{DOMAIN_WORDS.get(s.get('domain'), 'One of their areas')}: {str(s.get('text') or '')[:200]}")
         except Exception as exc:
@@ -235,7 +236,7 @@ class Talk:
     # ── the attempt ──────────────────────────────────────────────────────────
     def run(self, trace_id: str, *, force: bool = False) -> dict[str, Any]:
         """One attempt: ``{"status": sent|quiet|nothing|chatting|failed, ...}`` (quiet = not enough drive).
-        ``force`` = the owner asked («Scrivimi ora»): past the drive, the daily limit and the pause between two
+        ``force`` = the owner asked («Write to me now»): past the drive, the daily limit and the pause between two
         messages, never past a failure."""
         now = datetime.now(timezone.utc)
         idle = self._idle_seconds()
@@ -327,7 +328,8 @@ _SHOWN = (("How they feel today:", "How you feel today:"), ("You two have not ta
 
 def shown(reason: str) -> str:
     """A reason as the owner reads it."""
-    text = str(reason or "")
+    text = re.sub(r"\(because of ([^)]*)\)", lambda m: "(because of " + ", ".join(
+        tr(f"cause::{c.strip()}") for c in m.group(1).split(",")) + ")", str(reason or ""))
     for hidden, plain in _SHOWN:
         text = text.replace(hidden, tr(plain))
     return text

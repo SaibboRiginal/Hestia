@@ -9,7 +9,7 @@ import { AssistantService } from '../../services/assistant.service';
 import { LiveVoiceService } from '../../services/live-voice.service';
 import { PluginOutletComponent } from './plugin-outlet.component';
 import { QuickStripComponent } from './quick-strip.component';
-import { AdessoRowComponent } from './adesso-row.component';
+import { NowRowComponent } from './now-row.component';
 import { SetupCardComponent } from '../setup/setup-card.component';
 import { PluginsService, SIZE_SPAN } from './plugins.service';
 import { Dashboard, DashboardItem, PluginWidget, WidgetSize } from './plugins.types';
@@ -18,13 +18,13 @@ import { tr, TrPipe } from '../../core/i18n';
 const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium'), l: tr('Large'), xl: tr('Whole') };
 
 /**
- * Home and dashboards (SPEC §4.6, §4.8): «Adesso» and quick actions on top (Home), widgets of every module in a grid.
+ * Home and dashboards (SPEC §4.6, §4.8): «Now» and quick actions on top (Home), widgets of every module in a grid.
  * Edit mode: add from the catalog, drag to reorder, size, per-widget params and title, remove.
  * Saved as this client's setting `webui.dashboards` (Themis history/undo).
  */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [TrPipe, ...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, AdessoRowComponent, SetupCardComponent],
+  imports: [TrPipe, ...UI, FormsModule, RouterLink, PluginOutletComponent, QuickStripComponent, NowRowComponent, SetupCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header [title]="current()?.title || ('alt::Home' | tr)" [subtitle]="subtitle()">
@@ -57,7 +57,7 @@ const SIZE_LABEL: Record<WidgetSize, string> = { s: tr('Small'), m: tr('Medium')
     }
 
     <div class="body">
-      @if (isHome() && !editing()) { <hx-setup-card /><hx-adesso-row /><hx-quick-strip /> }
+      @if (isHome() && !editing()) { <hx-setup-card /><hx-now-row /><hx-quick-strip /> }
 
       @if (!plugins.catalog() && !plugins.catalogError()) {
         <div class="center"><hx-spinner /></div>
@@ -207,7 +207,7 @@ export class DashboardPageComponent {
   live = inject(LiveVoiceService);
   readonly sizeLabel = SIZE_LABEL;
 
-  /** «Parla» from the Home (brainstorm C12): the live overlay follows you on every page. */
+  /** «Talk» from the Home (brainstorm C12): the live overlay follows you on every page. */
   toggleLive(): void {
     if (this.live.on) { this.live.stop(); return; }
     void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });

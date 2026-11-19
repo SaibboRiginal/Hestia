@@ -1,4 +1,4 @@
-"""Forge for external AIs (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): notes on a task, "I fixed it on
+"""Forge for external AIs (docs/work/2026-10-18-core-modules-and-external-mcp §B4): notes on a task, "I fixed it on
 this branch" (fetch → Forge's tests → owner approval), requests marked as external proposals."""
 from __future__ import annotations
 

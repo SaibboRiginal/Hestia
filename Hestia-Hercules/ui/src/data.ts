@@ -210,7 +210,7 @@ export class Local {
     try { return { data: (await this.kv.get<T>(key)) ?? null, fresh: false }; } catch { return { data: null, fresh: false }; }
   }
 
-  /** Forget the mirror and download everything again (Impostazioni → "Riscarica"). */
+  /** Forget the mirror and download everything again (Settings → "Download again"). */
   async reset(): Promise<void> {
     this.cursor = 0;
     await this.sync();

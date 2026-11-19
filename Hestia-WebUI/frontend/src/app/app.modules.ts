@@ -6,7 +6,7 @@ import { tr } from './core/i18n';
  * Each entry becomes a route (/path, lazy loaded) and a sidebar item.
  * Guide: DESIGN-SYSTEM.md § "Add a module".
  * Pages of Hestia modules (client plugins) are NOT listed here: they come from Hub's catalog at runtime
- * (features/plugins, routes /p/<module>/…, dashboards /d/<id>). Agenda, Notifiche, Comandi & MCP, Sviluppo and Documenti
+ * (features/plugins, routes /p/<module>/…, dashboards /d/<id>). Agenda, Notifications, Commands & MCP, Development and Documents
  * became plugin pages of Chronos, Hermes, Hestia-MCP, Hephaestus and Oracle: their old paths redirect (app.routes.ts).
  */
 export interface AppModule {
@@ -22,8 +22,8 @@ export const APP_MODULES: AppModule[] = [
     load: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent) },
   { path: 'chat', label: tr('Chat'), icon: 'chat',
     load: () => import('./features/chat/chat-page.component').then(m => m.ChatPageComponent) },
-  { path: 'scopri', label: tr('Discover'), icon: 'sparkle',
-    load: () => import('./features/scopri/scopri-page.component').then(m => m.ScopriPageComponent) },
+  { path: 'discover', label: tr('Discover'), icon: 'sparkle',
+    load: () => import('./features/discover/discover-page.component').then(m => m.DiscoverPageComponent) },
   { path: 'settings', label: tr('Settings'), icon: 'settings', bottom: true,
     load: () => import('./features/settings/settings-page.component').then(m => m.SettingsPageComponent) },
 ];

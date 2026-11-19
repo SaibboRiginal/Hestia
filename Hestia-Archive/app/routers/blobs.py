@@ -2,7 +2,7 @@
 
 Archive only stores bytes + content type + the owner's free ``meta``; resizing, which blobs form one photo and
 when to delete them is the owner module's job (first user: Hestia-Wardrobe, SPEC
-docs/work/2026-10-17-modulo-guardaroba §4.6). Bodies are JSON with base64, since Hub envelopes carry JSON only.
+docs/work/2026-10-17-wardrobe-module §4.6). Bodies are JSON with base64, since Hub envelopes carry JSON only.
 """
 import base64
 import binascii
@@ -77,7 +77,7 @@ def list_blobs(owner_module: str, limit: int = 500, db: Session = Depends(databa
 @router.get("/usage")
 def storage_usage(db: Session = Depends(database.get_db)):
     """Size of the database and of the blobs per module — read by the stack monitor for growth alerts
-    (Cindy 25, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3). Read only, no row data."""
+    (Cindy 25, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3). Read only, no row data."""
     from sqlalchemy import func as sa_func, text
     rows = (db.query(models.BlobRecord.owner_module, sa_func.count(models.BlobRecord.blob_id),
                      sa_func.coalesce(sa_func.sum(models.BlobRecord.size), 0))

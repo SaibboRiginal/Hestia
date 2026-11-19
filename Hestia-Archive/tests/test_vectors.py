@@ -1,4 +1,4 @@
-"""One memory, several embedding models (docs/work/2026-11-18-problemi-del-test E2): each row is compared with the
+"""One memory, several embedding models (docs/work/2026-11-18-real-test-problems E2): each row is compared with the
 query embedded by its own model."""
 from __future__ import annotations
 

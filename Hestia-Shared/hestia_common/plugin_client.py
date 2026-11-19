@@ -11,9 +11,9 @@ own configuration (visibility, dashboards) as its own Themis settings.
     ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/app/ui/dist")
     ui.webui(
         entry="scout.js", api_prefix="/api/ui/",
-        pages=[page("case", "Houses", element="scout-listings", icon="home", order=10),
-               page("case/:id", "Listing", element="scout-listing", detail=True)],
-        widgets=[widget("nuove", "New houses", element="scout-new-widget", sizes=["m", "l"], auto=True,
+        pages=[page("houses", "Houses", element="scout-listings", icon="home", order=10),
+               page("houses/:id", "Listing", element="scout-listing", detail=True)],
+        widgets=[widget("new", "New houses", element="scout-new-widget", sizes=["m", "l"], auto=True,
                         params={"city": {"type": "string", "label": "City"}})],
         quick_actions=[quick_action("fetch", "Check email", "POST", "/api/ui/cycle", icon="refresh")],
     )
@@ -44,7 +44,7 @@ UI_KINDS = ("page", "widget", "quick_action", "settings_panel")
 CLIENTS = {"webui", "telegram"}
 SIZES = ("s", "m", "l", "xl")
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
-KINDS = {"domain", "core"}   # core = system modules (WebUI groups them under «Sistema»)
+KINDS = {"domain", "core"}   # core = system modules (WebUI groups them under «System»)
 PARAM_TYPES = {"string", "text", "int", "float", "bool", "enum", "date", "time", "list"}
 TEXT_FILES = {".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
               ".json": "application/json", ".svg": "image/svg+xml", ".map": "application/json"}
@@ -97,9 +97,9 @@ def widget(id: str, label: str, *, element: str, sizes: list[str] | None = None,
 
 
 def settings_panel(id: str, label: str, *, element: str, icon: str = "", order: int = 100, help: str = "") -> dict:
-    """A panel the client shows inside this module's own settings (WebUI: Impostazioni → Sistema → <module>,
+    """A panel the client shows inside this module's own settings (WebUI: Settings → System → <module>,
     under its settings). For things that belong with the settings but are not a value: e.g. the backup history
-    with «Ripristina»."""
+    with «Restore»."""
     if not _ID_RE.match(id):
         raise ValueError(f"bad settings panel id {id!r}")
     return {"id": id, "label": label, "element": element, "icon": icon, "order": int(order), "help": help}

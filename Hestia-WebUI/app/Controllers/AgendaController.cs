@@ -49,7 +49,7 @@ public class AgendaController : ControllerBase
         }
     }
 
-    /// <summary>Feed URL for the calendar's "Abbonati" dialog (key only when configured).</summary>
+    /// <summary>Feed URL for the calendar's "Subscribe" dialog (key only when configured).</summary>
     [HttpGet("feed-info")]
     public IActionResult FeedInfo()
     {

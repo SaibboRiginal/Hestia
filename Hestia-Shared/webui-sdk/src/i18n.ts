@@ -1,7 +1,7 @@
-/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-backend-inglese).
+/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-english-backend).
  *
  * Write the text in English and wrap it: `tr('Save')`, `tr('{0} items', n)` (standard: docs/LANGUAGES.md). The WebUI
- * loads the catalog (`/api/webui/i18n`, «Lingua» = `themis.personal.language`) before any plugin and shares it on
+ * loads the catalog (`/api/webui/i18n`, «Language» = `themis.personal.language`) before any plugin and shares it on
  * `globalThis.__hestiaI18n`; a missing text shows the English source. `f::Active` = a context tag, never shown. */
 function catalog(): { language: string; messages: Record<string, string>; assistant?: string; gender?: string } {
   const c = (globalThis as any).__hestiaI18n;
@@ -11,20 +11,20 @@ function catalog(): { language: string; messages: Record<string, string>; assist
 /** The assistant's chosen name (`themis.personal.assistant_name`, served with the catalog; default «Hestia»). */
 export function assistantName(): string { return String(catalog().assistant || '').trim() || 'Hestia'; }
 
-/** `{assistant}` → the chosen name, `{g:lei-form|lui-form}` → the form for her or him
- * (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the app (version, files, installation) the text says
+/** `{assistant}` → the chosen name, `{g:her-form|his-form}` → the form for her or him
+ * (docs/work/2026-11-16-name-everywhere). Where «Hestia» is the app (version, files, installation) the text says
  * «Hestia» and nothing changes. Also for texts that do not go through `tr` (plugin page titles and help). */
 export function named(text: string): string {
   const s = text == null ? '' : String(text);
   if (!s.includes('{assistant}') && !s.includes('{g:')) return s;
-  const he = catalog().gender === 'lui';
+  const he = catalog().gender === 'he';
   return s.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, a, b) => (he ? b : a)).split('{assistant}').join(assistantName());
 }
 
 export function language(): string { return catalog().language || 'it'; }
 
 /** The date/number locale of the owner's language (`toLocaleDateString(locale(), …)`), never a hardcoded 'it-IT'. */
-export function locale(): string { return language() === 'en' ? 'en-GB' : 'it-IT'; }
+export function locale(): string { const l = language(); return l === 'en' ? 'en-GB' : l; }
 
 /** Keys whose string value is never a people text (same list as `hestia_common.i18n.KEEP_KEYS`). */
 const KEEP_KEYS = new Set(['id', 'key', 'value', 'status', 'state', 'type', 'kind', 'slug', 'path', 'url', 'href',

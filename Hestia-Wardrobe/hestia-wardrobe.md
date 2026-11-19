@@ -1,9 +1,9 @@
 # Hestia-Wardrobe 👕
 
-**Role:** Wardrobe — every garment, shoe and accessory, outfits, «Cosa mi metto», laundry, packing lists, stats
+**Role:** Wardrobe — every garment, shoe and accessory, outfits, «What should I wear», laundry, packing lists, stats
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Pillow · Docker · WebUI plugin bundle (Lit, `ui/`)
-**Port:** 19017 · Dossier: `docs/work/2026-10-17-modulo-guardaroba/`
+**Port:** 19017 · Dossier: `docs/work/2026-10-17-wardrobe-module/`
 
 ---
 
@@ -12,20 +12,20 @@
 - Owns the wardrobe: pieces (kind garment | shoes | accessory, category/subcategory, colours, pattern, materials,
   size, fit, seasons, styles, occasions, warmth/formality 1–5, rain, care, purchase, status, location, photos),
   outfits (pieces by slot base/top/mid/outer/bottom/onepiece/shoes/accessory, occasions, styles, seasons, rating,
-  favourite, worn photos), «Indossato» marks, collections (capsule, packing list, shopping list) and the user's own
+  favourite, worn photos), «Worn» marks, collections (capsule, packing list, shopping list) and the user's own
   vocabularies (categories with default slot, styles, occasions, colours with hex, patterns, fits, places).
-  Styles and occasions typed as labels («Ufficio», «Elegante», from chat or the UI) are stored as their vocabulary
+  Styles and occasions typed as labels («Office», «Formal», from chat or the UI) are stored as their vocabulary
   key (`office`, `formal`); unknown words stay free tags. Suggestions and packing map them the same way.
 - Status is the daily tool: Nell'armadio · In lavanderia · Prestato · Messo via · Da riparare · Da donare · Donato ·
-  Venduto · Desiderato · Archiviato. Only «Nell'armadio» pieces are suggested.
-- «Indossato» is **occasional**, never assumed daily: usage numbers (most worn, cost per wear, forgotten) are hints.
+  Venduto · Desiderato · Archiviato. Only «In the wardrobe» pieces are suggested.
+- «Worn» is **occasional**, never assumed daily: usage numbers (most worn, cost per wear, forgotten) are hints.
   Optional goal `wardrobe.tracking.goal_times` per day/week/month; one mark per outfit per day.
-- «Cosa mi metto» is deterministic (no LLM): saved outfits + combinations generated from available pieces, filtered by
+- «What should I wear» is deterministic (no LLM): saved outfits + combinations generated from available pieces, filtered by
   season and weather (warmth band of the upper layers, rain), scored on occasion/formality, style, colour harmony
   (≤ 1 accent colour), pattern clash, recently worn (`suggest.exclude_recent_days`), rotation of forgotten pieces,
   favourites and rating. Every result carries its reasons. The assistant adds taste on top.
 - Photos: orientation fixed, metadata (GPS) dropped by re-encoding, three sizes (original JPEG/WebP, medium 768,
-  thumb 256 WebP). «Riconosci con AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.foto`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
+  thumb 256 WebP). «Recognise with AI» sends the medium photo to Oracle `/api/llm/chat` (use case `wardrobe.photo`, declared in the Hub registration; its chain, which must see images, is chosen in Oracle → Cervello → Modelli)
   and only **proposes** fields; the user saves.
 - Does not call models directly, has no database: rows in Archive `wardrobe-store`, bytes in Archive `blobs`.
 
@@ -48,27 +48,27 @@
   `wardrobe_stats`, `wardrobe_packing`, `wardrobe_delete`. Pieces and outfits are found by name.
 - **Weather**: `wardrobe_suggest` and `wardrobe_packing` take `place`; when temperature/rain are left empty they use
   the Hecate forecast (today, or the trip dates; max temperature, rainy days) through `hestia_common.weather_client`.
-  The UI rain toggle is three-state (sì / no / «Usa la previsione») and shows the forecast line used.
+  The UI rain toggle is three-state (sì / no / «Use the forecast») and shows the forecast line used.
 - `wardrobe_delete` never deletes: it asks through Hermes with **Elimina / Archivia / Tieni**.
 - `GET /api/module/context?budget=` → `{module, domain, updated_at, text}`: one caveman line (counts, style, laundry,
   forgotten, last outfit, goal). Hub capability `context_endpoint`, tag `context`. `&topic=<signal key>`
   (`forgotten`, `laundry_backlog`, `to_repair`) → the detail behind that signal (names, days); unknown topic → the
   normal line.
-- `GET /api/module/recap?day=&next=`: piece «Guardaroba» of the daily recap (what was worn; laundry as note).
+- `GET /api/module/recap?day=&next=`: piece «Wardrobe» of the daily recap (what was worn; laundry as note).
   Capability `recap_endpoint`.
 
-## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
+## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-layered-reflection`)
 
-Deterministic, no LLM; texts say «Guardaroba», never the module name. Stored in Archive `signals-store` through
+Deterministic, no LLM; texts say «Wardrobe», never the module name. Stored in Archive `signals-store` through
 `Signals("wardrobe", "wardrobe").sync()` (only changes written, signals gone are retracted).
 
 | Key | Severity | When | Page |
 |---|---|---|---|
 | `forgotten` | info | active pieces not worn for 60+ days (`stats.forgotten`; only once something was ever marked) | statistiche |
 | `laundry_backlog` | attenzione | ≥ 3 pieces in laundry unchanged for 7+ days | capi |
-| `to_repair` | info | pieces with status or condition «da riparare» | capi |
+| `to_repair` | info | pieces with status or condition «To repair» | capi |
 
-Weekly metric (12 ISO weeks, current included): `wardrobe.worn` «Capi indossati» = number of «Indossato» marks per
+Weekly metric (12 ISO weeks, current included): `wardrobe.worn` «Items worn» = number of «Worn» marks per
 week. Re-evaluated after every mark / piece change (`signals.changed()`, debounced), once after warm-up and by the
 agenda job `wardrobe.signals` (daily 17:30, editable) → `POST /api/wardrobe/signals/run`.
 
@@ -84,11 +84,11 @@ agenda job `wardrobe.signals` (daily 17:30, editable) → `POST /api/wardrobe/si
 
 ## Client UI (plugin contract)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Seasons leaf/sun/leaf/snowflake, favourites and rating star, rain umbrella, done check.
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Seasons leaf/sun/leaf/snowflake, favourites and rating star, rain umbrella, done check.
 
-Bundle `ui/src/index.ts` → `/ui/webui/wardrobe.js` (built in the Dockerfile). Pages: capi, capi/:id, accessori,
-outfit, outfit/:id, cosa-mi-metto, statistiche, liste, liste/:id, vocabolari. Widgets: oggi (auto, one-tap
-«Indossato» chips), suggerito, lavanderia, dimenticati (auto), numeri (auto), ultimi. Quick action `indossato`
+Bundle `ui/src/index.ts` → `/ui/webui/wardrobe.js` (built in the Dockerfile). Pages: capi, items/:id, accessori,
+outfit, outfit/:id, what-to-wear, statistiche, liste, lists/:id, vocabolari. Widgets: oggi (auto, one-tap
+«Worn» chips), suggerito, lavanderia, dimenticati (auto), numeri (auto), ultimi. Quick action `worn`
 (chips = favourite outfits + today's idea, undo). Multi-select on Guardaroba: In lavanderia / Nell'armadio /
 Crea outfit / Da donare. A UI change needs `up-all.bat --build wardrobe`.
 
@@ -109,16 +109,16 @@ reminder/skip, review/run, signals/run.
 
 ## Photo sent in chat («aggiungi al guardaroba»)
 
-A photo (jpeg/png/webp) sent on Telegram or in the WebUI chat with «guardaroba», «armadio» or «nuovo capo» in the
+A photo (jpeg/png/webp) sent on Telegram or in the WebUI chat with «guardaroba», «Wardrobe» or «New garment» in the
 caption reaches `POST /api/wardrobe/attachments {blob_id}` through Oracle's attachment hand-off (capability
 `attachment_handlers`). The piece is recognised with `describe-photo` and saved right away with the photo as cover;
 the reply names it and carries `[capo <id>]` so «no, è nera» edits it. Not recognised (AI away, unknown category) →
-nothing is saved and the reply asks what it is. Dossier `docs/work/2026-10-30-cose-aperte`.
+nothing is saved and the reply asks what it is. Dossier `docs/work/2026-10-30-open-items`.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections over `wardrobe-store`: `capi` (piece) · `outfit` · `indossati` (wear) · `liste` (collection) · `vocabolari`
-(taxonomy) · `foto` (photo rows + their Archive blobs, only with «Includi foto» or chosen by hand). On import the
+Sections over `wardrobe-store`: `pieces` (piece) · `outfit` · `worn` (wear) · `lists` (collection) · `vocabularies`
+(taxonomy) · `photos` (photo rows + their Archive blobs, only with «Include photos» or chosen by hand). On import the
 blobs are uploaded first (`POST /api/transfer/files`, owner `wardrobe`) and the photo rows get the new blob ids.
 Reminder rows are never exported. Settings travel through Themis.
 
@@ -131,19 +131,19 @@ Reminder rows are never exported. Settings travel through Themis.
 `python -m pytest -q -m "unit or api or format" Hestia-Wardrobe/tests` (fake Hub with Archive store and blobs in memory).
 
 ## Telegram card (`display`)
-Tools `wardrobe_summary` and `wardrobe_suggest` return a `display` card: the summary lines with laundry and forgotten pieces; outfit ideas (pieces and the first reason) with one «Metto …» button per idea (`wardrobe_log_worn` with the outfit or its pieces) and «Altre idee». Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+Tools `wardrobe_summary` and `wardrobe_suggest` return a `display` card: the summary lines with laundry and forgotten pieces; outfit ideas (pieces and the first reason) with one «Metto …» button per idea (`wardrobe_log_worn` with the outfit or its pieces) and «More ideas». Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Counts through the SDK `plural()` («1 capo»).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Counts through the SDK `plural()` («1 capo»).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the photo prompt are English; the clothing name is asked in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the photo prompt are English; the clothing name is asked in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. Chat words for occasions/styles match English labels, the owner's language and Italian.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. Chat words for occasions/styles match English labels, the owner's language and Italian.

@@ -1,4 +1,4 @@
-"""Emoji reactions of Hestia to the owner's message (docs/work/2026-11-06-hestia-viva F4).
+"""Emoji reactions of Hestia to the owner's message (docs/work/2026-11-06-living-hestia F4).
 
 The model may open its answer with ``[[r:<emoji>]]``. Oracle strips the marker from the chat stream and sends one
 frame ``{"type":"reaction","emoji":"👍"}`` before the text: clients show it on the owner's message (WebUI next to

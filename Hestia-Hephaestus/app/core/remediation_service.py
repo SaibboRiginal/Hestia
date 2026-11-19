@@ -81,14 +81,14 @@ class RemediationService:
                     self.agenda.show(key, tr("🛠️ Repair to approve — {0}", label),
                                      datetime.now(timezone.utc),
                                      description=f"Runbook {snapshot.get('runbook_id')}. "
-                                                 f"Approva: \"approva riparazione {snapshot['task_id'][:8]}\".",
+                                                 f"Approve: \"approve repair {snapshot['task_id'][:8]}\".",
                                      params={"task_id": snapshot["task_id"]})
                 elif state == "failed" and not snapshot.get("dry_run"):
                     attempts = int(snapshot.get("attempts") or 1)
                     if attempts < self._max_attempts:
                         when = datetime.now(timezone.utc) + timedelta(minutes=self._retry_minutes * attempts)
                         self.agenda.plan(
-                            key, f"🔁 Ritenta riparazione ({attempts + 1}/{self._max_attempts}) — {label}", when,
+                            key, f"🔁 Retry repair ({attempts + 1}/{self._max_attempts}) — {label}", when,
                             action={"service": "hephaestus",
                                     "path": f"/api/hephaestus/remediate/{snapshot['task_id']}/retry",
                                     "method": "POST", "body": {"requested_by": "agenda"},

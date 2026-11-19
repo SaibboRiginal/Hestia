@@ -1,6 +1,6 @@
 """Generic module stores (finance-store, iris-store): LWW writes, seq cursor, tombstones — in-memory SQLite.
 
-Postgres ``nextval`` is emulated with a SQLite function. SPEC docs/work/2026-10-19-email-push-spese §4.
+Postgres ``nextval`` is emulated with a SQLite function. SPEC docs/work/2026-10-19-email-push-expenses §4.
 """
 from __future__ import annotations
 
@@ -98,13 +98,13 @@ def test_stores_are_separate(client):
 @pytest.mark.api
 def test_signals_store_filters_by_module_and_domain(client):
     base = "/api/signals-store"
-    rows = [{"kind": "signal", "id": "hercules:stall:panca", "ref_id": "hercules", "parent_id": "fitness",
+    rows = [{"kind": "signal", "id": "hercules:stall:bench", "ref_id": "hercules", "parent_id": "fitness",
              "updated_at": "2026-10-20T10:00:00Z", "data": {"text": "Panca ferma"}},
             {"kind": "metric", "id": "plutus:finance.spent:2026-W42", "ref_id": "plutus", "parent_id": "finance",
              "at": "2026-10-13T00:00:00Z", "updated_at": "2026-10-20T10:00:00Z", "data": {"value": 120}}]
     client.put(f"{base}/records", json={"rows": rows})
     assert [r["id"] for r in client.get(f"{base}/records", params={"ref_id": "hercules"}).json()["rows"]] == \
-        ["hercules:stall:panca"]
+        ["hercules:stall:bench"]
     got = client.get(f"{base}/records", params={"kind": "metric", "at_from": "2026-10-01T00:00:00Z"}).json()["rows"]
     assert got[0]["data"]["value"] == 120
     assert client.get("/api/finance-store/records").json()["rows"] == []

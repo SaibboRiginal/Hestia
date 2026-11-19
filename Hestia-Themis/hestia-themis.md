@@ -31,12 +31,12 @@ Not settings (stay in env): secrets (tokens, API keys, passwords) and infrastruc
 | Preset | named bundle of values for one group (e.g. Economico / Qualità); editing any value → group shows `custom` |
 | Proposal | assistant suggestion, pending until the user approves/rejects; expires after 24 h (closed lazily, no timers) |
 
-Personal settings (owner Themis, group «Personali»): `themis.personal.week_start`, `themis.personal.currency`,
-`themis.personal.places` (list of `{id, name, address, kind home|work|other, lat?, lon?}`, editor «Luoghi», one
-Casa; options resolved by Hecate). Group «Tu e l'assistente» (dossier `docs/work/2026-11-12-identita-e-proattivita`):
+Personal settings (owner Themis, group «Personal»): `themis.personal.week_start`, `themis.personal.currency`,
+`themis.personal.places` (list of `{id, name, address, kind home|work|other, lat?, lon?}`, editor «Places», one
+Casa; options resolved by Hecate). Group «You and the assistant» (dossier `docs/work/2026-11-12-identity-and-proactivity`):
 `themis.personal.owner_name`, `owner_call`, `assistant_name` (default Hestia), `assistant_gender` (lei/lui),
-`language` («Lingua», it/en, default it: notifications, recaps and texts she writes on her own; dossier
-`docs/work/2026-11-14-lingua-personale`): read by
+`language` («Language», it/en, default it: notifications, recaps and texts she writes on her own; dossier
+`docs/work/2026-11-14-personal-language`): read by
 Oracle, Hermes and the WebUI through `hestia_common.identity`. `options_source` may name another module: `"<module>:/path"` is fetched through
 Hub from that module (e.g. `hecate:/api/gateway/weather/places`).
 
@@ -47,7 +47,7 @@ Hub from that module (e.g. `hecate:/api/gateway/weather/places`).
   Themis or Archive down → defaults, `[🔄]` log, retry every 60 s.
 - **User change**: `PUT /api/settings/key/{key}` → validated → Archive (history) → owner reloads → live values
   apply at once, restart values flagged `restart_required` until the module restarts.
-- **Personal settings** (`themis.personal.week_start`, `themis.personal.currency`, group «Personali»): owned by
+- **Personal settings** (`themis.personal.week_start`, `themis.personal.currency`, group «Personal»): owned by
   Themis (`hestia_common.settings_client.PERSONAL`), shared by every module. A module reads them with
   `SettingsClient.follow_personal()` (register sends `follows`, the answer carries `shared`); a change reloads every
   follower. Modules never declare their own copy. `GET /api/settings/effective` answers Themis' own values.
@@ -99,7 +99,7 @@ MCP tools (Hestia-MCP, domains `system`, `settings`): `settings_search`, `settin
 Themis owns the values, so it exports every module's settings (`app/core/transfer.py`): one section per module with
 settings (id = module name; `themis` = personal settings), records `<key>|<scope>|<scope_id>`. Layers system,
 profile and client travel; session copies never. On import each value is validated against this Hestia's schema
-(unknown key or bad value → reported problem, skipped) and written with history actor `import`; «Sostituisci»
+(unknown key or bad value → reported problem, skipped) and written with history actor `import`; «Replace»
 resets the ticked keys that are only here. Hub capability `transfer.settings: true`.
 
 ## Configuration (infrastructure only)
@@ -111,7 +111,7 @@ resets the ticked keys that are only here. Hub capability `transfer.settings: tr
 | `THEMIS_DATA_DIR` | `/code/data` | schema cache |
 | `THEMIS_UI_DIST` | `/ui/dist` | WebUI plugin bundle (set by the Dockerfile, outside the `app/` dev mount) |
 
-## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2)
+## WebUI plugin — inside view (2026-10-18, dossier `docs/work/2026-10-18-core-modules-and-external-mcp` §A2)
 
 Core module (`kind: "core"`, WebUI *Sistema* section, order 160), `api_prefix` `/api/settings/` (Themis' own
 routes). No widget.
@@ -121,7 +121,7 @@ routes). No widget.
   `POST /api/settings/key/{key}/undo` (same as *Annulla ultima* in Impostazioni; the undo is logged too).
   Proposals: pending ones on top (**Approva / Rifiuta** = the existing user answer, `by: webui`), the decided ones
   in the *Proposte* tab (proposer, decision, who decided). Nothing applies an assistant proposal without the user.
-- Themis down → «Themis non raggiungibile».
+- Themis down → «Themis unreachable».
 
 Bundle `ui/` → Dockerfile Node stage → `/ui/dist/webui/themis.js`; manifest keys merged into the Hub
 registration at every (keepalive) register.
@@ -129,33 +129,33 @@ registration at every (keepalive) register.
 Design dossier: `docs/work/2026-10-10-central-settings/`.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Impostazioni: 4 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Impostazioni: 4 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-## Proposals on Telegram (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
+## Proposals on Telegram (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3, parity F)
 Tool `settings_proposals(status?)` → `GET /api/settings/proposals` (pending by default): the owner sees on Telegram
 what the assistant proposed and confirms from the notification as usual.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Registro impostazioni».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Settings log».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the unknown-key hint are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the unknown-key hint are English. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (settings in the owner's language)**: every label, help, group, unit and option label Themis serves (list, presets, options) is translated into «Lingua» (`themis.personal.language`) with `settings_client.translated`; the English text in the definition is the key of `locales/<lang>/messages.json`. Keys and values never change.
+**2026-11-14 (settings in the owner's language)**: every label, help, group, unit and option label Themis serves (list, presets, options) is translated into «Language» (`themis.personal.language`) with `settings_client.translated`; the English text in the definition is the key of `locales/<lang>/messages.json`. Keys and values never change.
 
 **2026-11-15 (catalog for the WebUI)**: `GET /api/settings/i18n?lang=` → `{language, messages}`: the fixed texts
 of `locales/<lang>/messages.json` (English source → that language; English or a language without a catalog = empty
-map; no `lang` = «Lingua»). (2026-11-16: the source flipped from Italian to English, dossier `2026-11-14-backend-inglese` v2.0.)
+map; no `lang` = «Language»). (2026-11-16: the source flipped from Italian to English, dossier `2026-11-14-english-backend` v2.0.)
 The WebUI serves it to the browser before the app starts (`/api/webui/i18n.js`).
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the catalog also carries `assistant` and `gender`
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the catalog also carries `assistant` and `gender`
 (the assistant's chosen name and she/he, never the owner's name) for `{assistant}` / `{g:lei|lui}` in the texts.
 Themis's own fixed texts read the personal settings with `Themis.personal(key)` (registered as the i18n reader).
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): a proposal with no proposer is shown as the assistant's chosen name.
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): a proposal with no proposer is shown as the assistant's chosen name.

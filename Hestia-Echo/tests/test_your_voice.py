@@ -77,8 +77,8 @@ def test_hint_goes_to_the_engine(world):
     assert "Hygieia" in seen["initial_prompt"] and "Hygieia" in seen["prompt"]
 
 
-def _vp(world, uses=("webui.live.ascolto",)):
-    values = {**world["values"], "echo.impronta.soglia": 0.5, "echo.impronta.usi": list(uses)}
+def _vp(world, uses=("webui.live.listening",)):
+    values = {**world["values"], "echo.voiceprint.threshold": 0.5, "echo.voiceprint.uses": list(uses)}
     return Voiceprint(world["keep"], lambda k, default=None: values.get(k, default), engine=FakeSpeaker())
 
 
@@ -89,27 +89,27 @@ def test_enroll_needs_enough_voice_and_forget(world):
     assert vp.enroll(tones((7.0, 440)))["enrolled"] is True
     vp._cache = None                                  # read back from the archive
     assert vp.stored()["embedding"] == [1.0, 0.0]
-    assert vp.forget()["enrolled"] is False and not vp.applies("webui.live.ascolto")
+    assert vp.forget()["enrolled"] is False and not vp.applies("webui.live.listening")
 
 
 def test_filter_mutes_other_voices_only_on_chosen_uses(world):
     vp = _vp(world)
     vp.enroll(tones((7.0, 440)))
     mixed = tones((3.0, 440), (3.0, 880))
-    out, stats = vp.filter(mixed, "webui.live.ascolto")
+    out, stats = vp.filter(mixed, "webui.live.listening")
     assert stats == {"applied": True, "kept": 2, "muted": 2}
     samples = np.frombuffer(audio.wav_frames(out)[0], dtype="<i2")
     assert np.abs(samples[: 3 * 16000]).max() > 1000 and np.abs(samples[3 * 16000:]).max() == 0
-    assert vp.filter(mixed, "telegram.vocale")[1] == {"applied": False}
+    assert vp.filter(mixed, "telegram.voice_note")[1] == {"applied": False}
 
 
 def test_cache_judges_each_window_once(world):
     vp = _vp(world)
     vp.enroll(tones((7.0, 440)))
     cache, calls = {}, vp.engine.calls
-    vp.filter(tones((3.0, 440)), "webui.live.ascolto", cache)
+    vp.filter(tones((3.0, 440)), "webui.live.listening", cache)
     first = vp.engine.calls - calls
-    vp.filter(tones((3.0, 440)), "webui.live.ascolto", cache)
+    vp.filter(tones((3.0, 440)), "webui.live.listening", cache)
     assert vp.engine.calls - calls == first           # the second pass reused both windows
 
 
@@ -120,9 +120,9 @@ def test_only_other_voices_is_not_a_message(world):
     echo = Echo(world["blocks"], world["keep"], lambda k, default=None: values.get(k, default), voiceprint=vp)
     with pytest.raises(Invalid):
         echo.transcribe({"audio_b64": b64(tones((3.0, 880))), "mime_type": "audio/wav",
-                         "use_case": "webui.live.ascolto"})
+                         "use_case": "webui.live.listening"})
     out = echo.transcribe({"audio_b64": b64(tones((3.0, 440), (1.5, 880))), "mime_type": "audio/wav",
-                           "use_case": "webui.live.ascolto"})
+                           "use_case": "webui.live.listening"})
     assert out["text"]
 
 
@@ -138,7 +138,7 @@ def test_engine_failure_never_stops_listening(world):
 
     vp.engine = Broken()
     wav = tones((3.0, 880))
-    out, stats = vp.filter(wav, "webui.live.ascolto")
+    out, stats = vp.filter(wav, "webui.live.listening")
     assert out == wav and stats["applied"] is False
 
 

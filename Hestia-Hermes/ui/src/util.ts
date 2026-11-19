@@ -13,7 +13,7 @@ export function when(iso?: string | null): string {
     : d.toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-/** Local midnight as ISO (what "oggi" means for the user). */
+/** Local midnight as ISO (what "today" means for the user). */
 export function todayStart(): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);

@@ -36,12 +36,12 @@ def test_memory_roundtrip_by_fact():
     cloud = FakeArchive([_mem(1, "Preferisce il caffè amaro"), _mem(2, "ciao", cls="conversational_history"),
                          _mem(3, "Si allena il lunedì", weight=2.0)])
     data = json.loads(json.dumps(Transfer("oracle", sections=[MemorySection(cloud.route)]).export()))
-    recs = data["sections"]["memorie"]["records"]
+    recs = data["sections"]["memories"]["records"]
     assert len(recs) == 2 and all("embedding" not in r for r in recs)     # no chats, no vectors
     home = FakeArchive([_mem(7, "preferisce  il caffè AMARO"),            # same fact, other id and spacing
                         _mem(8, "Vive a Torino", at="2026-10-01T10:00:00+00:00")])
     t = Transfer("oracle", sections=[MemorySection(home.route)])
-    r = t.import_(data, mode="replace", dry_run=False)["sections"]["memorie"]
+    r = t.import_(data, mode="replace", dry_run=False)["sections"]["memories"]
     assert (r["added"], r["unchanged"], r["deleted"]) == (1, 1, 1)
     assert home.rows[8]["is_active"] is False
     assert any(x["fact"] == "Si allena il lunedì" and x["extra_data"]["imported"] for x in home.rows.values())

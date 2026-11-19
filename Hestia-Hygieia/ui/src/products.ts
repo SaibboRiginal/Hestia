@@ -134,8 +134,8 @@ export class HygieiaProducts extends HestiaElement {
   constructor() { super(); this.items = undefined; this.view = 'current'; this.area = ''; this.q = ''; this.sort = ''; this.m = null; this.form = false; }
   connectedCallback() {
     super.connectedCallback();
-    if (this.ctx?.query?.nuovo) this.form = true;
-    if (this.ctx?.query?.zona) this.area = this.ctx.query.zona;
+    if (this.ctx?.query?.new) this.form = true;
+    if (this.ctx?.query?.area) this.area = this.ctx.query.area;
     this.load();
     this.onHost('refresh', () => this.load());
   }
@@ -148,7 +148,7 @@ export class HygieiaProducts extends HestiaElement {
   private row(p: any) {
     const level = ({ full: 1, '3/4': .75, half: .5, '1/4': .25, almost_empty: .08 } as Record<string, number>)[p.level];
     const exp = p.expires_in;
-    return html`<div class="li" @click=${() => this.host.navigate('prodotti/' + p.id)}>
+    return html`<div class="li" @click=${() => this.host.navigate('products/' + p.id)}>
       <div class="grow">
         <div class="truncate">${p.favorite ? html`${icon('star', 13, 'warning')} ` : nothing}<b>${p.name}</b>${p.brand ? html`<span class="muted"> · ${p.brand}</span>` : nothing}</div>
         <div class="small muted truncate">${[label(this.m?.categories, p.category), p.uses ? tr('{0} uses', p.uses) : '', p.last_used ? tr('last {0}', relDays(p.last_used)) : '',
@@ -160,9 +160,9 @@ export class HygieiaProducts extends HestiaElement {
     </div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
+    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Products")}</h1>
       ${this.items ? html`<span class="sub">${this.items.length}</span>` : nothing}</div>
-      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('spesa')}>${tr('Shopping list')}</hxk-button>
+      <div class="row"><hxk-button icon="calendar" variant="ghost" @click=${() => this.host.navigate('groceries')}>${tr('Shopping list')}</hxk-button>
         <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div></div>`;
     return html`<div class="page">${head}
       <div class="filters">
@@ -177,7 +177,7 @@ export class HygieiaProducts extends HestiaElement {
         : this.items.length ? html`<div class="card list">${this.items.map(p => this.row(p))}</div>`
         : html`<div class="card col" style="align-items:flex-start"><div class="muted">${this.q || this.area ? tr('No product with these filters.') : tr('No product here yet.')}</div>
             <hxk-button icon="plus" @click=${() => (this.form = true)}>${tr("Add a product")}</hxk-button></div>`}
-      ${this.form ? html`<hygieia-product-form .host=${this.host} @close=${(e: CustomEvent) => { this.form = false; if (e.detail) this.host.navigate('prodotti/' + e.detail.id); }}></hygieia-product-form>` : nothing}
+      ${this.form ? html`<hygieia-product-form .host=${this.host} @close=${(e: CustomEvent) => { this.form = false; if (e.detail) this.host.navigate('products/' + e.detail.id); }}></hygieia-product-form>` : nothing}
     </div>`;
   }
 }
@@ -203,7 +203,7 @@ export class HygieiaProduct extends HestiaElement {
   }
   private async act(path: string, body: any = {}, msg = '') {
     const r = await call(this.host, 'POST', `${API}/products/${this.rid}/${path}`, { body });
-    if (r.ok) { if (msg || r.data.label) this.host.toast(msg || r.data.label, 'success'); if (path === 'repurchase') this.host.navigate('prodotti/' + r.data.id); else this.load(); }
+    if (r.ok) { if (msg || r.data.label) this.host.toast(msg || r.data.label, 'success'); if (path === 'repurchase') this.host.navigate('products/' + r.data.id); else this.load(); }
   }
   private async use() {
     const r = await call(this.host, 'POST', `${API}/products/${this.rid}/use`, { body: {} });
@@ -213,10 +213,10 @@ export class HygieiaProduct extends HestiaElement {
   private async drop() {
     if (!await this.host.confirm(tr('Delete product'), tr('You remove it from the list. If you finished it or threw it away, better mark it so: it stays in the history.'), { label: tr('Delete'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `${API}/products/${this.rid}`);
-    if (r.ok) this.host.navigate('prodotti');
+    if (r.ok) this.host.navigate('products');
   }
   render() {
-    const back = html`<button class="link" @click=${() => this.host.navigate('prodotti')}>${tr('‹ Products')}</button>`;
+    const back = html`<button class="link" @click=${() => this.host.navigate('products')}>${tr('‹ Products')}</button>`;
     if (this.p === undefined) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
     if (this.p === 'missing') return html`<div class="page">${back}<hxk-state kind="empty" text=${tr("Product not found")}></hxk-state></div>`;
     if (this.p === null) return html`<div class="page">${back}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
@@ -259,7 +259,7 @@ export class HygieiaProduct extends HestiaElement {
         ${p.verdict ? html`<div>${m?.verdicts?.[p.verdict] || p.verdict}</div>` : nothing}
         ${p.notes ? html`<div class="small" style="white-space:pre-wrap">${p.notes}</div>` : nothing}</div>` : nothing}
       ${(p.siblings || []).length ? html`<div class="card sec"><h2>${tr("Other packs")}</h2><div class="list">${p.siblings.map((s: any) => html`
-        <div class="li" @click=${() => this.host.navigate('prodotti/' + s.id)}><div class="grow"><div>${s.status_label}${s.purchased_at ? tr(' · bought {0}', dayLabel(s.purchased_at, false)) : ''}</div>
+        <div class="li" @click=${() => this.host.navigate('products/' + s.id)}><div class="grow"><div>${s.status_label}${s.purchased_at ? tr(' · bought {0}', dayLabel(s.purchased_at, false)) : ''}</div>
           <div class="small muted">${s.days_open !== null && s.days_open !== undefined ? tr("lasted {0} days", s.days_open) : ''}${s.price ? ` · ${money(s.price, s.currency)}` : ''}</div></div></div>`)}</div></div>` : nothing}
       <div class="card sec"><h2>${tr("alt::History")}</h2>
         ${(p.events || []).map((e: any) => html`<div class="ev"><span>${eventIcon(e.type)}</span><span class="muted tnum" style="min-width:70px">${dayLabel(e.date, false)}</span><span>${e.text}</span></div>`)}

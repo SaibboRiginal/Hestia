@@ -1,14 +1,14 @@
 """The owner's devices: Garmin watch (B10) and Android phone as a sensor (Cindy 32).
 
-Dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4. Hecate owns the devices and only passes their data on:
-- **Garmin**: «Collega Garmin» asks email/password with the Hermes secret form (never stored, only the tokens in
+Dossier docs/work/2026-10-24-whole-cindy-brainstorm W4. Hecate owns the devices and only passes their data on:
+- **Garmin**: «Link Garmin» asks email/password with the Hermes secret form (never stored, only the tokens in
   ``HECATE_GARMIN_TOKENS``), a second form for the two-step code; the agenda job ``hecate.garmin.sync`` (daily
   09:30, user-movable) reads yesterday and today and pushes each day as the ``wearable.daily`` feed (Hercules:
   activities + readiness, Hygieia: sleep) and tells presence when the owner woke up.
 - **Phone**: a Tasker-like app POSTs to ``/api/gateway/phone/push`` with header ``X-Hestia-Phone-Token`` =
   ``HECATE_PHONE_TOKEN`` (env, secret; empty = the webhook answers 503). ``{type: state, wifi, charging, battery}``
   → presence signals ``phone.home`` / ``phone.charging`` + feed ``phone.state``; ``{type: notification, app, title,
-  text}`` → feed ``phone.notification`` when the app is in ``hecate.telefono.app`` (empty list = every app).
+  text}`` → feed ``phone.notification`` when the app is in ``hecate.phone.app`` (empty list = every app).
 """
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def garmin_status():
 
 @router.post("/api/gateway/garmin/connect")
 def garmin_connect():
-    """«Collega Garmin»: a secret form reaches the owner (WebUI / Telegram Mini App)."""
+    """«Link Garmin»: a secret form reaches the owner (WebUI / Telegram Mini App)."""
     sent = _ask_secret("login")
     return {"status": "asked" if sent else "error",
             "message": tr("I sent you the form to link Garmin.") if sent else tr("I can't send you the form.")}
@@ -101,9 +101,9 @@ def garmin_connect():
 
 @router.post(LOGIN_PATH)
 def garmin_login(body: dict = Body(...)):
-    """Target of the secret form, and of the form in the Dispositivi page (``direct: true``): ``{values: {email,
+    """Target of the secret form, and of the form in the Devices page (``direct: true``): ``{values: {email,
     password} | {code}}``. Values are never logged. From the page the two-step code is asked there too, not by a
-    notification (Marko 2026-11-06: «perché passa da Hermes? mettilo direttamente nei dispositivi»)."""
+    notification (Marko 2026-11-06: «why does it go through Hermes? put it straight in the devices»)."""
     direct = bool(body.get("direct"))
     values = body.get("values") if isinstance(body.get("values"), dict) else body
     try:
@@ -245,7 +245,7 @@ def phone_status():
 PRESENCE_STATES = {"away_from_home": {
     "kind": "overlay", "priority": 20, "label": "Outside home", "icon": "map-pin", "tone": "muted",
     "help": "The phone (home Wi-Fi not connected) or the house say you are not at home.",
-    # «==» needs the signal to exist: no phone and no house connected → never «Fuori casa»
+    # «==» needs the signal to exist: no phone and no house connected → never «Away from home»
     "when": [[{"signal": "phone.home", "op": "==", "value": False}],
              [{"signal": "home.present", "op": "==", "value": False}]], "effects": {}}}
 
@@ -259,24 +259,24 @@ def declare_presence() -> None:
 
 
 def tools(MCPTool) -> list:
-    """MCP tools (Telegram + WebUI + assistant): group sistema, section «Dispositivi»."""
+    """MCP tools (Telegram + WebUI + assistant): group system, section «Devices»."""
     def t(name, title, description, method, path, props=None, required=None, label=None):
         return MCPTool(name=name, title=title, description=description,
                        parameters={"type": "object", "properties": props or {}, "required": required or []},
                        handler=lambda **kw: {"status": "ok", "tool": name, "params": kw}, method=method, path=path,
-                       clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="sistema",
+                       clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="system",
                        telegram={"section": tr("Devices"), **({"label": label} if label else {})})
     return [
-        t("garmin_stato", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
+        t("garmin_status", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
           "/api/gateway/garmin/status", label="Garmin"),
-        t("garmin_collega", "Link Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
-        t("garmin_sincronizza", "Read Garmin now", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
+        t("garmin_link", "Link Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
+        t("garmin_sync", "Read Garmin now", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
                                                      "them to training and self care."), "POST", "/api/gateway/garmin/sync",
           {"days": {"type": "integer", "minimum": 1, "maximum": 14}}),
-        t("garmin_giorno", "Garmin data of one day", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
+        t("garmin_day", "Garmin data of one day", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
                                                         "YYYY-MM-DD, empty = today)."), "GET", "/api/gateway/garmin/day",
           {"day": {"type": "string", "format": "date", "title": "Day"}}),
-        t("garmin_scollega", "Disconnect Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
+        t("garmin_unlink", "Disconnect Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
           "/api/gateway/garmin"),
-        t("telefono_stato", "Phone", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Phone"),
+        t("phone_status", "Phone", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Phone"),
     ]

@@ -22,7 +22,7 @@ class TestDeclaredSettings:
             "telegram.feedback.snooze_days": 7,                 # FEEDBACK_SNOOZE_DEFAULT_DAYS
             "telegram.chat.client_instructions": ts.DEFAULT_CLIENT_INSTRUCTIONS,
             "telegram.oracle.stream_timeout": 600,              # TELEGRAM_ORACLE_STREAM_TIMEOUT
-            "telegram.menu.layout": {},                         # menus as configuration (telegram-da-zero §5.11)
+            "telegram.menu.layout": {},                         # menus as configuration (telegram-from-scratch §5.11)
         }
         for key, default in expected.items():
             assert key in defs, key

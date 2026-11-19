@@ -9,7 +9,7 @@ async function loadStats(el: HestiaElement, city = ''): Promise<{ data?: Stats; 
 const stateOf = (error: string, retry: () => void) =>
   html`<hxk-state kind=${error === 'offline' ? 'offline' : 'error'} @retry=${retry}></hxk-state>`;
 
-/** Page «Statistiche case». */
+/** Page «House statistics». */
 export class ScoutStats extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, city: { state: true }, error: { state: true } };
   declare s: Stats | null; declare city: string; declare error: string;
@@ -33,7 +33,7 @@ export class ScoutStats extends HestiaElement {
     if (!this.s) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const s = this.s;
     return html`<div class="page">
-      <button class="back" @click=${() => this.host.navigate('case')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Houses")}</button>
+      <button class="back" @click=${() => this.host.navigate('houses')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Houses")}</button>
       <div class="head"><h1>${tr("House statistics")}</h1>
         <select aria-label=${tr("City")} @change=${(e: Event) => { this.city = (e.target as HTMLSelectElement).value; this.load(); }}>
           <option value="">${tr("All cities")}</option>
@@ -56,7 +56,7 @@ export class ScoutStats extends HestiaElement {
       </div>
       ${this.city ? nothing : html`<hxk-card heading=${tr("Prices per city")}>
         ${s.price_by_city.length ? html`<table><thead><tr><th>${tr("City")}</th><th class="n">${tr("Houses")}</th><th class="n">${tr("Average price")}</th><th class="n">€/m²</th></tr></thead>
-          <tbody>${s.price_by_city.map(c => html`<tr class="click" @click=${() => this.host.navigate('case', { city: c.city })}>
+          <tbody>${s.price_by_city.map(c => html`<tr class="click" @click=${() => this.host.navigate('houses', { city: c.city })}>
             <td>${c.city}</td><td class="n">${c.count}</td><td class="n">${euro(c.avg_price)}</td><td class="n">${c.avg_ppm2 ? num(c.avg_ppm2) : '—'}</td></tr>`)}</tbody></table>`
           : html`<hxk-state kind="empty" text=${tr("The cities come from the addresses of the listings")}></hxk-state>`}
       </hxk-card>`}
@@ -64,7 +64,7 @@ export class ScoutStats extends HestiaElement {
   }
 }
 
-/** Widget «Case in numeri». */
+/** Widget «Houses in numbers». */
 export class ScoutKpiWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, error: { state: true } };
   declare s: Stats | null; declare error: string;
@@ -84,7 +84,7 @@ export class ScoutKpiWidget extends HestiaElement {
   }
 }
 
-/** Widget «Prezzi per città»: €/m² medio, barre. */
+/** Widget «Prices per city»: average €/m², bars. */
 export class ScoutPricesWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, s: { state: true }, error: { state: true } };
   declare s: Stats | null; declare error: string;
@@ -101,7 +101,7 @@ export class ScoutPricesWidget extends HestiaElement {
   }
 }
 
-/** Widgets «Nuove case» (param city, days) and «Case preferite»: compact list, tap = open the listing. */
+/** Widgets «New houses» (param city, days) and «Favourite houses»: compact list, tap = open the listing. */
 abstract class ListWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, items: { state: true }, total: { state: true }, error: { state: true } };
   declare items: Listing[] | null; declare total: number; declare error: string;
@@ -127,8 +127,8 @@ abstract class ListWidget extends HestiaElement {
     if (!this.items.length) return html`<hxk-state kind="empty" text=${this.emptyText()}></hxk-state>`;
     return html`<hxk-list .items=${this.items.map(l => ({ id: l.id, title: euro(l.price) + ' · ' + l.title, subtitle: facts(l), image: l.image || undefined,
         icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: tr('f::favourite'), tone: 'warning' } : undefined }))}
-      @item-click=${(e: CustomEvent) => this.host.navigate('case/' + e.detail.id)}></hxk-list>
-      ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('case', this.openQuery())}>${tr("Others")} ${this.total - this.items.length} →</button>` : nothing}`;
+      @item-click=${(e: CustomEvent) => this.host.navigate('houses/' + e.detail.id)}></hxk-list>
+      ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('houses', this.openQuery())}>${tr("Others")} ${this.total - this.items.length} →</button>` : nothing}`;
   }
 }
 

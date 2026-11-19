@@ -1,5 +1,5 @@
 """Iris mail dispatch (PUSH): subscriptions, matching, durable delivery, backfill.
-SPEC docs/work/2026-10-19-email-push-spese §3.2. Hub is faked: Archive iris-store + raw records, Hecate, modules."""
+SPEC docs/work/2026-10-19-email-push-expenses §3.2. Hub is faked: Archive iris-store + raw records, Hecate, modules."""
 from __future__ import annotations
 
 import pytest

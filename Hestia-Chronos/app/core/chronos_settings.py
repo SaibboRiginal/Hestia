@@ -59,7 +59,7 @@ settings.declare([
              help="How often I check whether there is a reminder to send."),
 ])
 
-# Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §10). When the plan is built is the agenda job
+# Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind §10). When the plan is built is the agenda job
 # ``chronos.coach_week`` (move or pause it in the agenda), not a setting.
 COACH_DAY_START = "chronos.coach.day_start"
 COACH_DAY_END = "chronos.coach.day_end"

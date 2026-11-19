@@ -1,4 +1,4 @@
-"""Module signals — the first layer of Hestia's reflection (docs/work/2026-10-20-riflessione-a-livelli).
+"""Module signals — the first layer of Hestia's reflection (docs/work/2026-10-20-layered-reflection).
 
 Each domain module judges ITS OWN data with deterministic rules and publishes short **signals** (a stall on
 an exercise, routines skipped, a budget running fast) plus **weekly metrics** (one number per ISO week:
@@ -21,9 +21,9 @@ time-based facts (missed days, things not used for weeks, the week that closes).
 
     signals = Signals("hercules", "fitness", evaluate=hercules.signals)   # evaluate() -> (signals, metrics)
     signals.changed()                       # after a write: re-evaluate in background, a few seconds later
-    rules.append(signals_rule("hercules", "Allenamento", path="/api/fitness/signals/run", tz=TZ))
+    rules.append(signals_rule("hercules", "Training", path="/api/fitness/signals/run", tz=TZ))
 
-User-facing text never names modules: ``text`` speaks of the domain («Allenamento», «Spese»).
+User-facing text never names modules: ``text`` speaks of the domain («Training», «Expenses»).
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ logger = logging.getLogger("hestia_common.signals")
 
 STORE = "api/signals-store"
 KINDS = ("trend", "streak", "anomaly", "goal", "milestone")
-SEVERITIES = ("info", "attenzione", "alta")
+SEVERITIES = ("info", "warning", "high")
 
 
 def _hub_default() -> str:

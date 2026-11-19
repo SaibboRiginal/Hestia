@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 /**
  * <hx-setting-shell label help [wide]> control </hx-setting-shell> — the same row as <hx-setting>
  * (label + help on the left, control on the right) for settings that live in this client
- * (theme, notices…), so Personali and Sistema look and read the same. `wide` puts the control
+ * (theme, notices…), so Personal and System look and read the same. `wide` puts the control
  * under the label (theme cards, long text).
  */
 @Component({

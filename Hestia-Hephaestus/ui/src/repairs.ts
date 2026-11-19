@@ -1,7 +1,7 @@
 /**
- * <hephaestus-repairs> — "Riparazioni": the remediation tasks of Hephaestus (runbook, consent, dry-run,
+ * <hephaestus-repairs> — "Repairs": the remediation tasks of Hephaestus (runbook, consent, dry-run,
  * outcome, whether it can be undone, notes). Read only: approving or undoing a repair keeps its consent path
- * (chat / Telegram tools). SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
+ * (chat / Telegram tools). SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATE, CONSENT, when, short } from './util';
@@ -80,7 +80,7 @@ export class HephaestusRepairs extends HestiaElement {
         <span>${tr("It can be undone")}</span><span>${t.undoable ? tr('yes, changed data is restored') : tr('no, it did not change data to restore')}</span>
         ${t.rollback_result ? html`<span>${tr("Undo")}</span><span>${UNDO[t.rollback_result.status] || t.rollback_result.status}</span>` : nothing}
         <span>${tr("alt::Branch")}</span><span><code>${t.branch || '–'}</code></span>
-        ${t.forge_task_id ? html`<span>Forge</span><span>${tr("handed to development:")} <a href=${this.host.link('sviluppo', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('sviluppo', { task: t.forge_task_id }); }}>${"task"} <code>${short(t.forge_task_id)}</code> ${tr("in Development")}</a></span>` : nothing}
+        ${t.forge_task_id ? html`<span>Forge</span><span>${tr("handed to development:")} <a href=${this.host.link('development', { task: t.forge_task_id })} @click=${(e: Event) => { e.preventDefault(); this.host.navigate('development', { task: t.forge_task_id }); }}>${"task"} <code>${short(t.forge_task_id)}</code> ${tr("in Development")}</a></span>` : nothing}
         <span>Id</span><span><code>${t.task_id}</code></span>
       </div>
       ${rb?.steps?.length ? html`<div><div class="small muted">${tr("Runbook steps")}</div><ol>${rb.steps.map((s: any) => html`<li>${s.title}
@@ -89,7 +89,7 @@ export class HephaestusRepairs extends HestiaElement {
         ${t.notifications.map((n: any) => html`<div><span class="muted">${when(n.ts)}</span> · ${n.note}</div>`)}</div></div>` : nothing}
       ${res ? html`<div><div class="small muted">${tr("Outcome")}</div><pre>${JSON.stringify(res, null, 2).slice(0, 4000)}</pre></div>` : nothing}
       ${t.state === 'pending_approval' ? html`<p class="note">${tr("To approve it write to {assistant} «approva la riparazione")} ${t.task_id}${tr("» (chat or Telegram).")}</p>`
-        : t.state === 'succeeded' && t.undoable ? html`<p class="note">${tr("To undo it write to {assistant} «annulla la riparazione")} ${t.task_id}».</p>` : nothing}
+        : t.state === 'succeeded' && t.undoable ? html`<p class="note">${tr("To undo it write to {assistant} «undo the repair")} ${t.task_id}».</p>` : nothing}
     </div>`;
   }
 
@@ -102,7 +102,7 @@ export class HephaestusRepairs extends HestiaElement {
         <span class="grow"></span><hxk-button variant="ghost" icon="refresh" @click=${() => this.load()}>${tr("Refresh")}</hxk-button></div>
       <hxk-stat .items=${this.stats()}></hxk-stat>
       ${this.info ? html`<div class="note">${tr("Mode:")} ${this.info.mode === 'policy_gated_execution' ? tr('run with consent rules') : this.info.mode}
-        · ${this.info.runbook_count} ${tr("runbook · in production")} ${this.info.production_execution_allowed ? 'consentita' : tr('never without you')}</div>` : nothing}
+        · ${this.info.runbook_count} ${tr("runbook · in production")} ${this.info.production_execution_allowed ? tr('allowed') : tr('never without you')}</div>` : nothing}
       <div class="filter"><hxk-field label=${tr("Show")} type="enum" .options=${FILTERS} .value=${this.filter}
         @change=${(e: any) => (this.filter = e.detail || '')}></hxk-field></div>
       ${list.length ? html`<div class="card">${list.map(t => {

@@ -52,7 +52,7 @@ class TestDummyLogs:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): reference module for the shared contract
+# Daily recap piece (docs/work/2026-10-20-daily-recap): reference module for the shared contract
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -76,8 +76,8 @@ class TestDummyRecap:
 class TestRecapHelper:
     def test_piece_drops_empty_lines_and_lists(self):
         from hestia_common import recap
-        p = recap.piece("x", "Area", done=["fatto", {"text": " "}], missed=[], next=None)
-        assert p["done"] == [{"text": "fatto"}] and "missed" not in p and "next" not in p
+        p = recap.piece("x", "Area", done=["done", {"text": " "}], missed=[], next=None)
+        assert p["done"] == [{"text": "done"}] and "missed" not in p and "next" not in p
         assert recap.piece("x", "Area") == {"module": "x", "empty": True}
         assert recap.is_empty({"module": "x", "empty": True}) and not recap.is_empty(p)
 

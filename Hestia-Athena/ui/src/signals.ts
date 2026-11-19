@@ -1,5 +1,5 @@
 /**
- * <athena-signals> — "Segnali": what the life reflection reads (docs/work/2026-10-20-riflessione-a-livelli).
+ * <athena-signals> — "Signals": what the life reflection reads (docs/work/2026-10-20-layered-reflection).
  * Active signals of each area (worst first), the weekly series as small charts, the links found between areas and
  * the latest observations (they reach the user only in the evening recap). Reads GET /api/athena/signals.
  */

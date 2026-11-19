@@ -7,7 +7,7 @@ const STATUSES: [string, string][] = [
   ['sold', tr('Sold')], ['unknown', tr('To check')],
 ];
 
-/** Page «Annuncio» (case/:id): photos, facts, features, summary, the user's mark and status. */
+/** Page «Listing» (houses/:id): photos, facts, features, summary, the user's mark and status. */
 export class ScoutListing extends HestiaElement {
   static properties = { ...HestiaElement.properties, l: { state: true }, error: { state: true }, shot: { state: true } };
   declare l: ListingDetail | null; declare error: string; declare shot: number;
@@ -72,7 +72,7 @@ export class ScoutListing extends HestiaElement {
 
   render() {
     if (this.error === 'missing') return html`<div class="page"><hxk-state kind="empty" text=${tr("Listing not found (maybe removed)")}></hxk-state>
-      <hxk-button variant="ghost" icon="chevron-left" @click=${() => this.host.navigate('case')}>${tr("All houses")}</hxk-button></div>`;
+      <hxk-button variant="ghost" icon="chevron-left" @click=${() => this.host.navigate('houses')}>${tr("All houses")}</hxk-button></div>`;
     if (this.error) return html`<div class="page"><hxk-state kind=${this.error === 'offline' ? 'offline' : 'error'} @retry=${() => this.load()}></hxk-state></div>`;
     if (!this.l) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const l = this.l;
@@ -88,7 +88,7 @@ export class ScoutListing extends HestiaElement {
     const map = l.lat && l.lon ? `https://www.openstreetmap.org/?mlat=${l.lat}&mlon=${l.lon}#map=16/${l.lat}/${l.lon}`
       : l.address ? `https://www.openstreetmap.org/search?query=${encodeURIComponent(l.address)}` : '';
     return html`<div class="page">
-      <button class="back" @click=${() => this.host.navigate('case')}><hxk-icon name="chevron-left"></hxk-icon>${tr("All houses")}</button>
+      <button class="back" @click=${() => this.host.navigate('houses')}><hxk-icon name="chevron-left"></hxk-icon>${tr("All houses")}</button>
       <div class="top">
         <div class="gal">
           ${imgs.length ? html`<img class="main" src=${imgs[this.shot] ?? imgs[0]} alt="" referrerpolicy="no-referrer">

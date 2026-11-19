@@ -1,6 +1,6 @@
 """Every action Telegram can run: all of Hestia's tools (through Hestia-MCP) plus Telegram's own local actions.
 
-Nothing is hidden (docs/work/2026-10-23-telegram-da-zero §5.9): where an action is shown is decided by the menu
+Nothing is hidden (docs/work/2026-10-23-telegram-from-scratch §5.9): where an action is shown is decided by the menu
 (``telegram_bot.menu.model``), not here.
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ class Tool:
         return [str(r) for r in req if str(r) in props]
 
 
-_DESTRUCTIVE = re.compile(r"(delete|elimina|annulla|cancel|remove|rollback|reject|rifiuta|revoke|disattiva)", re.I)
+_DESTRUCTIVE = re.compile(r"(delete|cancel|remove|rollback|reject|revoke|disable)", re.I)   # tool names (English)
 
 _lock = threading.Lock()
 _tools: dict[str, Tool] = {}

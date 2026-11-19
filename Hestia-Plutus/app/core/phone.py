@@ -1,7 +1,7 @@
-"""Bank / payment app notifications from the phone (Cindy 32, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4).
+"""Bank / payment app notifications from the phone (Cindy 32, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4).
 
 Hecate pushes ``phone.notification`` items ``{app, title, text, at}`` (feed ``hestia_common.feeds``); a notification
-that clearly says money moved («Pagamento di 12,50 € presso ESSELUNGA», «Hai ricevuto 20 €») becomes a transaction
+that clearly says money moved («Payment of €12.50 at TESCO», «You received €20», in any language of ``words.json``) becomes a transaction
 to review, like a PayPal mail. Anything else is ignored. Deterministic: no model call.
 """
 from __future__ import annotations
@@ -10,14 +10,15 @@ import hashlib
 import re
 from typing import Any
 
+from hestia_common.i18n import word_regex
+
 from .catalog import find_currency, parse_amount
 
 _MONEY = re.compile(r"(?:€|EUR|USD|\$|£)\s?(-?\d[\d.,]*)|(-?\d[\d.,]*)\s?(?:€|EUR|euro|USD|\$|£)", re.I)
-_IN = re.compile(r"accredit|ricevut|in entrata|rimbors|hai ricevuto|received|refund|stipendio", re.I)
-_OUT = re.compile(r"pagament|pagato|addebit|spes[oa]|acquist|prelievo|paid|payment|purchase|transazione|"
-                  r"autorizzat|hai inviato|sent", re.I)
-_MERCHANT = re.compile(r"\b(?:presso|da|a|at|to|from|su|verso)\s+([A-Za-z0-9][\w&'.*\- ]{1,40}?)"
-                       r"(?=\s+(?:il|con|di|in|on|alle|per)\b|[.,;:!]|$)")
+_IN = word_regex("{0}", "plutus.phone.in")
+_OUT = word_regex("{0}", "plutus.phone.out")
+_MERCHANT = word_regex(r"\b(?:{0})\s+([A-Za-z0-9][\w&'.*\- ]{{1,40}}?)(?=\s+(?:{1})\b|[.,;:!]|$)",
+                       "plutus.phone.merchant_before", "plutus.phone.merchant_after", flags=0)
 
 
 def parse(app: str, title: str, text: str) -> dict[str, Any] | None:

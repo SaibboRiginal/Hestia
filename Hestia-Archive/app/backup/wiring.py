@@ -76,7 +76,7 @@ def _notify(ev: dict) -> None:
 
 
 def _drive_connect() -> dict:
-    """Google authorization link from the provider gateway (Hecate owns OAuth), for «Collega Google Drive»."""
+    """Google authorization link from the provider gateway (Hecate owns OAuth), for «Link Google Drive»."""
     try:
         resp = requests.post(f"{HUB_API_URL}/route/hecate/api/gateway/auth/initiate/google",
                              json={"method": "POST", "headers": {}, "query": {}, "body": {}, "timeout_seconds": 20},

@@ -2,7 +2,7 @@
 // Start: Code → Codespaces → «…» → New with options (4-core): the page asks for the secrets below (all optional).
 // On every start it runs `python tools/cloud_test.py start`: build/start the stack, login link in .cloud-test/login.txt,
 // full output in .cloud-test/start.log (look there if the link does not appear).
-// Ports stay private (only your GitHub account). Docs: TESTING.md «Banco di prova cloud».
+// Ports stay private (only your GitHub account). Docs: TESTING.md «Cloud test bench».
 {
   "name": "Hestia — banco di prova",
   // Debian 12: the plain 3.12 tag moved to Debian 13 (trixie), where docker-in-docker (moby) does not install

@@ -1,4 +1,4 @@
-"""Reflection signals (docs/work/2026-10-20-riflessione-a-livelli): signals, weekly metrics, context topic and the
+"""Reflection signals (docs/work/2026-10-20-layered-reflection): signals, weekly metrics, context topic and the
 agenda endpoint, over the fake Archive store of ``test_hygieia``. No network: the signals transport is mocked.
 
 Markers: unit, api
@@ -38,9 +38,9 @@ def cared(hy):
         hy.log_routine(weekly["id"], (today - timedelta(days=7 * k)).isoformat())
     many = hy.save_routine({"name": "Massaggio", "cadence": {"mode": "target", "times": 7, "per": "week"},
                             "steps": [{"label": "Olio"}]})
-    hy.journal_add({"date": (today - timedelta(days=7)).isoformat(), "area": "viso", "scores": {"brufoli": 4}})
-    hy.journal_add({"date": (today - timedelta(days=7)).isoformat(), "area": "viso", "scores": {"brufoli": 2}})
-    hy.journal_add({"date": (today - timedelta(days=21)).isoformat(), "area": "viso", "scores": {"brufoli": 5}})
+    hy.journal_add({"date": (today - timedelta(days=7)).isoformat(), "area": "face", "scores": {"pimples": 4}})
+    hy.journal_add({"date": (today - timedelta(days=7)).isoformat(), "area": "face", "scores": {"pimples": 2}})
+    hy.journal_add({"date": (today - timedelta(days=21)).isoformat(), "area": "face", "scores": {"pimples": 5}})
     hy._ids = {"daily": daily["id"], "weekly": weekly["id"], "many": many["id"]}
     return hy
 
@@ -50,7 +50,7 @@ def test_signals_keys_on_fake_data(cared):
     signals, _ = cared.signals()
     by_key = {s["key"]: s for s in signals}
     drop = by_key["adherence_drop"]
-    assert drop["kind"] == "trend" and drop["severity"] == "attenzione" and drop["page"] == "statistiche"
+    assert drop["kind"] == "trend" and drop["severity"] == "warning" and drop["page"] == "stats"
     assert drop["metrics"]["previous"] - drop["metrics"]["percent"] >= 20
     goal = by_key[f"goal:{cared._ids['many']}"]
     assert goal["kind"] == "goal" and goal["page"] == f"routine/{cared._ids['many']}"
@@ -72,7 +72,7 @@ def test_weekly_metrics_twelve_weeks_and_journal(cared):
     weeks = last_weeks(12, cared.today())
     assert sorted(adherence) == weeks
     assert adherence[weeks[0]]["value"] == 100 and adherence[weeks[0]]["label"] == "Routine rispettate %"
-    journal = [m for m in metrics if m["name"] == "selfcare.journal.viso.brufoli"]
+    journal = [m for m in metrics if m["name"] == "selfcare.journal.face.pimples"]
     assert len(journal) == 2                                          # only weeks with entries
     assert {m["value"] for m in journal} == {3.0, 5.0} and journal[0]["label"] == "Diario Viso · Brufoli"
 

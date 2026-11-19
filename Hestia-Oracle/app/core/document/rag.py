@@ -11,6 +11,7 @@ import logging
 from typing import Callable
 
 import requests
+from hestia_common.i18n import words
 
 from core.services.hub_client import HubClient
 
@@ -21,15 +22,7 @@ def _search_threshold() -> float:
     from core.services import oracle_settings
     return oracle_settings.get_float(oracle_settings.DOC_SEARCH_THRESHOLD)
 
-# Keywords that indicate the user is asking about their stored documents
-_DOC_AWARENESS_KEYWORDS: frozenset[str] = frozenset([
-    "document", "documents", "documento", "documenti",
-    "file", "files",
-    "pdf", "attachment", "allegato",
-    "saved", "salvato", "salvati", "archiviato", "archiviati",
-    "uploaded", "caricato", "caricati",
-    "hai", "have", "know about", "remember",
-])
+# Words that say the user is asking about their stored documents: oracle.documents_hint (every language)
 
 
 class DocumentRAG:
@@ -123,7 +116,7 @@ class DocumentRAG:
     def message_is_about_docs(self, message: str) -> bool:
         """Heuristic: return True if *message* likely asks about stored documents."""
         lower = message.lower()
-        return any(kw in lower for kw in _DOC_AWARENESS_KEYWORDS)
+        return any(kw in lower for kw in words("oracle.documents_hint"))
 
     # ── Private helpers ───────────────────────────────────────────────────────
 

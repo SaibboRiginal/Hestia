@@ -44,7 +44,7 @@ class AgendaSection(Section):
     def subtitle(self, rec: dict) -> str:
         parts = [TYPE_LABELS.get(rec.get("type") or "", rec.get("type") or ""), str(rec.get("start_at") or "")[:16]]
         if rec.get("status") == "cancelled":
-            parts.append("annullata")
+            parts.append("cancelled")
         return " · ".join(p for p in parts if p)
 
     def same(self, a: dict, b: dict) -> bool:

@@ -7,7 +7,7 @@
 
 ## Installer
 
-`install.ps1` (Windows; `Installa-Hestia.cmd` is its double-click launcher) and `install.sh` (Linux; macOS only on the
+`install.ps1` (Windows; `Install-Hestia.cmd` is its double-click launcher) and `install.sh` (Linux; macOS only on the
 simple path, Homebrew + Docker Desktop) do, in order: check the PC (RAM, disk ≥ 20 GB, internet, virtualization,
 free ports) → git → WSL2 + Docker Desktop (Windows) / Docker Engine + compose (Linux) → Ollama on the host and the
 default models → Hestia where you launch it (that folder if it is already Hestia, otherwise a `Hestia` folder inside it;
@@ -19,11 +19,11 @@ inside a throwaway `python:3.12-slim` container: random `HESTIA_DB_PASSWORD` on 
 |---|---|
 | none, `--update`, `--repair` / `-Update`, `-Repair` | install, or resume / repair / update an existing one |
 | `--dir PATH` / `-Dir PATH` | install folder |
-| `--channel stable` (default) / `latest` (also `stabile` / `novita`) | latest release with ready-made images · latest code on `main`, built locally |
+| `--channel stable` (default) / `latest` (also `stable` / `news`) | latest release with ready-made images · latest code on `main`, built locally |
 | `--lang en\|it` / `-Lang en\|it` | language of the messages; default the computer's (Italian when it is in Italian, otherwise English); `HESTIA_LANG` does the same for `irm \| iex` |
 | `--uninstall` / `-Uninstall` | stop and remove the containers, data kept; add `--purge` / `-Purge` (type CANCELLA) to delete data too |
 | `--dry-run` / `-DryRun`, `--no-browser` / `-NoBrowser` | print the steps only · do not open the browser |
-| `--role all\|central\|satellite` / `-Role` (also `tutto` / `centrale`) | everything here (default) · always-on home without voice and training · only voice and training, near a video card (a re-run keeps the role) |
+| `--role all\|central\|satellite` / `-Role` (also `all` / `centrale`) | everything here (default) · always-on home without voice and training · only voice and training, near a video card (a re-run keeps the role) |
 | `--join CODE --central IP` / `-Join CODE -Central IP` | link this machine as a satellite (code from Sistema → Macchine on the central one) |
 
 Every step retries (2/4/8 s) and has a fallback (e.g. winget → direct installer; get.docker.com → distro package;
@@ -35,27 +35,27 @@ is only created, not started (otherwise it would crash-loop): the guided setup s
 On Linux, if containers cannot reach Ollama (it listens on 127.0.0.1), the installer makes it listen on all
 interfaces through a systemd drop-in and, with ufw active, allows only Docker's networks to port 11434.
 
-**Guided setup «Benvenuto».** One question per screen, the recommended answer preselected, «Più tardi» on the
+**Guided setup «Benvenuto».** One question per screen, the recommended answer preselected, «Later» on the
 optional ones, resumes where it was: **brain** (where Hestia thinks: on this computer, in the cloud, both, or the
-Claude subscription; the local model for this video card is downloaded at once; a cloud key is tried with «Prova»
+Claude subscription; the local model for this video card is downloaded at once; a cloud key is tried with «Test»
 before it counts) → **Telegram** (paste the BotFather token, then write the 6-digit code it shows to your bot: no
 need to know your Telegram id) → **backup passphrase** → calendar/mail/devices links → summary. Secrets go through
 the Hub to Hephaestus, which writes only whitelisted keys into the right `.env` and re-creates just that container;
-they are never shown again. The voice screen queues the local voices. Steps left for later stay as a «Da finire» card in Home. Everything
-being downloaded (brain models, voices) is in Sistema → **Download**: progress, pause, resume, retry, and «Elimina»
+they are never shown again. The voice screen queues the local voices. Steps left for later stay as a «To finish» card in Home. Everything
+being downloaded (brain models, voices) is in Sistema → **Download**: progress, pause, resume, retry, and «Delete»
 to free space; a download checks the free disk before starting and resumes after an interruption. Reopen it any time at
 `/setup`.
 
 **Più macchine (central + satellites).** On the always-on machine (a Pi, a mini PC) install with `--role centrale`;
-on the PC with the video card open Sistema → **Macchine** → «Collega una macchina» on the central one and paste the
+on the PC with the video card open Sistema → **Macchine** → «Link a machine» on the central one and paste the
 command it shows on the PC (`… --join CODE --central IP`, code valid 10 minutes). The PC then runs only voice and
 model training plus a small Hub that passes everything to the central one; its Ollama listens on the home network
 (Linux: systemd drop-in, ufw opened to the LAN for 11434/19021/19014; Windows: `OLLAMA_HOST=0.0.0.0` for the user,
-answer «Consenti» if Windows asks). «Usa la sua scheda video» runs the brain's local models there. When the PC is
-off its parts show «Non disponibile» and the central's own copy (if any) answers. «Scollega» revokes it. Never open
+answer «Allow» if Windows asks). «Use its graphics card» runs the brain's local models there. When the PC is
+off its parts show «Unavailable» and the central's own copy (if any) answers. «Unlink» revokes it. Never open
 these ports on the router.
 
-**Da fuori casa.** Sistema → Macchine → «Da fuori casa» → *Attiva* (or the same screen in the guided setup, or
+**Da fuori casa.** Sistema → Macchine → «From outside home» → *Attiva* (or the same screen in the guided setup, or
 from Telegram): Hephaestus starts a `cloudflared` quick tunnel container (`hestia_tunnel`, no Cloudflare account)
 pointing at the WebUI and shows its `https://….trycloudflare.com` address. From that address Hestia always asks the
 login; at home nothing changes. The address changes when the tunnel restarts (the WebUI reads the new one by itself
@@ -65,14 +65,14 @@ connectors is still the named tunnel below.
 **Releases and ready-made images.** A tag `vX.Y.Z` on `main` runs `.github/workflows/images.yml`: every service is
 built for amd64 and arm64 and published in the single package `ghcr.io/saibboriginal/hestia` as `<service>-<version>`
 and `<service>-latest`, then the GitHub Release is created. `docker-compose.images.yml` (generated by
-`tools/release/images_compose.py`, kept in step by CI) points compose at them; channel `stabile` uses it, so an
+`tools/release/images_compose.py`, kept in step by CI) points compose at them; channel `stable` uses it, so an
 install downloads instead of building. Images hold only the tag's code, never `.env` or data. The first time, the
 package must be made public once on GitHub (Packages → hestia → Package settings → Change visibility).
 
-**Aggiorna Hestia.** Once a day (agenda job «Cerca aggiornamenti di Hestia», editable in the calendar) Hestia looks
+**Aggiorna Hestia.** Once a day (agenda job «Look for Hestia updates», editable in the calendar) Hestia looks
 for a newer version: on channel *Versioni pubblicate* the newest tag, on *Ogni novità* the latest `main` (Sistema →
-Impostazioni → Hephaestus → «Quali aggiornamenti»). If there is one, a notification asks «Installo?» with what's new
-in plain Italian; Sistema → **Aggiornamenti** (or Telegram) shows the same with «Installa», the history and «Torna
+Impostazioni → Hephaestus → «Which updates»). If there is one, a notification asks «Installo?» with what's new
+in plain Italian; Sistema → **Aggiornamenti** (or Telegram) shows the same with «Install», the history and «Torna
 alla versione di prima». Installing moves the code to the new version, restarts only the parts that changed, takes
 the new image of a part whose dependencies changed (ready-made on *Versioni pubblicate*, built here otherwise),
 checks that everything answers and, if not, goes back to the previous version by itself. It never overwrites local
@@ -111,12 +111,12 @@ The guided setup («Benvenuto», after the installer) writes these for you; by h
 |---|---|---|
 | Cloud models (Gemini, DeepSeek, Claude API…) | one key per provider in `Hestia-Oracle/app/.env`: `ORACLE_KEY_GEMINI`, `ORACLE_KEY_DEEPSEEK`, `ORACLE_KEY_CLAUDE_API`… | A provider without its key is skipped by every chain; with it, its models can be steps of a chain (e.g. after the local model). |
 | Different models | WebUI → Oracle → Cervello → **Modelli** | Providers (name, standard, address), chains of models (order = fallback, quota skip) and the chain/mode of every use case each module declares. Usage per module and conversation: tab **Uso**. |
-| Claude Code / Codex as Hestia's brain | Modelli → «Modalità del cervello» = Esterna; `CLAUDE_CODE_OAUTH_TOKEN` (Claude) or `ORACLE_INSTALL_CODEX=1` + `codex login` (Codex) | The agent runs the loop with Hestia's tools over MCP; Hestia keeps history and memory. |
+| Claude Code / Codex as Hestia's brain | Modelli → «Brain mode» = Esterna; `CLAUDE_CODE_OAUTH_TOKEN` (Claude) or `ORACLE_INSTALL_CODEX=1` + `codex login` (Codex) | The agent runs the loop with Hestia's tools over MCP; Hestia keeps history and memory. |
 | Google Calendar + Gmail | `HECATE_ENABLE_PROVIDER_GOOGLE=true` + OAuth client in `Hestia-Hecate/app/.env` | Step by step: [`Hestia-Hecate/hestia-hecate.md`](../Hestia-Hecate/hestia-hecate.md) → *Google setup*. From the phone, ask the bot "collega Google Calendar". |
-| Backup on Google Drive | `HESTIA_BACKUP_PASSPHRASE` in the root `.env` (also in a password manager: without it the backups cannot be opened) + *Google Drive API* enabled and scope `drive.file` on the Google OAuth app | Then WebUI → Impostazioni → Sistema → Archivio → Backup → «Collega Google Drive». Terminal: `python tools/hestia_backup.py list / restore / undo`. Details: [`Hestia-Archive/hestia-archive.md`](../Hestia-Archive/hestia-archive.md). |
-| Home Assistant («Casa») | `LARES_HA_URL` + `LARES_HA_TOKEN` (long-lived access token) | Empty = the house is simply not connected. [`Hestia-Lares/hestia-lares.md`](../Hestia-Lares/hestia-lares.md). |
-| Images («Immagini») | `APOLLO_COMFYUI_URL` (+ optional `APOLLO_COMFYUI_KEY`) of your ComfyUI | You upload the flows from the WebUI. [`Hestia-Apollo/hestia-apollo.md`](../Hestia-Apollo/hestia-apollo.md). |
-| Garmin, Android phone as a sensor | nothing in env: ask «collega Garmin» (secret form, password never stored); phone via Tasker/MacroDroid | [`Hestia-Hecate/hestia-hecate.md`](../Hestia-Hecate/hestia-hecate.md). |
+| Backup on Google Drive | `HESTIA_BACKUP_PASSPHRASE` in the root `.env` (also in a password manager: without it the backups cannot be opened) + *Google Drive API* enabled and scope `drive.file` on the Google OAuth app | Then WebUI → Impostazioni → Sistema → Archivio → Backup → «Link Google Drive». Terminal: `python tools/hestia_backup.py list / restore / undo`. Details: [`Hestia-Archive/hestia-archive.md`](../Hestia-Archive/hestia-archive.md). |
+| Home Assistant («Home») | `LARES_HA_URL` + `LARES_HA_TOKEN` (long-lived access token) | Empty = the house is simply not connected. [`Hestia-Lares/hestia-lares.md`](../Hestia-Lares/hestia-lares.md). |
+| Images («Images») | `APOLLO_COMFYUI_URL` (+ optional `APOLLO_COMFYUI_KEY`) of your ComfyUI | You upload the flows from the WebUI. [`Hestia-Apollo/hestia-apollo.md`](../Hestia-Apollo/hestia-apollo.md). |
+| Garmin, Android phone as a sensor | nothing in env: ask «Link Garmin» (secret form, password never stored); phone via Tasker/MacroDroid | [`Hestia-Hecate/hestia-hecate.md`](../Hestia-Hecate/hestia-hecate.md). |
 | llama-server (saved chat context) | `LLAMACPP_MODELS_DIR`, `LLAMACPP_MODEL` in the root `.env`, then compose profile `llamacpp` | Optional; first in the local chains when running. |
 | Outlook calendar | `HECATE_ENABLE_PROVIDER_MICROSOFT=true` + `OUTLOOK_*` | Same file. |
 | Claude Code as coding engine | `CLAUDE_CODE_OAUTH_TOKEN` in `Hestia-Oracle/app/.env` | From `claude setup-token` (Pro/Max). Forge then can use the `claude` engine. |

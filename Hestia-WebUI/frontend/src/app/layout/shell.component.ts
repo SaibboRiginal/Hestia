@@ -30,21 +30,21 @@ interface NavEntry { id: string; label: string; icon: string; link: string; onli
   kids?: boolean; open?: boolean; within?: boolean; }
 interface NavSection { key: 'pinned' | 'app' | 'dashboards' | 'modules' | 'system'; label: string; items: NavEntry[]; }
 interface Crumb { label: string; link?: string; }
-/** Pages of the app that belong to «Sistema» next to the system modules' own pages. */
+/** Pages of the app that belong to «System» next to the system modules' own pages. */
 const SYSTEM_PAGES = [
-  { id: 'app.sistema', label: tr('Overview'), icon: 'grid', link: '/sistema' },
-  { id: 'app.aggiornamenti', label: tr('Updates'), icon: 'refresh', link: '/aggiornamenti' },
-  { id: 'app.macchine', label: tr('Machines'), icon: 'host', link: '/macchine' },
+  { id: 'app.system', label: tr('Overview'), icon: 'grid', link: '/system' },
+  { id: 'app.updates', label: tr('Updates'), icon: 'refresh', link: '/updates' },
+  { id: 'app.machines', label: tr('Machines'), icon: 'host', link: '/machines' },
   { id: 'app.download', label: tr('alt::Download'), icon: 'download', link: '/download' },
 ];
-/** Sections whose pages show «Sezione › Pagina» above the page. */
+/** Sections whose pages show «Section › Page» above the page. */
 const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
 
 /** App frame: collapsible, resizable sidebar (APP_MODULES + module pages + dashboards, arranged by the user) + routed page + global overlays.
- *  One rule for the sidebar (docs/work/2026-11-13-sidebar-e-chat): on top the bell, Chat and Cerca; then sections that
- *  all fold the same way (Generale, Fissati, Conversazioni, Dashboard, Moduli, Sistema), a module with sub-pages folds
- *  too; the page on screen is marked with its parent, its section opens by itself and «Sezione › Pagina» is written
- *  above the page. «Scrivi qui» and «Parla» live in the bubble (layout/quick-bubble), not in the sidebar. */
+ *  One rule for the sidebar (docs/work/2026-11-13-sidebar-and-chat): on top the bell, Chat and Search; then sections that
+ *  all fold the same way (General, Pinned, Conversations, Dashboards, Modules, System), a module with sub-pages folds
+ *  too; the page on screen is marked with its parent, its section opens by itself and «Section › Page» is written
+ *  above the page. «Write here» and «Talk» live in the bubble (layout/quick-bubble), not in the sidebar. */
 @Component({
   selector: 'app-shell',
   imports: [TrPipe, NgTemplateOutlet, RouterOutlet, RouterLink, RouterLinkActive, DatePipe, ButtonComponent, IconComponent, ResizeHandleComponent, ToastHostComponent, DialogHostComponent, AssistantDrawerComponent, CommandPaletteComponent, AppearanceLayerComponent, LiveOverlayComponent, ChatHistoryComponent, QuickBubbleComponent],
@@ -76,7 +76,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             <hx-icon name="search" [size]="18" /><span>{{ "Search" | tr }}</span><kbd>{{ "Ctrl K" | tr }}</kbd>
           </button>
         </div>
-        <!-- Pinned entries stay where they are (dossier 2026-11-18-problemi-del-test D): their own block above the scroll
+        <!-- Pinned entries stay where they are (dossier 2026-11-18-real-test-problems D): their own block above the scroll
              area, scrolling by itself only when it holds many. -->
         @if (pinnedSection(); as ps) {
           <div class="pinned-block"><ng-container *ngTemplateOutlet="section; context: { $implicit: ps }" /></div>
@@ -157,7 +157,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
                         <span class="ht">{{ h.at | date:'dd/MM HH:mm' }}</span>
                         <span class="hl">{{ h.label }}@if (reasonLabel(h.reason)) {<span class="hr"> · {{ reasonLabel(h.reason) }}</span>}</span>
                       </div>
-                    } @empty { <div class="pline dim">{{ presence.history() === null ? 'Carico…' : ('No change recorded.' | tr) }}</div> }
+                    } @empty { <div class="pline dim">{{ presence.history() === null ? ('Loading…' | tr) : ('No change recorded.' | tr) }}</div> }
                   </div>
                 }
                 <div class="pactions">
@@ -371,7 +371,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
   `],
 })
 export class ShellComponent {
-  /** The site calls itself with the name the owner chose (docs/work/2026-11-17-nome-dei-client). */
+  /** The site calls itself with the name the owner chose (docs/work/2026-11-17-client-names). */
   readonly name = assistantName();
   /** Chat has its own place on top of the sidebar. */
   readonly top = APP_MODULES.filter(m => !m.bottom && m.path !== 'chat');
@@ -391,10 +391,10 @@ export class ShellComponent {
     const top = pages.filter(p => !p.parent || !pages.some(x => x.module === p.module && x.local_id === p.parent));
     return top.flatMap(p => [p, ...pages.filter(c => c.parent === p.local_id && c.module === p.module)]);
   });
-  /** The «Stato del sistema» dashboard opens from the Sistema page, not from a second sidebar entry. */
-  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'sistema'));
+  /** The «System status» dashboard opens from the System page, not from a second sidebar entry. */
+  readonly otherDashboards = computed(() => this.plugins.dashboards().filter(d => d.id !== 'home' && d.id !== 'system'));
 
-  /** Every sidebar entry by section; pinned ones move to «Fissati» (in the user's order) and leave their section. */
+  /** Every sidebar entry by section; pinned ones move to «Pinned» (in the user's order) and leave their section. */
   readonly sections = computed<NavSection[]>(() => {
     const kinds = this.plugins.modules();
     const badges = this.plugins.badges();
@@ -442,7 +442,7 @@ export class ShellComponent {
   });
 
   /** What the sidebar draws: a closed section or module opens by itself while the page on screen is inside it. */
-  /** «Fissati», drawn above the scroll area (it never scrolls away); null when nothing is pinned. */
+  /** «Pinned», drawn above the scroll area (it never scrolls away); null when nothing is pinned. */
   readonly pinnedSection = computed(() => this.view().find(sec => sec.key === 'pinned' && sec.items.length) ?? null);
 
   readonly view = computed(() => {
@@ -462,16 +462,16 @@ export class ShellComponent {
     });
   });
 
-  /** «Sezione › Pagina» above a page of a module, a dashboard or the system (the sidebar may be closed or far away). */
+  /** «Section › Page» above a page of a module, a dashboard or the system (the sidebar may be closed or far away). */
   readonly crumbs = computed<Crumb[]>(() => {
     const active = this.activeId();
     for (const sec of this.sections()) {
       const e = sec.items.find(x => x.id === active);
       if (!e || !CRUMB_SECTIONS.includes(sec.key)) continue;
       const parent = e.child ? sec.items.find(x => x.id === e.parent) : undefined;
-      // Every piece is a way back (dossier 2026-11-18-problemi-del-test D): the section opens its overview (Sistema) or
+      // Every piece is a way back (dossier 2026-11-18-real-test-problems D): the section opens its overview (System) or
       // its first page, the parent its own page.
-      const sectionLink = sec.key === 'system' ? '/sistema' : sec.items.find(x => !x.child)?.link;
+      const sectionLink = sec.key === 'system' ? '/system' : sec.items.find(x => !x.child)?.link;
       return [{ label: sec.label, link: sectionLink }, ...(parent ? [{ label: parent.label, link: parent.link }] : []),
               { label: e.label }];
     }
@@ -514,7 +514,7 @@ export class ShellComponent {
 
   isSectionClosed(key: string): boolean { return this.plugins.navCollapsed().includes(key); }
 
-  /** Drag to reorder inside «Fissati» (native drag and drop; the order is saved on drop). */
+  /** Drag to reorder inside «Pinned» (native drag and drop; the order is saved on drop). */
   dragId = signal<string | null>(null);
   private dragOrder: string[] | null = null;
   dragStart(id: string, section: string): void {
@@ -567,7 +567,7 @@ export class ShellComponent {
 
   dndHint(p: PresenceState): string {
     const m = p.dnd_minutes ?? 120;
-    const d = m % 60 === 0 ? `${m / 60} ${m === 60 ? 'ora' : 'ore'}` : `${m} min`;
+    const d = m % 60 === 0 ? (m === 60 ? tr('1 hour') : tr('{0} hours', m / 60)) : `${m} min`;
     return tr("«Do not disturb»: for {0} you get only urgent notifications; you receive the others in a summary when it ends.", d);
   }
   readonly ago = ago;
@@ -630,13 +630,13 @@ export class ShellComponent {
     await this.chats.open(id);
   }
 
-  /** «Parla» from anywhere: same live mode as the chat page (layout/live-overlay shows it on other pages). */
+  /** «Talk» from anywhere: same live mode as the chat page (layout/live-overlay shows it on other pages). */
   toggleLive(): void {
     if (this.live.on) { this.live.stop(); return; }
     void this.live.start().then(() => { if (this.live.error()) this.toasts.error(this.live.error()); });
   }
 
-  /** Ctrl+J = «Scrivi qui» from anywhere; Ctrl+Shift+Space = «Parla». */
+  /** Ctrl+J = «Write here» from anywhere; Ctrl+Shift+Space = «Talk». */
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
     if (e.key === 'Escape' && this.chatMenu()) { this.chatMenu.set(null); return; }

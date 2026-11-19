@@ -1,10 +1,10 @@
-"""Emoji reactions, both ways (docs/work/2026-11-06-hestia-viva F4).
+"""Emoji reactions, both ways (docs/work/2026-11-06-living-hestia F4).
 
 - Hestia → owner: Oracle streams ``{"type":"reaction","emoji"}``; the bot puts it on the owner's message with
   ``setMessageReaction``. Telegram accepts only its own list of emoji: a near one is mapped (😂 → 🤣), anything else
   is skipped (logged), the text answer is never affected.
 - Owner → Hestia: a ``message_reaction`` update on one of her messages goes to Oracle ``POST /api/chat/reaction``
-  (one history line, so the next turn knows it). The reacted text comes from the answers kept for «Ascolta».
+  (one history line, so the next turn knows it). The reacted text comes from the answers kept for «Listen».
 """
 import logging
 

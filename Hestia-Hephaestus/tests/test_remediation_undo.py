@@ -1,5 +1,5 @@
 """«Annulla riparazione» does something real: stops a repair that never ran, asks the target module
-to restore what it changed, and says so when there is nothing to restore (docs/work/2026-10-30-cose-aperte)."""
+to restore what it changed, and says so when there is nothing to restore (docs/work/2026-10-30-open-items)."""
 from __future__ import annotations
 
 import logging

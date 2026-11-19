@@ -1,6 +1,6 @@
-"""Apollo — images through a remote ComfyUI («Immagini», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A1).
+"""Apollo — images through a remote ComfyUI («Images», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A1).
 
-Marko uploads **flows** (ComfyUI workflows in API format) with a purpose (``ritratto``, ``sfondo``, ``mascotte``…);
+Marko uploads **flows** (ComfyUI workflows in API format) with a purpose (``portrait``, ``background``, ``mascot``…);
 Apollo fills the prompt/size/seed inputs and queues **jobs** one at a time (a worker woken by new jobs, no timer).
 Finished images go to Archive blobs; the requester is told by push (``callback`` = ``{service, path}``, e.g. the
 appearance module) and/or by a Hermes notice. A purpose with no flow fails at once with a notice saying where to
@@ -22,8 +22,8 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_apollo.service")
 
-PURPOSES = {"generico": "Generic image", "ritratto": "Ritratto", "sfondo": "Background", "mascotte": "Mascot",
-            "icona": "Icona", "illustrazione": "Illustrazione"}
+PURPOSES = {"generic": "Generic image", "portrait": "Portrait", "background": "Background", "mascot": "Mascot",
+            "icon": "Icon", "illustration": "Illustration"}
 INPUTS = ("prompt", "negative", "width", "height", "seed")
 
 
@@ -81,9 +81,9 @@ class Images:
         if not isinstance(graph, dict) or not graph or not all(isinstance(n, dict) and n.get("class_type")
                                                                for n in graph.values()):
             raise Invalid(tr("the workflow is needed in ComfyUI API format (Save → API Format)"))
-        purpose = body.get("purpose") or "generico"
+        purpose = body.get("purpose") or "generic"
         if purpose not in PURPOSES:
-            raise Invalid("scopo: " + ", ".join(PURPOSES))
+            raise Invalid(tr("purpose: ") + ", ".join(PURPOSES))
         inputs = {**detect_inputs(graph), **{k: v for k, v in (body.get("inputs") or {}).items() if k in INPUTS}}
         if "prompt" not in inputs:
             raise Invalid(tr("I can't find where the text goes: point to inputs.prompt (e.g. «6.inputs.text»)"))
@@ -108,17 +108,17 @@ class Images:
 
     def flow_for(self, purpose: str) -> dict | None:
         flows = [f for f in self.store.items("workflow") if f["purpose"] == purpose] or \
-                [f for f in self.store.items("workflow") if f["purpose"] == "generico"]
+                [f for f in self.store.items("workflow") if f["purpose"] == "generic"]
         return next((f for f in flows if f.get("default")), flows[0] if flows else None)
 
     # ── jobs ────────────────────────────────────────────────────────────────
-    def request(self, prompt: str, *, purpose: str = "generico", negative: str = "", width: int | None = None,
+    def request(self, prompt: str, *, purpose: str = "generic", negative: str = "", width: int | None = None,
                 height: int | None = None, seed: int | None = None, callback: dict | None = None,
                 ref: str = "", by: str = "user", notify: bool = False) -> dict:
         prompt = str(prompt or "").strip()[:2000]
         if not prompt:
             raise Invalid(tr("describe the image"))
-        purpose = purpose if purpose in PURPOSES else "generico"
+        purpose = purpose if purpose in PURPOSES else "generic"
         for v in (width, height):
             if v is not None and not 64 <= int(v) <= 2048:
                 raise Invalid(tr("width and height between 64 and 2048"))
@@ -225,7 +225,7 @@ class Images:
                                          "_title": tr("Image ready") if not error else tr("Image failed"),
                                          "_message": job["prompt"][:120] if not error else error,
                                          "level": "info" if not error else "warning", "target": "owner",
-                                         "icon": "camera", "_link": {"module": "apollo", "page": f"lavoro/{jid}"}}})
+                                         "icon": "camera", "_link": {"module": "apollo", "page": f"job/{jid}"}}})
         return {**job, "id": jid}
 
     def _missing_notice(self, purpose: str, error: str) -> None:
@@ -237,4 +237,4 @@ class Images:
                          "payload": {"kind": "apollo.missing_flow", "service": "apollo", "_source": tr("Images"),
                                      "_title": tr("A workflow for images is missing"), "_message": msg, "level": "warning",
                                      "target": "owner", "icon": "camera", "replaces": f"apollo.missing.{purpose}",
-                                     "_link": {"module": "apollo", "page": "flussi"}}})
+                                     "_link": {"module": "apollo", "page": "workflows"}}})

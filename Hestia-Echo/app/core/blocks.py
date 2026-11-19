@@ -1,4 +1,4 @@
-"""Providers, chains, uses — the blocks of Echo, same shape as Oracle a blocchi (dossier §4).
+"""Providers, chains, uses — the blocks of Echo, same shape as Oracle's blocks (dossier §4).
 
 - **Providers** (``echo.providers``): ``{name: {type, label, url, options}}``; the key only in env
   ``ECHO_KEY_<NAME>`` (upper-case, ``-`` → ``_``).
@@ -31,7 +31,7 @@ EXTERNAL_KEY = "echo.external.provider"
 EXTERNAL_MODEL_KEY = "echo.external.model"
 FALLBACK_KEY = "echo.external.fallback"
 
-DIRECTIONS = ("ascolto", "voce")
+DIRECTIONS = ("listen", "voice")
 
 DEFAULT_PROVIDERS: dict[str, dict] = {
     "whisper-locale": {"type": "whisper_local", "label": "Whisper (local)", "url": "", "options": {}},
@@ -49,22 +49,22 @@ def _step(provider: str, model: str = "", voice: str = "", **options) -> dict:
 
 
 DEFAULT_CHAINS: dict[str, dict] = {
-    "ascolto": {"label": "Listening", "direction": "ascolto", "steps": [
+    "listen": {"label": "Listening", "direction": "listen", "steps": [
         _step("whisper-locale", "small"), _step("groq", "whisper-large-v3-turbo")]},
-    "ascolto-preciso": {"label": "Precise listening", "direction": "ascolto", "steps": [
+    "listening-precise": {"label": "Precise listening", "direction": "listen", "steps": [
         _step("groq", "whisper-large-v3"), _step("whisper-locale", "medium")]},
-    "voce": {"label": "Voice", "direction": "voce", "steps": [
+    "voice": {"label": "Voice", "direction": "voice", "steps": [
         _step("kokoro", voice="if_sara"), _step("piper", voice="it_IT-paola-medium")]},
-    "voce-naturale": {"label": "Natural voice", "direction": "voce", "steps": [
+    "voice-natural": {"label": "Natural voice", "direction": "voice", "steps": [
         _step("kokoro", voice="if_sara"), _step("google", voice="it-IT-Neural2-A"),
         _step("piper", voice="it_IT-paola-medium")]},
 }
 
 # Echo's own uses (the plugin's test box); callers declare theirs.
 ECHO_USECASES = {
-    "echo.prova.ascolto": {"label": "Test · listening", "direction": "ascolto", "chain": "ascolto",
+    "echo.test.listening": {"label": "Test · listening", "direction": "listen", "chain": "listen",
                            "help": "The microphone of the Voice page."},
-    "echo.prova.voce": {"label": "Test · voice", "direction": "voce", "chain": "voce",
+    "echo.test.voice": {"label": "Test · voice", "direction": "voice", "chain": "voice",
                         "help": "The «speak» button of the Voice page."},
 }
 
@@ -125,7 +125,7 @@ class Blocks:
                          "key": bool(p["key"]), "needs_key": std.needs_key, "state": state,
                          "quota": self.exhausted_for(p["name"]),
                          "models": std.models(p) if state == "ready" else [],
-                         "voices": std.voices(p, language) if state == "ready" and "voce" in std.directions else []})
+                         "voices": std.voices(p, language) if state == "ready" and "voice" in std.directions else []})
         return rows
 
     # ── chains ───────────────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ class Blocks:
                         found.append({"id": str(item["id"]).lower(), "module": module,
                                       "label": str(item.get("label") or item["id"]), "direction": item["direction"],
                                       "chain": str(item.get("chain") or item["direction"]),
-                                      "mode": str(item.get("mode") or "segui"), "help": str(item.get("help") or "")})
+                                      "mode": str(item.get("mode") or "follow"), "help": str(item.get("help") or "")})
             self._reg_cache = (time.time(), found)
             return found
         except Exception as exc:
@@ -211,14 +211,14 @@ class Blocks:
             return rows
 
     def declared_usecases(self) -> dict[str, dict]:
-        out = {uc: {"id": uc, "module": "echo", "mode": "segui", **d} for uc, d in ECHO_USECASES.items()}
+        out = {uc: {"id": uc, "module": "echo", "mode": "follow", **d} for uc, d in ECHO_USECASES.items()}
         for row in self._registry_usecases():
             out.setdefault(row["id"], row)
         with self._lock:
             seen = dict(self._seen)
         for uc, direction in seen.items():
             out.setdefault(uc, {"id": uc, "module": uc.split(".", 1)[0], "label": uc, "direction": direction,
-                                "chain": direction, "mode": "segui", "undeclared": True,
+                                "chain": direction, "mode": "follow", "undeclared": True,
                                 "help": tr("Not declared: uses the default chain of the direction.")})
         return out
 
@@ -229,16 +229,16 @@ class Blocks:
         for uc, d in sorted(self.declared_usecases().items()):
             o = overrides.get(uc) if isinstance(overrides.get(uc), dict) else {}
             rows.append({**d, "suggested_chain": d["chain"], "chain": o.get("chain") or d["chain"],
-                         "mode": o.get("mode") or d.get("mode") or "segui", "overridden": bool(o)})
+                         "mode": o.get("mode") or d.get("mode") or "follow", "overridden": bool(o)})
         return rows
 
     def usecase_config(self, uc: str, direction: str) -> dict:
-        uc = (uc or f"echo.prova.{direction}").strip().lower()
+        uc = (uc or f"echo.test.{direction}").strip().lower()
         decl = self.declared_usecases().get(uc)
         if decl is None:
             with self._lock:
                 self._seen[uc] = direction
-            decl = {"chain": direction, "mode": "segui"}
+            decl = {"chain": direction, "mode": "follow"}
         overrides = self.get(USECASES_KEY, None)
         o = (overrides or {}).get(uc) if isinstance(overrides, dict) else None
         o = o if isinstance(o, dict) else {}
@@ -247,33 +247,33 @@ class Blocks:
         if chain not in chains or chains[chain]["direction"] != direction:
             chain = direction if direction in chains else next(
                 (n for n, c in chains.items() if c["direction"] == direction), "")
-        mode = str(o.get("mode") or decl.get("mode") or "segui")
-        if mode == "segui":
-            mode = str(self.get(MODE_KEY, "interna") or "interna")
+        mode = str(o.get("mode") or decl.get("mode") or "follow")
+        if mode == "follow":
+            mode = str(self.get(MODE_KEY, "internal") or "internal")
         return {"id": uc, "chain": chain, "mode": mode}
 
     # ── running ──────────────────────────────────────────────────────────────
     def external_step(self, direction: str) -> tuple[dict, dict] | None:
-        """``(provider, step)`` of the external engine for ``esterna`` (None = not usable for this direction)."""
+        """``(provider, step)`` of the external engine for ``external`` (None = not usable for this direction)."""
         name = str(self.get(EXTERNAL_KEY, "") or "")
         p = self.providers().get(name)
         if not p or direction not in STANDARDS[p["type"]].directions or self.provider_state(p) != "ready":
             return None
         model = str(self.get(EXTERNAL_MODEL_KEY, "") or "")
-        return p, {"provider": name, "model": model if direction == "ascolto" else "",
-                   "voice": model if direction == "voce" else "", "options": {}}
+        return p, {"provider": name, "model": model if direction == "listen" else "",
+                   "voice": model if direction == "voice" else "", "options": {}}
 
     def run(self, uc: str, direction: str, call: Callable[[dict, dict], Any]) -> tuple[Any, dict]:
         """Run ``call(provider, step)`` on the use's chain (or the external engine). Returns ``(result, info)``
         with ``info = {use_case, chain, mode, step, provider, model, voice, fallback}``."""
         cfg = self.usecase_config(uc, direction)
         errors: list[str] = []
-        if cfg["mode"] == "esterna":
+        if cfg["mode"] == "external":
             ext = self.external_step(direction)
             if ext is not None:
                 p, s = ext
                 try:
-                    return call(p, s), {"use_case": cfg["id"], "chain": "", "mode": "esterna", "step": 0,
+                    return call(p, s), {"use_case": cfg["id"], "chain": "", "mode": "external", "step": 0,
                                         "provider": p["name"], "model": s["model"], "voice": s["voice"],
                                         "fallback": False}
                 except Exception as exc:
@@ -281,7 +281,7 @@ class Blocks:
                     logger.warning("[🔄] event=voice_external_failed provider=%s error=%s", p["name"], str(exc)[:200])
             else:
                 errors.append(tr("external engine not ready"))
-            if str(self.get(FALLBACK_KEY, "interna") or "interna") != "interna":
+            if str(self.get(FALLBACK_KEY, "internal") or "internal") != "internal":
                 raise ChainExhausted("; ".join(errors))
         chain = self.chains().get(cfg["chain"])
         if not chain:
@@ -307,9 +307,9 @@ class Blocks:
                                cfg["id"], cfg["chain"], i, s["provider"], str(exc)[:200])
                 errors.append(f"{s['provider']}: {str(exc)[:120]}")
                 continue
-            return result, {"use_case": cfg["id"], "chain": cfg["chain"], "mode": "interna", "step": i,
+            return result, {"use_case": cfg["id"], "chain": cfg["chain"], "mode": "internal", "step": i,
                             "provider": s["provider"], "model": s["model"], "voice": s["voice"],
-                            "fallback": i > 0 or cfg["mode"] == "esterna"}
+                            "fallback": i > 0 or cfg["mode"] == "external"}
         logger.error("event=voice_chain_exhausted use_case=%s chain=%s errors=%s", cfg["id"], cfg["chain"], errors)
         raise ChainExhausted("; ".join(errors) or tr("empty chain"))
 

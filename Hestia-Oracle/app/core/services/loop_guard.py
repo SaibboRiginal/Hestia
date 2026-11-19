@@ -1,15 +1,15 @@
-"""Loop guard for the agent loop (Cindy idea 1, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Loop guard for the agent loop (Cindy idea 1, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 Local models often call the same tool again and again and burn every turn. Before the turn cap, a deterministic
 detector looks at the fingerprints (tool name + arguments) of the calls of this answer:
 
-- **ripetizione**: the same call N times in a row (``oracle.agent.giri.ripetizioni``, default 4);
-- **ping-pong**: A-B-A-B… inside the last ``oracle.agent.giri.finestra`` calls (at least 3 rounds);
-- **giro**: the same sequence of 3-4 calls repeated 3 times inside the window.
+- **repetition**: the same call N times in a row (``oracle.agent.rounds.repeats``, default 4);
+- **ping-pong**: A-B-A-B… inside the last ``oracle.agent.rounds.window`` calls (at least 3 rounds);
+- **loop**: the same sequence of 3-4 calls repeated 3 times inside the window.
 
-Real waits do not count: a repeated call made at least ``oracle.agent.giri.attesa_secondi`` after the previous
-one («controllo di nuovo tra poco») resets the run. On a suspicion an optional light check (use case
-``oracle.controllo_giri``) decides «sta aspettando» or «gira a vuoto», at most ``oracle.agent.giri.verifiche``
+Real waits do not count: a repeated call made at least ``oracle.agent.rounds.wait_seconds`` after the previous
+one («I'll check again shortly») resets the run. On a suspicion an optional light check (use case
+``oracle.check_rounds``) decides «waiting» or «spinning», at most ``oracle.agent.rounds.checks``
 times per answer; no checker, a failure or the limit = stop. Always on: the tunables only shape it.
 """
 from __future__ import annotations
@@ -22,11 +22,11 @@ from typing import Callable
 
 logger = logging.getLogger("hestia_oracle.loop_guard")
 
-GUARD_REPEAT = "oracle.agent.giri.ripetizioni"
-GUARD_WINDOW = "oracle.agent.giri.finestra"
-GUARD_WAIT = "oracle.agent.giri.attesa_secondi"
-GUARD_CHECKS = "oracle.agent.giri.verifiche"
-CHECK_USECASE = "oracle.controllo_giri"
+GUARD_REPEAT = "oracle.agent.rounds.repeats"
+GUARD_WINDOW = "oracle.agent.rounds.window"
+GUARD_WAIT = "oracle.agent.rounds.wait_seconds"
+GUARD_CHECKS = "oracle.agent.rounds.checks"
+CHECK_USECASE = "oracle.check_rounds"
 
 STOP_MESSAGE = ("[SYSTEM]: you are repeating the same calls with no progress. Call no more tools: "
                 "answer now with what you have, and say what you could not get.")
@@ -65,7 +65,7 @@ class LoopGuard:
         tail = self.calls[-self.repeat:]
         if len({fp for fp, _ in tail}) != 1:
             return False
-        # a real wait between two of them («ricontrollo tra poco») is not a loop
+        # a real wait between two of them («I'll check again shortly») is not a loop
         return all(b - a < self.wait_seconds for (_, a), (_, b) in zip(tail, tail[1:]))
 
     def _ping_pong(self) -> bool:
@@ -90,11 +90,11 @@ class LoopGuard:
 
     def suspect(self) -> str:
         if self._same_run():
-            return "ripetizione"
+            return "repetition"
         if self._ping_pong():
             return "ping-pong"
         if self._rotation():
-            return "giro"
+            return "loop"
         return ""
 
     # ── public ───────────────────────────────────────────────────────────
@@ -112,8 +112,8 @@ class LoopGuard:
             except Exception as exc:  # timeout / no model: stop is the safe side
                 logger.warning("[🔄] event=agent_loop_guard_check_failed kind=%s error=%s fallback=stop", kind,
                                str(exc)[:160])
-                verdict = "giro"
-            if verdict.startswith("aspett") or verdict.startswith("wait"):
+                verdict = "loop"
+            if verdict.startswith("wait"):
                 logger.info("event=agent_loop_guard_waiting kind=%s checks=%d", kind, self.checks)
                 # keep only the last call: a new run must build up again before the next suspicion
                 self.calls = self.calls[-1:]

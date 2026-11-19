@@ -3,7 +3,7 @@ PayPal↔bank linking, summaries and statistics. Storage = ``Store`` (Archive ``
 
 Money is signed: expense < 0, income/refund > 0. Totals never count ``linked_to`` rows (the same payment seen twice,
 e.g. PayPal mail + the card row «PAYPAL *X» in the bank statement) nor transfers between own accounts.
-SPEC docs/work/2026-10-19-email-push-spese §4.
+SPEC docs/work/2026-10-19-email-push-expenses §4.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from hestia_common.signals_client import iso_week, last_weeks, metric, signal
 
 from . import catalog, paypal, phone
 from .store import Store, now_iso
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_set  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_plutus.service")
 
@@ -127,16 +127,16 @@ class Plutus:
         for i, (cid, label, icon, color, kind) in enumerate(catalog.CATEGORIES):
             rows.append({"kind": "category", "id": cid, "data": {"label": tr(label), "icon": icon, "color": color,
                                                                  "kind": kind, "order": i, "seed": True}})
-        for cid, patterns in catalog.DEFAULT_RULES.items():
+        for cid, patterns in catalog.default_rules().items():
             for p in patterns:
                 rows.append({"kind": "rule", "id": f"rule_{catalog.slug(p)}", "ref_id": cid,
                              "data": {"pattern": p.strip(), "category": cid, "source": "default"}})
         rows.append({"kind": "account", "id": "paypal", "data": {"name": "PayPal", "kind": "wallet", "seed": True}})
         rows.append({"kind": "account", "id": "hype", "data": {"name": "Hype", "kind": "bank", "seed": True}})
-        rows.append({"kind": "account", "id": "contanti", "data": {"name": tr("Cash"), "kind": "cash", "seed": True}})
+        rows.append({"kind": "account", "id": "cash", "data": {"name": tr("Cash"), "kind": "cash", "seed": True}})
         self.store.write(rows)
         logger.info("event=plutus_seeded categories=%d rules=%d", len(catalog.CATEGORIES),
-                    sum(len(v) for v in catalog.DEFAULT_RULES.values()))
+                    sum(len(v) for v in catalog.default_rules().values()))
         return len(rows)
 
     # ── categories, accounts, rules ──────────────────────────────────────────
@@ -182,7 +182,7 @@ class Plutus:
 
     def resolve_account(self, value: str | None) -> str:
         if not value:
-            return "contanti"
+            return "cash"
         key = catalog.slug(value)
         for a in self.accounts():
             if a["id"] == key or catalog.slug(a.get("name")) == key:
@@ -237,7 +237,7 @@ class Plutus:
         if not kind and typed_category:
             kind = {"income": "income"}.get(self.category_map()[typed_category].get("kind"), "")
         if not kind and source in ("manual", "quick", "chat") and amount > 0:
-            kind = "expense"                     # «ho speso 12 €»: a typed positive amount is a spending
+            kind = "expense"                     # «I spent 12 €»: a typed positive amount is a spending
         if kind == "expense":
             amount = -abs(amount)
         elif kind == "income":
@@ -254,7 +254,7 @@ class Plutus:
         if not category:
             category = self.categorize(merchant, description)
         if not category:
-            category = "entrate" if amount > 0 else "altro"
+            category = "income" if amount > 0 else "other"
             status = "to_review" if source in ("email", "statement", "phone") else "confirmed"
         data = {"date": when.isoformat(), "amount": round(amount, 2),
                 "currency": str(body.get("currency") or self.currency()).upper()[:3],
@@ -388,7 +388,7 @@ class Plutus:
                 if float(b.get("amount") or 0) > 0}
 
     def set_budget(self, category: str, amount: Any) -> dict:
-        target = "total" if catalog.slug(category) in ("total", "totale", "") else self.resolve_category(category)
+        target = "total" if (catalog.slug(category) or "") in {"", *word_set("plutus.total")} else self.resolve_category(category)
         if not target:
             raise Invalid(tr("unknown category «{0}»", category))
         value = catalog.parse_amount(amount)
@@ -557,7 +557,7 @@ class Plutus:
             tx = self.add_tx({"amount": parsed["amount"], "currency": parsed.get("currency"),
                               "merchant": parsed.get("merchant"), "description": subject[:200], "date": when.isoformat(),
                               "account": "paypal", "external_ref": ext, "mail_ref": ref,
-                              "category": "entrate" if parsed.get("kind") == "received" else None},
+                              "category": "income" if parsed.get("kind") == "received" else None},
                              source="email")
             result = {"status": "duplicate" if tx.get("duplicate") else "added", "how": how, "tx_id": tx["id"],
                       "amount": tx["amount"], "merchant": tx.get("merchant")}
@@ -634,7 +634,7 @@ class Plutus:
                 "to_review": last["to_review"]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): spent and earned on ``day`` by
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): spent and earned on ``day`` by
         category, movements to review, confirmed recurring payments due on ``nxt``, month budget. No LLM."""
         cats, cur = self.category_map(), self.currency()
 
@@ -652,7 +652,7 @@ class Plutus:
         if spent:
             top = sorted(by_cat.items(), key=lambda kv: -kv[1])[:3]
             done.append({"text": tr("Spent {0} (", money(spent))
-                                 + ", ".join(f"{(cats.get(c) or {}).get('label') or c or 'altro'} {money(v)}" for c, v in top)
+                                 + ", ".join(f"{(cats.get(c) or {}).get('label') or c or tr('other')} {money(v)}" for c, v in top)
                                  + ")"})
         income = sum(t["amount"] for t in counted if t["amount"] > 0)
         if income:
@@ -720,7 +720,7 @@ class Plutus:
         return out
 
     def signals(self) -> tuple[list[dict], list[dict]]:
-        """Deterministic signals + weekly metrics (12 ISO weeks) for the reflection layer. Texts say «Spese»."""
+        """Deterministic signals + weekly metrics (12 ISO weeks) for the reflection layer. Texts say «Expenses»."""
         sym, cats = self._sym(), self.category_map()
         sigs: list[dict] = []
         # budget pace / over budget (month and per category)
@@ -735,9 +735,9 @@ class Plutus:
                     "days_total": s["days_total"]}
             if spent >= budget:
                 sigs.append(signal(f"budget_pace:{cid}", tr("{0} exceeded: {1:.0f}/{2:.0f}{3}.", name, spent, budget, sym),
-                                   kind="goal", severity="alta", metrics=nums, period=s["month"], page="budget"))
+                                   kind="goal", severity="high", metrics=nums, period=s["month"], page="budget"))
             elif s["days_gone"] >= self.PACE_MIN_DAYS and pace > budget:
-                sigs.append(signal(f"budget_pace:{cid}", tr("{0} at a high pace: {1:.0f}/{2:.0f}{3}, end of month ~{4:.0f}{5}.", name, spent, budget, sym, pace, sym), kind="goal", severity="attenzione", metrics=nums,
+                sigs.append(signal(f"budget_pace:{cid}", tr("{0} at a high pace: {1:.0f}/{2:.0f}{3}, end of month ~{4:.0f}{5}.", name, spent, budget, sym, pace, sym), kind="goal", severity="warning", metrics=nums,
                                    period=s["month"], page="budget"))
         # unusual week vs median of the previous 8
         weeks = self.weekly_spending(12)
@@ -747,21 +747,21 @@ class Plutus:
         mid = median(prev) if prev else 0
         now = weeks[this_week]["total"]
         if mid > 0 and now > self.UNUSUAL_RATIO * mid:
-            sigs.append(signal("unusual_week", tr("High spending week: {0:.0f}{1} against {2:.0f}{3} usually.", now, sym, mid, sym), kind="anomaly", severity="attenzione",
+            sigs.append(signal("unusual_week", tr("High spending week: {0:.0f}{1} against {2:.0f}{3} usually.", now, sym, mid, sym), kind="anomaly", severity="warning",
                                metrics={"spent": round(now, 2), "median_8w": round(mid, 2)}, period=this_week,
-                               page="statistiche"))
+                               page="stats"))
         # recurring payments found in the last days
         since = (self.today() - timedelta(days=self.NEW_RECURRING_DAYS)).isoformat()
         for r in self.detect_recurring():
             if r.get("status") != "dismissed" and (r.get("found_at") or "") >= since:
                 period = {"weekly": tr("weekly"), "monthly": tr("monthly"), "yearly": tr("yearly")}.get(r["period"], "")
                 sigs.append(signal(f"new_subscription:{r['id']}", tr("New recurring payment: {0} {1:.2f}{2} {3}.", r['merchant'], r['amount'], sym, period), kind="trend", severity="info",
-                                   metrics={"amount": r["amount"], "count": r["count"]}, page="abbonamenti"))
+                                   metrics={"amount": r["amount"], "count": r["count"]}, page="subscriptions"))
         # rows waiting for a category
         n = sum(1 for t in self._tx_rows() if t.get("status") == "to_review")
         if n >= self.TO_REVIEW_MIN:
             sigs.append(signal("to_review", tr("{0} expense transactions to review.", n), kind="trend", severity="info",
-                               metrics={"count": n}, page="movimenti"))
+                               metrics={"count": n}, page="transactions"))
         # weekly metrics: total + top 4 categories of the period
         mets = [metric("finance.spent", w, weeks[w]["total"], tr("Weekly spending")) for w in order]
         totals: dict[str, float] = defaultdict(float)

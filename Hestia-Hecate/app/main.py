@@ -29,7 +29,7 @@ from core.outbound import HOW_TO as OUTBOUND_HOW_TO, outbound_servers
 from core.mail_watch import MailWatcher
 from core.hecate_settings import (ACTION_NOTIFY_COOLDOWN, AUTH_RECHECK_INTERVAL, CALENDAR_BACKFILL_DAYS,
                                   PERSONAL_PLACES, WEATHER_CACHE_MINUTES, settings as hecate_settings)
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import current, t as tr  # fixed texts in the owner's language
 
 load_dotenv()
 
@@ -77,7 +77,7 @@ try:
                 ("Confirm the calendar sync: how many events were found for each provider (Google, Outlook). Be "
                  "brief.")
             ),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Calendar"}),
         MCPTool(
             name="gateway_auth_status",
@@ -89,7 +89,7 @@ try:
             response_prompt=(
                 "List the configured providers and their sign-in state. Be direct."
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_verify",
@@ -108,7 +108,7 @@ try:
             response_prompt=(
                 ("List the state of each provider and say clearly whether notifications were sent for the broken ones. If Google is not signed in, remind the user to use the button to sign in to Google again in the notification they received.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_initiate_google",
@@ -124,7 +124,7 @@ try:
                  "itself; from a phone the final localhost page does not load (normal): copy the whole URL from "
                  "the address bar and paste it here in chat.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts", "primary": 4}),
         MCPTool(
             name="gateway_auth_complete_google",
@@ -145,7 +145,7 @@ try:
             response_prompt=(
                 "If status=authorized confirm Google Calendar is linked. Otherwise report error and hint briefly."
             ),
-            telegram_visible=False, telegram_group="sistema",
+            telegram_visible=False, telegram_group="system",
                 telegram={"section": "Advanced"}),
         MCPTool(
             name="gateway_auth_initiate_microsoft",
@@ -158,7 +158,7 @@ try:
                 ("Show the user the Microsoft device code and verification URL. Ask them to open the URL and "
                  "enter the code. Then use GET /api/gateway/auth/poll/microsoft to check completion.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_poll",
@@ -177,7 +177,7 @@ try:
                 ("Tell the user whether the Google/Microsoft sign-in completed or is still pending. If completed, "
                  "say Calendar and Gmail now work.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Advanced"}),
         MCPTool(
             name="weather_now",
@@ -189,7 +189,7 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Answer in one or two sentences: place, temperature, conditions and whether it will rain today "
                               "(with hours). If status is needs_place or place_not_found explain what is needed.")),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Weather", "primary": 2, "label": "Weather"}),
         MCPTool(
             name="weather_forecast",
@@ -206,7 +206,7 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Summarise the forecast day by day, briefly (min–max, conditions, rain with hours). If status is "
                               "not ok explain what is needed.")),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Weather", "label": "alt::Forecast"}),
         *devices_api.tools(MCPTool),
     ]
@@ -219,14 +219,14 @@ app.include_router(create_log_control_router("hestia_hecate"))
 app.include_router(hecate_settings.router())
 app.include_router(devices_api.router)
 
-# ── WebUI plugin «Dispositivi» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
+# ── WebUI plugin «Devices» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
 from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
 UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
 ui = PluginClient("hecate", title="Accounts and devices", icon="link", color="teal", kind="core", dist=UI_DIST,
                   description="The linked accounts and devices: calendar, mail, weather, watch, phone.",
                   version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
-         pages=[plugin_page("dispositivi", "Devices", element="hecate-devices", icon="pulse", order=105,
+         pages=[plugin_page("devices", "Devices", element="hecate-devices", icon="pulse", order=105,
                             help="The Garmin watch (sleep and activities every morning) and the Android phone (at home, charging, notifications of the chosen apps): link them and see the latest data received.")])
 app.include_router(ui.router())
 
@@ -629,7 +629,7 @@ class FetchCommand(BaseModel):
     source: str = Field(...,
                         description="The fetcher to use, e.g., 'gmail_imap'")
     filter_query: str = Field(
-        ..., description="The targeted query, e.g., 'FROM \"alerts@casa.it\"'")
+        ..., description="The targeted query, e.g., 'FROM \"alerts@example.com\"'")
 
 
 @app.post("/api/ingest/trigger")
@@ -943,7 +943,7 @@ _owned_calendars: dict[tuple[str, str], str] = {}
 
 @app.post("/api/gateway/calendar/calendars")
 def gateway_calendar_ensure(body: dict):
-    """Id of a Hestia-owned calendar (e.g. «Allenamenti»), created on the provider when missing. Idempotent:
+    """Id of a Hestia-owned calendar (e.g. «Workouts»), created on the provider when missing. Idempotent:
     found again by name, cached. Marko's other calendars are never touched."""
     name = str((body or {}).get("name") or "").strip()
     if not name or len(name) > 100:
@@ -981,7 +981,7 @@ def _weather_call(fn, *args, **kwargs) -> dict:
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece: tomorrow's weather at Casa (``hestia_common.recap`` contract)."""
+    """Daily recap piece: tomorrow's weather at Home (``hestia_common.recap`` contract)."""
     facts = recap_facts(weather, nxt.isoformat())
     icon = facts.pop("icon", "cloud-sun")
     return recap_contract.piece("hecate", tr("Weather"), icon=icon, emoji="🌦️", order=5, **facts)
@@ -993,7 +993,7 @@ app.include_router(recap_contract.recap_router(
 
 @app.get("/api/gateway/weather/now")
 def gateway_weather_now(place: str = ""):
-    """Current conditions + today at ``place`` (saved place name, address, city; empty = Casa)."""
+    """Current conditions + today at ``place`` (saved place name, address, city; empty = Home)."""
     return _weather_call(weather.now, place)
 
 
@@ -1023,7 +1023,7 @@ def gateway_weather_place(q: str = ""):
 
 @app.get("/api/gateway/weather/places")
 def gateway_weather_places():
-    """Marko's saved places and what each resolves to; ``options`` feeds the settings editor «Luoghi»."""
+    """Marko's saved places and what each resolves to; ``options`` feeds the settings editor «Places»."""
     try:
         rows = weather.resolved_places()
     except Exception as exc:
@@ -1293,7 +1293,7 @@ _pending_auth: dict[str, dict] = {}
 
 @app.get("/api/gateway/auth/google")
 def gateway_auth_google_state():
-    """«Collega Google» card (Dispositivi and the guided setup): is the OAuth client there, is the account linked,
+    """«Link Google» card (Devices and the guided setup): is the OAuth client there, is the account linked,
     is a flow waiting, and where Google sends back (public = it completes by itself from any device)."""
     cid, secret = google_oauth.client_credentials()
     session = google_oauth.pending() or {}
@@ -1387,7 +1387,7 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
                                         detail=f"{msg}<br><br>{hint}"),
             status_code=exc.status_code)
     if result["status"] == "authorized":
-        scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or "nessuno"
+        scopes = ", ".join(s.rsplit("/", 1)[-1] for s in result.get("granted_scopes", [])) or tr("none")
         return HTMLResponse(_callback_html(
             icon="✅", title=tr("Authorization completed!"),
             detail=tr("Google is connected to {assistant} (scope: {0}). You can close this page and go back to Telegram.", _html.escape(scopes))))
@@ -1398,14 +1398,14 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
 
 # ── HTML template for the OAuth callback page ──────────────────────────
 def _callback_html(**kw) -> str:
-    """The Google sign-in result page, titled with the assistant's chosen name (docs/work/2026-11-17-nome-dei-client)."""
+    """The Google sign-in result page, titled with the assistant's chosen name (docs/work/2026-11-17-client-names)."""
     from hestia_common.i18n import identity_now
-    return _OAUTH_CALLBACK_HTML.format(name=identity_now().get("assistant") or "Hestia", **kw)
+    return _OAUTH_CALLBACK_HTML.format(name=identity_now().get("assistant") or "Hestia", lang=current(), **kw)
 
 
 _OAUTH_CALLBACK_HTML = """\
 <!DOCTYPE html>
-<html lang="it">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1732,7 +1732,7 @@ def _apply_google_token(token_data: dict) -> dict:
         _notify_action_required(
             "google_reauth_complete",
             tr("✅ <b>Google</b> is connected to {assistant}.\n\n")
-            + ("Calendar e Gmail operativi." if gmail_ok
+            + (tr("Calendar and Gmail working.") if gmail_ok
                else tr("Calendar working. Gmail NOT authorized: sign in again granting email reading.")),
         )
     return {
@@ -1863,7 +1863,7 @@ def _poll_microsoft_oauth() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Connected services as one list (connections.py): every account/device the same card, Dispositivi + setup.
+# Connected services as one list (connections.py): every account/device the same card, Devices + setup.
 # ---------------------------------------------------------------------------
 def _google_words(fn):
     """Google's HTTP errors ({error, hint} or text) → one sentence for the card."""

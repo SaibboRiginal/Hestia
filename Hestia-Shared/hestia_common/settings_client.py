@@ -13,7 +13,7 @@ the assistant change values from any client, Archive stores them.
         setting("argus.remediate.enabled", "Automatic remedy", "bool", False, group="Remedy"),
         setting("argus.remediate.dry_run", "Simulation only", "bool", True, group="Remedy",
                 depends_on={"key": "argus.remediate.enabled", "equals": True}),
-    ], presets=[preset("calmo", "Calm", group="Checks", values={"argus.poll.interval": 120})])
+    ], presets=[preset("calm", "Calm", group="Checks", values={"argus.poll.interval": 120})])
     app.include_router(settings.router())          # GET /api/settings/effective, POST /api/settings/reload
     settings.start()                               # on startup: background load + hourly re-assert
     settings.get("argus.poll.interval")            # effective value (stored → default)
@@ -22,7 +22,7 @@ the assistant change values from any client, Archive stores them.
 Semantics
 - ``apply="live"``: a new value is used at once (``get`` returns it, ``on_change`` fires).
 - ``apply="restart"``: the value loaded at startup stays effective until the module restarts;
-  Themis compares stored vs effective and shows "riavvio necessario" to every client.
+  Themis compares stored vs effective and shows "restart needed" to every client.
 - Themis unreachable → defaults, ``[🔄]`` log; registration retried in background, values applied
   when it answers (restart settings then wait for a restart, honestly reported).
 - Secrets and infrastructure (URLs, ports, paths, tokens) are NOT settings: they stay in env.
@@ -40,6 +40,8 @@ import time
 from typing import Any, Callable
 
 import requests
+
+from hestia_common import identity
 
 logger = logging.getLogger("hestia_common.settings")
 
@@ -66,7 +68,7 @@ def setting(key: str, label: str, type: str, default: Any, *, group: str = "Gene
     (e.g. models of a provider) as ``{"options": [{"value", "label"}]}``.
     ``fields``: for ``object`` the sub-fields (each a ``setting``-like dict without key).
     ``row``/``column``: optional table layout hint — settings of one group sharing rows and columns are
-    shown by clients as a grid (e.g. row "Codice", column "Modello"); ``label`` stays the full name.
+    shown by clients as a grid (e.g. row "Code", column "Model"); ``label`` stays the full name.
     ``editor``: optional name of a dedicated client editor for an ``object`` value (e.g. ``llm_chains``);
     clients without it show the generic JSON editor.
     ``oracle``: what the assistant may do — ``propose`` (default, always confirmed by the user),
@@ -124,7 +126,7 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
             help="Your places (Home, Work, Gym…): one is Home, the default place for the weather; the agenda and the workouts recognise events at these places. The city is enough, or the address with the city."),
     setting("themis.personal.birth_date", "Date of birth", "string", "", group="Personal",
             help="YYYY-MM-DD. Your birthday goes into the special events (you can change it there too)."),
-    # Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita): read by every prompt
+    # Who you are and who the assistant is (docs/work/2026-11-12-identity-and-proactivity): read by every prompt
     # that speaks to the owner through ``hestia_common.identity``.
     setting("themis.personal.owner_name", "Your name", "string", "", group="You and the assistant", order=1,
             help="Your name. The assistant knows it is yours and calls you by name."),
@@ -133,11 +135,11 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
     setting("themis.personal.assistant_name", "Assistant's name", "string", "Hestia",
             group="You and the assistant", order=3,
             help="The name it introduces itself with and answers to in chat, by voice and in notifications."),
-    setting("themis.personal.assistant_gender", "The assistant is", "enum", "lei", group="You and the assistant",
-            order=4, options=[("lei", "A woman"), ("lui", "A man")],
+    setting("themis.personal.assistant_gender", "The assistant is", "enum", "she", group="You and the assistant",
+            order=4, options=[("she", "A woman"), ("he", "A man")],
             help="Changes how it talks about itself (as a woman or a man)."),
-    setting("themis.personal.language", "Language", "enum", "it", group="You and the assistant", order=5,
-            options=[("it", "Italiano"), ("en", "English")],
+    setting("themis.personal.language", "Language", "enum", identity.DEFAULT_LANGUAGE, group="You and the assistant",
+            order=5, options=list(identity.NATIVE_NAMES.items()),
             help="The language of notifications, recaps and the messages the assistant writes to you on its own. In chat it answers in the language you write in."),
 )}
 PERSONAL["themis.personal.places"]["item"] = {
@@ -147,8 +149,8 @@ PERSONAL["themis.personal.places"]["item"] = {
                "kind": {"type": "enum", "label": "Type", "options": [{"value": "home", "label": "Home"},
                                                                     {"value": "work", "label": "Work"},
                                                                     {"value": "other", "label": "Other"}]},
-               "lat": {"type": "float", "label": "Latitudine", "min": -90, "max": 90},
-               "lon": {"type": "float", "label": "Longitudine", "min": -180, "max": 180}},
+               "lat": {"type": "float", "label": "Latitude", "min": -90, "max": 90},
+               "lon": {"type": "float", "label": "Longitude", "min": -180, "max": 180}},
 }
 
 

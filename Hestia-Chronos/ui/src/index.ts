@@ -2,7 +2,7 @@
  * Hestia-Chronos WebUI plugin bundle (plugin contract, docs/work/2026-10-17-client-plugins/SPEC.md §4).
  * Pages/widgets declared in Hestia-Chronos/app/main.py (PluginClient.webui); every element is `chronos-*`.
  * The calendar's building blocks (dialog, popover, menu, mini month, views, details, editor, wizard) are registered
- * first so the «Agenda di Hestia» page finds them.
+ * first so the «Hestia's agenda» page finds them.
  */
 import { definePlugin } from '@hestia/webui-sdk';
 import { ChronosDialog, ChronosMenu, ChronosPop } from './cal/ui';

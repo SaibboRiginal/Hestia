@@ -1,4 +1,4 @@
-"""What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-hestia-viva F3).
+"""What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-living-hestia F3).
 
 Up to four short background lines, read at turn time through Hub (each source owns its data):
 - the owner's mood of today (Psyche ``GET /api/mood/today`` → ``summary``);
@@ -7,7 +7,7 @@ Up to four short background lines, read at turn time through Hub (each source ow
 - the last things he opened or started (Metis ``GET /api/metis/usage/recent``).
 Sources are read in parallel with a short timeout and cached ``CACHE_SECONDS``; a source that does not answer is
 left out (``[🔄]`` log): the turn never waits on it or fails because of it. How many items: setting
-``oracle.chat.consapevolezza_righe`` (0 = no lines).
+``oracle.chat.awareness_lines`` (0 = no lines).
 """
 from __future__ import annotations
 
@@ -86,8 +86,8 @@ def notifications_line(payload: Any, limit: int, today: str | None = None) -> st
 
 
 def talk_line(payload: Any, today: str | None = None) -> str:
-    """What she wrote him first today (Athena «parla con te», kind ``athena.talk``): the whole sentence, so his
-    answer in any chat has its context (docs/work/2026-11-12-identita-e-proattivita)."""
+    """What she wrote him first today (Athena «talk to you», kind ``athena.talk``): the whole sentence, so his
+    answer in any chat has its context (docs/work/2026-11-12-identity-and-proactivity)."""
     items = (payload or {}).get("items") if isinstance(payload, dict) else None
     today = today or datetime.now(_tz()).date().isoformat()
     out = []

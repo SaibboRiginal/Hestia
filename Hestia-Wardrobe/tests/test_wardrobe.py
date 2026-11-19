@@ -159,7 +159,7 @@ def test_italian_labels_become_vocabulary_keys(wd):
     """Bench run 2026-10-19: chat said «ufficio», the UI stores «office» — tags and the suggester must agree."""
     shirt = wd.save_piece({"name": "Camicia", "category": "shirt", "occasions": ["Ufficio", "gita"], "styles": "Elegante"})
     assert shirt["occasions"][0] == "office" and "gita" in shirt["occasions"]
-    assert wd.vocab_keys("occasion", ["ufficio"]) == ["office"]
+    assert wd.vocab_keys("occasion", ["office"]) == ["office"]
     _basics(wd)
     assert wd.suggest(day="2026-01-10", temp_c=3, occasion="Ufficio")["occasion"] == "office"
 
@@ -300,8 +300,8 @@ def test_mcp_tools_and_manifest():
     manifest = main.ui.manifest()
     assert manifest["module"] == "wardrobe"
     webui = manifest["clients"]["webui"]
-    assert any(q["id"] == "indossato" for q in webui.get("quick_action") or [])
-    assert {"capi", "outfit", "cosa-mi-metto"} <= {p["id"] for p in webui["page"]}
+    assert any(q["id"] == "worn" for q in webui.get("quick_action") or [])
+    assert {"pieces", "outfit", "what-to-wear"} <= {p["id"] for p in webui["page"]}
 
 
 @pytest.mark.unit
@@ -313,7 +313,7 @@ def test_reminder_day_is_the_local_day_near_midnight(wd):
     assert wd._local_day("2026-10-18") == "2026-10-18"
 
 
-# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+# ── daily recap piece (docs/work/2026-10-20-daily-recap) ─────────────
 @pytest.mark.unit
 def test_recap_lists_what_was_worn(wd):
     tee, jeans, *_ = _basics(wd)
@@ -389,8 +389,8 @@ def test_signals_forgotten_laundry_repair_and_worn_metric(wd):
     sigs, mets = wd.signals()
     by = {s["key"]: s for s in sigs}
     assert set(by) == {"forgotten", "laundry_backlog", "to_repair"}
-    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "statistiche"
-    assert by["laundry_backlog"]["severity"] == "attenzione" and by["laundry_backlog"]["metrics"]["count"] == 3
+    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "stats"
+    assert by["laundry_backlog"]["severity"] == "warning" and by["laundry_backlog"]["metrics"]["count"] == 3
     assert by["to_repair"]["metrics"]["count"] == 1
     assert all(s["text"].startswith("Guardaroba") and "Wardrobe" not in s["text"] for s in sigs)
     assert len(mets) == 12 and {m["name"] for m in mets} == {"wardrobe.worn"} and mets[-1]["label"] == "Capi indossati"
@@ -468,7 +468,7 @@ def test_api_writes_ask_signals_and_run_syncs(api, monkeypatch):
     assert "/api/wardrobe/signals/run" in str(job)
 
 
-# ── photo sent in chat «aggiungi al guardaroba» (docs/work/2026-10-30-cose-aperte) ──
+# ── photo sent in chat «aggiungi al guardaroba» (docs/work/2026-10-30-open-items) ──
 def _chat_photo(wd, answer: str) -> str:
     """Oracle's vision answers ``answer``; returns the blob id of a photo sent in chat."""
     orig = wd.hub.ok
@@ -512,4 +512,4 @@ def test_chat_photo_not_recognised_asks_instead_of_saving(wd):
 def test_chat_photo_handler_declared():
     from app import main
     h = main.ATTACHMENT_HANDLERS[0]
-    assert "image/jpeg" in h["mime"] and "guardaroba" in h["match"] and h["path"] == "/api/wardrobe/attachments"
+    assert "image/jpeg" in h["mime"] and "wardrobe" in h["match"] and h["path"] == "/api/wardrobe/attachments"

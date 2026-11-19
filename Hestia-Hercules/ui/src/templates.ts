@@ -1,5 +1,5 @@
 /**
- * <hercules-templates> — "Schede": workout types, the weekly program and the training goals.
+ * <hercules-templates> — "Plans": workout types, the weekly program and the training goals.
  * <hercules-template>  — one template: exercises, planned sets, progression, rest; edits are local first (offline).
  */
 import { HestiaElement, html, css, nothing, plural, tr } from '@hestia/webui-sdk';
@@ -52,7 +52,7 @@ export class HerculesTemplates extends LocalPage {
 
   private create() {
     const t = this.L.put('template', uuid(), { name: tr('New plan'), favorite: false, items: [], folder: '', notes: '', color: '', position: this.L.templates().length, archived: false, revision: 0 });
-    this.host.navigate('schede/' + t.id, { nuova: '1' });
+    this.host.navigate('plans/' + t.id, { new: '1' });
   }
 
   private program(): any | null { return this.L.list('program').find(p => p.active) || null; }
@@ -93,7 +93,7 @@ export class HerculesTemplates extends LocalPage {
         (t.items || []).forEach((i: any) => (exs.get(i.exercise_id)?.primary_muscles || []).forEach((m: string) => muscles.add(m)));
         const groups = Object.entries(GROUP_LABEL).filter(([g]) => GROUPS[g].some(m => muscles.has(m))).map(([, l]) => l);
         return html`<hxk-card clickable heading=${t.name} subtitle=${tr("{0} · last {1}", plural((t.items || []).length, 'exercise', 'exercises'), relDays(last?.started_at))}
-            @click=${() => this.host.navigate('schede/' + t.id)}>
+            @click=${() => this.host.navigate('plans/' + t.id)}>
           ${t.favorite ? html`<hxk-icon slot="actions" name="star" size=${14} tone="warning" title=${tr("f::Favourite")}></hxk-icon>` : nothing}
           <div class="tpl"><div class="small muted truncate">${(t.items || []).map((i: any) => exs.get(i.exercise_id)?.name).filter(Boolean).join(', ') || tr('Empty')}</div>
             ${groups.length ? html`<div class="chips">${groups.map(g => html`<span class="pill">${g}</span>`)}</div>` : nothing}</div>
@@ -211,7 +211,7 @@ export class HerculesTemplate extends LocalPage {
     const t = this.t!;
     if (!(await this.host.confirm(tr('Delete the plan?'), tr("«{0}» will be deleted (the history stays).", t.name), { label: tr('Delete'), danger: true }))) return;
     this.L.remove('template', t.id);
-    this.host.navigate('schede');
+    this.host.navigate('plans');
   }
   private async undo() {
     await this.L.sync();
@@ -228,7 +228,7 @@ export class HerculesTemplate extends LocalPage {
     const est = estimate(t, this.L.settings.rest_default);
     const sugs = this.L.suggestions;
     return html`<div class="page">
-      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('schede')}>${tr('‹ Plans')}</hxk-button></div>
+      <div class="head"><hxk-button variant="ghost" size="sm" @click=${() => this.host.navigate('plans')}>${tr('‹ Plans')}</hxk-button></div>
       <div class="row wrap">
         <input class="in grow" style="font-size:20px;font-weight:600" .value=${t.name} @change=${(e: any) => this.save({ name: e.target.value || tr('Workout plan') })}>
         <button class="chip" aria-pressed=${!!t.favorite} title=${tr("Favourite: appears in Home for «Mark done»")} @click=${() => this.save({ favorite: !t.favorite })}><hxk-icon name="star" size=${14}></hxk-icon> ${tr("f::Favourite")}</button>
@@ -295,7 +295,7 @@ export class HerculesTemplate extends LocalPage {
 
   private startNow(t: any) {
     // the live page owns the session logic: open it with this template preselected
-    this.host.navigate('allenamento', { scheda: t.id });
+    this.host.navigate('training', { card: t.id });
   }
 }
 

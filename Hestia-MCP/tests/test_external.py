@@ -1,4 +1,4 @@
-"""Tests — external AIs through an access (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2, §B6)."""
+"""Tests — external AIs through an access (docs/work/2026-10-18-core-modules-and-external-mcp §B2, §B6)."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -199,7 +199,7 @@ class TestExternalTools:
         assert res["isError"] is False
         url, env = routed[-1]
         assert url.endswith("/route/hephaestus/api/forge/tasks/abc/notes")
-        assert env["headers"] == {"X-Hestia-Access": "Claude Code PC", "X-Hestia-Origin": "esterno:Claude Code PC"}
+        assert env["headers"] == {"X-Hestia-Access": "Claude Code PC", "X-Hestia-Origin": "external:Claude Code PC"}
         assert env["body"] == {"text": "causa: X"}
         assert inbox and inbox[-1]["metadata"]["quiet"] is True and "Claude Code PC" in inbox[-1]["message"]
         assert archive.used == 1

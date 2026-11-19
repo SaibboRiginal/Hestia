@@ -1,6 +1,6 @@
 /**
- * <wardrobe-outfits>        — saved outfits as tiles: search, filters, «oggi» (check) in one tap, new outfit builder.
- * <wardrobe-outfit>         — one outfit: pieces by slot, «Indossato» (today or another day), rating, tags, photos, history.
+ * <wardrobe-outfits>        — saved outfits as tiles: search, filters, «today» (check) in one tap, new outfit builder.
+ * <wardrobe-outfit>         — one outfit: pieces by slot, «Worn» (today or another day), rating, tags, photos, history.
  * <wardrobe-outfit-builder> — pick pieces (tap = added in its usual slot), change slot, name it, save.
  */
 import { HestiaElement, css, html, nothing, plural, tr } from '@hestia/webui-sdk';
@@ -121,7 +121,7 @@ export class WardrobeOutfits extends WardrobeElement {
     const m = this.m, items = this.items, today = localDay();
     return html`<div class="page">
       <div class="head"><h1>${tr("Outfit")}</h1><span class="sub">${items?.length ?? ''}</span><span class="grow"></span>
-        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.navigate('cosa-mi-metto')}>${tr("What should I wear")}</hxk-button>
+        <hxk-button variant="ghost" icon="sparkle" @click=${() => this.host.navigate('what-to-wear')}>${tr("What should I wear")}</hxk-button>
         <hxk-button variant="primary" icon="plus" @click=${() => { this.building = !this.building; this.seed = []; }}>${tr("New outfit")}</hxk-button></div>
       ${this.building ? html`<div class="card"><wardrobe-outfit-builder .host=${this.host} .ctx=${this.ctx} .meta=${m} .value=${this.seed}
           @save=${this.create} @cancel=${() => { this.building = false; this.seed = []; }}></wardrobe-outfit-builder></div>` : nothing}
@@ -218,7 +218,7 @@ export class WardrobeOutfit extends WardrobeElement {
       ${this.editing ? html`<div class="card"><wardrobe-outfit-builder .host=${this.host} .ctx=${this.ctx} .meta=${m} .value=${o.slots} name=${o.name}
           @save=${async (e: CustomEvent) => { if (await this.patch(e.detail, tr('Saved'))) this.editing = false; }} @cancel=${() => (this.editing = false)}></wardrobe-outfit-builder></div>` : html`
         <div class="card col"><div class="between"><h3>${tr("Items")}</h3><hxk-button size="sm" variant="ghost" icon="edit" @click=${() => (this.editing = true)}>${tr("Change items")}</hxk-button></div>
-          <div class="slots">${o.pieces.map((p: any) => html`<div class="tile slot" @click=${() => this.host.navigate('capi/' + p.id)}>
+          <div class="slots">${o.pieces.map((p: any) => html`<div class="tile slot" @click=${() => this.host.navigate('items/' + p.id)}>
             <div class="ph">${img(this.host, p.photo, p.name)}</div>
             ${!p.available ? html`<hxk-badge class="badge" tone="info">${m?.statuses[p.status] || p.status}</hxk-badge>` : nothing}
             <div class="tx"><span class="lab">${p.slot_label}</span><span class="nm">${p.name}</span>${dots(p.colors, 10)}</div></div>`)}</div></div>`}

@@ -83,7 +83,7 @@ def compact_record(record: dict[str, Any]) -> dict[str, Any]:
     return {
         "record_id": record.get("record_id"), "trace_id": record.get("trace_id"),
         "cycle_at": record.get("cycle_at"), "trigger": record.get("trigger"),
-        "track": record.get("track") or "sistema", "life": record.get("life") or {},
+        "track": record.get("track") or "system", "life": record.get("life") or {},
         "threshold": record.get("threshold"), "duration_ms": record.get("duration_ms", 0),
         "emitted_count": record.get("emitted_count", 0), "error": record.get("error"),
         "observation": {
@@ -125,7 +125,7 @@ class AthenaRuntime:
         self.observer = Observer(hub_api_url=self.hub_api_url)
         self.strategist = Strategist(hub_api_url=self.hub_api_url)
         self.consolidator = MemoryConsolidator(hub_api_url=self.hub_api_url)
-        # Daily recap (docs/work/2026-10-20-recap-giornaliero): independent from the thinking loop.
+        # Daily recap (docs/work/2026-10-20-daily-recap): independent from the thinking loop.
         self.recap = RecapComposer(self.hub_api_url)
         self._consolidation_ran_today: str = ""  # date iso
 
@@ -137,12 +137,12 @@ class AthenaRuntime:
         )
         self._skill_curation_ran_today: str = ""
 
-        # Life reflection («Vita»): module signals → links between domains → observations for the recap.
+        # Life reflection («Life»): module signals → links between domains → observations for the recap.
         self.reflection = LifeReflection(
             self.hub_api_url, gate=self._gate, propose_setting=self._propose_setting,
             settings_lines=lambda: self.observer.observe_settings(limit=40))
         self._reflection_ran_today: str = ""
-        # «Parla con te»: she writes first when she has a reason (its own gate, not the thinking loop's).
+        # «Talk to you»: she writes first when she has a reason (its own gate, not the thinking loop's).
         self.evidence = Evidence(self.hub_api_url)
         self.talk = Talk(self.hub_api_url, idle_seconds=self._chat_idle_seconds,
                          known_days=self.evidence.known_days)
@@ -463,16 +463,16 @@ class AthenaRuntime:
     def list_thinking_records(
         self, limit: int = 20, track: str | None = None
     ) -> list[dict[str, Any]]:
-        """Return recent thinking records (newest first), optionally one track (``sistema`` | ``vita``)."""
+        """Return recent thinking records (newest first), optionally one track (``system`` | ``life``)."""
         with self._lock:
             records = list(self._thinking_records)
         if track:
-            records = [r for r in records if (r.get("track") or "sistema") == track]
+            records = [r for r in records if (r.get("track") or "system") == track]
         records.reverse()
         return records[: max(1, min(int(limit), self.thinking_store_max))]
 
     def thinking_summary(self, limit: int = 10, track: str | None = None) -> dict[str, Any]:
-        """Compact cycles for the Pensieri page and the MCP tool ``athena_thinking`` (newest first): what was
+        """Compact cycles for the Thoughts page and the MCP tool ``athena_thinking`` (newest first): what was
         observed (counts, not payloads), every candidate with its 5 gate factors, score, accepted/discarded and
         why, and what was done with it."""
         rows = [compact_record(r) for r in self.list_thinking_records(limit=max(1, min(int(limit or 10), 50)),
@@ -895,7 +895,7 @@ class AthenaRuntime:
                          t_start, t_end,
                          description="Thinking cycles (observe → evaluate → propose) only when you are not chatting. Skip/pause to stop Athena."),
             job_rule(JOB_EVENING, "Evening recap", service="athena", path="/api/athena/recap",
-                     body={"momento": "sera", "trigger": "agenda"}, recurrence="FREQ=DAILY",
+                     body={"moment": "evening", "trigger": "agenda"}, recurrence="FREQ=DAILY",
                      start_at=f"2026-01-01T{EVENING_AT}:00", flex=EVENING_FLEX, timeout_seconds=150,
                      description="How today went and what is on tomorrow, in one message. It can move earlier or later (20:00–23:30) to avoid your commitments."),
             *self._extra_rules(),
@@ -965,7 +965,7 @@ class AthenaRuntime:
                 WINDOW_REFLECTION, lambda: REFLECTION_WINDOW_DEFAULT[0] <= datetime.now().hour < REFLECTION_WINDOW_DEFAULT[1]):
             if self._cycle_lock.acquire(blocking=False):
                 try:
-                    self._life_cycle("periodic", f"athena-vita-{uuid4().hex[:10]}")
+                    self._life_cycle("periodic", f"athena-life-{uuid4().hex[:10]}")
                     self._reflection_ran_today = local_day()
                 finally:
                     self._cycle_lock.release()
@@ -990,15 +990,15 @@ class AthenaRuntime:
     def cycle_running(self) -> bool:
         return self._cycle_lock.locked()
 
-    def think_now(self, track: str = "sistema") -> dict[str, Any]:
+    def think_now(self, track: str = "system") -> dict[str, Any]:
         """«Pensa ora» (WebUI, quick action): one full cycle now, in the background, past the idle gate and the
-        agenda window (the user asked). ``track`` = ``sistema`` (default) or ``vita`` (life reflection). Returns at
+        agenda window (the user asked). ``track`` = ``system`` (default) or ``life`` (life reflection). Returns at
         once; the new record appears in /api/athena/thinking."""
         if not self._cycle_lock.acquire(blocking=False):
             logger.info("event=think_now_busy")
             return {"status": "busy", "detail": tr("Athena is already thinking")}
-        life = track == "vita"
-        trace_id = f"athena-{'vita' if life else 'now'}-{uuid4().hex[:10]}"
+        life = track == "life"
+        trace_id = f"athena-{'life' if life else 'now'}-{uuid4().hex[:10]}"
 
         def _run() -> None:
             try:
@@ -1008,12 +1008,12 @@ class AthenaRuntime:
             finally:
                 self._cycle_lock.release()
 
-        logger.info("event=think_now_started trace_id=%s track=%s", trace_id, "vita" if life else "sistema")
+        logger.info("event=think_now_started trace_id=%s track=%s", trace_id, "life" if life else "system")
         threading.Thread(target=_run, daemon=True, name="athena-think-now").start()
-        return {"status": "started", "trace_id": trace_id, "track": "vita" if life else "sistema"}
+        return {"status": "started", "trace_id": trace_id, "track": "life" if life else "system"}
 
     def _life_cycle(self, trigger: str, run_trace_id: str) -> dict[str, Any]:
-        """«Vita»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
+        """«Life»: signals → links → details → Oracle → gate → stored observations (recap only, no Hermes).
         Separate from the system cycle: no services, errors or Forge here."""
         t0 = time.perf_counter()
         with self.presence.activity("athena.reflection", label=tr("{assistant} reflects"), load="light", resource="gpu",
@@ -1021,7 +1021,7 @@ class AthenaRuntime:
             out = self.reflection.run(run_trace_id)
         scored = out.get("candidates") or []
         record = ThinkingRecord(
-            trace_id=run_trace_id, trigger=trigger, track="vita", life=out.get("life") or {},
+            trace_id=run_trace_id, trigger=trigger, track="life", life=out.get("life") or {},
             candidates=scored, emitted_count=sum(1 for c in scored if c.outcome == "observed"),
             threshold=self.emit_threshold, error=out.get("error"),
         )
@@ -1241,7 +1241,7 @@ class AthenaRuntime:
 
     def _light_work_wait(self) -> int:
         """Seconds to wait before thinking (0 = go). The assistant presence decides (effect
-        ``work.light``: the user is "Sveglio" → defer); Chronos down → old Oracle idle check."""
+        ``work.light``: the user is "Awake" → defer); Chronos down → old Oracle idle check."""
         state = self.presence.get()
         if state:
             effect = (state.get("effects") or {}).get("work.light", "allow")
@@ -1257,7 +1257,7 @@ class AthenaRuntime:
         return 0
 
     def _talk_tick(self) -> None:
-        """«Parla con te»: one attempt when it is due and the window ``athena.talk`` is open. Never raises."""
+        """«Talk to you»: one attempt when it is due and the window ``athena.talk`` is open. Never raises."""
         try:
             if not self.talk.due():
                 return
@@ -1265,13 +1265,13 @@ class AthenaRuntime:
                                      < TALK_WINDOW_DEFAULT[1]):
                 self.talk.window_closed()
                 return
-            self.talk.run(f"athena-parla-{uuid4().hex[:10]}")
+            self.talk.run(f"athena-talk-{uuid4().hex[:10]}")
         except Exception as exc:  # noqa: BLE001 - a missed message never stops the loop
             logger.warning("[🔄] event=talk_tick_failed error=%s fallback=next_tick", exc)
 
     def talk_now(self) -> dict[str, Any]:
-        """«Scrivimi ora»: one attempt now, in the background, past the daily limit and the pause."""
-        trace_id = f"athena-parla-{uuid4().hex[:10]}"
+        """«Write to me now»: one attempt now, in the background, past the daily limit and the pause."""
+        trace_id = f"athena-talk-{uuid4().hex[:10]}"
 
         def _run() -> None:
             try:
@@ -1281,7 +1281,7 @@ class AthenaRuntime:
                 logger.warning("event=talk_now_failed trace_id=%s error=%s", trace_id, exc)
 
         threading.Thread(target=_run, daemon=True, name="athena-talk-now").start()
-        return {"status": "started", "trace_id": trace_id, "track": "parla"}
+        return {"status": "started", "trace_id": trace_id, "track": "talk"}
 
     def _chat_idle_seconds(self) -> int | None:
         """Seconds since his last chat message (Oracle ``/api/activity``); None = unknown."""
@@ -1356,10 +1356,10 @@ class AthenaRuntime:
             agenda_template(
             "recap", tr("Daily recap"), service="athena", path="/api/athena/recap",
             type="job", types=["job", "task"], icon="note", recurrence="FREQ=DAILY",
-            fields={"momento": {"type": "string", "label": tr("Moment"), "enum": ["mattina", "sera"],
-                                "default": "mattina",
+            fields={"moment": {"type": "string", "label": tr("Moment"), "enum": ["morning", "evening"],
+                                "default": "morning",
                                 "description": tr("morning = yesterday in short + today; evening = today + tomorrow")}},
-            required=["momento"], body={"trigger": "agenda"}, title=tr("Recap ({momento})"),
+            required=["moment"], body={"trigger": "agenda"}, title=tr("Recap ({moment})"),
             description="A message with how it went and what awaits you. Add the morning one or a second recap.")])
         # Wait for Oracle inside the loop thread: blocking here would hold the
         # FastAPI startup (and /health) for up to 60 s.

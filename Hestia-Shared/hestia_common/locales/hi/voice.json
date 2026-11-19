@@ -1,0 +1,5 @@
+{
+ "_about": "What a voice of this language says when the owner tries it (Echo «Listen»). docs/LANGUAGES.md",
+ "sample": "नमस्ते, मैं {assistant} हूँ। यह मेरी आवाज़ है।",
+ "default_name": "हेस्टिया"
+}

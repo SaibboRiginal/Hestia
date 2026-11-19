@@ -1,13 +1,13 @@
-"""Usage log, «Adesso» and «Scopri» (brainstorm C11 + C14, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6).
+"""Usage log, «Now» and «Discover» (brainstorm C11 + C14, dossier docs/work/2026-10-24-whole-cindy-brainstorm W6).
 
 Clients push **taps** (`POST /api/metis/usage`: a tool run, a page opened, a quick action) into Archive
 ``metis-store`` (kind ``tap``). From them, with no model:
 
-- **Adesso** — what fits now: tools used at this hour / on this kind of day (habit score with recency decay), the
+- **Now** — what fits now: tools used at this hour / on this kind of day (habit score with recency decay), the
   last ones used, agenda items of the next hours that name a tool; plus up to 3 **ideas** written by the assistant a
-  few times a day (agenda job ``metis.adesso``, Oracle use case ``metis.adesso``; never when a client opens). Each
+  few times a day (agenda job ``metis.now``, Oracle use case ``metis.now``; never when a client opens). Each
   item says why. Tools that the client cannot run or that no longer exist are dropped.
-- **Scopri** — the tools of the Hub catalog never or rarely used, with what they do.
+- **Discover** — the tools of the Hub catalog never or rarely used, with what they do.
 
 Only the owner's own taps are counted; nothing leaves Hestia.
 """
@@ -34,10 +34,10 @@ logger = logging.getLogger("hestia_metis.usage")
 CLIENTS = ("telegram", "webui", "mcp")
 KINDS = ("tool", "page", "action")
 CLIENT_KEY = {"webui": "ui", "telegram": "telegram", "mcp": "mcp"}      # MCPTool.clients names
-IDEAS_USE = "metis.adesso"
+IDEAS_USE = "metis.now"
 KEEP_DAYS = 180
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
-_SKIP = re.compile(r"(_delete|_elimina|_remove|_rimuovi|_annulla|_conferma|_off|_on)$")
+_SKIP = re.compile(r"(_delete|_remove|_cancel|_confirm|_off|_on)$")
 
 
 class Usage:
@@ -85,7 +85,7 @@ class Usage:
         return sorted(out, key=lambda t: t["at"])
 
     def recent(self, limit: int = 5, hours: int = 12) -> dict:
-        """The owner's last taps, newest first (Oracle's awareness lines, docs/work/2026-11-06-hestia-viva F3)."""
+        """The owner's last taps, newest first (Oracle's awareness lines, docs/work/2026-11-06-living-hestia F3)."""
         taps = self.taps(days=max(1, (int(hours) + 23) // 24))
         since = datetime.now(timezone.utc) - timedelta(hours=max(1, int(hours)))
         rows = [t for t in reversed(taps) if t["at"] >= since][:max(1, min(int(limit), 20))]
@@ -126,7 +126,7 @@ class Usage:
         return {t["name"]: t for t in self.catalog()
                 if not t.get("clients") or key in t["clients"] or "*" in t["clients"]}
 
-    # ── Adesso ──────────────────────────────────────────────────────────────
+    # ── Now ─────────────────────────────────────────────────────────────────
     def habits(self, client: str, now: datetime) -> list[tuple[str, float, str]]:
         scores: dict[str, float] = defaultdict(float)
         why: dict[str, Counter] = defaultdict(Counter)
@@ -162,7 +162,7 @@ class Usage:
                         "tool": ((occ.get("params") or {}).get("tool") or "")})
         return out
 
-    def adesso(self, client: str = "telegram", now: datetime | None = None, limit: int = 6) -> dict:
+    def right_now(self, client: str = "telegram", now: datetime | None = None, limit: int = 6) -> dict:
         if client not in CLIENTS:
             raise Invalid("client: " + ", ".join(CLIENTS))
         now = (now or self.now()).astimezone(self.tz)
@@ -234,8 +234,8 @@ class Usage:
                                            "expires": (now + timedelta(hours=8)).isoformat()})
         return {"ideas": len(ideas[:3])}
 
-    # ── Scopri ──────────────────────────────────────────────────────────────
-    def scopri(self, client: str = "webui", limit: int = 12) -> dict:
+    # ── Discover ────────────────────────────────────────────────────────────
+    def discover(self, client: str = "webui", limit: int = 12) -> dict:
         tools = {k: v for k, v in self.tools_for(client).items() if not _SKIP.search(k)}
         used = Counter(t["ref"] for t in self.taps(90) if t["kind"] == "tool")
         rows = []

@@ -1,6 +1,6 @@
 """Chronos inside view (WebUI plugin «Esecuzioni»): manifest, /api/agenda/runs, /api/agenda/runs/failed.
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked (agenda rows in memory).
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked (agenda rows in memory).
 """
 from __future__ import annotations
 
@@ -97,9 +97,9 @@ class TestUiEndpoints:
         pages = {p["id"]: p for p in web["page"]}
         assert pages["agenda"]["order"] == 150 and pages["agenda"]["element"] == "chronos-agenda"
         assert pages["agenda"]["parent"] == "" and not pages["agenda"]["detail"]
-        assert pages["esecuzioni"]["parent"] == "agenda" and pages["esecuzioni"]["order"] == 151
-        assert {w["id"] for w in web["widget"]} == {"falliti", "oggi-nel-piano"}
-        assert pages["settimana"]["element"] == "chronos-week" and pages["settimana"]["parent"] == ""
+        assert pages["runs"]["parent"] == "agenda" and pages["runs"]["order"] == 151
+        assert {w["id"] for w in web["widget"]} == {"failed", "today-in-plan"}
+        assert pages["week"]["element"] == "chronos-week" and pages["week"]["parent"] == ""
         qa = web["quick_action"][0]
         assert qa["path"] == "/api/agenda/items/{id}/run" and qa["source"] == "/api/agenda/runs/failed"
 
@@ -114,7 +114,7 @@ class TestUiEndpoints:
         """The calendar page reads /api/agenda/occurrences (``/api/agenda`` is outside api_prefix ``/api/agenda/``)."""
         import main as chronos_main
         client = _client()
-        with patch.object(chronos_main.assistant_agenda, "agenda", return_value=[{"key": "a"}]) as ag:
+        with patch.object(chronos_main.agenda_assistant, "agenda", return_value=[{"key": "a"}]) as ag:
             body = client.get("/api/agenda/occurrences", params={
                 "start": "2026-10-19T00:00:00Z", "end": "2026-10-26T00:00:00Z", "include_done": "true"}).json()
         assert body["count"] == 1 and body["occurrences"] == [{"key": "a"}]

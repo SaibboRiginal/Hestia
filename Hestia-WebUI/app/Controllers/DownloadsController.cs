@@ -5,9 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Page «Download» (SPEC docs/work/2026-10-30-setup-un-click §4.3): every module downloads its own things
+/// Page «Download» (SPEC docs/work/2026-10-30-one-click-setup §4.3): every module downloads its own things
 /// (hestia_common.downloads, capability <c>downloads</c>); this controller lists them all and forwards the buttons
-/// (pausa, riprendi, riprova, annulla, elimina) to the owner. Browser → WebUI → Hub → module.
+/// (pause, resume, retry, cancel, delete) to the owner. Browser → WebUI → Hub → module.
 /// </summary>
 [ApiController]
 [Route("api/webui/downloads")]
@@ -44,7 +44,7 @@ public class DownloadsController : ControllerBase
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             _logger.LogWarning("[🔄] event=webui_downloads_modules_failed error={Error}", ex.Message);
-            return StatusCode(503, new { detail = "Hub non raggiungibile" });
+            return StatusCode(503, new { detail = Texts.Tr("Not available") });
         }
         var calls = modules.Select(async m => (m, await _hub.RouteRawAsync(m, "/api/downloads", HttpMethod.Get,
             timeoutSeconds: 8, ct: HttpContext.RequestAborted)));
@@ -68,15 +68,15 @@ public class DownloadsController : ControllerBase
     {
         if (!Ops.Contains(op)) return NotFound();
         var id = body.TryGetProperty("id", out var i) ? i.GetString() ?? "" : "";
-        if (id.Length == 0 || id.Length > 200) return BadRequest(new { detail = "id mancante" });
+        if (id.Length == 0 || id.Length > 200) return BadRequest(new { detail = Texts.Tr("missing id") });
         try
         {
             if (!(await ModulesAsync(HttpContext.RequestAborted)).Contains(module))
-                return NotFound(new { detail = "modulo senza download" });
+                return NotFound(new { detail = Texts.Tr("no downloads here") });
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
-            return StatusCode(503, new { detail = "Hub non raggiungibile" });
+            return StatusCode(503, new { detail = Texts.Tr("Not available") });
         }
         var (status, payload) = await _hub.RouteRawAsync(module, $"/api/downloads/{id}/{op}", HttpMethod.Post,
             timeoutSeconds: 30, ct: HttpContext.RequestAborted);

@@ -1,4 +1,4 @@
-"""Garmin (B10) and the phone as a sensor (Cindy 32), dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4.
+"""Garmin (B10) and the phone as a sensor (Cindy 32), dossier docs/work/2026-10-24-whole-cindy-brainstorm W4.
 No network: a fake Garmin client, the feed publisher and presence replaced by recorders."""
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def test_normalisers():
     s = normalise_sleep(SLEEP)
     assert s["minutes"] == 435 and s["deep_minutes"] == 90 and s["score"] == 82 and s["end"].startswith("2025-10-29T07:15")
     a = normalise_activity(RUN)
-    assert a == {"id": "991", "kind": "corsa", "type": "running", "name": "Corsa mattutina",
+    assert a == {"id": "991", "kind": "run", "type": "running", "name": "Corsa mattutina",
                  "start": "2026-10-29 07:10:00", "minutes": 30, "km": 5.12, "calories": 410, "avg_hr": 151,
                  "training_load": 88.4}
     assert normalise_sleep({}) is None
@@ -72,7 +72,7 @@ def test_login_with_code_then_day(tmp_path):
     day = svc.day(date(2026, 10, 29))
     assert day["steps"] == 9876 and day["readiness"] == 64 and day["body_battery"]["morning"] == 77
     assert "hrv" not in day                                     # a failing part is skipped, the day stays
-    assert day["activities"][0]["kind"] == "corsa"
+    assert day["activities"][0]["kind"] == "run"
     svc.forget()
     with pytest.raises(GarminError):
         svc.client()
@@ -146,8 +146,8 @@ def test_phone_webhook(api, monkeypatch):
     monkeypatch.setenv("HECATE_PHONE_TOKEN", "tok")
     assert client.post("/api/gateway/phone/push", json={}, headers={"X-Hestia-Phone-Token": "no"}).status_code == 401
     monkeypatch.setattr(devices_api.hecate_settings, "get",
-                        lambda k, d=None: {"hecate.telefono.wifi_casa": ["CasaNet"],
-                                           "hecate.telefono.app": ["Banca"]}.get(k, d))
+                        lambda k, d=None: {"hecate.phone.home_wifi": ["CasaNet"],
+                                           "hecate.phone.app": ["Banca"]}.get(k, d))
     h = {"X-Hestia-Phone-Token": "tok"}
     out = client.post("/api/gateway/phone/push", json={"type": "state", "wifi": "casanet", "charging": True},
                       headers=h).json()

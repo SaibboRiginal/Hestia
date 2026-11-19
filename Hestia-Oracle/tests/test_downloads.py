@@ -1,4 +1,4 @@
-"""Tests — hestia_common.downloads (docs/work/2026-10-30-setup-un-click §4.3). No network: HTTP faked."""
+"""Tests — hestia_common.downloads (docs/work/2026-10-30-one-click-setup §4.3). No network: HTTP faked."""
 from __future__ import annotations
 
 import hashlib
@@ -58,7 +58,7 @@ def test_http_download_checksum_and_state(tmp_path, monkeypatch):
     d = dl.Downloads("t", state_path=tmp_path / "s.json")
     d.file("f1", "File", "http://x/f", tmp_path / "out.bin", sha256=hashlib.sha256(BLOB).hexdigest())
     job = d.wait("f1", 10)
-    assert job["state"] == "fatto" and job["done"] == len(BLOB)
+    assert job["state"] == "done" and job["done"] == len(BLOB)
     assert (tmp_path / "out.bin").read_bytes() == BLOB
     assert not (tmp_path / "out.bin.part").exists()
     assert "params" not in d.list()[0]
@@ -69,7 +69,7 @@ def test_retries_then_succeeds(tmp_path, monkeypatch):
     monkeypatch.setattr(requests, "get", fake_get(calls, fail=2))
     d = dl.Downloads("t")
     d.file("f", "File", "http://x/f", tmp_path / "o")
-    assert d.wait("f", 10)["state"] == "fatto"
+    assert d.wait("f", 10)["state"] == "done"
     assert len(calls) == 3
 
 
@@ -79,7 +79,7 @@ def test_gated_file_is_final_error(tmp_path, monkeypatch):
     d = dl.Downloads("t")
     d.file("f", "File", "http://x/f", tmp_path / "o")
     job = d.wait("f", 10)
-    assert job["state"] == "errore" and "token" in job["error"] and len(calls) == 1
+    assert job["state"] == "error" and "token" in job["error"] and len(calls) == 1
 
 
 def test_resume_uses_range(tmp_path, monkeypatch):
@@ -88,7 +88,7 @@ def test_resume_uses_range(tmp_path, monkeypatch):
     (tmp_path / "o.part").write_bytes(BLOB[:1000])
     d = dl.Downloads("t")
     d.file("f", "File", "http://x/f", tmp_path / "o")
-    assert d.wait("f", 10)["state"] == "fatto"
+    assert d.wait("f", 10)["state"] == "done"
     assert calls[0]["Range"] == "bytes=1000-"
     assert (tmp_path / "o").read_bytes() == BLOB
 
@@ -99,14 +99,14 @@ def test_pause_then_resume(tmp_path, monkeypatch):
     d = dl.Downloads("t")
     d.file("f", "File", "http://x/f", tmp_path / "o")
     for _ in range(100):
-        if d.get("f")["state"] == "in_corso":
+        if d.get("f")["state"] == "running":
             break
         threading.Event().wait(0.02)
-    assert d.pause("f")["state"] == "in_pausa"
+    assert d.pause("f")["state"] == "paused"
     gate.set()
-    assert d.wait("f", 10)["state"] == "in_pausa"
+    assert d.wait("f", 10)["state"] == "paused"
     d.resume("f")
-    assert d.wait("f", 10)["state"] == "fatto"
+    assert d.wait("f", 10)["state"] == "done"
     assert (tmp_path / "o").read_bytes() == BLOB
 
 
@@ -117,7 +117,7 @@ def test_no_space_refused_before_start(tmp_path, monkeypatch):
     d = dl.Downloads("t")
     d.file("f", "File", "http://x/f", tmp_path / "o")
     job = d.wait("f", 10)
-    assert job["state"] == "errore" and "libera spazio" in job["error"]
+    assert job["state"] == "error" and "libera spazio" in job["error"]
 
 
 def test_custom_source_and_restart_comes_back_paused(tmp_path):
@@ -137,9 +137,9 @@ def test_custom_source_and_restart_comes_back_paused(tmp_path):
     assert started.wait(5)
     assert d.get("m")["done"] == 5
     again = dl.Downloads("t", state_path=tmp_path / "s.json")      # a restart while it runs
-    assert again.get("m")["state"] == "in_pausa"
+    assert again.get("m")["state"] == "paused"
     release.set()
-    assert d.wait("m", 5)["state"] == "fatto"
+    assert d.wait("m", 5)["state"] == "done"
 
 
 def test_add_is_idempotent_and_remove(tmp_path):
@@ -147,8 +147,8 @@ def test_add_is_idempotent_and_remove(tmp_path):
     d = dl.Downloads("t")
     d.source("fake", lambda job: None, remove=lambda job: removed.append(job.id))
     d.add("m", "M", "fake")
-    assert d.wait("m", 5)["state"] == "fatto"
-    assert d.add("m", "M", "fake")["state"] == "fatto"
+    assert d.wait("m", 5)["state"] == "done"
+    assert d.add("m", "M", "fake")["state"] == "done"
     d.remove("m")
     assert removed == ["m"] and d.get("m") is None
 
@@ -164,7 +164,7 @@ def test_router(tmp_path):
     app.include_router(d.router())
     c = TestClient(app)
     assert c.get("/api/downloads").json()["downloads"][0]["id"] == "ollama:qwen3:8b"
-    assert c.post("/api/downloads/ollama:qwen3:8b/retry").json()["state"] == "fatto"
+    assert c.post("/api/downloads/ollama:qwen3:8b/retry").json()["state"] == "done"
     assert c.post("/api/downloads/nope/pause").status_code == 404
     assert c.post("/api/downloads/ollama:qwen3:8b/explode").status_code == 404
     assert c.post("/api/downloads/ollama:qwen3:8b/remove").json()["removed"] is True

@@ -4,7 +4,7 @@ import requests
 
 from tools.geocoding import GeocodingService, extract_city_from_text, haversine_km
 from tools.schemas import ModuleToolQueryRequest, RealEstateSearchRequest
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # fixed texts in the owner's language
 
 
 class ScoutRetrievalService:
@@ -192,7 +192,7 @@ class ScoutRetrievalService:
 
         nearby = bool(req.filters.get("nearby", False)) if isinstance(
             req.filters, dict) else False
-        if any(token in merged_text.lower() for token in ["nearby", "vicino", "dintorni", "vicinanze"]):
+        if any(token in merged_text.lower() for token in words("scout.nearby")):
             nearby = True
 
         radius_km = 20.0

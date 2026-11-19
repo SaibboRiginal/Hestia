@@ -122,7 +122,7 @@ class TestArgusHealth:
 
 @pytest.mark.unit
 def test_back_online_message_uses_the_chosen_name(monkeypatch):
-    """docs/work/2026-11-17-nome-dei-client: «Monitor di Leo», never a fixed «Hestia Monitor»."""
+    """docs/work/2026-11-17-client-names: «Monitor di Leo», never a fixed «Hestia Monitor»."""
     from hestia_common import i18n
     monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo",
                                           "themis.personal.language": "it"}.get)

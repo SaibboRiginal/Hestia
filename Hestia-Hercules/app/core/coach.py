@@ -1,8 +1,8 @@
-"""Hercules as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.1).
+"""Hercules as a coach of the weekly plan (SPEC docs/work/2026-10-20-coach-of-every-kind §7.1).
 
 Needs (``hestia_common.coach`` contract), always "still to do" from ``start``:
 - weekly program → one ``workout.<weekday>`` block per program day left (that weekday only);
-- otherwise a goal "N a settimana" (or a rotation program with a goal) → one ``workout`` block with ``count`` = what
+- otherwise a goal "N a week" (or a rotation program with a goal) → one ``workout`` block with ``count`` = what
   is left of the goal; no goal and no weekly program → no need (nothing to plan, no switch needed).
 ``fit`` = the time-limit rule of the adaptation engine (the short version of the next workout); ``placed`` keeps the
 plan in memory so "next workout" and the reminder can say when; ``review`` counts sessions of a past week.
@@ -15,7 +15,7 @@ from typing import Any
 
 from . import adapt as adapt_engine
 from . import records
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, words  # owner language; owner words per language
 
 TOD = ("morning", "midday", "afternoon", "evening", "any")
 
@@ -72,7 +72,7 @@ class HerculesCoach:
                                 "minutes": minutes, "min_minutes": min(min_minutes, minutes), "days": [d.weekday()],
                                 "time_of_day": tod, "tags": ["workout", effort, *self._muscle_tags(t)],
                                 "priority": "should", "reason": tr("planned {0}", h_weekday(d)) + reason_extra,
-                                "link": "oggi"})
+                                "link": "today"})
                 d += timedelta(days=1)
         else:
             goal = next((g for g in h.goals() if (g.get("scope") or "any") == "any"), None)
@@ -94,7 +94,7 @@ class HerculesCoach:
                                 "min_gap_days": 2 if remaining <= 3 else 1,
                                 "tags": ["workout", effort], "priority": "should",
                                 "reason": f"{prog_.get('hint')}" + (tr(" · next: {0}", nxt['name']) if nxt else "")
-                                          + reason_extra, "link": "oggi"})
+                                          + reason_extra, "link": "today"})
         state = " · ".join((summary.get("lines") or [])[:2])
         return {"state": state, "needs": out}
 
@@ -107,8 +107,7 @@ class HerculesCoach:
     @staticmethod
     def _muscle_tags(template: dict) -> list[str]:
         name = (template.get("name") or "").lower()
-        return [t for t, words in (("legs", ("gamb", "leg", "squat")), ("push", ("push", "spinta", "petto")),
-                                   ("pull", ("pull", "trazion", "schiena"))) if any(w in name for w in words)]
+        return [t for t in ("legs", "push", "pull") if any(w in name for w in words(f"hercules.template.{t}"))]
 
     def fit(self, need_id: str, day: date, minutes: int) -> dict:
         """Short version: the adaptation engine's time-limit rule on the workout of that day."""

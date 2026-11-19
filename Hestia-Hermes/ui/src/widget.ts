@@ -1,4 +1,4 @@
-/** <hermes-today-widget> — «Consegne oggi»: notifications of today, held, failed, waiting for an answer. */
+/** <hermes-today-widget> — «Deliveries today»: notifications of today, held, failed, waiting for an answer. */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, hermesStyles, todayStart } from './util';
 
@@ -29,7 +29,7 @@ export class HermesTodayWidget extends HestiaElement {
     if (!s) return html`<hxk-state kind="loading"></hxk-state>`;
     const small = (this.ctx?.size || 'm') === 's';
     const clients = Object.entries(s.clients || {}) as Array<[string, any]>;
-    return html`<div class="w" @click=${() => this.host.navigate('consegne')}>
+    return html`<div class="w" @click=${() => this.host.navigate('deliveries')}>
       <span class="small muted">${tr("Today's notifications")}</span>
       <div class="big tnum">${s.total}</div>
       <div class="row wrap">

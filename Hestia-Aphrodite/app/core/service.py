@@ -1,8 +1,8 @@
-"""Aphrodite — how the clients look («Aspetto», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A2).
+"""Aphrodite — how the clients look («Look», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A2).
 
 Profiles (palette, a light effect, a background) and pets (a small companion with a few poses). Aphrodite decides
 by itself which profile is on: a special moment of today pushed by the calendar (the owner's birthday, the owner's
-important events), then the holidays (Natale, Capodanno, San Valentino, Pasqua, Halloween…), then the season.
+important events), then the holidays (Christmas, New Year, Valentine's Day, Easter, Halloween…), then the season.
 Marko's only switch is per client: ``auto`` off = the standard look. The pet is a per-client choice. Pictures are
 asked to the image module (``POST /api/images/jobs`` with a callback here); clients only read ``GET /now``.
 """
@@ -20,7 +20,7 @@ logger = logging.getLogger("hestia_aphrodite.service")
 
 EFFECTS = ("none", "snow", "leaves", "petals", "sun", "hearts", "confetti", "pumpkins", "stars")
 POSES = ("idle", "happy", "sleep")
-# Mascots drawn by the clients themselves (animated, no picture needed: dossier 2026-11-18-problemi-del-test G).
+# Mascots drawn by the clients themselves (animated, no picture needed: dossier 2026-11-18-real-test-problems G).
 # key → English name (translated when served). The default when the client never chose is the first one.
 DRAWN = {"ember": "Little flame", "cat": "Cat", "owl": "Owl"}
 DEFAULT_PET = "builtin:ember"
@@ -45,37 +45,37 @@ def easter(year: int) -> date:
 # key: (name, palette, effect, background prompt). Palettes are accents over the client's own light/dark theme.
 BUILTIN: dict[str, dict] = {
     "standard": {"name": "Standard", "palette": {}, "effect": "none", "prompt": ""},
-    "compleanno": {"name": "Birthday", "palette": {"accent": "#D97706", "accent2": "#DB2777"}, "effect": "confetti",
+    "birthday": {"name": "Birthday", "palette": {"accent": "#D97706", "accent2": "#DB2777"}, "effect": "confetti",
                    "prompt": "soft festive birthday background, balloons, warm light, minimal, no text"},
-    "evento": {"name": "Special day", "palette": {"accent": "#7C3AED"}, "effect": "stars",
+    "event": {"name": "Special day", "palette": {"accent": "#7C3AED"}, "effect": "stars",
                "prompt": "soft celebratory background, gentle sparkles, minimal, no text"},
-    "capodanno": {"name": "Capodanno", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
+    "new_year": {"name": "New Year", "palette": {"accent": "#CA8A04", "accent2": "#1E3A8A"}, "effect": "confetti",
                   "prompt": "new year night, gold fireworks, elegant minimal, no text"},
-    "natale": {"name": "Natale", "palette": {"accent": "#B91C1C", "accent2": "#166534"}, "effect": "snow",
+    "christmas": {"name": "Christmas", "palette": {"accent": "#B91C1C", "accent2": "#166534"}, "effect": "snow",
                "prompt": "cozy christmas, warm lights, snow, minimal illustration, no text"},
-    "san_valentino": {"name": "San Valentino", "palette": {"accent": "#DB2777"}, "effect": "hearts",
+    "valentines": {"name": "Valentine's Day", "palette": {"accent": "#DB2777"}, "effect": "hearts",
                       "prompt": "soft pink hearts, minimal, no text"},
-    "pasqua": {"name": "Pasqua", "palette": {"accent": "#65A30D", "accent2": "#EAB308"}, "effect": "petals",
+    "easter": {"name": "Easter", "palette": {"accent": "#65A30D", "accent2": "#EAB308"}, "effect": "petals",
                "prompt": "spring easter, pastel flowers, minimal, no text"},
     "halloween": {"name": "Halloween", "palette": {"accent": "#EA580C", "accent2": "#6D28D9"}, "effect": "pumpkins",
                   "prompt": "friendly halloween, pumpkins, purple dusk, minimal illustration, no text"},
-    "primavera": {"name": "Primavera", "palette": {"accent": "#16A34A"}, "effect": "petals", "prompt": ""},
-    "estate": {"name": "Estate", "palette": {"accent": "#0284C7"}, "effect": "sun", "prompt": ""},
-    "autunno": {"name": "Autunno", "palette": {"accent": "#C2410C"}, "effect": "leaves", "prompt": ""},
-    "inverno": {"name": "Inverno", "palette": {"accent": "#2563EB"}, "effect": "none", "prompt": ""},
+    "spring": {"name": "Spring", "palette": {"accent": "#16A34A"}, "effect": "petals", "prompt": ""},
+    "summer": {"name": "Summer", "palette": {"accent": "#0284C7"}, "effect": "sun", "prompt": ""},
+    "autumn": {"name": "Autumn", "palette": {"accent": "#C2410C"}, "effect": "leaves", "prompt": ""},
+    "winter": {"name": "Winter", "palette": {"accent": "#2563EB"}, "effect": "none", "prompt": ""},
 }
 
 
 def holiday(day: date) -> str | None:
     md = (day.month, day.day)
     if md in ((12, 31), (1, 1)):
-        return "capodanno"
+        return "new_year"
     if (12, 8) <= md or md <= (1, 6):
-        return "natale"
+        return "christmas"
     if md == (2, 14):
-        return "san_valentino"
+        return "valentines"
     if abs((day - easter(day.year)).days) <= 1:
-        return "pasqua"
+        return "easter"
     if (10, 25) <= md <= (10, 31) or md == (11, 1):
         return "halloween"
     return None
@@ -84,12 +84,12 @@ def holiday(day: date) -> str | None:
 def season(day: date) -> str:
     md = (day.month, day.day)
     if (3, 21) <= md < (6, 21):
-        return "primavera"
+        return "spring"
     if (6, 21) <= md < (9, 23):
-        return "estate"
+        return "summer"
     if (9, 23) <= md < (12, 21):
-        return "autunno"
-    return "inverno"
+        return "autumn"
+    return "winter"
 
 
 class Appearance:
@@ -138,7 +138,7 @@ class Appearance:
         """Calendar ``special_moment`` of today: the owner's own moments change the look for the day."""
         if moment.get("person_id"):
             return {"handled": False}                       # other people's dates: gifts, not decorations
-        kind = "compleanno" if moment.get("kind") == "birthday" else "evento"
+        kind = "birthday" if moment.get("kind") == "birthday" else "event"
         day = str(moment.get("date") or self.today().isoformat())[:10]
         self.store.upsert("moment", f"{day}-{moment.get('key') or kind}", {
             "date": day, "profile": kind, "title": str(moment.get("title") or "")[:80]})
@@ -150,7 +150,7 @@ class Appearance:
         self.store.refresh()
         moments = [m for m in self.store.items("moment") if m.get("date") == day.isoformat()]
         if moments:
-            m = sorted(moments, key=lambda m: m["profile"] != "compleanno")[0]
+            m = sorted(moments, key=lambda m: m["profile"] != "birthday")[0]
             return m["profile"], m.get("title") or BUILTIN[m["profile"]]["name"]
         md = f"{day.month:02d}-{day.day:02d}"
         for p in self.profiles():
@@ -248,7 +248,7 @@ class Appearance:
             p = self.profile(ref)
             if not p.get("prompt"):
                 raise Invalid(tr("this profile has no description for the background"))
-            asks.append((f"profile:{p['id']}:background", p["prompt"], "sfondo", 1536, 864))
+            asks.append((f"profile:{p['id']}:background", p["prompt"], "background", 1536, 864))
         elif target == "pet":
             p = self.pet(ref)
             if p.get("builtin"):
@@ -256,7 +256,7 @@ class Appearance:
             look = f"{p['look']} " if p.get("look") else ""
             for pose, words in (("idle", "sitting calmly"), ("happy", "happy, jumping"), ("sleep", "sleeping curled up")):
                 asks.append((f"pet:{p['id']}:{pose}", f"cute small {p['species']} mascot, {look}{words}, flat "
-                             "sticker illustration, plain white background", "mascotte", 512, 512))
+                             "sticker illustration, plain white background", "mascot", 512, 512))
         else:
             raise Invalid("target: profile o pet")
         jobs = []

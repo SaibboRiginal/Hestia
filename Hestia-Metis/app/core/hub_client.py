@@ -85,7 +85,7 @@ class HubClient:
             logger.warning("event=metis_oracle_call_exception error=%s", exc)
             return ""
 
-    def oracle_model(self, usecase: str = "oracle.generale") -> str:
+    def oracle_model(self, usecase: str = "oracle.general") -> str:
         """Model Oracle uses now for a use case (Oracle owns model choice: first usable step of the use case's
         chain, read from Oracle's ``GET /api/llm/usecases/<use case>``). Empty string when Oracle does not answer."""
         payload = self._route_get(f"oracle/api/llm/usecases/{usecase}")

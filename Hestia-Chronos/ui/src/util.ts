@@ -23,7 +23,7 @@ export const STATUS: Record<string, { text: string; tone: string }> = {
   skipped: { text: tr('skipped'), tone: 'neutral' },
 };
 
-/** «Riprova»: the agenda's existing run-now action. Returns true when the run went fine. */
+/** «Retry»: the agenda's existing run-now action. Returns true when the run went fine. */
 export async function retry(host: HestiaHost, key: string, title: string): Promise<boolean> {
   const r = await host.api('POST', `${API}/items/${encodeURIComponent(key)}/run`);
   if (!r.ok) { host.toast(r.error || tr("{0}: not started", title), 'danger'); return false; }

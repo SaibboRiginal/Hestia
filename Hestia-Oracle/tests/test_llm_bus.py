@@ -142,7 +142,7 @@ def test_stream_rebinds_priority_on_every_step():
 
 @pytest.mark.unit
 def test_origin_and_module_promotion():
-    assert llm_bus.for_origin({"level": "utente"}) == llm_bus.CHAT
+    assert llm_bus.for_origin({"level": "user"}) == llm_bus.CHAT
     assert llm_bus.for_origin({"level": "routine"}) == llm_bus.BACKGROUND
     assert llm_bus.module_priority({"level": "autonomo"}) == llm_bus.BACKGROUND
     with llm_bus.priority(llm_bus.CHAT):
@@ -181,7 +181,7 @@ def test_chain_agent_takes_a_slot_for_local_steps_but_not_for_embeddings(monkeyp
     from core.services import llm_usage
     monkeypatch.setattr(llm_bus, "slot", _Slot)
     monkeypatch.setattr(llm_usage, "finish", lambda *a, **k: {})
-    agent = llm_chains.ChainAgent("oracle.generale")
+    agent = llm_chains.ChainAgent("oracle.general")
     monkeypatch.setattr(agent, "steps", lambda: [(0, {"provider": "loc", "model": "m"}, _Agent())])
     monkeypatch.setattr(agent, "_answered", lambda *a: None)
     monkeypatch.setattr(agent, "_usage", lambda *a: _Slot("usage"))
@@ -193,7 +193,7 @@ def test_chain_agent_takes_a_slot_for_local_steps_but_not_for_embeddings(monkeyp
     assert taken == ["usage"]
 
 
-# ── dossier 2026-11-18-problemi-del-test A: deadline and the owner's turn over a running call ──────────────
+# ── dossier 2026-11-18-real-test-problems A: deadline and the owner's turn over a running call ──────────────
 
 @pytest.mark.unit
 def test_call_whose_caller_gave_up_never_runs():

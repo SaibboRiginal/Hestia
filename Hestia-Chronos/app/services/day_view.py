@@ -1,6 +1,6 @@
 """What a day looks like from Chronos — the user's calendar plus Hestia's own agenda.
 
-Two users (docs/work/2026-10-20-recap-giornaliero):
+Two users (docs/work/2026-10-20-daily-recap):
 
 - ``recap(day, nxt)``: the agenda piece of the daily recap — the user's events of ``day`` and ``nxt``, assistant
   tasks done / skipped / failed, jobs that failed (a job that works is not news);
@@ -58,7 +58,7 @@ def user_events(start: datetime, end: datetime) -> list[dict]:
 
 def busy(start: datetime, end: datetime) -> list[tuple[datetime, datetime, str]]:
     """Timed (not all-day) user events overlapping [start, end) as ``(start, end, title)``."""
-    return [(r["_start"], r["_end"], str(r.get("title") or "impegno"))
+    return [(r["_start"], r["_end"], str(r.get("title") or "commitment"))
             for r in user_events(start, end) if not r.get("all_day")]
 
 

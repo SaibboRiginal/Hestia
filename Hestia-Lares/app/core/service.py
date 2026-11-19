@@ -1,9 +1,9 @@
-"""Lares — the house on Home Assistant («Casa», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A3).
+"""Lares — the house on Home Assistant («Home», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A3).
 
 A live mirror of the entities Marko cares about (lights, switches, covers, climate, sensors, scenes, the person),
 fed by the Home Assistant websocket (push; a full read only on connect). Commands go to HA services. Favourites
 (quick actions with a label and a room) live in Archive (``home-store``). The person entity chosen in the settings
-(``lares.persona``) becomes the presence signal ``home.present``: Chronos shows «Fuori casa» from it.
+(``lares.person``) becomes the presence signal ``home.present``: Chronos shows «Away from home» from it.
 """
 from __future__ import annotations
 
@@ -22,9 +22,9 @@ DOMAINS = ("light", "switch", "cover", "climate", "fan", "media_player", "lock",
            "binary_sensor", "person")
 COMMANDS = {"on": "turn_on", "off": "turn_off", "toggle": "toggle", "open": "open_cover", "close": "close_cover",
             "lock": "lock", "unlock": "unlock"}
-LABELS = {"light": "Lights", "switch": "Prese", "cover": "Shutters", "climate": "Climate", "fan": "Ventilatori",
-          "media_player": "Media", "lock": "Serrature", "scene": "Scene", "script": "Actions", "sensor": "Sensori",
-          "binary_sensor": "Sensori", "person": "People"}
+LABELS = {"light": "Lights", "switch": "Sockets", "cover": "Shutters", "climate": "Climate", "fan": "Fans",
+          "media_player": "Media", "lock": "Locks", "scene": "Scene", "script": "Actions", "sensor": "Sensors",
+          "binary_sensor": "Sensors", "person": "People"}
 STATE_WORDS = {"on": "on", "off": "off", "open": "f::open", "closed": "f::closed", "locked": "f::closed",
                "unlocked": "f::open", "home": "at home", "not_home": "away", "unavailable": "unreachable"}   # through tr
 
@@ -54,7 +54,7 @@ class Home:
         with self._lock:
             self.entities = {e["id"]: e for e in rows}
         self.connected = True
-        self._presence(self.entities.get(self.get("lares.persona", "") or ""))
+        self._presence(self.entities.get(self.get("lares.person", "") or ""))
         logger.info("event=lares_loaded entities=%d", len(rows))
         return len(rows)
 
@@ -64,7 +64,7 @@ class Home:
             return
         with self._lock:
             self.entities[e["id"]] = e
-        if e["id"] == (self.get("lares.persona", "") or ""):
+        if e["id"] == (self.get("lares.person", "") or ""):
             self._presence(e)
 
     def _presence(self, person: dict | None) -> None:
@@ -115,7 +115,7 @@ class Home:
                  if e["domain"] == "sensor" and e["device_class"] == "temperature"][:6]
         open_ = [e["name"] for e in ents if e["domain"] == "binary_sensor" and e["device_class"] in
                  ("door", "window", "opening") and e["state"] == "on"]
-        person = self.entities.get(self.get("lares.persona", "") or "")
+        person = self.entities.get(self.get("lares.person", "") or "")
         return {"configured": True, "connected": self.connected, "entities": len(ents), "lights_on": lights_on,
                 "temperatures": temps, "open": open_, "person": person["state"] if person else None,
                 "favorites": self.favorites()}

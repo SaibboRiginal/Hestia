@@ -90,7 +90,7 @@ def test_stats_and_manifest(client):
     s = c.get("/api/ui/stats").json()
     assert s["total"] == 2 and s["new"] == 1 and s["favorites"] == 1 and len(s["weeks"]) == 8
     m = c.get("/api/ui/manifest").json()
-    assert {p["id"] for p in m["clients"]["webui"]["page"]} == {"case", "case/:id", "statistiche"}
+    assert {p["id"] for p in m["clients"]["webui"]["page"]} == {"houses", "houses/:id", "stats"}
     assert c.get("/api/ui/listings/doesnotexist").status_code == 404
 
 
@@ -104,7 +104,7 @@ def test_bundle_dir_outside_mounted_code(tmp_path, monkeypatch):
 
 
 def test_recap_facts_new_listings_of_the_day():
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     views = [ui_api.to_view(r) for r in _records()]
     day = datetime.fromisoformat(views[0]["created_at"]).astimezone().date()
     facts = ui_api.recap_facts(views, day)

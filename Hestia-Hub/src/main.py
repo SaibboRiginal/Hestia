@@ -73,7 +73,7 @@ _health_timeout = float(os.getenv("HUB_HEALTHCHECK_TIMEOUT", "3"))
 snapshot = RegistrySnapshot()
 nodes = Nodes()
 
-# Satellite (docs/work/2026-10-30-setup-un-click §4.0): HUB_UPSTREAM_URL set → this Hub only relays to the central.
+# Satellite (docs/work/2026-10-30-one-click-setup §4.0): HUB_UPSTREAM_URL set → this Hub only relays to the central.
 _relay = relay.config()
 if _relay:
     app.add_middleware(relay.RelayMiddleware, cfg=_relay)
@@ -177,7 +177,7 @@ def deregister_service(req: DeregisterServiceRequest):
     return {"status": "ok"}
 
 
-# ── Machines: central and satellites (docs/work/2026-10-30-setup-un-click §4.0) ─────────────
+# ── Machines: central and satellites (docs/work/2026-10-30-one-click-setup §4.0) ─────────────
 def _node_error(exc: NodeError):
     raise HTTPException(status_code=exc.status, detail=str(exc))
 
@@ -213,7 +213,7 @@ def nodes_list():
 
 @app.delete("/api/nodes/{node_id}")
 def nodes_revoke(node_id: str):
-    """«Scollega»: the token stops working and the satellite's modules leave the routing table."""
+    """«Unlink»: the token stops working and the satellite's modules leave the routing table."""
     try:
         node = nodes.revoke(node_id)
     except NodeError as exc:
@@ -291,7 +291,7 @@ def discovery_catalog(client: str = "", type: str = "", module: str = ""):
     return {"revision": events.revision, **catalog}
 
 
-# ── WebUI plugin reads (Mappa page, Servizi online widget) ─────────────────────
+# ── WebUI plugin reads (Map page, Online services widget) ─────────────────────
 
 
 def _service_map(probe: bool = False) -> dict:

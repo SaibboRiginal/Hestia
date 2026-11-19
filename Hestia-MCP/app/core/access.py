@@ -1,4 +1,4 @@
-"""Who may use Hestia's MCP from outside: accesses (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B6).
+"""Who may use Hestia's MCP from outside: accesses (docs/work/2026-10-18-core-modules-and-external-mcp §B6).
 
 An access = name, scope (read | write), the tools it may use ([] = every tool a module opened to external
 clients), expiry. Stored in Archive (``/api/mcp-access-store``) through Hub; the token is shown once at
@@ -21,7 +21,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_mcp.access")
 
-TOKEN_PREFIX = "hst_"          # access of kind token (made on the Accessi page)
+TOKEN_PREFIX = "hst_"          # access of kind token (made on the Access page)
 OAUTH_TOKEN_PREFIX = "hso_"    # short-lived access token of an access of kind oauth (core/oauth.py)
 SCOPES = ("read", "write")
 _STORE = "api/mcp-access-store/accesses"
@@ -102,7 +102,7 @@ class AccessStore:
         with self._lock:
             self._cache.clear()
 
-    # ── management (Accessi page) ──────────────────────────────────────────
+    # ── management (Access page) ──────────────────────────────────────────
     def list(self) -> list[dict]:
         return (self._ok(*self._archive("GET", _STORE)) or {}).get("accesses") or []
 

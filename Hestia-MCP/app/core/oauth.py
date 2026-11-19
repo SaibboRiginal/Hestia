@@ -1,4 +1,4 @@
-"""OAuth 2.1 authorization server of Hestia's MCP (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3, §B6).
+"""OAuth 2.1 authorization server of Hestia's MCP (docs/work/2026-10-18-core-modules-and-external-mcp §B3, §B6).
 
 For the clients that only speak OAuth (claude.ai web/mobile custom connectors, ChatGPT). Everything public goes
 through the WebUI door (the only service behind the tunnel), which forwards here through Hub and passes the public
@@ -15,7 +15,7 @@ address it was reached at in ``X-Hestia-Public-Base`` (issuer, metadata URLs):
   the access it became) and ``refresh_token`` (rotated on every use; a replayed old one revokes the access).
 - ``POST /oauth/revoke`` (RFC 7009).
 
-A grant is an access of kind ``oauth`` in the same list as the tokens (Accessi page): revoke / renew / delete work the
+A grant is an access of kind ``oauth`` in the same list as the tokens (Access page): revoke / renew / delete work the
 same, and its access tokens (``hso_…``, short-lived: ``mcp.oauth.access_token_minutes``) go through the same check as
 ``hst_…`` tokens (scope, tools, expiry, rate limit, audit). Clients, codes and tokens are stored in Archive only as
 sha256 hashes (the client id is public).
@@ -50,7 +50,7 @@ CLIENT_PREFIX = "hmc_"
 CODE_PREFIX = "hsc_"
 REFRESH_PREFIX = "hsr_"
 CODE_TTL_S = 300            # a code lives 5 minutes (protocol, not a tunable)
-REQUEST_TTL_S = 900         # time to log in on the WebUI and press Consenti
+REQUEST_TTL_S = 900         # time to log in on the WebUI and press Allow
 MAX_PENDING = 50
 REGISTER_PER_MIN = 10       # dynamic registration is open to the internet: a small global brake
 DEFAULT_BASE = "http://localhost:19015"

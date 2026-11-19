@@ -3,15 +3,14 @@ import { CentralSettingsApi } from '../features/settings/central-settings.api';
 import { assistantName } from '../core/i18n';
 
 /** Who the assistant is and whose it is, and the owner's language: five personal settings (Themis `themis.personal.*`, dossier
- * docs/work/2026-11-12-identita-e-proattivita). The pages and the site itself show the chosen name
- * (docs/work/2026-11-17-nome-dei-client). Settings unreachable → the defaults, nothing breaks. */
-export interface Identity { assistant: string; gender: 'lei' | 'lui'; ownerName: string; ownerCall: string; language: string; }
+ * docs/work/2026-11-12-identity-and-proactivity). The pages and the site itself show the chosen name
+ * (docs/work/2026-11-17-client-names). Settings unreachable → the defaults, nothing breaks. */
+export interface Identity { assistant: string; gender: 'she' | 'he'; ownerName: string; ownerCall: string; language: string; }
 
-/** The languages of `themis.personal.language` (notifications, recaps, messages she writes on her own). */
-export const LANGUAGES: { value: string; label: string }[] = [
-  { value: 'it', label: 'Italiano' }, { value: 'en', label: 'English' },
-];
-const DEFAULT_LANGUAGE = 'it';
+/** Before the settings answer: the languages of `themis.personal.language` come from the setting's options (one per
+ * `locales/<code>/language.json`, docs/LANGUAGES.md), so a new language needs no change here. */
+const FALLBACK_LANGUAGES: { value: string; label: string }[] = [{ value: 'en', label: 'English' }];
+const DEFAULT_LANGUAGE = 'en';
 
 const KEYS = {
   assistant: 'themis.personal.assistant_name', gender: 'themis.personal.assistant_gender',
@@ -26,10 +25,11 @@ export class IdentityService {
   private asked = false;
 
   readonly assistant = signal(assistantName());   // the catalog already knows it before the settings answer
-  readonly gender = signal<'lei' | 'lui'>('lei');
+  readonly gender = signal<'she' | 'he'>('she');
   readonly ownerName = signal('');
   readonly ownerCall = signal('');
   readonly language = signal(DEFAULT_LANGUAGE);
+  readonly languages = signal(FALLBACK_LANGUAGES);
 
   /** Read once (pages call it freely); `force` after a change made elsewhere. */
   async load(force = false): Promise<void> {
@@ -39,11 +39,14 @@ export class IdentityService {
       const page = await this.api.items('themis');
       const value = (key: string) => String(page.items.find(i => i.key === key)?.value ?? '').trim();
       this.assistant.set(value(KEYS.assistant) || DEFAULT_ASSISTANT);
-      this.gender.set(value(KEYS.gender) === 'lui' ? 'lui' : 'lei');
+      this.gender.set(value(KEYS.gender) === 'he' ? 'he' : 'she');
       this.ownerName.set(value(KEYS.ownerName));
       this.ownerCall.set(value(KEYS.ownerCall));
-      const lang = value(KEYS.language);
-      this.language.set(LANGUAGES.some(l => l.value === lang) ? lang : DEFAULT_LANGUAGE);
+      const item = page.items.find(i => i.key === KEYS.language);
+      const known = (item?.options ?? []).map(o => ({ value: String(o.value), label: String(o.label ?? o.value) }));
+      if (known.length) this.languages.set(known);
+      const lang = value(KEYS.language) || String(item?.default ?? '');
+      this.language.set(this.languages().some(l => l.value === lang) ? lang : this.languages()[0].value);
     } catch { this.asked = false; /* defaults stay; the next page tries again */ }
   }
 

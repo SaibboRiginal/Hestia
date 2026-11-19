@@ -1,12 +1,12 @@
 /**
- * Demeter («Alimentazione») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages and widget declared in Hestia-Demeter/app/main.py.
+ * Demeter («Nutrition») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * docs/work/2026-10-24-whole-cindy-brainstorm W7). Pages and widget declared in Hestia-Demeter/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/food';
-const SLOTS: Record<string, string> = { colazione: tr('Breakfast'), pranzo: tr('Lunch'), cena: tr('Dinner'), spuntino: tr('Snack') };
+const SLOTS: Record<string, string> = { breakfast: tr('Breakfast'), lunch: tr('Lunch'), dinner: tr('Dinner'), snack: tr('Snack') };
 const TIMES: Record<string, string> = { morning: tr('Morning'), midday: tr('Lunch'), afternoon: tr('Afternoon'), evening: tr('Evening'), any: tr('Whenever you want') };
 const WEEK = [tr('Mon'), tr('Tue'), tr('Wed'), tr('Thu'), tr('Fri'), tr('Sat'), tr('Sun')];
 
@@ -189,7 +189,7 @@ export class DemeterWidget extends HestiaElement {
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const todo = s.supplements.filter((x: any) => !x.taken);
-    return html`<div class="col click" style="gap:8px" @click=${() => this.host.navigate('oggi')}>
+    return html`<div class="col click" style="gap:8px" @click=${() => this.host.navigate('today')}>
       ${progress(s.kcal, s.kcal_target, 'kcal')}
       ${this.ctx?.size !== 's' ? html`<div class="small muted">${s.meals.length} ${"past"}${s.meals.length === 1 ? 'o' : 'i'}${todo.length ? tr(" · to take: {0}", todo.map((x: any) => x.name).join(', ')) : ''}</div>` : nothing}
     </div>`;

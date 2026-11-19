@@ -1,4 +1,4 @@
-"""Training dataset D3 «Esporta» (docs/work/2026-10-30-dataset-allenamento §3.4). Markers: unit"""
+"""Training dataset D3 «Esporta» (docs/work/2026-10-30-training-dataset §3.4). Markers: unit"""
 import base64
 import io
 import json
@@ -71,7 +71,7 @@ def _reviewed():
     arc = BlobArchive()
     seed(arc, user="Mia mamma si chiama Laura Rossi", answer="Ho salvato Laura in Persone e in memoria.", steps=STEPS)
     seed(arc, tid="t2", user="Che ore sono?", answer="Le 10.")
-    Review(arc, llm=Teacher({"verdict": "fix", "confidence": 0.95, "answer": "Ho salvato <PERSONA_1> in Persone.",
+    Review(arc, llm=Teacher({"verdict": "fix", "confidence": 0.95, "answer": "Ho salvato <PERSON_1> in Persone.",
                              "remove_steps": [1]})).run()
     return arc
 
@@ -80,13 +80,13 @@ def test_masked_export_hides_people_and_has_dpo_pair():
     arc = _reviewed()
     ex = Exporter(arc, people=lambda: ["Laura Rossi"])
     out = ex.build()
-    assert out["masked"] is True and out["name"].endswith("-oscurato.zip")
+    assert out["masked"] is True and out["name"].endswith("-redacted.zip")
     rows, card = unzip(arc, out)
     dump = json.dumps(rows, ensure_ascii=False)
-    assert "Laura" not in dump and "<PERSONA_1>" in dump
+    assert "Laura" not in dump and "<PERSON_1>" in dump
     assert card["sft"] + card["eval"] == 2 and card["dpo"] == 2 and card["corrected"] == 2
     t1 = next(r for r in rows["sft.jsonl"] + rows["eval.jsonl"] if "Persone" in r["messages"][-1]["content"])
-    assert t1["messages"][-1]["content"] == "Ho salvato <PERSONA_1> in Persone."
+    assert t1["messages"][-1]["content"] == "Ho salvato <PERSON_1> in Persone."
     assert not any(m.get("name") == "memory_save" for m in t1["messages"]) and t1["tools"]
     assert ex.list()[0]["id"] == out["id"]
     f = ex.file_b64(out["id"])
@@ -99,7 +99,7 @@ def test_clear_export_keeps_real_text_and_skips_unreviewed():
     called = []
     out = Exporter(arc, people=lambda: called.append(1) or []).build(masked=False)
     rows, card = unzip(arc, out)
-    assert not called and out["name"].endswith("-in-chiaro.zip") and card["masked"] is False
+    assert not called and out["name"].endswith("-plain.zip") and card["masked"] is False
     assert "Laura Rossi" in json.dumps(rows, ensure_ascii=False)
     assert card["skipped"] == 1 and card["turns"] == 3
 

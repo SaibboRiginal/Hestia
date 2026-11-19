@@ -50,11 +50,11 @@ new control flow (`@if`, `@for`, `@switch`). Style = Claude (warm neutrals, seri
 
 ### Styles (second axis, `core/theme/looks.ts`, 2026-10-29)
 
-Over the colours the user picks a **style** — `classico` (current look), `vetro` (translucent blurred panels on a shaded
-backdrop, rounder, lively motion), `netto` (sans everywhere, almost square corners, strong borders, no shadows) — and
+Over the colours the user picks a **style** — `classic` (current look), `glass` (translucent blurred panels on a shaded
+backdrop, rounder, lively motion), `net` (sans everywhere, almost square corners, strong borders, no shadows) — and
 can change its four knobs one by one: **corners** (radius scale), **borders** (`--border*` lighter/stronger),
 **transparency** (`--surface`, `--bg-subtle`, `--surface-2` with alpha + `--glass`), **animations** (`--dur*`;
-`nessuna` stops every animation, `vivaci` adds card hover and a page entrance). Saved per browser
+`none` stops every animation, `lively` adds card hover and a page entrance). Saved per browser
 (`localStorage hestia_look`), written as tokens + `data-style` / `data-glass` / `data-motion` on `<html>`.
 Rules for components: never hardcode radii, durations or opaque page backgrounds (`var(--bg)` on a page root hides
 the backdrop); a floating panel gets `hx-glass` (blur on `::before`, so the panel never becomes the containing block
@@ -70,7 +70,7 @@ scrollbars per component.
 
 | Component | Usage |
 |---|---|
-| `<hx-icon name size stroke tone>` | stroke icons; list in `icon.component.ts`. Add an icon to it **and** to the SDK `kit/basics.ts` (same name and path). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the sidebar shows «info» — `python tools/cloud_test.py flows plugins` checks it |
+| `<hx-icon name size stroke tone>` | stroke icons; list in `icon.component.ts`. Add an icon to it **and** to the SDK `kit/basics.ts` (same name and path). Every icon a plugin names in its manifest (pages, widgets, quick actions) must be here, or the sidebar shows «Info» — `python tools/cloud_test.py flows plugins` checks it |
 | `<button hx-btn variant size icon iconRight iconOnly block loading>` | variants `primary · secondary · ghost · subtle · danger`; sizes `sm · md · lg` |
 | `.hx-input`, `.hx-select`, `.hx-textarea`, `.hx-check` (+ `.mono`) | global form classes |
 | `<hx-field label hint error required>` | label/hint/error wrapper around a control |
@@ -137,7 +137,7 @@ export class NotesPageComponent {}
   Reload page data on `AssistantService.changed$` (agenda / Forge / action notices).
 - **Side panels are resizable** (the owner likes it): every side column/drawer gets `<hx-resize>` with a `key`
   (shell sidebar, Crea con Hestia, Sviluppo list + context panel, Calendario filters, Impostazioni → Sistema modules).
-- **Tooltips** (dossier `docs/work/2026-11-18-problemi-del-test` D): write a plain `title` (or the `aria-label` of an
+- **Tooltips** (dossier `docs/work/2026-11-18-real-test-problems` D): write a plain `title` (or the `aria-label` of an
   icon-only button) and nothing else: `ui/tooltip.ts` (started by `AppComponent`) gives every one of them, plugins
   included, the same tooltip (hover after 450 ms, keyboard focus, long press on touch). Never build a tooltip of your own.
 - **Numbers that count things open them**: an `hxk-stat` tile that counts items gets `list` (the items, shown in a
@@ -168,9 +168,9 @@ Resizable from its left edge (`<hx-resize key="assistant">`, 340px–90vw, defau
 
 ## 7. Sviluppo module
 
-Since 2026-10-19 Sviluppo is Hephaestus' plugin page (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`:
+Since 2026-10-19 Sviluppo is Hephaestus' plugin page (`Hestia-Hephaestus/ui/src/development.ts` + `ui/src/forge/`:
 store, api, transcript, task panel, repo browser + graph), built with the plugin kit (`hxk-*`) and the same tokens.
-The WebUI route `/forge` only redirects to `/p/hephaestus/sviluppo`.
+The WebUI route `/forge` only redirects to `/p/hephaestus/development`.
 
 ## 8. Central settings (`features/settings/`)
 

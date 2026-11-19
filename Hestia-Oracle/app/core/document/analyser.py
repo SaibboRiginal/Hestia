@@ -90,7 +90,7 @@ class DocumentAnalyser:
         handed = None if (is_audio or is_video) else self._try_handoff(
             file_bytes, mime_type, user_message, session_id, filename)
         if handed:
-            # A module took the file (e.g. bank statement → Spese): its answer is the reply, the file is its data
+            # A module took the file (e.g. bank statement → Expenses): its answer is the reply, the file is its data
             # (blob), so no copy in the RAG archive.
             self._save_history(session_id, filename or mime_type, user_message, handed["text"])
             yield stream_emitter.emit_signal(

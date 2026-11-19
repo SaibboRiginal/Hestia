@@ -4,13 +4,13 @@ One Oracle stream → ONE answer message (split only when > 4096 chars):
 
     ┌ status message (reused) ──────────────────────────────┐
     │ live status / live steps / streaming tokens ▍          │  while working
-    │ ▸ Ragionamento · 3 passi   (expandable blockquote)     │  final («Strumenti usati · N» with no reasoning)
+    │ ▸ Reasoning · 3 steps      (expandable blockquote)     │  final («Tools used · N» with no reasoning)
     │ answer…                                                │
-    │ Ricordato: l'utente ha due figli          (italic)     │  notices (inline)
-    │ [ Ascolta ] [ 👍 ] [ 👎 ]                               │  one row (voice_service)
+    │ Remembered: the user has two kids         (italic)     │  notices (inline)
+    │ [ Listen ]  [ 👍 ] [ 👎 ]                               │  one row (voice_service)
     └────────────────────────────────────────────────────────┘
 
-Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-da-zero §7).
+Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-from-scratch §7).
 Notices are the standard Oracle `notice` packets.
 """
 from __future__ import annotations
@@ -66,12 +66,12 @@ class ReplyRenderer:
         self.reasoning = 0
         self.answer_ids: list[int] = []      # message ids holding the final answer
         self.answer_last_html = ""
-        self.answer_text = ""                # plain final answer (for «Ascolta»)
+        self.answer_text = ""                # plain final answer (for «Listen»)
         self.trace_id = ""                   # Oracle's id of this turn: a 👍/👎 lands on it (training dataset)
         self._last_edit = 0.0
         self._last_sent = ""
         self.finalized = False
-        self.reaction = ""                   # Hestia's emoji on the owner's message (hestia-viva F4)
+        self.reaction = ""                   # Hestia's emoji on the owner's message (living-hestia F4)
         self.origin_label = ""               # who started the turn when it is not the owner (Cindy 6)
         self.buttons: list[dict] = []        # hestia-ui buttons of the answer (Cindy 9)
         self.changes: dict | None = None     # `changes` frame: writes of this turn with undo (Cindy 13)
@@ -135,7 +135,7 @@ class ReplyRenderer:
         if ui_blocks.has_blocks(answer):
             self.buttons = ui_blocks.buttons(answer)
             answer = ui_blocks.to_text(answer)
-        if isinstance(origin, dict) and origin.get("level") not in (None, "", "utente"):
+        if isinstance(origin, dict) and origin.get("level") not in (None, "", "user"):
             self.origin_label = str(origin.get("label") or "")
         if not answer:
             answer = tr("No answer: try again shortly.")
@@ -202,7 +202,7 @@ class ReplyRenderer:
             return ""
         steps = self.steps[-MAX_STEP_LINES:]
         more = len(self.steps) - len(steps)
-        # The title says what is inside: «Ragionamento» only when the model really reasoned, otherwise the block
+        # The title says what is inside: «Reasoning» only when the model really reasoned, otherwise the block
         # is the list of the tools used (same rule as the WebUI's chat-thinking).
         tools = tr("1 tool") if self.tool_calls == 1 else tr("{0} tools", self.tool_calls)
         if self.reasoning:

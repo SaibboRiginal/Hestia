@@ -1,5 +1,5 @@
 """Prefix watch: a changed fixed part of the prompt between two turns is logged with where it changed
-(dossier docs/work/2026-11-17-output-compatti v1.2)."""
+(dossier docs/work/2026-11-17-compact-outputs v1.2)."""
 from __future__ import annotations
 
 import pytest

@@ -44,11 +44,11 @@ def test_meals_diet_and_estimate(nf):
     assert food.diet()["rules"] == ["poco zucchero", "verdura a ogni pasto"] and "changed" in events
     with pytest.raises(Invalid):
         food.set_diet({"kcal": 100})
-    a = food.add_meal("Pasta al pomodoro", slot="pranzo")
-    food.add_meal("Yogurt", slot="spuntino", kcal=120, protein=10)
+    a = food.add_meal("Pasta al pomodoro", slot="lunch")
+    food.add_meal("Yogurt", slot="snack", kcal=120, protein=10)
     assert food.day_summary()["unknown"] == 1
     est = food.estimate(a["id"])
-    assert est["kcal"] == 640 and est["estimated"] is True and ("oracle", "POST", "demeter.stima") in hub.calls
+    assert est["kcal"] == 640 and est["estimated"] is True and ("oracle", "POST", "demeter.estimate") in hub.calls
     assert food.update_meal(a["id"], {"kcal": 700})["estimated"] is False
     t = food.day_summary()
     assert t["kcal"] == 820 and t["kcal_target"] == 2200 and t["unknown"] == 0
@@ -76,9 +76,9 @@ def test_endpoints_and_tools(monkeypatch):
                                                 lambda k, d=None: d, hub=hub))
     monkeypatch.setattr(main, "_estimate_async", lambda meal: None)
     c = TestClient(main.app)
-    assert c.post("/api/food/tools/pasto", json={"text": "Insalata", "kcal": 300}).json()["saved"] is True
+    assert c.post("/api/food/tools/meal", json={"text": "Insalata", "kcal": 300}).json()["saved"] is True
     assert c.get("/api/food/today").json()["kcal"] == 300
-    assert c.post("/api/food/tools/integratore", json={"name": "Omega 3"}).json()["name"] == "Omega 3"
-    assert c.post("/api/food/tools/preso", json={"supplement": "omega"}).json()["taken"] is True
+    assert c.post("/api/food/tools/supplement", json={"name": "Omega 3"}).json()["name"] == "Omega 3"
+    assert c.post("/api/food/tools/taken", json={"supplement": "omega"}).json()["taken"] is True
     assert c.get("/api/coach/needs").json()["needs"][0]["kind"] == "slot"
     assert "coach" in main.kit.registration()["tags"]

@@ -1,4 +1,4 @@
-"""Training dataset D1 «Registra» (docs/work/2026-10-30-dataset-allenamento). Markers: unit"""
+"""Training dataset D1 «Registra» (docs/work/2026-10-30-training-dataset). Markers: unit"""
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -119,7 +119,7 @@ def test_late_or_different_message_is_no_signal():
 
 def test_failed_tool_is_a_signal_on_the_same_turn():
     arc = FakeDatasetArchive()
-    out = Traces(arc).receive(trace(steps=[{"tool": "memory_save", "ok": False, "result": "errore"}]))
+    out = Traces(arc).receive(trace(steps=[{"tool": "memory_save", "ok": False, "result": "error"}]))
     assert out["signals"] == ["tool_failed"]
     assert arc.rows[("signal", "t1:tool_failed")]["data"]["tools"] == ["memory_save"]
 
@@ -141,7 +141,7 @@ def test_prune_drops_old_rows_only():
     t = Traces(arc, keep_days=lambda: 30)
     old = datetime.now(timezone.utc) - timedelta(days=40)
     t.receive(trace("old", at=old))
-    t.receive(trace("new", user="altro"))
+    t.receive(trace("new", user="other"))
     assert t.prune() == 1
     assert arc.rows[("trace", "old")]["deleted"] and not arc.rows[("trace", "new")].get("deleted")
 

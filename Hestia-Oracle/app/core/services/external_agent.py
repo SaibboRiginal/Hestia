@@ -1,6 +1,6 @@
-"""External brain mode (dossier ``docs/work/2026-10-19-oracle-a-blocchi`` §D): an agent CLI runs the loop.
+"""External brain mode (dossier ``docs/work/2026-10-19-oracle-blocks`` §D): an agent CLI runs the loop.
 
-Interna = Oracle's own machine (classifier, modes, agent loop, chains). Esterna = an agent (Claude Code through the
+Internal = Oracle's own machine (classifier, modes, agent loop, chains). External = an agent (Claude Code through the
 subscription, Codex through `codex login`) runs the tool loop; Oracle keeps the door work: context, the domain-filtered
 tools, saving messages to Archive, memory, usage rows.
 
@@ -9,10 +9,10 @@ tools, saving messages to Archive, memory, usage rows.
   the same tool handlers run: same domain filter, same approval gate, same logs and Hub routing. The agent's own
   file/shell tools stay off.
 - Sessions: Archive is the source of truth. The agent's session id is only a cache keyed by (Archive session, agent,
-  model), kept in memory; missing, another agent/model, or older than the last turn answered in interna → a new agent
+  model), kept in memory; missing, another agent/model, or older than the last turn answered in internal → a new agent
   session primed with the context Oracle builds for its own loop (summary + recent messages + memory).
-- Fails (not installed, no login, error, limit) → ``AgentError``; the caller redoes the turn in interna when
-  ``oracle.brain.fallback`` = interna.
+- Fails (not installed, no login, error, limit) → ``AgentError``; the caller redoes the turn in internal when
+  ``oracle.brain.fallback`` = internal.
 """
 from __future__ import annotations
 
@@ -53,15 +53,15 @@ class AgentError(RuntimeError):
 def brain() -> dict[str, str]:
     from core.services import oracle_settings as s
     get = s.settings.get
-    return {"mode": str(get(s.BRAIN_MODE, "interna") or "interna"), "agent": str(get(s.BRAIN_AGENT, "claude") or "claude"),
-            "model": str(get(s.BRAIN_MODEL, "") or "").strip(), "fallback": str(get(s.BRAIN_FALLBACK, "interna") or "interna")}
+    return {"mode": str(get(s.BRAIN_MODE, "internal") or "internal"), "agent": str(get(s.BRAIN_AGENT, "claude") or "claude"),
+            "model": str(get(s.BRAIN_MODEL, "") or "").strip(), "fallback": str(get(s.BRAIN_FALLBACK, "internal") or "internal")}
 
 
 def mode_for(use_case: str) -> str:
-    """interna | esterna for *use_case*: its own mode (Modelli) or, with «segui», the global one."""
+    """internal | external for *use_case*: its own mode (Models) or, with «follow», the global one."""
     from core.services import llm_chains
     own = llm_chains.usecase_config(use_case)["mode"]
-    return own if own in ("interna", "esterna") else ("esterna" if brain()["mode"] == "esterna" else "interna")
+    return own if own in ("internal", "external") else ("external" if brain()["mode"] == "external" else "internal")
 
 
 def available(agent: str = "") -> tuple[bool, str]:
@@ -139,7 +139,7 @@ def _bridge_server(token: str) -> dict:
 # ── sessions cache ───────────────────────────────────────────────────────────
 
 def note_internal_turn(session_id: str) -> None:
-    """A turn of *session_id* was answered in interna: a cached agent session no longer has the full history."""
+    """A turn of *session_id* was answered in internal: a cached agent session no longer has the full history."""
     if session_id:
         with _lock:
             _internal_at[session_id] = time.time()
@@ -168,7 +168,7 @@ def forget(session_id: str) -> None:
 # ── turns ────────────────────────────────────────────────────────────────────
 
 def run_turn(*, session_id: str, user_message: str, system_prompt: str, primer: str, tools: list,
-             use_case: str = "oracle.generale") -> tuple[str, list[dict]]:
+             use_case: str = "oracle.general") -> tuple[str, list[dict]]:
     """One chat turn by the external agent with Hestia's tools. Returns (answer, tool log)."""
     cfg = brain()
     adapter = _ADAPTERS.get(cfg["agent"])
@@ -190,8 +190,8 @@ def run_turn(*, session_id: str, user_message: str, system_prompt: str, primer: 
     return result["text"], log
 
 
-def ask(prompt: str, system: str = "", use_case: str = "oracle.generale") -> str:
-    """One shot without tools (``/api/llm/generate`` of a use case in esterna)."""
+def ask(prompt: str, system: str = "", use_case: str = "oracle.general") -> str:
+    """One shot without tools (``/api/llm/generate`` of a use case in external)."""
     cfg = brain()
     adapter = _ADAPTERS.get(cfg["agent"])
     if adapter is None:
@@ -205,7 +205,7 @@ def ask(prompt: str, system: str = "", use_case: str = "oracle.generale") -> str
 def _timed(adapter, use_case: str, cfg: dict, system: str, prompt: str, resume: str, token: str) -> dict:
     from core.services import llm_stats, llm_usage
     model = cfg["model"] or adapter.DEFAULT_MODEL
-    with llm_usage.step(use_case, f"agente:{cfg['agent']}", 0, cfg["agent"], model) as usage:
+    with llm_usage.step(use_case, f"agent:{cfg['agent']}", 0, cfg["agent"], model) as usage:
         t0 = time.perf_counter()
         try:
             result = adapter.run(model=cfg["model"], system=system, prompt=prompt, resume=resume,
@@ -216,7 +216,7 @@ def _timed(adapter, use_case: str, cfg: dict, system: str, prompt: str, resume: 
                            str(exc)[:300])
             raise AgentError(str(exc)) from exc
         u = result.get("usage") or {}
-        llm_stats.record(f"agente:{cfg['agent']}", cfg["agent"], model, prompt_tokens=int(u.get("input", 0)),
+        llm_stats.record(f"agent:{cfg['agent']}", cfg["agent"], model, prompt_tokens=int(u.get("input", 0)),
                          cached_tokens=int(u.get("cached", 0)), output_tokens=int(u.get("output", 0)),
                          cost_usd=float(u.get("cost_usd", 0) or 0))
         llm_usage.finish(usage)

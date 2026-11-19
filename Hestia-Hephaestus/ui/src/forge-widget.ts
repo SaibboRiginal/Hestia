@@ -1,7 +1,7 @@
 /**
  * <hephaestus-forge-widget> — "Forge": auto-development at a glance (active or paused, queue, running,
  * waiting for your review, Claude budget window). The only button is the existing manual brake
- * (POST /api/hephaestus/forge/pause, same switch as the Sviluppo page and Telegram), after a confirm.
+ * (POST /api/hephaestus/forge/pause, same switch as the Development page and Telegram), after a confirm.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { FORGE, PHASE, when } from './util';
@@ -64,7 +64,7 @@ export class HephaestusForgeWidget extends HestiaElement {
     const review = this.counts.awaiting_review || 0;
     const b = this.budget; const ph = b ? PHASE[b.phase] || { label: b.phase, tone: 'neutral' } : null;
     return html`<div class="w">
-      <div class="between"><span class="small muted">Auto-sviluppo</span><hxk-badge tone=${state.tone}>${state.label}</hxk-badge></div>
+      <div class="between"><span class="small muted">${tr('Self-development')}</span><hxk-badge tone=${state.tone}>${state.label}</hxk-badge></div>
       ${size === 's' ? html`<div class="big">${review}</div><div class="small muted">${tr("to review ·")} ${queue} ${tr("queued")}</div>` : html`
         <div class="nums">
           <div class="n"><b>${running}</b><span class="small muted">${tr("running")}</span></div>

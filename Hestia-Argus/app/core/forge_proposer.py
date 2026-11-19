@@ -6,9 +6,9 @@ one service shows up ``argus.forge.threshold`` times inside the
 (ask | auto | full_auto) decides whether it codes right away or waits for the user.  One proposal per signature per
 cooldown, so the user is never spammed.
 
-A recurring **fallback** counts too (dossier docs/work/2026-11-18-problemi-del-test F): a ``[🔄]`` line (the code took its
+A recurring **fallback** counts too (dossier docs/work/2026-11-18-real-test-problems F): a ``[🔄]`` line (the code took its
 recovery path) is a WARNING, but when it keeps coming the main path stopped working — usually something outside
-changed (a provider's answer, an API, a model). Nothing is declared in advance: «si rompe? si aggiusta».
+changed (a provider's answer, an API, a model). Nothing is declared in advance: «it breaks? it gets fixed».
 
 The task gets a ``title`` written for the owner (in his language, without module names or code; one short model call,
 a plain sentence when the model does not answer) and an ``origin`` (what, where, how often, when, a redacted sample)

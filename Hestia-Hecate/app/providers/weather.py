@@ -6,7 +6,7 @@ conditions + 16 days (daily and hourly); it is cached ``hecate.weather.cache_min
 (now, a day range, a given hour) is answered from that one blob.
 
 Places: Marko's personal places (``themis.personal.places``: ``[{id, name, address, kind, lat?, lon?}]``, one
-``kind=home`` = default). A ``place`` argument may be a saved place's name («palestra»), its address, or any
+``kind=home`` = default). A ``place`` argument may be a saved place's name («gym»), its address, or any
 city; Open-Meteo geocoding is city-level, so an address resolves through its city part.
 """
 from __future__ import annotations
@@ -20,7 +20,7 @@ from datetime import date, timedelta
 from typing import Any, Callable
 
 import requests
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_regex  # owner language; owner words per language
 
 logger = logging.getLogger("hestia_hecate.weather")
 
@@ -107,7 +107,7 @@ class WeatherService:
         return resp.json() or {}
 
     def geocode(self, query: str, count: int = 5) -> list[dict]:
-        """City-level candidates for ``query`` («Milano», «Milano, IT», «Via Roma 3, 20121 Milano»)."""
+        """City-level candidates for ``query`` («Milan», «Milan, IT», «10 Downing Street, London»)."""
         q = str(query or "").strip()
         if not q:
             return []
@@ -119,14 +119,14 @@ class WeatherService:
                 return hit[1]
         parts = [p.strip() for p in q.split(",") if p.strip()]
         found: list[dict] = []
-        # 1) «Città, Paese/Regione»  2) the whole text  3) each part from the end (address → its city)
+        # 1) «City, Country/Region»  2) the whole text  3) each part from the end (address → its city)
         tries: list[tuple[str, str]] = []
         if len(parts) == 2 and len(parts[1]) <= 30:
             tries.append((parts[0], parts[1]))
         tries.append((q, ""))
         for p in reversed(parts):
             name = re.sub(r"\b\d{4,5}\b", "", p).strip()
-            if name and not name[:1].isdigit() and not re.match(r"(?i)^(via|viale|piazza|corso|largo|vicolo|strada)\b", name):
+            if name and not name[:1].isdigit() and not word_regex(r"^(?:{0})\b", "address.street_word").match(name):
                 tries.append((name, ""))
         seen: set[str] = set()
         for name, qualifier in tries:
@@ -232,7 +232,7 @@ class WeatherService:
                 "lat": g["lat"], "lon": g["lon"], "region": g["region"], "country": g["country"]}
 
     def resolved_places(self) -> list[dict]:
-        """Every saved place with what it resolves to (settings editor «Luoghi»)."""
+        """Every saved place with what it resolves to (settings editor «Places»)."""
         out = []
         for p in self.places():
             row = {"id": p.get("id") or p.get("name"), "name": p.get("name"), "kind": p.get("kind") or "other"}
@@ -390,8 +390,8 @@ def is_rainy(day_or_hour: dict | None) -> bool:
 
 
 def recap_facts(service: "WeatherService", nxt: str) -> dict:
-    """Daily recap (dossier 2026-10-20-meteo-hecate §3.6): tomorrow at Casa, one line; rain → warning tone.
-    No Casa or no forecast → nothing to say."""
+    """Daily recap (dossier 2026-10-20-weather-hecate §3.6): tomorrow at Home, one line; rain → warning tone.
+    No Home or no forecast → nothing to say."""
     try:
         f = service.forecast("", nxt, nxt)
     except WeatherError:

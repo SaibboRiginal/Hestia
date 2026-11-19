@@ -298,48 +298,48 @@ class TestOracleLlmGenerateEndpoint:
     def test_use_case_points_to_its_chain(self, oracle_client, monkeypatch):
         client, _ = oracle_client
         self._chains(monkeypatch, {
-            "veloce": {"steps": [{"provider": "ollama", "model": "local"}]},
-            "annunci": {"steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
+            "fast": {"steps": [{"provider": "ollama", "model": "local"}]},
+            "listings": {"steps": [{"provider": "gemini", "model": "gemini-2.5-flash"},
                                   {"provider": "gemini", "model": "gemini-2.5-flash-lite"}]}},
-            {"scout.annunci": {"chain": "annunci"}})
+            {"scout.listings": {"chain": "listings"}})
         asked = self._fake_agents(monkeypatch, quota={"gemini-2.5-flash"})
 
-        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout.annunci"})
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "scout.listings"})
 
         assert resp.status_code == 200
-        assert resp.json()["model"] == "gemini-2.5-flash-lite" and resp.json()["chain"] == "annunci"
+        assert resp.json()["model"] == "gemini-2.5-flash-lite" and resp.json()["chain"] == "listings"
         assert asked == [("gemini", "gemini-2.5-flash"), ("gemini", "gemini-2.5-flash-lite")]
 
     def test_exhausted_step_is_skipped_by_every_chain_until_reset(self, oracle_client, monkeypatch):
         client, _ = oracle_client
         from core.services import llm_chains
         self._chains(monkeypatch, {
-            "veloce": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "ollama", "model": "l"}]},
-            "potente": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "gemini", "model": "pro"}]}},
-            {"athena.strategia": {"chain": "potente"}})
+            "fast": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "ollama", "model": "l"}]},
+            "strong": {"steps": [{"provider": "gemini", "model": "flash"}, {"provider": "gemini", "model": "pro"}]}},
+            {"athena.strategy": {"chain": "strong"}})
         asked = self._fake_agents(monkeypatch, quota={"flash"})
 
         assert client.post("/api/llm/generate", json={"prompt": "x"}).json()["model"] == "l"
-        assert client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena.strategia"}
+        assert client.post("/api/llm/generate", json={"prompt": "x", "use_case": "athena.strategy"}
                            ).json()["model"] == "pro"
         assert asked.count(("gemini", "flash")) == 1          # second chain skipped it
         assert llm_chains.exhausted_until("gemini", "flash") > 0
 
     def test_undeclared_use_case_runs_like_general_and_is_listed(self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "ollama", "model": "local"}]}})
+        self._chains(monkeypatch, {"fast": {"steps": [{"provider": "ollama", "model": "local"}]}})
         self._fake_agents(monkeypatch)
 
-        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "hercules.pianifica"})
+        resp = client.post("/api/llm/generate", json={"prompt": "x", "use_case": "hercules.plan"})
 
         assert resp.status_code == 200 and resp.json()["model"] == "local"
         listed = client.get("/api/llm/usecases").json()["usecases"]
-        row = next(r for r in listed if r["id"] == "hercules.pianifica")
-        assert row["undeclared"] and row["effective_chain"] == "veloce"
+        row = next(r for r in listed if r["id"] == "hercules.plan")
+        assert row["undeclared"] and row["effective_chain"] == "fast"
 
     def test_openai_compatible_step_needs_no_key(self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "deepseek", "model": "deepseek-chat"},
+        self._chains(monkeypatch, {"fast": {"steps": [{"provider": "deepseek", "model": "deepseek-chat"},
                                                          {"provider": "ollama", "model": "local"}]}})
         monkeypatch.delenv("ORACLE_KEY_DEEPSEEK", raising=False)
         from core.services import oracle_settings
@@ -352,14 +352,14 @@ class TestOracleLlmGenerateEndpoint:
 
     def test_every_step_failing_returns_503_with_chain(self, oracle_client, monkeypatch):
         client, _ = oracle_client
-        self._chains(monkeypatch, {"veloce": {"steps": [{"provider": "ollama", "model": "a"},
+        self._chains(monkeypatch, {"fast": {"steps": [{"provider": "ollama", "model": "a"},
                                                          {"provider": "gemini", "model": "b"}]}})
         self._fake_agents(monkeypatch, fail={"a", "b"})
 
         resp = client.post("/api/llm/generate", json={"prompt": "test"})
 
         assert resp.status_code == 503
-        assert "veloce" in resp.json()["detail"] and "ollama/a" in resp.json()["detail"]
+        assert "fast" in resp.json()["detail"] and "ollama/a" in resp.json()["detail"]
 
     def test_usage_reads_archive_store(self, oracle_client, monkeypatch):
         client, _ = oracle_client

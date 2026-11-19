@@ -132,7 +132,7 @@ public class ChatHub : Hub
         if (string.IsNullOrEmpty(sessionId))
             sessionId = _sessionManager.GetOrCreateSession();
 
-        // Rapida · Auto · Pensata · CoT; anything else = "" → Oracle uses oracle.chat.mode (Themis)
+        // Quick · Auto · Thinking · CoT; anything else = "" → Oracle uses oracle.chat.mode (Themis)
         var mode = (message.Mode?.Trim().ToLowerInvariant()) switch
         {
             "quick" => "quick",
@@ -150,15 +150,15 @@ public class ChatHub : Hub
 
         var pageContext = message.Context?.Trim() ?? "";
         if (pageContext.Length == 0)
-            _sessionManager.SetLastMessage(userMessage);   // "Rigenera" belongs to the Chat page only
+            _sessionManager.SetLastMessage(userMessage);   // "Regenerate" belongs to the Chat page only
         var clientInstructions = _sessionManager.BuildClientInstructions();
         if (pageContext.Length > 0)
         {
-            // "Crea con Hestia": the user opened the assistant from a page; act on it with tools.
+            // "Create with the assistant": the user opened the assistant from a page; act on it with tools.
             if (pageContext.Length > 2000) pageContext = pageContext[..2000];
-            clientInstructions += "\nPannello Crea con Hestia. Contesto pagina: " + pageContext +
-                "\nAgisci con gli strumenti (agenda_assistente_*, comandi). Conferma breve cosa hai creato/modificato." +
-                "\nSe nessuno strumento può farlo: proponi uno sviluppo (forge_develop) e chiedi conferma.";
+            clientInstructions += "\nCreate panel. Page context: " + pageContext +
+                "\nAct with tools (agenda_assistant_*, commands). Confirm briefly what you created/changed." +
+                "\nIf no tool can do it: propose a development (forge_develop) and ask to confirm.";
             _logger.LogInformation("event=assistant_drawer_turn connection={Conn} context_len={Len}",
                 Context.ConnectionId, pageContext.Length);
         }
@@ -194,7 +194,7 @@ public class ChatHub : Hub
                 if (evt.Type == OracleStreamService.UnavailableType)
                 {
                     await Clients.Caller.SendAsync("ReceiveEvent",
-                        new { type = "error", content = "Non posso rispondere adesso: riprova più tardi." }, cts.Token);
+                        new { type = "error", content = Texts.Tr("I can't answer right now: try again later.") }, cts.Token);
                     break;
                 }
                 await Clients.Caller.SendAsync("ReceiveEvent", evt, cts.Token);
@@ -221,7 +221,7 @@ public class ChatHub : Hub
     }
 
     /// <summary>«Add now»: the text joins the answer that is running (Oracle reads it at its next step); refused
-    /// when nothing runs, and the browser then sends it as the next message (dossier problemi-del-test B).</summary>
+    /// when nothing runs, and the browser then sends it as the next message (dossier real-test-problems B).</summary>
     private async Task HandleSteer(ChatHubMessage message)
     {
         var text = message.Message?.Trim() ?? "";
@@ -318,8 +318,8 @@ public class ChatHub : Hub
                     kind = ok ? "action.done" : "action.failed",
                     level = ok ? (approved ? "success" : "info") : "error",
                     icon = ok ? "check" : "alert",
-                    title = ok ? (approved ? "Approvata" : "Rifiutata") : "Non riuscito",
-                    detail = ok ? "" : "La risposta non è arrivata al modulo: riprova dalle notifiche",
+                    title = ok ? (approved ? Texts.Tr("Approved") : Texts.Tr("Rejected")) : Texts.Tr("Failed"),
+                    detail = ok ? "" : Texts.Tr("The answer did not arrive: try again from the notifications"),
                     data = new { question_id = questionId, answer },
                 });
             }
@@ -337,7 +337,7 @@ public class ChatHub : Hub
                 await Clients.Caller.SendAsync("ReceiveEvent", new
                 {
                     type = "notice", kind = "action.failed", level = "warning", icon = "clock",
-                    title = "Domanda scaduta", detail = "Questa domanda non è più aperta: scrivimi di nuovo",
+                    title = Texts.Tr("Question expired"), detail = Texts.Tr("This question is no longer open: write to me again"),
                     data = new { question_id = questionId },
                 });
             }

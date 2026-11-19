@@ -1,9 +1,9 @@
-"""Voice on Telegram (dossier docs/work/2026-10-20-modulo-voce §7): voice notes become chat messages, replies can
+"""Voice on Telegram (dossier docs/work/2026-10-20-voice-module §7): voice notes become chat messages, replies can
 be listened to, and ``/live`` makes Hestia answer voice notes by voice.
 
 Telegram never touches audio engines: the voice module (Echo) listens and speaks through the Hub
 (``hestia_common.voice_client``). The chat stays text: a voice note is transcribed, shown, and handled exactly like
-the same sentence typed; every reply gets «Ascolta»; in live mode a voice note also gets a voice answer (the
+the same sentence typed; every reply gets «Listen»; in live mode a voice note also gets a voice answer (the
 text always stays). User texts never name modules.
 """
 from __future__ import annotations
@@ -22,11 +22,11 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_telegram.voice")
 
-USE_LISTEN = "telegram.vocale"
-USE_SPEAK = "telegram.risposta"
+USE_LISTEN = "telegram.voice_note"
+USE_SPEAK = "telegram.answer"
 VOICE_USECASES = [
-    voice_usecase(USE_LISTEN, "Telegram · voice messages", direction="ascolto", help="The voice messages you send to the bot."),
-    voice_usecase(USE_SPEAK, "Telegram · spoken answers", direction="voce",
+    voice_usecase(USE_LISTEN, "Telegram · voice messages", direction="listen", help="The voice messages you send to the bot."),
+    voice_usecase(USE_SPEAK, "Telegram · spoken answers", direction="voice",
                   help="«Listen» under the answers and the answers in live mode."),
 ]
 LIVE_KEY = "voice_live"
@@ -35,7 +35,7 @@ CANT_LISTEN = "I can't listen to the voice message right now, could you write it
 CANT_SPEAK = "I can't read it aloud right now, try again shortly."
 
 _client: VoiceClient | None = None
-_answers: "OrderedDict[tuple[int, int], str]" = OrderedDict()     # (chat, message) → reply text, for «Ascolta»
+_answers: "OrderedDict[tuple[int, int], str]" = OrderedDict()     # (chat, message) → reply text, for «Listen»
 _answers_lock = threading.Lock()
 
 
@@ -97,7 +97,7 @@ def answer_text(chat_id, message_id) -> str:
 
 
 def listen_keyboard(feedback: bool = False, trace_id: str = "") -> types.InlineKeyboardMarkup:
-    """One row under the answer: «Ascolta» and, when a vote is asked, 👍 👎 (the only emoji buttons). ``trace_id``
+    """One row under the answer: «Listen» and, when a vote is asked, 👍 👎 (the only emoji buttons). ``trace_id``
     (Oracle's id of the turn) rides in the callback so the vote lands on this answer (training dataset)."""
     row = [types.InlineKeyboardButton(tr("Listen"), callback_data=LISTEN_CALLBACK)]
     if feedback:
@@ -108,7 +108,7 @@ def listen_keyboard(feedback: bool = False, trace_id: str = "") -> types.InlineK
 
 
 def after_reply(chat_id, renderer, *, spoken: bool, reply_to: int | None = None, feedback: bool = False) -> None:
-    """Under a finished reply: «Ascolta» (+ vote); in live mode after a voice note, the voice answer too."""
+    """Under a finished reply: «Listen» (+ vote); in live mode after a voice note, the voice answer too."""
     answer = str(getattr(renderer, "answer_text", "") or "").strip()
     ids = list(getattr(renderer, "answer_ids", []) or [])
     if not answer or not ids:
@@ -141,7 +141,7 @@ def send_spoken(chat_id, text: str, answer_message_id: int, *, reply_to: int | N
 
 
 def handle_listen_callback(call) -> None:
-    """«Ascolta» under a reply."""
+    """«Listen» under a reply."""
     chat_id, message_id = call.message.chat.id, call.message.message_id
     with _answers_lock:
         text = _answers.get((int(chat_id), int(message_id)))

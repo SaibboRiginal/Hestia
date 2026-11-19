@@ -1,29 +1,45 @@
 # Languages — the standard for every module
 
-Read this before you write any text, in Python, in the WebUI or in a plugin. Dossier with the history:
-`docs/work/2026-11-14-backend-inglese/`. Owner's decision: `docs/REGOLE-DI-MARKO.md` R9.
+Read this before you write any text, in Python, C#, the WebUI, a plugin, a host tool or an installer. Dossier with
+the history: `docs/work/2026-11-14-english-backend/`. Owner's decision: `docs/MARKO-RULES.md` R9.
 
 ## The rule in one line
 
-**All the code is English. Italian lives only in the catalog. Every module follows «Lingua».**
+**All the code is English, everything stored is English, and every text a person reads or hears follows the
+owner's language.** The model thinks in English; whatever reaches the owner (chat, notifications, buttons, voice,
+installer, errors) is in his language. No exceptions «for compatibility»: nothing is in production yet.
 
-Languages today: **English** (the source, in the code) and **Italian** (the catalog).
-«Lingua» = `themis.personal.language` (`it` | `en`, default `it`).
+Languages today: **English** (the source, in the code) and **Italian** (the catalogs). The code knows no language
+by name: a language is a folder `Hestia-Shared/hestia_common/locales/<code>/`.
+«Language» = `themis.personal.language` (options = every folder with a `language.json`, default `it`).
 
 | Text | Where it lives | Language |
 |---|---|---|
 | Prompts, tool and field descriptions, `response_prompt`, module manuals, hidden context, assistant hints | in the code | English, never wrapped in `tr` |
+| Ids, stored values and enums, keys, tool names, use cases, file names, query params, comments | in the code and in the data | English, never translated |
 | Chat answer | written by the model | the language of the owner's last message |
-| Notifications, recaps, messages she writes first, texts the model writes for a person | written by the model | «Lingua»: put `{owner_language}` or `identity.LANGUAGES[i18n.language(settings.get)]` in the English prompt |
-| Buttons, labels, cards, notices, error `detail`s, setting labels and help, tool titles | fixed texts | English in the code, Italian from `locales/it/messages.json` |
-| SQL, headers, ids, stored values, CSS, SVG paths, log lines | in the code | never translated |
+| Notifications, recaps, messages she writes first, texts the model writes for a person | written by the model | «Language»: `{owner_language}` or `identity.LANGUAGES[i18n.language(settings.get)]` in the English prompt |
+| Buttons, labels, cards, notices, error `detail`s, setting labels and help, tool titles | fixed texts | English in the code, the owner's language from `locales/<code>/messages.json` |
+| What the owner types or says (yes/no, dates, moods, categories, commands, greetings) | parsers | every language at once, from `locales/<code>/words.json` |
+| Host tools (`tools/*.py`), installers (`install.sh`, `install.ps1`, `up-all.*`) | fixed texts | English in the code, the system language from the catalogs |
 
-The one catalog: `Hestia-Shared/hestia_common/locales/it/messages.json` (English source → Italian).
-English needs no catalog: the source is already English. Tool texts for people: `locales/<lang>/tools.json`.
+## The files of a language (`Hestia-Shared/hestia_common/locales/<code>/`)
+
+| File | What | Read by |
+|---|---|---|
+| `language.json` | `{"english": "Italian", "native": "Italiano"}`: the language exists | `identity.LANGUAGES` (code → English name, for prompts), `identity.NATIVE_NAMES` (the setting's options) |
+| `messages.json` | English source text → translation (every fixed text) | `i18n.t` / `tr`, `i18n.localize`, WebUI shell and SDK, C# `Texts.Tr`, `tools/_texts.py` |
+| `tools.json` | `{tool: {summary, params}}`: what a person reads about a tool | `i18n.tool_text`, WebUI, Telegram |
+| `words.json` | `{list: [words or regex fragments]}`: what people write, per list | `i18n.words`, `word_regex`, `word_set`, `is_yes`, `weekday_of` |
+| `voice.json` | sample sentences for the voices of that language | Echo |
+| `installer.tsv` | `English<TAB>translation`, one line per installer text | `install.sh`, `install.ps1`, `up-all.sh`, `up-all.bat` |
+
+English has no `messages.json` (the source is English) but has its own `words.json`, `tools.json` and
+`language.json`.
 
 ## Fixed texts: how to write them
 
-The English text in the code **is the key**. Wrap it, then add its Italian text to the catalog.
+The English text in the code **is the key**. Wrap it, then add its translation to every `messages.json`.
 
 **Python module**
 
@@ -32,9 +48,10 @@ from hestia_common.i18n import t as tr
 raise HTTPException(404, tr("Expense not found"))
 note = tr("{0} new expenses", count)              # placeholders {0} or {name}, same in the translation
 line = tr("Recheck {0}", tr(module_label(name)))  # a label passed as argument is translated too
+hidden = tr("Self care: ", lang="en")             # a fixed text forced to one language
 ```
 
-- The module follows «Lingua» once at startup: ModuleKit does it (`self.settings.follow_personal()`); a module
+- The module follows «Language» once at startup: ModuleKit does it (`self.settings.follow_personal()`); a module
   without ModuleKit calls `SettingsClient("<name>").follow_personal()` itself (Iris, Atlas, Telegram…). Then `tr`
   answers in the owner's language.
 - **Texts declared once at import or registration** (manifests, pages, widgets, capabilities, `llm_usecases`,
@@ -45,11 +62,16 @@ line = tr("Recheck {0}", tr(module_label(name)))  # a label passed as argument i
   context tag of a source it does not know; the WebUI HTTP interceptor, the plugins' `host.api`, the notifications
   pushed to the site and Telegram run it; Themis serves settings through
   `settings_client.translated(definition, lang)`.
-- A module-level constant shown at runtime is translated where it is used: `LABEL = "Save"` … `tr(LABEL)`.
+- A stored value is shown through its label: `tr(f"mood::{label}")`, `tr(KINDS[kind])`. Never store the label.
+- **Whole sentences, not glued nouns**: «Great day for running» and «Great day for a walk» are two keys; a noun
+  dropped into one sentence breaks the grammar of other languages (gender, articles).
 - Data seeded once for the owner (default categories, accounts) is written with `tr(label)` at seeding time: it is
   the owner's data from then on, he can rename it.
 - Dates: `i18n.month_name(m)`, `i18n.weekday_name(wd)` (Monday = 0); money: `display.money(value)`
   («1.234,50 €» · «€1,234.50»).
+
+**WebUI backend (C#)**: `Texts.Tr("Session expired")`, `Texts.Tr("{0} files", n)` (`Services/Texts.cs`, catalog
+from Themis `/api/settings/i18n`, cached 5 minutes; unreachable → the English source).
 
 **WebUI shell (Angular)**
 
@@ -67,44 +89,74 @@ toast(tr('Saved'));  tr('{0} files', n);  d.toLocaleDateString(locale(), {...});
 import { tr, locale, plural } from '@hestia/webui-sdk';
 html`<hxk-button>${tr('Add')}</hxk-button>`
 plural(n, 'exercise', 'exercises')            // «3 esercizi» · «3 exercises»
-new Intl.NumberFormat(locale(), ...)          // 'it-IT' | 'en-GB', never a literal locale
+new Intl.NumberFormat(locale(), ...)          // the owner's language code ('en' → 'en-GB'), never a literal locale
 ```
 
 Plurals: two keys (`n === 1 ? tr('1 file') : tr('{0} files', n)`) or the SDK `plural`.
 The WebUI loads the catalog before any bundle (`/api/webui/i18n.js`, from Themis `GET /api/settings/i18n`), so
-constants at module level work too. Saving «Lingua» reloads the page.
+constants at module level work too; `<html lang>` follows it. Saving «Language» reloads the page.
 
-## Same English word, different Italian: tags
+**Host tools** (`tools/*.py`, `tools/cloud_test/*`): `from _texts import tr, is_yes` (`tools/_texts.py`). The host
+has no Themis: the language is `HESTIA_LANGUAGE`, else the system locale (`LC_ALL`, `LC_MESSAGES`, `LANG`), else
+English.
 
-When one English text needs two Italian texts, prefix a context tag: `tr("pl::Transport")` → «Trasporti»,
-`tr("Transport")` → «Trasporto». Tags in use: `alt::` `f::` (feminine) `m::` (masculine) `pl::` `abbr::` `dev::`
-`v::` (verb) `run::` `mood::` `lang::`. `i18n.bare()` strips the tag, so English shows the plain word.
+**Installers**: one argument, English: `t "Installing {0}" "$name"` (bash), `(T 'Installing {0}' $name)`
+(PowerShell, the file stays ASCII), `say` / `:say` in `up-all`. The translation comes from
+`locales/<code>/installer.tsv`, found next to the script or downloaded from `HESTIA_RAW_URL`; any two-letter code
+works (`--lang CODE`, `-Lang CODE`, else the system language); no file → English.
 
-## Italian that stays in the code (on purpose)
+## What people write: words, never Italian in the code
 
-- **Stored values and ids**: route/page ids, query keys, states (`in_corso`, `fatto`), track ids
-  (`vita`/`sistema`/`parla`), setting keys, Plutus category ids, mood values (`giù`), use-case ids. Changing them
-  would break the owner's data; only their labels are translated.
-- **Parsers of the owner's words**: keyword detectors, regexes on bank or PayPal mails, Italian date words in
-  Telegram inputs. They read what people write; keep both languages there.
-- **Tool names** like `cibo_*`, `casa_*`, `scadenze_*`: renaming them is a separate decision of the owner.
+A parser of the owner's words reads **every language at once** from `words.json`:
+
+```python
+from hestia_common.i18n import word_regex, word_set, is_yes, weekday_of
+_DELETE = word_regex(r"\b(?:{0})\b", "oracle.delete_ask")   # alternation of the list in every language
+if text.lower() in word_set("common.greeting"): ...
+if is_yes(answer): ...                                       # 1, true, yes, sì, s, vero…
+weekday_of("mer")                                            # → 2
+```
+
+A value the owner may type in his words is matched against the stored English value **and** its label in every
+catalog (Psyche moods and causes, Oracle chat modes «Rapida» → `quick`, Kairos categories «bollo» → `car_tax`).
+Literal braces in a fragment are written `{{ }}` (the list goes through `str.format`).
+
+## Same English word, different translation: tags
+
+When one English text needs two translations, prefix a context tag: `tr("pl::Transport")`, `tr("Transport")`.
+Tags in use: `alt::` `f::` (feminine) `m::` (masculine) `pl::` `abbr::` `dev::` `v::` (verb) `run::` `mood::`
+`cause::` `lang::`. `i18n.bare()` strips the tag, so English shows the plain word.
+
+## What is not ours
+
+External sites keep their own words: listing URLs and page markup Scout reads (`/annunci/`, `/immobile/`,
+`id='caratteristiche'`), senders like `noreply@notifiche.immobiliare.it`. Test inputs keep the owner's own phrases
+(«oggi sono stanco»), next to English ones: both must work. A line of code that holds such an external name
+carries the marker `external-name` in its comment, so the gate below leaves it out; nothing else may.
 
 ## Check before pushing
 
 ```
-python tools/governance/check_i18n.py                     # lists every text without Italian (precheck and CI run it)
+python tools/governance/check_i18n.py                     # lists every text without its Italian (precheck and CI run it)
 python tools/governance/check_i18n.py --todo todo.json    # writes {"Text": ""} for what is missing
 python tools/governance/check_i18n.py --merge todo.json   # after filling it in: adds them to the Italian catalog
+python tools/governance/check_english.py                  # no Italian in the code (precheck and CI run it)
+python tools/governance/check_english.py --show all       # where an Italian word is
 ```
 
-Placeholders must match between source and translation (`Hestia-Telegram/tests/test_language.py` checks it, and
-that every `tr` literal of modules, WebUI and plugins has its Italian).
+`check_english.py` (owner 2026-11-19: «what the user never sees is English, everything else translatable, never
+fixed in one language») counts the Italian words of every source file outside `tr(…)`, tests, `tools/cloud_test`
+(test inputs) and locale files. The baseline `tools/governance/english_baseline.json` is empty: any Italian word
+fails. A word the list misses is added to the list in the same change that removes it.
 
-**The assistant's name** (`docs/work/2026-11-16-nome-ovunque`): where a text speaks of the assistant as a person,
+It scans modules, WebUI, plugins, `tools/*.py` and `tools/cloud_test/*.py`. Placeholders must match between
+source and translation (`Hestia-Telegram/tests/test_language.py` checks it).
+
+**The assistant's name** (`docs/work/2026-11-16-name-everywhere`): where a text speaks of the assistant as a person,
 write `{assistant}` and, for gendered words, `{g:her-form|his-form}` (source «What {assistant} thinks on {g:her|his}
 own», Italian «Cosa pensa {assistant} da {g:sola|solo}»), in the source and in the translation; `localize` fills them
 too. `tr` / `t` fill them with the name and she/he the owner chose. The clients are called with that name too
-(`docs/work/2026-11-17-nome-dei-client`): write «Hestia» only for the software itself (releases, updates, the
+(`docs/work/2026-11-17-client-names`): write «Hestia» only for the software itself (releases, updates, the
 installer, the transfer/backup file format, technical module names). Italian agreement uses `{g:…|…}` too
 («da {g:sola|solo}», «{g:tutta|tutto} {assistant}»).
 
@@ -112,17 +164,17 @@ installer, the transfer/backup file format, technical module names). Italian agr
 
 - Don't write a language name or «Sei Hestia…» in a prompt: use `{owner_language}` and the identity tokens.
 - Don't write «Hestia» in a text that means the assistant as a person (`{assistant}`).
-- Don't translate with the model at runtime, and don't keep a second catalog in a module: one catalog for all.
-- Don't write Italian in the code for a person: it would never be English. Write English and add the Italian.
+- Don't translate with the model at runtime, and don't keep a second catalog in a module: one catalog per language.
+- Don't write any Italian in the code: not for a person, not as an id, a stored value, a key, a file name or a
+  comment. Write English and add the translation; the owner's words go in `words.json`.
 - Don't call `tr` at import or registration time, and don't wrap technical strings or hidden prompts in `tr`.
 - Don't change a stored value or a key when a label changes: only the text is translated.
 - Don't hardcode `'it-IT'` or «€» after the number: use `locale()` and `display.money`.
 
 ## A new language (only when the owner asks for it)
 
-1. Add the code to `identity.LANGUAGES` (`Hestia-Shared/hestia_common/identity.py`) and to the options of
-   `themis.personal.language` (`settings_client.py`, `PERSONAL`), and to `LANGUAGES` in
-   `Hestia-WebUI/frontend/src/app/services/identity.service.ts`; add its `locale()` in both `i18n.ts`.
-2. Create `locales/<code>/messages.json` and `locales/<code>/tools.json` with the same keys as the Italian ones
-   (texts not translated yet stay in English).
+1. Create `locales/<code>/language.json` (`{"english": "German", "native": "Deutsch"}`): it appears in the
+   «Language» options of the setup and the settings, the prompts call it by its English name. No code to change.
+2. Add `messages.json`, `tools.json` and `words.json` with the same keys as the Italian ones (a text not translated
+   yet stays English), `voice.json` for the voices, `installer.tsv` for the installers.
 3. Telegram's bottom keyboard and commands follow automatically; check `Hestia-Telegram/tests/test_language.py`.

@@ -5,10 +5,10 @@ Single responsibility: build the ``AgentBundle`` Oracle's services use. Each slo
 quota skip, fallback) and the providers are read live from settings at every call, so a change
 from any client needs no restart and no reconfiguration.
 
-  generic   → oracle.generale     chat, classify, tool selection, memory extraction, formatting
-  reasoning → oracle.ragionamento deep thinking, complex multi-step analysis
+  generic   → oracle.general     chat, classify, tool selection, memory extraction, formatting
+  reasoning → oracle.reasoning deep thinking, complex multi-step analysis
   code      → oracle.codice       code generation, debugging, technical tasks
-  documents → oracle.documenti    documents, images, audio (vision-capable chain)
+  documents → oracle.documents    documents, images, audio (vision-capable chain)
   embedding → oracle.embedding    vector embeddings (several models: each vector keeps its model)
 
 Mode (quick/auto/thinking) controls orchestration; use case controls which brain.

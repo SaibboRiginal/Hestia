@@ -1,10 +1,10 @@
 /**
- * <mcp-accesses> — "Accessi AI": who may use Hestia's MCP from outside (Claude Code, Claude Desktop, Cursor…).
+ * <mcp-accesses> — "AI access": who may use Hestia's MCP from outside (Claude Code, Claude Desktop, Cursor…).
  * New token (shown once, with the ready `claude mcp add` line), revoke, renew, delete; per access: scope,
  * tools, expiry, last use, calls today. OAuth connections (claude.ai, ChatGPT) are in the same list (kind oauth):
  * `/oauth/authorize` sends the browser here with `?oauth=<request>` and the consent card decides scope and tools —
- * nothing is granted without it. Second list: Servizi esterni (third-party MCP servers, credentials in Hecate).
- * SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3, §B6.
+ * nothing is granted without it. Second list: External services (third-party MCP servers, credentials in Hecate).
+ * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §B3, §B6.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
 
@@ -92,7 +92,7 @@ export class McpAccesses extends HestiaElement {
 
   private async act(a: any, what: 'revoke' | 'renew' | 'delete') {
     const asks = { revoke: [tr('Revoke the access?'), tr("{0} stops working right away. You can renew it later.", a.name)],
-                   renew: a.kind === 'oauth' ? ['Riattivare?', tr("{0} works again for another 90 days.", a.name)]
+                   renew: a.kind === 'oauth' ? [tr('Turn it on again?'), tr("{0} works again for another 90 days.", a.name)]
                      : [tr('New token?'), tr("The current token of {0} stops working right away.", a.name)],
                    delete: [tr('Delete the access?'), tr('{0} disappears from the list.', a.name)] }[what];
     if (!(await this.host.confirm(asks[0], asks[1], { label: tr('Confirm'), danger: what !== 'renew' }))) return;

@@ -11,7 +11,7 @@ export type ChainStepState = { tone: 'success' | 'warning' | 'danger' | 'neutral
 const OTHER = '\u0000other';
 
 /**
- * <hxk-chain> — the one editor of an ordered list of «provider + model» steps (dossier 2026-11-18-problemi-del-test E):
+ * <hxk-chain> — the one editor of an ordered list of «provider + model» steps (dossier 2026-11-18-real-test-problems E):
  * the first ready step is used, the next ones are the fallback. Same component for the brain chains, the memory
  * (embedding) chain and the voice chains.
  *

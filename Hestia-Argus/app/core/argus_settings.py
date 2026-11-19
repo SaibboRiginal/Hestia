@@ -59,7 +59,7 @@ _DOCKER = {"key": LOG_SOURCE, "equals": "docker"}
 
 settings = SettingsClient("argus").follow_personal()      # owner language for fixed texts (i18n)
 settings.declare([
-    # ── Controlli ───────────────────────────────────────────────────────────
+    # ── Checks ──────────────────────────────────────────────────────────────
     setting(POLL_INTERVAL, "Check interval", "int", 60, group="Checks", min=10, max=3600, unit="s",
             order=0, help="Every how many seconds I check the modules' health and logs. Lower = faster notices."),
     setting(AUTH_CHECK_ENABLED, "Google/Outlook access check", "bool", True, group="Checks", order=1,
@@ -88,13 +88,13 @@ settings.declare([
     setting(BACKFILL_MINUTES, "Past logs at startup", "int", 0, group="Logs", min=0, max=1440, unit="min",
             advanced=True, order=16, depends_on=_DOCKER,
             help="How many minutes of logs before startup I reread for each container (0 = none)."),
-    # ── Avvisi ──────────────────────────────────────────────────────────────
+    # ── Alerts ──────────────────────────────────────────────────────────────
     setting(ALERT_COOLDOWN, "Pause between identical notices", "int", 60, group="Notices", min=1, max=10080, unit="min",
             order=20, help="After a notice about a module, for how long I don't repeat it."),
     setting(ALERT_BATCH_WINDOW, "Wait to group notices", "int", 20, group="Notices", min=0, max=3600,
             unit="s", order=21,
             help="I wait this long without new problems before sending you a single summary message."),
-    # ── Riparazione automatica (safety: the assistant can only read) ───────
+    # ── Automatic repair (safety: the assistant can only read) ───────
     setting(REMEDIATE_ENABLED, "Automatic repair", "bool", True, group="Repair", oracle="read",
             order=30, help="When a module stops I ask Hephaestus at once to repair it."),
     setting(REMEDIATE_DRY_RUN, "Simulation only", "bool", True, group="Repair", oracle="read", order=31,
@@ -118,7 +118,7 @@ settings.declare([
             help="How long I wait for a stopped module before restarting it (a normal restart solves itself sooner); then the wait doubles at each attempt."),
     setting(ORACLE_GRACE, "Not available after", "int", 60, group="Repair", min=0, max=3600, unit="s",
             order=36, help="Seconds without Oracle before the «Not available» state and the notice: a shorter normal restart says nothing. Chat messages are queued anyway."),
-    # ── Proposte di correzione a Forge (acts without the user → read only) ─
+    # ── Fix proposals to Forge (acts without the user → read only) ─
     setting(FORGE_ENABLED, "Fix proposals", "bool", True, group="Fix proposals",
             oracle="read", order=40,
             help="If the same error repeats, I ask Forge to fix the code (Forge respects the permissions you chose)."),
@@ -131,7 +131,7 @@ settings.declare([
     setting(FORGE_COOLDOWN, "Pause between identical proposals", "int", 86400, group="Fix proposals", min=60,
             max=2592000, unit="s", order=43, depends_on=_FORGE_ON, advanced=True,
             help="After a proposal for an error, for how long I don't repeat it."),
-    # ── Prestazioni (Cindy D16 + 25): thresholds of the performance alerts ──
+    # ── Performance (Cindy D16 + 25): thresholds of the performance alerts ──
     setting(PERF_EVERY, "Measurement frequency", "int", 5, group="Performance", min=1, max=1440, unit="cycles",
             order=50, help="Every how many check cycles I measure memory, processor and response times."),
     setting(PERF_MEMORY_MB, "Most memory per module", "int", 1500, group="Performance", min=50,

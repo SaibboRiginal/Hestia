@@ -6,9 +6,9 @@ import { PluginPage } from '../plugins/plugins.types';
 import { TrPipe } from '../../core/i18n';
 
 /**
- * «Sistema» (brainstorm C13, W7): the one sidebar entry of the system modules. Every page of the core modules,
- * grouped by module with its counter, plus the ready-made *Sistema* dashboard. A page can still be pinned in the
- * sidebar from here (it then shows in «Fissati»).
+ * «System» (brainstorm C13, W7): the one sidebar entry of the system modules. Every page of the core modules,
+ * grouped by module with its counter, plus the ready-made *System* dashboard. A page can still be pinned in the
+ * sidebar from here (it then shows in «Pinned»).
  */
 @Component({
   selector: 'app-system-page',
@@ -16,10 +16,10 @@ import { TrPipe } from '../../core/i18n';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header  [title]="'System' | tr"  [subtitle]="'How {assistant} is and how it works: health, models, notifications, agenda, settings, development' | tr">
-      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/aggiornamenti">{{ "Updates" | tr }}</a>
-      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/macchine">{{ "Machines" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="refresh" routerLink="/updates">{{ "Updates" | tr }}</a>
+      <a hx-btn size="sm" variant="ghost" icon="host" routerLink="/machines">{{ "Machines" | tr }}</a>
       <a hx-btn size="sm" variant="ghost" icon="download" routerLink="/download">{{ "alt::Download" | tr }}</a>
-      @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/sistema">{{ "Dashboard" | tr }}</a> }
+      @if (hasDashboard()) { <a hx-btn size="sm" icon="grid" routerLink="/d/system">{{ "Dashboard" | tr }}</a> }
     </hx-page-header>
     <div class="body">
       @for (g of groups(); track g.module) {
@@ -69,7 +69,7 @@ import { TrPipe } from '../../core/i18n';
 })
 export class SystemPageComponent {
   plugins = inject(PluginsService);
-  readonly hasDashboard = computed(() => this.plugins.dashboards().some(d => d.id === 'sistema'));
+  readonly hasDashboard = computed(() => this.plugins.dashboards().some(d => d.id === 'system'));
   readonly groups = computed(() => {
     const mods = this.plugins.modules();
     const pages = this.plugins.navPages().filter(p => mods.get(p.module)?.kind === 'core');

@@ -30,9 +30,9 @@ class NotFound(LookupError):
 
 WEEK_START_KEY = "themis.personal.week_start"   # personal settings shared by every module (owner Themis)
 CURRENCY_KEY = "themis.personal.currency"
-DIARY_AREA = "giornata"                  # B9 spoken evening diary: one free entry about the day
-DIARY_TOOL = "selfcare_diario_voce"
-DIARY_VOICE_USE = "hygieia.diario"
+DIARY_AREA = "day"                  # B9 spoken evening diary: one free entry about the day
+DIARY_TOOL = "selfcare_diary_voice"
+DIARY_VOICE_USE = "hygieia.diary"
 
 
 class Conflict(RuntimeError):
@@ -474,7 +474,7 @@ class Hygieia:
         return self.routine_detail(rid)
 
     def _diff(self, before: list[dict] | None, after: list[dict]) -> str:
-        name = lambda s: s.get("label") or (self.store.data("product", s.get("product_id") or "") or {}).get("name") or "passo"
+        name = lambda s: s.get("label") or (self.store.data("product", s.get("product_id") or "") or {}).get("name") or "step"
         b = {s.get("product_id") or s.get("label"): s for s in before or []}
         a = {s.get("product_id") or s.get("label"): s for s in after}
         parts = [f"+ {name(a[k])}" for k in a if k not in b] + [f"− {name(b[k])}" for k in b if k not in a]
@@ -635,7 +635,7 @@ class Hygieia:
                 continue
             r = routines.get(l.get("routine_id") or "") or {}
             out.append({**l, "name": r.get("name") or ", ".join((products.get(s.get("product_id") or "") or {}).get("name", "")
-                                                               for s in l.get("steps") or []) or "uso",
+                                                               for s in l.get("steps") or []) or "use",
                         "products": [(products.get(s.get("product_id") or "") or {}).get("name") for s in l.get("steps") or []
                                      if s.get("done") and s.get("product_id")]})
         return sorted(out, key=lambda l: (l["date"], l.get("done_at") or ""), reverse=True)
@@ -670,7 +670,7 @@ class Hygieia:
         return [{**r["data"], "id": r["id"]} for r in rows]
 
     def sleep_from_wearable(self, item: dict) -> dict | None:
-        """Feed ``wearable.daily`` (B10): the night that ended on ``date`` → one diary entry, area ``sonno``
+        """Feed ``wearable.daily`` (B10): the night that ended on ``date`` → one diary entry, area ``sleep``
         (score 0–100 → quality 1–5, duration and deep sleep in the note). Same id per night: a sync updates it."""
         sleep = item.get("sleep") or {}
         d = _day(item.get("date"))
@@ -680,15 +680,15 @@ class Hygieia:
         note = f"{hours} h {minutes:02d} min"
         if sleep.get("deep_minutes"):
             note += tr(", deep {0} min", sleep['deep_minutes'])
-        scores = {"qualita": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
+        scores = {"quality": max(1, min(5, 1 + int(sleep["score"]) // 20))} if sleep.get("score") is not None else {}
         row_id = f"device-sleep-{d}"
         old = self.store.get("journal", row_id, deleted=True)
         if old and old.get("deleted"):
             return None                                   # the owner removed this night: a sync never brings it back
-        data = {"date": d, "area": "sonno", "scores": scores, "tags": [], "note": note, "photo_ids": [],
+        data = {"date": d, "area": "sleep", "scores": scores, "tags": [], "note": note, "photo_ids": [],
                 "source": "device", "sleep": {k: sleep.get(k) for k in ("start", "end", "minutes", "deep_minutes",
                                                                          "rem_minutes", "score")}}
-        self.store.write([{"kind": "journal", "id": row_id, "ref_id": "sonno", "at": f"{d}T12:00:00+00:00",
+        self.store.write([{"kind": "journal", "id": row_id, "ref_id": "sleep", "at": f"{d}T12:00:00+00:00",
                            "data": data}])
         return {**data, "id": row_id}
 
@@ -823,7 +823,7 @@ class Hygieia:
             v = vs[0]
             products = {p["id"]: p for p in self.items("product")}
             routines.append({"id": r["id"], "name": r.get("name"), "version": v["version"],
-                             "steps": [s.get("label") or (products.get(s.get("product_id") or "") or {}).get("name") or "passo"
+                             "steps": [s.get("label") or (products.get(s.get("product_id") or "") or {}).get("name") or "step"
                                        for s in v.get("steps") or []]})
         in_use = []
         for p in self.items("product"):
@@ -890,7 +890,7 @@ class Hygieia:
                         notes.append({"level": "info" if separated else "warning", "steps": [day._step_name(a), day._step_name(b)],
                                       "text": n[0] + (tr(" The planner already alternates them.") if separated else
                                                       tr(" Give one of the two its own goal so I alternate them."))})
-            if r.get("slot") == "morning" and "viso" in (r.get("areas") or []) and not any(
+            if r.get("slot") == "morning" and "face" in (r.get("areas") or []) and not any(
                     "spf" in day.step_families(s) or (self.store.data("product", s.get("product_id") or "") or {}).get("category") == "spf"
                     for s in steps):
                 notes.append({"level": "info", "steps": [], "text": tr("A sunscreen is missing in the morning face routine.")})
@@ -1026,7 +1026,7 @@ class Hygieia:
             parts.append(tr("today: ") + "; ".join(today_bits))
         if in_use:
             parts.append(tr("in use {0} products", len(in_use)))
-        supplements = [p["name"] for p in in_use if p.get("category") == "integratore"]
+        supplements = [p["name"] for p in in_use if p.get("category") == "supplement"]
         if supplements:
             parts.append(tr("supplements: ") + ", ".join(supplements[:5]))
         for a in alerts[:3]:
@@ -1042,7 +1042,7 @@ class Hygieia:
                 continue
             routines.append({"id": r["id"], "name": r["name"], "slot": catalog.SLOTS.get(r.get("slot"), r.get("slot")),
                              "cadence": cadence_label(r.get("cadence")), "status": r.get("status"),
-                             "steps": [(s.get("label") or (products.get(s.get("product_id") or "") or {}).get("name") or "passo")
+                             "steps": [(s.get("label") or (products.get(s.get("product_id") or "") or {}).get("name") or "step")
                                        + (f" [{cadence_label(s['cadence'])}]" if s.get("cadence") else "")
                                        for s in r.get("steps") or []]})
         in_use = [f"{p.get('brand') + ' ' if p.get('brand') else ''}{p['name']}" for p in products.values()
@@ -1053,7 +1053,7 @@ class Hygieia:
                            "steps": [x["label"] for x in p["steps"] if x["include"]]} for p in s["plan"]["routines"]]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): routines done, skipped or left
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): routines done, skipped or left
         due on ``day``, products used, routines due on ``nxt``, product alerts. Plain data, no LLM."""
         routines = {r["id"]: r for r in self.items("routine")}
         products = {p["id"]: p for p in self.items("product")}
@@ -1086,7 +1086,7 @@ class Hygieia:
         alerts = [a["text"] for a in self.alerts()[:2]]
         out = {"done": done, "missed": missed, "next": upcoming, "note": " · ".join(alerts)}
         if day == self.today() and not self.told_today(day):
-            # B9: after the evening recap, «Racconta la giornata» opens the spoken diary (a voice note)
+            # B9: after the evening recap, «Tell me about the day» opens the spoken diary (a voice note)
             out["actions"] = [{"label": tr("Tell me about your day"), "command": DIARY_TOOL}]
         return out
 
@@ -1094,16 +1094,16 @@ class Hygieia:
         return any(j.get("date") == day.isoformat() and j.get("area") == DIARY_AREA for j in self.items("journal"))
 
     def journal_voice(self, heard: dict, date_: str | None = None) -> dict:
-        """B9 spoken diary: the transcript of the owner's voice note becomes the day's «giornata» entry
-        (tag ``voce``, the kept recording as ``audio_id``). Reflection reads it like every diary entry."""
+        """B9 spoken diary: the transcript of the owner's voice note becomes the day's «day» entry
+        (tag ``voice``, the kept recording as ``audio_id``). Reflection reads it like every diary entry."""
         text = str((heard or {}).get("text") or "").strip()
         if not text:
             raise Invalid(tr("I heard nothing, try again"))
-        body = {"date": date_, "area": DIARY_AREA, "note": text, "tags": ["voce"],
+        body = {"date": date_, "area": DIARY_AREA, "note": text, "tags": ["voice"],
                 "audio_id": heard.get("blob_id") or "", "duration_s": heard.get("duration_s")}
-        return self.journal_add(body, source="voce")[0]
+        return self.journal_add(body, source="voice")[0]
 
-    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    # ── reflection signals (docs/work/2026-10-20-layered-reflection) ──────
     def signals(self) -> tuple[list[dict], list[dict]]:
         """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
         from . import signals as signals_engine

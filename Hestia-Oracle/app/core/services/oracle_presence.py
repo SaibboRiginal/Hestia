@@ -3,7 +3,7 @@
 Oracle reads the state BEFORE pinging (so it knows how long the user was away) and adds a
 few caveman-short lines to the client instructions: state + last interaction, "be brief" when
 ``chat.style = brief``, and the ``chat.notice`` of overlays (e.g. busy in Forge). The full state
-is available on demand through the Chronos MCP tool ``stato``.
+is available on demand through the Chronos MCP tool ``status``.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ def presence_instructions(state: dict | None) -> list[str]:
     """Short prompt lines from a presence state (empty when unknown or switched off)."""
     if not state or state.get("enabled") is False or state.get("show_in_chat") is False:
         return []
-    # Background only: a bare "Stato assistente: Sveglio" made local models open with "Sveglia.".
+    # Background only: a bare "Assistant state: Awake" made local models open with "Awake.".
     line = presence.context_line(state)
     lines = [f"[Internal context, do not mention it unless asked] {line}" if line else ""]
     if (state.get("effects") or {}).get("chat.style") == "brief":

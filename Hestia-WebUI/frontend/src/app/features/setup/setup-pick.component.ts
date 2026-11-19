@@ -20,8 +20,8 @@ export function family(id: string): string {
 }
 
 /**
- * The one selector of the guided setup (docs/work/2026-10-30-setup-un-click): cards, a search box when the list is long,
- * the first few shown and «Mostra tutti». Used for local models, the memory's model, cloud models and voices, so every
+ * The one selector of the guided setup (docs/work/2026-10-30-one-click-setup): cards, a search box when the list is long,
+ * the first few shown and «Show all». Used for local models, the memory's model, cloud models and voices, so every
  * choice looks and works the same. ``multi``: several chosen in order (``chosen``), each card shows its place
  * (1º, 2º…): the first is used, the next ones take over when it fails; a click adds or removes one.
  */
@@ -62,8 +62,8 @@ export function family(id: string): string {
             @if (trying(it.id)?.busy) { <span class="try"><hx-spinner /></span> }
             @else {
               <button type="button" class="try" [class.rec]="!!trying(it.id)?.recording" (click)="tried.emit(it.id)"
-                      [attr.aria-label]="trial() === 'voce' ? ('Listen ' | tr) + it.title : (trying(it.id)?.recording ? ('Stop and try' | tr) : ('Try speaking with ' | tr) + it.title)">
-                <hx-icon [name]="trying(it.id)?.recording || trying(it.id)?.playing ? 'stop' : (trial() === 'voce' ? 'play' : 'mic')" [size]="16" />
+                      [attr.aria-label]="trial() === 'voice' ? ('Listen ' | tr) + it.title : (trying(it.id)?.recording ? ('Stop and try' | tr) : ('Try speaking with ' | tr) + it.title)">
+                <hx-icon [name]="trying(it.id)?.recording || trying(it.id)?.playing ? 'stop' : (trial() === 'voice' ? 'play' : 'mic')" [size]="16" />
               </button>
             }
           }
@@ -114,11 +114,11 @@ export class SetupPickComponent {
   chosen = input<string[]>([]);
   placeholder = input<string>(tr('Search'));
   empty = input<string>(tr('Nothing to choose.'));
-  /** Cards before «Mostra tutti». */
+  /** Cards before «Show all». */
   limit = input<number>(5);
   picked = output<string>();
-  /** A try button on every card: «voce» = hear it, «ascolto» = speak and see what it understood ('' = none). */
-  trial = input<'voce' | 'ascolto' | ''>('');
+  /** A try button on every card: «voice» = hear it, «listen» = speak and see what it understood ('' = none). */
+  trial = input<'voice' | 'listen' | ''>('');
   /** The try in progress or just done, by card id. */
   trialState = input<{ id: string; busy?: boolean; recording?: boolean; playing?: boolean; text?: string } | null>(null);
   tried = output<string>();
@@ -129,7 +129,7 @@ export class SetupPickComponent {
   all = signal(false);
   /** The filter chip on ('' = all). */
   group = signal('');
-  /** Chips: the groups of the list in order of first appearance (at most 8; the rest go under «Tutti»). */
+  /** Chips: the groups of the list in order of first appearance (at most 8; the rest go under «All»). */
   groups = computed(() => [...new Set(this.items().map(i => i.group || '').filter(Boolean))].slice(0, 8));
 
   /** The language selector: the languages of the list in order of appearance (only when the items have one). */

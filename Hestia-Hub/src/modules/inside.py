@@ -1,6 +1,6 @@
-"""Hub "inside view" — WebUI plugin (core module, Sistema section) and the read model behind it.
+"""Hub "inside view" — WebUI plugin (core module, System section) and the read model behind it.
 
-SPEC ``docs/work/2026-10-18-moduli-core-e-mcp-esterno`` §A2 (Hub: *Mappa*, widget *Servizi online*).
+SPEC ``docs/work/2026-10-18-core-modules-and-external-mcp`` §A2 (Hub: *Map*, widget *Online services*).
 Hub is the catalog builder itself and never registers with itself, so:
 - its manifest is folded into the catalog in-process (``discover_catalog(..., local_manifests=...)``);
 - calls routed to ``hub`` (``/api/route/hub/...``: bundle files, ``/api/ui/*`` reads) are answered in-process
@@ -33,10 +33,10 @@ ui = PluginClient("hub", title="System map", icon="host", color="blue", kind="co
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hub.js", api_prefix=f"{API}/",
-    pages=[page("mappa", "Map", element="hub-map", icon="host", order=100,
+    pages=[page("map", "Map", element="hub-map", icon="host", order=100,
                 help="Every service of {assistant}: online or not, node, version, last signal, topology tags.")],
     widgets=[widget("online", "Services online", element="hub-online-widget", sizes=["s", "m"], auto=True,
-                    open_page="mappa", icon="host",
+                    open_page="map", icon="host",
                     help="How many services gave a sign of life in the last 3 minutes.")],
 )
 

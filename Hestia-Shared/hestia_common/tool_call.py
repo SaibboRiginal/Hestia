@@ -6,7 +6,7 @@ target of the caller) and ``$arg.<name>``; paths may hold ``$name`` / ``{name}``
 Arguments not consumed by a template go to the query (GET/HEAD/DELETE) or to the JSON body (other methods).
 
 Before 2026-10-18 Oracle, Telegram, the WebUI and Hestia-MCP each had their own copy of these rules
-(docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+(docs/work/2026-10-18-core-modules-and-external-mcp §B2).
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ TEMPLATE_VAR = re.compile(r"\$(session_id|chat_id|owner|arg\.[a-zA-Z0-9_]+)")
 PATH_VAR = re.compile(r"\$([A-Za-z_][A-Za-z0-9_]*)|\{([A-Za-z_][A-Za-z0-9_]*)\}")
 QUERY_METHODS = {"GET", "HEAD", "DELETE"}
 CONTEXT_VARS = {"session_id", "chat_id", "owner"}
-# «Cosa mi metto» is a POST that only suggests: it showed «Fatto» in the chat (bench 2026-10-30).
+# «What do I wear» is a POST that only suggests: it showed «Done» in the chat (bench 2026-10-30).
 _READ_WORDS = ("search", "list", "query", "status", "stats", "show", "suggest")
 
 
@@ -128,7 +128,7 @@ def build_request(tool: dict, args: dict | None, ctx: dict | None = None) -> dic
     return {"service": str(tool.get("service") or "").strip(), "method": method, "path": path.lstrip("/"),
             "query": {k: v for k, v in (query or {}).items() if v is not None},
             # A POST with no arguments still sends «{}»: a module whose endpoint takes a body model answered 422
-            # «body: Field required» (bench 2026-10-30: «Case disponibili» with no query).
+            # «body: Field required» (bench 2026-10-30: «Available houses» with no query).
             "body": _strip_nones(body) if isinstance(body, dict) else body, "headers": headers}
 
 

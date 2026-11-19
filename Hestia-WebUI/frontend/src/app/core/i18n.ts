@@ -1,12 +1,12 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-backend-inglese).
+/** Fixed texts in the owner's language (dossier docs/work/2026-11-14-english-backend).
  *
  * The English text in the code is the key (standard: docs/LANGUAGES.md): `tr('Save')`, `tr('Today — {0}', day)`, in
  * templates `{{ 'Save' | tr }}`; `f::Active` = a context tag, never shown.
- * index.html loads `/api/webui/i18n.js` (Themis catalog for «Lingua» = `themis.personal.language`) before any
+ * index.html loads `/api/webui/i18n.js` (Themis catalog for «Language» = `themis.personal.language`) before any
  * bundle, so even module-level constants are translated; plugins read the same `globalThis.__hestiaI18n` through
- * `tr` of `@hestia/webui-sdk`. A missing text shows the English source; `localize` translates the labels of API payloads (HTTP interceptor). A new «Lingua» reloads the page (`followLanguage`). */
+ * `tr` of `@hestia/webui-sdk`. A missing text shows the English source; `localize` translates the labels of API payloads (HTTP interceptor). A new «Language» reloads the page (`followLanguage`). */
 interface Catalog { language: string; messages: Record<string, string>; assistant?: string; gender?: string; }
 
 function catalog(): Catalog {
@@ -17,13 +17,13 @@ function catalog(): Catalog {
 /** The assistant's chosen name (`themis.personal.assistant_name`, served with the catalog; default «Hestia»). */
 export function assistantName(): string { return String(catalog().assistant || '').trim() || 'Hestia'; }
 
-/** `{assistant}` → the chosen name, `{g:lei-form|lui-form}` → the form for her or him
- * (docs/work/2026-11-16-nome-ovunque). Where «Hestia» is the app (version, files, installation) the text says
+/** `{assistant}` → the chosen name, `{g:her-form|his-form}` → the form for her or him
+ * (docs/work/2026-11-16-name-everywhere). Where «Hestia» is the app (version, files, installation) the text says
  * «Hestia» and nothing changes. Also for texts that do not go through `tr` (plugin page titles and help). */
 export function named(text: string): string {
   const s = text == null ? '' : String(text);
   if (!s.includes('{assistant}') && !s.includes('{g:')) return s;
-  const he = catalog().gender === 'lui';
+  const he = catalog().gender === 'he';
   return s.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, a, b) => (he ? b : a)).split('{assistant}').join(assistantName());
 }
 
@@ -40,15 +40,15 @@ export async function loadI18n(): Promise<void> {
   } catch { /* settings unreachable: the English source texts */ }
 }
 
-export function currentLanguage(): string { return catalog().language || 'it'; }
+export function currentLanguage(): string { return catalog().language || 'en'; }
 
 /** The date/number locale of the owner's language (`toLocaleDateString(locale(), …)`), never a hardcoded 'it-IT'. */
-export function locale(): string { return currentLanguage() === 'en' ? 'en-GB' : 'it-IT'; }
+export function locale(): string { const l = currentLanguage(); return l === 'en' ? 'en-GB' : l; }
 
-/** The key of «Lingua»: saving it reloads the page so shell and plugins come back in the new language. */
+/** The key of «Language»: saving it reloads the page so shell and plugins come back in the new language. */
 export const LANGUAGE_KEY = 'themis.personal.language';
 let reloading = false;
-/** After «Lingua» was saved: a value other than the loaded one reloads the page once (short delay: saves sent
+/** After «Language» was saved: a value other than the loaded one reloads the page once (short delay: saves sent
  * together with it finish first). */
 export function followLanguage(value: unknown): void {
   const lang = String(value ?? '').trim();
@@ -57,16 +57,16 @@ export function followLanguage(value: unknown): void {
   setTimeout(() => location.reload(), 400);
 }
 
-/** After the assistant's name or she/he was saved: update the texts at once (the page reloads, like «Lingua»;
+/** After the assistant's name or she/he was saved: update the texts at once (the page reloads, like «Language»;
  * not during the guided setup, which reads the name live and must not lose its steps). */
 export const IDENTITY_KEYS = ['themis.personal.assistant_name', 'themis.personal.assistant_gender'];
 export function followIdentity(key: string, value: unknown): void {
   const c = (globalThis as any).__hestiaI18n;
   if (!IDENTITY_KEYS.includes(key) || !c || reloading) return;
   const v = String(value ?? '').trim();
-  const now = key === IDENTITY_KEYS[0] ? assistantName() : (c.gender || 'lei');
-  if ((v || (key === IDENTITY_KEYS[0] ? 'Hestia' : 'lei')) === now) return;
-  if (key === IDENTITY_KEYS[0]) c.assistant = v || 'Hestia'; else c.gender = v === 'lui' ? 'lui' : 'lei';
+  const now = key === IDENTITY_KEYS[0] ? assistantName() : (c.gender || 'she');
+  if ((v || (key === IDENTITY_KEYS[0] ? 'Hestia' : 'she')) === now) return;
+  if (key === IDENTITY_KEYS[0]) c.assistant = v || 'Hestia'; else c.gender = v === 'he' ? 'he' : 'she';
   if (location.pathname.startsWith('/setup')) return;
   reloading = true;
   setTimeout(() => location.reload(), 400);

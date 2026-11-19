@@ -1,9 +1,9 @@
 """One-time migration of the old per-use-case model settings (``oracle.models.*``, before 2026-10-19) into
-chains + use case overrides (dossier ``2026-10-19-oracle-a-blocchi``).
+chains + use case overrides (dossier ``2026-10-19-oracle-blocks``).
 
 Runs when settings load: only if Marko changed an old value and neither ``oracle.chains`` nor
 ``oracle.usecases`` was stored yet (so it runs once). Each changed use case becomes a chain
-``<use case>-personale`` = [primary, fallback] and the use case points to it. The old rows stay in Archive
+``<use case>-personal`` = [primary, fallback] and the use case points to it. The old rows stay in Archive
 (Themis cannot delete undeclared keys) and are ignored from then on.
 """
 from __future__ import annotations
@@ -22,9 +22,9 @@ _OLD = {
     "athena_strategist": ("", "", "", "", ""),
     "athena_auditor": ("", "", "", "", ""),
 }
-_NEW_ID = {"generic": "oracle.generale", "reasoning": "oracle.ragionamento", "code": "oracle.codice",
-           "embedding": "oracle.embedding", "scout_extraction": "scout.annunci",
-           "athena_strategist": "athena.strategia", "athena_auditor": "athena.revisione"}
+_NEW_ID = {"generic": "oracle.general", "reasoning": "oracle.reasoning", "code": "oracle.code",
+           "embedding": "oracle.embedding", "scout_extraction": "scout.listings",
+           "athena_strategist": "athena.strategy", "athena_auditor": "athena.review"}
 # Old provider TYPES → default named providers.
 _PROVIDER_NAME = {"ollama": "ollama", "gemini": "gemini", "anthropic": "claude-api", "claude_cli": "claude",
                   "openai": "llamacpp"}
@@ -44,7 +44,7 @@ def plan(orphans: dict) -> tuple[dict, dict]:
             steps = [{"provider": _PROVIDER_NAME.get(cur[0], cur[0]), "model": cur[1]}]
             if cur[2] and cur[3] and uc != "embedding" and (cur[2], cur[3]) != cur[:2]:
                 steps.append({"provider": _PROVIDER_NAME.get(cur[2], cur[2]), "model": cur[3]})
-            name = f"{new_id.split('.', 1)[1]}-personale"
+            name = f"{new_id.split('.', 1)[1]}-personal"
             if uc == "embedding":
                 name = "embedding"
             chains[name] = {"label": f"{name.replace('-', ' ').capitalize()}", "steps": steps}
@@ -66,9 +66,9 @@ def run(settings) -> bool:
     if not chains and not usecases:
         return False
     merged = {**llm_chains.DEFAULT_CHAINS, **chains}
-    ok = settings.put(oracle_settings.CHAINS_KEY, merged, actor="oracle", reason="migrazione oracle.models.*")
+    ok = settings.put(oracle_settings.CHAINS_KEY, merged, actor="oracle", reason="migration of oracle.models.*")
     ok = settings.put(oracle_settings.USECASES_KEY, usecases, actor="oracle",
-                      reason="migrazione oracle.models.*") and ok
+                      reason="migration of oracle.models.*") and ok
     logger.info("event=oracle_models_migrated chains=%s usecases=%s ok=%s", ",".join(chains) or "-",
                 ",".join(usecases) or "-", ok)
     return ok

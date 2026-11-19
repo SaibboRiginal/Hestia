@@ -237,7 +237,7 @@ class TestActiveSessions:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# Cindy 8 (docs/work/2026-10-24-tutto-brainstorm-cindy W3): quote rule, skip without new turns
+# Cindy 8 (docs/work/2026-10-24-whole-cindy-brainstorm W3): quote rule, skip without new turns
 # ═══════════════════════════════════════════════════════════════════════════════
 
 

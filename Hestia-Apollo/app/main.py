@@ -1,4 +1,4 @@
-"""Hestia-Apollo — images through a remote ComfyUI («Immagini», port 19022, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A1).
+"""Hestia-Apollo — images through a remote ComfyUI («Images», port 19022, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A1).
 
 The only module that talks to image generators (``APOLLO_COMFYUI_URL`` / ``APOLLO_COMFYUI_KEY`` in env). Flows and
 jobs in Archive (``/api/images-store``), images in Archive blobs, results pushed to the requester (``callback``) or
@@ -31,7 +31,7 @@ from .core.service import PURPOSES, Images
 API = "/api/images"
 kit = ModuleKit("apollo", port=19022, api=API, domain="images", title="Images", store="images-store",
                 when_to_use="create images (portraits, backgrounds, mascots, icons, illustrations)",
-                manual="immagine_crea: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (immagine_stato to see it). Workflows (immagine_flussi) are uploaded by the user from ComfyUI.")
+                manual="image_create: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (image_status to see it). Workflows (image_flows) are uploaded by the user from ComfyUI.")
 app = kit.app
 comfy = ComfyUI(os.getenv("APOLLO_COMFYUI_URL", ""), os.getenv("APOLLO_COMFYUI_KEY", ""))
 images = Images(kit.store, comfy, kit.hub)
@@ -67,7 +67,7 @@ def delete_flow(fid: str):
 @app.post(f"{API}/jobs")
 def request_job(body: dict = Body(...)):
     """Other modules (e.g. the appearance one) ask an image here, with ``callback: {service, path}``."""
-    return images.request(body.get("prompt", ""), purpose=body.get("purpose", "generico"),
+    return images.request(body.get("prompt", ""), purpose=body.get("purpose", "generic"),
                           negative=body.get("negative", ""), width=body.get("width"), height=body.get("height"),
                           seed=body.get("seed"), callback=body.get("callback"), ref=body.get("ref", ""),
                           by=str(body.get("by") or "module"), notify=bool(body.get("notify")))
@@ -95,7 +95,7 @@ def job_image(jid: str, n: int):
 
 
 def _job_display(j: dict) -> dict:
-    files = [file(b, f"immagine-{n + 1}.png", "image/png") for n, b in enumerate(j.get("blob_ids") or [])]
+    files = [file(b, f"image-{n + 1}.png", "image/png") for n, b in enumerate(j.get("blob_ids") or [])]
     if j["status"] == "done":
         return display(tr("Image ready"), subtitle=PURPOSES.get(j["purpose"], ""), lines=[j["prompt"][:200]],
                        files=files)
@@ -106,7 +106,7 @@ def _job_display(j: dict) -> dict:
     return display(tr("Image in progress"), lines=[tr("I'll let you know when it's ready.")])
 
 
-def _create(prompt: str, purpose: str = "generico", negative: str = "", width: int | None = None,
+def _create(prompt: str, purpose: str = "generic", negative: str = "", width: int | None = None,
             height: int | None = None) -> dict:
     j = images.request(prompt, purpose=purpose, negative=negative, width=width, height=height, by="user", notify=True)
     if j["status"] in ("queued", "running"):
@@ -115,20 +115,20 @@ def _create(prompt: str, purpose: str = "generico", negative: str = "", width: i
 
 
 S, I = {"type": "string"}, {"type": "integer"}
-G = "aspetto"
+G = "look"
 kit.tools([
-    MCPTool(name="immagine_crea", description="Creates an image: prompt (better in English), purpose " +
+    MCPTool(name="image_create", description="Creates an image: prompt (better in English), purpose " +
             "|".join(PURPOSES) + ", negative, width, height.",
             parameters={"type": "object", "properties": {"prompt": S, "purpose": {"type": "string", "enum": list(
                 PURPOSES)}, "negative": S, "width": I, "height": I}, "required": ["prompt"]},
             handler=_create, title="Create image", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Images", "primary": 1}),
-    MCPTool(name="immagine_stato", description="State of a requested image (and the image if ready).",
+    MCPTool(name="image_status", description="State of a requested image (and the image if ready).",
             parameters={"type": "object", "properties": {"job": S}, "required": ["job"]},
             handler=lambda job: (lambda j: {"id": j["id"], "status": j["status"], "display": _job_display(j)})(
                 images.job(job)),
             title="Image status", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Images"}),
-    MCPTool(name="immagine_lista", description="The last images requested.",
+    MCPTool(name="image_list", description="The last images requested.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": [{"id": j["id"], "status": j["status"], "purpose": j["purpose"],
                                                       "prompt": j["prompt"][:80]} for j in rows],
@@ -138,19 +138,19 @@ kit.tools([
                 images.jobs(20)),
             title="Recent images", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Images", "primary": 2}),
-    MCPTool(name="immagine_flussi", description="The loaded flows (one per purpose) and whether the generator is connected.",
+    MCPTool(name="image_flows", description="The loaded flows (one per purpose) and whether the generator is connected.",
             parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda fl: {"configured": comfy.configured, "items": fl, "display": display(
                 tr("Image workflows"), items=[item(f["name"], [PURPOSES.get(f["purpose"], f["purpose"])]) for f in fl],
                 lines=([] if comfy.configured else [tr("Generator not linked.")]) +
                       ([] if fl else [tr("No workflow: upload one from the Images page.")]))})(images.flows()),
             title="Image workflows", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Images"}),
-], prefix="immagine_")
+], prefix="image_")
 
 transfer = Transfer("apollo", kit.hub, sections=[
-    StoreSection("flussi", "Image workflows", kit.store, ["workflow"], icon="camera",
+    StoreSection("workflows", "Image workflows", kit.store, ["workflow"], icon="camera",
                  title=lambda r: r["data"].get("name", "")),
-    StoreSection("immagini", "Created images", kit.store, ["job"], icon="camera",
+    StoreSection("images", "Created images", kit.store, ["job"], icon="camera",
                  title=lambda r: r["data"].get("prompt", "")[:60], file_fields=["blob_ids"]),
 ])
 app.include_router(transfer.router())
@@ -164,9 +164,9 @@ def _start_worker() -> None:
 
 kit.on_warm(_start_worker)
 kit.webui(icon="camera", color="purple", description="Images made with your ComfyUI: portraits, backgrounds, mascots.",
-          pages=[page("immagini", "Images", element="apollo-images", icon="camera", order=210,
+          pages=[page("images", "Images", element="apollo-images", icon="camera", order=210,
                       help="Create an image and see the ones made. You need your ComfyUI and one flow per type."),
-                 page("lavoro/:id", "Image", element="apollo-job", detail=True, parent="immagini"),
-                 page("flussi", "Workflows", element="apollo-flows", icon="upload", order=211, parent="immagini",
+                 page("job/:id", "Image", element="apollo-job", detail=True, parent="images"),
+                 page("workflows", "Workflows", element="apollo-flows", icon="upload", order=211, parent="images",
                       help="Upload from ComfyUI the flow saved in API format (Save → API Format), one per image type.")])
 kit.finish()

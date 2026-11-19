@@ -1,8 +1,8 @@
-"""Comandi page (WebUI plugin of this module): browse the tools the WebUI sees and run one with arguments.
+"""Commands page (WebUI plugin of this module): browse the tools the WebUI sees and run one with arguments.
 
 Same list and same rules as the internal ``/mcp`` for client ``webui`` (the MCPServer is reused, nothing is
 duplicated); the page reaches it through the WebUI plugin proxy, so it lives under this plugin's ``api_prefix``
-(``/api/mcp/``). SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4.
+(``/api/mcp/``). SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4.
 
   GET  /api/mcp/ui/tools         → {commands, count, services}
   POST /api/mcp/ui/tools/call    → {ok, result, error?, response_mode, status_code}

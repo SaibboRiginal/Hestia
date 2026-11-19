@@ -88,7 +88,7 @@ app.include_router(ui.router())    # GET /api/ui/manifest, GET /ui/webui/{file} 
 capabilities["ui_manifest"] = ui.manifest_path      # in the Hub registration payload, next to mcp_endpoint
 ```
 
-v2.8 note (2026-10-18, `docs/work/2026-10-18-moduli-core-e-mcp-esterno`): `PluginClient(kind="core"|"domain")` in the
+v2.8 note (2026-10-18, `docs/work/2026-10-18-core-modules-and-external-mcp`): `PluginClient(kind="core"|"domain")` in the
 manifest (catalog `modules[].kind`, WebUI section *Sistema*) and `page(badge={source, field})` (sidebar counter).
 
 Pages are **always visible** by default; `detail=True` pages have no sidebar entry; `parent` makes sub-pages

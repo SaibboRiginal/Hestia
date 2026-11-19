@@ -1,6 +1,6 @@
 /**
- * Apollo («Immagini», ComfyUI) WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages declared in Hestia-Apollo/app/main.py.
+ * Apollo («Images», ComfyUI) WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * docs/work/2026-10-24-whole-cindy-brainstorm W7). Pages declared in Hestia-Apollo/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
@@ -38,7 +38,7 @@ export class ApolloImages extends HestiaElement {
   declare busy: boolean;
   private timer = 0;
   static styles = [...HestiaElement.styles, styles];
-  constructor() { super(); this.s = undefined; this.jobs = []; this.prompt = ''; this.purpose = 'generico'; this.busy = false; }
+  constructor() { super(); this.s = undefined; this.jobs = []; this.prompt = ''; this.purpose = 'generic'; this.busy = false; }
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
   disconnectedCallback() { super.disconnectedCallback(); clearTimeout(this.timer); }
   async load() {
@@ -60,7 +60,7 @@ export class ApolloImages extends HestiaElement {
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Images")}</h1><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('flussi')}>${tr("Workflows (")}${s.flows})</hxk-button></div>
+      <div class="between"><h1>${tr("Images")}</h1><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('workflows')}>${tr("Workflows (")}${s.flows})</hxk-button></div>
       ${!s.configured ? html`<div class="card small">${tr("The generator is not linked: the address of your ComfyUI (APOLLO_COMFYUI_URL in the configuration file) and an uploaded workflow are needed.")}</div>`
         : !s.reachable ? html`<div class="card small">${tr("ComfyUI doesn't answer now: the requests stay in the queue.")}</div>` : nothing}
       <div class="card col">
@@ -69,7 +69,7 @@ export class ApolloImages extends HestiaElement {
             ${Object.entries(s.purposes as Record<string, string>).map(([k, v]) => html`<option value=${k} ?selected=${k === this.purpose}>${v}</option>`)}</select>
           <hxk-button variant="primary" icon="sparkle" ?loading=${this.busy} @click=${() => this.create()}>${tr("Create")}</hxk-button></div>
       </div>
-      ${this.jobs.length ? html`<div class="grid" style="--min: 160px">${this.jobs.map(j => html`<div class="thumb" @click=${() => this.host.navigate('lavoro/' + j.id)}>
+      ${this.jobs.length ? html`<div class="grid" style="--min: 160px">${this.jobs.map(j => html`<div class="thumb" @click=${() => this.host.navigate('job/' + j.id)}>
           ${j.status === 'done' && j.blob_ids?.length ? html`<img loading="lazy" src=${this.host.image(`${API}/jobs/${j.id}/image/0`)} alt="">` : html`<hxk-badge tone=${STATUS[j.status]?.[1] || 'neutral'}>${STATUS[j.status]?.[0] || j.status}</hxk-badge>`}
           <div class="cap truncate">${j.prompt}</div></div>`)}</div>`
         : html`<hxk-state kind="empty" text=${tr("No image yet.")}></hxk-state>`}
@@ -131,7 +131,7 @@ export class ApolloFlows extends HestiaElement {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
-      <div class="between"><h1>${tr("Workflows")}</h1><hxk-button variant="primary" icon="upload" @click=${() => { this.draft = { purpose: 'generico', default: true }; }}>${tr("Upload")}</hxk-button></div>
+      <div class="between"><h1>${tr("Workflows")}</h1><hxk-button variant="primary" icon="upload" @click=${() => { this.draft = { purpose: 'generic', default: true }; }}>${tr("Upload")}</hxk-button></div>
       <div class="small muted">${tr("In ComfyUI: Save → API Format. One workflow per kind of image; the text, the size and the seed go in the usual nodes (I find them myself).")}</div>
       ${this.draft ? html`<div class="card col">
         <input type="file" accept=".json,application/json" @change=${(e: any) => this.pick(e)}>

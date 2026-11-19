@@ -1,8 +1,8 @@
-"""Connected services as ONE list (Marko 2026-11-07: «dovrebbe abilitare ad averne N come un marketplace… Google e
-Garmin hanno meccanismi diversi: uno mostra subito le impostazioni, l'altro no»).
+"""Connected services as ONE list (Marko 2026-11-07: «it should allow N of them like a marketplace… Google and
+Garmin work differently: one shows its settings at once, the other doesn't»).
 
 Every account or device Hecate links is a ``Connector`` with the same shape, and the WebUI draws all of them with the
-same card (``<hecate-connections>``, Dispositivi page and guided setup):
+same card (``<hecate-connections>``, Devices page and guided setup):
 
 * ``item()`` → ``{id, label, icon, what, state: connected|waiting|not_connected, detail, step, actions[]}``.
   ``step`` is what to do now, shown as soon as the card is opened, the same for every service:
@@ -264,9 +264,9 @@ class PhoneConnector(Connector):
         if p.get("configured"):
             bits = []
             if last.get("home") is not None:
-                bits.append("at home" if last["home"] else tr("away from home"))
+                bits.append(tr("at home") if last["home"] else tr("away from home"))
             if last.get("battery") is not None:
-                bits.append(f"batteria {last['battery']}%")
+                bits.append(tr("battery {0}%", last['battery']))
             when = str(last.get("at") or "")[:16].replace("T", " ")
             return {"state": "connected", "step": None, "actions": [],
                     "detail": (tr("Last signal {0}", when) + (f" · {', '.join(bits)}" if bits else "")) if when

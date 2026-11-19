@@ -1,6 +1,6 @@
 /**
- * Psyche («Umore») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-30-diario-umore). Page, widget and quick action declared in Hestia-Psyche/app/main.py.
+ * Psyche («Mood») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * docs/work/2026-10-30-mood-diary). Page, widget and quick action declared in Hestia-Psyche/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
@@ -104,7 +104,7 @@ export class PsycheMood extends HestiaElement {
       const d = new Date(start); d.setDate(start.getDate() + i);
       const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const s = days[iso];
-      cells.push(html`<span class="cell ${s ? 'l' + s.mood : ''}" title=${s ? `${ddmm(iso)} · ${level(s.mood).label}${s.labels.length ? ' · ' + s.labels.join(', ') : ''}` : ddmm(iso)}>${d.getDate()}</span>`);
+      cells.push(html`<span class="cell ${s ? 'l' + s.mood : ''}" title=${s ? `${ddmm(iso)} · ${level(s.mood).label}${s.labels.length ? ' · ' + s.labels.map((l: string) => tr('mood::' + l)).join(', ') : ''}` : ddmm(iso)}>${d.getDate()}</span>`);
     }
     return html`<div class="month">${['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(x => html`<span class="small muted" style="text-align:center">${x}</span>`)}${cells}</div>`;
   }
@@ -124,9 +124,9 @@ export class PsycheMood extends HestiaElement {
         ${this.more ? html`
           ${this.scale('energy', tr('Energy'))}${this.scale('stress', tr('Stress'))}
           <div class="small muted">${tr("How you feel")}</div>
-          <div class="chips">${this.opts.labels.map((v: string) => html`<span class="chip ${this.draft.labels.includes(v) ? 'on' : ''}" @click=${() => this.toggle('labels', v)}>${v}</span>`)}</div>
+          <div class="chips">${this.opts.labels.map((v: string) => html`<span class="chip ${this.draft.labels.includes(v) ? 'on' : ''}" @click=${() => this.toggle('labels', v)}>${tr('mood::' + v)}</span>`)}</div>
           <div class="small muted">${tr("What it has to do with it")}</div>
-          <div class="chips">${this.opts.causes.map((v: string) => html`<span class="chip ${this.draft.causes.includes(v) ? 'on' : ''}" @click=${() => this.toggle('causes', v)}>${v}</span>`)}</div>
+          <div class="chips">${this.opts.causes.map((v: string) => html`<span class="chip ${this.draft.causes.includes(v) ? 'on' : ''}" @click=${() => this.toggle('causes', v)}>${tr('cause::' + v)}</span>`)}</div>
           <hxk-field type="textarea" placeholder=${tr("Two lines about the day (optional)")} .value=${this.draft.note || ''} @change=${(e: any) => { this.draft = { ...this.draft, note: e.detail }; }}></hxk-field>
           <div class="row"><hxk-button variant="primary" @click=${() => this.save()}>${tr("Save")}</hxk-button>
             <hxk-button variant="ghost" @click=${() => { this.more = false; this.draft = { labels: [], causes: [] }; }}>${tr("Cancel")}</hxk-button></div>`
@@ -145,7 +145,7 @@ export class PsycheMood extends HestiaElement {
       <div class="card col"><h3>${tr("alt::Items")}</h3>
         ${(this.hist?.items || []).length ? this.hist.items.slice(0, 40).map((r: any) => html`<div class="entry">
             <hxk-icon name=${level(r.mood).icon} tone=${level(r.mood).tone} size="20"></hxk-icon>
-            <div class="grow"><div>${r.mood}/5 · ${r.mood_word}${r.energy ? html` <span class="muted small">· ${tr("energy")} ${r.energy}/5</span>` : nothing}${r.labels?.length ? html` <span class="muted small">· ${r.labels.join(', ')}</span>` : nothing}</div>
+            <div class="grow"><div>${r.mood}/5 · ${r.mood_word}${r.energy ? html` <span class="muted small">· ${tr("energy")} ${r.energy}/5</span>` : nothing}${r.labels?.length ? html` <span class="muted small">· ${r.labels.map((l: string) => tr('mood::' + l)).join(', ')}</span>` : nothing}</div>
               ${r.quote ? html`<div class="small quote">«${r.quote}»</div>` : nothing}
               ${r.note ? html`<div class="small">${r.note}</div>` : nothing}
               <div class="small muted"><hxk-icon name=${(SOURCES[r.source] || SOURCES.webui).icon} size="12"></hxk-icon> ${ddmm(r.date)} ${hhmm(r.at)} · ${(SOURCES[r.source] || SOURCES.webui).label}</div></div>

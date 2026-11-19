@@ -5,7 +5,7 @@ interface Filters { q: string; city: string; status: string; flag: string; price
 const EMPTY: Filters = { q: '', city: '', status: '', flag: '', price_max: '', rooms_min: '', sort: 'new' };
 const PAGE = 24;
 
-/** Mark/unmark a listing with optimistic update + Annulla. Shared by the list and the detail page. */
+/** Mark/unmark a listing with optimistic update + Undo. Shared by the list and the detail page. */
 export async function setFlag(el: HestiaElement, l: Listing, flag: Listing['flag'], done: (l: Listing) => void) {
   const before = l.flag;
   const next = l.flag === flag ? '' : flag;
@@ -130,7 +130,7 @@ export class ScoutListings extends HestiaElement {
       <div class="head">
         <div><h1>${tr("Houses")}</h1><div class="sub">${s ? tr("{0} houses followed · {1} new this week", num(s.total), num(s.new)) : tr('Listings arrived by email')}</div></div>
         <div class="acts">
-          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</hxk-button>
+          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('stats')}>${tr("Statistics")}</hxk-button>
           <hxk-button icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Check emails")}</hxk-button>
         </div>
       </div>
@@ -185,7 +185,7 @@ export class ScoutListings extends HestiaElement {
 
   private card(l: Listing) {
     const stop = (e: Event) => e.stopPropagation();
-    return html`<article class="lc ${l.flag}" @click=${() => this.host.navigate('case/' + l.id)}>
+    return html`<article class="lc ${l.flag}" @click=${() => this.host.navigate('houses/' + l.id)}>
       ${photo(l.image)}
       <div class="lb">
         <div class="price">${euro(l.price)}${l.price_per_m2 ? html`<span class="ppm">${num(l.price_per_m2)} €/m²</span>` : nothing}</div>

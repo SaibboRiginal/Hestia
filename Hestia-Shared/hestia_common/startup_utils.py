@@ -185,7 +185,7 @@ def start_hub_keepalive(
 
 
 def widen_threadpool(app, tokens: int = 200) -> None:
-    """Give the web server more worker threads than Starlette's default 40 (dossier 2026-11-18-problemi-del-test A).
+    """Give the web server more worker threads than Starlette's default 40 (dossier 2026-11-18-real-test-problems A).
 
     Sync endpoints and streamed answers each hold one thread while they run. A module that waits for something long
     (Oracle: a model call in line on the LLM bus; Hub: the routed call it is waiting for) must not leave the pages,

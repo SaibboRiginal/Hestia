@@ -1,4 +1,4 @@
-"""«Add now»: what the user writes while the assistant is still working on the same chat (dossier 2026-11-18-problemi-del-test B).
+"""«Add now»: what the user writes while the assistant is still working on the same chat (dossier 2026-11-18-real-test-problems B).
 
 The chat client sends the text to ``POST /api/chat/steer`` while a turn of that session runs. The agent loop of the
 chat takes it at the start of its next step (``take``) and tells the client which texts it took (signal

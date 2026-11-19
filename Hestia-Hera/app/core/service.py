@@ -1,4 +1,4 @@
-"""Hera — the important people («Persone», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
+"""Hera — the important people («People», dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A4).
 
 A card per person: relation, birthday and other dates, likes and dislikes, gift ideas (from conversations: the
 assistant adds them with ``people_gift_idea``), notes, last contact and how often Marko wants to hear from them.
@@ -19,7 +19,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hera.service")
 
-RELATIONS = ("partner", "famiglia", "amico", "collega", "altro")
+RELATIONS = ("partner", "family", "friend", "colleague", "other")
 DATE_KINDS = ("birthday", "anniversary", "custom")
 _MMDD = re.compile(r"^(?:(\d{4})-)?(\d{2})-(\d{2})$")
 
@@ -110,8 +110,8 @@ class People:
         name = str(body.get("name") or old.get("name") or "").strip()[:80]
         if not name:
             raise Invalid(tr("the name is needed"))
-        relation = body.get("relation", old.get("relation") or "altro")
-        relation = relation if relation in RELATIONS else "altro"
+        relation = body.get("relation", old.get("relation") or "other")
+        relation = relation if relation in RELATIONS else "other"
         dates = old.get("dates") or []
         if body.get("birthday"):
             dates = [d for d in dates if d.get("kind") != "birthday"] + [
@@ -196,7 +196,7 @@ class People:
             title = tr("{0} of {1}", d['label'], p['name']) if d["kind"] != "custom" else f"{d['label']} · {p['name']}"
             self._hub("POST", "api/special", {"title": title, "day": day, "kind": d["kind"], "lead_days": d["lead_days"],
                                               "person": p["name"], "person_id": p["id"], "yearly": True,
-                                              "source": "persone", "key": f"hera-{p['id']}-{i}", "by": "hera"})
+                                              "source": "people", "key": f"hera-{p['id']}-{i}", "by": "hera"})
 
     def upcoming(self, days: int = 30) -> list[dict]:
         out = []
@@ -220,11 +220,11 @@ class People:
                                          "_title": tr("Ideas for {0}", p['name']), "level": "info", "target": "owner",
                                          "_message": tr("You noted: ") + "; ".join(ideas), "icon": "heart",
                                          "replaces": f"hera.gift.{pid}",
-                                         "_link": {"module": "hera", "page": f"persona/{pid}"}}})
+                                         "_link": {"module": "hera", "page": f"person/{pid}"}}})
         return {"handled": True, "ideas": len(ideas)}
 
     def daily(self) -> dict:
-        """Agenda job: one «senti …» notice per person due a contact today (never piling up: ``replaces``)."""
+        """Agenda job: one «call …» notice per person due a contact today (never piling up: ``replaces``)."""
         due = [p for p in self.list() if p.get("contact_due_in") is not None and p["contact_due_in"] <= 0]
         for p in due:
             if self.hub:
@@ -234,7 +234,7 @@ class People:
                                              "_title": tr("Call {0}?", p['name']), "level": "info", "target": "owner",
                                              "_message": tr("Last time: {0}.", p['last_contact']), "icon": "user",
                                              "replaces": f"hera.contact.{p['id']}",
-                                             "_actions": [{"id": "fatto", "label": tr("Talked"), "service": "hera",
+                                             "_actions": [{"id": "done", "label": tr("Talked"), "service": "hera",
                                                            "path": f"/api/people/{p['id']}/contact", "body": {},
                                                            "resolves": True}]}})
         return {"due": len(due)}

@@ -55,19 +55,19 @@ app.add_middleware(CORSMiddleware, allow_origins=[
 app.include_router(hermes_settings.router())
 service = HermesService()
 
-# ── WebUI plugin (core module, Sistema section): Notifiche (inbox) + Consegne ────────────────────
+# ── WebUI plugin (core module, System section): Notifications (inbox) + Deliveries ────────────────────
 # Routes of Hermes are spread over /api/notifications, /api/events…: the plugin reads /api/ui/* only.
 ui = PluginClient("hermes", title="Notifications", icon="bell", color="teal", kind="core", dist=UI_DIST,
                   description="Notifications and where they arrived: held back, silent, withdrawn, answered.",
                   version=SERVICE_VERSION)
 ui.webui(entry="hermes.js", api_prefix="/api/ui/",
-         pages=[page("notifiche", "Notifications", element="hermes-inbox", icon="bell", order=140,
+         pages=[page("notifications", "Notifications", element="hermes-inbox", icon="bell", order=140,
                      badge={"source": "/api/ui/inbox/counts", "field": "unread"},
                      help="The list of notifications, the same on every client (read here = read on Telegram): to read, to answer, all; the buttons answer the module that asked."),
-                page("consegne", "Deliveries", element="hermes-deliveries", icon="send", order=141, parent="notifiche",
+                page("deliveries", "Deliveries", element="hermes-deliveries", icon="send", order=141, parent="notifications",
                      help="Every notification and which clients it reached (Telegram, WebUI…): held back by presence, silent, withdrawn from the chat, answered. The list to read is in Notifications.")],
-         widgets=[widget("oggi", "Deliveries today", element="hermes-today-widget", sizes=["s", "m"], auto=True,
-                         open_page="consegne", icon="bell",
+         widgets=[widget("today", "Deliveries today", element="hermes-today-widget", sizes=["s", "m"], auto=True,
+                         open_page="deliveries", icon="bell",
                          help="Today's notifications: delivered, held back, failed, waiting for an answer.")])
 app.include_router(ui.router())
 
@@ -307,7 +307,7 @@ def health():
 
 app.include_router(create_log_control_router("hestia_hermes"))
 
-# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): notifications of the day, answers still awaited.
+# Daily recap piece (docs/work/2026-10-20-daily-recap): notifications of the day, answers still awaited.
 app.include_router(recap.recap_router(
     "hermes", lambda day, nxt: recap.piece("hermes", "Notifications", icon="bell", emoji="🔔", order=800,
                                          **service.notifications.recap(day.isoformat()))))
@@ -505,7 +505,7 @@ def update_outbound_event_state(req: OutboundEventStateUpdateRequest):
     return {"status": "ok", "updated": bool(updated)}
 
 
-# ── Inside view (WebUI plugin «Consegne»): read-only ─────────────────────────
+# ── Inside view (WebUI plugin «Deliveries»): read-only ─────────────────────────
 
 def _ui_guard(fn, *args, **kwargs):
     try:
@@ -548,7 +548,7 @@ def ui_clients():
     return notification_clients()
 
 
-# ── Inbox (WebUI plugin «Notifiche»): thin /api/ui/ doors on the routes above ──
+# ── Inbox (WebUI plugin «Notifications»): thin /api/ui/ doors on the routes above ──
 # The WebUI proxy only lets a plugin call its api_prefix (/api/ui/), so the inbox page reaches the same logic
 # here. The plugin is a WebUI surface: the client is "webui" unless told otherwise (read on WebUI = read everywhere).
 
@@ -572,7 +572,7 @@ def ui_inbox(filter: str = "all", source: str = "", before: str = "", limit: int
 
 @app.get("/api/ui/inbox/counts")
 def ui_inbox_counts(client: str = UI_CLIENT):
-    """``{unread, pending}`` — also the sidebar badge source of the Notifiche page."""
+    """``{unread, pending}`` — also the sidebar badge source of the Notifications page."""
     return notification_counts(client or UI_CLIENT)
 
 

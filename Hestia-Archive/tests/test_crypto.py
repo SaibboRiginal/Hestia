@@ -35,7 +35,7 @@ def test_streams():
 
 
 def test_wrong_passphrase():
-    enc = encrypt_bytes(b"diario", "giusta", **FAST)
+    enc = encrypt_bytes(b"diary", "giusta", **FAST)
     with pytest.raises(DecryptError):
         decrypt_bytes(enc, "sbagliata")
 

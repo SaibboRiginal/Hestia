@@ -1,4 +1,4 @@
-"""Provider limits learned from the provider's own answers (dossier docs/work/2026-11-18-problemi-del-test, E).
+"""Provider limits learned from the provider's own answers (dossier docs/work/2026-11-18-real-test-problems, E).
 
 Nothing is declared or hardcoded: when a provider answers «limit reached» (429) and says which limit (Gemini
 ``QuotaFailure``: ``quotaId`` …RequestsPerMinute… / …RequestsPerDay… and ``quotaValue``), the limit is learned for that
@@ -7,7 +7,7 @@ learned limit the step is skipped *before* the request (``ahead``) until its win
 next step without spending a failed call.
 
 A learned limit is trusted for one day, then forgotten: if the provider changed it, the next 429 teaches the new one
-(«si rompe? si aggiusta»). The reactive path stays exactly as before: any 429 still marks the pair exhausted until the
+(«it breaks? it gets fixed»). The reactive path stays exactly as before: any 429 still marks the pair exhausted until the
 provider's hint (``llm_chains.mark_exhausted``).
 
 The exhausted pairs and the learned limits are kept in Archive (``oracle-store``, kind ``llm_quota``) so a restart

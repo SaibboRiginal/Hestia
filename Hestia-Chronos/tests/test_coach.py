@@ -1,4 +1,4 @@
-"""Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §5, §14). Archive, Hub and modules mocked."""
+"""Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind §5, §14). Archive, Hub and modules mocked."""
 from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta
@@ -131,7 +131,7 @@ def test_relation_and_daily_limits_and_kept_items():
 
 @pytest.mark.unit
 def test_outdoor_needs_avoid_rainy_and_dark_hours():
-    """Weather dossier 2026-10-20-meteo-hecate: an ``outdoor`` need is not placed where it rains; others are."""
+    """Weather dossier 2026-10-20-weather-hecate: an ``outdoor`` need is not placed where it rains; others are."""
     from services.coach import wet_hours
     from services.coach_planner import plan_week
     days = []
@@ -160,7 +160,7 @@ def test_planner_has_no_domain_words():
     import inspect
     from services import coach_planner
     src = inspect.getsource(coach_planner).lower()
-    for word in ("hercules", "hygieia", "plutus", "retinol", "palestra", "allenamento", "fitness", "selfcare"):
+    for word in ("hercules", "hygieia", "plutus", "retinol", "gym", "training", "fitness", "selfcare"):
         assert word not in src
 
 
@@ -266,7 +266,7 @@ def test_weekly_message_without_the_brain_uses_the_fixed_text(chronos):
     assert out["week"] == "2026-10-26" and out["delivered"] is True
     assert out["text"].startswith("Piano della settimana:") and "Allenamento" in out["text"]
     domain, event_type, entity, payload = chronos["sent"][-1]
-    assert domain == "system" and entity == "coach.week" and payload["_link"]["page"] == "settimana"
+    assert domain == "system" and entity == "coach.week" and payload["_link"]["page"] == "week"
 
 
 @pytest.mark.unit

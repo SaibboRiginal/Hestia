@@ -1,4 +1,4 @@
-"""Tests — guided setup «Cervello» (docs/work/2026-10-30-setup-un-click §4.2). No network: providers mocked."""
+"""Tests — guided setup «Cervello» (docs/work/2026-10-30-one-click-setup §4.2). No network: providers mocked."""
 from __future__ import annotations
 
 import pytest
@@ -17,7 +17,7 @@ def test_recommend_by_vram():
     assert llm_setup.recommend(0, 32)["model"] == "gemma4:e4b"
     assert llm_setup.recommend(8, 32)["model"] == "qwen3:8b"
     assert llm_setup.recommend(16, 64)["model"] == "qwen3:14b"
-    assert llm_setup.recommend(16, 64)["recipe"] == "entrambi"
+    assert llm_setup.recommend(16, 64)["recipe"] == "both"
     assert llm_setup.recommend(0, 8)["recipe"] == "cloud"
 
 
@@ -31,8 +31,8 @@ def test_plan_local_only_replaces_chat_chains_and_keeps_embedding():
 
 def test_plan_both_puts_local_first_then_chosen_cloud(monkeypatch):
     _keys(monkeypatch, "gemini")
-    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS))
-    steps = out["veloce"]["steps"]
+    out = llm_setup.plan_chains("both", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS))
+    steps = out["fast"]["steps"]
     assert steps[0] == {"provider": "ollama", "model": "qwen3:8b"}
     assert [s["provider"] for s in steps[1:]] == ["gemini", "gemini"]
     assert all(s["provider"] != "llamacpp" for s in steps)
@@ -41,17 +41,17 @@ def test_plan_both_puts_local_first_then_chosen_cloud(monkeypatch):
 def test_plan_cloud_with_provider_not_in_defaults_uses_its_first_model(monkeypatch):
     monkeypatch.setattr(llm_providers, "list_models", lambda name: ["deepseek-chat"])
     out = llm_setup.plan_chains("cloud", "", ["deepseek"], dict(llm_chains.DEFAULT_CHAINS))
-    assert out["potente"]["steps"] == [{"provider": "deepseek", "model": "deepseek-chat"}]
+    assert out["strong"]["steps"] == [{"provider": "deepseek", "model": "deepseek-chat"}]
 
 
 def test_plan_empty_choice_keeps_current_chain():
     current = dict(llm_chains.DEFAULT_CHAINS)
     out = llm_setup.plan_chains("cloud", "", [], current)
-    assert out["veloce"] == current["veloce"]
+    assert out["fast"] == current["fast"]
 
 
 def test_summary_sentence():
-    chains = {"veloce": {"steps": [{"provider": "ollama", "model": "qwen3:8b"},
+    chains = {"fast": {"steps": [{"provider": "ollama", "model": "qwen3:8b"},
                                    {"provider": "gemini", "model": "gemini-flash-latest"}]}}
     assert llm_setup.summary(chains) == ("Ti risponde qwen3:8b sul tuo computer; "
                                          "se non c'è, gemini-flash-latest nel cloud.")
@@ -63,8 +63,8 @@ def test_apply_writes_chains_through_settings(monkeypatch):
                         lambda key, value, actor="", reason="": stored.setdefault(key, value) or True)
     result = llm_setup.apply("claude", "qwen3:8b", [])
     assert result["ok"] and result["detail"].startswith("Ti risponde Claude")
-    assert stored[oracle_settings.BRAIN_MODE] == "esterna"
-    assert stored[oracle_settings.CHAINS_KEY]["veloce"]["steps"][0]["model"] == "qwen3:8b"
+    assert stored[oracle_settings.BRAIN_MODE] == "external"
+    assert stored[oracle_settings.CHAINS_KEY]["fast"]["steps"][0]["model"] == "qwen3:8b"
 
 
 def test_test_without_key_says_so(monkeypatch):
@@ -137,7 +137,7 @@ class _ListResp:
 
 
 def test_test_reads_the_model_list_and_spends_no_tokens(monkeypatch):
-    """Marko 2026-11-06: «Prova» must cost (almost) nothing and never ask the key twice: the list is the check."""
+    """Marko 2026-11-06: «Test» must cost (almost) nothing and never ask the key twice: the list is the check."""
     _keys(monkeypatch, "gemini")
     import requests
     import agents.universal_agent as ua
@@ -172,17 +172,17 @@ def test_pull_skips_a_model_already_in_ollama(monkeypatch):
     """A model made from a Modelfile is on no registry: «già presente», not «non esiste su Ollama»."""
     monkeypatch.setattr(llm_providers, "list_models", lambda name: ["gemma-4-26B-A4B-it-UD-IQ4_NL:latest"])
     out = llm_setup.pull("gemma-4-26B-A4B-it-UD-IQ4_NL:latest")
-    assert out["ok"] and out["already"] and out["state"] == "fatto"
+    assert out["ok"] and out["already"] and out["state"] == "done"
 
 
 def test_is_local_by_type_then_address(monkeypatch):
     provs = {"ollama": {"type": "ollama", "url": ""},
              "lmstudio": {"type": "openai", "url": "http://host.docker.internal:1234/v1"},
-             "casa": {"type": "openai", "url": "http://192.168.1.20:8000/v1"},
+             "home": {"type": "openai", "url": "http://192.168.1.20:8000/v1"},
              "deepseek": {"type": "openai", "url": "https://api.deepseek.com/v1"},
              "gemini": {"type": "gemini", "url": ""}}
     monkeypatch.setattr(oracle_settings.settings, "get", lambda key, default=None: provs)
-    assert [n for n in provs if llm_providers.is_local(n)] == ["ollama", "lmstudio", "casa"]
+    assert [n for n in provs if llm_providers.is_local(n)] == ["ollama", "lmstudio", "home"]
 
 
 def test_runtimes_finds_lm_studio_and_lists_its_models(monkeypatch):
@@ -208,17 +208,17 @@ def test_ensure_runtime_adds_the_program_as_a_block(monkeypatch):
     block = stored[oracle_settings.PROVIDERS_KEY]["lmstudio"]
     assert block == {"type": "openai", "label": "LM Studio (locale)", "url": "http://host.docker.internal:1234/v1"}
     assert "gemini" in stored[oracle_settings.PROVIDERS_KEY]
-    assert llm_setup.ensure_runtime("nessuno") is False
+    assert llm_setup.ensure_runtime("none") is False
 
 
 def test_plan_uses_the_chosen_program_cloud_models_and_embedding(monkeypatch):
     _keys(monkeypatch, "gemini")
     monkeypatch.setattr(llm_providers, "is_local", lambda name: name in ("ollama", "llamacpp", "lmstudio"))
     current = dict(llm_chains.DEFAULT_CHAINS)
-    out = llm_setup.plan_chains("entrambi", "qwen3-14b", ["gemini"], current, local_provider="lmstudio",
+    out = llm_setup.plan_chains("both", "qwen3-14b", ["gemini"], current, local_provider="lmstudio",
                                 cloud_models={"gemini": "gemini-3-flash"},
                                 embedding={"provider": "ollama", "model": "qwen3-embedding:0.6b"})
-    assert out["veloce"]["steps"] == [{"provider": "lmstudio", "model": "qwen3-14b"},
+    assert out["fast"]["steps"] == [{"provider": "lmstudio", "model": "qwen3-14b"},
                                       {"provider": "gemini", "model": "gemini-3-flash"}]
     assert out["cloud"]["steps"] == [{"provider": "gemini", "model": "gemini-3-flash"}]
     assert out["embedding"] == current["embedding"]                       # same model: memory not re-indexed
@@ -228,13 +228,13 @@ def test_plan_uses_the_chosen_program_cloud_models_and_embedding(monkeypatch):
 
 
 def test_apply_replaces_a_retired_default_with_a_listed_model(monkeypatch):
-    """Key already saved, no «Prova»: the chain must not start with an alias Google no longer lists."""
+    """Key already saved, no «Test»: the chain must not start with an alias Google no longer lists."""
     _keys(monkeypatch, "gemini")
     stored = {}
     monkeypatch.setattr(oracle_settings.settings, "put", lambda key, value, **kw: stored.__setitem__(key, value) or True)
     monkeypatch.setattr(llm_providers, "list_models", lambda name: ["gemini-flash-latest", "gemini-3-flash"])
     assert llm_setup.apply("cloud", "", ["gemini"])["ok"]
-    steps = stored[oracle_settings.CHAINS_KEY]["veloce"]["steps"]
+    steps = stored[oracle_settings.CHAINS_KEY]["fast"]["steps"]
     assert {s["model"] for s in steps} <= {"gemini-flash-latest", "gemini-3-flash"}
 
 
@@ -253,9 +253,9 @@ def test_key_ok_preselects_more_than_one_model_in_order(monkeypatch):
 def test_plan_puts_every_chosen_model_of_a_service_in_order(monkeypatch):
     _keys(monkeypatch, "gemini")
     monkeypatch.setattr(llm_providers, "is_local", lambda name: name == "ollama")
-    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+    out = llm_setup.plan_chains("both", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
                                 cloud_models={"gemini": ["gemini-a", "gemini-b", "gemini-a"]})
-    assert out["veloce"]["steps"] == [{"provider": "ollama", "model": "qwen3:8b"},
+    assert out["fast"]["steps"] == [{"provider": "ollama", "model": "qwen3:8b"},
                                       {"provider": "gemini", "model": "gemini-a"},
                                       {"provider": "gemini", "model": "gemini-b"}]
 
@@ -312,37 +312,37 @@ def test_reload_keys_reads_own_env_without_restart(tmp_path, monkeypatch):
 
 def test_plan_chains_per_mode_model_goes_first_with_general_as_fallback():
     """Round 6 «Per modalità»: Codice gets its own model, the general choice stays behind it; Generale unchanged."""
-    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+    out = llm_setup.plan_chains("both", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
                                 cloud_models={"gemini": ["gemini-2.5-flash"]},
-                                modes={"codice": {"provider": "gemini", "model": "gemini-2.5-pro"}})
-    assert out["codice"]["steps"][0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
-    assert {"provider": "ollama", "model": "qwen3:8b"} in out["codice"]["steps"]
-    assert out["veloce"]["steps"][0] == {"provider": "ollama", "model": "qwen3:8b"}
-    assert out["veloce"]["steps"] == out["potente"]["steps"]
+                                modes={"code": {"provider": "gemini", "model": "gemini-2.5-pro"}})
+    assert out["code"]["steps"][0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
+    assert {"provider": "ollama", "model": "qwen3:8b"} in out["code"]["steps"]
+    assert out["fast"]["steps"][0] == {"provider": "ollama", "model": "qwen3:8b"}
+    assert out["fast"]["steps"] == out["strong"]["steps"]
 
 
 def test_plan_chains_mode_with_its_own_whole_list():
     """Round 7: a mode (Codice) has its own «Scelti» list in order, not just one model before Generale."""
     own = [{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "ollama", "model": "qwen2.5-coder:14b"}]
-    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
-                                cloud_models={"gemini": ["gemini-2.5-flash"]}, modes={"codice": {"steps": own}})
-    assert out["codice"]["steps"] == own
-    assert out["veloce"]["steps"][0] == {"provider": "ollama", "model": "qwen3:8b"}
+    out = llm_setup.plan_chains("both", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+                                cloud_models={"gemini": ["gemini-2.5-flash"]}, modes={"code": {"steps": own}})
+    assert out["code"]["steps"] == own
+    assert out["fast"]["steps"][0] == {"provider": "ollama", "model": "qwen3:8b"}
 
 
 def test_plan_chains_follows_the_users_order_across_services():
     """Round 7: «Scelti» reordered freely (a cloud model before the local one, models of two services mixed)."""
-    out = llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini", "claude"], dict(llm_chains.DEFAULT_CHAINS),
+    out = llm_setup.plan_chains("both", "qwen3:8b", ["gemini", "claude"], dict(llm_chains.DEFAULT_CHAINS),
                                 cloud_models={"gemini": ["gemini-2.5-flash", "gemini-2.5-pro"]},
                                 order=[{"provider": "gemini", "model": "gemini-2.5-pro"}, {"provider": "claude", "model": ""},
                                        {"provider": "ollama", "model": "qwen3:8b"}])
-    steps = out["veloce"]["steps"]
+    steps = out["fast"]["steps"]
     assert steps[0] == {"provider": "gemini", "model": "gemini-2.5-pro"}
     assert steps[1]["provider"] == "claude"
     assert steps[2] == {"provider": "ollama", "model": "qwen3:8b"}
     assert steps[-1] == {"provider": "gemini", "model": "gemini-2.5-flash"}   # not named: after the named ones
-    assert llm_setup.plan_chains("entrambi", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
-                                 cloud_models={"gemini": ["gemini-2.5-flash"]})["veloce"]["steps"][0]["provider"] == "ollama"
+    assert llm_setup.plan_chains("both", "qwen3:8b", ["gemini"], dict(llm_chains.DEFAULT_CHAINS),
+                                 cloud_models={"gemini": ["gemini-2.5-flash"]})["fast"]["steps"][0]["provider"] == "ollama"
 
 
 def test_test_lists_only_chat_models_and_embed_apart(monkeypatch):

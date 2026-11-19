@@ -1,13 +1,13 @@
 """Optional ``display`` block next to a tool's data: how a client without a model shows the result
-(docs/work/2026-10-23-telegram-da-zero §6).
+(docs/work/2026-10-23-telegram-from-scratch §6).
 
 A module returns its usual JSON plus ``"display": display(...)``. Telegram draws it as one card (title, subtitle,
 lines, items, next-step buttons); the WebUI ignores it; Hestia-MCP removes it for every caller except Telegram, so
 models and external AIs see the same data as before. No emoji, no ids, no module names: plain Italian.
 
-    return {"items": rows, "display": display("Allenamento di oggi", subtitle="Push A · 5 esercizi",
+    return {"items": rows, "display": display("Today's workout", subtitle="Push A · 5 exercises",
                                               items=[item(r["name"], [f"{r['sets']}×{r['reps']}"]) for r in rows],
-                                              actions=[action("Inizia", "fitness_start", style="primary")])}
+                                              actions=[action("Start", "fitness_start", style="primary")])}
 """
 from __future__ import annotations
 

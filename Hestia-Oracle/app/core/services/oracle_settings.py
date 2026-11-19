@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common import i18n
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language
 
 try:
     from hestia_common.settings_client import SettingsClient, preset, setting
@@ -19,8 +20,8 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
         sys.path.insert(0, str(_shared))
     from hestia_common.settings_client import SettingsClient, preset, setting
 
-# ── Models: providers · chains · use cases (dossier docs/work/2026-10-19-oracle-a-blocchi) ─────────
-# Three object settings edited by the WebUI page Modelli (Oracle → Cervello): named providers (keys stay in env
+# ── Models: providers · chains · use cases (dossier docs/work/2026-10-19-oracle-blocks) ─────────
+# Three object settings edited by the WebUI page Models (Oracle → Brain): named providers (keys stay in env
 # ORACLE_KEY_<NAME>), reusable chains of provider/model steps, use case → chain/mode overrides.
 PROVIDERS_KEY = "oracle.providers"
 CHAINS_KEY = "oracle.chains"
@@ -32,10 +33,10 @@ BRAIN_MODE = "oracle.brain.mode"
 BRAIN_AGENT = "oracle.brain.agent"
 BRAIN_MODEL = "oracle.brain.model"
 BRAIN_FALLBACK = "oracle.brain.fallback"
-BRAIN_MODES = [("interna", "Internal"), ("esterna", "External")]
+BRAIN_MODES = [("internal", "Internal"), ("external", "External")]
 BRAIN_AGENTS = [("claude", "Claude Code (subscription)"), ("codex", "Codex (ChatGPT)")]
-BRAIN_FALLBACKS = [("interna", "Redo the turn in internal mode"), ("nessuno", "None: tell me it did not answer")]
-# Operating mode (dossier docs/work/2026-11-06-moduli-come-agenti): how a chat turn works. More values may come.
+BRAIN_FALLBACKS = [("internal", "Redo the turn in internal mode"), ("none", "None: tell me it did not answer")]
+# Operating mode (dossier docs/work/2026-11-06-modules-as-agents): how a chat turn works. More values may come.
 OPERATING_MODE = "oracle.operating_mode"
 OPERATING_MODES = [("classic", "Classic"), ("agents", "Module agents")]
 AGENTS_MAX_PER_TURN = "oracle.agents.max_per_turn"
@@ -60,13 +61,13 @@ def _definitions() -> list[dict]:
         setting(CHAIN_COOLDOWN, "Pause of a model without quota", "int", 60, group="Models", order=3,
                 min=1, max=1440, unit="min", advanced=True,
                 help="When the provider does not say when the quota refills (Gemini daily: Pacific midnight)."),
-        setting(BRAIN_MODE, "Brain mode", "enum", "interna", group="Models", order=4, options=BRAIN_MODES,
+        setting(BRAIN_MODE, "Brain mode", "enum", "internal", group="Models", order=4, options=BRAIN_MODES,
                 help="Internal: Oracle reasons with the model chains (classifier, Quick/Thoughtful/CoT, agent loop). External: an agent (Claude Code, Codex) runs the loop with {assistant}'s tools; Oracle prepares the context, saves messages and memory. Each use can choose its own."),
         setting(BRAIN_AGENT, "External agent", "enum", "claude", group="Models", order=5, options=BRAIN_AGENTS,
                 help="It needs its login: Claude Code with CLAUDE_CODE_OAUTH_TOKEN, Codex with `codex login` (image with ORACLE_INSTALL_CODEX=1)."),
         setting(BRAIN_MODEL, "External agent model", "string", "sonnet", group="Models", order=6,
                 help="E.g. sonnet, opus (Claude Code) or gpt-5-codex (Codex). Empty = the agent's default."),
-        setting(BRAIN_FALLBACK, "If the external agent does not answer", "enum", "interna", group="Models", order=7,
+        setting(BRAIN_FALLBACK, "If the external agent does not answer", "enum", "internal", group="Models", order=7,
                 options=BRAIN_FALLBACKS),
         setting(OPERATING_MODE, "Operating mode", "enum", "classic", group="Models", order=8, options=OPERATING_MODES,
                 help="Classic: a classifier picks the domains, one loop holds their tools. Module agents: the brain sees one colleague per module and hands it a job; each agent works with its own tools and model chain. How many agents really run together is decided by the local model queue."),
@@ -92,7 +93,7 @@ PROFILE_MAX_TOKENS = "oracle.chat.profile_max_tokens"
 # Conversation modes (process, not brain): quick = one call no tools · auto = classifier decides ·
 # thinking = always agent loop + model reasoning · cot = deep reasoning, more turns, step-by-step plan.
 MODES = [("auto", "Auto"), ("quick", "Quick"), ("thinking", "Thoughtful"), ("cot", "CoT · step by step")]
-_MODE_ALIASES = {"fast": "quick", "rapida": "quick", "pensata": "thinking", "deep": "cot"}
+_MODE_ALIASES = {"fast": "quick", "quick": "quick", "thinking": "thinking", "deep": "cot"}
 
 # Personal chat settings (scope user): same values on every client; profile = default for new sessions,
 # a client or a single conversation can override (session → client → profile → default).
@@ -112,7 +113,7 @@ STUB_AFTER_TURNS = "oracle.context.tool_result_stub_after_turns"
 OPENAI_CACHE_PROMPT = "oracle.provider.openai.cache_prompt"
 _KEEP_ALIVE = [("5m", "5 minutes"), ("30m", "30 minutes"), ("2h", "2 hours"), ("always", "Always")]
 
-AWARENESS_ITEMS = "oracle.chat.consapevolezza_righe"
+AWARENESS_ITEMS = "oracle.chat.awareness_lines"
 
 _CONTEXT = [
     setting(AWARENESS_ITEMS, "Awareness · recent things per line", "int", 3, group="Context", order=21,
@@ -226,22 +227,22 @@ _AGENT = [
     setting(MAX_PARALLEL_TOOLS, "Parallel tools", "int", 8, group="Agent", min=1, max=32, order=4,
             advanced=True, help="How many tools can run together in the same step."),
     # Loop guard (core/services/loop_guard.py, Cindy 1): always on, these only shape it.
-    setting("oracle.agent.giri.ripetizioni", "Loops · same call in a row", "int", 4, group="Agent",
+    setting("oracle.agent.rounds.repeats", "Loops · same call in a row", "int", 4, group="Agent",
             min=2, max=20, order=5, advanced=True,
             help="If the assistant makes the same identical call many times in a row, it stops and answers you with what it has."),
-    setting("oracle.agent.giri.finestra", "Loops · calls watched", "int", 12, group="Agent", min=6,
+    setting("oracle.agent.rounds.window", "Loops · calls watched", "int", 12, group="Agent", min=6,
             max=50, order=6, advanced=True,
             help="Last calls in which I look for a ping-pong (A-B-A-B) or a repeating loop."),
-    setting("oracle.agent.giri.attesa_secondi", "Loops · a real wait lasts at least", "int", 30,
+    setting("oracle.agent.rounds.wait_seconds", "Loops · a real wait lasts at least", "int", 30,
             group="Agent", min=0, max=3600, unit="s", order=7, advanced=True,
             help="A call repeated after this time is a check («checking again shortly»), not a loop."),
-    setting("oracle.agent.giri.verifiche", "Loops · checks with the light model", "int", 3,
+    setting("oracle.agent.rounds.checks", "Loops · checks with the light model", "int", 3,
             group="Agent", min=0, max=10, order=8, advanced=True,
             help="When in doubt a light model looks at the calls and says whether it is waiting or looping. 0 = I stop at once."),
     # Conversation goal (core/services/conversation_goal.py, Cindy 23).
-    setting("oracle.obiettivo.giri", "Goal · rounds in total", "int", 8, group="Agent", min=1, max=50,
+    setting("oracle.goal.rounds", "Goal · rounds in total", "int", 8, group="Agent", min=1, max=50,
             order=9, help="How many work rounds in total the assistant does on a conversation goal."),
-    setting("oracle.obiettivo.giri_per_risposta", "Goal · rounds after each answer", "int", 3, group="Agent",
+    setting("oracle.goal.rounds_per_answer", "Goal · rounds after each answer", "int", 3, group="Agent",
             min=1, max=10, order=9, advanced=True,
             help="After answering one of your messages, how many rounds it does on the goal before updating you."),
     setting(HISTORY_LIMIT, "Previous messages in the context", "int", 6, group="Context", min=1, max=100,
@@ -413,7 +414,7 @@ def get_float(key_: str, minimum: float | None = None) -> float:
 def get_bool(key_: str) -> bool:
     value = settings.get(key_)
     if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes", "on", "si", "sì"}
+        return is_yes(value) or value.strip().lower() == "on"
     return bool(value)
 
 
@@ -514,6 +515,10 @@ def normalize_mode(raw: str | None) -> str:
     """A known mode name, or "" (= follow the setting)."""
     value = str(raw or "").strip().lower()
     value = _MODE_ALIASES.get(value, value)
+    if value and value not in {m for m, _ in MODES}:   # the mode's name as the owner reads it, in any language («Quick»)
+        for code in i18n.languages():
+            texts = i18n.catalog("messages", code)
+            value = next((m for m, label in MODES if str(texts.get(label) or "").strip().lower() == value), value)
     return value if value in {m for m, _ in MODES} else ""
 
 

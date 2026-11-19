@@ -1,11 +1,11 @@
-"""Hestia-Echo — the voice of Hestia: speech → text (ascolto) and text → speech (voce), files and streams in blocks.
+"""Hestia-Echo — the voice of Hestia: speech → text (listen) and text → speech (voice), files and streams in blocks.
 
-SPEC docs/work/2026-10-20-modulo-voce. Built like Oracle a blocchi: named providers (Themis ``echo.providers``,
+SPEC docs/work/2026-10-20-voice-module. Built like Oracle's blocks: named providers (Themis ``echo.providers``,
 keys only in env ``ECHO_KEY_<NAME>``), reusable chains with a direction, uses declared by callers, an external
 mode where Echo is only the door (proxy to a speech engine). Echo converts sound ↔ text and nothing else: it never
 calls Oracle and never decides what to answer. Audio is kept in Archive (blobs + ``echo-store``) by the rule
 «never throw away what cannot be made again»; settings in Themis; the daily cleanup is an agenda job (Chronos);
-the space warning goes through Hermes; the UI is a core plugin (page «Voce»).
+the space warning goes through Hermes; the UI is a core plugin (page «Voice»).
 """
 from __future__ import annotations
 
@@ -61,8 +61,8 @@ TZ = os.getenv("TZ") or "Europe/Rome"
 API = "/api/voice"
 
 # ── settings (Themis) ────────────────────────────────────────────────────────
-MODES = [("interna", "Internal: Echo chains"), ("esterna", "External: one voice engine does everything, Echo is the door")]
-FALLBACKS = [("interna", "Back to the internal chains"), ("nessuno", "None: tell me it's not working")]
+MODES = [("internal", "Internal: Echo chains"), ("external", "External: one voice engine does everything, Echo is the door")]
+FALLBACKS = [("internal", "Back to the internal chains"), ("none", "None: tell me it's not working")]
 LANGUAGES = [("auto", "Follow the conversation"), ("it", "Italiano"), ("en", "alt::English"), ("es", "Spanish"),
              ("fr", "French"), ("de", "German")]
 
@@ -76,18 +76,18 @@ settings.declare([
             help="Ordered provider/model or voice lists, each for listening or for voice: if a step fails or runs out of quota I move to the next."),
     setting(USECASES_KEY, "Voice uses", "object", {}, group="Voice", order=2, editor="voice_usecases",
             help="For each declared use (Telegram voice messages, dictation, answers read aloud…): chain and mode. Empty = the suggested choice."),
-    setting(MODE_KEY, "Voice mode", "enum", "interna", group="Voice", order=3, options=MODES,
+    setting(MODE_KEY, "Voice mode", "enum", "internal", group="Voice", order=3, options=MODES,
             help="Internal: Echo uses its chains. External: Echo passes everything to a voice engine (yours or in the cloud) and is only the door. Each use can choose its own."),
     setting(EXTERNAL_KEY, "External engine", "enum", "", group="Voice", order=4, options_source=f"{API}/providers/options",
-            depends_on={"key": MODE_KEY, "equals": "esterna"}),
+            depends_on={"key": MODE_KEY, "equals": "external"}),
     setting(EXTERNAL_MODEL_KEY, "External engine model or voice", "string", "", group="Voice", order=5,
-            depends_on={"key": MODE_KEY, "equals": "esterna"}, help="Empty = the engine's default."),
-    setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "interna", group="Voice", order=6,
-            options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "esterna"}),
+            depends_on={"key": MODE_KEY, "equals": "external"}, help="Empty = the engine's default."),
+    setting(FALLBACK_KEY, "If the external engine does not answer", "enum", "internal", group="Voice", order=6,
+            options=FALLBACKS, depends_on={"key": MODE_KEY, "equals": "external"}),
     setting("echo.language", "Language", "enum", "auto", group="Voice", order=7, options=LANGUAGES),
-    setting("echo.voce.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
+    setting("echo.voice.max_chars", "Longest reading", "int", 1200, group="Voice", order=8, min=200, max=10000,
             unit="characters", help="Beyond it, the voice reads the start and says the rest is in the text."),
-    setting("echo.ascolto.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
+    setting("echo.listening.max_seconds", "Longest audio accepted", "int", 600, group="Voice", order=9, min=30,
             max=7200, unit="s", advanced=True),
     setting("echo.live.silence_ms", "Pause that ends the live turn", "int", 1250, group="Voice", order=10,
             min=300, max=5000, unit="ms", help="In live mode: how much silence means «I'm done talking»."),
@@ -99,14 +99,14 @@ settings.declare([
     setting("echo.audio.generated_days", "Days for generated audio", "int", 30, group="Audio kept",
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
-    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
-    setting("echo.impronta.soglia", "How much it must resemble your voice", "float", 0.45, group="Your voice",
+    # ── Your voice (Cindy 10 + 17, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4) ──
+    setting("echo.voiceprint.threshold", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
-    setting("echo.impronta.usi", "Where I recognise only your voice", "list", ["webui.live.ascolto"],
+    setting("echo.voiceprint.uses", "Where I recognise only your voice", "list", ["webui.live.listening"],
             group="Your voice", order=41,
-            help="Voice uses where I filter other voices (e.g. webui.live.ascolto, telegram.vocale). Without a recorded voiceprint I filter nothing."),
-    setting("echo.dizionario.conferme", "Corrections to learn a word", "int", 2, group="Your voice",
+            help="Voice uses where I filter other voices (e.g. webui.live.listening, telegram.voice_note). Without a recorded voiceprint I filter nothing."),
+    setting("echo.dictionary.confirmations", "Corrections to learn a word", "int", 2, group="Your voice",
             order=42, min=1, max=10, unit="times",
             help="After how many of your corrections a word enters the dictionary I pass to recognition."),
     setting("echo.pricing", "Prices", "object", {}, group="Voice", order=30, advanced=True,
@@ -116,8 +116,8 @@ settings.declare([
 hub = Hub(HUB_API_URL)
 
 # Voice models (Whisper, Piper, Kokoro, the voiceprint) go through the shared download manager: progress, resume,
-# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-setup-un-click §4.3).
-downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voce")
+# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-one-click-setup §4.3).
+downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voice")
 downloads.source("whisper", _standards.whisper_download)
 _standards.DOWNLOADS = downloads
 
@@ -135,7 +135,7 @@ def _notify(event: dict) -> None:
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="echo", domain="system", key="echo.audio_space", title=event["title"], text=event["text"],
-            actions=[], page="voce", level="warning"))
+            actions=[], page="voice", level="warning"))
     except Exception as exc:
         logger.warning("[🔄] event=voice_notify_failed error=%s", exc)
 
@@ -174,7 +174,7 @@ async def _store_down(_: Request, exc: HubError):
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "hestia_echo", "version": SERVICE_VERSION, "ffmpeg": audio.ffmpeg_available(),
-            "streams": echo.streams(), "mode": settings.get(MODE_KEY, "interna")}
+            "streams": echo.streams(), "mode": settings.get(MODE_KEY, "internal")}
 
 
 @app.get("/api/logs")
@@ -233,13 +233,13 @@ def standards():
 
 @app.get(f"{API}/providers")
 def providers():
-    return {"items": blocks.describe_providers(echo.language()), "mode": settings.get(MODE_KEY, "interna"),
+    return {"items": blocks.describe_providers(echo.language()), "mode": settings.get(MODE_KEY, "internal"),
             "external": settings.get(EXTERNAL_KEY, "")}
 
 
 @app.get(f"{API}/providers/options")
 def provider_options():
-    """Options of «Motore esterno» (Themis ``options_source``)."""
+    """Options of «External engine» (Themis ``options_source``)."""
     return {"options": [{"value": "", "label": "—"}] + [
         {"value": p["name"], "label": p["label"]} for p in blocks.providers().values()]}
 
@@ -265,7 +265,7 @@ _PARTS = {"providers": PROVIDERS_KEY, "chains": CHAINS_KEY, "usecases": USECASES
 
 @app.put(API + "/blocks/{part}")
 def blocks_write(part: str, body: dict = Body(...)):
-    """Marko's edit from the page Voce (providers | chains | usecases): stored through Themis."""
+    """The owner's edit from the page Voice (providers | chains | usecases): stored through Themis."""
     key = _PARTS.get(part)
     value = body.get("value")
     if not key:
@@ -277,7 +277,7 @@ def blocks_write(part: str, body: dict = Body(...)):
         if bad or not value:
             raise Invalid(tr("unknown standard for: {0}", ', '.join(bad) or tr('no provider')))
     elif part == "chains":
-        if not value or any(c.get("direction") not in ("ascolto", "voce") or not isinstance(c.get("steps"), list)
+        if not value or any(c.get("direction") not in ("listen", "voice") or not isinstance(c.get("steps"), list)
                             for c in value.values()):
             raise Invalid(tr("each chain needs a direction (listening or voice) and a list of steps"))
     if not settings.put(key, value, actor="user", reason=tr("WebUI Voice")):
@@ -309,9 +309,9 @@ def usage(days: int = 30):
 
 @app.get(f"{API}/live")
 def live_config():
-    """What a client needs for live mode («Parla», /live): the pause that closes a turn."""
+    """What a client needs for live mode («Talk», /live): the pause that closes a turn."""
     return {"silence_ms": int(settings.get("echo.live.silence_ms", 1250) or 1250), "language": echo.language(),
-            "voiceprint": voiceprint.applies("webui.live.ascolto")}
+            "voiceprint": voiceprint.applies("webui.live.listening")}
 
 
 @app.get(f"{API}/recent")
@@ -423,7 +423,7 @@ def voiceprint_enroll(body: dict = Body(...)):
     blob = None
     try:
         blob = keep.save("recording", audio.keep_encode(raw), audio.KEEP_MIME,
-                         {"use_case": "echo.impronta", "text": tr("voice print")})
+                         {"use_case": "echo.voiceprint", "text": tr("voice print")})
     except Exception as exc:  # noqa: BLE001
         logger.warning("[🔄] event=voiceprint_recording_not_kept error=%s", exc)
     try:
@@ -452,7 +452,7 @@ ui = PluginClient("echo", title="Voice", icon="mic", color="teal", kind="core", 
                   description="{assistant}'s listening and voice: providers, chains, uses, tests, usage and stored audio.",
                   version=SERVICE_VERSION)
 ui.webui(entry="echo.js", api_prefix=f"{API}/",
-         pages=[page("voce", "Voice", element="echo-voice", icon="mic", order=125,
+         pages=[page("voice", "Voice", element="echo-voice", icon="mic", order=125,
                      help="How {assistant} listens and speaks: providers, listening and voice chains, uses of every module, external mode, microphone and voice test, usage and costs, your recordings.")])
 # ── MCP tools (assistant, Telegram, WebUI): your voice ───────────────────────
 from hestia_common.mcp_helpers import MCPTool, create_mcp_router  # noqa: E402
@@ -463,31 +463,31 @@ def _t(name, title, description, method, path, props=None, required=None, label=
                    parameters={"type": "object", "properties": props or {}, "required": required or []},
                    handler=lambda **_kw: {"status": "ok"}, method=method, path=path,
                    clients=["telegram", "ui"], response_mode="oracle_natural",
-                   telegram_visible=True, telegram_group="sistema",
+                   telegram_visible=True, telegram_group="system",
                    telegram={"section": tr("Voice"), **({"label": label} if label else {})})
 
 
 _echo_tools = [
-    _t("voce_download", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
-    _t("voce_scarica", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
+    _t("voice_downloads", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
+    _t("voice_download", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
                                            "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Download voices"),
-    _t("voce_dizionario", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
+    _t("voice_dictionary", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
                                                     "their corrections."), "GET", f"{API}/dictionary",
        label="Dictionary"),
-    _t("voce_parola", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
+    _t("voice_word", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
        {"word": {"type": "string", "description": "The word, spelled right"}}, ["word"]),
-    _t("voce_parola_togli", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
+    _t("voice_word_remove", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
        API + "/dictionary/{word}", {"word": {"type": "string", "description": "The word to remove"}}, ["word"]),
-    _t("voce_correzione", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
+    _t("voice_correction", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
        {"heard": {"type": "string", "description": "What was transcribed"},
         "corrected": {"type": "string", "description": "The right text"}}, ["heard", "corrected"]),
-    _t("voce_impronta", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
+    _t("voiceprint", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
        f"{API}/voiceprint"),
-    _t("voce_impronta_registra", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
+    _t("voiceprint_record", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
                                                           "their messages where they chose so."), "POST", f"{API}/voiceprint",
        {"audio": {"type": "string", "contentMediaType": "audio/*",
                   "description": "A voice message of at least 10 seconds where the user speaks"}}, ["audio"]),
-    _t("voce_impronta_togli", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
+    _t("voiceprint_remove", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
        "DELETE", f"{API}/voiceprint"),
 ]
 app.include_router(create_mcp_router(_echo_tools, service_name="echo"))
@@ -499,7 +499,7 @@ app.include_router(downloads.router())
 
 @app.post(f"{API}/models/prefetch")
 def models_prefetch():
-    """Queue the local models of the first steps of the «ascolto» and «voce» chains (guided setup, Download page),
+    """Queue the local models of the first steps of the «listen» and «voice» chains (guided setup, Download page),
     so the first spoken sentence does not wait for them. Cloud steps need nothing."""
     return _prefetch()
 
@@ -509,7 +509,7 @@ def _prefetch(chains: dict | None = None) -> dict:
     providers = settings.get(PROVIDERS_KEY, DEFAULT_PROVIDERS) or {}
     chains = chains or settings.get(CHAINS_KEY, DEFAULT_CHAINS) or {}
     queued: list[str] = []
-    for name in ("ascolto", "voce"):
+    for name in ("listen", "voice"):
         for step in (chains.get(name) or {}).get("steps") or []:
             kind = (providers.get(step.get("provider")) or {}).get("type", "")
             ids = _standards.prefetch(kind, step.get("model") or "", step.get("voice") or "")
@@ -520,7 +520,7 @@ def _prefetch(chains: dict | None = None) -> dict:
     return {"queued": queued, "downloads": downloads.list()}
 
 
-# ── Setup guidato «Voce» (core/voice_setup.py): same shape as the models screen ─────────────
+# ── Guided setup «Voice» (core/voice_setup.py): same shape as the models screen ─────────────
 @app.get(f"{API}/setup/catalog")
 def voice_setup_catalog(hosts: str = ""):
     """Providers per direction (listening, speaking), local first, with their models/voices and the current step;
@@ -531,20 +531,20 @@ def voice_setup_catalog(hosts: str = ""):
 
 @app.post(f"{API}/setup/test")
 def voice_setup_test(body: dict = Body(...)):
-    """«Prova» of a speech service: its list read with the key, nothing spent."""
+    """«Test» of a speech service: its list read with the key, nothing spent."""
     from .core import voice_setup
     return {"status": "ok", **voice_setup.check(blocks, str(body.get("provider") or ""), echo.language())}
 
 
 @app.post(f"{API}/setup/preview")
 def voice_setup_preview(body: dict = Body(...)):
-    """«Ascolta» in the setup: a short sentence with that provider and voice, before the choice is saved."""
+    """«Listen» in the setup: a short sentence with that provider and voice, before the choice is saved."""
     return {"status": "ok", **echo.setup_preview(body)}
 
 
 @app.post(f"{API}/setup/hear")
 def voice_setup_hear(body: dict = Body(...)):
-    """«Prova» of listening in the setup: the recording heard by that provider and model, before saving."""
+    """«Test» of listening in the setup: the recording heard by that provider and model, before saving."""
     return {"status": "ok", **echo.setup_hear(body)}
 
 

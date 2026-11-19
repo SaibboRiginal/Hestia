@@ -1,4 +1,4 @@
-"""Tests — Hestia's one MCP server (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2)."""
+"""Tests — Hestia's one MCP server (docs/work/2026-10-18-core-modules-and-external-mcp §B2)."""
 from __future__ import annotations
 
 import pytest

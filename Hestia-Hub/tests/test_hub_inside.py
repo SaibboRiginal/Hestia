@@ -1,4 +1,4 @@
-"""Tests — Hub "inside view" WebUI plugin (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3/A6).
+"""Tests — Hub "inside view" WebUI plugin (docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3/A6).
 
 Hub's own manifest (kind core, Mappa page, Servizi online widget, order 100), its presence in the catalog
 (Hub never registers with itself), /api/ui/map, and routing ``/api/route/hub/...`` in-process.
@@ -49,10 +49,10 @@ class TestHubManifest:
         webui = m["clients"]["webui"]
         assert webui["entry"] == "/ui/webui/hub.js" and webui["api_prefix"] == "/api/ui/"
         (p,) = webui["page"]
-        assert (p["id"], p["label"], p["element"], p["order"]) == ("mappa", "Map", "hub-map", 100)
+        assert (p["id"], p["label"], p["element"], p["order"]) == ("map", "Map", "hub-map", 100)
         (w,) = webui["widget"]
         assert (w["id"], w["label"], w["element"], w["auto"], w["open_page"]) == \
-            ("online", "Services online", "hub-online-widget", True, "mappa")
+            ("online", "Services online", "hub-online-widget", True, "map")
 
     def test_hub_in_catalog_without_registering(self):
         reg = ServiceRegistry()
@@ -61,7 +61,7 @@ class TestHubManifest:
         assert mod["module"] == "hub" and mod["kind"] == "core" and mod["online"] is True
         webui = cat["contributions"]["webui"]
         assert webui["bundle"][0]["module"] == "hub" and webui["bundle"][0]["api_prefix"] == "/api/ui/"
-        assert [p["id"] for p in webui["page"]] == ["hub.mappa"]
+        assert [p["id"] for p in webui["page"]] == ["hub.map"]
         assert [w["id"] for w in webui["widget"]] == ["hub.online"]
 
     def test_local_manifest_respects_filters(self):
@@ -116,7 +116,7 @@ class TestHubUiApi:
     def test_catalog_endpoint_lists_hub(self, client):
         cat = client.get("/api/discovery/catalog", params={"client": "webui", "type": "page,widget"}).json()
         assert any(m["module"] == "hub" and m["kind"] == "core" for m in cat["modules"])
-        assert "hub.mappa" in [p["id"] for p in cat["contributions"]["webui"]["page"]]
+        assert "hub.map" in [p["id"] for p in cat["contributions"]["webui"]["page"]]
 
     def test_route_to_hub_is_local(self, client, bundle):
         _register("oracle")

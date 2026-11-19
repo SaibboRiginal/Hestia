@@ -70,8 +70,8 @@ _HUB_API_URL = os.getenv(
 
 hub = HubClient(_HUB_API_URL)
 
-# ── WebUI plugin (core module, «Sistema» section): Miglioramento ─────────────
-# SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3. Bundle Hestia-Metis/ui → <dist>/webui/metis.js,
+# ── WebUI plugin (core module, «System» section): Improvement ─────────────
+# SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3. Bundle Hestia-Metis/ui → <dist>/webui/metis.js,
 # built in the image and copied outside /code (the compose dev mount of app/ would hide it). Read only:
 # insights, datasets and LoRA jobs through the existing /api/metis/ reads; training stays a chat/agenda action.
 UI_DIST = os.getenv("METIS_UI_DIST", "/ui/dist")
@@ -79,7 +79,7 @@ ui = PluginClient("metis", title="Improvement", icon="flask", color="purple", ki
                   description="Continuous improvement: where {assistant} gets it wrong, datasets and model training.",
                   version=SERVICE_VERSION)
 ui.webui(entry="metis.js", api_prefix="/api/metis/",
-         pages=[page("miglioramento", "Improvement", element="metis-improvement", icon="chart", order=180,
+         pages=[page("improvement", "Improvement", element="metis-improvement", icon="chart", order=180,
                      help="Where {assistant} answers worst according to your ratings, the collected datasets and the LoRA trainings (planned in the agenda's night window, running, finished).")])
 
 # ── Assistant agenda (Chronos) ────────────────────────────────────────────────
@@ -90,30 +90,30 @@ WINDOW_TRAINING = "metis.training"
 agenda = AgendaClient("metis", _HUB_API_URL)
 presence = PresenceClient("metis", _HUB_API_URL)
 
-# ── Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6) ─────────────────────
+# ── Usage log, «Now», «Discover» (dossier docs/work/2026-10-24-whole-cindy-brainstorm W6) ─────────────────────
 # Taps live in Archive ``metis-store`` (Hub-routed mirror); the suggestion engine is core/usage.py.
 usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)
-# Training dataset (docs/work/2026-10-30-dataset-allenamento): chat turn traces in Archive ``dataset-store``.
+# Training dataset (docs/work/2026-10-30-training-dataset): chat turn traces in Archive ``dataset-store``.
 traces = Traces(usage_store.hub, keep_days=traces_keep_days)
-# Nightly correction by the teacher model (cloud, personal data masked) + «Da rivedere» (D2).
+# Nightly correction by the teacher model (cloud, personal data masked) + «To review» (D2).
 review = Review(usage_store.hub, llm=usage_store.hub.llm, auto_accept=review_auto_accept, batch=review_batch)
 exporter = Exporter(usage_store.hub, people=review.people)
 REVIEW_AT = "02:30"
-# Hours the assistant writes fresh «Adesso» ideas: only the seed of agenda jobs, the user moves them in the agenda.
+# Hours the assistant writes fresh «Now» ideas: only the seed of agenda jobs, the user moves them in the agenda.
 IDEAS_AT = ("07:00", "12:30", "18:00")
 _DATA_DIR = Path(os.getenv("METIS_DATA_DIR", "/code/data"))
 _JOBS_FILE = _DATA_DIR / "lora_jobs.json"
 _jobs_lock = threading.Lock()
 
 
-# Model of Oracle's default «veloce» chain: used only when Oracle does not answer.
+# Model of Oracle's default «fast» chain: used only when Oracle does not answer.
 _ORACLE_GENERIC_DEFAULT = "gemma4:e4b"
 
 
 def _oracle_generic_model() -> str:
     """Model choice belongs to Oracle: ask it (via Hub) which generic model is in use."""
-    model = hub.oracle_model("oracle.generale")
+    model = hub.oracle_model("oracle.general")
     if model:
         return model
     logger.warning("[🔄] event=metis_oracle_model_unknown fallback=%s", _ORACLE_GENERIC_DEFAULT)
@@ -127,8 +127,8 @@ def _agenda_rules() -> list[dict]:
     return [daily_window(
         WINDOW_TRAINING, "Window to train the models", 1, 6,
         description="Planned LoRA trainings (not requested by you) start here. Move/skip the window to postpone them.")] + [
-        job_rule(f"metis.adesso.{at.replace(':', '')}", "Ideas for «Now»", service="metis",
-                 path="/api/metis/adesso/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
+        job_rule(f"metis.now.{at.replace(':', '')}", "Ideas for «Now»", service="metis",
+                 path="/api/metis/now/refresh", recurrence="FREQ=DAILY", start_at=f"2026-01-01T{at}:00", tz=tz,
                  description="The assistant thinks of three useful things for the next hours (and cleans old taps).")
         for at in IDEAS_AT] + [
         job_rule("metis.dataset.review", "Review of the answers for training", service="metis",
@@ -237,15 +237,15 @@ def metis_usage_recent(limit: int = 5, hours: int = 12):
     return usage.recent(limit=limit, hours=max(1, min(hours, 72)))
 
 
-@app.get("/api/metis/adesso")
-def metis_adesso(client: str = "telegram", limit: int = 6):
+@app.get("/api/metis/now")
+def metis_now(client: str = "telegram", limit: int = 6):
     """What fits now: agenda, habits, recents and the assistant's ideas, each with its reason."""
-    return usage.adesso(client, limit=max(1, min(limit, 12)))
+    return usage.right_now(client, limit=max(1, min(limit, 12)))
 
 
-@app.post("/api/metis/adesso/refresh")
-def metis_adesso_refresh(body: dict | None = None):
-    """Agenda job ``metis.adesso.*``: fresh ideas for each client + prune of old taps."""
+@app.post("/api/metis/now/refresh")
+def metis_now_refresh(body: dict | None = None):
+    """Agenda job ``metis.now.*``: fresh ideas for each client + prune of old taps."""
     clients = [str((body or {}).get("client"))] if (body or {}).get("client") else ["telegram", "webui"]
     out = {c: usage.refresh_ideas(c) for c in clients if c in CLIENTS}
     out["pruned"] = usage.prune()
@@ -253,7 +253,7 @@ def metis_adesso_refresh(body: dict | None = None):
         out["pruned_traces"] = traces.prune()
     except Exception as exc:  # noqa: BLE001 — the next run retries
         logger.warning("[🔄] event=traces_prune_failed error=%s", exc)
-    logger.info("event=metis_adesso_refresh clients=%s pruned=%s", ",".join(clients), out["pruned"])
+    logger.info("event=metis_now_refresh clients=%s pruned=%s", ",".join(clients), out["pruned"])
     return out
 
 
@@ -300,7 +300,7 @@ def metis_review_run():
 
 @app.get("/api/metis/review/pending")
 def metis_review_pending(limit: int = 10):
-    """«Da rivedere»: corrections waiting for the owner (original vs corrected)."""
+    """«To review»: corrections waiting for the owner (original vs corrected)."""
     return _traces_call(review.pending, limit)
 
 
@@ -323,10 +323,10 @@ def _review_card(limit: int = 1) -> dict:
         lines.append(tr("To remove: ") + ", ".join(t for t in i["remove"] if t))
     if i["needs_owner"]:
         lines.append(tr("The reviewer can't fix it by itself: write the right answer yourself."))
-    acts = [action(tr("Discard"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "reject"}),
-            action(tr("I'll fix it"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "edit"})]
+    acts = [action(tr("Discard"), "metis_review_decide", {"trace_id": i["trace_id"], "decision": "reject"}),
+            action(tr("I'll fix it"), "metis_review_decide", {"trace_id": i["trace_id"], "decision": "edit"})]
     if not i["needs_owner"]:
-        acts.insert(0, action(tr("Accept"), "metis_rivedi_decidi", {"trace_id": i["trace_id"], "decision": "accept"},
+        acts.insert(0, action(tr("Accept"), "metis_review_decide", {"trace_id": i["trace_id"], "decision": "accept"},
                               style="primary"))
     return {**out, "display": display(tr("To review"), subtitle=tr("reasons: {0}", ', '.join(i['reasons']) or '—'),
                                       lines=lines, actions=acts)}
@@ -334,9 +334,9 @@ def _review_card(limit: int = 1) -> dict:
 
 @app.post("/api/metis/export")
 def metis_export(body: dict | None = None):
-    """«Esporta»: JSONL zip (sft, dpo, eval, card). ``{in_chiaro: false}`` = names and contacts hidden (default)."""
+    """«Export»: JSONL zip (sft, dpo, eval, card). ``{plain: false}`` = names and contacts hidden (default)."""
     b = body or {}
-    return _traces_call(exporter.build, not bool(b.get("in_chiaro")), bool(b.get("include_unreviewed")))
+    return _traces_call(exporter.build, not bool(b.get("plain")), bool(b.get("include_unreviewed")))
 
 
 @app.get("/api/metis/export")
@@ -355,8 +355,8 @@ def metis_export_b64(export_id: str):
         raise HTTPException(status_code=404, detail=tr("export not found"))
 
 
-def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> dict:
-    out = exporter.build(not in_chiaro, include_unreviewed)
+def _export_card(plain: bool = False, include_unreviewed: bool = False) -> dict:
+    out = exporter.build(not plain, include_unreviewed)
     lines = [tr("{0} examples for training, {1} for testing, {2} corrected/original pairs", out['sft'], out['eval'], out['dpo']),
              tr("{0} turns left out (not reviewed, discarded or waiting)", out['skipped']),
              tr("Names and contacts masked") if out["masked"] else tr("Data in clear: don't share the file")]
@@ -364,14 +364,14 @@ def _export_card(in_chiaro: bool = False, include_unreviewed: bool = False) -> d
                                       lines=lines, files=[file(out["blob_id"], out["name"], "application/zip")])}
 
 
-@app.get("/api/metis/scopri")
-def metis_scopri(client: str = "webui", limit: int = 12):
+@app.get("/api/metis/discover")
+def metis_discover(client: str = "webui", limit: int = 12):
     """Features never or rarely used, with what they do."""
-    return usage.scopri(client, limit=max(1, min(limit, 50)))
+    return usage.discover(client, limit=max(1, min(limit, 50)))
 
 
-def _adesso_card(client: str = "telegram") -> dict:
-    out = usage.adesso(client if client in CLIENTS else "telegram")
+def _now_card(client: str = "telegram") -> dict:
+    out = usage.right_now(client if client in CLIENTS else "telegram")
     items = out["items"]
     return {**out, "display": display(
         tr("Now"), lines=[] if items else [tr("Nothing to suggest yet: the more you use me, the more I learn what you need.")],
@@ -379,8 +379,8 @@ def _adesso_card(client: str = "telegram") -> dict:
         actions=[action(i["title"], i["tool"], i["args"] or None) for i in items])}
 
 
-def _scopri_card(client: str = "telegram") -> dict:
-    out = usage.scopri(client if client in CLIENTS else "telegram", limit=8)
+def _discover_card(client: str = "telegram") -> dict:
+    out = usage.discover(client if client in CLIENTS else "telegram", limit=8)
     items = out["items"]
     return {**out, "display": display(
         tr("Discover"), subtitle=tr("{0} little-used functions out of {1}", out['total'], out['tools']),
@@ -542,7 +542,7 @@ try:
             win = agenda.window(WINDOW_TRAINING)
             window_open = bool(win and win.get("active"))
             # Assistant presence: a training holds the GPU for a long time → only when heavy local
-            # work is allowed (e.g. "Sonno profondo", "Pisolino"); otherwise retry in 30 min.
+            # work is allowed (e.g. "Deep sleep", "Nap"); otherwise retry in 30 min.
             held_by_presence = window_open and not presence.allows("work.heavy", "allow", "local")
             if not window_open or held_by_presence:
                 from datetime import datetime, timedelta, timezone
@@ -613,8 +613,8 @@ try:
                  "--base_model", resolved_base, "--adapter_name", resolved_adapter],
                 stdout=log_file, stderr=subprocess.STDOUT)
             pid = proc.pid
-            # "Occupato: addestramento" while the trainer runs (GPU busy for the local model).
-            presence.activity_start(f"metis.training.{job_id}", label="addestramento", load="heavy",
+            # "Busy: training" while the trainer runs (GPU busy for the local model).
+            presence.activity_start(f"metis.training.{job_id}", label="training_data", load="heavy",
                                     resource="gpu", ttl_seconds=12 * 3600)
 
             def _wait_trainer(p=proc, log=log_file, key=f"metis.training.{job_id}"):
@@ -692,8 +692,8 @@ try:
                  "dropped. Brief.")
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
-                telegram={"section": "Dataset e training"}),
+            telegram_group="development",
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_dataset_export",
             description=(
@@ -719,8 +719,8 @@ try:
             clients=["telegram", "ui"],
             response_mode="raw_json",
             telegram_visible=True,
-            telegram_group="sviluppo",
-                telegram={"section": "Dataset e training"}),
+            telegram_group="development",
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_dataset_status",
             description=(
@@ -745,8 +745,8 @@ try:
                  "Tabular and brief.")
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
-                telegram={"section": "Dataset e training"}),
+            telegram_group="development",
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_benchmark_run",
             description=(
@@ -779,8 +779,8 @@ try:
                 "Report the benchmark results: scores on style, accuracy, brevity. Say the winner or a tie."
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
-                telegram={"section": "Dataset e training"}),
+            telegram_group="development",
+                telegram={"section": "Dataset and training"}),
         MCPTool(
             name="metis_loRA_train",
             description=(
@@ -820,18 +820,18 @@ try:
                  "asynchronous.")
             ),
             telegram_visible=True,
-            telegram_group="sviluppo",
-                telegram={"section": "Dataset e training"}),
+            telegram_group="development",
+                telegram={"section": "Dataset and training"}),
         MCPTool(
-            name="metis_rivedi",
+            name="metis_review",
             description=("The nightly corrections of answers waiting for the user before entering the training dataset: original answer, correction, Accept / Discard / I correct it."),
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: _traces_call(_review_card),
-            title="To review", method="GET", path="/api/metis/tools/rivedi", clients=["telegram", "ui"],
-            response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
-            telegram={"section": "Dataset e training"}),
+            title="To review", method="GET", path="/api/metis/tools/review", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="development",
+            telegram={"section": "Dataset and training"}),
         MCPTool(
-            name="metis_rivedi_decidi",
+            name="metis_review_decide",
             description=("Decide a correction of the training dataset: accept (fine), reject (drop the turn), edit (you "
                          "write the right answer in answer)."),
             parameters={"type": "object", "properties": {
@@ -842,45 +842,45 @@ try:
             handler=lambda trace_id="", decision="", answer="": {
                 **_traces_call(review.decide, trace_id, decision, answer),
                 "next": _traces_call(_review_card).get("display")},
-            title="Decide a fix", method="POST", path="/api/metis/tools/rivedi_decidi",
-            clients=["telegram", "ui"], response_mode="raw_json", telegram_group="sviluppo",
-            telegram={"section": "Dataset e training"}),
+            title="Decide a fix", method="POST", path="/api/metis/tools/review_decide",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_group="development",
+            telegram={"section": "Dataset and training"}),
         MCPTool(
-            name="metis_dataset_esporta",
+            name="metis_training_export",
             description=("Export the training dataset (zipped JSONL files: sft, dpo, eval, card) to download. "
-                         "in_chiaro=false (default) masks people's names, e-mails, phones, IBAN and addresses; "
-                         "in_chiaro=true keeps the real data."),
+                         "plain=false (default) masks people's names, e-mails, phones, IBAN and addresses; "
+                         "plain=true keeps the real data."),
             parameters={"type": "object", "properties": {
-                "in_chiaro": {"type": "boolean", "description": "true = real data, false = masked (default)"},
+                "plain": {"type": "boolean", "description": "true = real data, false = masked (default)"},
                 "include_unreviewed": {"type": "boolean",
                                        "description": "true = also the turns not yet re-read"}},
                 "required": []},
-            handler=lambda in_chiaro=False, include_unreviewed=False: _traces_call(
-                _export_card, bool(in_chiaro), bool(include_unreviewed)),
-            title="Export the dataset", method="POST", path="/api/metis/tools/dataset_esporta",
-            clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="sviluppo",
-            telegram={"section": "Dataset e training", "label": "Export"}),
+            handler=lambda plain=False, include_unreviewed=False: _traces_call(
+                _export_card, bool(plain), bool(include_unreviewed)),
+            title="Export the dataset", method="POST", path="/api/metis/tools/dataset_export",
+            clients=["telegram", "ui"], response_mode="raw_json", telegram_visible=True, telegram_group="development",
+            telegram={"section": "Dataset and training", "label": "Export"}),
         MCPTool(
-            name="metis_adesso",
+            name="metis_now",
             description=("What the user needs now: actions they usually use at this hour, those in the agenda in the next "
                          "hours and a few ideas of the assistant, each with the reason."),
             parameters={"type": "object", "properties": {
                 "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
-            handler=lambda client="telegram": _adesso_card(client),
-            title="Now", method="GET", path="/api/metis/tools/adesso", clients=["telegram", "ui"],
-            response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
+            handler=lambda client="telegram": _now_card(client),
+            title="Now", method="GET", path="/api/metis/tools/now", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="day",
             telegram={"section": "Now", "primary": 1}),
         MCPTool(
-            name="metis_scopri",
+            name="metis_discover",
             description=("Functions of the assistant the user never or hardly used, with what they do and a button to try "
                          "them."),
             parameters={"type": "object", "properties": {
                 "client": {"type": "string", "enum": list(CLIENTS), "description": "Where it is shown"}},
                 "required": []},
-            handler=lambda client="telegram": _scopri_card(client),
-            title="Discover", method="GET", path="/api/metis/tools/scopri", clients=["telegram", "ui"],
-            response_mode="raw_json", telegram_visible=True, telegram_group="giornata",
+            handler=lambda client="telegram": _discover_card(client),
+            title="Discover", method="GET", path="/api/metis/tools/discover", clients=["telegram", "ui"],
+            response_mode="raw_json", telegram_visible=True, telegram_group="day",
             telegram={"section": "Discover"}),
     ]
 
@@ -912,10 +912,10 @@ _HUB_REGISTRATION_PAYLOAD = {
     "topology_tags": SERVICE_TOPOLOGY_TAGS,
     "capabilities": {
         "when_to_use": "what to do now, features to discover, how the assistant improves (ratings, dataset, training)",
-        "manual": "Now: metis_adesso (habits, agenda, ideas). Discover: metis_scopri (features never used). Improvement: dataset from ratings, benchmark and LoRA training.",
+        "manual": "Now: metis_now (habits, agenda, ideas). Discover: metis_discover (features never used). Improvement: dataset from ratings, benchmark and LoRA training.",
         "usage": "/api/metis/usage",
-        "adesso": "/api/metis/adesso",
-        "scopri": "/api/metis/scopri",
+        "now": "/api/metis/now",
+        "discover": "/api/metis/discover",
         "mcp_endpoint": f"{SERVICE_BASE_URL.rstrip('/')}/mcp",
         "dataset_build": "/api/metis/dataset/build",
         "dataset_export": "/api/metis/dataset/export",
@@ -924,8 +924,8 @@ _HUB_REGISTRATION_PAYLOAD = {
         "loRA_train": "/api/metis/lora/train",
         "lora_jobs": "/api/metis/lora/jobs",
         "agenda_windows": [WINDOW_TRAINING],
-        **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (Sistema)
-        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="veloce",
+        **ui.capabilities(SERVICE_BASE_URL),   # WebUI plugin manifest (System)
+        **llm_capabilities([usecase(IDEAS_USE, "Now · ideas", chain="fast",
                                     help="Three useful actions for the next hours, different from the habits."),
                             usecase(REVIEW_USE, "Dataset review", chain="cloud", thinking="true",
                                     help="At night it rereads the answers and fixes the wrong ones. Choose a model stronger than the local one: your personal data is hidden.")]),

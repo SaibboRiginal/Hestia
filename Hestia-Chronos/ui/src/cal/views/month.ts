@@ -1,5 +1,5 @@
 /**
- * <chronos-cal-month> — month grid: chips per day (windows first, as thin bars), rules grouped ×N, "+N altri",
+ * <chronos-cal-month> — month grid: chips per day (windows first, as thin bars), rules grouped ×N, "+N more",
  * HTML5 drag of a chip to another day. Events: cal-select {ev, rect} · cal-create (Date) · cal-move {ev,start,end} · cal-day (Date).
  */
 import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';

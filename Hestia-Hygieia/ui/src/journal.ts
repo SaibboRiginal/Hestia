@@ -25,7 +25,7 @@ export class HygieiaJournal extends HestiaElement {
     .entry { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
     .entry:last-child { border-bottom: none; }
   `];
-  constructor() { super(); this.m = null; this.data = undefined; this.area = 'viso'; this.scores = {}; this.tags = []; this.note = ''; this.date = today(); this.saving = false; }
+  constructor() { super(); this.m = null; this.data = undefined; this.area = 'face'; this.scores = {}; this.tags = []; this.note = ''; this.date = today(); this.saving = false; }
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
   private async load() {
     this.m = await meta(this.host);
@@ -41,7 +41,7 @@ export class HygieiaJournal extends HestiaElement {
   }
   private async drop(id: string) { await call(this.host, 'DELETE', `${API}/journal/${id}`); this.load(); }
   render() {
-    const back = html`<button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button>`;
+    const back = html`<button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button>`;
     if (!this.m) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
     const ms = this.metrics(), series = this.data?.series?.[this.area] || {};
     return html`<div class="page">

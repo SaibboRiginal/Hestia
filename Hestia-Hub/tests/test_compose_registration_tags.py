@@ -81,7 +81,7 @@ def test_plutus_default_tags_pass_hub_validation():
 
 @pytest.mark.unit
 def test_coach_modules_carry_the_coach_tag():
-    """The weekly planner finds coaches by the Hub tag ``coach`` (SPEC 2026-10-20-coach-di-ogni-tipo §4)."""
+    """The weekly planner finds coaches by the Hub tag ``coach`` (SPEC 2026-10-20-coach-of-every-kind §4)."""
     for svc in ("Hercules", "Hygieia", "Plutus"):
         source = (_ROOT / f"Hestia-{svc}" / "app" / "main.py").read_text(encoding="utf-8")
         tags = re.search(r'"SERVICE_TAGS", "([^"]+)"', source).group(1).split(",")

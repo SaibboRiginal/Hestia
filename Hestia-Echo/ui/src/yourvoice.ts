@@ -1,9 +1,9 @@
 /**
- * <echo-your-voice> — tab «La tua voce» of the page «Voce»: the voiceprint (record it once, at least 6 seconds of
+ * <echo-your-voice> — tab «Your voice» of the page «Voice»: the voiceprint (record it once, at least 6 seconds of
  * speech, so the TV and other people do not end up in what you dictate; forget it) and the personal dictionary
  * (names and words passed to every listening engine; the ones learnt from your corrections become sure after a few
  * times). Calls GET/POST/DELETE /api/voice/voiceprint, GET/POST /api/voice/dictionary, DELETE /dictionary/{word}.
- * Dossier 2026-10-24-tutto-brainstorm-cindy Cindy 10 + 17 (W4) + W7.
+ * Dossier 2026-10-24-whole-cindy-brainstorm Cindy 10 + 17 (W4) + W7.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, Recorder, blobToB64, secs, when } from './util';
@@ -134,7 +134,7 @@ export class EchoYourVoice extends HestiaElement {
         <div class="small muted">${tr("Names and words the listening engines must expect. When you fix a transcription I learn the new words: after")} ${needed} ${tr("times they become safe.")}</div>
         <div style="margin-top:8px">${items.length ? items.map(d => html`<div class="w">
           <span class="grow">${d.word}</span>
-          ${d.status === 'confirmed' ? html`<hxk-badge tone="success">${tr("safe")}</hxk-badge>` : html`<hxk-badge tone="neutral">${d.count || 0} di ${needed}</hxk-badge>`}
+          ${d.status === 'confirmed' ? html`<hxk-badge tone="success">${tr("safe")}</hxk-badge>` : html`<hxk-badge tone="neutral">${tr('{0} of {1}', d.count || 0, needed)}</hxk-badge>`}
           <hxk-button size="sm" variant="ghost" icon="trash" title=${tr("Remove")} ?loading=${this.busy === `w:${d.word}`} @click=${() => this.dropWord(d.word)}></hxk-button>
         </div>`) : html`<span class="muted small">${tr("No word yet.")}</span>`}</div>
         <div class="add"><hxk-field label=${tr("New word")} .value=${this.word} @change=${(e: CustomEvent) => (this.word = String(e.detail ?? ''))}></hxk-field>

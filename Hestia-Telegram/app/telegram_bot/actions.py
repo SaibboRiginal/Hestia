@@ -1,4 +1,4 @@
-"""Running an action (docs/work/2026-10-23-telegram-da-zero §5.5): ask what the tool needs, in words and with buttons,
+"""Running an action (docs/work/2026-10-23-telegram-from-scratch §5.5): ask what the tool needs, in words and with buttons,
 confirm when it writes, run it, show the result in the same message.
 
 One flow per chat, persisted in ``store`` (survives a restart). Callback data:
@@ -18,10 +18,11 @@ from telegram_bot import catalog, core, inputs, store, ui, usage
 from telegram_bot.menu import model
 from telegram_bot.render import Rendered, render
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import word_set
 
 logger = logging.getLogger("hestia_telegram.actions")
 
-_DELETE = re.compile(r"(delete|elimina|remove|rimuovi)", re.I)
+_DELETE = re.compile(r"(delete|remove)", re.I)   # tool names (English)
 _TECH = re.compile(r"(error|exception|traceback|http|\{|\[|=|_id\b|errno|refused|timeout)", re.I)
 
 
@@ -92,7 +93,7 @@ def start(chat_id, name: str, message_id: int | None = None, preset: dict | None
         from telegram_bot import nav
         nav.place(chat_id, ui.card(tr("Action not available"), [ui.note(tr("This action is gone. Here are the areas."))]),
                   None, message_id)
-        nav.aree(chat_id)
+        nav.show_areas(chat_id)
         return
     fields = _fields(tool)
     values = {k: v for k, v in (preset or {}).items() if v not in (None, "")}
@@ -348,10 +349,10 @@ def on_text(chat_id, text: str) -> bool:
         return False
     if flow["mode"] == "confirm":
         low = text.strip().casefold()
-        if low in (tr("yes"), "si", "ok", "conferma", "vai", "yes"):
+        if low in word_set("common.yes_word") | {tr("yes").casefold()}:
             _run(chat_id, flow, tool)
             return True
-        if low in ("no", "annulla", "lascia stare"):
+        if low in word_set("common.no") | {tr("no").casefold()}:
             cancel(chat_id)
             return True
         return _offer_quit(chat_id, flow, tool, text)
@@ -427,16 +428,16 @@ def on_file(chat_id, message) -> bool:
 
 def _file_of(message) -> tuple[str, str, str]:
     if message.content_type == "photo":
-        return message.photo[-1].file_id, "image/jpeg", "foto.jpg"
+        return message.photo[-1].file_id, "image/jpeg", "photo.jpg"
     if message.content_type == "voice":
-        return message.voice.file_id, (message.voice.mime_type or "audio/ogg"), "vocale.ogg"
+        return message.voice.file_id, (message.voice.mime_type or "audio/ogg"), "voice_note.ogg"
     if message.content_type == "audio":
         return message.audio.file_id, (message.audio.mime_type or "audio/mpeg"), (message.audio.file_name or "audio")
     doc = message.document
     return doc.file_id, (doc.mime_type or "application/octet-stream"), (doc.file_name or "file")
 
 
-# ── typed commands: /finance_add 12,50 pranzo ────────────────────────────────
+# ── typed commands: /finance_add 12.50 lunch ────────────────────────────────
 
 def from_command(chat_id, name: str, args_text: str) -> bool:
     tool = catalog.get(name)
@@ -560,7 +561,7 @@ def handle_flow(call) -> None:
             store.clear_flow(chat_id)
             from telegram_bot import nav
             area = _area(_menu(), tool)
-            return nav.area(chat_id, area.key, mid) if area else nav.aree(chat_id, mid)
+            return nav.area(chat_id, area.key, mid) if area else nav.show_areas(chat_id, mid)
         flow["values"].pop(flow["queue"][flow["pos"]], None)
         flow["mode"] = "ask"
         _advance(chat_id, flow)

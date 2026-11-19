@@ -1,4 +1,4 @@
-"""«Add now» while the assistant works (dossier docs/work/2026-11-18-problemi-del-test, B)."""
+"""«Add now» while the assistant works (dossier docs/work/2026-11-18-real-test-problems, B)."""
 from __future__ import annotations
 
 import json

@@ -1,4 +1,4 @@
-"""Turn traces for the training dataset (docs/work/2026-10-30-dataset-allenamento, phase D1).
+"""Turn traces for the training dataset (docs/work/2026-10-30-training-dataset, phase D1).
 
 After every finished chat turn typed by the owner, Oracle pushes **what the model saw and did** to Metis
 (``POST /route/metis/api/metis/traces``), in the background: system prompt, the history text it got, the user
@@ -53,8 +53,8 @@ def build(*, trace_id: str, session_id: str, client: str, route: str, mode: str,
 
 def wanted(*, origin: dict | None, save_history: bool, session_id: str) -> bool:
     """Only turns the owner typed in a real conversation (routines, modules and external AIs are another set)."""
-    return bool(session_id) and bool(save_history) and str((origin or {}).get("level") or "utente") == "utente" \
-        and str((origin or {}).get("kind") or "") != "esterno"
+    return bool(session_id) and bool(save_history) and str((origin or {}).get("level") or "user") == "user" \
+        and str((origin or {}).get("kind") or "") != "external"
 
 
 def send(hub, trace: dict) -> None:

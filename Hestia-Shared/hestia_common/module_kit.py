@@ -1,12 +1,12 @@
-"""Module kit: the common skeleton of a Hestia domain module (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5).
+"""Module kit: the common skeleton of a Hestia domain module (dossier docs/work/2026-10-24-whole-cindy-brainstorm W5).
 
 The older modules (Hercules, Hygieia, Wardrobe, Plutus) each carry a copy of the same pieces: Hub client, Archive
 mirror, error handlers, MCP router with REST paths, Hub registration with keepalive, warm-up. The modules born in
 wave 5 (Apollo, Aphrodite, Lares, Hera, Demeter, Calliope, Kairos) take them from here, so each one is only its own
 domain code:
 
-    kit = ModuleKit("hera", port=19025, api="/api/people", domain="people", title="Persone",
-                    store="people-store", when_to_use="persone importanti: compleanni, gusti, idee regalo",
+    kit = ModuleKit("hera", port=19025, api="/api/people", domain="people", title="People",
+                    store="people-store", when_to_use="important people: birthdays, tastes, gift ideas",
                     manual="…")
     people = People(kit.store, kit.settings.get)
     kit.settings.declare([...])
@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
 
 import requests
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import is_yes, t as tr  # fixed texts in the owner's language; owner words per language
 
 logger = logging.getLogger("hestia_common.module_kit")
 
@@ -324,7 +324,7 @@ def coerce(tool) -> Callable[..., Any]:
                 except ValueError:
                     pass
             elif typ == "boolean":
-                kw[k] = v.lower() in ("1", "true", "si", "sì", "yes")
+                kw[k] = is_yes(v)
             elif typ == "array":
                 kw[k] = [x.strip() for x in v.split(",") if x.strip()]
         try:

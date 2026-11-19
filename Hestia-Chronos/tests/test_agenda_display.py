@@ -1,4 +1,4 @@
-"""Agenda card for Telegram (docs/work/2026-10-23-telegram-da-zero §6)."""
+"""Agenda card for Telegram (docs/work/2026-10-23-telegram-from-scratch §6)."""
 from __future__ import annotations
 
 from datetime import datetime

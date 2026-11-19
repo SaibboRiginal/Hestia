@@ -4,11 +4,11 @@ import { firstValueFrom } from 'rxjs';
 import { tr } from '../core/i18n';
 
 /**
- * Voice in the WebUI (dossier docs/work/2026-10-20-modulo-voce §7). The browser only records and plays:
+ * Voice in the WebUI (dossier docs/work/2026-10-20-voice-module §7). The browser only records and plays:
  * listening and speaking happen in the voice module through `/api/webui/voice/*`.
  * - voice messages in the chat (recording kept with its message, transcript shown under the audio);
- * - «Ascolta» under a reply (audio kept with the reply: the second time it is not generated again);
- * - helpers for live mode «Parla» (listen/say streams), used by LiveVoiceService.
+ * - «Listen» under a reply (audio kept with the reply: the second time it is not generated again);
+ * - helpers for live mode «Talk» (listen/say streams), used by LiveVoiceService.
  */
 export const VOICE_API = '/api/webui/voice';
 /** mp3 plays everywhere (Safari has no ogg/opus in <audio>). */
@@ -84,7 +84,7 @@ export class MicRecorder {
   }
 }
 
-/** Why «Ascolta» gave no sound, in words for the owner (the cause the server gave, when it gave one). */
+/** Why «Listen» gave no sound, in words for the owner (the cause the server gave, when it gave one). */
 export function listenError(err: unknown, stage: 'speak' | 'play'): string {
   if (stage === 'play') return tr('I can\'t start the audio in this browser.');
   const e = err as { status?: number; error?: { detail?: unknown; error?: unknown } } | null;
@@ -103,7 +103,7 @@ export class VoiceService {
   /** Id of the message whose audio is playing (or loading), for the play/stop toggle. */
   playing = signal<string | null>(null);
   loading = signal<string | null>(null);
-  /** The last «Ascolta» that gave no sound, with the reason (the page shows it; `n` tells two failures apart). */
+  /** The last «Listen» that gave no sound, with the reason (the page shows it; `n` tells two failures apart). */
   failed = signal<{ id: string; text: string; n: number } | null>(null);
   private fails = 0;
 
@@ -116,7 +116,7 @@ export class VoiceService {
   }
 
   /** Text of a voice message; the recording is kept with the message `messageId`. */
-  async transcribe(blob: Blob, mime: string, messageId: string, useCase = 'webui.vocale'): Promise<Heard> {
+  async transcribe(blob: Blob, mime: string, messageId: string, useCase = 'webui.voice_note'): Promise<Heard> {
     return this.post<Heard>('transcribe', {
       audio_b64: await blobToB64(blob), mime_type: mime, use_case: useCase,
       keep: { kind: 'recording', message_id: messageId },
@@ -125,10 +125,10 @@ export class VoiceService {
 
   /** Dictation (W7, brainstorm C12): the text only, to read again before sending; nothing is kept. */
   async dictate(blob: Blob, mime: string): Promise<Heard> {
-    return this.post<Heard>('transcribe', { audio_b64: await blobToB64(blob), mime_type: mime, use_case: 'webui.dettatura' });
+    return this.post<Heard>('transcribe', { audio_b64: await blobToB64(blob), mime_type: mime, use_case: 'webui.dictation' });
   }
 
-  /** «Ascolta»: play/stop the reading of a reply (the kept one when it exists). */
+  /** «Listen»: play/stop the reading of a reply (the kept one when it exists). */
   async toggle(messageId: string, html: string): Promise<void> {
     if (this.playing() === messageId || this.loading() === messageId) { this.stop(); return; }
     this.stop();
@@ -136,7 +136,7 @@ export class VoiceService {
     if (!text) return;
     this.loading.set(messageId);
     try {
-      const out = await this.post<any>('speak', { text, format: PLAY_FORMAT, use_case: 'webui.ascolta',
+      const out = await this.post<any>('speak', { text, format: PLAY_FORMAT, use_case: 'webui.listen',
                                                  keep: { kind: 'generated', message_id: messageId } });
       if (this.loading() !== messageId) return;          // stopped meanwhile
       if (!out?.audio_b64) throw { status: 502 };

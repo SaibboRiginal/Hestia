@@ -38,18 +38,18 @@ It stores and serves all persistent state through generic APIs.
   kept audio, kind `audio`, id = blob id, `ref_id` = message/notification; usage rows, kind `usage`). The audio
   bytes are Archive blobs with `owner_module=echo`.
 - **Signals store** (`/api/signals-store/*`): table `signal_records`, same shape and protocol. Reflection layer
-  (`docs/work/2026-10-20-riflessione-a-livelli`): modules write their signals (`kind=signal`, id `<module>:<key>`) and
+  (`docs/work/2026-10-20-layered-reflection`): modules write their signals (`kind=signal`, id `<module>:<key>`) and
   weekly metrics (`kind=metric`, id `<module>:<name>:<YYYY-Www>`) with `ref_id=<module>`, `parent_id=<domain>`; Athena
   writes its observations (`kind=observation`, `ref_id=athena`). Shape in `hestia_common.signals_client`.
 - **Oracle store** (`/api/oracle-store/*`): table `oracle_records`, same shape and protocol. Pending questions the
   assistant asked the user (`kind=question`, id = question id, `ref_id` = session), so an answer still works after an
   Oracle restart (`docs/work/2026-10-19-oracle-offline` v3 A).
 - **Argus store** (`/api/argus-store/*`): table `argus_records`, same shape and protocol. Journal of notable system
-  events (`kind=event`, `ref_id` = service, `at` = start) shown on Argus' «Registro» page (v3 F).
+  events (`kind=event`, `ref_id` = service, `at` = start) shown on Argus' «Logs» page (v3 F).
 - **Hermes store** (`/api/hermes-store/*`): table `hermes_records`. Web Push subscriptions of the WebUI's browsers
-  (`kind=push`, id = hash of the endpoint) (`docs/work/2026-10-24-tutto-brainstorm-cindy` C15).
+  (`kind=push`, id = hash of the endpoint) (`docs/work/2026-10-24-whole-cindy-brainstorm` C15).
 - **Chronos store** (`/api/chronos-store/*`): table `chronos_records`. Routine results kept for the evening recap
-  (`kind=routine_result`, `ref_id` = routine key) and the smart calendar's «Lascia così» (`kind=smart_kept`).
+  (`kind=routine_result`, `ref_id` = routine key) and the smart calendar's «Leave it» (`kind=smart_kept`).
   All are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
   own `<table>_seq` cursor): the way to add a store for a new module.
 - **Blobs** (`/api/blobs`): table `blobs` (blob_id, owner_module, content_type, size, sha256, data, meta, created_at),
@@ -60,7 +60,7 @@ It stores and serves all persistent state through generic APIs.
   meta; OAuth grants also client_id, refresh_hash, prev_refresh_hash, token_expires_at), `mcp_oauth_clients`
   (client_id, name, redirect_uris, auth_method, secret_hash) and `mcp_oauth_codes` (code_hash, PKCE challenge, consent
   choices, used_at). Pure storage for Hestia-MCP (who may use Hestia's MCP from outside); no endpoint returns a hash.
-- **LLM usage store** (`/api/llm-usage-store/*`, Oracle only, dossier `docs/work/2026-10-19-oracle-a-blocchi` §E):
+- **LLM usage store** (`/api/llm-usage-store/*`, Oracle only, dossier `docs/work/2026-10-19-oracle-blocks` §E):
   table `llm_usage`, one row per LLM call (at, module, use_case, chain, step, provider, model, client, session_id,
   input/cached/output tokens, context_window, duration_ms, cost_usd, cost_kind, outcome, detail). Oracle sends its
   retention with each write and older rows are deleted then (no timer).
@@ -104,7 +104,7 @@ It stores and serves all persistent state through generic APIs.
 | `PUT`/`GET` | `/api/oracle-store/records` · `GET /api/oracle-store/cursor` | Oracle rows: pending questions to the user (Oracle only) |
 | `PUT`/`GET` | `/api/argus-store/records` · `GET /api/argus-store/cursor` | Argus rows: notable events journal (Argus only) |
 | `PUT`/`GET` | `/api/hermes-store/records` · `GET /api/hermes-store/cursor` | Hermes rows: Web Push subscriptions (Hermes only) |
-| `PUT`/`GET` | `/api/chronos-store/records` · `GET /api/chronos-store/cursor` | Chronos rows: routine results for the recap, «Lascia così» choices (Chronos only) |
+| `PUT`/`GET` | `/api/chronos-store/records` · `GET /api/chronos-store/cursor` | Chronos rows: routine results for the recap, «Leave it» choices (Chronos only) |
 | `POST` | `/api/blobs` | Store bytes `{owner_module, content_type, data_base64, meta}` → meta + `deduped` |
 | `GET` | `/api/blobs?owner_module=` | Blob metadata of a module |
 | `GET` | `/api/blobs/{id}/meta` · `/api/blobs/{id}/base64` · `/api/blobs/{id}` | Metadata · `{blob_id, mime, data_b64}` · raw bytes |
@@ -134,7 +134,7 @@ It stores and serves all persistent state through generic APIs.
 | `GET` | `/api/backup/list` | History = the Drive folder `.hestia/backup` (`items` with `verify`/`verified_at`/`monthly`) + `pending` (local copies waiting for Drive) + `error` |
 | `POST` | `/api/backup/run` · `/verify` `{file_id?}` | Start a backup · a verification (newest when no id); answer at once (`started`), 409 `busy` while another job runs. Agenda jobs `archive.backup` (daily 03:30) and `archive.backup_verify` (1st of the month 04:00) |
 | `POST` | `/api/backup/restore` `{file_id | local, confirm: true}` · `/undo` `{confirm: true}` | Rollback to a backup · swap back with the database kept from before the rollback (404 `nothing_to_undo`) |
-| `POST` | `/api/backup/drive/connect` | Google authorization link from Hecate (panel «Collega Google Drive») |
+| `POST` | `/api/backup/drive/connect` | Google authorization link from Hecate (panel «Link Google Drive») |
 
 ---
 
@@ -147,19 +147,19 @@ It stores and serves all persistent state through generic APIs.
   `drive.file`: Hestia sees only its own files). No passphrase → no backup and a notice. **Lost passphrase = the
   backups cannot be opened.**
 - **Drive unreachable / not authorized:** the encrypted copy waits in the volume `hestia_archive_backups`
-  (`/code/backups/pending`, at most 3) and goes up first at the next run; a notice with «Ricollega Google».
+  (`/code/backups/pending`, at most 3) and goes up first at the next run; a notice with «Link Google again».
 - **Retention** (Themis, group «Backup»): `archive.backup.keep_daily` (3) newest + the first backup of each of the last
   `archive.backup.keep_monthly` (3) months; the rest goes to the Drive trash. The newest is never removed.
-- **Verification** (agenda «Verifica backup», monthly, or «Verifica ora»): download, sha256, decrypt, restore into the
+- **Verification** (agenda «Backup check», monthly, or «Check now»): download, sha256, decrypt, restore into the
   scratch database `hestia_restore_check`, compare the counts with the manifest, drop it, write `verify`/`verified_at`
   into the file's appProperties. Failure → notice.
-- **Rollback** (Impostazioni → Sistema → Archive → Backup → «Ripristina»): restore into `hestia_memory_restore`, run the
+- **Rollback** (Impostazioni → Sistema → Archive → Backup → «Restore»): restore into `hestia_memory_restore`, run the
   schema migrations (`app/schema.py`, an old backup gains today's tables/columns), compare counts; only then the
   **swap**: the maintenance gate answers 503 for a few seconds (except `/health` and `/api/backup/status`), Archive
   closes its connections, `hestia_memory` → `hestia_memory_prev`, `hestia_memory_restore` → `hestia_memory`. A new
   **data epoch** (`/code/backups/epoch`) is returned by every module store (`epoch` in `GET …-store/records|cursor`):
   Hercules, Hygieia, Wardrobe and Plutus drop their mirror when it changes and reload, so no stale row is written back.
-  «Annulla ripristino» (`/undo`) exchanges `hestia_memory` and `hestia_memory_prev` (again = redo); the next rollback
+  «Undo restore» (`/undo`) exchanges `hestia_memory` and `hestia_memory_prev` (again = redo); the next rollback
   replaces `_prev`.
 - **State** (job, last results, problem) lives in `/code/backups/state.json`, not in the database (a rollback replaces it);
   the history is the Drive folder itself.
@@ -168,10 +168,10 @@ It stores and serves all persistent state through generic APIs.
 - **Panel:** Archive ships a plugin bundle (`ui/` → `archive.js`) with one `settings_panel` (`archive-backup-panel`), shown by
   the WebUI under Archive's settings. Texts name no module.
 - **Not in the backup:** `.env`, Hecate's Google token (`Hestia-Hecate/data`), other volumes, Forge worktrees.
-- **New PC:** install, set `HESTIA_BACKUP_PASSPHRASE`, start, connect Google once, open the Backup panel, «Ripristina».
+- **New PC:** install, set `HESTIA_BACKUP_PASSPHRASE`, start, connect Google once, open the Backup panel, «Restore».
 - **Terminal** (no WebUI yet, or a file downloaded by hand): `python tools/hestia_backup.py list | status | restore <name>
   | restore --file <path.enc> | undo | decrypt <path.enc>`. It runs `python -m app.backup.cli` in `hestia_archive`, which
-  calls this same API (gate and epoch as in the panel) and asks to type `RIPRISTINA`; `--file` copies the file to
+  calls this same API (gate and epoch as in the panel) and asks to type `RESTORE`; `--file` copies the file to
   `/code/backups/import/` and restores it with `{local: <name>}`; `decrypt` writes the plain `pg_dump` next to the file.
 - Logs: `event=backup_step kind=… step=…`, `backup_done`, `backup_failed`, `backup_verify ok=…`, `backup_restore ok=…`,
   `[🔄] backup_problem code=…`, `[🔄] backup_upload_retry`.
@@ -203,7 +203,7 @@ It stores and serves all persistent state through generic APIs.
 - `POST /api/memory/search/similar` ranks inside Postgres (pgvector `<=>`, `ORDER BY … LIMIT`): only the top rows leave
   the DB, `_similarity = 1 - cosine distance`. Non-numeric embedding → 400; wrong size or zero vector → `[]`
   (`[🔄] event=memory_search_dim_mismatch`). Exact search, no HNSW index on purpose (filters + approximate index can
-  drop matches) → `docs/work/2026-11-06-ricerca-memorie-in-db`.
+  drop matches) → `docs/work/2026-11-06-memory-search-in-db`.
 - **One memory, several embedding models** (2026-11-18, `app/vectors.py`): `entities`, `user_preferences`,
   `document_records`, `document_chunks` keep `embedding_model` (the model that made the vector, `provider/model`).
   `POST /api/memory/search/similar`, `/api/documents/search` and `/api/entities/search` take `query_vectors`
@@ -215,7 +215,7 @@ It stores and serves all persistent state through generic APIs.
 - `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda
   metadata (type, owner, action, skips, rules). Upserts without `meta` keep the stored value.
 - New `GET /api/chat/sessions?since=` → `{sessions: [...]}` distinct session ids (Athena consolidator).
-- 2026-10-29 (Cindy 26, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W7): table `chat_session_meta`
+- 2026-10-29 (Cindy 26, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W7): table `chat_session_meta`
   (`session_id` PK, `title`, `tags` JSONB `[{name, color}]`, `pinned`, `client`, `updated_at`; created by
   `create_all`). `GET /api/chat/sessions/list?q=&tag=&since=&until=&pinned=&limit=&offset=` → `{items: [{session_id,
   title (own or first user message), first_at, last_at, messages, tags, pinned}], total}`, pinned first then newest;
@@ -232,25 +232,25 @@ It stores and serves all persistent state through generic APIs.
   module store answers carry `epoch`; Archive registers a plugin bundle (settings panel «Backup»).
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › interno: 1; memoria › Note e preferenze: 1; notifiche › Avvisi automatici: 4; notifiche › Promemoria e allerte: 4; sistema › Avanzate: 1 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › interno: 1; memoria › Note e preferenze: 1; notifiche › Avvisi automatici: 4; notifiche › Promemoria e allerte: 4; sistema › Avanzate: 1 (area › section: tools).
 
-## Wave 5 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 5)
+## Wave 5 additions (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 5)
 - Seven generic module stores (same rows, LWW and cursor as the others): `/api/images-store` (Apollo, `images_records`),
   `/api/appearance-store` (Aphrodite, `appearance_records`), `/api/home-store` (Lares, `home_records`),
   `/api/people-store` (Hera, `people_records`), `/api/food-store` (Demeter, `food_records`), `/api/office-store`
   (Calliope, `office_records`), `/api/deadlines-store` (Kairos, `deadlines_records`). Tables are created at start like
   the other module stores. Blobs gain the owners `apollo` (images) and `calliope` (documents).
 - 2026-10-30: `/api/mood-store` (Psyche, `mood_records`, kind `mood` with `ref_id` = date; dossier
-  `docs/work/2026-10-30-diario-umore`).
+  `docs/work/2026-10-30-mood-diary`).
 - Wave 6: `/api/metis-store` (Metis usage log: kind `tap` = one tap of a client, kind `idea` = the assistant's
-  «Adesso» ideas per client; `metis_records`).
-- 2026-10-30 (training dataset, dossier `docs/work/2026-10-30-dataset-allenamento`): `/api/dataset-store`
+  «Now» ideas per client; `metis_records`).
+- 2026-10-30 (training dataset, dossier `docs/work/2026-10-30-training-dataset`): `/api/dataset-store`
   (`dataset_records`, owner Metis): kinds `trace` (one chat turn: prompt, tool calls, answer; `parent_id` = session),
   `toolset` (tool schemas by hash), `signal` (`ref_id` = trace). Big rows: Metis reads them with filters, never as a
   mirror. Every module store gains `GET /count?kind=&at_from=` → `{count}` (live rows). Chat meta gains
   `training_off` (additive column; `GET /api/chat/sessions/{id}/meta` reads one, the PUT and the list carry it).
 
-## Delete a conversation, model and time of a message (dossier `docs/work/2026-11-13-sidebar-e-chat`)
+## Delete a conversation, model and time of a message (dossier `docs/work/2026-11-13-sidebar-and-chat`)
 
 - `DELETE /api/chat/sessions/{id}` → `{status, session_id, deleted_messages}`: the whole conversation, messages and
   what the owner set on it (title, tags, pin). `DELETE /api/chat/history/{id}` still clears the messages only: it is
@@ -259,26 +259,26 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   for a message written again by compaction, `timestamp` (so it keeps the time it was first written); the history
   rows return `model`.
 
-## Wave 3 additions (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+## Wave 3 additions (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals
   (kind `memory_proposal`), generic module-store rows.
 - `GET /api/memory/{pref_id}`: one memory (Athena's undo checks it is unchanged).
 - `GET /api/blobs/usage`: `{database_bytes, blob_bytes, blob_count, blobs_by_module}` for Argus growth alerts.
-- Backup tools `backup_status`, `backup_list`, `backup_run` (Telegram «Dati e backup»). Restore is deliberately no tool:
-  only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel).
+- Backup tools `backup_status`, `backup_list`, `backup_run` (Telegram «Data and backups»). Restore is deliberately no tool:
+  only the owner restores (Telegram «Restore a backup», WebUI Backup panel).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: the command manifest (descriptions, `response_prompt`) is English; people texts of those commands are in the shared catalog. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: the command manifest (descriptions, `response_prompt`) is English; people texts of those commands are in the shared catalog. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Language» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
-The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-moduli-come-agenti`.
+The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.

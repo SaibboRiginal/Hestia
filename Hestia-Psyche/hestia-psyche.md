@@ -1,10 +1,10 @@
 # Hestia-Psyche 🙂
 
-**Role:** How the owner feels over time («Umore») — mood, energy and stress check-ins, written down by a tap or
+**Role:** How the owner feels over time («Mood») — mood, energy and stress check-ins, written down by a tap or
 quietly by the assistant when he says how he feels in chat; trend, insights and signals like a coach
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19029 · Dossier: `docs/work/2026-10-30-diario-umore/` (SPEC v2.0)
+**Port:** 19029 · Dossier: `docs/work/2026-10-30-mood-diary/` (SPEC v2.0)
 
 ---
 
@@ -26,16 +26,16 @@ quietly by the assistant when he says how he feels in chat; trend, insights and 
   cause; fewer than `psyche.insights.min_days`, default 7, days → it says how many are missing).
 - **Reflection** (`signals_client`, module `psyche`, domain `mood`): signals `mood_drop` (7-day mean ≥ 1 under the
   3 weeks before), `low_streak` (3+ days mood ≤ 2), `energy_low` (3+ days energy ≤ 2), `good_streak` (5+ days ≥ 4,
-  milestone); weekly metrics `mood.avg` «Umore medio» and `mood.energy` «Energia media». Athena links them with the
+  milestone); weekly metrics `mood.avg` «Average mood» and `mood.energy` «Average energy». Athena links them with the
   other domains' weekly series (sleep, training, spending…): Psyche never reads another module's data.
-- **Recap** piece «Umore» (order 28): today's mood and words; a gentle line when energy or mood has been low for 3+
-  days; action «Come stai?» (opens `mood_log`) while today has nothing.
+- **Recap** piece «Mood» (order 28): today's mood and words; a gentle line when energy or mood has been low for 3+
+  days; action «How are you?» (opens `mood_log`) while today has nothing.
 - **Check-in**: agenda job `psyche.checkin` (20:30, the owner moves or pauses it in the agenda) sends one Hermes
-  question «Com'è andata oggi?» with «Giù / Così così / Bene» only when `psyche.reminder.enabled` (shared
+  question «How did today go?» with «Down / So so / Good» only when `psyche.reminder.enabled` (shared
   `hestia_common.reminders`, off by default) and today has no check-in. Agenda job `psyche.signals` (17:30).
 - Context contract (tag `context`): `GET /api/module/context` = the last 7 days in one line (`topic=insights` →
   the insights sentences).
-- Export/import section `umore`.
+- Export/import section `mood`.
 
 ## Settings (Themis)
 
@@ -48,17 +48,17 @@ quietly by the assistant when he says how he feels in chat; trend, insights and 
 `POST /capture` · `POST /capture/undo` · `POST /signals/run` (agenda) · `POST /checkin` (agenda) ·
 `PUT/DELETE /{id}` · `GET /api/module/context` · `GET /api/module/recap`.
 
-## Tools (Telegram area «Umore»)
+## Tools (Telegram area «Mood»)
 
 `mood_log` (only when the owner asks; chat phrases are captured on their own), `mood_today`, `mood_history`,
 `mood_insights`, `mood_delete` (`id` or `last=true`). Clients `telegram`, `ui`, `external`.
 
 ## WebUI plugin
 
-Page **Umore** (`psyche-mood`): five faces (one tap saves; «Dettagli» adds energy, stress, words, causes and a
+Page **Umore** (`psyche-mood`): five faces (one tap saves; «Details» adds energy, stress, words, causes and a
 note), the last 5 weeks as coloured cells, the trend chart with the insights, every entry with its source (chat
-shows the quote) and «Togli». Widget «Umore» (`psyche-widget`, s/m): today's face or three one-tap faces, the last
-7 days. Quick action «Come stai?» (`POST /api/mood/tap`). Icons `frown`, `meh`, `smile`, `laugh` (no emoji).
+shows the quote) and «Togli». Widget «Mood» (`psyche-widget`, s/m): today's face or three one-tap faces, the last
+7 days. Quick action «How are you?» (`POST /api/mood/tap`). Icons `frown`, `meh`, `smile`, `laugh` (no emoji).
 
 ## Tests
 
@@ -66,10 +66,10 @@ shows the quote) and «Togli». Widget «Umore» (`psyche-widget`, s/m): today's
 and prompt are tested in `Hestia-Oracle/tests/test_mood_capture.py`.
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

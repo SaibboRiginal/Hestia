@@ -53,28 +53,28 @@ with something already done or due today) · `paused`. A target routine is behin
   `topic=<signal key>` the text explains that signal (`adherence_drop` → this week per routine done/needed, skipped,
   the routines behind and the 4 weeks before; `goal:<routine>` / `streak:<routine>` → hint, last done, streak,
   adherence and the last 4 periods); an unknown topic answers the normal line. Same shape, cut to `budget`.
-- `GET /api/module/recap?day=&next=`: piece «Cura di sé» of the daily recap (routines done, products used, daily
+- `GET /api/module/recap?day=&next=`: piece «Self care» of the daily recap (routines done, products used, daily
   routines not done, skipped, due next; alerts as note). Capability `recap_endpoint`.
 - Every step change keeps a version; `POST /routines/{id}/undo` goes back.
 
-## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-riflessione-a-livelli)
+## Reflection signals (`app/core/signals.py`, docs/work/2026-10-20-layered-reflection)
 
 Deterministic facts published to Archive `signals-store` through `hestia_common.signals_client` (module `hygieia`,
-domain `selfcare`); texts speak of «Cura di sé» things, never the module name. Expiry / restock alerts are reminders,
+domain `selfcare`); texts speak of «Self care» things, never the module name. Expiry / restock alerts are reminders,
 not facts about the user: they are not signals.
 
 | Key | Kind · severity | When | Page |
 |---|---|---|---|
-| `adherence_drop` | trend · attenzione | weekly adherence this week ≥ 20 points under the mean of the previous 4 weeks | `statistiche` |
+| `adherence_drop` | trend · attenzione | weekly adherence this week ≥ 20 points under the mean of the previous 4 weeks | `stats` |
 | `goal:<routine_id>` | goal · attenzione | a target routine `behind` its goal and `due` today (planner `goal_state`) | `routine/<id>` |
 | `streak:<routine_id>` | milestone · info | `routine_stats` streak reaches 4, 8, 12, 26 or 52 periods | `routine/<id>` |
-| `diario` | trend · info (2 days) | today's spoken diary «giornata» exists (first 200 chars; `topic=diario` gives it all) | `diario` |
+| `diary` | trend · info (2 days) | today's spoken diary «Day» exists (first 200 chars; `topic=diario` gives it all) | `diary` |
 
 Weekly adherence = Σ min(done, needed) / Σ needed over active routines with a goal (daily = days, fixed days =
 matching days, target = times prorated on the days of the week; the open week counts until today; a routine counts
 from its first version or first log). Weekly metrics (last 12 ISO weeks): `selfcare.adherence` «Routine rispettate
 %» (weeks with something to meet) and `selfcare.journal.<area>.<metric>` «Diario <Area> · <Metrica>» (average of the
-journal scores, only weeks with entries; area in the name because metrics like `irritazione` exist in several areas).
+journal scores, only weeks with entries; area in the name because metrics like `irritation` exist in several areas).
 
 When: `signals.changed()` (debounced re-evaluation) after routine done / undone / skip, quick routine and its undo,
 log delete, journal add / delete, the MCP `log` / `journal_add` tools and once after warm-up; agenda job
@@ -93,17 +93,17 @@ log delete, journal add / delete, the MCP `log` / `journal_add` tools and once a
 - Agenda job `hygieia.alerts` (daily 10:00) → `POST /api/selfcare/alerts/run`: expiring / running out / finished
   but still in a routine, at most once a week per product (`replaces: selfcare.alert.<type>.<product_id>`),
   actions **Buttato** / **Ricomprato**.
-- Every notification carries `_link` to its plugin page (`routine/<id>` for reminders, `prodotti/<id>` for alerts).
+- Every notification carries `_link` to its plugin page (`routine/<id>` for reminders, `products/<id>` for alerts).
 - Texts are short plain Italian, readable aloud as-is (future audio client).
 
 ## Client UI (plugin contract)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Slots sun/moon/sparkle, events (bag, unlock, trend-down, check, trash, star, repeat, note, book), alerts hourglass/cart/alert; body areas are labels only.
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Slots sun/moon/sparkle, events (bag, unlock, trend-down, check, trash, star, repeat, note, book), alerts hourglass/cart/alert; body areas are labels only.
 
 Bundle `ui/src/index.ts` → `/ui/webui/hygieia.js` (built in the Dockerfile). Pages: oggi (today: one tap per
 routine, steps with reasons, wait timers, "ho usato un prodotto"), routine, routine/:id (editor: steps, order,
 own cadence, pause, goal, zones, never-same-day, reminder, favorite, adherence, versions), prodotti,
-prodotti/:id, diario, statistiche (heatmap, routines, top products, spend, history of
+products/:id, diario, statistiche (heatmap, routines, top products, spend, history of
 changes, a past day, JSON export), spesa. Widgets: oggi (quick chips, counts only: the frame draws the title), prossima, prodotti (alerts), settimana.
 Quick actions: fatta (routines to do today + favorites, undo), uso (favorite products, undo).
 A UI change needs `up-all.bat --build hygieia`.
@@ -116,15 +116,15 @@ reminder), notifiche.voce (true: notifications also as voice, `voice_setting`), 
 there and used only when wanted. Week start and currency are the personal settings `themis.personal.week_start` /
 `themis.personal.currency` (owner Themis, read with `follow_personal()`), never a module copy.
 
-## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 
-- **Diario a voce** (B9): the evening recap piece carries the button «Racconta la giornata» (`recap.piece(...,
-  actions=)`, a `command` action that opens the tool `selfcare_diario_voce`) until today has a «giornata» entry.
+- **Diario a voce** (B9): the evening recap piece carries the button «Tell me about your day» (`recap.piece(...,
+  actions=)`, a `command` action that opens the tool `selfcare_diary_voice`) until today has a «Day» entry.
   Telegram asks for a voice note; `POST /api/selfcare/journal/voice {audio:{data_b64, mime}|audio_b64, date?}` →
-  Echo transcribes it (use `hygieia.diario`, declared in the Hub registration, recording kept) → journal entry
-  area `giornata`, note = transcript, tag `voce`, source `voce`, `audio_id`. Reflection reads it (signal `diario`).
+  Echo transcribes it (use `hygieia.diary`, declared in the Hub registration, recording kept) → journal entry
+  area `day`, note = transcript, tag `voice`, source `voice`, `audio_id`. Reflection reads it (signal `diary`).
 - **Sleep from the watch** (B10): Hecate pushes feed `wearable.daily` (`hestia_common.feeds`) to
-  `POST /api/selfcare/wearable`; the night becomes one diary entry area `sonno` per date (id `device-sleep-<date>`,
+  `POST /api/selfcare/wearable`; the night becomes one diary entry area `sleep` per date (id `device-sleep-<date>`,
   quality 1–5 from the sleep score, duration and deep sleep in the note, source `device`). A night the owner deleted
   never comes back.
 
@@ -136,8 +136,8 @@ shopping, check, summary, overview, export, quick (Home chips), reminders/run, a
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
-Sections over `selfcare-store`: `prodotti` (product + its history events) · `routine` (routine + versions) ·
-`registro` (log) · `diario` (journal) · `liste` (option). A routine pulls its products and options. Reminder chain
+Sections over `selfcare-store`: `products` (product + its history events) · `routine` (routine + versions) ·
+`log` (log) · `diary` (journal) · `lists` (option). A routine pulls its products and options. Reminder chain
 state and alerts are never exported. Settings travel through Themis.
 
 ## Configuration (infrastructure only)
@@ -150,28 +150,28 @@ state and alerts are never exported. Settings travel through Themis.
 mocks the signals transport).
 
 
-## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-di-ogni-tipo` §7.2)
+## Coach of the weekly plan (dossier `docs/work/2026-10-20-coach-of-every-kind` §7.2)
 
 Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRouter` (needs + review).
 - **Needs**: each active routine → a `slot` (`routine.<id>`) with its cadence, part of day, `not_same_day` from the
   known conflicts and `not_same_day_as`, and `with {tag, same_day}` from the routine's new field `plan_with`
-  (e.g. a mask the same day as the scrub). Supplements (category `integratore`) are information only: the summary
+  (e.g. a mask the same day as the scrub). Supplements (category `supplement`) are information only: the summary
   lists them, no plan item.
 - **Reports**: routine logged → done/skipped for `routine.<id>`; cadence/status/slot/conflict/`plan_with` change →
   changed (re-plan). Tool `selfcare_routine_edit` takes `plan_with`.
 
 ## Telegram card (`display`)
-`GET /api/selfcare/today` and `GET /api/selfcare/overview` (tools `selfcare_today`, `selfcare_summary`) return a `display` card: routines with state (da fare in orange, fatta in green), the steps of today, a «Fatta: <routine>» button for the first one due; the overview with alerts, products in use, routines and Oggi / Prodotti / Statistiche. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+`GET /api/selfcare/today` and `GET /api/selfcare/overview` (tools `selfcare_today`, `selfcare_summary`) return a `display` card: routines with state (da fare in orange, fatta in green), the steps of today, a «Fatta: <routine>» button for the first one due; the overview with alerts, products in use, routines and Oggi / Prodotti / Statistiche. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.

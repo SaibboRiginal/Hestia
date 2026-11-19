@@ -139,8 +139,8 @@ def test_oracle_calls_send_use_case_not_model():
     from core.strategist import Strategist
 
     for obj, call, use_case in (
-        (ConversationAuditor("http://hub/api"), "_call_oracle_llm", "athena.revisione"),
-        (Strategist("http://hub/api"), "_call_oracle", "athena.strategia"),
+        (ConversationAuditor("http://hub/api"), "_call_oracle_llm", "athena.review"),
+        (Strategist("http://hub/api"), "_call_oracle", "athena.strategy"),
     ):
         resp = MagicMock(status_code=200, content=b"{}")
         resp.json.return_value = {"payload": {"response": "ok"}}

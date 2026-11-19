@@ -1,4 +1,4 @@
-"""Weekly coach plan — Chronos side (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §5–§6).
+"""Weekly coach plan — Chronos side (SPEC docs/work/2026-10-20-coach-of-every-kind §5–§6).
 
 Chronos asks every service with the Hub tag ``coach`` what it needs (``GET /api/coach/needs``), places the needs in
 the user's free time with the generic planner (``coach_planner``), stores the plan as assistant-agenda items and
@@ -179,7 +179,7 @@ def _fit(services: dict[str, str]):
 
 def busy(start: date, end: date) -> dict[date, list[tuple[datetime, datetime]]]:
     """User calendar events (Archive, synced from Google/Outlook) + busy blocks added for the plan.
-    All-day events do not block (birthdays, reminders); a whole day away is a busy block («mercoledì via»)."""
+    All-day events do not block (birthdays, reminders); a whole day away is a busy block («away on Wednesday»)."""
     lo = datetime.combine(start, time(0), tzinfo=tz())
     hi = datetime.combine(end, time(0), tzinfo=tz())
     out: dict[date, list[tuple[datetime, datetime]]] = {}
@@ -430,7 +430,7 @@ def _notify_changes(moved: list[dict], items: list[dict], before: dict, today: d
 def _deliver(key: str, title: str, text: str) -> bool:
     from hestia_common.reminders import reminder_event
     body = reminder_event(module=OWNER, domain="coach", key=key, title=title, text=text, actions=[],
-                          page="settimana")
+                          page="week")
     return hermes_client.publish_event(body["domain"], body["event_type"], body["entity_id"], body["payload"])
 
 
@@ -649,7 +649,7 @@ def skip(ref: str, reason: str = "") -> dict:
 
 
 def add_busy(start_at: str, end_at: str, title: str = "") -> dict:
-    """A period the plan must leave free («mercoledì sono via tutto il giorno»)."""
+    """A period the plan must leave free («I'm away all Wednesday»)."""
     s, e = _local(start_at), _local(end_at)
     if not s or not e or e <= s:
         raise CoachError("start_at and end_at must be ISO 8601 with end after start")

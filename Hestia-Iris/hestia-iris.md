@@ -19,7 +19,7 @@ Iris owns email-domain business logic (search/send/thread abstractions). Provide
 - POST /api/email/subscriptions — a module declares its full rule set `{owner, rules}` (idempotent; new/changed rules → backfill)
 - GET /api/email/subscriptions?owner= — list subscriptions
 - DELETE /api/email/subscriptions/{owner}/{key}
-- POST /api/email/subscriptions/{owner}/{key}/backfill — `{days}`; re-deliver matching mail of the last days (module «controlla ora»)
+- POST /api/email/subscriptions/{owner}/{key}/backfill — `{days}`; re-deliver matching mail of the last days (module «Check now»)
 - POST /api/email/incoming — new mail headers from Hecate's watcher `{messages, source}`; 503 when a matched mail could not be stored
 - GET /api/email/dispatch — subscriptions, last deliveries, counters, Hecate watcher state (used by the «Email» page)
 - POST /api/email/check — ask Hecate's watcher for one check now
@@ -70,24 +70,24 @@ mailbox and posts new mail **headers** to `/api/email/incoming`.
 Iris serves a small core plugin (`ui/`, entry `iris.js`): page **Email** (subscriptions, last deliveries, unmatched
 count, watcher state) and quick action «Controlla email» (`POST /api/email/check`), so no log reading is needed.
 Tiles «Subscribed modules» (each with what it asks for) and «Emails seen» (latest subjects) open their list (dossier
-`docs/work/2026-11-18-problemi-del-test` D); page texts name no module.
+`docs/work/2026-11-18-real-test-problems` D); page texts name no module.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: posta › Messaggi: 3; posta › Iscrizioni: 1; posta › Avanzate: 1 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: posta › Messaggi: 3; posta › Iscrizioni: 1; posta › Avanzate: 1 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Email»; offline text «Account non raggiungibili».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Email»; offline text «Accounts not reachable».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. It now follows «Lingua» at startup (`SettingsClient("iris").follow_personal()`).
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. It now follows «Lingua» at startup (`SettingsClient("iris").follow_personal()`).
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).

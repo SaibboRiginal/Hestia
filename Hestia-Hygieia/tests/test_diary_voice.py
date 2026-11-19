@@ -1,4 +1,4 @@
-"""B9 spoken evening diary (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4): the transcript becomes the day's
+"""B9 spoken evening diary (dossier docs/work/2026-10-24-whole-cindy-brainstorm W4): the transcript becomes the day's
 «giornata» entry, the evening recap offers «Racconta la giornata» until the day is told, reflection gets a signal.
 Markers: unit
 """
@@ -15,7 +15,7 @@ pytestmark = pytest.mark.unit
 def test_voice_entry_keeps_transcript_and_audio(hy):  # noqa: F811
     row = hy.journal_voice({"text": " Oggi palestra e cena con amici ", "blob_id": "b1", "duration_s": 12.5})
     assert row["area"] == DIARY_AREA and row["note"] == "Oggi palestra e cena con amici"
-    assert row["tags"] == ["voce"] and row["source"] == "voce"
+    assert row["tags"] == ["voice"] and row["source"] == "voice"
     assert row["audio_id"] == "b1" and row["duration_s"] == 12.5
 
 
@@ -36,6 +36,6 @@ def test_recap_offers_diary_until_told(hy):  # noqa: F811
 
 def test_signal_and_detail_for_reflection(hy):  # noqa: F811
     hy.journal_voice({"text": "Stanco ma contento"})
-    found = [s for s in signals_engine.evaluate(hy)[0] if s["key"] == "diario"]
+    found = [s for s in signals_engine.evaluate(hy)[0] if s["key"] == "diary"]
     assert found and "Stanco ma contento" in found[0]["text"]
-    assert "Stanco ma contento" in signals_engine.detail(hy, "diario")
+    assert "Stanco ma contento" in signals_engine.detail(hy, "diary")

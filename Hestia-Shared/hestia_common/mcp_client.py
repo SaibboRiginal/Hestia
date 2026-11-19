@@ -1,7 +1,7 @@
 """Client of Hestia's one MCP server (Hestia-MCP ``/mcp``), through Hub like every service call.
 
 Oracle, Telegram and every Python client list and call tools only through this
-(docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2). The WebUI (.NET) speaks the same JSON-RPC.
+(docs/work/2026-10-18-core-modules-and-external-mcp §B2). The WebUI (.NET) speaks the same JSON-RPC.
 
     mcp = MCPClient(HUB_API_URL, client="telegram")
     tools = mcp.list_tools()                      # MCP tools, Hestia details in tool["_meta"]["hestia"]

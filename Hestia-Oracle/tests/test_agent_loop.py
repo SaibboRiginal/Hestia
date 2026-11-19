@@ -313,7 +313,7 @@ class TestRunAgentLoop:
             ask_fn=_always_fail,
         )
         # Should surface a user-friendly Italian error message
-        assert "disponibile" in answer.lower() or "errore" in answer.lower() or answer
+        assert "disponibile" in answer.lower() or "error" in answer.lower() or answer
 
     def test_stream_fn_used_for_final_answer(self):
         tokens_out = ["Ciao ", "Mark!"]
@@ -635,7 +635,7 @@ class TestBenchNearMisses:
 
 @pytest.mark.unit
 def test_call_tag_answer_is_a_tool_call():
-    """Gemini answered «<call:cibo_oggi></call:cibo_oggi>» and it reached the user (bench 2026-10-30)."""
-    assert _extract_tool_call("<call:cibo_oggi></call:cibo_oggi>") == {"name": "cibo_oggi", "params": {}}
+    """Gemini answered «<call:food_today></call:food_today>» and it reached the user (bench 2026-10-30)."""
+    assert _extract_tool_call("<call:food_today></call:food_today>") == {"name": "food_today", "params": {}}
     assert _extract_tool_call('<call:agenda>{"days": 2}</call:agenda>') == {"name": "agenda", "params": {"days": 2}}
     assert _extract_tool_call("Usa <call:agenda></call:agenda> per vederla.") is None

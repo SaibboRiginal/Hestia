@@ -1,4 +1,4 @@
-/** <chronos-failed-widget> — «Job falliti»: agenda jobs whose last run failed in the last 24 h, with «Riprova». */
+/** <chronos-failed-widget> — «Failed jobs»: agenda jobs whose last run failed in the last 24 h, with «Retry». */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, retry, when } from './util';
 import { areaIcon, hhmm } from './week';
@@ -35,7 +35,7 @@ export class ChronosFailedWidget extends HestiaElement {
     const small = (this.ctx?.size || 'm') === 's';
     return html`<div class="w">
       <span class="small muted">${tr("Failed jobs (24 hours)")}</span>
-      <div class="big" style=${rows.length ? 'color:var(--danger)' : ''} @click=${() => this.host.navigate('esecuzioni', { status: 'failed' })}>${rows.length}</div>
+      <div class="big" style=${rows.length ? 'color:var(--danger)' : ''} @click=${() => this.host.navigate('runs', { status: 'failed' })}>${rows.length}</div>
       ${!rows.length ? html`<span class="small muted">${tr("All good")}</span>` : small ? nothing
         : rows.slice(0, 3).map(c => html`<div class="j"><div class="grow"><div class="truncate">${c.label}</div>
             <div class="small muted truncate">${c.owner} · ${when(c.at)}</div></div>
@@ -44,7 +44,7 @@ export class ChronosFailedWidget extends HestiaElement {
   }
 }
 
-/** <chronos-today-widget> — «Oggi nel piano»: what today's weekly plan holds, with the time. */
+/** <chronos-today-widget> — «Today in the plan»: what today's weekly plan holds, with the time. */
 export class ChronosTodayWidget extends HestiaElement {
   static properties = { ...HestiaElement.properties, rows: { state: true }, error: { state: true } };
   declare rows: any[] | null; declare error: string;
@@ -75,7 +75,7 @@ export class ChronosTodayWidget extends HestiaElement {
     if (!rows) return html`<hxk-state kind="loading"></hxk-state>`;
     const todo = rows.filter(i => i.status === 'planned');
     const small = (this.ctx?.size || 'm') === 's';
-    return html`<div class="w" @click=${() => this.host.navigate('settimana')}>
+    return html`<div class="w" @click=${() => this.host.navigate('week')}>
       <span class="small muted">${tr("Today in the plan")}</span>
       ${!rows.length ? html`<span class="small muted">${tr("Nothing scheduled today")}</span>`
         : small ? html`<div class="big">${todo.length}</div><span class="small muted">${todo[0] ? `${hhmm(todo[0].start_at)} ${todo[0].title}` : tr('All done')}</span>`

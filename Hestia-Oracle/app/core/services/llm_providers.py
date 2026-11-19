@@ -1,4 +1,4 @@
-"""Named LLM providers — *where* models live (dossier ``docs/work/2026-10-19-oracle-a-blocchi``).
+"""Named LLM providers — *where* models live (dossier ``docs/work/2026-10-19-oracle-blocks``).
 
 A provider is a named instance of a **standard** (type): ``ollama``, ``openai`` (any OpenAI-compatible server:
 llama-server, LM Studio, DeepSeek, OpenRouter, Groq…), ``anthropic`` (Claude API, DeepSeek's Anthropic
@@ -202,7 +202,7 @@ def is_local(name: str) -> bool:
         return False
 
 
-# ── What a model is for (dossier 2026-11-18-problemi-del-test E): pickers show only the models that fit ──────────
+# ── What a model is for (dossier 2026-11-18-real-test-problems E): pickers show only the models that fit ──────────
 USES = ("chat", "embedding")
 # Names that are not for chatting (speech, pictures, live audio…), when the provider does not say it itself.
 _NOT_CHAT = ("tts", "image", "audio", "live", "native", "embed", "aqa", "imagen", "veo", "computer-use", "robotics",

@@ -1,4 +1,4 @@
-"""The assistant writes first (docs/work/2026-11-12-identita-e-proattivita, «parla con te»).
+"""The assistant writes first (docs/work/2026-11-12-identity-and-proactivity, «talk to you»).
 
 Athena decides *when* and brings the reasons (mood, what the areas noticed, what she already wrote); Oracle, the
 only brain, writes the one or two sentences in the persona, with what it remembers of the owner. Hermes delivers.
@@ -15,7 +15,6 @@ from core.services import prompt_config
 logger = logging.getLogger(f"hestia_oracle.{__name__}")
 
 NOTHING = "NOTHING"
-_OLD_NOTHING = "NIENTE"    # answer of the old Italian prompt, still accepted
 _TAG = re.compile(r"</?[a-zA-Z][^>]*>")
 MAX_CHARS = 400
 MEMORY_MAX = 20
@@ -73,7 +72,7 @@ def clean(answer: str) -> str:
     from core.services import reaction_marker
     _, text = reaction_marker.strip(str(answer or ""))
     text = _TAG.sub("", text).strip().strip('"«»').strip()      # plain text: every client shows it its own way
-    if not text or text.upper().rstrip(".!") in (NOTHING, _OLD_NOTHING) or text.upper().startswith((NOTHING, _OLD_NOTHING)):
+    if not text or text.upper().rstrip(".!") == NOTHING or text.upper().startswith(NOTHING):
         return ""
     return text[:MAX_CHARS].strip()
 

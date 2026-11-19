@@ -1,19 +1,19 @@
-"""Downloads that keep track of themselves (docs/work/2026-10-30-setup-un-click §4.3).
+"""Downloads that keep track of themselves (docs/work/2026-10-30-one-click-setup §4.3).
 
 Every module downloads its own things (Oracle its models, Echo its voices): this gives them one job format and one
 door, so the WebUI page «Download» can show them all through the Hub.
 
     downloads = Downloads("echo", state_path=DATA / "downloads.json", hub=Hub(HUB_API_URL))
-    downloads.file("piper:it_IT-paola-medium", "Voce Paola", url, dest, size_hint=63_000_000)
+    downloads.file("piper:it_IT-paola-medium", "Paola voice", url, dest, size_hint=63_000_000)
     downloads.source("ollama", lambda job: run_ollama_pull)      # a custom source: run(job) reports job.progress()
     app.include_router(downloads.router())                       # GET /api/downloads, POST /api/downloads/<id>/<op>
     caps.update(downloads.capabilities())                        # Hub registration → the WebUI finds it
 
-Job: ``{id, what, source, size, done, speed, eta_s, state, error, module, updated_at}``; states ``in_coda ·
-in_corso · in_pausa · fatto · errore``. Built-in source ``http``: resumes from the ``.part`` file (HTTP Range),
+Job: ``{id, what, source, size, done, speed, eta_s, state, error, module, updated_at}``; states ``queued ·
+running · paused · done · error``. Built-in source ``http``: resumes from the ``.part`` file (HTTP Range),
 checks the free disk **before** starting, verifies an optional sha256, retries 3 times (2/4/8 s). Jobs survive a
-restart (``state_path``): one that was running comes back paused («Riprendi»). Finished big downloads and every
-failure go to Notifiche through Hermes (the only one who writes to the user).
+restart (``state_path``): one that was running comes back paused («Resume»). Finished big downloads and every
+failure go to Notifications through Hermes (the only one who writes to the user).
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_common.downloads")
 
-ACTIVE = ("in_coda", "in_corso")
+ACTIVE = ("queued", "running")
 RETRY_DELAYS = (2, 4, 8)
 NOTIFY_DONE_BYTES = 200_000_000      # a finished download is worth a notice only when it was a long wait
 CHUNK = 1 << 20
@@ -121,11 +121,11 @@ class Downloads:
             raise ValueError(f"unknown download source {source}")
         with self._lock:
             job = self._jobs.get(job_id)
-            if job and job.data["state"] in (*ACTIVE, "fatto"):
+            if job and job.data["state"] in (*ACTIVE, "done"):
                 return dict(job.data)
             data = {"id": job_id, "what": what, "source": source, "params": dict(params or {}),
                     "module": self.module, "size": int(size_hint or 0), "done": 0, "speed": 0, "eta_s": None,
-                    "state": "in_coda", "error": "", "attempts": 0, "updated_at": time.time()}
+                    "state": "queued", "error": "", "attempts": 0, "updated_at": time.time()}
             self._jobs[job_id] = Job(data, self)
             self._enqueue(job_id)
         logger.info("event=download_queued module=%s id=%s source=%s", self.module, job_id, source)
@@ -160,11 +160,11 @@ class Downloads:
             return self._public(job.data) if job else None
 
     def pause(self, job_id: str) -> dict[str, Any]:
-        return self._stop_job(job_id, "in_pausa")
+        return self._stop_job(job_id, "paused")
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         """Stop and forget the job; a partial file is deleted."""
-        out = self._stop_job(job_id, "annullato")
+        out = self._stop_job(job_id, "cancelled")
         job = self._jobs.get(job_id)
         if job and job.data["source"] == "http":
             Path(job.params["dest"] + ".part").unlink(missing_ok=True)
@@ -176,15 +176,15 @@ class Downloads:
     def resume(self, job_id: str) -> dict[str, Any]:
         with self._lock:
             job = self._require(job_id)
-            if job.data["state"] in ("in_pausa", "errore"):
-                job.data.update(state="in_coda", error="", attempts=0)
+            if job.data["state"] in ("paused", "error"):
+                job.data.update(state="queued", error="", attempts=0)
                 self._enqueue(job_id)      # a run still stopping ends on its own stop flag; the next one gets a new one
             return self._public(job.data)
 
     retry = resume
 
     def remove(self, job_id: str) -> dict[str, Any]:
-        """Delete what a finished job downloaded, to free space («Elimina»)."""
+        """Delete what a finished job downloaded, to free space («Delete»)."""
         with self._lock:
             job = self._require(job_id)
             if job.data["state"] in ACTIVE:
@@ -228,8 +228,8 @@ class Downloads:
         with self._lock:
             while self._queue:
                 job = self._jobs.get(self._queue.pop(0))
-                if job and job.data["state"] == "in_coda":
-                    job.data["state"] = "in_corso"
+                if job and job.data["state"] == "queued":
+                    job.data["state"] = "running"
                     job._stop = threading.Event()
                     return job
             self._wake.clear()
@@ -251,7 +251,7 @@ class Downloads:
                 if run is None:
                     raise DownloadError(tr("This download can no longer be resumed."), final=True)
                 run(job)
-                self._finish(job, "fatto")
+                self._finish(job, "done")
                 return
             except Stopped:
                 logger.info("event=download_stopped module=%s id=%s state=%s", self.module, job.id, job.data["state"])
@@ -264,7 +264,7 @@ class Downloads:
                     job.data["error"] = str(exc) if isinstance(exc, DownloadError) else tr("Download failed.")
                     logger.warning("event=download_failed module=%s id=%s attempts=%s error=%s", self.module,
                                    job.id, attempt, str(exc)[:200])
-                    self._finish(job, "errore")
+                    self._finish(job, "error")
                     return
                 delay = RETRY_DELAYS[attempt - 1]
                 logger.warning("[🔄] event=download_retry module=%s id=%s attempt=%s in=%ss error=%s", self.module,
@@ -279,15 +279,15 @@ class Downloads:
                 job.data["state"] = state
             job.data["speed"], job.data["eta_s"] = 0, None
             job.data["updated_at"] = time.time()
-            if state == "fatto" and job.data.get("size"):
+            if state == "done" and job.data.get("size"):
                 job.data["done"] = job.data["size"]
             self._save()
             self._done.notify_all()
-        if state == "fatto":
+        if state == "done":
             logger.info("event=download_done module=%s id=%s bytes=%s", self.module, job.id, job.data.get("size"))
             if (job.data.get("size") or 0) >= NOTIFY_DONE_BYTES:
                 self._notify(job, tr("{0} is ready.", job.data['what']), "info")
-        elif state == "errore":
+        elif state == "error":
             self._notify(job, f"{job.data['what']}: {job.data['error']}", "warning")
 
     def _notify(self, job: Job, text: str, level: str) -> None:
@@ -354,7 +354,7 @@ class Downloads:
             return
         for data in rows if isinstance(rows, list) else []:
             if data.get("state") in ACTIVE:              # interrupted by a restart: the user resumes it
-                data.update(state="in_pausa", speed=0, eta_s=None)
+                data.update(state="paused", speed=0, eta_s=None)
             self._jobs[data["id"]] = Job(data, self)
 
     def _save(self) -> None:
@@ -394,7 +394,7 @@ class Downloads:
             try:
                 return ops[op](job_id)
             except DownloadError as exc:
-                raise HTTPException(status_code=409 if exc.final and "ferma" in str(exc) else 404, detail=str(exc))
+                raise HTTPException(status_code=409 if exc.final and "stop" in str(exc) else 404, detail=str(exc))
 
         return router
 

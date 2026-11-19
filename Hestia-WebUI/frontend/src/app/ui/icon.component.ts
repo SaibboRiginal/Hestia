@@ -81,7 +81,7 @@ const ICONS: Record<string, string> = {
   host: 'M3 4h18v6H3zM3 14h18v6H3zM7 7h.01M7 17h.01',
   shirt: 'M8.5 3.5L3.5 6.5l2 4 2-1V20.5h9V9.5l2 1 2-4-5-3a3.5 3.5 0 0 1-7 0z',
   pin: 'M12 17v5M9 4h6M10 4v6l-3 3v2h10v-2l-3-3V4',
-  // used by module plugins (Allenamento, Self care) in the sidebar and catalog: missing ones fell back to «info»
+  // used by module plugins (Training, Self care) in the sidebar and catalog: missing ones fell back to «info»
   dumbbell: 'M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11',
   history: 'M3 12a9 9 0 1 0 2.6-6.4L3 8M3 3v5h5M12 7v5l3 2',
   scale: 'M12 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6.5 8h11a2 2 0 0 1 1.9 1.5l2.4 9A2 2 0 0 1 19.9 21H4.1a2 2 0 0 1-1.9-2.5l2.4-9A2 2 0 0 1 6.5 8z',

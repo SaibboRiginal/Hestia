@@ -204,7 +204,7 @@ def test_reminder_once_a_day():
     assert h.reminder_decision()["why"] == "sent_today"
 
 
-# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+# ── daily recap piece (docs/work/2026-10-20-daily-recap) ─────────────
 def test_recap_lists_today_session_and_tomorrow_plan(hc):
     t = _template(hc)
     s = hc.start_session(t["id"])
@@ -237,7 +237,7 @@ def test_recap_quiet_day_is_empty(hc):
     assert facts == {"done": [], "missed": [], "next": [], "note": ""}
 
 
-# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.1) ──────
+# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-of-every-kind §7.1) ──────
 def test_coach_needs_follow_the_goal_and_report_done(hc):
     from hestia_common.coach import validate_need
     from app.core.coach import HerculesCoach

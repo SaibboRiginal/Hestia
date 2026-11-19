@@ -51,7 +51,7 @@ class Presence:
 @pytest.fixture
 def lh():
     ha, pres = FakeHA(), Presence()
-    settings = {"lares.persona": "person.me"}
+    settings = {"lares.person": "person.me"}
     return Home(Store(FakeArchive(), "home-store", min_refresh_seconds=0), ha, lambda k, d=None: settings.get(k, d),
                 presence=pres), ha, pres
 
@@ -98,7 +98,7 @@ def test_endpoints_and_tools(monkeypatch):
                                            lambda k, d=None: d))
     c = TestClient(main.app)
     assert c.get("/api/home/status").json()["entities"] == 5
-    assert c.post("/api/home/tools/comando", json={"device": "Luce cucina", "command": "on"}).json()["ok"] is True
+    assert c.post("/api/home/tools/command", json={"device": "Luce cucina", "command": "on"}).json()["ok"] is True
     assert c.post("/api/home/entities/light.cucina/off").json()["ok"] is True
     assert c.get("/api/home/persons/options").json()["options"][1]["value"] == "person.me"
-    assert c.post("/api/home/tools/comando", json={"device": "Luce cucina", "command": "boh"}).json().get("error")
+    assert c.post("/api/home/tools/command", json={"device": "Luce cucina", "command": "boh"}).json().get("error")

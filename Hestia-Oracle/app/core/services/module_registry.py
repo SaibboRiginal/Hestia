@@ -142,7 +142,7 @@ class ModuleToolRegistry:
         return dict(self._service_guides)
 
     def index_text(self, limit: int = 40) -> str:
-        """Caveman index «modulo: quando usarlo», one line per module (prompt, Cindy 30)."""
+        """Caveman index «module: when to use it», one line per module (prompt, Cindy 30)."""
         rows = sorted(self.guides().items())[:limit]
         return "\n".join(f"- {name}: {g['when']}" for name, g in rows)
 

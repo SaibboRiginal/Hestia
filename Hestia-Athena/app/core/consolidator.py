@@ -7,7 +7,7 @@ Runs once per day inside the agenda window "athena.consolidation" (Chronos). For
   4. Writes consolidated memories to Archive
   5. Publishes insights as Athena hints to Oracle
 
-Cindy 8 (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3): no new message of the owner since the last
+Cindy 8 (dossier docs/work/2026-10-24-whole-cindy-brainstorm W3): no new message of the owner since the last
 run → no model call; a new fact must cite the owner's exact words (``quote``, checked against the messages);
 every change goes to the learning log with before/after so the owner can undo it (``learning.py``).
 """
@@ -217,7 +217,7 @@ class MemoryConsolidator:
         try:
             resp = requests.post(
                 f"{self._oracle_route}/api/llm/generate",
-                json={"prompt": prompt, "use_case": "athena.strategia"},  # chain chosen in Oracle → Modelli
+                json={"prompt": prompt, "use_case": "athena.strategy"},  # chain chosen in Oracle → Models
                 timeout=get_int(S.MEMORY_ORACLE_TIMEOUT),
             )
             if resp.status_code == 200:

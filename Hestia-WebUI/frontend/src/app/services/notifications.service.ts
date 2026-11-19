@@ -9,7 +9,7 @@ import { tr } from '../core/i18n';
 /**
  * Hermes notifications in the WebUI (SPEC docs/work/2026-10-10-hermes-global-notifications).
  * Inbox = Archive through Hermes (`/api/webui/notifications*`); live pushes on SignalR. The page itself is Hermes'
- * plugin (`/p/hermes/notifiche`, SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno P6): here stay the badge, the
+ * plugin (`/p/hermes/notifications`, SPEC docs/work/2026-10-18-core-modules-and-external-mcp P6): here stay the badge, the
  * toasts (mode shared with the page through localStorage + the `hestia:notification-prefs` event) and seen-on-push.
  * Read state is global: what is seen here is seen on Telegram too, and vice versa.
  * Repeat chains (SPEC docs/work/2026-10-17-hermes-repeat-notifications): a reminder sent again
@@ -53,7 +53,7 @@ export interface NotificationCounts { unread: number; pending: number; }
 const CLIENT = 'webui';
 const PREFS_KEY = 'hestia_notification_prefs';
 const PREFS_EVENT = 'hestia:notification-prefs';
-const PAGE = '/p/hermes/notifiche';
+const PAGE = '/p/hermes/notifications';
 export const CLIENT_LABELS: Record<string, string> = { telegram: 'Telegram', webui: 'WebUI' };
 export const clientLabel = (name?: string | null) => (name && CLIENT_LABELS[name]) || name || '';
 
@@ -89,7 +89,7 @@ export class NotificationsService {
     this.started = true;
     this.signalR.notifications$.subscribe(push => this.onPush(push));
     this.signalR.reconnected$.subscribe(() => void this.refresh());
-    // The Notifiche plugin page is open: new items are shown there (and seen) instead of toasted.
+    // The Notifications plugin page is open: new items are shown there (and seen) instead of toasted.
     const atPage = (url: string) => url.split('?')[0].startsWith(PAGE);
     this.pageOpen.set(atPage(this.router.url));
     this.router.events.subscribe(e => { if (e instanceof NavigationEnd) this.pageOpen.set(atPage(e.urlAfterRedirects)); });
@@ -189,7 +189,7 @@ export class NotificationsService {
     const n: HestiaNotification = {
       id: push.notification_id,
       created_at: String(push['created_at'] ?? new Date().toISOString()),
-      // Buttons, a secret form or a question (2026-10-30-domande-nelle-notifiche): it waits for an answer.
+      // Buttons, a secret form or a question (2026-10-30-questions-in-notifications): it waits for an answer.
       state: 'delivered', read: false, pending: actions.length > 0 || !!push['question'] || !!push['secret'],
       title: String(push['title'] ?? ''), message: String(push['message'] ?? ''),
       level: (push['level'] as NotificationLevel) ?? 'info', source: String(push['source'] ?? ''),

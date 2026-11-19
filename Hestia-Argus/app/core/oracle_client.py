@@ -20,7 +20,7 @@ logger = logging.getLogger(f"hestia_argus.{__name__}")
 HUB_API_URL = os.getenv(
     "HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
 # LLM use case declared in the Hub registration (capabilities.llm_usecases).
-USE_CASE = "argus.analisi"
+USE_CASE = "argus.analysis"
 ORACLE_ROUTE_PATH = os.getenv("ORACLE_ROUTE_PATH", "api/llm/generate").strip("/")
 ORACLE_SESSION_ID = "argus-analysis"
 
@@ -55,7 +55,7 @@ def analyze(prompt: str, context: str = "", voice: bool = False) -> str:
             "method": "POST",
             "headers": {},
             "query": {},
-            "body": {"prompt": full_prompt, "use_case": USE_CASE, "voice": bool(voice)},  # chain chosen in Oracle → Modelli
+            "body": {"prompt": full_prompt, "use_case": USE_CASE, "voice": bool(voice)},  # chain chosen in Oracle → Models
             "timeout_seconds": 60,
         }
         resp = requests.post(

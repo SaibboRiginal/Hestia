@@ -23,7 +23,7 @@ _LB = 0.45359237
 
 
 def _norm(s: str) -> str:
-    return re.sub(r"[^a-z0-9àèéìòù ]+", " ", (s or "").lower()).strip()
+    return re.sub(r"[^\w ]+|_", " ", (s or "").lower()).strip()
 
 
 def _split(name: str) -> tuple[str, str | None]:

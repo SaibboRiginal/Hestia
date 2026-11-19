@@ -1,4 +1,4 @@
-"""Tests — Argus "inside view" WebUI plugin (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3/A6).
+"""Tests — Argus "inside view" WebUI plugin (docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3/A6).
 
 Manifest (kind core, Salute page, Stato sistema widget, Ricontrolla quick action, order 110), the in-memory
 health history / incidents, the new read endpoints and the monitor hooks that feed them.
@@ -41,10 +41,10 @@ class TestArgusManifest:
         webui = m["clients"]["webui"]
         assert webui["entry"] == "/ui/webui/argus.js" and webui["api_prefix"] == "/api/argus/"
         p, perf = webui["page"]
-        assert (p["id"], p["label"], p["element"], p["order"]) == ("salute", "Health", "argus-health", 110)
-        assert (perf["id"], perf["element"], perf["order"]) == ("prestazioni", "argus-performance", 111)
+        assert (p["id"], p["label"], p["element"], p["order"]) == ("health", "Health", "argus-health", 110)
+        assert (perf["id"], perf["element"], perf["order"]) == ("performance", "argus-performance", 111)
         (w,) = webui["widget"]
-        assert (w["id"], w["label"], w["element"], w["auto"]) == ("stato", "System status", "argus-status-widget", True)
+        assert (w["id"], w["label"], w["element"], w["auto"]) == ("status", "System status", "argus-status-widget", True)
         (q,) = webui["quick_action"]
         assert q["path"] == "/api/argus/recheck/{id}" and q["source"] == "/api/argus/recheck-targets"
         assert q["method"] == "POST"

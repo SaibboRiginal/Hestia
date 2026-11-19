@@ -54,9 +54,9 @@ def hy():
 
 
 def _evening(h):
-    cl = h.save_product({"name": "Detergente", "brand": "CeraVe", "category": "detergente"})
-    ret = h.save_product({"name": "Retinolo 0.3", "brand": "TO", "actives": ["retinolo"]})
-    aha = h.save_product({"name": "Tonico glicolico", "actives": [{"name": "aha_glicolico", "percent": 7}]})
+    cl = h.save_product({"name": "Detergente", "brand": "CeraVe", "category": "cleanser"})
+    ret = h.save_product({"name": "Retinolo 0.3", "brand": "TO", "actives": ["retinol"]})
+    aha = h.save_product({"name": "Tonico glicolico", "actives": [{"name": "aha_glycolic", "percent": 7}]})
     r = h.save_routine({"name": "Viso sera", "slot": "evening", "cadence": {"mode": "daily"}, "steps": [
         {"product_id": cl["id"]},
         {"product_id": ret["id"], "cadence": {"mode": "target", "times": 3, "per": "week"}},
@@ -115,15 +115,15 @@ def test_step_pause(hy):
     r, _, ret, _ = _evening(hy)
     steps = [dict(s) for s in hy.get("routine", r["id"])["steps"]]
     steps[1]["paused_until"] = (hy.today() + timedelta(days=7)).isoformat()
-    d = hy.save_routine({"steps": steps}, id=r["id"], reason="irritazione")
+    d = hy.save_routine({"steps": steps}, id=r["id"], reason="irritation")
     st = next(s for s in d["plan"]["steps"] if s["label"] == "Retinolo 0.3")
     assert not st["include"] and st["state"] == "paused"
-    assert d["version"] == 2 and d["versions"][0]["reason"] == "irritazione"
+    assert d["version"] == 2 and d["versions"][0]["reason"] == "irritation"
 
 
 def test_routines_not_same_day_from_actives(hy):
-    ret = hy.save_product({"name": "Retinale", "actives": ["retinale"]})
-    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicilico"]})
+    ret = hy.save_product({"name": "Retinale", "actives": ["retinal"]})
+    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicylic"]})
     a = hy.save_routine({"name": "Notte retinoide", "cadence": {"mode": "target", "times": 3}, "steps": [{"product_id": ret["id"]}]})
     b = hy.save_routine({"name": "Notte esfoliante", "cadence": {"mode": "target", "times": 1}, "steps": [{"product_id": bha["id"]}]})
     hy.log_routine(a["id"])
@@ -156,7 +156,7 @@ def test_partial_log_and_product_uses(hy):
 
 
 def test_skipped_does_not_count(hy):
-    r = hy.save_routine({"name": "Maschera", "cadence": {"mode": "target", "times": 1}, "steps": [{"label": "maschera"}]})
+    r = hy.save_routine({"name": "Maschera", "cadence": {"mode": "target", "times": 1}, "steps": [{"label": "mask"}]})
     hy.log_routine(r["id"], status="skipped")
     assert hy.routine_stats(hy.get("routine", r["id"]))["total"] == 0
 
@@ -218,17 +218,17 @@ def test_summary_and_context(hy):
 
 
 def test_journal(hy):
-    hy.journal_add({"entries": [{"area": "viso", "scores": {"brufoli": 2}}, {"area": "capelli", "scores": {"caduta": 3}}]})
+    hy.journal_add({"entries": [{"area": "face", "scores": {"pimples": 2}}, {"area": "hair", "scores": {"hair_loss": 3}}]})
     j = hy.journal()
-    assert len(j["items"]) == 2 and j["series"]["viso"]["brufoli"][0]["value"] == 2
+    assert len(j["items"]) == 2 and j["series"]["face"]["pimples"][0]["value"] == 2
     with pytest.raises(Invalid):
-        hy.journal_add({"area": "viso", "scores": {"brufoli": 9}})
+        hy.journal_add({"area": "face", "scores": {"pimples": 9}})
 
 
 # ── reminders, quick ──────────────────────────────────────────────────────────
 def test_reminders_weekly_limit_and_snooze(hy, monkeypatch):
     monkeypatch.setitem(SETTINGS, "hygieia.reminder.enabled", True)   # common switch, off by default
-    r = hy.save_routine({"name": "Maschera", "cadence": {"mode": "daily"}, "reminder": True, "steps": [{"label": "maschera"}]})
+    r = hy.save_routine({"name": "Maschera", "cadence": {"mode": "daily"}, "reminder": True, "steps": [{"label": "mask"}]})
     d = hy.reminder_decisions()
     assert d[0]["send"]
     hy.mark_reminder_sent(r["id"])
@@ -239,7 +239,7 @@ def test_reminders_weekly_limit_and_snooze(hy, monkeypatch):
 
 
 def test_reminder_off_by_default(hy):
-    hy.save_routine({"name": "Corpo", "cadence": {"mode": "daily"}, "steps": [{"label": "crema"}]})
+    hy.save_routine({"name": "Corpo", "cadence": {"mode": "daily"}, "steps": [{"label": "cream"}]})
     assert hy.reminder_decisions() == []
 
 
@@ -265,7 +265,7 @@ def test_store_unavailable(hy):
         hy.save_product({"name": "x"})
 
 
-# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ──────────────
+# ── daily recap piece (docs/work/2026-10-20-daily-recap) ──────────────
 def test_recap_daily_routine_due_then_done(hy):
     r, *_ = _evening(hy)
     today = hy.today()
@@ -285,19 +285,19 @@ def test_recap_skipped_routine(hy):
     assert facts["missed"] == [{"text": "Saltate: Viso sera", "tone": "warning"}]
 
 
-# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §7.2) ──────
+# ── weekly plan coach (SPEC docs/work/2026-10-20-coach-of-every-kind §7.2) ──────
 def test_coach_needs_slots_conflicts_and_supplements(hy):
     from hestia_common.coach import validate_need
     from app.core.coach import HygieiaCoach
     events = []
     hy.on_event = lambda e, d: events.append((e, d.get("need_id")))
-    ret = hy.save_product({"name": "Retinale", "actives": ["retinale"]})
-    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicilico"]})
+    ret = hy.save_product({"name": "Retinale", "actives": ["retinal"]})
+    bha = hy.save_product({"name": "BHA 2%", "actives": ["bha_salicylic"]})
     a = hy.save_routine({"name": "Notte retinoide", "slot": "evening", "cadence": {"mode": "target", "times": 3},
                          "steps": [{"product_id": ret["id"]}]})
     b = hy.save_routine({"name": "Notte esfoliante", "slot": "evening", "cadence": {"mode": "target", "times": 1},
                          "steps": [{"product_id": bha["id"]}]})
-    vit = hy.save_product({"name": "Creatina", "category": "integratore", "status": "in_use"})
+    vit = hy.save_product({"name": "Creatina", "category": "supplement", "status": "in_use"})
     c = hy.save_routine({"name": "Creatina", "cadence": {"mode": "daily"}, "steps": [{"product_id": vit["id"]}],
                          "plan_with": "workout"})
     assert events and events[-1][0] == "changed"

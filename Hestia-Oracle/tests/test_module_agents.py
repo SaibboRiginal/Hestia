@@ -1,4 +1,4 @@
-"""Operating mode «agents» (dossier docs/work/2026-11-06-moduli-come-agenti): module agents inside Oracle."""
+"""Operating mode «agents» (dossier docs/work/2026-11-06-modules-as-agents): module agents inside Oracle."""
 from __future__ import annotations
 
 import json

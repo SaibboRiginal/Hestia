@@ -56,7 +56,7 @@ BASE = "/api/chat-queue"
 def test_enqueue_position_and_oldest_first(client):
     a = client.post(BASE, json={"client": "telegram", "session_id": "s1", "text": "ciao", "client_ref": "11"}).json()
     b = client.post(BASE, json={"client": "telegram", "session_id": "s1", "text": "ci sei?"}).json()
-    client.post(BASE, json={"client": "webui", "session_id": "w1", "text": "altro"})
+    client.post(BASE, json={"client": "webui", "session_id": "w1", "text": "other"})
     assert (a["position"], b["position"]) == (1, 2)
     items = client.get(BASE, params={"client": "telegram"}).json()["items"]
     assert [i["text"] for i in items] == ["ciao", "ci sei?"]

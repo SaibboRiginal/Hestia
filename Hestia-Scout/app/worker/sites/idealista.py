@@ -13,6 +13,10 @@ from urllib.parse import urlparse, urlunparse
 from bs4 import BeautifulSoup
 
 from worker.sites.base import BaseSiteHandler
+from worker.sites.labels import has, label_is, none_value, word_regex, yes_value
+from hestia_common.i18n import words
+
+OTHER = "Other"   # bucket of the features without a «key: value»
 
 
 class IdealistaSiteHandler(BaseSiteHandler):
@@ -132,10 +136,10 @@ class IdealistaSiteHandler(BaseSiteHandler):
                     characteristics[key] = value
             else:
                 # Keep non key-value features in a predictable bucket.
-                characteristics.setdefault("Altre", "")
-                existing = characteristics["Altre"]
+                characteristics.setdefault(OTHER, "")
+                existing = characteristics[OTHER]
                 if text not in existing.split(" | "):
-                    characteristics["Altre"] = f"{existing} | {text}".strip(" |")
+                    characteristics[OTHER] = f"{existing} | {text}".strip(" |")
 
         if characteristics:
             enriched["characteristics"] = characteristics
@@ -309,7 +313,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
                         enriched["price"] = value
                         break
 
-        # Compact top feature chips (e.g. "75 m2", "2 locali", "1º piano").
+        # Compact top feature chips (e.g. "75 m2", "2 rooms", "1st floor", in the site's language).
         for node in soup.select("div.info-features span"):
             text = node.get_text(" ", strip=True)
             self._apply_feature_text(text, specs, extras)
@@ -317,7 +321,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
         # Listing id from URL.
         normalized = self.normalize_url(str(enriched.get("url", "")).strip())
         if normalized:
-            match = re.search(r"/immobile/(\d+)", normalized)
+            match = re.search(r"/immobile/(\d+)", normalized)  # external-name: the site's own address
             if match:
                 extras.setdefault("listing_id", match.group(1))
 
@@ -330,7 +334,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
         specs: dict,
         extras: dict,
     ) -> tuple[dict, dict, dict]:
-        # "Caratteristiche specifiche" and "Costruzione" sections.
+        # The site's "specific features" and "construction" sections.
         for li in soup.select("section#details .details-property_features li"):
             text = li.get_text(" ", strip=True)
             if not text:
@@ -357,7 +361,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
         enriched: dict,
         extras: dict,
     ) -> tuple[dict, dict]:
-        # Dedicated "Prezzo" panel has authoritative values.
+        # Dedicated "price" panel has authoritative values.
         for row in soup.select(".price-feature .flex-feature"):
             key_node = row.select_one("span.flex-feature-details")
             val_node = row.select_one(
@@ -367,11 +371,11 @@ class IdealistaSiteHandler(BaseSiteHandler):
             key = key_node.get_text(" ", strip=True).lower()
             val_text = val_node.get_text(" ", strip=True)
 
-            if "prezzo dell'immobile" in key:
+            if has("property_price", key):
                 value = self._extract_money_int(val_text)
                 if value is not None:
                     enriched["price"] = value
-            elif "prezzo al m" in key:
+            elif has("price_per_m2", key):
                 value = self._extract_money_int(val_text)
                 if value is not None:
                     extras["price_per_m2"] = value
@@ -436,23 +440,23 @@ class IdealistaSiteHandler(BaseSiteHandler):
                 specs["surface_m2"] = self._to_number(m.group(1))
 
         if "rooms" not in specs:
-            m = re.search(r"(\d+)\s+locali", text, re.IGNORECASE)
+            m = word_regex(r"(\d+)\s+(?:{0})", "scout.label.rooms").search(text)
             if m:
                 specs["rooms"] = int(m.group(1))
 
         if "bathrooms" not in specs:
-            m = re.search(r"(\d+)\s+bagni?", text, re.IGNORECASE)
+            m = word_regex(r"(\d+)\s+(?:{0})", "scout.label.bathrooms").search(text)
             if m:
                 specs["bathrooms"] = int(m.group(1))
 
         if "floor" not in specs:
             m = re.search(
-                r"(\d+\s*[º°]?\s*piano|piano\s+terra|piano\s+rialzato)", text, re.IGNORECASE)
+                r"(\d+\s*[º°]?\s*(?:" + "|".join(words("scout.label.floor")) + r")|(?:" + "|".join(words("scout.label.ground_floor")) + r"))", text, re.IGNORECASE)
             if m:
                 specs["floor"] = m.group(1).strip()
 
         if "heating" not in specs:
-            m = re.search(r"riscaldamento\s+([\w\s]+)", text, re.IGNORECASE)
+            m = word_regex(r"(?:{0})\s+([\w\s]+)", "scout.label.heating").search(text)
             if m:
                 specs["heating"] = m.group(1).strip()
 
@@ -466,35 +470,35 @@ class IdealistaSiteHandler(BaseSiteHandler):
             if val is not None and "surface_m2" not in specs:
                 specs["surface_m2"] = val
 
-        if "locali" in lowered and "rooms" not in specs:
+        if has("rooms", lowered) and "rooms" not in specs:
             val = self._extract_first_number(text)
             if val is not None:
                 specs["rooms"] = val
 
-        if "bagno" in lowered and "bathrooms" not in specs:
+        if has("bathrooms", lowered) and "bathrooms" not in specs:
             val = self._extract_first_number(text)
             if val is not None:
                 specs["bathrooms"] = val
 
-        if "camera" in lowered and "bedrooms" not in specs:
+        if has("bedrooms", lowered) and "bedrooms" not in specs:
             val = self._extract_first_number(text)
             if val is not None:
                 specs["bedrooms"] = val
 
-        if "piano" in lowered and "floor" not in specs:
+        if has("floor", lowered) and "floor" not in specs:
             specs["floor"] = text
 
-        if "riscaldamento" in lowered and "heating" not in specs:
+        if has("heating", lowered) and "heating" not in specs:
             specs["heating"] = text
 
-        if "ascensor" in lowered:
+        if has("elevator", lowered):
             specs["elevator"] = True
-        if "balcone" in lowered or "terraz" in lowered:
+        if has("balcony", lowered) or has("terrace", lowered):
             specs["balcony_or_terrace"] = True
-        if "garage" in lowered or "box" in lowered or "posto auto" in lowered:
+        if has("parking", lowered) or has("parking", lowered) or has("parking", lowered):
             specs["garage_or_parking"] = True
 
-        if "classe energetica" in lowered:
+        if has("energy_class", lowered):
             extras.setdefault("energy_class_text", text)
             m = re.search(
                 r"\((\d+(?:[\.,]\d+)?)\s*kwh", lowered, re.IGNORECASE)
@@ -502,15 +506,15 @@ class IdealistaSiteHandler(BaseSiteHandler):
                 extras.setdefault("energy_kwh_m2_year",
                                   self._to_number(m.group(1)))
 
-        if "costruito nel" in lowered:
+        if has("built_in", lowered):
             year = self._extract_year(text)
             if year is not None:
                 extras.setdefault("year_built", year)
 
-        if "stato" in lowered:
+        if has("state", lowered):
             extras.setdefault("property_state", text)
 
-        if "annuncio aggiornato" in lowered:
+        if has("listing_updated", lowered):
             extras.setdefault("updated_relative", text)
 
     def _extract_address_from_meta(
@@ -528,7 +532,7 @@ class IdealistaSiteHandler(BaseSiteHandler):
 
         for text in sources:
             match = re.search(
-                r"in vendita in\s+(.+?)(?:\s+[—-]\s+idealista|$)",
+                r"in vendita in\s+(.+?)(?:\s+[—-]\s+idealista|$)",  # external-name: the site's own text
                 text, re.IGNORECASE,
             )
             if match:

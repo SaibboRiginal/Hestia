@@ -1,7 +1,7 @@
-"""Site recipes (Cindy 12, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""Site recipes (Cindy 12, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 A recipe is a small declarative script for a site used often: go to → type → click → wait → extract. No model
-looks at the page at every step: the assistant (tool ``atlas_ricetta``) or a module (Scout, via Hub
+looks at the page at every step: the assistant (tool ``atlas_recipe``) or a module (Scout, via Hub
 ``POST /api/route/atlas/api/recipes/<name>/run``) only passes the parameters and gets the fields back.
 
 Recipes are **code in the repo** (``Hestia-Atlas/recipes/<name>.json``, versioned, Forge fixes them), validated at

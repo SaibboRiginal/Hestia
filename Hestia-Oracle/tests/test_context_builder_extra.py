@@ -261,7 +261,7 @@ class TestTruncate:
 
 @pytest.mark.unit
 class TestMessageTime:
-    """Each message of the owner carries when it was written (dossier 2026-11-13-sidebar-e-chat §3.7)."""
+    """Each message of the owner carries when it was written (dossier 2026-11-13-sidebar-and-chat §3.7)."""
 
     def test_owner_messages_carry_date_and_time_in_local_zone(self, builder, monkeypatch):
         monkeypatch.setenv("TZ", "Europe/Rome")

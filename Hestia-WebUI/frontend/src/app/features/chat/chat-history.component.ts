@@ -8,7 +8,7 @@ import { TrPipe, tr } from '../../core/i18n';
 const PAGE = 30;
 
 /**
- * Second sidebar «Cronologia» (brainstorm C13 + Cindy 26, W7): every conversation, newest first (pinned on top),
+ * Second sidebar «History» (brainstorm C13 + Cindy 26, W7): every conversation, newest first (pinned on top),
  * search in titles and messages, from/to dates, a tag filter; open one, pin it, rename it, colour its tags.
  */
 @Component({

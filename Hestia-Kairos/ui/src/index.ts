@@ -1,6 +1,6 @@
 /**
- * Kairos («Scadenze») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages and widget declared in Hestia-Kairos/app/main.py.
+ * Kairos («Deadlines») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * docs/work/2026-10-24-whole-cindy-brainstorm W7). Pages and widget declared in Hestia-Kairos/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
@@ -76,7 +76,7 @@ export class KairosList extends Base {
   }
   private row(d: any) {
     return html`<div class="dl">
-      <div class="grow click" @click=${() => this.host.navigate('scadenza/' + d.id)}>
+      <div class="grow click" @click=${() => this.host.navigate('deadline/' + d.id)}>
         <div>${d.title}${d.amount ? html` <span class="muted">· ${money(d.amount)}</span>` : nothing}</div>
         <div class="small muted">${d.category_label} · ${dayLabel(d.due)}${d.recurrence !== 'none' ? ` · ${RECURRENCE[d.recurrence]}` : ''}</div></div>
       ${d.status === 'open' ? html`<hxk-badge tone=${tone(d.in_days, d.lead_days)}>${when(d.in_days)}</hxk-badge>
@@ -123,14 +123,14 @@ export class KairosDetail extends Base {
   private async save() { const r = await call(this.host, 'PUT', `/${this.did}`, this.draft); if (r.ok) { this.d = r.data; this.host.toast(tr('f::Saved'), 'success'); } }
   private async advise() {
     this.thinking = true;
-    const r = await call(this.host, 'POST', '/tools/consiglio', { deadline: this.did });
+    const r = await call(this.host, 'POST', '/tools/advice', { deadline: this.did });
     this.thinking = false;
     if (r.ok && r.data.advice) this.d = { ...this.d, advice: r.data.advice };
   }
   private async deleteDeadline() {
     if (!await this.host.confirm(tr('Delete the deadline?'), tr('It disappears from the calendar too.'), { label: tr('Delete'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `/${this.did}`);
-    if (r.ok) this.host.navigate('scadenze');
+    if (r.ok) this.host.navigate('deadlines');
   }
   render() {
     const d = this.d;
@@ -138,7 +138,7 @@ export class KairosDetail extends Base {
     if (d === null) return html`<hxk-state kind="error" text=${tr("Deadline not found.")}></hxk-state>`;
     return html`<div class="page">
       <div class="between"><div><h1>${d.title}</h1><div class="small muted">${d.category_label} · ${dayLabel(d.due)} · ${when(d.in_days)}</div></div>
-        ${d.status === 'open' ? html`<hxk-button variant="primary" icon="check" @click=${async () => { const r = await call(this.host, 'POST', `/${d.id}/done`); if (r.ok) { this.d = r.data; this.host.toast(tr('Done'), 'success'); } }}>${tr("Done")}</hxk-button>` : html`<hxk-badge>${d.status === 'done' ? 'fatta' : d.status === 'proposed' ? tr('to confirm') : d.status}</hxk-badge>`}</div>
+        ${d.status === 'open' ? html`<hxk-button variant="primary" icon="check" @click=${async () => { const r = await call(this.host, 'POST', `/${d.id}/done`); if (r.ok) { this.d = r.data; this.host.toast(tr('Done'), 'success'); } }}>${tr("Done")}</hxk-button>` : html`<hxk-badge>${d.status === 'done' ? 'done' : d.status === 'proposed' ? tr('to confirm') : d.status}</hxk-badge>`}</div>
       <div class="card col"><div class="between"><h3>${tr("Tip")}</h3><hxk-button size="sm" variant="ghost" icon="sparkle" ?loading=${this.thinking} @click=${() => this.advise()}>${tr("Ask for advice")}</hxk-button></div>
         ${d.advice ? html`<div class="advice">${d.advice}</div>` : html`<div class="small muted">${tr("No advice for now.")}</div>`}</div>
       <div class="card col">${this.form(this.draft, (k, v) => { this.draft = { ...this.draft, [k]: v }; })}
@@ -162,7 +162,7 @@ export class KairosWidget extends HestiaElement {
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const n = this.ctx?.size === 's' ? 1 : this.ctx?.size === 'm' ? 3 : 6;
     return html`<div class="col" style="gap:6px">
-      ${this.items.length ? this.items.slice(0, n).map(d => html`<div class="between small click" @click=${() => this.host.navigate('scadenza/' + d.id)}>
+      ${this.items.length ? this.items.slice(0, n).map(d => html`<div class="between small click" @click=${() => this.host.navigate('deadline/' + d.id)}>
         <span class="truncate">${d.title}</span><hxk-badge tone=${tone(d.in_days, d.lead_days)}>${when(d.in_days)}</hxk-badge></div>`)
         : html`<div class="small muted">${tr("Nothing in the next 30 days.")}</div>`}
     </div>`;

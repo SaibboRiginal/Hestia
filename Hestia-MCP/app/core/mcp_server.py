@@ -92,7 +92,7 @@ class MCPServer:
         if ctx.get("external"):
             # An external access never chooses session, chat or client: the module sees only who it is.
             call_ctx = {"access": ctx.get("access_name") or "external",
-                        "origin": f"esterno:{ctx.get('access_name') or 'external'}"}
+                        "origin": f"external:{ctx.get('access_name') or 'external'}"}
         else:
             # X-Hestia-Client towards the module = the client the user talks from (given by internal callers),
             # not who calls this server.

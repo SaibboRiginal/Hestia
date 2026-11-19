@@ -114,7 +114,7 @@ def _fetch_mcp_tools_as_commands(
                 "clients": _normalize_clients(tool.get("clients")),
                 "telegram_visible": bool(tool.get("telegram_visible", False)),
                 "telegram_help_visible": bool(tool.get("telegram_help_visible", True)),
-                "telegram_group": str(tool.get("telegram_group", "altro")).strip(),
+                "telegram_group": str(tool.get("telegram_group", "other")).strip(),
                 "telegram": tool.get("telegram") if isinstance(tool.get("telegram"), dict) else {},
                 # Full JSON Schema (enums, formats, limits): clients build their inputs from it.
                 "input_schema": tool.get("inputSchema") if isinstance(tool.get("inputSchema"), dict) else {},
@@ -166,8 +166,8 @@ def _normalize_clients(raw_clients: list | None) -> list[str]:
 def _mcp_commands_cache_invalidate(service_name: str | None = None) -> None:
     """Clear the MCP tool discovery cache (used on registry changes)."""
     if service_name:
-        keys_to_del = [k for k in _mcp_commands_cache if k.startswith(f"{service_name}:")]
-        for k in keys_to_del:
+        stale_keys = [k for k in _mcp_commands_cache if k.startswith(f"{service_name}:")]
+        for k in stale_keys:
             _mcp_commands_cache.pop(k, None)
     else:
         _mcp_commands_cache.clear()
@@ -331,7 +331,7 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
 
     - ``tool`` (MCP, client ``*``) and ``command`` (per client) come from the existing discovery.
     - ``page`` · ``widget`` · ``quick_action`` (+ ``bundle``) come from each module's UI manifest.
-    Offline modules keep their last manifest with ``online: false`` so clients can say "non raggiungibile".
+    Offline modules keep their last manifest with ``online: false`` so clients can say "unreachable".
     ``local_manifests`` = manifests served in-process (Hub's own plugin: Hub never registers with itself);
     always online, and they win over a registered service with the same name.
     """

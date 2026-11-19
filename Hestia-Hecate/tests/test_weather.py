@@ -70,8 +70,8 @@ class FakeHttp:
         return sum(1 for u, _ in self.calls if kind in u)
 
 
-PLACES = [{"id": "casa", "name": "Casa", "address": "Via Roma 3, 20121 Milano", "kind": "home"},
-          {"id": "palestra", "name": "Palestra", "address": "Lugano", "kind": "other", "lat": 46.0, "lon": 8.95}]
+PLACES = [{"id": "home", "name": "Casa", "address": "Via Roma 3, 20121 Milano", "kind": "home"},
+          {"id": "gym", "name": "Palestra", "address": "Lugano", "kind": "other", "lat": 46.0, "lon": 8.95}]
 
 
 def _svc(places=None, http=None, clock=None):
@@ -102,7 +102,7 @@ def test_address_resolves_through_its_city_and_saved_coords_skip_geocoding():
     svc, _ = _svc(http=http)
     assert svc.resolve("casa")["lat"] == 45.46
     r = svc.resolve("che tempo fa in palestra")
-    assert r["saved"] == "palestra" and r["lat"] == 46.0
+    assert r["saved"] == "gym" and r["lat"] == 46.0
     assert all("Lugano" not in str(p.get("name")) for u, p in http.calls if "geocoding" in u)
 
 
@@ -172,7 +172,7 @@ def test_provider_down_serves_stale_or_error():
 def test_resolved_places_feed_settings_editor():
     svc, _ = _svc(places=PLACES + [{"id": "x", "name": "Atlantide", "kind": "other"}])
     rows = {r["id"]: r for r in svc.resolved_places()}
-    assert rows["casa"]["ok"] and "Milano" in rows["casa"]["resolved"]
+    assert rows["home"]["ok"] and "Milano" in rows["home"]["resolved"]
     assert rows["x"]["ok"] is False
 
 
@@ -196,7 +196,7 @@ def test_endpoints(client):
     assert client.post("/api/gateway/weather/at", json={"items": "x"}).status_code == 400
     assert client.get("/api/gateway/weather/place", params={"q": "Milano"}).json()["places"][0]["name"] == "Milano"
     opts = client.get("/api/gateway/weather/places").json()["options"]
-    assert {o["value"] for o in opts} == {"casa", "palestra"}
+    assert {o["value"] for o in opts} == {"home", "gym"}
 
 
 @pytest.mark.api

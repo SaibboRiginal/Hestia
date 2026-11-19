@@ -14,7 +14,7 @@ chat wait. The bus sits in Oracle, the only one that calls models:
   A module call (``/api/llm/generate``) made while an owner turn is waiting for a tool is promoted to ``chat``:
   it is very likely that tool's own work (``owner_waiting``).
 - **re-entrant**: a thread that already holds a worker never waits again (no deadlock with one worker).
-- **deadline** (dossier ``2026-11-18-problemi-del-test`` A): a call carries its caller's deadline (Hub header
+- **deadline** (dossier ``2026-11-18-real-test-problems`` A): a call carries its caller's deadline (Hub header
   ``X-Hestia-Deadline``). If it is still in line when the caller has given up, it never runs (``Expired``): no answer
   nobody reads, no pile of abandoned calls.
 - **the owner goes first, even over a running call**: when an owner turn finds every worker busy with background
@@ -147,8 +147,8 @@ def _preempt_for_owner() -> None:
 
 
 def for_origin(origin: dict | None) -> str:
-    """``chat`` for a request the owner started (``hestia_common.origin`` level ``utente``), else ``background``."""
-    return CHAT if (origin or {}).get("level") == "utente" else BACKGROUND
+    """``chat`` for a request the owner started (``hestia_common.origin`` level ``user``), else ``background``."""
+    return CHAT if (origin or {}).get("level") == "user" else BACKGROUND
 
 
 @contextlib.contextmanager

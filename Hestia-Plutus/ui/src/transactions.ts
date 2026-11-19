@@ -1,6 +1,6 @@
 /**
- * <plutus-transactions> — every movement of a month: search, category, account, «da rivedere»; add by hand.
- * <plutus-transaction>  — one movement: edit, change category (and «sempre per questo esercente»), links, delete.
+ * <plutus-transactions> — every movement of a month: search, category, account, «to review»; add by hand.
+ * <plutus-transaction>  — one movement: edit, change category (and «always for this merchant»), links, delete.
  * <plutus-tx-form>      — add / edit sheet (event 'close', detail = saved row or null).
  */
 import { HestiaElement, html, nothing, plural, tr } from '@hestia/webui-sdk';
@@ -18,7 +18,7 @@ export class PlutusTxForm extends HestiaElement {
     super.connectedCallback();
     const t = this.tx || {};
     this.f = { type: t.amount > 0 ? 'income' : 'expense', amount: t.amount ? String(Math.abs(t.amount)).replace('.', ',') : '',
-      merchant: t.merchant || '', category: t.category || '', date: t.date || today(), account: t.account || 'contanti',
+      merchant: t.merchant || '', category: t.category || '', date: t.date || today(), account: t.account || 'cash',
       notes: t.notes || '', learn: false };
     this.m = await meta(this.host);
   }
@@ -77,8 +77,8 @@ export class PlutusTransactions extends HestiaElement {
   connectedCallback() {
     super.connectedCallback();
     const q = this.ctx?.query || {};
-    this.cat = q.categoria || ''; this.q = q.q || ''; this.review = q.rivedere === '1'; this.month = q.mese || ''; this.account = q.conto || '';
-    if (q.nuovo === '1') this.form = true;
+    this.cat = q.category || ''; this.q = q.q || ''; this.review = q.review === '1'; this.month = q.month || ''; this.account = q.account || '';
+    if (q.new === '1') this.form = true;
     this.load();
     this.onHost('refresh', () => this.load());
   }
@@ -103,7 +103,7 @@ export class PlutusTransactions extends HestiaElement {
     const days: Record<string, any[]> = {};
     for (const t of items || []) (days[t.date] ||= []).push(t);
     return html`<div class="page">
-      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Transactions")}</h1></div>
+      <div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Transactions")}</h1></div>
         <hxk-button variant="primary" icon="plus" @click=${() => (this.form = true)}>${tr("New")}</hxk-button></div>
       <div class="row wrap">
         ${this.review ? html`<span class="pill warn">${tr("Only to review")}</span>` : html`<hxk-button size="sm" variant="ghost" icon="chevron-left" @click=${() => this.shift(-1)}></hxk-button>
@@ -152,7 +152,7 @@ export class PlutusTransaction extends HestiaElement {
   private async deleteTx() {
     if (!(await this.host.confirm(tr('Delete the transaction?'), `${this.t.merchant || tr('Transaction')} ${money(this.t.amount, this.t.currency, true)}`, { label: tr('Delete'), danger: true }))) return;
     const r = await call(this.host, 'DELETE', `${API}/transactions/${this.t.id}`);
-    if (r.ok) { this.host.toast(r.data.label, 'success'); this.host.navigate('movimenti'); }
+    if (r.ok) { this.host.toast(r.data.label, 'success'); this.host.navigate('transactions'); }
   }
   render() {
     const t = this.t;
@@ -163,7 +163,7 @@ export class PlutusTransaction extends HestiaElement {
     const cats = (this.m?.categories || []).filter((c: any) => t.amount > 0 ? c.kind !== 'expense' : c.kind !== 'income');
     const accounts: Record<string, string> = Object.fromEntries((this.m?.accounts || []).map((a: any) => [a.id, a.name]));
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('movimenti')}>${tr('‹ Transactions')}</button></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('transactions')}>${tr('‹ Transactions')}</button></div>
       <div class="card col">
         <div class="between"><div><h1>${t.merchant || tr('Transaction')}</h1><div class="muted small">${dayLabel(t.date)} · ${accounts[t.account] || t.account} · ${SOURCE[t.source] || t.source}</div></div>
           <div class="big amt ${t.amount > 0 ? 'in' : ''}">${money(t.amount, cur, true)}</div></div>

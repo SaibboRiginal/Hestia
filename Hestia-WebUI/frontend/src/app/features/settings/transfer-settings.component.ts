@@ -40,8 +40,8 @@ const OUTCOMES: { key: keyof SectionReport['items']; label: string; tone: string
 ];
 
 /**
- * Impostazioni → Esporta e importa (docs/work/2026-10-20-import-export): pick modules → sections → items, download a
- * `.hestia` file; on the other Hestia open it, choose Aggiungi / Unisci / Sostituisci, see the preview, import.
+ * Settings → Export and import (docs/work/2026-10-20-import-export): pick modules → sections → items, download a
+ * `.hestia` file; on the other Hestia open it, choose Add / Merge / Replace, see the preview, import.
  * A restore point (the same sections as they were) is saved before every import.
  */
 @Component({

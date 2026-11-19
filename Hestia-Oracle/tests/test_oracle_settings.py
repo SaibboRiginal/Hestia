@@ -81,7 +81,7 @@ class TestDeclaredSettings:
     def test_removed_env_vars_are_no_longer_read(self):
         app = Path(__file__).resolve().parents[1] / "app"
         source = "\n".join(p.read_text(encoding="utf-8") for p in app.rglob("*.py"))
-        for env_name in list(EXPECTED) + ["ORACLE_TIMEZONE", "HESTIA_PERSONA", "ORACLE_AGENT_ACTION_TOOL_POLICY",
+        for env_name in list(EXPECTED) + ["ORACLE_TIMEZONE", "HESTIA_PERSON", "ORACLE_AGENT_ACTION_TOOL_POLICY",
                                           "ORACLE_THINKING_FAMILIES", "ORACLE_VISION_MODEL_PREFIXES",
                                           "ORACLE_PREFERENCE_DOMAINS", "ORACLE_GEMINI_", "ORACLE_PROMPT_AB_SALT",
                                           "ORACLE_PROMPT_DYNAMIC_BOUNDARY", "ORACLE_DOMAINS_CACHE_TTL_SECONDS"]:

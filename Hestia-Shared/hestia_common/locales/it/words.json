@@ -1,0 +1,1929 @@
+{
+ "_about": "Words a parser looks for in what the owner writes, by list name (hestia_common.i18n.words). One file per language; the code never holds them.",
+ "area.day": [
+  "giornata",
+  "pianificazione",
+  "calendario",
+  "meteo",
+  "oggi"
+ ],
+ "area.deadlines": [
+  "scadenze"
+ ],
+ "area.training": [
+  "allenamento",
+  "palestra"
+ ],
+ "area.nutrition": [
+  "alimentazione",
+  "cibo",
+  "dieta"
+ ],
+ "area.mood": [
+  "umore",
+  "come sto"
+ ],
+ "area.people": [
+  "persone"
+ ],
+ "area.wardrobe": [
+  "guardaroba",
+  "armadio"
+ ],
+ "area.expenses": [
+  "spese",
+  "finanze",
+  "soldi"
+ ],
+ "area.houses": [
+  "case",
+  "immobiliare",
+  "case in vendita"
+ ],
+ "area.home": [
+  "casa",
+  "domotica"
+ ],
+ "area.mail": [
+  "posta"
+ ],
+ "area.memory": [
+  "memoria",
+  "preferenze",
+  "ricerca"
+ ],
+ "area.documents": [
+  "documenti"
+ ],
+ "area.notifications": [
+  "notifiche",
+  "avvisi"
+ ],
+ "area.development": [
+  "sviluppo"
+ ],
+ "area.look": [
+  "aspetto",
+  "immagini"
+ ],
+ "area.system": [
+  "sistema",
+  "impostazioni",
+  "salute"
+ ],
+ "area.other": [
+  "altro"
+ ],
+ "token_sample": [
+  "La volpe marrone veloce salta sopra il cane pigro."
+ ],
+ "mood.rules": {
+  "lexicon": [
+   [
+    "stanc[oa] mort[oa]|distrutt[oa]|esaust[oa]|sfinit[oa]|a pezzi|cott[oa]|spompat[oa]|stanchissim[oa]",
+    "tired",
+    2,
+    1,
+    null
+   ],
+   [
+    "stanc[oa]|assonnat[oa]|senza energi[ae]|scaric[oa]",
+    "tired",
+    3,
+    2,
+    null
+   ],
+   [
+    "carichissim[oa]|gasatissim[oa]|pien[oa] di energia",
+    "energized",
+    5,
+    5,
+    null
+   ],
+   [
+    "caric[oa]|gasat[oa]|in forma|spacco",
+    "energized",
+    4,
+    5,
+    null
+   ],
+   [
+    "seren[oa]|tranquill[oa]|rilassat[oa]|in pace",
+    "calm",
+    4,
+    null,
+    1
+   ],
+   [
+    "felicissim[oa]|alla grande|benissimo|al settimo cielo|da dio",
+    "happy",
+    5,
+    null,
+    null
+   ],
+   [
+    "felice|content[oa]|allegr[oa]|di buon umore|soddisfatt[oa]|bene",
+    "happy",
+    4,
+    null,
+    null
+   ],
+   [
+    "motivat[oa]|carico di voglia|ispirat[oa]",
+    "motivated",
+    4,
+    4,
+    null
+   ],
+   [
+    "annoiat[oa]|apatic[oa]",
+    "bored",
+    3,
+    2,
+    null
+   ],
+   [
+    "nervos[oa]|irritat[oa]|agitat[oa]|teso|tesa|sotto pressione",
+    "nervous",
+    2,
+    null,
+    4
+   ],
+   [
+    "ansios[oa]|in ansia|preoccupat[oa]|stressat[oa]|stressatissim[oa]|in panico",
+    "anxious",
+    2,
+    null,
+    5
+   ],
+   [
+    "triste|depress[oa]|abbattut[oa]|malinconic[oa]|giù di morale",
+    "sad",
+    2,
+    null,
+    null
+   ],
+   [
+    "malissimo|uno schifo|di merda|a terra|uno straccio",
+    "down",
+    1,
+    null,
+    null
+   ],
+   [
+    "giù|giu|demoralizzat[oa]|di cattivo umore|scoraggiat[oa]|male",
+    "down",
+    2,
+    null,
+    null
+   ],
+   [
+    "arrabbiat[oa]|incazzat[oa]|furios[oa]|furibond[oa]",
+    "angry",
+    2,
+    null,
+    4
+   ],
+   [
+    "malat[oa]|influenzat[oa]|raffreddat[oa]|con la febbre|ho la febbre|ho mal di testa|ho l'influenza",
+    "ill",
+    2,
+    2,
+    null
+   ],
+   [
+    "così così|cosi cosi|insomma|normale",
+    null,
+    3,
+    null,
+    null
+   ]
+  ],
+  "day": "\\b(?:che |una )?giornata (pesante|dura|storta|no|di merda|schifosa|orribile|infinita|ottima|fantastica|splendida|bellissima|top|perfetta|tranquilla|leggera)\\b",
+  "day_levels": {
+   "pesante": 2,
+   "dura": 2,
+   "storta": 2,
+   "no": 2,
+   "di merda": 1,
+   "schifosa": 1,
+   "orribile": 1,
+   "infinita": 2,
+   "ottima": 5,
+   "fantastica": 5,
+   "splendida": 5,
+   "bellissima": 5,
+   "top": 5,
+   "perfetta": 5,
+   "tranquilla": 4,
+   "leggera": 4
+  },
+  "day_tired": [
+   "pesante",
+   "dura",
+   "infinita"
+  ],
+  "needs_verb": [
+   "bene",
+   "male",
+   "benissimo",
+   "malissimo",
+   "normale",
+   "insomma",
+   "così così",
+   "cosi cosi",
+   "teso",
+   "tesa",
+   "a terra",
+   "da dio",
+   "cotto",
+   "cotta",
+   "giu"
+  ],
+  "first_person": "\\b(sono|son|mi sento|sto|mi sono|mi trovo|oggi|stamattina|stasera|stanotte|ultimamente|in questi giorni|da qualche giorno|che giornata|giornata|spacco|ho (?:la febbre|mal di \\w+|l'influenza))\\b",
+  "verb_before": "\\b(sto|mi sento|sono|son|mi sono sentit[oa])\\s+(?:proprio\\s+|davvero\\s+|molto\\s+|un po'?\\s+|abbastanza\\s+|così\\s+|troppo\\s+)?$",
+  "own_verb": "\\b(sono|mi sento|sto)\\b",
+  "third_person": "\\b(è|e'|sei|siamo|siete|era|erano|sembra|sembri)\\b",
+  "not_now": "^\\s*(perch[eé]|come mai|se|quando|anche se|nel caso|qualora|chi|cosa)\\b|\\b(ieri|l'altro ieri|la settimana scorsa|ero|fossi|sarei|sarò|sarai)\\b",
+  "negation": "\\b(non|mai|né|nemmeno|neanche|per niente)\\s+(?:\\w+\\s+){0,2}$",
+  "negated_good": [
+   "bene",
+   "benissimo",
+   "in forma",
+   "alla grande"
+  ],
+  "split": ",|\\bma\\b|\\bperò\\b|\\be poi\\b",
+  "continue_with": "sono ",
+  "undo": "\\bnon (?:lo |l')?(?:segnare|segnarlo|registrare|registrarlo|salvare|salvarlo|scriverlo)\\b|\\btogli(?:lo)? (?:l'umore|dall'umore|quello che ho detto)\\b|\\bcancella (?:l'umore|l'ultimo umore)\\b|\\bnon (?:segnare|registrare) l'umore\\b|\\bnon è vero,? (?:sto bene|non sono)\\b"
+ },
+ "mood.label.tired": [
+  "stanco",
+  "stanca"
+ ],
+ "mood.label.energized": [
+  "carico",
+  "carica"
+ ],
+ "mood.label.calm": [
+  "sereno",
+  "serena"
+ ],
+ "mood.label.happy": [
+  "contento",
+  "contenta",
+  "felice"
+ ],
+ "mood.label.motivated": [
+  "motivato",
+  "motivata"
+ ],
+ "mood.label.bored": [
+  "annoiato",
+  "annoiata"
+ ],
+ "mood.label.nervous": [
+  "nervoso",
+  "nervosa"
+ ],
+ "mood.label.anxious": [
+  "ansioso",
+  "ansiosa"
+ ],
+ "mood.label.sad": [
+  "triste"
+ ],
+ "mood.label.down": [
+  "giù",
+  "giu"
+ ],
+ "mood.label.angry": [
+  "arrabbiato",
+  "arrabbiata"
+ ],
+ "mood.label.ill": [
+  "malato",
+  "malata"
+ ],
+ "mood.cause.work": [
+  "lavoro"
+ ],
+ "mood.cause.sleep": [
+  "sonno"
+ ],
+ "mood.cause.people": [
+  "persone"
+ ],
+ "mood.cause.health": [
+  "salute"
+ ],
+ "mood.cause.sport": [
+  "sport"
+ ],
+ "mood.cause.money": [
+  "soldi"
+ ],
+ "mood.cause.home": [
+  "casa"
+ ],
+ "mood.cause.free_time": [
+  "tempo libero"
+ ],
+ "mood.cause.weather": [
+  "meteo",
+  "tempo"
+ ],
+ "day.today": [
+  "oggi"
+ ],
+ "day.yesterday": [
+  "ieri"
+ ],
+ "months": [
+  "gennaio",
+  "febbraio",
+  "marzo",
+  "aprile",
+  "maggio",
+  "giugno",
+  "luglio",
+  "agosto",
+  "settembre",
+  "ottobre",
+  "novembre",
+  "dicembre"
+ ],
+ "kairos.due_re": [
+  "scaden",
+  "entro il",
+  "da pagare",
+  "rinnov",
+  "revision",
+  "bollo",
+  "fattura",
+  "bolletta",
+  "pagamento entro"
+ ],
+ "kairos.mail": [
+  "scadenza",
+  "scade",
+  "bolletta",
+  "fattura",
+  "rinnovo",
+  "bollo",
+  "revisione",
+  "polizza",
+  "pagamento"
+ ],
+ "kairos.category_re.bill": [
+  "bollett",
+  "luce",
+  "gas",
+  "acqua",
+  "energia",
+  "enel",
+  "fattura"
+ ],
+ "kairos.category_re.insurance": [
+  "assicura",
+  "polizza",
+  "rca"
+ ],
+ "kairos.category_re.car_tax": [
+  "bollo"
+ ],
+ "kairos.category_re.inspection": [
+  "revision"
+ ],
+ "kairos.category_re.service": [
+  "tagliand",
+  "manutenzion"
+ ],
+ "kairos.category_re.document": [
+  "carta d'identit",
+  "passaporto",
+  "patente",
+  "permesso"
+ ],
+ "kairos.category_re.subscription": [
+  "abbonament",
+  "rinnovo"
+ ],
+ "kairos.category_re.tax": [
+  "f24",
+  "imu",
+  "tari",
+  "tassa",
+  "agenzia delle entrate"
+ ],
+ "people.anniversary": [
+  "anniversario"
+ ],
+ "address.street_word": [
+  "via",
+  "viale",
+  "piazza",
+  "corso",
+  "largo",
+  "vicolo",
+  "strada",
+  "piazzale",
+  "località"
+ ],
+ "common.greeting": [
+  "ciao",
+  "ehi",
+  "buongiorno",
+  "buonasera",
+  "grazie"
+ ],
+ "common.next_week": [
+  "prossima",
+  "prossima settimana"
+ ],
+ "common.no": [
+  "annulla",
+  "lascia stare",
+  "lascia perdere"
+ ],
+ "common.no_word": [
+  "no",
+  "falso"
+ ],
+ "common.none_word": [
+  "nessuno",
+  "nessuna",
+  "niente",
+  "nulla"
+ ],
+ "common.yes": [
+  "s[iì]",
+  "va bene",
+  "vai",
+  "procedi",
+  "fallo",
+  "confermo",
+  "certo",
+  "d'accordo",
+  "perfetto"
+ ],
+ "common.yes_word": [
+  "si",
+  "sì",
+  "conferma",
+  "vai",
+  "certo",
+  "s",
+  "vero"
+ ],
+ "control.hint": [
+  "avvis",
+  "promemori",
+  "ricord(?:a|ami|armi)",
+  "sollecit",
+  "insist",
+  "silenz",
+  "zitt",
+  "non\\s+scriv",
+  "non\\s+chieder",
+  "smetti",
+  "basta\\s+(?:con|di|mandar|scriver)",
+  "di\\s+notte",
+  "orari",
+  "proattiv",
+  "di\\s+(?:più|meno)\\s+spesso",
+  "ogni\\s+tanto",
+  "\\b(?:alle|dalle|fino\\s+alle)\\s+\\d"
+ ],
+ "date.day_after_tomorrow": [
+  "dopodomani"
+ ],
+ "date.day_before_yesterday": [
+  "l'altro ieri",
+  "altroieri",
+  "l'altroieri"
+ ],
+ "date.month.1": [
+  "gennaio"
+ ],
+ "date.month.10": [
+  "ottobre"
+ ],
+ "date.month.11": [
+  "novembre"
+ ],
+ "date.month.12": [
+  "dicembre"
+ ],
+ "date.month.2": [
+  "febbraio"
+ ],
+ "date.month.3": [
+  "marzo"
+ ],
+ "date.month.4": [
+  "aprile"
+ ],
+ "date.month.5": [
+  "maggio"
+ ],
+ "date.month.6": [
+  "giugno"
+ ],
+ "date.month.7": [
+  "luglio"
+ ],
+ "date.month.8": [
+  "agosto"
+ ],
+ "date.month.9": [
+  "settembre"
+ ],
+ "date.month_abbr.1": [
+  "gen"
+ ],
+ "date.month_abbr.10": [
+  "ott"
+ ],
+ "date.month_abbr.11": [
+  "nov"
+ ],
+ "date.month_abbr.12": [
+  "dic"
+ ],
+ "date.month_abbr.2": [
+  "feb"
+ ],
+ "date.month_abbr.3": [
+  "mar"
+ ],
+ "date.month_abbr.4": [
+  "apr"
+ ],
+ "date.month_abbr.5": [
+  "mag"
+ ],
+ "date.month_abbr.6": [
+  "giu"
+ ],
+ "date.month_abbr.7": [
+  "lug"
+ ],
+ "date.month_abbr.8": [
+  "ago"
+ ],
+ "date.month_abbr.9": [
+  "set"
+ ],
+ "date.time_prefix": [
+  "alle",
+  "ore",
+  "alle ore"
+ ],
+ "date.today": [
+  "oggi"
+ ],
+ "date.tomorrow": [
+  "domani"
+ ],
+ "date.weekday.0": [
+  "lunedì",
+  "lunedi"
+ ],
+ "date.weekday.1": [
+  "martedì",
+  "martedi"
+ ],
+ "date.weekday.2": [
+  "mercoledì",
+  "mercoledi"
+ ],
+ "date.weekday.3": [
+  "giovedì",
+  "giovedi"
+ ],
+ "date.weekday.4": [
+  "venerdì",
+  "venerdi"
+ ],
+ "date.weekday.5": [
+  "sabato"
+ ],
+ "date.weekday.6": [
+  "domenica"
+ ],
+ "date.yesterday": [
+  "ieri"
+ ],
+ "goal.stop": [
+  "ferma",
+  "fermati",
+  "basta",
+  "annulla"
+ ],
+ "goal.word": [
+  "obiettivo"
+ ],
+ "hercules.activity.bike": [
+  "bici",
+  "bicicletta",
+  "ciclismo"
+ ],
+ "hercules.activity.run": [
+  "corsa",
+  "correre",
+  "corro",
+  "corso"
+ ],
+ "hercules.activity.swim": [
+  "nuoto",
+  "nuotare",
+  "piscina"
+ ],
+ "hercules.activity.walk": [
+  "camminata",
+  "camminare",
+  "passeggiata",
+  "escursione"
+ ],
+ "hercules.body.ankle": [
+  "caviglie",
+  "caviglia"
+ ],
+ "hercules.body.biceps": [
+  "braccia"
+ ],
+ "hercules.body.chest": [
+  "petto"
+ ],
+ "hercules.body.elbow": [
+  "gomiti",
+  "gomito"
+ ],
+ "hercules.body.hip": [
+  "anche",
+  "anca"
+ ],
+ "hercules.body.knee": [
+  "ginocchia",
+  "ginocchio"
+ ],
+ "hercules.body.lats": [
+  "dorso"
+ ],
+ "hercules.body.lower_back": [
+  "lombare",
+  "schiena bassa"
+ ],
+ "hercules.body.quads": [
+  "gambe",
+  "quadricipiti"
+ ],
+ "hercules.body.shoulder": [
+  "spalle",
+  "spalla"
+ ],
+ "hercules.body.wrist": [
+  "polsi",
+  "polso"
+ ],
+ "hercules.exercise.assisted_dip": [
+  "dip assistiti"
+ ],
+ "hercules.exercise.assisted_pull_up": [
+  "trazioni assistite"
+ ],
+ "hercules.exercise.back_squat": [
+  "squat con bilanciere"
+ ],
+ "hercules.exercise.band_pull_apart": [
+  "pull apart con elastico"
+ ],
+ "hercules.exercise.barbell_curl": [
+  "curl con bilanciere"
+ ],
+ "hercules.exercise.barbell_row": [
+  "rematore con bilanciere"
+ ],
+ "hercules.exercise.barbell_shrug": [
+  "scrollate con bilanciere"
+ ],
+ "hercules.exercise.bench_dip": [
+  "dip su panca"
+ ],
+ "hercules.exercise.bench_press": [
+  "panca piana con bilanciere",
+  "panca"
+ ],
+ "hercules.exercise.bodyweight_squat": [
+  "squat a corpo libero"
+ ],
+ "hercules.exercise.cable_crunch": [
+  "crunch ai cavi"
+ ],
+ "hercules.exercise.cable_curl": [
+  "curl ai cavi"
+ ],
+ "hercules.exercise.cable_fly": [
+  "croci ai cavi"
+ ],
+ "hercules.exercise.cable_kickback": [
+  "slanci ai cavi"
+ ],
+ "hercules.exercise.cable_lateral_raise": [
+  "alzate laterali al cavo"
+ ],
+ "hercules.exercise.chest_supported_row": [
+  "rematore con petto appoggiato"
+ ],
+ "hercules.exercise.chin_up": [
+  "trazioni presa supina"
+ ],
+ "hercules.exercise.close_grip_bench_press": [
+  "panca presa stretta"
+ ],
+ "hercules.exercise.close_grip_pulldown": [
+  "lat machine presa stretta"
+ ],
+ "hercules.exercise.concentration_curl": [
+  "curl di concentrazione"
+ ],
+ "hercules.exercise.db_bench_press": [
+  "panca piana con manubri"
+ ],
+ "hercules.exercise.db_curl": [
+  "curl con manubri"
+ ],
+ "hercules.exercise.db_fly": [
+  "croci con manubri"
+ ],
+ "hercules.exercise.db_incline_press": [
+  "panca inclinata con manubri"
+ ],
+ "hercules.exercise.db_romanian_deadlift": [
+  "stacco rumeno con manubri"
+ ],
+ "hercules.exercise.db_row": [
+  "rematore con manubrio"
+ ],
+ "hercules.exercise.db_shoulder_press": [
+  "shoulder press con manubri"
+ ],
+ "hercules.exercise.db_shrug": [
+  "scrollate con manubri"
+ ],
+ "hercules.exercise.db_tricep_extension": [
+  "estensioni tricipiti con manubrio"
+ ],
+ "hercules.exercise.deadlift": [
+  "stacco da terra",
+  "stacco"
+ ],
+ "hercules.exercise.decline_bench_press": [
+  "panca declinata con bilanciere"
+ ],
+ "hercules.exercise.decline_sit_up": [
+  "sit up su panca declinata"
+ ],
+ "hercules.exercise.dip": [
+  "dip alle parallele"
+ ],
+ "hercules.exercise.ez_curl": [
+  "curl con bilanciere ez"
+ ],
+ "hercules.exercise.front_raise": [
+  "alzate frontali"
+ ],
+ "hercules.exercise.glute_bridge": [
+  "ponte glutei"
+ ],
+ "hercules.exercise.hammer_curl": [
+  "curl a martello"
+ ],
+ "hercules.exercise.hanging_knee_raise": [
+  "ginocchia al petto alla sbarra"
+ ],
+ "hercules.exercise.hanging_leg_raise": [
+  "sollevamento gambe alla sbarra"
+ ],
+ "hercules.exercise.hip_thrust": [
+  "hip thrust con bilanciere"
+ ],
+ "hercules.exercise.incline_bench_press": [
+  "panca inclinata con bilanciere"
+ ],
+ "hercules.exercise.incline_db_curl": [
+  "curl su panca inclinata"
+ ],
+ "hercules.exercise.inverted_row": [
+  "rematore inverso"
+ ],
+ "hercules.exercise.kb_goblet_squat": [
+  "goblet squat con kettlebell"
+ ],
+ "hercules.exercise.kb_swing": [
+  "swing con kettlebell"
+ ],
+ "hercules.exercise.lat_pulldown": [
+  "lat machine avanti"
+ ],
+ "hercules.exercise.lateral_raise": [
+  "alzate laterali con manubri"
+ ],
+ "hercules.exercise.leg_curl_lying": [
+  "leg curl sdraiato"
+ ],
+ "hercules.exercise.leg_curl_seated": [
+  "leg curl seduto"
+ ],
+ "hercules.exercise.leg_press": [
+  "pressa"
+ ],
+ "hercules.exercise.leg_press_calf_raise": [
+  "calf alla leg press"
+ ],
+ "hercules.exercise.lying_leg_raise": [
+  "sollevamento gambe a terra"
+ ],
+ "hercules.exercise.machine_lateral_raise": [
+  "alzate laterali alla macchina"
+ ],
+ "hercules.exercise.overhead_press": [
+  "lento avanti con bilanciere"
+ ],
+ "hercules.exercise.overhead_tricep_extension": [
+  "french press sopra la testa"
+ ],
+ "hercules.exercise.power_clean": [
+  "girata al petto"
+ ],
+ "hercules.exercise.preacher_curl": [
+  "curl alla panca scott"
+ ],
+ "hercules.exercise.pull_up": [
+  "trazioni alla sbarra",
+  "trazioni"
+ ],
+ "hercules.exercise.push_up": [
+  "piegamenti",
+  "flessioni"
+ ],
+ "hercules.exercise.rear_delt_fly": [
+  "alzate posteriori"
+ ],
+ "hercules.exercise.reverse_curl": [
+  "curl inverso"
+ ],
+ "hercules.exercise.reverse_lunge": [
+  "affondi indietro"
+ ],
+ "hercules.exercise.romanian_deadlift": [
+  "stacco rumeno"
+ ],
+ "hercules.exercise.rope_pushdown": [
+  "pushdown con corda"
+ ],
+ "hercules.exercise.seated_cable_row": [
+  "pulley basso"
+ ],
+ "hercules.exercise.seated_calf_raise": [
+  "calf seduto"
+ ],
+ "hercules.exercise.shoulder_press_machine": [
+  "shoulder press alla macchina"
+ ],
+ "hercules.exercise.side_plank": [
+  "plank laterale"
+ ],
+ "hercules.exercise.skull_crusher": [
+  "french press con ez"
+ ],
+ "hercules.exercise.sled_push": [
+  "spinta slitta"
+ ],
+ "hercules.exercise.smith_bench_press": [
+  "panca piana al multipower"
+ ],
+ "hercules.exercise.smith_squat": [
+  "squat al multipower"
+ ],
+ "hercules.exercise.standing_calf_raise": [
+  "calf in piedi"
+ ],
+ "hercules.exercise.stiff_leg_deadlift": [
+  "stacco a gambe tese"
+ ],
+ "hercules.exercise.straight_arm_pulldown": [
+  "pulldown a braccia tese"
+ ],
+ "hercules.exercise.sumo_deadlift": [
+  "stacco sumo"
+ ],
+ "hercules.exercise.trap_bar_deadlift": [
+  "stacco con trap bar"
+ ],
+ "hercules.exercise.tricep_pushdown": [
+  "pushdown ai cavi"
+ ],
+ "hercules.exercise.upright_row": [
+  "tirate al mento"
+ ],
+ "hercules.exercise.walking_lunge": [
+  "affondi in camminata"
+ ],
+ "hercules.exercise.weighted_dip": [
+  "dip zavorrati"
+ ],
+ "hercules.exercise.weighted_pull_up": [
+  "trazioni zavorrate"
+ ],
+ "hercules.exercise.weighted_push_up": [
+  "piegamenti zavorrati"
+ ],
+ "hercules.exercise.wrist_curl": [
+  "curl per polsi"
+ ],
+ "hercules.template.legs": [
+  "gamb"
+ ],
+ "hercules.template.pull": [
+  "trazion",
+  "schiena"
+ ],
+ "hercules.template.push": [
+  "spinta",
+  "petto"
+ ],
+ "kairos.category.bill": [
+  "bollett",
+  "luce",
+  "gas",
+  "acqua",
+  "energia",
+  "enel",
+  "fattura"
+ ],
+ "kairos.category.car_tax": [
+  "bollo"
+ ],
+ "kairos.category.document": [
+  "carta d'identit",
+  "passaporto",
+  "patente",
+  "permesso"
+ ],
+ "kairos.category.inspection": [
+  "revision"
+ ],
+ "kairos.category.insurance": [
+  "assicura",
+  "polizza",
+  "rca"
+ ],
+ "kairos.category.service": [
+  "tagliand",
+  "manutenzion"
+ ],
+ "kairos.category.subscription": [
+  "abbonament",
+  "rinnovo"
+ ],
+ "kairos.category.tax": [
+  "f24",
+  "imu",
+  "tari",
+  "tassa",
+  "agenzia delle entrate"
+ ],
+ "kairos.due": [
+  "scaden",
+  "entro il",
+  "da pagare",
+  "rinnov",
+  "revision",
+  "bollo",
+  "fattura",
+  "bolletta",
+  "pagamento entro"
+ ],
+ "kairos.mail_subject": [
+  "scadenza",
+  "scade",
+  "bolletta",
+  "fattura",
+  "rinnovo",
+  "bollo",
+  "revisione",
+  "polizza",
+  "pagamento"
+ ],
+ "memory.fact_stop": [
+  "utente",
+  "l'utente",
+  "che",
+  "con",
+  "per",
+  "una",
+  "uno",
+  "del",
+  "della",
+  "dello",
+  "dei",
+  "delle",
+  "alla",
+  "alle",
+  "allo",
+  "dalla",
+  "dalle",
+  "dal",
+  "nel",
+  "nella",
+  "sul",
+  "sulla",
+  "come",
+  "suo",
+  "sua",
+  "suoi",
+  "sue",
+  "mio",
+  "mia",
+  "miei",
+  "mie",
+  "sono",
+  "essere",
+  "di",
+  "solito",
+  "anche",
+  "molto"
+ ],
+ "memory.forget": [
+  "cancella",
+  "rimuovi",
+  "elimina",
+  "dimentica",
+  "togli"
+ ],
+ "memory.noise": [
+  "ciao",
+  "ehi",
+  "ehy",
+  "hola",
+  "grazie",
+  "prova",
+  "provo",
+  "si",
+  "sì",
+  "va bene",
+  "perfetto",
+  "buongiorno",
+  "buonasera",
+  "buonanotte",
+  "bene",
+  "ottimo",
+  "capito",
+  "chiaro",
+  "daje",
+  "ahah",
+  "ok grazie"
+ ],
+ "memory.notify": [
+  "avvisami",
+  "notifica",
+  "notifiche",
+  "fammi sapere",
+  "voglio essere avvisato",
+  "voglio essere avvisata",
+  "mandami",
+  "inviami",
+  "attiva notifica",
+  "attiva notifiche",
+  "seguimi",
+  "monitorare"
+ ],
+ "memory.preference": [
+  "preferisco",
+  "mi piace",
+  "non mi piace",
+  "vorrei",
+  "voglio",
+  "cerco",
+  "evita",
+  "evitare",
+  "odio",
+  "amo",
+  "interessa",
+  "zona",
+  "stanze",
+  "metri"
+ ],
+ "memory.remember": [
+  "ricorda",
+  "ricordati",
+  "tieni a mente",
+  "segnati",
+  "memorizza",
+  "non dimenticare",
+  "da ora in poi",
+  "d'ora in poi",
+  "sempre ",
+  "mai più"
+ ],
+ "memory.remind_me": [
+  "ricordami"
+ ],
+ "memory.self": [
+  "io",
+  "mi chiamo",
+  "mio",
+  "mia",
+  "miei",
+  "mie",
+  "sono (?:un|una|nato|nata|di|allergic\\w*|vegan\\w*|vegetarian\\w*)",
+  "ho (?:un|una|due|tre|quattro|\\d+)",
+  "abito",
+  "vivo a",
+  "lavoro (?:come|a|in|da|per)",
+  "studio",
+  "preferisco",
+  "odio",
+  "amo",
+  "mia moglie",
+  "mio marito",
+  "mio figlio",
+  "mia figlia",
+  "la mia",
+  "il mio"
+ ],
+ "memory.write": [
+  "salva",
+  "ricorda",
+  "memorizza",
+  "cancella",
+  "elimina",
+  "rimuovi",
+  "dimentica",
+  "aggiungi",
+  "crea",
+  "imposta",
+  "modifica",
+  "cambia",
+  "sposta",
+  "annulla",
+  "attiva",
+  "disattiva",
+  "avvisami",
+  "notificami",
+  "prenota",
+  "programma",
+  "pianifica",
+  "invia",
+  "manda",
+  "segna",
+  "registr",
+  "inserisci",
+  "metti",
+  "annota",
+  "aggiorna",
+  "fissa",
+  "spunta",
+  "carica",
+  "togli",
+  "sviluppa"
+ ],
+ "metis.correction": [
+  "non (?:è|e'|era) (?:quello|così|cosi|giusto)",
+  "intendevo",
+  "ho detto",
+  "sbagliat",
+  "hai sbagliato",
+  "ma no\\b",
+  "non hai capito",
+  "non ti ho chiesto",
+  "veramente\\b"
+ ],
+ "mood.adverb": [
+  "proprio",
+  "davvero",
+  "molto",
+  "un po'?",
+  "abbastanza",
+  "così",
+  "troppo"
+ ],
+ "mood.angry": [
+  "arrabbiat[oa]",
+  "incazzat[oa]",
+  "furios[oa]",
+  "furibond[oa]"
+ ],
+ "mood.anxious": [
+  "ansios[oa]",
+  "in ansia",
+  "preoccupat[oa]",
+  "stressat[oa]",
+  "stressatissim[oa]",
+  "in panico"
+ ],
+ "mood.bored": [
+  "annoiat[oa]",
+  "apatic[oa]"
+ ],
+ "mood.but": [
+  "ma",
+  "però",
+  "e poi"
+ ],
+ "mood.calm": [
+  "seren[oa]",
+  "tranquill[oa]",
+  "rilassat[oa]",
+  "in pace"
+ ],
+ "mood.charged": [
+  "caric[oa]",
+  "gasat[oa]",
+  "in forma",
+  "spacco"
+ ],
+ "mood.charged_high": [
+  "carichissim[oa]",
+  "gasatissim[oa]",
+  "pien[oa] di energia"
+ ],
+ "mood.continue_prefix": [
+  "sono"
+ ],
+ "mood.day_1": [
+  "(?:che |una )?giornata (?:di merda|schifosa|orribile)"
+ ],
+ "mood.day_2": [
+  "(?:che |una )?giornata (?:storta|no)"
+ ],
+ "mood.day_4": [
+  "(?:che |una )?giornata (?:tranquilla|leggera)"
+ ],
+ "mood.day_5": [
+  "(?:che |una )?giornata (?:ottima|fantastica|splendida|bellissima|top|perfetta)"
+ ],
+ "mood.day_tired": [
+  "(?:che |una )?giornata (?:pesante|dura|infinita)"
+ ],
+ "mood.down": [
+  "giù",
+  "giu",
+  "demoralizzat[oa]",
+  "di cattivo umore",
+  "scoraggiat[oa]",
+  "male"
+ ],
+ "mood.down_low": [
+  "malissimo",
+  "uno schifo",
+  "di merda",
+  "a terra",
+  "uno straccio"
+ ],
+ "mood.first_person": [
+  "sono",
+  "son",
+  "mi sento",
+  "sto",
+  "mi sono",
+  "mi trovo",
+  "oggi",
+  "stamattina",
+  "stasera",
+  "stanotte",
+  "ultimamente",
+  "in questi giorni",
+  "da qualche giorno",
+  "che giornata",
+  "giornata",
+  "spacco",
+  "ho (?:la febbre|mal di \\w+|l'influenza)",
+  "che"
+ ],
+ "mood.good_words": [
+  "bene",
+  "benissimo",
+  "in forma",
+  "alla grande"
+ ],
+ "mood.happy": [
+  "felice",
+  "content[oa]",
+  "allegr[oa]",
+  "di buon umore",
+  "soddisfatt[oa]",
+  "bene"
+ ],
+ "mood.happy_high": [
+  "felicissim[oa]",
+  "alla grande",
+  "benissimo",
+  "al settimo cielo",
+  "da dio"
+ ],
+ "mood.motivated": [
+  "motivat[oa]",
+  "carico di voglia",
+  "ispirat[oa]"
+ ],
+ "mood.needs_verb": [
+  "bene",
+  "male",
+  "benissimo",
+  "malissimo",
+  "normale",
+  "insomma",
+  "così così",
+  "cosi cosi",
+  "teso",
+  "tesa",
+  "a terra",
+  "da dio",
+  "cotto",
+  "cotta",
+  "giu"
+ ],
+ "mood.negation": [
+  "non",
+  "mai",
+  "né",
+  "nemmeno",
+  "neanche",
+  "per niente"
+ ],
+ "mood.nervous": [
+  "nervos[oa]",
+  "irritat[oa]",
+  "agitat[oa]",
+  "teso",
+  "tesa",
+  "sotto pressione"
+ ],
+ "mood.not_now": [
+  "ieri",
+  "l'altro ieri",
+  "la settimana scorsa",
+  "ero",
+  "fossi",
+  "sarei",
+  "sarò",
+  "sarai"
+ ],
+ "mood.not_now_start": [
+  "perch[eé]",
+  "come mai",
+  "se",
+  "quando",
+  "anche se",
+  "nel caso",
+  "qualora",
+  "chi",
+  "cosa"
+ ],
+ "mood.sad": [
+  "triste",
+  "depress[oa]",
+  "abbattut[oa]",
+  "malinconic[oa]",
+  "giù di morale"
+ ],
+ "mood.sick": [
+  "malat[oa]",
+  "influenzat[oa]",
+  "raffreddat[oa]",
+  "con la febbre",
+  "ho la febbre",
+  "ho mal di testa",
+  "ho l'influenza"
+ ],
+ "mood.so_so": [
+  "così così",
+  "cosi cosi",
+  "insomma",
+  "normale"
+ ],
+ "mood.subject_verb": [
+  "sto",
+  "mi sento",
+  "sono",
+  "son",
+  "mi sono sentit[oa]"
+ ],
+ "mood.third_person": [
+  "è",
+  "e'",
+  "sei",
+  "siamo",
+  "siete",
+  "era",
+  "erano",
+  "sembra",
+  "sembri"
+ ],
+ "mood.tired": [
+  "stanc[oa]",
+  "assonnat[oa]",
+  "senza energi[ae]",
+  "scaric[oa]"
+ ],
+ "mood.tired_heavy": [
+  "stanc[oa] mort[oa]",
+  "distrutt[oa]",
+  "esaust[oa]",
+  "sfinit[oa]",
+  "a pezzi",
+  "cott[oa]",
+  "spompat[oa]",
+  "stanchissim[oa]"
+ ],
+ "mood.undo": [
+  "non (?:lo |l')?(?:segnare|segnarlo|registrare|registrarlo|salvare|salvarlo|scriverlo)",
+  "togli(?:lo)? (?:l'umore|dall'umore|quello che ho detto)",
+  "cancella (?:l'umore|l'ultimo umore)",
+  "non (?:segnare|registrare) l'umore",
+  "non è vero,? (?:sto bene|non sono)"
+ ],
+ "oracle.advice": [
+  "consigli",
+  "consiglia",
+  "suggerisci",
+  "suggerimento",
+  "cosa ne pensi",
+  "che ne dici"
+ ],
+ "oracle.build_ask": [
+  "sviluppa",
+  "implementa",
+  "programma",
+  "costruisci",
+  "crea(?:mi)? (?:un|una) (?:comando|modulo|funzione|strumento|plugin)",
+  "aggiungi (?:a|in) hestia"
+ ],
+ "oracle.claimed_action": [
+  "(?<!non )\\b(?:ho|abbiamo)\\s+(?:gi[àa]\\s+)?(?:registrat|salvat|annotat|segnat|impostat|creat|aggiunt|rimoss|cancellat|eliminat|spostat|ridott|programmat|memorizzat|attivat|disattivat)\\w*",
+  "\\b(?:registro|annoto|riduco|sposto|cancello|elimino|imposto|programmo|memorizzo)\\s+(?:la|il|lo|gli|le|i|per|tutt|ogni)\\b"
+ ],
+ "oracle.delete_ask": [
+  "cancell",
+  "elimin",
+  "togli",
+  "rimuov",
+  "annull",
+  "disdic",
+  "scollega",
+  "smetti",
+  "basta",
+  "dimentic"
+ ],
+ "oracle.documents_hint": [
+  "documento",
+  "documenti",
+  "allegato",
+  "salvato",
+  "salvati",
+  "archiviato",
+  "archiviati",
+  "caricato",
+  "caricati",
+  "hai"
+ ],
+ "plutus.merchant_prefix": [
+  "pagamento\\s+(?:pos|carta)\\s+"
+ ],
+ "plutus.money_hint": [
+  "pagament",
+  "ricevut",
+  "rimbors",
+  "denaro",
+  "addebit",
+  "ordine",
+  "abbonament"
+ ],
+ "plutus.paypal.amount_label": [
+  "importo",
+  "totale",
+  "pagamento di",
+  "hai inviato",
+  "hai ricevuto",
+  "rimborso di",
+  "hai pagato"
+ ],
+ "plutus.paypal.merchant": [
+  "(?:pagamento)\\s+(?:a)\\s+(.+?)(?:\\s+(?:di|per)\\s+[-€$£\\d]|[.\\n|]|$)",
+  "(?:hai inviato)\\s+(?:un pagamento)?\\s*(?:di)?\\s*[^\\n]*?\\s+(?:a)\\s+(.+?)(?:[.\\n|]|$)",
+  "(?:rimborso)\\s+(?:da)\\s+(.+?)(?:[.\\n|]|$)",
+  "(.+?)\\s+(?:ti ha inviato|ti ha rimborsato)",
+  "(?:esercente|venditore)\\s*[:\\n]\\s*(.+?)(?:\\n|$)"
+ ],
+ "plutus.paypal.payment": [
+  "ricevuta",
+  "hai inviato un pagamento",
+  "hai pagato",
+  "hai autorizzato un pagamento",
+  "pagamento a",
+  "il tuo pagamento",
+  "abbonamento",
+  "ordine"
+ ],
+ "plutus.paypal.received": [
+  "hai ricevuto (?:denaro|un pagamento|\\d)",
+  "ti ha inviato"
+ ],
+ "plutus.paypal.refund": [
+  "rimborso",
+  "ti (?:è|e) stato rimborsato"
+ ],
+ "plutus.paypal.transaction_id": [
+  "id (?:della )?transazione",
+  "codice transazione"
+ ],
+ "plutus.phone.in": [
+  "accredit",
+  "ricevut",
+  "in entrata",
+  "rimbors",
+  "hai ricevuto",
+  "stipendio"
+ ],
+ "plutus.phone.merchant_after": [
+  "il",
+  "con",
+  "di",
+  "in",
+  "alle",
+  "per"
+ ],
+ "plutus.phone.merchant_before": [
+  "presso",
+  "da",
+  "a",
+  "su",
+  "verso"
+ ],
+ "plutus.phone.out": [
+  "pagament",
+  "pagato",
+  "addebit",
+  "spes[oa]",
+  "acquist",
+  "prelievo",
+  "transazione",
+  "autorizzat",
+  "hai inviato"
+ ],
+ "plutus.rule.care": [
+  "sephora",
+  "douglas",
+  "kiko",
+  "parrucchiere",
+  "barbiere",
+  "estetista",
+  "lookfantastic",
+  "notino"
+ ],
+ "plutus.rule.groceries": [
+  "esselunga",
+  "coop",
+  "conad",
+  "lidl",
+  "carrefour",
+  "eurospin",
+  "pam ",
+  "despar",
+  "aldi",
+  "penny market",
+  "iper",
+  "naturasi",
+  "tigros",
+  "bennet",
+  "famila"
+ ],
+ "plutus.rule.health": [
+  "farmacia",
+  "parafarmacia",
+  "medico",
+  "dentista",
+  "ospedale",
+  "analisi",
+  "ottica"
+ ],
+ "plutus.rule.home": [
+  "enel",
+  "a2a",
+  "iren",
+  "hera",
+  "edison",
+  "tim ",
+  "vodafone",
+  "iliad",
+  "fastweb",
+  "windtre",
+  "wind tre",
+  "ikea",
+  "leroy merlin",
+  "affitto",
+  "condominio"
+ ],
+ "plutus.rule.leisure": [
+  "cinema",
+  "teatro",
+  "concerto",
+  "ticketone",
+  "steam",
+  "playstation",
+  "nintendo",
+  "xbox",
+  "libreria",
+  "feltrinelli",
+  "mondadori"
+ ],
+ "plutus.rule.restaurants": [
+  "ristorante",
+  "pizzeria",
+  "trattoria",
+  "osteria",
+  "bar ",
+  "caffe",
+  "mcdonald",
+  "burger king",
+  "deliveroo",
+  "glovo",
+  "just eat",
+  "starbucks",
+  "sushi"
+ ],
+ "plutus.rule.shopping": [
+  "amazon",
+  "zalando",
+  "zara",
+  "h&m",
+  "decathlon",
+  "mediaworld",
+  "unieuro",
+  "ebay",
+  "aliexpress",
+  "vinted",
+  "shein",
+  "uniqlo"
+ ],
+ "plutus.rule.subscriptions": [
+  "netflix",
+  "spotify",
+  "disney",
+  "prime video",
+  "amazon prime",
+  "youtube premium",
+  "dazn",
+  "now tv",
+  "icloud",
+  "google one",
+  "apple.com/bill",
+  "chatgpt",
+  "openai",
+  "anthropic",
+  "claude.ai",
+  "github"
+ ],
+ "plutus.rule.transport": [
+  "trenitalia",
+  "italo",
+  "atm ",
+  "uber",
+  "freenow",
+  "telepass",
+  "autostrade",
+  "eni ",
+  "q8",
+  "tamoil",
+  "esso",
+  "ip ",
+  "benzina",
+  "parcheggio",
+  "bike",
+  "lime",
+  "bird"
+ ],
+ "plutus.rule.travel": [
+  "booking.com",
+  "airbnb",
+  "ryanair",
+  "easyjet",
+  "ita airways",
+  "expedia",
+  "hotel",
+  "flixbus"
+ ],
+ "plutus.statement.card": [
+  "carta"
+ ],
+ "plutus.statement.header": [
+  "lista movimenti",
+  "estratto conto",
+  "saldo contabile",
+  "saldo disponibile",
+  "saldo iniziale",
+  "saldo finale",
+  "data valuta",
+  "data operazione",
+  "iban",
+  "movimenti"
+ ],
+ "plutus.statement.income": [
+  "accredit",
+  "bonifico (?:ricevuto|in entrata|da)",
+  "ricarica",
+  "rimborso",
+  "stipendio",
+  "entrata",
+  "ricevut",
+  "interessi"
+ ],
+ "plutus.statement.payment_channel": [
+  "pos",
+  "carta",
+  "online",
+  "con carta",
+  "contactless"
+ ],
+ "plutus.statement.payment_prefix": [
+  "pagamento",
+  "pag\\.?",
+  "acquisto",
+  "addebito"
+ ],
+ "plutus.statement.skip": [
+  "saldo (?:iniziale|finale|disponibile|contabile)",
+  "totale",
+  "pagina \\d",
+  "estratto conto",
+  "lista movimenti",
+  "data\\s+(?:operazione|valuta)",
+  "^\\s*data\\s"
+ ],
+ "plutus.statement.time_word": [
+  "ore"
+ ],
+ "plutus.total": [
+  "totale",
+  "tutto"
+ ],
+ "scout.label.air_conditioning": [
+  "climatizzazione",
+  "climatizz"
+ ],
+ "scout.label.balcony": [
+  "balcone"
+ ],
+ "scout.label.bathrooms": [
+  "bagni",
+  "bagno"
+ ],
+ "scout.label.bedrooms": [
+  "camere da letto",
+  "camera"
+ ],
+ "scout.label.built_in": [
+  "costruito nel"
+ ],
+ "scout.label.condo_fees": [
+  "spese condominio"
+ ],
+ "scout.label.contract": [
+  "contratto"
+ ],
+ "scout.label.elevator": [
+  "ascensore",
+  "ascensor"
+ ],
+ "scout.label.energy_class": [
+  "classe energetica"
+ ],
+ "scout.label.floor": [
+  "piano"
+ ],
+ "scout.label.furnished": [
+  "arredato"
+ ],
+ "scout.label.ground_floor": [
+  "piano\\s+terra",
+  "piano\\s+rialzato"
+ ],
+ "scout.label.heating": [
+  "riscaldamento"
+ ],
+ "scout.label.kitchen": [
+  "cucina"
+ ],
+ "scout.label.listing_updated": [
+  "annuncio aggiornato"
+ ],
+ "scout.label.no_elevator": [
+  "no ascensore"
+ ],
+ "scout.label.of": [
+  "di"
+ ],
+ "scout.label.other": [
+  "Altre"
+ ],
+ "scout.label.parking": [
+  "posti auto",
+  "posto auto",
+  "box",
+  "garage"
+ ],
+ "scout.label.partly_furnished": [
+  "parzialmente arredato"
+ ],
+ "scout.label.price": [
+  "prezzo"
+ ],
+ "scout.label.price_per_m2": [
+  "prezzo al m"
+ ],
+ "scout.label.property_price": [
+  "prezzo dell'immobile"
+ ],
+ "scout.label.property_type": [
+  "tipologia"
+ ],
+ "scout.label.reference": [
+  "riferimento"
+ ],
+ "scout.label.rooms": [
+  "locali"
+ ],
+ "scout.label.state": [
+  "stato"
+ ],
+ "scout.label.surface": [
+  "superficie"
+ ],
+ "scout.label.surface_type": [
+  "tipo superficie"
+ ],
+ "scout.label.terrace": [
+  "terrazzo",
+  "terraz"
+ ],
+ "scout.label.year_built": [
+  "anno di costruzione"
+ ],
+ "scout.near": [
+  "a",
+  "vicino\\s+a",
+  "zona"
+ ],
+ "scout.nearby": [
+  "vicino",
+  "dintorni",
+  "vicinanze"
+ ],
+ "scout.page.sold": [
+  "annuncio rimosso",
+  "immobile venduto",
+  "non più disponibile",
+  "venduta",
+  "venduto"
+ ],
+ "scout.status.available": [
+  "\\bdisponibile\\s+subito\\b",
+  "\\blibero\\s+subito\\b"
+ ],
+ "scout.status.negotiation": [
+  "\\btrattativa\\s+in\\s+corso\\b",
+  "\\bin\\s+trattativa\\b",
+  "\\btrattativa\\s+riservata\\b",
+  "\\btrattativa\\b"
+ ],
+ "scout.status.occupied": [
+  "\\bgià\\s+affittato\\b",
+  "\\baffittato\\b",
+  "\\bimmobile\\s+occupato\\b",
+  "\\boccupato\\s+da\\s+inquilino\\b",
+  "\\binquilino\\s+presente\\b",
+  "\\bvendita\\s+con\\s+inquilino\\b",
+  "\\binvestimento\\s+immobiliare\\b"
+ ],
+ "scout.status.sold": [
+  "\\bvendita\\s+conclusa\\b",
+  "\\bgià\\s+venduto\\b",
+  "\\bimmobile\\s+venduto\\b",
+  "\\bvenduto\\b"
+ ],
+ "scout.value.none": [
+  "assente",
+  "nessuno"
+ ],
+ "wardrobe.attachment_hint": [
+  "guardaroba",
+  "armadio",
+  "nuovo capo"
+ ],
+ "plutus.paypal.amount_for": [
+  "di",
+  "per"
+ ]
+}

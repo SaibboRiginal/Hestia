@@ -50,10 +50,10 @@ class TestAnthropicProvider:
 
     def test_tool_call_and_reasoning(self):
         prov, fake = _anthropic([NS(type="thinking", thinking="penso"),
-                                 NS(type="tool_use", name="cal", input={"q": "oggi"})], "tool_use")
+                                 NS(type="tool_use", name="cal", input={"q": "today"})], "tool_use")
         out = prov.ask_with_tools("claude-haiku-5-5", "sys", "prompt",
                                   [{"name": "cal", "description": "d", "parameters": {"type": "object"}}], True)
-        assert out["tool_call"] == {"name": "cal", "params": {"q": "oggi"}}
+        assert out["tool_call"] == {"name": "cal", "params": {"q": "today"}}
         assert out["reasoning_content"] == "penso"
         tools = fake.calls[0]["tools"]
         assert tools[0]["input_schema"] == {"type": "object"}

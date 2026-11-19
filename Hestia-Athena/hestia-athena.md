@@ -7,7 +7,7 @@ loop: gathers system state, generates action candidates via Oracle LLM, scores t
 through a relevance gate, and emits accepted actions to Hermes. Every thinking cycle
 is archived for audit and client display.
 
-## Two tracks (docs/work/2026-10-20-riflessione-a-livelli)
+## Two tracks (docs/work/2026-10-20-layered-reflection)
 
 | Track | Reads | Produces | When |
 |---|---|---|---|
@@ -18,11 +18,11 @@ is archived for audit and client display.
 1. Read active signals (`hestia_common.signals_client.SignalReader`) and weekly series (26 weeks).
 2. **Link** series of different areas: Pearson at lag 0 (same week) and lag 1 (the week after), closed weeks only,
    ≥ `athena.reflection.min_weeks` paired weeks and |r| ≥ `athena.reflection.min_correlation`. Numbers, not the model.
-3. **Topics**: `alta` signals, then links (strongest), then `attenzione` signals; at most `max_topics`; anything told
+3. **Topics**: `high` signals, then links (strongest), then `warning` signals; at most `max_topics`; anything told
    within `repeat_days` is skipped (dedup on `topic_key`).
 4. **Details**: `GET route/<module>/api/module/context?topic=<key>&budget=<detail_budget>` per signal topic; the
    normal context line of both modules for a link.
-5. **Think**: one Oracle call, use case `athena.riflessione` (chain `potente`), caveman prompt, same `AZIONE/TIPO/…`
+5. **Think**: one Oracle call, use case `athena.reflection` (chain `strong`), caveman prompt, same `AZIONE/TIPO/…`
    format plus `TEMA: T<n>`; kinds `observation` | `setting`.
 6. **Gate** (same score and threshold). Accepted observations → Archive `signals-store` (`kind=observation`,
    `ref_id=athena`, `day`, `title`, `text`, `domains`, `topic_key`, `link`, `page`, `score`), outcome `observed`,
@@ -33,7 +33,7 @@ Oracle down → record with `error`, nothing stored, no static fallback.
 ### Recap piece
 Athena advertises `recap_endpoint` like any module: `GET /api/module/recap?day=` → `{module: athena, title: «Da tenere
 d'occhio», icon: eye, order: 900, done: [{text, tone}]}` with that day's observations, or `{empty: true}`. The daily
-recap (`app/core/recap.py`, dossier `2026-10-20-recap-giornaliero`) collects it like the other pieces.
+recap (`app/core/recap.py`, dossier `2026-10-20-daily-recap`) collects it like the other pieces.
 
 ## Event contract
 - Event type: `athena.focus_brief`
@@ -170,7 +170,7 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 | `athena.reflection.detail_budget` | int caratteri | 600 | detail asked to a module (advanced) |
 | `athena.talk.max_per_day` | int | 2 | times a day she may write first (0 = never) |
 | `athena.talk.min_gap_hours` | int ore | 4 | pause between two of her messages (advanced) |
-| `athena.talk.eagerness` | int 1–5 | 3 | «Quanto è loquace»: the drive she needs to write first (1 = only with much to say) |
+| `athena.talk.eagerness` | int 1–5 | 3 | «How talkative»: the drive she needs to write first (1 = only with much to say) |
 | `athena.evidence.min_days` | int giorni | 5 | days of observation after the first start before any improvement / setting proposal |
 | `athena.evidence.seen_days` | int giorni | 3 | different days the same finding must come up before she proposes it |
 | `athena.evidence.window_days` | int giorni | 14 | older sightings stop counting (advanced) |
@@ -187,17 +187,17 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
   (`emitted` · `collecting` · `forge` · `forge_skipped` · `setting_proposed` · `setting_skipped` · `failed` · `discarded`). The record
   also has `threshold` and `duration_ms`. Log: `event=thinking_cycle_done trigger= candidates= accepted= emitted= ms=`.
 
-### «Parla con te»: she writes first (`app/core/talk.py`, dossier `docs/work/2026-11-12-identita-e-proattivita`)
+### «Talks to you»: she writes first (`app/core/talk.py`, dossier `docs/work/2026-11-12-identity-and-proactivity`)
 Third output, next to the system briefs and the life observations (those stay in the evening recap):
-1. **When**: agenda window `athena.talk` («Ti scrive per prima», default 9–21; paused = never), at most
+1. **When**: agenda window `athena.talk` («Writes to you first», default 9–21; paused = never), at most
    `athena.talk.max_per_day` a day (0 = never), `athena.talk.min_gap_hours` apart, never while he is chatting
-   (Oracle `/api/activity` < 10 min; a «not now» wait survives midnight, the day reload never shortens it). No clock and no dice (dossier `docs/work/2026-11-13-prima-osserva-poi-propone`):
+   (Oracle `/api/activity` < 10 min; a «not now» wait survives midnight, the day reload never shortens it). No clock and no dice (dossier `docs/work/2026-11-13-observe-first-then-propose`):
    she writes when her **drive** (0–1) reaches the bar of `athena.talk.eagerness` (1 → 0.80 … 3 → 0.50 … 5 → 0.20).
    Drive = 0.45 × silence (full after 36 h) + 0.40 × true things to say today (two = full) + 0.10 if he answered
    her last message − 0.25 for each of her last messages left unanswered, all damped in the first days (× 0.5 on
    day 0, × 1 after 7 days of observation). Weighed again every 30 min (`event=talk_quiet drive= bar=`). Checked
    at every loop tick **before** the thinking gate, so she can write while he is awake.
-2. **Why**: mood of today (Psyche `/api/mood/today`), signals `alta`/`attenzione`, a long silence (≥ 20 h); plus
+2. **Why**: mood of today (Psyche `/api/mood/today`), signals `high`/`warning`, a long silence (≥ 20 h); plus
    the **last days** (`past`): how he felt each of the last 3 days (Psyche `/api/mood/history`), what she wrote
    and whether he answered (he wrote after it = yes; 12 h without a word = no, kept on the stored row), and «do
    not insist» after unanswered messages. These lines are hidden text for Oracle, in English.
@@ -206,13 +206,13 @@ Third output, next to the system briefs and the life observations (those stay in
 4. **How**: Hermes event `service.action_required` with `kind: athena.talk`, no title, `_chat: true` (clients show
    it as chat text, never retracted). Kept in Archive `signals-store` (`kind=talk`, `ref_id=athena`): the last six
    go back to Oracle as «already written».
-`POST /api/athena/think?track=parla` = «Scrivimi ora» (past the drive, the limit and the pause);
+`POST /api/athena/think?track=parla` = «Write to me now» (past the drive, the limit and the pause);
 `GET /api/athena/talk?days=` lists what she wrote with the reasons, the drive and whether he answered, plus `state`
 (her drive now); the reasons come back in Italian for the owner (`talk.shown`), the hidden `past` lines do not.
-Shown in the page **Pensieri**, third tab «Ti scrive» (drive against the bar, reasons, what she wrote, answered or
-not, button «Scrivimi ora»). No new page.
+Shown in the page **Pensieri**, third tab «Writes to you» (drive against the bar, reasons, what she wrote, answered or
+not, button «Write to me now»). No new page.
 
-### First observe, then propose (`app/core/evidence.py`, dossier `docs/work/2026-11-13-prima-osserva-poi-propone`)
+### First observe, then propose (`app/core/evidence.py`, dossier `docs/work/2026-11-13-observe-first-then-propose`)
 One sighting is not enough to judge, and on the first day she does not know how the system normally behaves. For
 accepted candidates of kind `improvement` (→ Forge) and `setting` (→ Themis proposal) of the system track:
 - she proposes only after `athena.evidence.min_days` days of observation since the first start **and** when the
@@ -220,13 +220,13 @@ accepted candidates of kind `improvement` (→ Forge) and `setting` (→ Themis 
 - same finding = same setting key, or improvement titles sharing at least half of their words;
 - until then: outcome `collecting`, the reason in `gate_reason` («Raccolgo prove: visto in 2 giorni su 3
   richiesti»), nothing emitted; when proposed the proof goes in the reasoning and the count restarts from zero;
-- never wait: other kinds (faults, notices), and «Pensa ora» (`trigger=manual`);
+- never wait: other kinds (faults, notices), and «Think now» (`trigger=manual`);
 - ledger in Archive `signals-store` (`kind=evidence`, `ref_id=athena`; row `_start` = first day). Not readable →
   nothing proposed in that cycle (`[🔄] event=evidence_read_failed`). Log `event=evidence_weighed`.
 The life reflection has its own wait (`athena.reflection.min_weeks`).
-Shown in the page **Pensieri**, tab Sistema, card «Sta raccogliendo prove» (`GET /api/athena/evidence`).
+Shown in the page **Pensieri**, tab Sistema, card «Collecting evidence» (`GET /api/athena/evidence`).
 
-### «Pensa ora» (one cycle now)
+### «Think now» (one cycle now)
 `POST /api/athena/think` runs one full cycle (observe → think → gate → act → archive, `trigger=manual`) in the
 background, past the idle gate and the `athena.thinking` agenda window (the user asked for it). One cycle at a time:
 a lock is shared with the loop (`busy` if one is running; the periodic cycle skips with
@@ -235,40 +235,40 @@ a lock is shared with the loop (`busy` if one is running; the periodic cycle ski
 
 ### WebUI plugin: Pensieri (core module, Sistema section)
 Declared in `app/main.py` (`hestia_common.plugin_client`, `kind="core"`, `api_prefix=/api/athena/`; SPEC
-`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2). Bundle `ui/` (Lit, SDK kit) built in the Docker image (Node stage
+`docs/work/2026-10-18-core-modules-and-external-mcp` §A2). Bundle `ui/` (Lit, SDK kit) built in the Docker image (Node stage
 → `/ui/dist/webui/athena.js`, outside `/code/app` because of the dev mount; infra env `ATHENA_UI_DIST`).
 
 | Kind | Id | What |
 |---|---|---|
-| page (order 130) | `pensieri` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena non raggiungibile» |
-| page (order 131) | `segnali` → `<athena-signals>` | active signals per area (severity icon + tone, «Apri» opens the module page), links between areas, recent observations, weekly series charts; area filter |
-| widget (auto) | `ultimo` → `<athena-last-widget>` (m/l) | «Ultimo pensiero»: last cycle, best candidate, accepted/total |
-| quick action | `pensa` «Fai pensare Athena» | `POST /api/athena/think` |
-| page (order 133) | `imparato` → `<athena-learning>` | «Cosa ho imparato»: the learning log (added, merged, let go, weaker) with the owner's quote and «Annulla» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Applica» / «Lascia») and «Rivedi cosa sai di me» (`POST /memory/review`); proposal notifications link here |
+| page (order 130) | `thoughts` → `<athena-thoughts>` | status (loop on/off, strategist, threshold), open commitments (Fatto / Ignora → `/commitments/{id}/resolve`), each cycle: 1 Osserva (services, down, errors, domains, weak spots, presence) · 2 Pensa · 3 Filtra (threshold) · 4 Agisce, and every candidate with score vs threshold, the 5 factor bars, the gate reason and the outcome. *Pensa ora* → `POST /think`, then polls until the cycle ends and opens it. Athena down → «Athena not reachable» |
+| page (order 131) | `signals` → `<athena-signals>` | active signals per area (severity icon + tone, «Open» opens the module page), links between areas, recent observations, weekly series charts; area filter |
+| widget (auto) | `latest` → `<athena-last-widget>` (m/l) | «Latest thought»: last cycle, best candidate, accepted/total |
+| quick action | `pensa` «Make Athena think» | `POST /api/athena/think` |
+| page (order 133) | `learned` → `<athena-learning>` | «What I learned»: the learning log (added, merged, let go, weaker) with the owner's quote and «Cancel» (`POST /learning/{id}/undo`; an edit made after wins), pending clean-up proposals (`GET /memory/proposals`, «Apply» / «Leave») and «Review what you know about me» (`POST /memory/review`); proposal notifications link here |
 
-Pensieri has a **Vita / Sistema / Ti scrive** switch (default Vita; «Ti scrive» and the card «Sta raccogliendo prove» in Sistema: see above): a life cycle shows 1 Legge i segnali · 2 Collega · 3
-Approfondisce · 4 Pensa e filtra · 5 Per il recap; «Pensa ora» runs the selected track.
+Pensieri has a **Vita / Sistema / Ti scrive** switch (default Vita; «Writes to you» and the card «Collecting evidence» in Sistema: see above): a life cycle shows 1 Legge i segnali · 2 Collega · 3
+Approfondisce · 4 Pensa e filtra · 5 Per il recap; «Think now» runs the selected track.
 
 ### MCP tool `athena_signals(domain?, limit?)`
 Read only (GET `/api/athena/signals`), clients `ui` + `external`, not in the Telegram menu.
 
-### Daily recap (dossier `docs/work/2026-10-20-recap-giornaliero`)
-One message a day, «com'è andata e cosa c'è domani». `app/core/recap.py` `RecapComposer`:
+### Daily recap (dossier `docs/work/2026-10-20-daily-recap`)
+One message a day, «how it went and what is on tomorrow». `app/core/recap.py` `RecapComposer`:
 1. **Collect**: every module with capability `recap_endpoint` (Hub registry) is asked `GET /api/module/recap?day=&next=`
    in parallel (`athena.recap.piece_timeout_seconds`); a module down or slow is just left out. Athena's own piece
-   «Da tenere d'occhio» (reflection thread) comes the same way.
-2. **Write**: Oracle use case `athena.recap` (chain veloce, caveman English prompt, `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Lingua», `athena.recap.style`, `athena.recap.max_chars`);
+   «To keep an eye on» (reflection thread) comes the same way.
+2. **Write**: Oracle use case `athena.recap` (chain veloce, caveman English prompt, `voice: true`: Oracle writes as the assistant; the prompt holds only what to say, the data and the format, never a language: Oracle writes in the personal «Language», `athena.recap.style`, `athena.recap.max_chars`);
    Oracle failing → deterministic list per area (`fallback: true`, `[🔄] event=recap_fallback`).
 3. **Quiet day** (every piece empty) → nothing is sent (`event=recap_empty`); proposals belong to other moments.
 4. **Deliver**: Hermes `service.action_required` (domain system, level info, `replaces: athena.recap`, target `owner`,
    `_link {module: athena, page: recap}`); stored in Archive entities, domain `recap`. Buttons the pieces ask for
    (`piece(..., actions=)`, max 3 overall, ids `<module><n>`) go in `_actions`; an empty piece with actions rides
-   only for its buttons (not in the text, not in the stored pieces). Example: «Racconta la giornata» (Hygieia, B9).
+   only for its buttons (not in the text, not in the stored pieces). Example: «Tell me about your day» (Hygieia, B9).
 
 When: agenda job `athena.recap.evening`, daily 21:30, `flex 20:00–23:30` (Chronos moves it around the user's
-events). Morning recap (previous day + today) = agenda template `recap` with `momento: mattina`, added by the user.
-If the user deletes the evening job, «Attività standard» in the agenda puts it back in one click.
-WebUI: page **Recap** (order 132, text + facts per area), quick action «Recap adesso». Chat: tool `recap_today`.
+events). Morning recap (previous day + today) = agenda template `recap` with `moment: morning`, added by the user.
+If the user deletes the evening job, «Standard tasks» in the agenda puts it back in one click.
+WebUI: page **Recap** (order 132, text + facts per area), quick action «Recap now». Chat: tool `recap_today`.
 
 ### MCP tool `athena_thinking(limit?)`
 Read only (GET `/api/athena/thinking/summary`), clients `ui` + `external` (external AIs with an MCP access may read
@@ -282,7 +282,7 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | GET | `/api/logs` | Service logs (filterable) |
 | GET | `/api/athena/status` | Runtime status (ticks, emissions, strategist state) |
 | POST | `/api/athena/trigger` | Manual trigger with custom signals |
-| POST | `/api/athena/think?track=parla` | «Scrivimi ora»: she writes first now (background) |
+| POST | `/api/athena/think?track=parla` | «Write to me now»: she writes first now (background) |
 | GET | `/api/athena/talk?days=7` | What she wrote first, newest first: `{items: [{id, day, at, text, reasons, trigger, drive, answered}], state: {drive, bar, wants, idle_seconds, known_days, unanswered, reasons}}` (reasons in Italian) |
 | GET | `/api/athena/evidence` | What she is still collecting proof for: `{known_days, min_days, seen_days, window_days, items: [{key, kind, title, days[], first_day, proposed_day}]}` |
 | GET | `/api/athena/tasks` | Task lifecycle records |
@@ -291,14 +291,14 @@ it), not in the Telegram menu. Returns the compact cycles (default 10, max 50).
 | POST | `/api/athena/commitments/{brief_id}/resolve` | Resolve a commitment |
 | GET | `/api/athena/thinking` | Recent thinking records, full (observation payload included) |
 | GET | `/api/athena/thinking/summary?limit=&track=` | Compact cycles + `running`, `threshold`, `weights`, `loop_enabled`, `strategist_enabled` (page Pensieri, MCP `athena_thinking`) |
-| POST | `/api/athena/think?track=` | «Pensa ora»: one full cycle now in background (`sistema` default, or `vita`) → `{status: started, trace_id, track}` or `{status: busy}` |
-| GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Segnali, MCP `athena_signals`) |
-| GET | `/api/module/recap?day=` | Athena's recap piece «Da tenere d'occhio» (capability `recap_endpoint`) |
-| GET | `/api/athena/memory/proposals` | Clean-up proposals still waiting for the owner (page «Cosa ho imparato») |
+| POST | `/api/athena/think?track=` | «Think now»: one full cycle now in background (`system` default, or `life`) → `{status: started, trace_id, track}` or `{status: busy}` |
+| GET | `/api/athena/signals?domain=&limit=&weeks=` | signals, weekly series, links, recent observations (page Signals, MCP `athena_signals`) |
+| GET | `/api/module/recap?day=` | Athena's recap piece «To keep an eye on» (capability `recap_endpoint`) |
+| GET | `/api/athena/memory/proposals` | Clean-up proposals still waiting for the owner (page «What I learned») |
 | GET | `/api/ui/manifest` · `/ui/webui/athena.js` | WebUI plugin manifest and bundle |
 | GET | `/api/athena/observation` | Most recent observation snapshot (new in Phase 3) |
-| POST | `/api/athena/recap` | Compose the daily recap `{momento: sera\|mattina, day?, deliver?, trigger?}` (agenda job `athena.recap.evening`, template `recap`) |
-| POST | `/api/athena/recap/now` | Quick action «Recap adesso» (evening, delivered) |
+| POST | `/api/athena/recap` | Compose the daily recap `{moment: evening\|morning, day?, deliver?, trigger?}` (agenda job `athena.recap.evening`, template `recap`) |
+| POST | `/api/athena/recap/now` | Quick action «Recap now» (evening, delivered) |
 | GET | `/api/athena/recaps?limit=` | Recap history (page Recap) |
 | POST | `/api/athena/recap/today` | MCP tool `recap_today` (chat: text only, not delivered nor stored) |
 
@@ -314,7 +314,7 @@ makes them user-editable and Chronos keeps your edits over the registered defaul
 | `athena.skill_curation` | daily 05–07 | skill curation, once per day inside the window |
 | `athena.thinking` | all day | idle thinking cycles (observe → think → propose); skip/pause = Athena silent |
 | `athena.reflection` | daily 18–20 | life reflection, once per day inside the window; skip/pause = no observations |
-| `athena.talk` | daily 9–21 | hours in which she may write first («parla con te»); skip/pause = she never writes first |
+| `athena.talk` | daily 9–21 | hours in which she may write first («talks to you»); skip/pause = she never writes first |
 
 Missing window or Chronos down → default hours (consolidation 03–05) / always (skills, thinking). Skipped or paused
 window = closed (your decision). Thinking still requires the idle gate (`athena.loop.idle_seconds`).
@@ -332,9 +332,9 @@ Only infrastructure and model routing stay in env (tunables are central settings
 | `LOG_LEVEL` | `INFO` | Boot log level only (live: `athena.log.level`) |
 | `ATHENA_UI_DIST` | `/ui/dist` | WebUI bundle folder (set in the Dockerfile, infrastructure) |
 
-Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategia`
-(strategist + memory consolidation), `athena.riflessione` (life reflection) or `athena.revisione` (answer audit), both declared in its Hub registration
-(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `potente`).
+Models are not Athena settings: Athena calls Oracle `/api/llm/generate` with `use_case` `athena.strategy`
+(strategist + memory consolidation), `athena.reflection` (life reflection) or `athena.review` (answer audit), both declared in its Hub registration
+(`capabilities.llm_usecases`); their chain and mode are chosen in Oracle → Cervello → Modelli (suggested `strong`).
 
 ## Resource-conscious design
 - Single Oracle LLM call per cycle (no multi-step chain-of-thought)
@@ -399,44 +399,44 @@ Oracle `/api/embed` via Hub (no Athena embedding config).
 Light work (thinking cycles) waits while presence `work.light=defer`; consolidation and skill curation run only with `work.heavy` allow/local (still inside their agenda windows). Thinking runs as activity `athena.thinking` (light, gpu); the observation includes the presence context line. Chronos down → old Oracle-idle check.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Recap: 1; sistema › Assistente: 2; sistema › Avanzate: 1 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Recap: 1; sistema › Assistente: 2; sistema › Avanzate: 1 (area › section: tools).
 
-## What the assistant learned, memory review, docs check (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+## What the assistant learned, memory review, docs check (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - **Only quoted facts** (Cindy 8): the nightly consolidation saves a new memory only with `quote`, the owner's exact
   words found in their messages (normalized); others are dropped (`facts_unquoted`). No user message newer than the
   lookback → no model call (`skipped: no_new_user_turns`).
 - **Learning log + undo** (Cindy 18, `app/core/learning.py`): every change to memory (add, retire, reinforce, decay,
-  merge) is a row of Archive `/api/athena-store` (kind `learning`, `before`/`after`, `quote`). «Annulla» restores
+  merge) is a row of Archive `/api/athena-store` (kind `learning`, `before`/`after`, `quote`). «Cancel» restores
   `before` only while the memory is still as the assistant left it (an owner edit wins → 409 `changed_since`).
-- **«Rivedi cosa sai di me»**: exact duplicates without a model, then one call (`athena.strategia`) for
+- **«Review what you know about me»**: exact duplicates without a model, then one call (`athena.strategy`) for
   contradictions, near duplicates, stale facts → proposals (kind `memory_proposal`) as Hermes cards «Memoria ·
-  Doppione/Contraddizione/Forse vecchia» with «Applica» / «Lascia». Nothing changes without the owner.
+  Doppione/Contraddizione/Forse vecchia» with «Apply» / «Leave». Nothing changes without the owner.
 - **Docs follow code** (Cindy 29, `app/core/docs_check.py`): monthly agenda job `athena.docs_check` (day 1, 04:30)
   compares what modules declare (MCP tools by `_meta.hestia.service`, Themis keys) with `Hestia-<Name>/hestia-<name>.md`
   and `Hestia-Swagger/swagger.yml` (read via Forge's repo browser); one Forge proposal per module (source athena).
 - API: `GET /api/athena/learning` · `POST /api/athena/learning/{entry_id}/undo` · `POST /api/athena/memory/review` ·
   `POST /api/athena/memory/proposals/{pid}/apply|dismiss` · `POST /api/athena/docs/check`.
-  Tools: `memory_rivedi`, `memory_learning`, `memory_learning_undo`, `memory_proposals`, `memory_proposal_apply`,
+  Tools: `memory_review`, `memory_learning`, `memory_learning_undo`, `memory_proposals`, `memory_proposal_apply`,
   `memory_proposal_dismiss`, `docs_check`; `athena_thinking`, `athena_signals`, `athena_commitments` and
-  `athena_commitment_resolve` (`status` resolved | dismissed) are on Telegram too (parity, `docs/work/2026-10-30-cose-aperte`).
+  `athena_commitment_resolve` (`status` resolved | dismissed) are on Telegram too (parity, `docs/work/2026-10-30-open-items`).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Pensieri»; agenda titles for people: «Riordina la memoria», «Cura delle abilità», «Riflessione nei momenti liberi»; offline text «Pensieri non raggiungibili».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Thoughts»; agenda titles for people: «Tidy up the memory», «Care of the skills», «Reflection in the free moments»; offline text «Thoughts not reachable».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: every internal prompt (strategist, reflection, learning, docs check, auditor, consolidator) is English; proposals, reasons and findings are asked in the owner's language (`athena_settings.owner_language()`); the strategist parser still accepts the old Italian keys. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: every internal prompt (strategist, reflection, learning, docs check, auditor, consolidator) is English; proposals, reasons and findings are asked in the owner's language (`athena_settings.owner_language()`); the strategist parser still accepts the old Italian keys. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Language».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the area «cognition» is shown with the assistant's name in Pensieri, «Yourself» in hidden text.
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): the area «cognition» is shown with the assistant's name in Pensieri, «Yourself» in hidden text.
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
-The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-moduli-come-agenti`.
+The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.

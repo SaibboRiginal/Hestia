@@ -65,7 +65,7 @@ export class AgendaApi {
     const r = await this.call<{ draft: AgendaDraft }>('POST', '/parse', { body: { text, tz: Intl.DateTimeFormat().resolvedOptions().timeZone } });
     return r.draft;
   }
-  /** Weather for the visible days (next 14 only): Casa per day, located occurrences, own located events. */
+  /** Weather for the visible days (next 14 only): Home per day, located occurrences, own located events. */
   weather(start: Date, end: Date, located: { key: string; place: string; at: string }[]) {
     return this.call<CalWeather>('POST', '/weather', { body: { start: start.toISOString(), end: end.toISOString(), located } });
   }

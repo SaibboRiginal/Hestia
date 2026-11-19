@@ -288,9 +288,9 @@ def _interval_seconds(item: dict | None) -> int:
 
 
 def _job() -> dict | None:
-    from services import agenda as assistant_agenda
+    from services import agenda as agenda_assistant
     try:
-        return assistant_agenda.get(AGENDA_JOB_KEY)
+        return agenda_assistant.get(AGENDA_JOB_KEY)
     except Exception:
         return None                       # missing or Archive down
 
@@ -317,7 +317,7 @@ def _agenda_driving(item: dict | None = None) -> bool:
 
 def _run_loop() -> None:
     """Boot sync + agenda registration; then fallback only if the agenda is not driving."""
-    from services import agenda as assistant_agenda
+    from services import agenda as agenda_assistant
     logger.info(
         "event=sync_worker_started_poll_every [SYNC] Worker started — agenda job %s | window -%dd to +%dd | notify_new=%s",
         AGENDA_JOB_KEY,
@@ -334,7 +334,7 @@ def _run_loop() -> None:
         time.sleep(60)
         if not registered:
             try:
-                assistant_agenda.register_rules("chronos", agenda_rules())
+                agenda_assistant.register_rules("chronos", agenda_rules())
                 registered = True
             except Exception as exc:
                 logger.warning("[🔄] event=sync_agenda_register_failed error=%s", exc)

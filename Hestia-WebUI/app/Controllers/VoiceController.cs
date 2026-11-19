@@ -6,12 +6,12 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Voice in the WebUI (dossier docs/work/2026-10-20-modulo-voce §7): token-protected proxy to the voice
+/// Voice in the WebUI (dossier docs/work/2026-10-20-voice-module §7): token-protected proxy to the voice
 /// module through the Hub. The browser records and plays; listening and speaking happen in the voice module.
 /// <list type="bullet">
 /// <item><c>POST /api/webui/voice/transcribe</c> — a voice message of the chat (kept with its message).</item>
-/// <item><c>POST /api/webui/voice/speak</c> — «Ascolta» under a reply (the audio is kept with the reply).</item>
-/// <item><c>POST /api/webui/voice/listen[/{sid}/chunk|end]</c>, <c>say[/{sid}/text|end]</c> — live mode «Parla»:
+/// <item><c>POST /api/webui/voice/speak</c> — «Listen» under a reply (the audio is kept with the reply).</item>
+/// <item><c>POST /api/webui/voice/listen[/{sid}/chunk|end]</c>, <c>say[/{sid}/text|end]</c> — live mode «Talk»:
 /// the microphone in chunks, the answer spoken sentence by sentence while it is written.</item>
 /// <item><c>GET /api/webui/voice/live</c> — live settings (the pause that closes a turn).</item>
 /// <item><c>GET /api/webui/voice/audio-for?ref_id=</c>, <c>/audio/{id}</c> — play a kept audio again.</item>
@@ -22,25 +22,25 @@ using Hestia.WebUI.Services;
 [Route("api/webui/voice")]
 public class VoiceController : ControllerBase
 {
-    public const string UseMessage = "webui.vocale";
-    public const string UseListen = "webui.ascolta";
-    public const string UseLiveIn = "webui.live.ascolto";
-    public const string UseLiveOut = "webui.live.voce";
-    public const string UseDictation = "webui.dettatura";
+    public const string UseMessage = "webui.voice_note";
+    public const string UseListen = "webui.listen";
+    public const string UseLiveIn = "webui.live.listening";
+    public const string UseLiveOut = "webui.live.voice";
+    public const string UseDictation = "webui.dictation";
 
     /// <summary>Declared on the Hub (capabilities.voice_usecases).</summary>
     public static readonly object[] UseCases =
     {
-        new { id = UseMessage, label = "Sito · vocali in chat", direction = "ascolto", chain = "ascolto", mode = "segui",
-              help = "I vocali che registri nella chat del sito." },
-        new { id = UseListen, label = "Sito · «Ascolta»", direction = "voce", chain = "voce", mode = "segui",
-              help = "Il tasto «Ascolta» sotto le risposte." },
-        new { id = UseLiveIn, label = "Sito · Parla (ascolto)", direction = "ascolto", chain = "ascolto", mode = "segui",
-              help = "Modalità Parla: quello che dici." },
-        new { id = UseLiveOut, label = "Sito · Parla (voce)", direction = "voce", chain = "voce", mode = "segui",
-              help = "Modalità Parla: le risposte lette mentre si scrivono." },
-        new { id = UseDictation, label = "Sito · dettatura", direction = "ascolto", chain = "ascolto", mode = "segui",
-              help = "Il tasto «Detta» della chat: quello che dici diventa testo da rileggere, senza inviarlo." },
+        new { id = UseMessage, label = "Site · voice notes in chat", direction = "listen", chain = "listen", mode = "follow",
+              help = "The voice notes you record in the site chat." },
+        new { id = UseListen, label = "Site · «Listen»", direction = "voice", chain = "voice", mode = "follow",
+              help = "The «Listen» button under the answers." },
+        new { id = UseLiveIn, label = "Site · Talk (listening)", direction = "listen", chain = "listen", mode = "follow",
+              help = "Talk mode: what you say." },
+        new { id = UseLiveOut, label = "Site · Talk (voice)", direction = "voice", chain = "voice", mode = "follow",
+              help = "Talk mode: the answers read aloud while they are written." },
+        new { id = UseDictation, label = "Site · dictation", direction = "listen", chain = "listen", mode = "follow",
+              help = "The chat «Dictate» button: what you say becomes text to read again, without sending it." },
     };
 
     private static readonly HashSet<string> Uses = new() { UseMessage, UseListen, UseLiveIn, UseLiveOut, UseDictation };
@@ -81,7 +81,7 @@ public class VoiceController : ControllerBase
         return Forward(path, body, null, step == "end" ? 120 : 60);
     }
 
-    /// <summary>Queue the local voice models (guided setup «Voce», Download page): Echo picks them from its chains.</summary>
+    /// <summary>Queue the local voice models (guided setup «Voice», Downloads page): Echo picks them from its chains.</summary>
     [HttpPost("models/prefetch")]
     public Task<IActionResult> Prefetch() => Raw(HttpMethod.Post, "models/prefetch", new { }, null, 30);
 

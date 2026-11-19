@@ -1,4 +1,4 @@
-"""Telegram visual grammar (docs/work/2026-10-23-telegram-da-zero §3) — every message is built from these.
+"""Telegram visual grammar (docs/work/2026-10-23-telegram-from-scratch §3) — every message is built from these.
 
 Rules: bold title, plain body, italic for secondary info and outcomes, ``•`` items, ``·`` separator inside a line.
 At most one marker per message, on its title line: a tone dot (notifications, outcomes, errors) or the area emoji
@@ -68,7 +68,7 @@ def esc(text: Any) -> str:
 
 
 def title_line(text: str, *, marker: str = "", tone: str | None = None, crumbs: Iterable[str] = ()) -> str:
-    """``🔵 <b>Title</b>`` or ``🏋️ <b>Aree › Allenamento</b>``."""
+    """``🔵 <b>Title</b>`` or ``🏋️ <b>Areas › Training</b>``."""
     parts = [tr(p) for p in [*crumbs, text] if p]
     body = " › ".join(esc(strip_emoji(p) or p) for p in parts)
     mark = tone_dot(tone) or marker
@@ -119,7 +119,7 @@ def button(text: str, data: str = "", *, url: str = "", copy: str = "", web_app:
            icon: str = "", disabled: bool = False, limit: int = LABEL_MAX) -> InlineKeyboardButton:
     """``style``: Telegram button colour — ``primary`` (blue: the main action), ``success`` (green: confirm, done),
     ``danger`` (red: delete, stop). ``icon``: a custom emoji id (works when the owner has Telegram Premium).
-    ``disabled``: a status line that does nothing (e.g. «Fatto · da WebUI»)."""
+    ``disabled``: a status line that does nothing (e.g. «Done · from WebUI»)."""
     shown = label(text, limit)
     extra: dict[str, Any] = {}
     if style in ("primary", "success", "danger"):

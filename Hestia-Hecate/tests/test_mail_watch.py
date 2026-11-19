@@ -1,5 +1,5 @@
 """Mail watcher: the one look at the mailbox (history API) → headers pushed to Iris.
-SPEC docs/work/2026-10-19-email-push-spese §3.1."""
+SPEC docs/work/2026-10-19-email-push-expenses §3.1."""
 from __future__ import annotations
 
 import pytest

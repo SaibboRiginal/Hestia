@@ -1,8 +1,8 @@
-"""Telegram bot entry point: one router for every button and message (docs/work/2026-10-23-telegram-da-zero §5).
+"""Telegram bot entry point: one router for every button and message (docs/work/2026-10-23-telegram-from-scratch §5).
 
 Messages, in order: the bottom keyboard (exact words) → `/` commands (doors, aliases, any tool by name) → an open
 flow (action, menu editor, chat setting, the assistant's question) → chat. Buttons go by prefix to one handler each;
-an unknown or old button never errors: «Questo menu è vecchio» and the current card.
+an unknown or old button never errors: «This menu is old» and the current card.
 """
 import logging
 import threading
@@ -172,14 +172,14 @@ def register_handlers() -> None:
     core.bot.register_message_handler(on_file, content_types=["document", "photo", "audio", "voice", "video",
                                                          "video_note"])
     core.bot.register_message_handler(on_message, func=lambda message: True)
-    # The owner's emoji on Hestia's messages (hestia-viva F4)
+    # The owner's emoji on Hestia's messages (living-hestia F4)
     from telegram_bot.services import reactions
     core.bot.register_message_reaction_handler(reactions.on_owner_reaction, func=lambda update: True)
 
 
 def setup_bot_profile() -> None:
     """`/` menu (8 entries, owner's chat only), name and description of the bot, menu button: at boot and when the
-    assistant's name, she/he or «Lingua» change."""
+    assistant's name, she/he or «Language» change."""
     from telebot.types import BotCommand, BotCommandScopeChat
     menu = model.current()
     commands = [BotCommand(name, tr(desc)) for name, desc in menu.commands]
@@ -194,8 +194,8 @@ def setup_bot_profile() -> None:
 
 
 def set_bot_identity() -> None:
-    """The bot is called with the name the owner gave the assistant, and describes itself in «Lingua»
-    (docs/work/2026-11-17-nome-dei-client). The name is sent only when it differs (Telegram limits renames)."""
+    """The bot is called with the name the owner gave the assistant, and describes itself in «Language»
+    (docs/work/2026-11-17-client-names). The name is sent only when it differs (Telegram limits renames)."""
     from hestia_common.i18n import identity_now
     name = (identity_now().get("assistant") or "Hestia")[:64]
     try:
@@ -228,7 +228,7 @@ def run():
     register_handlers()
     threading.Thread(target=run_control_api, daemon=True).start()
     from telegram_settings import settings as telegram_settings
-    telegram_settings.on_change(on_personal_change)   # the bot follows the assistant's name and «Lingua»
+    telegram_settings.on_change(on_personal_change)   # the bot follows the assistant's name and «Language»
     telegram_settings.start()   # Themis: declare + load values (background, hourly re-assert)
 
     if catalog.register_with_hub():
@@ -249,7 +249,7 @@ def run():
     from telegram_bot.services.chat_queue import drain_async
     drain_async("startup")
     logger.info("event=telegram_interface_starting")
-    # message_reaction is not in Telegram's default updates: list what the bot handles (hestia-viva F4)
+    # message_reaction is not in Telegram's default updates: list what the bot handles (living-hestia F4)
     core.bot.infinity_polling(allowed_updates=ALLOWED_UPDATES)
 
 

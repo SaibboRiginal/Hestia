@@ -1,6 +1,6 @@
 """Hermes inside view (WebUI plugin «Consegne»): manifest + /api/ui/* reads.
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked.
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked.
 """
 from __future__ import annotations
 
@@ -42,11 +42,11 @@ class TestDeliveryView:
         assert "ref" not in v["clients"]["telegram"]
 
     def test_title_plain_and_area_not_module(self):
-        """Deliveries page (dossier 2026-11-18-problemi-del-test F): no HTML in the title, the area instead of the module."""
+        """Deliveries page (dossier 2026-11-18-real-test-problems F): no HTML in the title, the area instead of the module."""
         from modules.ui_view import delivery_view
         v = delivery_view(_row("n9", n={"title": "<b>Nuova casa</b> a Udine"}))
         assert v["title"] == "Nuova casa a Udine"
-        assert v["area"]["key"] == "case" and v["area"]["icon"] == "home"
+        assert v["area"]["key"] == "houses" and v["area"]["icon"] == "home"
 
     def test_answer_and_pending(self):
         from modules.ui_view import delivery_view
@@ -102,12 +102,12 @@ class TestUiEndpoints:
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/ui/" and web["entry"] == "/ui/webui/hermes.js"
         pages = {p["id"]: p for p in web["page"]}
-        assert list(pages) == ["notifiche", "consegne"]
-        assert pages["notifiche"]["order"] == 140 and pages["notifiche"]["element"] == "hermes-inbox"
-        assert pages["notifiche"]["badge"] == {"source": "/api/ui/inbox/counts", "field": "unread"}
-        assert pages["notifiche"]["badge"]["source"].startswith(web["api_prefix"])
-        assert pages["consegne"]["order"] == 141 and pages["consegne"]["parent"] == "notifiche"
-        assert [w["id"] for w in web["widget"]] == ["oggi"] and web["widget"][0]["open_page"] == "consegne"
+        assert list(pages) == ["notifications", "deliveries"]
+        assert pages["notifications"]["order"] == 140 and pages["notifications"]["element"] == "hermes-inbox"
+        assert pages["notifications"]["badge"] == {"source": "/api/ui/inbox/counts", "field": "unread"}
+        assert pages["notifications"]["badge"]["source"].startswith(web["api_prefix"])
+        assert pages["deliveries"]["order"] == 141 and pages["deliveries"]["parent"] == "notifications"
+        assert [w["id"] for w in web["widget"]] == ["today"] and web["widget"][0]["open_page"] == "deliveries"
 
     def test_deliveries_endpoint(self, app_client):
         client, main = app_client

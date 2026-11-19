@@ -1,4 +1,4 @@
-"""Usage rows: one per LLM call, pushed to Archive (dossier ``docs/work/2026-10-19-oracle-a-blocchi`` §E).
+"""Usage rows: one per LLM call, pushed to Archive (dossier ``docs/work/2026-10-19-oracle-blocks`` §E).
 
 A chain step runs inside ``step(...)``: the provider's token counts (``llm_stats.record``) land in the step's
 context, and when the step ends ``finish`` builds the row: time, module (prefix of the use case), client and
@@ -93,7 +93,7 @@ def finish(ctx: dict, outcome: str = "ok", detail: str = "") -> dict:
 def _label_usecase(label: str) -> str:
     from core.services.llm_chains import SLOTS
     label = str(label or "").strip()
-    return SLOTS.get(label, label if "." in label else f"oracle.{label or 'generale'}")
+    return SLOTS.get(label, label if "." in label else f"oracle.{label or 'general'}")
 
 
 def _session() -> str:
@@ -127,12 +127,12 @@ def _window(provider: str, model: str = "") -> int:
 
 
 def price(provider: str, model: str, inp: int, cached: int, out: int, reported: float = 0.0) -> tuple[float, str]:
-    """(cost in $, kind): Claude subscription → its own equivalent cost, «abbonamento»; a cost the provider
+    """(cost in $, kind): Claude subscription → its own equivalent cost, «subscription»; a cost the provider
     reported → «api»; a provider that costs nothing (local) → 0, «locale»; else ``oracle.pricing``."""
     from core.services import llm_gateway, llm_providers, oracle_settings
     ptype = llm_providers.type_of(provider)
     if ptype == "claude_cli" or provider == "codex":   # subscriptions (Claude Code, Codex external agents)
-        return reported, "abbonamento"
+        return reported, "subscription"
     if reported:
         return reported, "api"
     if not llm_gateway.billed(provider):
@@ -140,12 +140,12 @@ def price(provider: str, model: str, inp: int, cached: int, out: int, reported: 
     table = oracle_settings.settings.get(oracle_settings.PRICING_KEY, {}) or {}
     rates = table.get(f"{provider}/{model}") or table.get(model) if isinstance(table, dict) else None
     if not isinstance(rates, dict):
-        return 0.0, "sconosciuto"
+        return 0.0, "unknown"
     try:
         rate_in, rate_out = float(rates.get("in") or 0), float(rates.get("out") or 0)
         rate_cached = float(rates.get("cached", rate_in) or 0)
     except (TypeError, ValueError):
-        return 0.0, "sconosciuto"
+        return 0.0, "unknown"
     fresh = max(0, inp - cached)
     return (fresh * rate_in + cached * rate_cached + out * rate_out) / 1_000_000, "api"
 

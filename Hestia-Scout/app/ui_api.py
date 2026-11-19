@@ -26,7 +26,7 @@ from pydantic import BaseModel
 from core.archive_client import ArchiveClient
 from domain.listing_key import listing_key
 from domain.listing_status import ListingStatus
-from hestia_common.i18n import t as tr  # fixed texts in the owner's language
+from hestia_common.i18n import t as tr, word_regex  # fixed texts in the owner's language
 
 try:
     from hestia_common.plugin_client import PluginClient, page, quick_action, widget
@@ -62,28 +62,28 @@ plugin = PluginClient("scout", title="alt::Houses", icon="home", color="amber",
 plugin.webui(
     entry="scout.js", api_prefix="/api/ui/",
     pages=[
-        page("case", "Houses", element="scout-listings", icon="home", order=20,
+        page("houses", "Houses", element="scout-listings", icon="home", order=20,
              help="All the houses found: filters, favourites, discarded."),
-        page("case/:id", "Listing", element="scout-listing", parent="case", detail=True),
-        page("statistiche", "House statistics", element="scout-stats", icon="chart", order=21, parent="case",
+        page("houses/:id", "Listing", element="scout-listing", parent="houses", detail=True),
+        page("stats", "House statistics", element="scout-stats", icon="chart", order=21, parent="houses",
              help="Prices per city, new houses per week, state of the listings."),
     ],
     widgets=[
-        widget("numeri", "Houses in numbers", element="scout-kpi-widget", sizes=["m", "xl"], size="m", auto=True,
-               open_page="case", icon="home"),
-        widget("nuove", "alt::New houses", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
-               open_page="case", icon="home",
+        widget("numbers", "Houses in numbers", element="scout-kpi-widget", sizes=["m", "xl"], size="m", auto=True,
+               open_page="houses", icon="home"),
+        widget("new", "alt::New houses", element="scout-new-widget", sizes=["m", "l", "xl"], size="l", auto=True,
+               open_page="houses", icon="home",
                params={"city": {"type": "string", "label": "City (empty = all)"},
                        "days": {"type": "int", "label": "Last days", "default": NEW_DAYS}}),
-        widget("preferite", "Favourite houses", element="scout-favorites-widget", sizes=["m", "l"], size="l",
-               open_page="case", icon="star"),
-        widget("prezzi", "Prices per city", element="scout-prices-widget", sizes=["l", "xl"], size="l",
-               open_page="statistiche", icon="chart"),
+        widget("favorites", "Favourite houses", element="scout-favorites-widget", sizes=["m", "l"], size="l",
+               open_page="houses", icon="star"),
+        widget("prices", "Prices per city", element="scout-prices-widget", sizes=["l", "xl"], size="l",
+               open_page="stats", icon="chart"),
     ],
     quick_actions=[
-        quick_action("controlla", "Check listing emails", "POST", "/api/ui/cycle", icon="refresh",
+        quick_action("check", "Check listing emails", "POST", "/api/ui/cycle", icon="refresh",
                      group="Houses", order=21),
-        quick_action("preferita", "f::Favourite", "POST", "/api/ui/listings/{id}/favorite", icon="star",
+        quick_action("favorite", "f::Favourite", "POST", "/api/ui/listings/{id}/favorite", icon="star",
                      group="alt::New houses", source="/api/ui/quick/new", order=20,
                      undo={"method": "DELETE", "path": "/api/ui/listings/{id}/favorite"}),
     ],
@@ -130,7 +130,7 @@ def city_of(payload: dict) -> str:
     parts = [p.strip() for p in address.split(",") if p.strip()]
     for part in reversed(parts):
         cleaned = re.sub(r"\(\s*\w{2}\s*\)", "", _CAP_RE.sub("", part)).strip(" -()")
-        if cleaned and not cleaned.isdigit() and len(cleaned) > 2 and not re.match(r"^(via|viale|piazza|corso|vicolo|largo)\b", cleaned, re.I):
+        if cleaned and not cleaned.isdigit() and len(cleaned) > 2 and not word_regex(r"^(?:{0})\b", "address.street_word").match(cleaned):
             return cleaned.title()
     loc = payload.get("location") if isinstance(payload.get("location"), dict) else {}
     query = str(loc.get("query") or "").split(",")[-1].strip()
@@ -342,7 +342,7 @@ class ListingPatch(BaseModel):
 
 
 def recap_facts(views: list[dict], day) -> dict:
-    """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): listings that arrived on ``day``
+    """Facts for the daily recap (docs/work/2026-10-20-daily-recap): listings that arrived on ``day``
     (local date), the first ones named. Viewings live in the calendar, so they come from the agenda piece."""
     new = []
     for v in views:
@@ -417,7 +417,7 @@ def build_router(store: ListingStore, run_cycle: Callable[[], dict], cycle_statu
 
     @router.get("/quick/new")
     def quick_new(limit: int = Query(3, ge=1, le=10)):
-        """Chips for the Home strip: newest listings not yet marked (tap = Preferita)."""
+        """Chips for the Home strip: newest listings not yet marked (tap = Favorite)."""
         items = [v for v in filter_views(store.views(), days=NEW_DAYS) if not v["flag"]]
         items.sort(key=SORTS["new"][0], reverse=True)
         chips = []

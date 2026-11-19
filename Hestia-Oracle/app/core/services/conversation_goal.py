@@ -1,17 +1,19 @@
-"""Goal for a conversation (Cindy idea 23, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Goal for a conversation (Cindy idea 23, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
-The owner fixes a goal in a chat («obiettivo: sistema le categorie delle spese di ottobre», or the model calls
+The owner fixes a goal in a chat («goal: sort out October's expense categories», or the model calls
 ``goal_set`` when he asks for a long job). After answering each of his messages the assistant works on the goal for a
 few more rounds of the agent loop, then reports; his messages always come first (a round runs only after his
-message is answered) and he can stop it at any time («ferma l'obiettivo» → ``goal_stop``). The model ends it with
-``goal_done``. Budget: ``oracle.obiettivo.giri`` rounds in all and ``oracle.obiettivo.giri_per_risposta`` per answer.
+message is answered) and he can stop it at any time («stop the goal» → ``goal_stop``). The model ends it with
+``goal_done``. Budget: ``oracle.goal.rounds`` rounds in all and ``oracle.goal.rounds_per_answer`` per answer.
 Kept in Archive (``oracle-store``, kind ``goal``, ref = session) so a restart does not lose it. Only the owner's turns
-(origin ``utente``) run goal rounds.
+(origin ``user``) run goal rounds.
 """
 from __future__ import annotations
 
 import logging
 import re
+
+from hestia_common.i18n import word_regex
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -19,12 +21,11 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_oracle.conversation_goal")
 
-TOTAL_ROUNDS = "oracle.obiettivo.giri"
-ROUNDS_PER_ANSWER = "oracle.obiettivo.giri_per_risposta"
+TOTAL_ROUNDS = "oracle.goal.rounds"
+ROUNDS_PER_ANSWER = "oracle.goal.rounds_per_answer"
 _STORE = "api/oracle-store/records"
-_PREFIX = re.compile(r"^\s*(obiettivo|goal)\s*:\s*(.+)$", re.IGNORECASE | re.DOTALL)
-_STOP = re.compile(r"\b(ferma|stop|basta|annulla)\b.*\bobiettivo\b|\bobiettivo\b.*\b(fermati|stop|basta)\b",
-                   re.IGNORECASE)
+_PREFIX = word_regex(r"^\s*(?:{0})\s*:\s*(.+)$", "goal.word", flags=re.IGNORECASE | re.DOTALL)
+_STOP = word_regex(r"\b(?:{1})\b.*\b(?:{0})\b|\b(?:{0})\b.*\b(?:{1})\b", "goal.word", "goal.stop")
 
 _cache: dict[str, dict | None] = {}
 
@@ -34,9 +35,9 @@ def _now() -> str:
 
 
 def parse_prefix(message: str) -> str:
-    """«obiettivo: X» at the start of a message → X (the goal), else ""."""
+    """«goal: X» at the start of a message → X (the goal), else ""."""
     m = _PREFIX.match(message or "")
-    return m.group(2).strip()[:500] if m else ""
+    return m.group(1).strip()[:500] if m else ""
 
 
 def is_stop(message: str) -> bool:
@@ -65,7 +66,7 @@ def active(hub, session_id: str) -> dict | None:
         ok, res = hub.route_to_service("archive", _STORE, "GET", query={"kind": "goal", "ref_id": session_id},
                                        timeout=6)
         rows = (res or {}).get("rows") if ok and isinstance(res, dict) else []
-        live = [dict(r.get("data") or {}) for r in rows or [] if (r.get("data") or {}).get("state") == "attivo"]
+        live = [dict(r.get("data") or {}) for r in rows or [] if (r.get("data") or {}).get("state") == "active"]
         goal = live[-1] if live else None
     except Exception as exc:
         logger.warning("[🔄] event=goal_load_failed session_id=%s error=%s", session_id, exc)
@@ -76,10 +77,10 @@ def active(hub, session_id: str) -> dict | None:
 def set_goal(hub, session_id: str, text: str) -> dict:
     old = active(hub, session_id)
     if old:
-        old.update(state="sostituito", ended_at=_now())
+        old.update(state="replaced", ended_at=_now())
         _save(hub, old)
     goal = {"id": f"goal_{uuid.uuid4().hex[:10]}", "session_id": session_id, "text": text.strip()[:500],
-            "state": "attivo", "rounds": 0, "notes": [], "created_at": _now()}
+            "state": "active", "rounds": 0, "notes": [], "created_at": _now()}
     _save(hub, goal)
     _cache[session_id] = goal
     logger.info("event=goal_set session_id=%s goal_id=%s", session_id, goal["id"])

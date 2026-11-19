@@ -10,7 +10,7 @@ import { tr, TrPipe } from '../../core/i18n';
  * <hx-setting-control [item] [disabled] (commit)="store.set(item, $event)" />
  * The input for one central setting, chosen by its declared type. Emits only a complete value
  * (on toggle/select, or when a text field is confirmed): Themis validates and answers.
- * Reusable anywhere a setting is shown (Impostazioni, chat quick menu…).
+ * Reusable anywhere a setting is shown (Settings, chat quick menu…).
  */
 @Component({
   selector: 'hx-setting-control',
@@ -134,7 +134,7 @@ export class SettingControlComponent {
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
   /** Object values with a dedicated editor: link to it (the JSON stays editable below). */
   editorLink(editor?: string): { path: string; label: string } | null {
-    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: tr('Edit in Oracle · Brain · Models') } : null;
+    return editor?.startsWith('llm_') ? { path: '/p/oracle/brain', label: tr('Edit in Oracle · Brain · Models') } : null;
   }
 
   commitJson(v: string) {

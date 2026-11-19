@@ -1,6 +1,6 @@
 /**
- * Types, labels and formatters of the Sviluppo page (ported from the WebUI's built-in features/forge, SPEC
- * docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4). Every call goes to /api/hephaestus/forge|repo/* directly.
+ * Types, labels and formatters of the Development page (ported from the WebUI's built-in features/forge, SPEC
+ * docs/work/2026-10-18-core-modules-and-external-mcp §A4). Every call goes to /api/hephaestus/forge|repo/* directly.
  */
 import type { HestiaHost } from '@hestia/webui-sdk';
 import { API } from '../util';
@@ -30,8 +30,8 @@ export interface ForgeTask {
 }
 
 /** Independent automatic review before the diff reaches you (Cindy 3): only issues with evidence. */
-export interface ForgeReviewIssue { priority: 'alta' | 'media' | 'bassa'; file: string; problem: string; evidence: string; }
-export interface ForgeReview { verdict: 'ok' | 'problemi' | 'non_disponibile'; issues: ForgeReviewIssue[]; blocking: number;
+export interface ForgeReviewIssue { priority: 'high' | 'medium' | 'low'; file: string; problem: string; evidence: string; }
+export interface ForgeReview { verdict: 'ok' | 'problems' | 'unavailable'; issues: ForgeReviewIssue[]; blocking: number;
   rounds?: number; first?: ForgeReviewIssue[]; }
 
 export type TranscriptKind = 'user' | 'text' | 'thinking' | 'tool_use' | 'tool_result' | 'system' | 'result' | 'error';
@@ -95,7 +95,7 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
   awaiting_review: { label: tr('diff to review'), tone: 'warning' },
   approved: { label: tr('merge in progress'), tone: 'accent' },
   merging: { label: tr('merge in progress'), tone: 'accent' },
-  merged: { label: 'applicato', tone: 'success' },
+  merged: { label: tr('applied'), tone: 'success' },
   deployed: { label: tr('in production'), tone: 'success' },
   failed: { label: tr('failed'), tone: 'danger' },
   rejected: { label: tr('rejected'), tone: 'neutral' },
@@ -105,7 +105,7 @@ export const STATE_META: Record<string, { label: string; tone: string }> = {
 export const meta = (state?: string) => STATE_META[state ?? 'new'] ?? { label: state ?? '', tone: 'neutral' };
 
 export const ENGINES = ['', 'oracle', 'claude'];
-// oracle = Oracle's chain of use case forge.codice (Cervello → Modelli); local/cloud = old names of old tasks.
+// oracle = Oracle's chain of use case forge.code (Brain → Models); local/cloud = old names of old tasks.
 export const ENGINE_LABEL: Record<string, string> = {
   '': tr('Default'), auto: tr('Default'), oracle: tr('Oracle chain'), local: tr('Oracle chain'), cloud: tr('Oracle chain'),
   claude: tr('Claude Code'),

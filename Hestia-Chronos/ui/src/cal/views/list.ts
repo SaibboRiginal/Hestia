@@ -1,6 +1,6 @@
 /**
- * <chronos-cal-list> — agenda list grouped by day (31 days from the anchor). The «Adesso» divider marks the
- * current time (the list scrolls to it once); past rows show the outcome of their run (ok / fallito + detail).
+ * <chronos-cal-list> — agenda list grouped by day (31 days from the anchor). The «Now» divider marks the
+ * current time (the list scrolls to it once); past rows show the outcome of their run (ok / failed + detail).
  * Event: cal-select {ev, rect}.
  */
 import { LitElement, css, html, nothing, tokens, tr } from '@hestia/webui-sdk';
@@ -54,7 +54,7 @@ export function outcome(ev: CalEvent, now: number): Outcome | null {
   }
   if (started && !ended) return { label: tr('running'), tone: 'accent' };
   if (ended) {
-    if (!ev.item?.action) return { label: 'concluso', tone: 'neutral' };
+    if (!ev.item?.action) return { label: tr('finished'), tone: 'neutral' };
     const lr = !o.recurring ? ev.item.last_result : null;   // one-off item: its result is the rule's last result
     if (lr) return lr.ok ? { label: 'ok', tone: 'success', detail: lr.detail || undefined } : { label: tr('failed'), tone: 'danger', detail: lr.detail || undefined };
     return { label: tr('no outcome'), tone: 'warning' };

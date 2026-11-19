@@ -3,7 +3,7 @@
 Hub knows every module's tools (each module's own ``/mcp`` plus inline ``capabilities.commands``) and exposes them
 at ``/discovery/commands``. Hestia-MCP is the only reader: it turns them into MCP tool descriptors and executes
 them (``hestia_common.tool_call``), so every client — Oracle, Telegram, WebUI, external AIs — sees the same list
-and the same execution rules (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+and the same execution rules (docs/work/2026-10-18-core-modules-and-external-mcp §B2).
 """
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def visible_to(cmd: dict, client: str) -> bool:
     if not client or client == "oracle":
         return True
     if client == "telegram":
-        # Every function of the assistant is usable from Telegram (docs/work/2026-10-23-telegram-da-zero §5.9):
+        # Every function of the assistant is usable from Telegram (docs/work/2026-10-23-telegram-from-scratch §5.9):
         # only tools meant solely for outside AIs stay out.
         return clients != [EXTERNAL]
     return not clients or "*" in clients or CLIENT_KEYS.get(client, client) in clients or client in clients

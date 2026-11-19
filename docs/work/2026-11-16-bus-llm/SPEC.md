@@ -10,7 +10,7 @@ Versioning: minor = refinement, major = scope/design change. Every bump goes in 
 
 Context: evaluation of the week's AI papers (`/mnt/project-files/valutazioni/paper-settimana-2026-11-09.md`,
 s³ multi-agent paper) and the open design «Ogni modulo un agente di Oracle»
-(`docs/work/2026-11-06-moduli-come-agenti`, SPEC v2.1). Agents multiply model calls; the owner's PC runs one at a time.
+(`docs/work/2026-11-06-modules-as-agents`, SPEC v2.1). Agents multiply model calls; the owner's PC runs one at a time.
 
 ## 1. Today (verified in code, main 0a19768)
 

@@ -1,4 +1,4 @@
-"""Watch on the cached prompt prefix (dossier docs/work/2026-11-17-output-compatti v1.2, idea from Headroom).
+"""Watch on the cached prompt prefix (dossier docs/work/2026-11-17-compact-outputs v1.2, idea from Headroom).
 
 A model server reuses the work already done on a prompt only for the part that is byte-identical to the previous
 one (KV cache: Ollama, llama-server, vLLM; prompt cache: cloud services). Oracle builds its prompts so that the start

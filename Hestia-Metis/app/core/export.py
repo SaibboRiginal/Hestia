@@ -1,7 +1,7 @@
-"""Training dataset, phase D3 «Esporta» (docs/work/2026-10-30-dataset-allenamento §3.4).
+"""Training dataset, phase D3 «Export» (docs/work/2026-10-30-training-dataset §3.4).
 
 Turns the saved turns into JSONL files any trainer reads (Unsloth, TRL, axolotl, online services), zipped and kept
-as an Archive blob the owner downloads (WebUI Miglioramento, Telegram: the file arrives under the card):
+as an Archive blob the owner downloads (WebUI Improvement, Telegram: the file arrives under the card):
 
 - ``sft.jsonl``  — ``{"messages": [...], "tools": [...]}`` OpenAI format: system, user, assistant ``tool_calls`` +
   ``tool`` results, final answer. Only turns the review kept (``keep``) or corrected (``fix`` accepted, or your own
@@ -10,8 +10,8 @@ as an Archive blob the owner downloads (WebUI Miglioramento, Telegram: the file 
 - ``eval.jsonl`` — like sft, about 10% of the conversations (by session, never also in sft), to test a model.
 - ``card.json``  — counts, routes, models, date range, masked or not.
 
-The owner picks at each export (Marko 2026-10-30): **oscurati** (default: names of Persone, e-mails, phones, IBAN,
-addresses → ``<PERSONA_1>``…, the same masking as the nightly review) or **in chiaro** (the real text).
+The owner picks at each export (Marko 2026-10-30): **redacted** (default: names of People, e-mails, phones, IBAN,
+addresses → ``<PERSON_1>``…, the same masking as the nightly review) or **plain** (the real text).
 """
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ class Exporter:
         return out
 
     def build(self, *, masked: bool = True, include_unreviewed: bool = False) -> dict:
-        names = self.people() if masked else []      # Hera away → raises: never export «oscurati» half-masked
+        names = self.people() if masked else []      # Hera away → raises: never export «redacted» half-masked
         traces = self._all_traces()
         reviews = self._by_ids("review", [t["id"] for t in traces])
         toolsets = self._by_ids("toolset", sorted({(t.get("data") or {}).get("toolset_ref") for t in traces} - {"", None}))
@@ -140,7 +140,7 @@ class Exporter:
                 z.writestr(fname, "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
             z.writestr("card.json", json.dumps(card, ensure_ascii=False, indent=2))
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M")
-        name = f"hestia-dataset-{stamp}-{'oscurato' if masked else 'in-chiaro'}.zip"
+        name = f"hestia-dataset-{stamp}-{'redacted' if masked else 'plain'}.zip"
         blob = self.hub.ok("archive", "POST", "api/blobs", body={
             "owner_module": "metis", "content_type": "application/zip",
             "data_base64": base64.b64encode(buf.getvalue()).decode(), "meta": {"name": name}}, timeout=60) or {}

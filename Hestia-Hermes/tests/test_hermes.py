@@ -453,7 +453,7 @@ def normalize_done():
 
 @pytest.mark.unit
 def test_recap_counts_today_and_lists_pending(center):
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero): today's count, important titles, answers awaited;
+    """Daily recap piece (docs/work/2026-10-20-daily-recap): today's count, important titles, answers awaited;
     the recap notification itself is not counted."""
     from datetime import datetime, timezone
 

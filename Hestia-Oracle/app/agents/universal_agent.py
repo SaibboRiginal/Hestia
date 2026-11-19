@@ -148,7 +148,7 @@ class UniversalAgent:
 
     def _ollama_options(self) -> dict:
         """keep_alive, and num_ctx only when the window is forced from Hestia: identical on every call (no model
-        reload). On «automatica» Ollama keeps the window the owner set there (core.services.local_window)."""
+        reload). On «automatic» Ollama keeps the window the owner set there (core.services.local_window)."""
         from core.services import oracle_settings
         opts = oracle_settings.ollama_request_options(self.model_name)
         self._sent_num_ctx = int(opts["options"].get("num_ctx") or 0)
@@ -360,7 +360,7 @@ class UniversalAgent:
             for t in tools
         ]
         # Hestia's persona stays the system prompt (identity and tone: a separate «tool-calling engine» prompt made
-        # local models answer «sono il motore di ragionamento di Hestia», docs/work/2026-11-06-hestia-viva v1.3);
+        # local models answer «I am Hestia's reasoning engine», docs/work/2026-11-06-living-hestia v1.3);
         # a short tool rule is added after it. The agent-loop preamble with the tool list is in *user_message*.
         _TOOL_CALLING_SYSTEM = "\n\n".join(p for p in (self.role_prompt.strip(), (
             "TOOLS: if a tool is needed to answer or act, call it before writing. "

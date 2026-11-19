@@ -5,7 +5,7 @@ process natively, based on model name prefixes.
 
 Prefixes are central settings (``oracle.documents.vision_models`` /
 ``oracle.documents.audio_models``), read at every check: add a new capable model
-family in Impostazioni → Oracle → Documenti.
+family in Settings → Oracle → Documents.
 """
 
 

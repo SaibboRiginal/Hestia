@@ -1,12 +1,12 @@
-"""Client of the voice module Echo, through the Hub (the only door). Dossier ``docs/work/2026-10-20-modulo-voce``.
+"""Client of the voice module Echo, through the Hub (the only door). Dossier ``docs/work/2026-10-20-voice-module``.
 
 Callers (Telegram, Oracle, Hermes, the WebUI backend) never touch audio engines: they send bytes and get text,
 or send text and get bytes. Failures return ``None`` so every caller keeps its own fallback (``[🔄]``).
 
     voice = VoiceClient(HUB_API_URL)
-    heard = voice.transcribe(ogg_bytes, "audio/ogg", use_case="telegram.vocale",
+    heard = voice.transcribe(ogg_bytes, "audio/ogg", use_case="telegram.voice_note",
                              keep={"kind": "recording", "session_id": sid, "message_id": mid, "client": "telegram"})
-    spoken = voice.speak(text, use_case="telegram.risposta", fmt="ogg_opus",
+    spoken = voice.speak(text, use_case="telegram.answer", fmt="ogg_opus",
                          keep={"kind": "generated", "message_id": mid})
     if spoken: send_voice(spoken["audio"])
 """

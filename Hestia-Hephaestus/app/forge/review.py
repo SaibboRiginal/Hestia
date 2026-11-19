@@ -1,13 +1,13 @@
-"""Automatic review and team plan for Forge tasks (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""Automatic review and team plan for Forge tasks (dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 - **Reviewer** (Cindy 3): after Forge's own tests, a fresh model with no memory of the work and no tools (Oracle
-  ``/api/llm/generate``, use case ``forge.revisione``) gets only labelled evidence: the request, the acceptance
+  ``/api/llm/generate``, use case ``forge.review``) gets only labelled evidence: the request, the acceptance
   criteria of the dossier SPEC, the diff and the real test output. The engine's own story is marked «unverified
-  self-declaration». It answers with prioritised issues; blocking ones (alta/media) go back to the engine for one
+  self-declaration». It answers with prioritised issues; blocking ones (high/medium) go back to the engine for one
   automatic round of fixes. The owner still approves: the review only means less work for them.
-- **Team plan** (Cindy 31): a large task (≥ ``hephaestus.forge.squadra.min_servizi`` services) is split by the
-  model (use case ``forge.piano``) into up to 4 pieces run one after the other in the same worktree, each with the
-  engine its difficulty asks for (semplice → the local chain, difficile → Claude), then the reviewer on the result.
+- **Team plan** (Cindy 31): a large task (≥ ``hephaestus.forge.team.min_services`` services) is split by the
+  model (use case ``forge.plan``) into up to 4 pieces run one after the other in the same worktree, each with the
+  engine its difficulty asks for (simple → the local chain, hard → Claude), then the reviewer on the result.
 Never blocking: when the model is not reachable the step is skipped with a ``[🔄]`` log.
 """
 from __future__ import annotations
@@ -23,9 +23,9 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_hephaestus.forge.review")
 
-REVIEW_USECASE = "forge.revisione"
-PLAN_USECASE = "forge.piano"
-BLOCKING = ("alta", "media")
+REVIEW_USECASE = "forge.review"
+PLAN_USECASE = "forge.plan"
+BLOCKING = ("high", "medium")
 MAX_PIECES = 4
 _DIFF_CHARS = 40000
 
@@ -63,8 +63,8 @@ Services: {services}
 """
 
 # Model answers in English; stored values stay the ones the rest of Forge (and its cards) already use.
-_PRIORITY = {"high": "alta", "medium": "media", "low": "bassa", "alta": "alta", "media": "media", "bassa": "bassa"}
-_HARD = ("hard", "difficile")
+_PRIORITY = {"high": "high", "medium": "medium", "low": "low"}
+_HARD = ("hard",)
 
 
 def _owner_language() -> str:
@@ -97,7 +97,7 @@ def acceptance_from_workdoc(worktree: Path, workdoc: str) -> str:
         text = spec.read_text(encoding="utf-8")
     except OSError:
         return "(no SPEC found)"
-    match = re.search(r"^#+\s*(acceptance|criteri)[^\n]*\n(.*?)(?=^#+\s|\Z)", text, re.I | re.M | re.S)
+    match = re.search(r"^#+\s*(acceptance)[^\n]*\n(.*?)(?=^#+\s|\Z)", text, re.I | re.M | re.S)
     return (match.group(2) if match else text)[:4000].strip() or "(empty)"
 
 
@@ -131,16 +131,16 @@ class ForgeReviewer:
         answer = self._generate(REVIEW_USECASE, prompt)
         data = parse_json(answer or "")
         if answer is None or data is None:
-            return {"verdict": "non_disponibile", "issues": [], "blocking": 0}
+            return {"verdict": "unavailable", "issues": [], "blocking": 0}
         issues = []
         for i in data.get("issues") or []:
             if isinstance(i, dict) and str(i.get("problem") or "").strip():
-                prio = _PRIORITY.get(str(i.get("priority") or "medium").lower(), "media")
+                prio = _PRIORITY.get(str(i.get("priority") or "medium").lower(), "medium")
                 issues.append({"priority": prio,
                                "file": str(i.get("file") or "")[:200], "problem": str(i["problem"])[:600],
                                "evidence": str(i.get("evidence") or "")[:400]})
         blocking = sum(1 for i in issues if i["priority"] in BLOCKING)
-        verdict = "problemi" if issues else "ok"
+        verdict = "problems" if issues else "ok"
         logger.info("event=forge_review_done verdict=%s issues=%d blocking=%d", verdict, len(issues), blocking)
         return {"verdict": verdict, "issues": issues, "blocking": blocking}
 
@@ -154,7 +154,7 @@ class ForgeReviewer:
             if isinstance(p, dict) and str(p.get("request") or "").strip():
                 pieces.append({"title": str(p.get("title") or p["request"])[:120],
                                "request": str(p["request"])[:4000],
-                               "difficulty": "difficile" if str(p.get("difficulty") or "hard").lower() in _HARD else "semplice",
+                               "difficulty": "hard" if str(p.get("difficulty") or "hard").lower() in _HARD else "simple",
                                "services": [str(s) for s in p.get("services") or []][:10]})
         return pieces[:MAX_PIECES]
 
@@ -170,7 +170,7 @@ def fix_prompt(issues: list[dict]) -> str:
 def card(review: dict) -> str:
     """Italian lines for the owner (no module names)."""
     verdict = review.get("verdict")
-    if verdict == "non_disponibile":
+    if verdict == "unavailable":
         return tr("Automatic review: not available now.")
     if verdict == "ok":
         return tr("Automatic review: no problem found.")

@@ -1,6 +1,6 @@
 """Natural-language quick add + ICS feed for the assistant agenda.
 
-``parse(text)``: "domani alle 15 dentista" → draft fields for the WebUI editor
+``parse(text)``: "tomorrow at 3pm dentist" → draft fields for the WebUI editor
 (the user reviews them; nothing is created here). Oracle does the language part
 (``/api/llm/generate`` through Hub); Chronos validates dates and RRULE.
 

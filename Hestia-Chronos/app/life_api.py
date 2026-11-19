@@ -1,4 +1,4 @@
-"""Routines, special events, smart calendar, manual presence (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W2).
+"""Routines, special events, smart calendar, manual presence (dossier docs/work/2026-10-24-whole-cindy-brainstorm W2).
 
 REST endpoints (``router``), the MCP tools for them (``mcp_tools()``, appended to Chronos' list so they are on
 Telegram, WebUI and the external MCP too) and the agenda rules they need (``boot_rules()``).
@@ -98,13 +98,13 @@ class AnswerIn(BaseModel):
 
 @router.post("/api/routines/{key}/answer")
 def routines_answer(key: str, req: AnswerIn) -> dict:
-    """Hermes: the owner answered a question of this routine (2026-10-30-domande-nelle-notifiche)."""
+    """Hermes: the owner answered a question of this routine (2026-10-30-questions-in-notifications)."""
     return _guard(routines.answer, key, req.question_id, req.answer, req.client)
 
 
 @router.post("/api/routines/{key}/run")
 def routines_run(key: str) -> dict:
-    """Agenda action and «Esegui adesso»."""
+    """Agenda action and «Run now»."""
     return _guard(routines.run, key, by="agenda")
 
 
@@ -118,7 +118,7 @@ class SpecialIn(BaseModel):
     person_id: str = ""
     note: str = ""
     yearly: bool | None = None
-    source: str = "utente"
+    source: str = "user"
     key: str = ""
     by: str = "user"
 
@@ -200,7 +200,7 @@ def presence_manual_clear() -> dict:
 
 
 # ── agenda rules ─────────────────────────────────────────────────────────────
-# The WebUI plugin calls only under its api_prefix /api/agenda/: the pages «Routine» and «Eventi speciali» reach
+# The WebUI plugin calls only under its api_prefix /api/agenda/: the pages «Routines» and «Special events» reach
 # the same handlers there (W7). The /api/routines and /api/special paths stay for modules and the tools.
 for _path, _fn, _method in [("/api/agenda/routines", routines_list, "GET"), ("/api/agenda/routines", routines_create, "POST"),
                             ("/api/agenda/routines/templates", routines_templates, "GET"),
@@ -227,7 +227,7 @@ def mcp_tools() -> list:
     from hestia_common.mcp_helpers import MCPTool
 
     def tool(name, description, method, path, title, *, params=None, required=None, section="", label="",
-             prompt="", group="giornata"):
+             prompt="", group="day"):
         schema = {"type": "object", "properties": params or {}}
         if required:
             schema["required"] = required
@@ -291,12 +291,12 @@ def mcp_tools() -> list:
              ("Set the assistant's state by hand (e.g. focus, rest, out) for a time (minutes) or until the "
               "user clears it."), "POST", "/api/presence/manual", "Change status", required=["state"],
              params={"state": s, "minutes": {"type": "number"}}, section="Status", label="Change status",
-             group="sistema"),
+             group="system"),
         tool("presence_clear", "Clear the state set by hand: the assistant decides by itself again.",
              "DELETE", "/api/presence/manual", "Automatic status", section="Status", label="Automatic status",
-             group="sistema"),
+             group="system"),
         tool("presence_history", "The assistant's last state changes, with the reason.",
              "GET", "/api/presence/history", "Status history", params={"limit": {"type": "integer"}},
-             section="Status", label="alt::Status history", group="sistema",
+             section="Status", label="alt::Status history", group="system",
              prompt="Short list: when, from which state to which, why."),
     ]

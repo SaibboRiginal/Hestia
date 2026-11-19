@@ -1,12 +1,12 @@
-"""What the assistant learned, with undo (Cindy 8 + 18, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""What the assistant learned, with undo (Cindy 8 + 18, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 - **Learning log**: every change the nightly consolidation makes to the memory (new fact, fact retired by a
   conflict, reinforced pattern, weight decay) is a row of Archive ``/api/athena-store`` (kind ``learning``) with
-  ``before`` / ``after`` and, for a new fact, the owner's exact words it comes from (``quote``). «Annulla» restores
+  ``before`` / ``after`` and, for a new fact, the owner's exact words it comes from (``quote``). «Undo» restores
   ``before``, but only while the memory is still as the assistant left it: an edit of the owner wins (409).
-- **«Rivedi cosa sai di me»** (``memory_rivedi``): exact duplicates are found without a model; then one model call
-  (use case ``athena.strategia``) looks for contradictions, near duplicates and stale facts. Nothing is changed:
-  each finding is a proposal (kind ``memory_proposal``) sent as a Hermes card «Applica» / «Lascia».
+- **«Review what you know about me»** (``memory_review``): exact duplicates are found without a model; then one model call
+  (use case ``athena.strategy``) looks for contradictions, near duplicates and stale facts. Nothing is changed:
+  each finding is a proposal (kind ``memory_proposal``) sent as a Hermes card «Apply» / «Keep».
 """
 from __future__ import annotations
 
@@ -130,7 +130,7 @@ class Learning:
             if not key:
                 continue
             if key in seen:
-                out.append({"kind": "doppione", "keep": seen[key]["id"], "retire": [m["id"]],
+                out.append({"kind": "duplicate", "keep": seen[key]["id"], "retire": [m["id"]],
                             "why": tr("Same thing written twice."), "facts": [seen[key]["fact"], m["fact"]]})
             else:
                 seen[key] = m
@@ -141,12 +141,12 @@ class Learning:
                             for m in memories[:150])
         prompt = ("Review these memories about one person. Find ONLY: contradictions, duplicates in other words, "
                   "things probably outdated. Never invent. Answer ONLY JSON: {\"findings\": [{\"kind\": "
-                  "\"contraddizione\"|\"doppione\"|\"vecchia\", \"keep\": id to keep or null, \"retire\": [ids to "
+                  "\"contradiction\"|\"duplicate\"|\"old\", \"keep\": id to keep or null, \"retire\": [ids to "
                   "remove], \"merged\": \"merged text if duplicate (same language as the memories), else empty\", "
                   f"\"why\": \"one line, in {S.owner_language()}\"}}]}}\n\n"
                   + listing)
         status, payload = self._route("oracle", "POST", "api/llm/generate",
-                                      {"prompt": prompt, "use_case": "athena.strategia"}, timeout=180)
+                                      {"prompt": prompt, "use_case": "athena.strategy"}, timeout=180)
         text = str((payload or {}).get("response") or "") if isinstance(payload, dict) else str(payload or "")
         match = re.search(r"\{.*\}", text, re.S)
         try:
@@ -158,7 +158,7 @@ class Learning:
         for f in data.get("findings") or []:
             retire = [i for i in f.get("retire") or [] if i in ids] if isinstance(f, dict) else []
             if retire:
-                out.append({"kind": f.get("kind") or "vecchia", "keep": f.get("keep") if f.get("keep") in ids else None,
+                out.append({"kind": f.get("kind") or "old", "keep": f.get("keep") if f.get("keep") in ids else None,
                             "retire": retire, "merged": str(f.get("merged") or "")[:500],
                             "why": str(f.get("why") or "")[:300],
                             "facts": [next(m["fact"] for m in memories if m["id"] == i) for i in retire]})
@@ -175,7 +175,7 @@ class Learning:
         for f in findings[:10]:
             pid = uuid.uuid4().hex[:10]
             self._put("memory_proposal", pid, {**f, "id": pid, "at": _now(), "status": "pending"})
-            label = {"doppione": "alt::Duplicate", "contraddizione": "Contradiction"}.get(f["kind"], "Maybe outdated")
+            label = {"duplicate": "alt::Duplicate", "contradiction": "Contradiction"}.get(f["kind"], "Maybe outdated")
             lines = "\n".join(f"• {str(t)[:160]}" for t in f["facts"][:4])
             publish("service.action_required", f"memory.proposal.{pid}", {
                 "_title": tr("Memory · {0}", tr(label)), "_source": tr("Memory"), "_level": "info",
@@ -185,7 +185,7 @@ class Learning:
                               "method": "POST", "path": f"/api/athena/memory/proposals/{pid}/apply"},
                              {"id": "keep", "label": tr("Leave"), "service": "athena", "method": "POST",
                               "path": f"/api/athena/memory/proposals/{pid}/dismiss"}],
-                "_link": {"module": "athena", "page": "imparato"}})
+                "_link": {"module": "athena", "page": "learned"}})
         logger.info("event=athena_memory_review memories=%d proposals=%d", len(memories), min(10, len(findings)))
         return {"memories": len(memories), "proposals": min(10, len(findings))}
 
@@ -211,7 +211,7 @@ class Learning:
         for mid in p["retire"]:
             if self._patch_memory(mid, {"is_active": False}):
                 self.record("retire", mid, before={"is_active": True}, after={"is_active": False},
-                            fact=f"rivista: {p.get('why') or ''}")
+                            fact=f"reviewed: {p.get('why') or ''}")
         p.update({"status": "applied", "by": by, "decided_at": _now()})
         self._put("memory_proposal", pid, p)
         return 200, {"status": "ok", "message": tr("Done: memory tidied")}

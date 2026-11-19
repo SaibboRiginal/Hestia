@@ -1,4 +1,4 @@
-"""Weekly coach planner — pure, deterministic placement (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §5.3).
+"""Weekly coach planner — pure, deterministic placement (SPEC docs/work/2026-10-20-coach-of-every-kind §5.3).
 
 Generic on purpose (core services stay generic): it reads only the contract fields of a need (kind, count, per,
 minutes, min_minutes, days, fixed_dates, time_of_day, not_before/not_after, min_gap_days, not_same_day, with, tags,
@@ -14,7 +14,7 @@ priority). It never knows what a workout or a routine is.
 - ``avoid``  ``(module, need_id, date)`` the user skipped: that need does not come back on that day;
 - ``fit``    ``(module, need_id, date, minutes) -> {ok, minutes, title, note} | None`` asks the module for a
              shorter variant when a day only has a smaller gap;
-- ``wet``    ``{date: [(start, end), …]}`` hours with rain or dark at home (weather dossier 2026-10-20-meteo-hecate):
+- ``wet``    ``{date: [(start, end), …]}`` hours with rain or dark at home (weather dossier 2026-10-20-weather-hecate):
              needs tagged ``outdoor`` are not placed there. Missing day/forecast = no filter.
 
 Same input → same output (stable sorts), so a re-plan only moves what has to move.

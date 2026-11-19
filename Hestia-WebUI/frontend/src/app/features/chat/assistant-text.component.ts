@@ -4,7 +4,7 @@ import { AnswerBlocksComponent, AnswerPart, isComps, splitAnswer } from './answe
 /**
  * The text of one assistant message, exactly as the chat draws it: prose and answer blocks, the three dots while it
  * is being written, the caret while it streams. Used by the chat page and by the guided setup's first message
- * («I modelli sono pronti»), so the two never look different.
+ * («The models are ready»), so the two never look different.
  */
 @Component({
   selector: 'hx-assistant-text',

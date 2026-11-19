@@ -1,4 +1,4 @@
-"""Web Push for the WebUI's browsers (brainstorm C15, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Web Push for the WebUI's browsers (brainstorm C15, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 A browser subscribes (``POST /api/push/subscribe`` with the PushSubscription JSON); the subscription is a row of
 Archive ``/api/hermes-store`` (kind ``push``). Every notification that rings on the WebUI is also pushed to every
@@ -66,7 +66,7 @@ def subscriptions(archive) -> list[dict]:
 
 
 def _assistant() -> str:
-    """The name the owner gave the assistant: a push with no title is signed with it (docs/work/2026-11-17-nome-dei-client)."""
+    """The name the owner gave the assistant: a push with no title is signed with it (docs/work/2026-11-17-client-names)."""
     from hestia_common.i18n import identity_now
     return identity_now().get("assistant") or "Hestia"
 

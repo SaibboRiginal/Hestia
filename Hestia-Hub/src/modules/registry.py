@@ -83,7 +83,7 @@ class ServiceRegistry:
         """Instances for *name*, most recently refreshed first, so a dead
         instance that stopped re-registering is tried last (failover latency).
         A satellite's copy (``node``) that answers comes before the central's own: the module runs where the
-        hardware is, and the central's copy is the fallback (docs/work/2026-10-30-setup-un-click §4.0)."""
+        hardware is, and the central's copy is the fallback (docs/work/2026-10-30-one-click-setup §4.0)."""
         with self._lock:
             items = list(self._services.get(name.strip().lower(), []))
         now = time.time()

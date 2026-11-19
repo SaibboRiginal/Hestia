@@ -1,5 +1,5 @@
 /**
- * <plutus-import> — bank statement PDF (e.g. Hype «lista movimenti»): upload → preview (new / already there / linked to a
+ * <plutus-import> — bank statement PDF (e.g. Hype «movement list»): upload → preview (new / already there / linked to a
  *                   PayPal payment) → confirm; past imports can be undone. PayPal mails need nothing: they arrive alone.
  */
 import { HestiaElement, html, nothing, plural, locale, tr } from '@hestia/webui-sdk';
@@ -84,7 +84,7 @@ export class PlutusImport extends HestiaElement {
   render() {
     const banks = (this.m?.accounts || []).filter((a: any) => a.kind === 'bank');
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Import")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Import")}</h1></div>
       ${this.v ? this.preview() : html`<div class="card col">
         <h2>${tr("Bank statement (PDF)")}</h2>
         <div class="small muted">${tr("From the bank app download the transaction list as PDF (Hype: Transactions › Export) and upload it here, or send it in chat. You see the preview before confirming; uploading the same file twice adds nothing.")}</div>

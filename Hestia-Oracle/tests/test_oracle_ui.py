@@ -1,4 +1,4 @@
-"""Oracle inside view (WebUI plugin «Cervello», SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2):
+"""Oracle inside view (WebUI plugin «Cervello», SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2):
 manifest, /api/ui/activity · /api/ui/stats · /api/ui/code, daily LLM totals, recent turns, Claude Code runs."""
 from __future__ import annotations
 
@@ -117,10 +117,10 @@ class TestUiApi:
         web = m["clients"]["webui"]
         assert web["entry"] == "/ui/webui/oracle.js" and web["api_prefix"] == "/api/ui/"
         pages = {p["id"]: p for p in web["page"]}
-        assert pages["cervello"]["element"] == "oracle-brain" and pages["cervello"]["order"] == 120
+        assert pages["brain"]["element"] == "oracle-brain" and pages["brain"]["order"] == 120
         widgets = {w["id"]: w for w in web["widget"]}
-        assert widgets["uso-oggi"]["element"] == "oracle-usage-widget"
-        assert widgets["uso-oggi"]["open_page"] == "cervello"
+        assert widgets["usage-today"]["element"] == "oracle-usage-widget"
+        assert widgets["usage-today"]["open_page"] == "brain"
 
     def test_activity(self, client):
         activity_log.record_turn(session_id="s", mode="auto", route="agent", model="m", provider="p",
@@ -154,7 +154,7 @@ class TestUiApi:
         assert caps["ui_manifest"].endswith("/api/ui/manifest") and caps["ui_version"]
 
 
-# ── Cervello → Modelli / Uso (dossier 2026-10-19-oracle-a-blocchi) ─────────────
+# ── Cervello → Modelli / Uso (dossier 2026-10-19-oracle-blocks) ─────────────
 
 @pytest.mark.api
 class TestModelsTab:
@@ -163,13 +163,13 @@ class TestModelsTab:
         out = client.get("/api/ui/models").json()
         assert "sk-secret" not in str(out)
         assert {"providers", "types", "chains", "usecases", "modes"} <= set(out)
-        assert any(u["id"] == "oracle.generale" for u in out["usecases"])
+        assert any(u["id"] == "oracle.general" for u in out["usecases"])
 
     def test_write_goes_through_themis_and_validates(self, client, monkeypatch):
         from core.services import oracle_settings
         puts = []
         monkeypatch.setattr(oracle_settings.settings, "put", lambda k, v, **kw: puts.append((k, v, kw)) or True)
-        ok = client.put("/api/ui/models/chains", json={"value": {"veloce": {"steps": [{"provider": "ollama", "model": "m"}]}}})
+        ok = client.put("/api/ui/models/chains", json={"value": {"fast": {"steps": [{"provider": "ollama", "model": "m"}]}}})
         assert ok.status_code == 200 and puts[0][0] == oracle_settings.CHAINS_KEY and puts[0][2]["actor"] == "user"
         assert client.put("/api/ui/models/providers", json={"value": {"x": {"type": "nope"}}}).status_code == 400
         assert client.put("/api/ui/models/chains", json={"value": {"c": {}}}).status_code == 400

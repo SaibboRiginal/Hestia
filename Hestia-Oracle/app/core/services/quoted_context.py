@@ -1,4 +1,4 @@
-"""A reply to (or a quote of) an earlier message = context for this turn (docs/work/2026-10-23-telegram-da-zero §5.10).
+"""A reply to (or a quote of) an earlier message = context for this turn (docs/work/2026-10-23-telegram-from-scratch §5.10).
 
 The chat client sends ``quoted: {text, from, at, ref}`` with ``/api/chat``: ``from`` is assistant | user | notification,
 ``ref`` is the client's id of that message (optional). Oracle adds one short instruction line; the saved user message

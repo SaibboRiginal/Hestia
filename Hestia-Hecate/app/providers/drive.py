@@ -87,7 +87,7 @@ class DriveFiles:
         if parent:
             q += f" and '{parent}' in parents"
         found = self._check(s.get(API, params={"q": q, "fields": "files(id,name)", "spaces": "drive"}),
-                            "cartella").json().get("files") or []
+                            "folder").json().get("files") or []
         if found:
             return found[0]["id"]
         body: dict[str, Any] = {"name": name, "mimeType": FOLDER_MIME, "appProperties": {"hestia": marker}}
@@ -128,7 +128,7 @@ class DriveFiles:
                       "orderBy": "createdTime desc", "pageSize": 200}
             if token:
                 params["pageToken"] = token
-            data = self._check(s.get(API, params=params), "elenco").json()
+            data = self._check(s.get(API, params=params), "list").json()
             out += [_view(f) for f in data.get("files") or []]
             token = data.get("nextPageToken")
             if not token:
@@ -144,7 +144,7 @@ class DriveFiles:
 
     def trash(self, file_id: str) -> None:
         self._check(self._session().patch(f"{API}/{file_id}", json={"trashed": True}, params={"fields": "id"}),
-                    "cestina file")
+                    "trash file")
         logger.info("event=drive_delete file=%s", file_id)
 
     def read(self, file_id: str, offset: int, length: int) -> tuple[bytes, int]:

@@ -6,8 +6,8 @@ import { tr } from '../core/i18n';
 
 /**
  * Assistant presence (SPEC docs/work/2026-10-10-assistant-presence): the state Chronos computes
- * from signals (last interaction, running jobs, night window…) — "Sveglio · Occupato: Forge".
- * Read-only here except «Non disturbare». Refreshed every minute and when the tab comes back.
+ * from signals (last interaction, running jobs, night window…) — "Awake · Busy: Forge".
+ * Read-only here except «Do not disturb». Refreshed every minute and when the tab comes back.
  */
 export interface PresenceActivity { key: string; label?: string; load?: string; resource?: string; kind?: string; since?: string; }
 export interface PresenceState {
@@ -64,8 +64,8 @@ export function reasonLabel(r?: string): string {
     case 'interaction': return tr("you interacted ({0})", a);
     case 'activity_start': return tr('started a job');
     case 'activity_stop': return tr('finished a job');
-    case 'dnd_on': return tr('Do not disturb turned on');
-    case 'dnd_off': return tr('Do not disturb off');
+    case 'presence_dnd_on': return tr('Do not disturb turned on');
+    case 'presence_dnd_off': return tr('Do not disturb off');
     case 'tick': case 'read': return tr('time passed');
     case 'settings': return tr('settings changed');
     case 'boot': return tr('restart');
@@ -80,8 +80,8 @@ export function reasonLabel(r?: string): string {
 }
 
 export function ago(minutes: number | null | undefined): string {
-  if (minutes === null || minutes === undefined) return 'mai';
-  if (minutes < 1) return 'adesso';
+  if (minutes === null || minutes === undefined) return 'never';
+  if (minutes < 1) return 'now';
   if (minutes < 60) return `${Math.floor(minutes)} min fa`;
   if (minutes < 48 * 60) return `${Math.floor(minutes / 60)} h fa`;
   return tr("{0} days ago", Math.floor(minutes / 1440));

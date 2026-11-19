@@ -1,5 +1,5 @@
 """Themis inside view (WebUI plugin «Registro»): manifest, GET /api/settings/history (all keys, paged),
-proposals status=all. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked.
+proposals status=all. SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked.
 
 Markers: unit, api
 """
@@ -24,11 +24,11 @@ from hestia_common.settings_client import setting
 
 HISTORY = [   # newest first, as Archive returns it
     {"id": 9, "key": "argus.poll.interval", "scope": "system", "scope_id": "", "old_value": 60, "new_value": 30,
-     "actor": "user", "reason": "annulla", "created_at": "2026-10-18T10:00:00"},
+     "actor": "user", "reason": "cancel", "created_at": "2026-10-18T10:00:00"},
     {"id": 8, "key": "oracle.chat.tone", "scope": "session", "scope_id": "s1", "old_value": None,
-     "new_value": "warm", "actor": "webui", "reason": "nuova sessione", "created_at": "2026-10-18T09:30:00"},
+     "new_value": "warm", "actor": "webui", "reason": "new session", "created_at": "2026-10-18T09:30:00"},
     {"id": 7, "key": "argus.poll.interval", "scope": "system", "scope_id": "", "old_value": 30, "new_value": 60,
-     "actor": "athena", "reason": "proposta approvata (telegram): meno carico", "created_at": "2026-10-18T09:00:00"},
+     "actor": "athena", "reason": "proposal approved (telegram): less load", "created_at": "2026-10-18T09:00:00"},
     {"id": 6, "key": "argus.mode", "scope": "system", "scope_id": "", "old_value": "normal", "new_value": None,
      "actor": "external:claude-pc", "reason": "reset", "created_at": "2026-10-18T08:00:00"},
     {"id": 5, "key": "gone.setting", "scope": "system", "scope_id": "", "old_value": 1, "new_value": 2,
@@ -109,7 +109,7 @@ class TestUiEndpoints:
         assert m["module"] == "themis" and m["kind"] == "core"
         web = m["clients"]["webui"]
         assert web["api_prefix"] == "/api/settings/" and web["entry"] == "/ui/webui/themis.js"
-        assert web["page"][0]["id"] == "registro" and web["page"][0]["order"] == 160
+        assert web["page"][0]["id"] == "log" and web["page"][0]["order"] == 160
         assert web["widget"] == []
 
     def test_history_endpoint(self, client):

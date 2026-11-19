@@ -1,7 +1,7 @@
-"""Chat with the assistant (docs/work/2026-10-23-telegram-da-zero §7, §5.10).
+"""Chat with the assistant (docs/work/2026-10-23-telegram-from-scratch §7, §5.10).
 
 A message (typed, voice note, file) is one chat turn: Oracle streams the answer into one message (``ReplyRenderer``),
-notices go under it in italics, «Ascolta» and the vote share one row. A reply to a message — or a quote of part of
+notices go under it in italics, «Listen» and the vote share one row. A reply to a message — or a quote of part of
 it — goes to the assistant as context (``quoted``). Confirm cards Oracle asks for (approvals, module questions,
 the assistant's own questions) are buttons whose state is persisted (``store``), so they survive a restart.
 """
@@ -47,12 +47,12 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
         elif kind == "token":
             renderer.on_token(str(data.get("text") or ""))
         elif kind == "reaction":
-            # Hestia reacts to the owner's message (hestia-viva F4): applied by run_chat_turn on that message.
+            # Hestia reacts to the owner's message (living-hestia F4): applied by run_chat_turn on that message.
             renderer.reaction = str(data.get("emoji") or "")[:16]
         elif kind == "final":
             renderer.trace_id = str(data.get("trace_id") or "")[:40]
             if data.get("reaction_only"):
-                # The reaction is the whole answer: no text bubble, the «Sto pensando…» message goes away.
+                # The reaction is the whole answer: no text bubble, the «Thinking…» message goes away.
                 renderer.reaction = renderer.reaction or str(data.get("reaction") or "")[:16]
                 renderer.finalized = True
                 try:
@@ -126,7 +126,7 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
                extra_instructions: str = "", queued: list[dict] | None = None,
                quoted: dict | None = None, spoken: bool = False) -> OracleResult:
     """Stream one chat turn from Oracle into a renderer on ``status_message_id``.
-    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (hestia-viva F1).
+    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (living-hestia F1).
     ``queued``: messages written while the assistant could not answer ([{text, written_at}]), answered in one turn
     where the assistant decides how (oracle-offline v3 C). ``quoted``: the message replied to (context).
     Raises ``OracleUnavailable`` when Oracle did not accept the request."""
@@ -199,7 +199,7 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
     """One chat turn: Oracle streams the reply into ``status_msg`` (queued while unavailable). ``spoken``: the
     text came from a voice note (live mode answers it by voice too).
 
-    One answer at a time per chat (dossier problemi-del-test B): a text written meanwhile waits with «Add now»
+    One answer at a time per chat (dossier real-test-problems B): a text written meanwhile waits with «Add now»
     (``chat_wait``) and goes as the next turn when the answer ends."""
     while not chat_wait.start(chat_id, core.get_session(chat_id)):
         if chat_wait.hold(message, chat_id, user_text, status_msg=status_msg):
@@ -416,7 +416,7 @@ _DEFAULT_MSG = {"audio": "Transcribe and summarise this audio.", "voice": "Trans
 def _default_request(content_type: str) -> str:
     from hestia_common import i18n, identity
     return (_DEFAULT_MSG.get(content_type, "Analyse this file.")
-            + f" Answer in {identity.LANGUAGES.get(i18n.current(), 'Italian')}.")
+            + f" Answer in {identity.LANGUAGES.get(i18n.current(), 'English')}.")
 
 
 def _download_telegram_file(file_id: str) -> bytes:
@@ -433,7 +433,7 @@ def handle_file_message(message) -> None:
 
 
 def handle_voice_note(message) -> bool:
-    """A voice note is a chat message (SPEC modulo-voce §7.1): transcribe, show what was understood, then the
+    """A voice note is a chat message (voice SPEC §7.1): transcribe, show what was understood, then the
     normal chat turn. False = could not listen: the caller falls back to the document path ``[🔄]``."""
     chat_id = message.chat.id
     if message.content_type == "voice":
@@ -441,7 +441,7 @@ def handle_voice_note(message) -> bool:
         mime_type = (message.voice.mime_type or "audio/ogg").split(";")[0].strip().lower()
     else:
         file_id, mime_type = message.video_note.file_id, "video/mp4"
-    status_msg = core.bot.reply_to(message, "<i>Ascolto…</i>", parse_mode="HTML")
+    status_msg = core.bot.reply_to(message, "<i>" + tr("Listening…") + "</i>", parse_mode="HTML")
     try:
         core.bot.send_chat_action(chat_id, "typing")
         audio = _download_telegram_file(file_id)
@@ -533,7 +533,7 @@ def handle_file_as_document(message) -> None:
 # ── vote ─────────────────────────────────────────────────────────────────────
 
 def handle_feedback_callback(call) -> None:
-    """👍/👎 on the answer row: saved, then the two vote buttons go away («Ascolta» stays)."""
+    """👍/👎 on the answer row: saved, then the two vote buttons go away («Listen» stays)."""
     parts = str(call.data or "").split(":", 2)
     label = parts[1] if len(parts) > 1 else ""
     if label not in ("good", "bad"):

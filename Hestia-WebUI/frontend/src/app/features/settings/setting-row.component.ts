@@ -6,7 +6,7 @@ import { CentralSettingsStore, isModified } from './central-settings.store';
 import { SettingControlComponent } from './setting-control.component';
 import { tr, TrPipe } from '../../core/i18n';
 
-/** Human text for a stored value (option label, sì/no…). */
+/** Human text for a stored value (option label, yes/no…). */
 export function showValue(item: SettingItem, v: unknown): string {
   if (v === null || v === undefined) return tr('default');
   if (item.type === 'bool') return v ? tr('yes') : 'no';
@@ -24,7 +24,7 @@ const ACTORS: Record<string, string> = {
 
 /**
  * <hx-setting [item] /> — one central setting: label, help, state badges, the control and a
- * popover with the last changes (undo) and "ripristina predefinito". Changes go through the store.
+ * popover with the last changes (undo) and "restore default". Changes go through the store.
  */
 @Component({
   selector: 'hx-setting',
