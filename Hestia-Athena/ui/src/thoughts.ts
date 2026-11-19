@@ -5,7 +5,7 @@
  * evening recap) and Sistema (Hestia's own health).
  * Reads GET /api/athena/thinking/summary?track= · /api/athena/commitments; POST /api/athena/think?track=,
  * POST /api/athena/commitments/{id}/resolve.
- * Same page, no new one (docs/work/2026-11-13-observe-then-propose): Sistema shows what she is still collecting
+ * Same page, no new one (docs/work/2026-11-13-observe-first-then-propose): Sistema shows what she is still collecting
  * proof for (GET /api/athena/evidence); the third tab «Ti scrive» shows how much she wants to write now, why, what
  * she wrote and whether you answered (GET /api/athena/talk), with «Scrivimi ora» (POST /api/athena/think?track=parla).
  */

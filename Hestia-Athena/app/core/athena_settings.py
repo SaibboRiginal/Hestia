@@ -226,7 +226,7 @@ settings.declare([
     setting(TALK_EAGERNESS, "How talkative", "int", 3, group=_G_TALK, min=1, max=5,
             help="How much it wants to write to you first. The wish grows if you haven't talked for a while and if it has something real to say, and drops if you don't answer. 1 = only when it has a lot to say, 5 = often. In the first days, knowing little about you, it writes little anyway."),
 
-    # ── First observe, then propose (docs/work/2026-11-13-observe-then-propose) ──
+    # ── First observe, then propose (docs/work/2026-11-13-observe-first-then-propose) ──
     setting(EVIDENCE_MIN_DAYS, "Days of observation before proposing", "int", 5, group=_G_EVIDENCE, min=0,
             max=30, unit="days", order=0,
             help="After the first start it only observes for these days: no improvement or settings proposals. Real faults are reported at once, and «Pensa ora» does not wait."),

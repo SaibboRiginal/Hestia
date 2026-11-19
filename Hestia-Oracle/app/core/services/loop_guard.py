@@ -1,4 +1,4 @@
-"""Loop guard for the agent loop (Cindy idea 1, dossier docs/work/2026-10-24-whole-brainstorm-cindy).
+"""Loop guard for the agent loop (Cindy idea 1, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 Local models often call the same tool again and again and burn every turn. Before the turn cap, a deterministic
 detector looks at the fingerprints (tool name + arguments) of the calls of this answer:

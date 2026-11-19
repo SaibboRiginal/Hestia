@@ -389,7 +389,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   text = '';
   mode = signal('auto');   // hx-chat-mode: this conversation's mode (Themis), sent with every message
   rated = signal<Record<string, 'good' | 'bad'>>({});
-  /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-hestia-alive F4). */
+  /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-living-hestia F4). */
   readonly reactions = REACTION_EMOJI;
   /** The assistant's chosen name (personal setting): the chat talks about her or him by name. */
   readonly identity = inject(IdentityService);

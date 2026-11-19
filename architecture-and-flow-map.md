@@ -261,7 +261,7 @@ flowchart LR
 7. A rule a module no longer declares is retired by the module itself: `POST /api/agenda/retire {owner, keys}`
    (only rules it created; user items stay). Example: Scout retired `scout.email_cycle`.
 
-### Routine and special-moment flow (dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W2)
+### Routine and special-moment flow (dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W2)
 1. A routine is a Chronos agenda rule `routine.<…>` with an instruction: by time (job → `POST /api/routines/{key}/run`),
    by mail (Chronos subscribes to Iris; Iris rings `/api/routines/mail`) or by a module signal (`/api/routines/signal`).
 2. Run: optional pre-check tool through Hestia-MCP (empty → stop) → Oracle `/api/chat` with origin `routine:<key>` →
@@ -453,7 +453,7 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
 2. Psyche → `signals-store` (signals + weekly `mood.avg`/`mood.energy`) → Athena reflection; recap piece «Umore»;
    agenda job `psyche.checkin` → Hermes question with one-tap answers → `POST /api/mood`.
 
-### W5 modules (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
+### W5 modules (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 1. People: a card's dates → Hera → Chronos `api/special` (key `hera-<id>-<n>`) → lead notice and greeting by Chronos;
    on the day `special_moment` → Hera (gift ideas notice) and Aphrodite (the owner's own moments change the look).
 2. Deadlines: Hecate → Iris → Kairos `/mail` (doorbell) → proposal card in Hermes → «Aggiungi» → agenda event

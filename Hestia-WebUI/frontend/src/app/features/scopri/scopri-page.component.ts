@@ -4,7 +4,7 @@ import { MetisService, ScopriItem } from '../../services/metis.service';
 import { tr, TrPipe } from '../../core/i18n';
 
 /**
- * «Scopri» (dossier 2026-10-24-whole-brainstorm-cindy C14, W7): the things Hestia can do that you never or rarely
+ * «Scopri» (dossier 2026-10-24-whole-cindy-brainstorm C14, W7): the things Hestia can do that you never or rarely
  * use, what each does and «Prova» to open it (GET /api/metis/scopri — usage stats against the tool catalog).
  */
 @Component({

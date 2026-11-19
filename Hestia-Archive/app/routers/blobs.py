@@ -77,7 +77,7 @@ def list_blobs(owner_module: str, limit: int = 500, db: Session = Depends(databa
 @router.get("/usage")
 def storage_usage(db: Session = Depends(database.get_db)):
     """Size of the database and of the blobs per module — read by the stack monitor for growth alerts
-    (Cindy 25, dossier docs/work/2026-10-24-whole-brainstorm-cindy W3). Read only, no row data."""
+    (Cindy 25, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3). Read only, no row data."""
     from sqlalchemy import func as sa_func, text
     rows = (db.query(models.BlobRecord.owner_module, sa_func.count(models.BlobRecord.blob_id),
                      sa_func.coalesce(sa_func.sum(models.BlobRecord.size), 0))

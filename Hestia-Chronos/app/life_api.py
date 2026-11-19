@@ -1,4 +1,4 @@
-"""Routines, special events, smart calendar, manual presence (dossier docs/work/2026-10-24-whole-brainstorm-cindy W2).
+"""Routines, special events, smart calendar, manual presence (dossier docs/work/2026-10-24-whole-cindy-brainstorm W2).
 
 REST endpoints (``router``), the MCP tools for them (``mcp_tools()``, appended to Chronos' list so they are on
 Telegram, WebUI and the external MCP too) and the agenda rules they need (``boot_rules()``).

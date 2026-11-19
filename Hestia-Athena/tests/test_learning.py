@@ -1,4 +1,4 @@
-"""Learning log with undo and memory review proposals (docs/work/2026-10-24-whole-brainstorm-cindy W3,
+"""Learning log with undo and memory review proposals (docs/work/2026-10-24-whole-cindy-brainstorm W3,
 Cindy 8 + 18). Archive and Oracle are an in-memory fake behind ``Learning._route``."""
 from __future__ import annotations
 

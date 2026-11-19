@@ -66,7 +66,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 ```
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
-- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-real-runs-bench/`): areas hercules, hygieia, wardrobe,
+- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-bench-real-runs/`): areas hercules, hygieia, wardrobe,
   agenda, presence, settings, plugins, mcp, webui, transfer, vita (new modules), shell (Adesso, Scopri, chats, push) (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` (or `ORACLE_KEY_GEMINI`) in the environment (cloud environment variable / Codespaces secret,
@@ -93,7 +93,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   Browser «ERR_INVALID_RESPONSE» on the link = the forwarded port talks HTTPS to the WebUI (plain HTTP): *Ports* tab →
   row 19015 → right click → *Change Port Protocol → HTTP* (the devcontainer now sets HTTP for 19015/19000).
 
-## Setups that need Marko's devices (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
+## Setups that need Marko's devices (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 
 - **Garmin** (W4 B10): `pip` gets `garminconnect` with the Hecate image (`up-all.bat --build`). Telegram → Sistema →
   Dispositivi → «Collega Garmin» → «Inserisci» → email + password (+ the code Garmin mails, second form). Then

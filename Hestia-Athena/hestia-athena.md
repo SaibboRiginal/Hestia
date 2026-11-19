@@ -191,7 +191,7 @@ from every client. All `live` (read at use time) except `athena.tasks.store_max`
 Third output, next to the system briefs and the life observations (those stay in the evening recap):
 1. **When**: agenda window `athena.talk` («Ti scrive per prima», default 9–21; paused = never), at most
    `athena.talk.max_per_day` a day (0 = never), `athena.talk.min_gap_hours` apart, never while he is chatting
-   (Oracle `/api/activity` < 10 min; a «not now» wait survives midnight, the day reload never shortens it). No clock and no dice (dossier `docs/work/2026-11-13-observe-then-propose`):
+   (Oracle `/api/activity` < 10 min; a «not now» wait survives midnight, the day reload never shortens it). No clock and no dice (dossier `docs/work/2026-11-13-observe-first-then-propose`):
    she writes when her **drive** (0–1) reaches the bar of `athena.talk.eagerness` (1 → 0.80 … 3 → 0.50 … 5 → 0.20).
    Drive = 0.45 × silence (full after 36 h) + 0.40 × true things to say today (two = full) + 0.10 if he answered
    her last message − 0.25 for each of her last messages left unanswered, all damped in the first days (× 0.5 on
@@ -212,7 +212,7 @@ Third output, next to the system briefs and the life observations (those stay in
 Shown in the page **Pensieri**, third tab «Ti scrive» (drive against the bar, reasons, what she wrote, answered or
 not, button «Scrivimi ora»). No new page.
 
-### First observe, then propose (`app/core/evidence.py`, dossier `docs/work/2026-11-13-observe-then-propose`)
+### First observe, then propose (`app/core/evidence.py`, dossier `docs/work/2026-11-13-observe-first-then-propose`)
 One sighting is not enough to judge, and on the first day she does not know how the system normally behaves. For
 accepted candidates of kind `improvement` (→ Forge) and `setting` (→ Themis proposal) of the system track:
 - she proposes only after `athena.evidence.min_days` days of observation since the first start **and** when the
@@ -401,7 +401,7 @@ Light work (thinking cycles) waits while presence `work.light=defer`; consolidat
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Recap: 1; sistema › Assistente: 2; sistema › Avanzate: 1 (area › section: tools).
 
-## What the assistant learned, memory review, docs check (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3)
+## What the assistant learned, memory review, docs check (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - **Only quoted facts** (Cindy 8): the nightly consolidation saves a new memory only with `quote`, the owner's exact
   words found in their messages (normalized); others are dropped (`facts_unquoted`). No user message newer than the
   lookback → no model call (`skipped: no_new_user_turns`).

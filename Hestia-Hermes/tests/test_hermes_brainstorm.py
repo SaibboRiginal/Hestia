@@ -1,4 +1,4 @@
-"""Brainstorm + Cindy wave 2 (docs/work/2026-10-24-whole-brainstorm-cindy): active client, «Da decidere»
+"""Brainstorm + Cindy wave 2 (docs/work/2026-10-24-whole-cindy-brainstorm): active client, «Da decidere»
 reminder, secret form, Web Push."""
 from __future__ import annotations
 

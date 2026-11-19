@@ -1,4 +1,4 @@
-"""Hestia-Apollo — images through a remote ComfyUI («Images», port 19022, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A1).
+"""Hestia-Apollo — images through a remote ComfyUI («Images», port 19022, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A1).
 
 The only module that talks to image generators (``APOLLO_COMFYUI_URL`` / ``APOLLO_COMFYUI_KEY`` in env). Flows and
 jobs in Archive (``/api/images-store``), images in Archive blobs, results pushed to the requester (``callback``) or

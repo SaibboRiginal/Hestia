@@ -32,7 +32,7 @@ the plugin or the chat, quick entry, categories that learn, budgets, recurring p
 |---|---|---|
 | PayPal mails | Iris subscription `plutus:paypal` (senders = `plutus.mail.senders`) stores the mail in Archive under `finance` and rings `POST /api/finance/mail`; Plutus reads `archive/finance/unevaluated`, parses (deterministic, Oracle fallback), marks evaluated | «Ricontrolla email PayPal» (`POST /api/finance/mail/check`, Iris backfill N days) |
 | Bank statement PDF | Sent in chat: Oracle hands the blob to `POST /api/finance/attachments` (declared in `attachment_handlers`), reply = preview + «Li registro?» + import id; «sì» → `finance_import_statement(import_id, commit=true)` | Page *Importa*: upload → preview → confirm; undo |
-| Bank app notifications | Phone → Hecate → feed `phone.notification` (`hestia_common.feeds`, `capabilities.feeds`) → `POST /api/finance/phone`; `app/core/phone.py` (deterministic: amount + «pagamento/addebito…» or «ricevuto/accredito…», merchant after «presso/da/a») → transaction `source: phone`, always `to_review`, `external_ref` `phone:` hash (no duplicates); anything else ignored (dossier `2026-10-24-whole-brainstorm-cindy` W4, Cindy 32) | — (choose the apps in Hecate's setting «App da ascoltare») |
+| Bank app notifications | Phone → Hecate → feed `phone.notification` (`hestia_common.feeds`, `capabilities.feeds`) → `POST /api/finance/phone`; `app/core/phone.py` (deterministic: amount + «pagamento/addebito…» or «ricevuto/accredito…», merchant after «presso/da/a») → transaction `source: phone`, always `to_review`, `external_ref` `phone:` hash (no duplicates); anything else ignored (dossier `2026-10-24-whole-cindy-brainstorm` W4, Cindy 32) | — (choose the apps in Hecate's setting «App da ascoltare») |
 | Single expense | — | Quick action «Spesa veloce» (amount + category chip, undo), form in the plugin, chat «ho speso 12 € al bar» (`finance_add`) |
 
 Statement parser: a line with a date at the start and an amount at the end is a row, lines in between continue the
@@ -146,7 +146,7 @@ Tools `finance_summary`, `finance_search`, `finance_add` return a `display` card
 `finance_add` returns `undo = {tool: finance_delete, args: {id}}` (`hestia_common.mcp_helpers.undo`): the chat shows
 «Ho fatto: Registra spesa» with «Annulla».
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 

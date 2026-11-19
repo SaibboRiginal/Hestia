@@ -106,7 +106,7 @@ duration, cost and kind (`api` reported or from `oracle.pricing`, `abbonamento`,
   layers. `/api/chat` with an empty `mode` uses it (`oracle_settings.chat_mode`); an explicit mode wins
   (WebUI composer sends it and saves it for the conversation; Telegram Impostazioni → Modalità).
 
-### Hestia viva: persona, spoken turns, awareness, reactions (dossier `docs/work/2026-11-06-hestia-alive`)
+### Hestia viva: persona, spoken turns, awareness, reactions (dossier `docs/work/2026-11-06-living-hestia`)
 - **Persona** (`prompt_config` key `analyst_persona_default`, also served by `assistant_profile` to other AIs): a
   person who lives with the owner (WHO YOU ARE · BOND · CHARACTER · MEMORY · TONE · LENGTH 1–2 sentences · TRUTH).
   Only who she is: the operating rules are `tool_rules` (added where the turn has tools), the format is the client's.
@@ -284,7 +284,7 @@ Setting `oracle.operating_mode` (Models group, live): how a chat turn works. Mor
 - **Max agent turns:** setting `oracle.agent.max_turns` (default 25; CoT uses at least 50). Complex multi-step tasks can use many turns; simple tasks exit early (1-2 turns).
 - **Early exit:** when the LLM produces text without tool calls for `oracle.agent.early_exit_no_tool_turns` (2) consecutive turns after having already called tools, the loop terminates.
 
-### Turn safety, origin and goal (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 1)
+### Turn safety, origin and goal (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 1)
 - **Loop guard** (`core/services/loop_guard.py`, Cindy 1): before the turn cap, the loop stops when the same call
   (tool + arguments) repeats `oracle.agent.loops.repeats` times in a row, on A-B-A-B ping-pong or on a sequence of
   3-4 calls repeated 3 times inside `oracle.agent.loops.window` calls. A repeat made at least
@@ -612,7 +612,7 @@ OpenAI-compatible endpoint (Gemini `…/v1beta/openai`, Anthropic `…/v1`, any 
 
 ## Prompts (caveman style, single source)
 
-- **One composer** (dossier `docs/work/2026-11-12-prompt-every-situation`): `prompt_config.system_identity()` =
+- **One composer** (dossier `docs/work/2026-11-12-prompt-for-every-situation`): `prompt_config.system_identity()` =
   persona + `conversation_style_contract` + `language_rule`. It is the system prompt of every chain that speaks to
   the owner (`agent_factory`), of the external agent, of `assistant_profile`, and of `/api/llm/generate` with
   `voice: true`. Nothing adds these blocks again (before, the style was in the prompt twice per turn).
@@ -708,7 +708,7 @@ Dossier `docs/work/2026-10-10-oracle-local-context/`. Settings group **Contesto*
   estimate (`cache_estimated: true`); OpenAI-compatible servers report it (`usage.prompt_tokens_details.cached_tokens`,
   llama-server `timings.cache_n`). Gemini (`usage_metadata`), Anthropic API and Claude CLI (`usage`, CLI
   `total_cost_usd` = API-equivalent cost) are recorded too.
-- **Per-conversation usage** (2026-10-11, dossier `docs/work/2026-10-11-chat-modes-context/`): `/api/chat`
+- **Per-conversation usage** (2026-10-11, dossier `docs/work/2026-10-11-chat-mode-context/`): `/api/chat`
   binds its session id around the stream (`llm_stats.bind_session`, a contextvar set at every `next()`), so each
   LLM call of the turn adds to that session's totals (in memory, last 200 conversations, reset on restart).
   `/api/chat/context` adds `active` (chat provider: label, model, billing kind, its context window —
@@ -862,7 +862,7 @@ The setup's brain screen asks Oracle (through Hephaestus and the Hub), never a m
   «Ollama (<name>)») in `oracle.providers` through Themis (actor user); empty address = back to this machine's own
   (infrastructure env). The chains do not change: the same local models now run on that video card.
 
-## Who answered and when you wrote (dossier `docs/work/2026-11-13-sidebar-e-chat`)
+## Who answered and when you wrote (dossier `docs/work/2026-11-13-sidebar-and-chat`)
 
 - The `final` frame carries `model`: the model of the last counted call of the conversation (`llm_stats.last_model`).
   It is saved with the answer in Archive (`chat_history.model`) and returned by `/api/ui/chats/{id}/messages`; clients

@@ -187,7 +187,7 @@ try:
             response_mode="direct",
             telegram_visible=False, telegram_group="system",
                 telegram={"section": "internal"}),
-        # Backup from every client (dossier docs/work/2026-10-24-whole-brainstorm-cindy F). Restore is NOT a tool:
+        # Backup from every client (dossier docs/work/2026-10-24-whole-cindy-brainstorm F). Restore is NOT a tool:
         # only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel), never the assistant.
         MCPTool(
             name="backup_status",

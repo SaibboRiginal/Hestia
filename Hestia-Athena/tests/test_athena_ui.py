@@ -67,7 +67,7 @@ class TestGateHistory:
         assert rt._thinking_records[-1]["candidates"][0]["outcome"] == "forge_skipped"
 
     def test_improvement_without_proof_is_kept_collecting_not_proposed(self, rt, monkeypatch):
-        """First observe, then propose (docs/work/2026-11-13-observe-then-propose)."""
+        """First observe, then propose (docs/work/2026-11-13-observe-first-then-propose)."""
         c = ActionCandidate(title="Migliora prompt", kind="improvement", signals=HIGH)
         sent = []
         monkeypatch.setattr(rt, "_send_to_forge", lambda *a: sent.append(a) or True)

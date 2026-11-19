@@ -59,7 +59,7 @@ class ChatHistory(Base):
 
 
 class ChatSessionMeta(Base):
-    """What the owner sets on a conversation (Cindy 26, dossier 2026-10-24-whole-brainstorm-cindy W7): its own
+    """What the owner sets on a conversation (Cindy 26, dossier 2026-10-24-whole-cindy-brainstorm W7): its own
     title, coloured tags and «fissata». Messages stay in ``chat_history``; a session without a row has none."""
     __tablename__ = "chat_session_meta"
 
@@ -682,18 +682,18 @@ ArgusRecord = _module_record_model(
 
 HermesRecord = _module_record_model(
     "HermesRecord", "hermes_records",
-    "One row of Hestia-Hermes (Web Push subscription of a browser, docs/work/2026-10-24-whole-brainstorm-cindy). "
+    "One row of Hestia-Hermes (Web Push subscription of a browser, docs/work/2026-10-24-whole-cindy-brainstorm). "
     "Owner of the semantics: Hestia-Hermes.")
 
 AthenaRecord = _module_record_model(
     "AthenaRecord", "athena_records",
     "One row of Hestia-Athena (learning log entry with before/after, memory review proposal, "
-    "docs/work/2026-10-24-whole-brainstorm-cindy). Owner of the semantics: Hestia-Athena.")
+    "docs/work/2026-10-24-whole-cindy-brainstorm). Owner of the semantics: Hestia-Athena.")
 
 ChronosRecord = _module_record_model(
     "ChronosRecord", "chronos_records",
     "One row of Hestia-Chronos (routine result kept for the recap, smart-calendar «keep as is» choice, "
-    "docs/work/2026-10-24-whole-brainstorm-cindy). Owner of the semantics: Hestia-Chronos.")
+    "docs/work/2026-10-24-whole-cindy-brainstorm). Owner of the semantics: Hestia-Chronos.")
 
 SignalRecord = _module_record_model(
     "SignalRecord", "signal_records",
@@ -704,37 +704,37 @@ SignalRecord = _module_record_model(
 
 ImagesRecord = _module_record_model(
     "ImagesRecord", "images_records",
-    "One row of the image module Hestia-Apollo (flow, job), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the image module Hestia-Apollo (flow, job), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Apollo.")
 
 AppearanceRecord = _module_record_model(
     "AppearanceRecord", "appearance_records",
-    "One row of the appearance module Hestia-Aphrodite (profile, pet, client choice, today's moment), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the appearance module Hestia-Aphrodite (profile, pet, client choice, today's moment), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Aphrodite.")
 
 HomeRecord = _module_record_model(
     "HomeRecord", "home_records",
-    "One row of the house module Hestia-Lares (quick action), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the house module Hestia-Lares (quick action), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Lares.")
 
 PeopleRecord = _module_record_model(
     "PeopleRecord", "people_records",
-    "One row of the people module Hestia-Hera (person card, contact), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the people module Hestia-Hera (person card, contact), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Hera.")
 
 FoodRecord = _module_record_model(
     "FoodRecord", "food_records",
-    "One row of the nutrition module Hestia-Demeter (diet, meal, supplement, intake), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the nutrition module Hestia-Demeter (diet, meal, supplement, intake), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Demeter.")
 
 OfficeRecord = _module_record_model(
     "OfficeRecord", "office_records",
-    "One row of the documents module Hestia-Calliope (created document), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the documents module Hestia-Calliope (created document), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Calliope.")
 
 DeadlinesRecord = _module_record_model(
     "DeadlinesRecord", "deadlines_records",
-    "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
+    "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-whole-cindy-brainstorm W5. "
     "Owner of the semantics: Hestia-Kairos.")
 
 MoodRecord = _module_record_model(
@@ -744,7 +744,7 @@ MoodRecord = _module_record_model(
 
 MetisRecord = _module_record_model(
     "MetisRecord", "metis_records",
-    "One row of the usage log of Hestia-Metis (tap, idea), docs/work/2026-10-24-whole-brainstorm-cindy W6. "
+    "One row of the usage log of Hestia-Metis (tap, idea), docs/work/2026-10-24-whole-cindy-brainstorm W6. "
     "Owner of the semantics: Hestia-Metis.")
 
 DatasetRecord = _module_record_model(

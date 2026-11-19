@@ -99,7 +99,7 @@ settings.declare([
     setting("echo.audio.generated_days", "Days for generated audio", "int", 30, group="Audio kept",
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
-    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-whole-brainstorm-cindy W4) ──
+    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4) ──
     setting("echo.voiceprint.threshold", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),

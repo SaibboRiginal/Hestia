@@ -47,7 +47,7 @@ It stores and serves all persistent state through generic APIs.
 - **Argus store** (`/api/argus-store/*`): table `argus_records`, same shape and protocol. Journal of notable system
   events (`kind=event`, `ref_id` = service, `at` = start) shown on Argus' «Registro» page (v3 F).
 - **Hermes store** (`/api/hermes-store/*`): table `hermes_records`. Web Push subscriptions of the WebUI's browsers
-  (`kind=push`, id = hash of the endpoint) (`docs/work/2026-10-24-whole-brainstorm-cindy` C15).
+  (`kind=push`, id = hash of the endpoint) (`docs/work/2026-10-24-whole-cindy-brainstorm` C15).
 - **Chronos store** (`/api/chronos-store/*`): table `chronos_records`. Routine results kept for the evening recap
   (`kind=routine_result`, `ref_id` = routine key) and the smart calendar's «Lascia così» (`kind=smart_kept`).
   All are built by the generic `routers/module_store.py` (`build_router(prefix, model)`, one table per owner module,
@@ -215,7 +215,7 @@ It stores and serves all persistent state through generic APIs.
 - `calendar_items.meta` (JSONB, auto-migrated with `ALTER TABLE … ADD COLUMN IF NOT EXISTS`) holds assistant-agenda
   metadata (type, owner, action, skips, rules). Upserts without `meta` keep the stored value.
 - New `GET /api/chat/sessions?since=` → `{sessions: [...]}` distinct session ids (Athena consolidator).
-- 2026-10-29 (Cindy 26, dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W7): table `chat_session_meta`
+- 2026-10-29 (Cindy 26, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W7): table `chat_session_meta`
   (`session_id` PK, `title`, `tags` JSONB `[{name, color}]`, `pinned`, `client`, `updated_at`; created by
   `create_all`). `GET /api/chat/sessions/list?q=&tag=&since=&until=&pinned=&limit=&offset=` → `{items: [{session_id,
   title (own or first user message), first_at, last_at, messages, tags, pinned}], total}`, pinned first then newest;
@@ -234,7 +234,7 @@ It stores and serves all persistent state through generic APIs.
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › interno: 1; memoria › Note e preferenze: 1; notifiche › Avvisi automatici: 4; notifiche › Promemoria e allerte: 4; sistema › Avanzate: 1 (area › section: tools).
 
-## Wave 5 additions (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 5)
+## Wave 5 additions (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 5)
 - Seven generic module stores (same rows, LWW and cursor as the others): `/api/images-store` (Apollo, `images_records`),
   `/api/appearance-store` (Aphrodite, `appearance_records`), `/api/home-store` (Lares, `home_records`),
   `/api/people-store` (Hera, `people_records`), `/api/food-store` (Demeter, `food_records`), `/api/office-store`
@@ -250,7 +250,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   mirror. Every module store gains `GET /count?kind=&at_from=` → `{count}` (live rows). Chat meta gains
   `training_off` (additive column; `GET /api/chat/sessions/{id}/meta` reads one, the PUT and the list carry it).
 
-## Delete a conversation, model and time of a message (dossier `docs/work/2026-11-13-sidebar-e-chat`)
+## Delete a conversation, model and time of a message (dossier `docs/work/2026-11-13-sidebar-and-chat`)
 
 - `DELETE /api/chat/sessions/{id}` → `{status, session_id, deleted_messages}`: the whole conversation, messages and
   what the owner set on it (title, tags, pin). `DELETE /api/chat/history/{id}` still clears the messages only: it is
@@ -259,7 +259,7 @@ Tool titles are plain Italian without emoji; each tool says where it goes on Tel
   for a message written again by compaction, `timestamp` (so it keeps the time it was first written); the history
   rows return `model`.
 
-## Wave 3 additions (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3)
+## Wave 3 additions (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - `/api/athena-store` (table `athena_records`): Athena's learning log (kind `learning`) and memory review proposals
   (kind `memory_proposal`), generic module-store rows.
 - `GET /api/memory/{pref_id}`: one memory (Athena's undo checks it is unchanged).

@@ -1,4 +1,4 @@
-"""Routines in words (Cindy 7 + 27 + 28, dossier docs/work/2026-10-24-whole-brainstorm-cindy).
+"""Routines in words (Cindy 7 + 27 + 28, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 A routine is **an agenda rule with a written instruction**, not a new timer:
 

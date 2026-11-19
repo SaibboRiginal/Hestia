@@ -3,7 +3,7 @@
 **Role:** How the clients look («Aspetto») — themes of holidays, seasons and special days, light effects, a pet
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19023 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5, brainstorm A2)
+**Port:** 19023 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A2)
 
 ---
 

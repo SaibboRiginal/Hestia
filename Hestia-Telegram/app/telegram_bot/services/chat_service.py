@@ -47,7 +47,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
         elif kind == "token":
             renderer.on_token(str(data.get("text") or ""))
         elif kind == "reaction":
-            # Hestia reacts to the owner's message (hestia-alive F4): applied by run_chat_turn on that message.
+            # Hestia reacts to the owner's message (living-hestia F4): applied by run_chat_turn on that message.
             renderer.reaction = str(data.get("emoji") or "")[:16]
         elif kind == "final":
             renderer.trace_id = str(data.get("trace_id") or "")[:40]
@@ -126,7 +126,7 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
                extra_instructions: str = "", queued: list[dict] | None = None,
                quoted: dict | None = None, spoken: bool = False) -> OracleResult:
     """Stream one chat turn from Oracle into a renderer on ``status_message_id``.
-    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (hestia-alive F1).
+    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (living-hestia F1).
     ``queued``: messages written while the assistant could not answer ([{text, written_at}]), answered in one turn
     where the assistant decides how (oracle-offline v3 C). ``quoted``: the message replied to (context).
     Raises ``OracleUnavailable`` when Oracle did not accept the request."""

@@ -89,7 +89,7 @@ If direct access is needed, use host address reachable from container (`host.doc
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: memoria › Web: 4 (area › section: tools).
 
-## Site recipes (Cindy 12, `app/recipes.py`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy` wave 3)
+## Site recipes (Cindy 12, `app/recipes.py`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` wave 3)
 - A recipe is a JSON file in `Hestia-Atlas/recipes/` (code in the repo, versioned, Forge fixes it): params, steps
   (`goto`, `fill`, `click`, `press`, `wait`) and fields to extract (selector, `attr`, `all`, `required`, `limit`).
   Validated at load; a malformed file is skipped with a warning.

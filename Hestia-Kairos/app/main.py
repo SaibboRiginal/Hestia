@@ -1,4 +1,4 @@
-"""Hestia-Kairos — deadlines with advice («Deadlines», port 19028, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 B7).
+"""Hestia-Kairos — deadlines with advice («Deadlines», port 19028, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 B7).
 
 Data in Archive (``/api/deadlines-store``), each open deadline in the calendar (agenda events), mails by push from
 Iris (subscription ``kairos:mail``: only proposals the owner confirms), notices through Hermes, the daily check in

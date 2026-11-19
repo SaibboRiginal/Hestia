@@ -1,4 +1,4 @@
-"""Notification style «Frase di Hestia» (docs/work/2026-11-06-hestia-alive F5). Markers: unit."""
+"""Notification style «Frase di Hestia» (docs/work/2026-11-06-living-hestia F5). Markers: unit."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -48,7 +48,7 @@ def test_style_setting_is_declared_with_card_default():
 
 def test_phrase_style_leaves_the_identity_to_oracle():
     """Hermes sends what to say and the data; who speaks (name, she/he, owner) is Oracle's system prompt, asked
-    with ``voice`` (docs/work/2026-11-12-prompt-every-situation): no «Sei …» written here."""
+    with ``voice`` (docs/work/2026-11-12-prompt-for-every-situation): no «Sei …» written here."""
     with patch("modules.service.narrate", return_value="Fatto.") as narrate:
         _say("Spesa salvata")
     prompt = narrate.call_args[0][0]

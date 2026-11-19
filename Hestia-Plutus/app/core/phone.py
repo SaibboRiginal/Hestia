@@ -1,4 +1,4 @@
-"""Bank / payment app notifications from the phone (Cindy 32, dossier docs/work/2026-10-24-whole-brainstorm-cindy W4).
+"""Bank / payment app notifications from the phone (Cindy 32, dossier docs/work/2026-10-24-whole-cindy-brainstorm W4).
 
 Hecate pushes ``phone.notification`` items ``{app, title, text, at}`` (feed ``hestia_common.feeds``); a notification
 that clearly says money moved («Pagamento di 12,50 € presso ESSELUNGA», «Hai ricevuto 20 €») becomes a transaction

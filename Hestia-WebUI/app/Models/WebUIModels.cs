@@ -106,7 +106,7 @@ public record ChatHubMessage
     public string? Context { get; init; }
 
     /// <summary>Live mode «Parla»: the turn was heard and is answered aloud (Oracle keeps it short and speakable,
-    /// docs/work/2026-11-06-hestia-alive F1).</summary>
+    /// docs/work/2026-11-06-living-hestia F1).</summary>
     [JsonPropertyName("spoken")]
     public bool? Spoken { get; init; }
 }
@@ -180,7 +180,7 @@ public record OracleEvent(
     // final: Oracle's id of the turn; a 👍/👎 sends it back (training dataset, docs/work/2026-10-30-training-dataset)
     [property: JsonPropertyName("trace_id")]
     string? TraceId = null,
-    // final: the answer is only Hestia's emoji reaction (no text bubble, docs/work/2026-11-06-hestia-alive F4)
+    // final: the answer is only Hestia's emoji reaction (no text bubble, docs/work/2026-11-06-living-hestia F4)
     [property: JsonPropertyName("reaction_only")]
     bool? ReactionOnly = null,
     // final: the model that answered; the chat marks where it changes inside a conversation

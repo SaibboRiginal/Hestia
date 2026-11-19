@@ -7,7 +7,7 @@
 | **Status** | Implemented; PR open |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
-Follows `docs/work/2026-11-12-prompt-every-situation` (every hidden text English, answer in the language of the
+Follows `docs/work/2026-11-12-prompt-for-every-situation` (every hidden text English, answer in the language of the
 owner's last message).
 
 ## 1. Today (verified on main d728bd1)

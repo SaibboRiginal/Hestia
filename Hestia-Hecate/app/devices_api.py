@@ -1,6 +1,6 @@
 """The owner's devices: Garmin watch (B10) and Android phone as a sensor (Cindy 32).
 
-Dossier docs/work/2026-10-24-whole-brainstorm-cindy W4. Hecate owns the devices and only passes their data on:
+Dossier docs/work/2026-10-24-whole-cindy-brainstorm W4. Hecate owns the devices and only passes their data on:
 - **Garmin**: «Collega Garmin» asks email/password with the Hermes secret form (never stored, only the tokens in
   ``HECATE_GARMIN_TOKENS``), a second form for the two-step code; the agenda job ``hecate.garmin.sync`` (daily
   09:30, user-movable) reads yesterday and today and pushes each day as the ``wearable.daily`` feed (Hercules:

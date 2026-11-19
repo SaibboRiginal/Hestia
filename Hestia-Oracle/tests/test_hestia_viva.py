@@ -1,4 +1,4 @@
-"""Hestia viva (docs/work/2026-11-06-hestia-alive): persona, spoken turns, controls gate, awareness lines, reactions.
+"""Hestia viva (docs/work/2026-11-06-living-hestia): persona, spoken turns, controls gate, awareness lines, reactions.
 
 No LLM, no network: Hub, engine and settings are mocked. Markers: unit, api."""
 from __future__ import annotations

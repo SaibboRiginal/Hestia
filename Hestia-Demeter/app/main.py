@@ -1,4 +1,4 @@
-"""Hestia-Demeter — nutrition («Nutrition», port 19026, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A5).
+"""Hestia-Demeter — nutrition («Nutrition», port 19026, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A5).
 
 Data in Archive (``/api/food-store``): diet, meals, supplements and intakes. A coach of the weekly plan (Hub tag
 ``coach``, ``/api/coach/*``), kcal estimates from Oracle (use case ``demeter.estimate``, async, never blocking the log),

@@ -4,7 +4,7 @@
 due day, amount, recurrence, lead time and a practical advice
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19028 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5, brainstorm B7)
+**Port:** 19028 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm B7)
 
 ---
 

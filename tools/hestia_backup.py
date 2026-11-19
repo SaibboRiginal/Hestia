@@ -2,12 +2,12 @@
 
   python tools/hestia_backup.py list                     # backups on Google Drive
   python tools/hestia_backup.py status
-  python tools/hestia_backup.py restore <name>           # roll back to a backup on Drive (asks RIPRISTINA)
+  python tools/hestia_backup.py restore <name>           # roll back to a backup on Drive (asks RESTORE)
   python tools/hestia_backup.py restore --file <path>    # a .enc file downloaded by hand (copied in first)
   python tools/hestia_backup.py undo                     # back to the data just before the last restore
   python tools/hestia_backup.py decrypt <path>           # .enc → .dump next to it (needs the passphrase in .env)
 
-The panel in the WebUI (Impostazioni → Sistema → Archivio → Backup) does the same. SPEC:
+The panel in the WebUI (Settings → System → Archive → Backup) does the same. SPEC:
 docs/work/2026-10-20-backup-drive/SPEC.md §3.4.
 """
 from __future__ import annotations
@@ -16,13 +16,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _texts import tr  # noqa: E402  texts in the owner's language
+
 CONTAINER = "hestia_archive"
 IMPORT_DIR = "/code/backups/import"
 
 
 def _docker(*args: str, interactive: bool = False) -> int:
     cmd = ["docker", *args]
-    if interactive:                    # keep stdin (the RIPRISTINA confirmation), a terminal only when there is one
+    if interactive:                    # keep stdin (the RESTORE confirmation), a terminal only when there is one
         cmd = ["docker", args[0], "-it" if sys.stdin.isatty() else "-i", *args[1:]]
     return subprocess.call(cmd)
 
@@ -30,10 +33,10 @@ def _docker(*args: str, interactive: bool = False) -> int:
 def _copy_in(path: str) -> str:
     src = Path(path)
     if not src.is_file():
-        sys.exit(f"{src} non esiste.")
+        sys.exit(tr("{0} does not exist.", src))
     _docker("exec", CONTAINER, "mkdir", "-p", IMPORT_DIR)
     if _docker("cp", str(src), f"{CONTAINER}:{IMPORT_DIR}/{src.name}") != 0:
-        sys.exit("Copia nel container non riuscita: Hestia è avviata?")
+        sys.exit(tr("Copy into the container failed: is Hestia running?"))
     return src.name
 
 
@@ -45,7 +48,7 @@ def main(argv: list[str]) -> int:
     if args[0] == "restore" and "--file" in args:
         i = args.index("--file")
         if i + 1 >= len(args):
-            sys.exit("restore --file: manca il percorso")
+            sys.exit(tr("restore --file: the path is missing"))
         args[i:i + 2] = ["--local", _copy_in(args[i + 1])]
     if args[0] == "decrypt" and len(args) > 1:
         src = Path(args[1])
@@ -56,7 +59,7 @@ def main(argv: list[str]) -> int:
             rc = _docker("cp", f"{CONTAINER}:{IMPORT_DIR}/{name}.dump", str(out))
             _docker("exec", CONTAINER, "rm", "-f", f"{IMPORT_DIR}/{name}.dump")
             if rc == 0:
-                print(f"Scritto {out}")
+                print(tr("{0} written", out))
         return rc
     return _docker("exec", CONTAINER, "python", "-m", "app.backup.cli", *args, interactive=True)
 

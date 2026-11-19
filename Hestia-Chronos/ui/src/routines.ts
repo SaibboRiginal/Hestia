@@ -3,7 +3,7 @@
  * arrives; the ready-made gallery (radar notizie, case nuove, spese, settimana, mail da un mittente); «Esegui
  * adesso», pause, delete. The result goes as a notification or into the evening recap.
  * Reads GET /api/agenda/routines(+/templates); POST /api/agenda/routines, /routines/from-template/{id};
- * the agenda item routes for run / pause / delete. Dossier 2026-10-24-whole-brainstorm-cindy W2 + W7.
+ * the agenda item routes for run / pause / delete. Dossier 2026-10-24-whole-cindy-brainstorm W2 + W7.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, when } from './util';

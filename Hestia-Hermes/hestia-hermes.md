@@ -100,7 +100,7 @@ within the cooldown window.
 - Echo down → `[🔄]`, the text stays the only form. Superseded (or superseded before the audio is ready) → the audio is
   dropped in Echo (`forget`).
 
-## Da decidere, active client, secret form, Web Push (dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W2)
+## Da decidere, active client, secret form, Web Push (dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W2)
 
 - **«Da decidere»** (Cindy 5): agenda job `hermes.notifications.remind_pending` (hourly) → `POST
   /api/notifications/remind-pending`. Notifications still waiting for an answer after `hermes.waiting.recall_hours`
@@ -138,7 +138,7 @@ within the cooldown window.
   Telegram: the chat-question keyboard, free text only after «Rispondi…»/«Altro…» or as a reply to the message.
 - First producer: Chronos routines (the assistant's questions during a routine). Any module: `reminder_event(question=)`.
 
-## Notification style «Frase di Hestia» (dossier `docs/work/2026-11-06-hestia-alive` F5)
+## Notification style «Frase di Hestia» (dossier `docs/work/2026-11-06-living-hestia` F5)
 
 Setting `hermes.notifications.style`: `scheda` (default, unchanged) or `frase`. With `frase`, before publishing,
 `conversational_message()` asks Oracle (`/api/llm/generate` via `narrate`) to say an informative notification as
@@ -206,7 +206,7 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   shell's own preference (`localStorage` `hestia_notification_prefs`, same origin) and fires the window event
   `hestia:notification-prefs` `{toast}`. «Rispondi»/«Apri» on a toast opens `?focus=<id>`: filter «Tutte», that
   notification first under «Questa», highlighted and scrolled into view (a filter change drops it).
-  Since W7 (dossier 2026-10-24-whole-brainstorm-cindy) the *Da rispondere* filter reads **Da decidere**; a secret
+  Since W7 (dossier 2026-10-24-whole-cindy-brainstorm) the *Da rispondere* filter reads **Da decidere**; a secret
   notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
   values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool
   on the *Comandi* page (`/p/mcp/commands?command=…`).

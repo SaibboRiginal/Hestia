@@ -3,7 +3,7 @@
 **Role:** Images through a remote ComfyUI («Immagini») — flows per purpose, a job queue, images in Archive blobs
 **Node:** main host; the generator runs where the GPU is (Marko's PC or a rented one)
 **Stack:** Python · FastAPI · Docker · `websockets` · `hestia_common.module_kit`
-**Port:** 19022 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5, brainstorm A1)
+**Port:** 19022 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A1)
 
 ---
 

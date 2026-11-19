@@ -121,12 +121,12 @@ subscription compile), `pausa_voto`.
 - **She wrote first** (dossier `docs/work/2026-11-12-identity-and-proactivity`): a notification whose payload has
   `_chat` is sent as plain chat text (escaped, no card, no tone dot, no cut at 80 characters) and remembered like an
   answer of hers («Ascolta» and the owner's reactions work on it). Hermes never retracts it.
-- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-hestia-alive`): Oracle's `reaction` frame →
+- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-living-hestia`): Oracle's `reaction` frame →
   `setMessageReaction` on the owner's message (Telegram's own emoji list; a near one is mapped, 😂 → 🤣, otherwise
   skipped); `final.reaction_only` → no text, the «Sto pensando…» message is deleted. The owner's reactions on her
   messages (`message_reaction` updates, asked for in `ALLOWED_UPDATES`) → Oracle `POST /api/chat/reaction` with the
   reacted text when the bot still has it.
-- Another model answering (dossier `docs/work/2026-11-13-sidebar-e-chat`): Oracle's `final.model` is remembered per
+- Another model answering (dossier `docs/work/2026-11-13-sidebar-and-chat`): Oracle's `final.model` is remembered per
   chat (in memory); when it differs from the last answer's, one line `〜 <model> 〜` opens the answer. No line for
   the first answer after a restart or when Oracle does not name the model.
 - Hermes `update` with `voice.audio_b64` → voice message replying to the notification.
@@ -251,7 +251,7 @@ keyboard (`assistant_questions.notification_rows`), the answer goes to Hermes `/
 is never the next message written: «Rispondi…» / «Altro…» starts it (callback `askw:`), or a reply to the notification
 message is the answer (`notifications.answer_by_reply`). «Apri» stays under the keyboard.
 
-## Answer extras (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 1)
+## Answer extras (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 1)
 `services/answer_extras.py` + `ReplyRenderer`:
 - ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons
   become an inline keyboard «Scegli» whose tap sends the button's text as the next chat message (callback `uisend:`).
@@ -260,7 +260,7 @@ message is the answer (`notifications.answer_by_reply`). «Apri» stays under th
   (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
 - `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.
 
-## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3, parity F)
+## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3, parity F)
 - «Esporta i dati»: Telegram (a client, like the WebUI page) asks every module with the `transfer` capability for its
   export through Hub and sends `hestia-AAAA-MM-GG.hestia` (gzip JSON, same format, no photos) as a document.
 - «Importa dati»: asks for the file, shows the preview (dry run), «Importa» merges (adds/updates, never deletes) and

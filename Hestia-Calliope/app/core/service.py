@@ -1,4 +1,4 @@
-"""Calliope — real documents («Documents», Cindy 21, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5).
+"""Calliope — real documents («Documents», Cindy 21, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5).
 
 The assistant writes a small HTML draft; Calliope turns it into PDF, Word or Excel with one of three shared themes,
 opens the result again to check it (pages/sheets, the title, every «must contain» text), keeps the file in Archive

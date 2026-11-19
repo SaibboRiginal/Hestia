@@ -464,7 +464,7 @@ call; failures answer empty parts. The calendar views (month, week/day grid, lis
 ## Telegram card (`display`)
 `GET /api/calendar/agenda` returns a `display` card (time · title · place, grouped by day when more than one day; Nuovo evento, Prossimi giorni / Solo oggi). `GET /api/calendar/agenda/today` = the same for today only (tool `agenda_today`, which used to show 7 days). Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Routines, special events, smart calendar (dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W2)
+## Routines, special events, smart calendar (dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W2)
 
 Code: `app/life_api.py` (endpoints, MCP tools, agenda rules), `app/services/routines.py`, `special.py`,
 `smart_calendar.py`, `app/core/life_store.py` (rows in Archive `/api/chronos-store`).

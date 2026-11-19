@@ -1,6 +1,6 @@
 /**
  * Aphrodite («Look») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-24-whole-brainstorm-cindy W7). Page declared in Hestia-Aphrodite/app/main.py. The WebUI itself
+ * docs/work/2026-10-24-whole-cindy-brainstorm W7). Page declared in Hestia-Aphrodite/app/main.py. The WebUI itself
  * draws the look (palette, effect, pet) from GET /api/appearance/now.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';

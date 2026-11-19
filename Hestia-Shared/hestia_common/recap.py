@@ -18,7 +18,7 @@ exposing the endpoint; nothing else changes.
 ``title`` is a generic word for the area («Allenamento», «Spese»): user texts never name modules.
 ``actions`` (optional, max 2): buttons the recap message carries for this module, Hermes action shape
 (``{label, command}`` = a tool the client opens, or ``{label, service, path, method?, body?}``). They ride even on an
-empty piece (e.g. «Racconta la giornata» after the evening recap, dossier ``2026-10-24-whole-brainstorm-cindy`` B9).
+empty piece (e.g. «Racconta la giornata» after the evening recap, dossier ``2026-10-24-whole-cindy-brainstorm`` B9).
 """
 from __future__ import annotations
 

@@ -90,7 +90,7 @@ WINDOW_TRAINING = "metis.training"
 agenda = AgendaClient("metis", _HUB_API_URL)
 presence = PresenceClient("metis", _HUB_API_URL)
 
-# ── Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-whole-brainstorm-cindy W6) ─────────────────────
+# ── Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-whole-cindy-brainstorm W6) ─────────────────────
 # Taps live in Archive ``metis-store`` (Hub-routed mirror); the suggestion engine is core/usage.py.
 usage_store = Store(RoutedHub(_HUB_API_URL), "metis-store", name="metis")
 usage = Usage(usage_store, usage_store.hub, tz_name=os.getenv("TZ") or "Europe/Rome", agenda=agenda)

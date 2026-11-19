@@ -55,7 +55,7 @@ Hub turns them into commands (`/api/discovery/commands?client=telegram|ui`). Pat
 `{name}`/`$name` placeholders, filled by Oracle/Telegram/WebUI/MCP. `mount_missing_rest_routes`
 serves the declared REST path of handler-only tools — call it after the app's own routes.
 
-Turn safety (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`): whoever calls `/api/chat` without being the
+Turn safety (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`): whoever calls `/api/chat` without being the
 owner's client sets `X-Hestia-Origin` (`routine:<rule>`, `autonomo:<module>`, `hestia_common.origin`); write tools
 return `undo` (`hestia_common.mcp_helpers.undo`) so the clients can show «Annulla»; register
 `capabilities.when_to_use` + `manual` (+ a short English `title`) so the assistant knows when to use your module — in

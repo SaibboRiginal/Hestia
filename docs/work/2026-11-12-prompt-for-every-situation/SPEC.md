@@ -7,7 +7,7 @@
 | **Status** | Implemented and merged (PR #99); real run by Marko pending. Point 6 (classifier) waits for his answer |
 
 Versioning: minor = refinement, major = scope/design change. Every bump goes in `CHANGELOG.md` (this folder).
-Follows `docs/work/2026-11-06-hestia-alive` and `docs/work/2026-11-12-identity-and-proactivity` (who the assistant
+Follows `docs/work/2026-11-06-living-hestia` and `docs/work/2026-11-12-identity-and-proactivity` (who the assistant
 is: name, she/he, owner, style). This dossier is about how the prompt is put together, not about her character.
 
 ## 1. Today (verified on main 8ec10ee)

@@ -400,11 +400,11 @@ run is not lost (dossier `docs/work/2026-11-17-compact-outputs`). The full test 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Riparazioni: 5; sviluppo › Lavori: 10; sviluppo › Avanzate: 1; sviluppo › Impostazioni sviluppo: 3 (area › section: tools).
 
-## Redaction and Marko's rules (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
+## Redaction and Marko's rules (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 The context of a Forge task prompt passes through `hestia_common.redact.redact` (Cindy 19). The coding engine's
 «read first» list includes `docs/REGOLE-DI-MARKO.md` (dated rules + the new-feature checklist, Cindy 11).
 
-## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3)
+## Automatic review, team plan, resume after the Claude limit (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - **Reviewer** (Cindy 3, `app/forge/review.py`): after the tests the task goes to state `reviewing`. A fresh model
   with no tools and no memory of the work (Oracle `/api/llm/generate`, use case `forge.review`, chain strong)
   gets only labelled evidence: request, acceptance criteria of the task SPEC (`docs/work/<WORKDOC>/SPEC.md`), the

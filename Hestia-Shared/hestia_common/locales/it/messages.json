@@ -7764,5 +7764,20 @@
  "Car inspection": "Revisione",
  "Car service": "Tagliando",
  "pl::Taxes": "Tasse",
- "Colleague": "Collega"
+ "Colleague": "Collega",
+ "don't ask to confirm": "non chiedere conferma",
+ "{0} written": "scritto {0}",
+ "{0}: {1} records in {2} sections, {3} files": "{0}: {1} record in {2} sezioni, {3} file",
+ "import with mode {0}? [y/N] ": "importare con modo {0}? [s/N] ",
+ "Copy into the container failed: is Hestia running?": "Copia nel container non riuscita: Hestia è avviata?",
+ "preview:": "anteprima:",
+ "restore --file: the path is missing": "restore --file: manca il percorso",
+ "none (fake LLM, no Telegram/Google)": "nessuno (LLM finto, niente Telegram/Google)",
+ "not a Hestia file, or one of a newer version": "non è un file di Hestia, o è di una versione più recente",
+ "{0}: no export or import here (available: {1})": "{0}: modulo senza esporta/importa (disponibili: {1})",
+ "only changes since this date (YYYY-MM-DD)": "solo modifiche da questa data (AAAA-MM-GG)",
+ "restore point: {0}": "punto di ripristino: {0}",
+ "{0}: not here, skipped": "{0}: non presente qui, saltato",
+ "Hestia is ready. Secrets in use: {0}. Open the link above (also in .cloud-test/login.txt).": "Hestia è pronto. Secret in uso: {0}. Apri il link qui sopra (anche in .cloud-test/login.txt).",
+ "include the photos": "includi le foto"
 }

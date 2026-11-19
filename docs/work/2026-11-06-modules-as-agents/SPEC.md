@@ -129,7 +129,7 @@ in its module's data and in Oracle's memory, so every client sees it next time.
 Marko's PC is read from these logs in his real run (cloud tests use fake models).
 
 ### 3.6 Coordination
-The Verity thread (branch `claude/project-thread-j7apmm`, dossier `docs/work/2026-11-06-hestia-alive`) keeps the classifier untouched and adds no «voice without classifier». Agents use its persona from `prompt_config.analyst_persona_default()` (key `analyst_persona_default`) and, on spoken turns, `voice_turn_contract()`. Its reaction marker is filtered in `main.py`, outside `chat()`.
+The Verity thread (branch `claude/project-thread-j7apmm`, dossier `docs/work/2026-11-06-living-hestia`) keeps the classifier untouched and adds no «voice without classifier». Agents use its persona from `prompt_config.analyst_persona_default()` (key `analyst_persona_default`) and, on spoken turns, `voice_turn_contract()`. Its reaction marker is filtered in `main.py`, outside `chat()`.
 
 Names follow PR #113 (no Italian in code): keys and values in English, labels Italian through `tr`.
 

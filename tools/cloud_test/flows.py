@@ -10,7 +10,7 @@ Doors used, like the clients do:
 - notifications through the WebUI inbox (/api/webui/notifications → Hermes) and its answer buttons
 - pages through Chromium (Playwright) on the real WebUI, desk and phone
 Every run creates its own data with a «Banco» prefix; nothing is deleted from the volumes.
-Output: .cloud-test/flows.md + .cloud-test/flows/*.png. SPEC: docs/work/2026-10-19-real-runs-bench/SPEC.md
+Output: .cloud-test/flows.md + .cloud-test/flows/*.png. SPEC: docs/work/2026-10-19-bench-real-runs/SPEC.md
 """
 from __future__ import annotations
 
@@ -62,6 +62,18 @@ def http(method: str, url: str, body=None, timeout: float = 30.0, headers: dict 
 
 class Fail(Exception):
     pass
+
+
+_UI: dict | None = None
+
+
+def ui(text: str) -> str:
+    """A WebUI text as the page shows it: the English source in the stack's language (/api/webui/i18n)."""
+    global _UI
+    if _UI is None:
+        code, out = http("GET", f"{WEBUI}/api/webui/i18n", timeout=10)
+        _UI = (out.get("messages") or {}) if code == 200 and isinstance(out, dict) else {}
+    return _UI.get(text) or text
 
 
 def need(cond, msg: str):
@@ -161,8 +173,8 @@ def step(area: str, name: str):
 
 
 def write_report(notes: list[str]) -> Path:
-    lines = [f"# Prove reali sul banco — {datetime.now():%Y-%m-%d %H:%M}", "",
-             f"Passi: {sum(r['ok'] for r in RESULTS)} ✅ · {sum(not r['ok'] for r in RESULTS)} ❌", ""]
+    lines = [f"# Real runs on the bench — {datetime.now():%Y-%m-%d %H:%M}", "",
+             f"Steps: {sum(r['ok'] for r in RESULTS)} ✅ · {sum(not r['ok'] for r in RESULTS)} ❌", ""]
     area = None
     for r in RESULTS:
         if r["area"] != area:
@@ -177,18 +189,18 @@ def write_report(notes: list[str]) -> Path:
     return path
 
 
-# ── Hercules (Allenamento) ───────────────────────────────────────────────────
+# ── Hercules (Training) ──────────────────────────────────────────────────────
 
 def flow_hercules(ctx: dict) -> None:
-    A = "Allenamento (Hercules)"
+    A = "Training (Hercules)"
     M = "hercules"
 
     def pick(q: str) -> str:
         items = api(M, "GET", "api/hercules/exercises", query={"q": q, "limit": 5})["items"]
-        return need(items, f"esercizio «{q}» non trovato")[0]["id"]
+        return need(items, f"exercise «{q}» not found")[0]["id"]
 
     def template():
-        bench, row = pick("panca piana"), pick("rematore")
+        bench, row = pick("panca piana"), pick("row")
         for old in api(M, "GET", "api/hercules/templates")["items"]:  # earlier runs: Home shows at most 6 favourites
             if str(old.get("name", "")).startswith("Banco Push "):
                 api(M, "DELETE", f"api/hercules/templates/{old['id']}")
@@ -196,50 +208,50 @@ def flow_hercules(ctx: dict) -> None:
             {"exercise_id": bench, "rest_seconds": 120, "sets": [{"reps_min": 6, "reps_max": 8, "weight_kg": 60}] * 3},
             {"exercise_id": row, "sets": [{"reps_min": 8, "reps_max": 12}] * 3}]})
         ctx["tpl"], ctx["bench"], ctx["row"] = t["id"], bench, row
-        need(len(t.get("items") or []) == 2, f"scheda con {len(t.get('items') or [])} voci")
-        return f"scheda {t['name']} con 2 esercizi"
+        need(len(t.get("items") or []) == 2, f"template with {len(t.get('items') or [])} items")
+        return f"template {t['name']} with 2 exercises"
     act = api(M, "GET", "api/hercules/sessions/active")["session"]
-    if act:   # a previous run left one open: the real UI would offer «Riprendi» or «Scarta»
+    if act:   # a previous run left one open: the real UI would offer «Resume» or «Discard»
         api(M, "POST", f"api/hercules/sessions/{act['id']}/discard")
-    step(A, "Crea una scheda (2 esercizi, 3 serie)")(template)
+    step(A, "Create a template (2 exercises, 3 sets)")(template)
     if "tpl" not in ctx:
         return
 
     def session():
         s = api(M, "POST", "api/hercules/sessions", {"template_id": ctx["tpl"]})
         sid = s.get("id") or s.get("session", {}).get("id")
-        need(sid, f"nessun id sessione: {str(s)[:200]}")
+        need(sid, f"no session id: {str(s)[:200]}")
         ctx["sid"] = sid
         for w, r in ((60, 8), (60, 8), (62.5, 6)):
             api(M, "POST", f"api/hercules/sessions/{sid}/sets", {"exercise_id": ctx["bench"], "weight_kg": w, "reps": r})
         for r in (10, 10, 9):
             api(M, "POST", f"api/hercules/sessions/{sid}/sets", {"exercise_id": ctx["row"], "weight_kg": 40, "reps": r})
         act = api(M, "GET", "api/hercules/sessions/active")["session"]
-        need(act and act["id"] == sid, "la sessione attiva non è quella appena iniziata")
+        need(act and act["id"] == sid, "the active session is not the one just started")
         fin = api(M, "POST", f"api/hercules/sessions/{sid}/finish", {"perceived_effort": 7})
         det = api(M, "GET", f"api/hercules/sessions/{sid}")
         sets = sum(len(b.get("sets") or []) for b in det.get("blocks") or [])
-        need(sets == 6, f"serie salvate {sets} invece di 6")
-        need(det.get("status") == "done", f"stato {det.get('status')}")
-        return f"6 serie salvate, sessione chiusa: {str(det.get('summary'))[:120]} · PR {len(det.get('prs') or [])}"
-    step(A, "Allenamento live: inizia, 6 serie, chiudi")(session)
+        need(sets == 6, f"{sets} sets saved instead of 6")
+        need(det.get("status") == "done", f"status {det.get('status')}")
+        return f"6 sets saved, session closed: {str(det.get('summary'))[:120]} · PR {len(det.get('prs') or [])}"
+    step(A, "Live workout: start, 6 sets, finish")(session)
 
     def last_time():
         det = api(M, "GET", f"api/hercules/exercises/{ctx['bench']}")
         hist = json.dumps(det)[:20000]
-        need("62.5" in hist or "62,5" in hist, "il dettaglio esercizio non mostra la serie da 62.5 kg")
+        need("62.5" in hist or "62,5" in hist, "the exercise detail does not show the 62.5 kg set")
         t = api(M, "GET", f"api/hercules/templates/{ctx['tpl']}")
         text = json.dumps(t)
-        need("last" in text or "suggest" in text, "la scheda non porta «l'ultima volta» o suggerimenti")
-        return "dettaglio esercizio e scheda con ultima volta/suggerimento"
-    step(A, "«L'ultima volta» e suggerimento per la prossima")(last_time)
+        need("last" in text or "suggest" in text, "the template has no «last time» or suggestions")
+        return "exercise detail and template with last time/suggestion"
+    step(A, "«Last time» and suggestion for the next one")(last_time)
 
     def records():
         r = api(M, "GET", "api/hercules/records", query={"exercise_id": ctx["bench"]})
         st = api(M, "GET", "api/hercules/stats", query={"per": "week", "count": 4})
-        need(r, "nessun record")
-        return f"record panca: {str(r)[:120]} · stats chiavi {sorted(st)[:6]}"
-    step(A, "Record e statistiche")(records)
+        need(r, "no record")
+        return f"bench record: {str(r)[:120]} · stats keys {sorted(st)[:6]}"
+    step(A, "Records and statistics")(records)
 
     def offline_sync():
         boot = api(M, "GET", "api/hercules/bootstrap", query={"days": 30})
@@ -258,49 +270,49 @@ def flow_hercules(ctx: dict) -> None:
         api(M, "POST", f"api/hercules/sessions/{sid}/finish", {})
         det = api(M, "GET", f"api/hercules/sessions/{sid}")
         sets = sum(len(b.get("sets") or []) for b in det.get("blocks") or [])
-        need(sets == 3, f"dopo due sync uguali le serie sono {sets} (attese 3: niente duplicati)")
-        return f"sync applicate {str(out1.get('applied', out1))[:60]} / ripetuta {str(out2.get('applied', out2))[:60]}, 3 serie, nessun duplicato"
-    step(A, "Offline → online: sync ripetuta senza duplicati")(offline_sync)
+        need(sets == 3, f"after two equal syncs there are {sets} sets (3 expected: no duplicates)")
+        return f"syncs applied {str(out1.get('applied', out1))[:60]} / repeated {str(out2.get('applied', out2))[:60]}, 3 sets, no duplicate"
+    step(A, "Offline → online: repeated sync without duplicates")(offline_sync)
 
     def quick():
         chips = api(M, "GET", "api/hercules/quick/templates")
         items = chips.get("items", chips) if isinstance(chips, dict) else chips
-        need(any(c.get("id") == ctx["tpl"] for c in items), "la scheda preferita non è tra i chip della Home")
+        need(any(c.get("id") == ctx["tpl"] for c in items), "the favourite template is not among the Home chips")
         out = api(M, "POST", f"api/hercules/quick/{ctx['tpl']}", {})
         api(M, "DELETE", f"api/hercules/quick/{ctx['tpl']}")
-        return f"«{out.get('label')}» e Annulla"
-    step(A, "Home: «Segna fatto» con un tocco + Annulla")(quick)
+        return f"«{out.get('label')}» and Undo"
+    step(A, "Home: «Mark done» with one tap + Undo")(quick)
 
     def adapt_chat():
         r = chat("Oggi sono a pezzi e ho 30 minuti #tool fitness_adapt_today "
                  + json.dumps({"energy": 1, "time_minutes": 30, "template_id": ctx["tpl"]}))
-        need(r["tools"] and r["tools"][0]["tool"] == "fitness_adapt_today", f"strumenti chiamati: {r['tools']}")
-        need(r["tools"][0]["ok"], f"fitness_adapt_today fallito: {r['tools'][0]['preview'][:300]}")
+        need(r["tools"] and r["tools"][0]["tool"] == "fitness_adapt_today", f"tools called: {r['tools']}")
+        need(r["tools"][0]["ok"], f"fitness_adapt_today failed: {r['tools'][0]['preview'][:300]}")
         prev = r["tools"][0]["preview"]
         ctx["adapt_preview"] = prev
-        return f"piano adattato: {prev[:200]}"
-    step(A, "Chat «sono a pezzi, 30 minuti» → fitness_adapt_today")(adapt_chat)
+        return f"adapted plan: {prev[:200]}"
+    step(A, "Chat «I'm worn out, 30 minutes» → fitness_adapt_today")(adapt_chat)
 
     def apply_restore():
         ad = api(M, "POST", "api/hercules/adapt", {"energy": 1, "time_minutes": 30, "template_id": ctx["tpl"]})
-        aid = need(ad.get("id") or ad.get("adaptation_id"), f"nessun id adattamento: {str(ad)[:200]}")
+        aid = need(ad.get("id") or ad.get("adaptation_id"), f"no adaptation id: {str(ad)[:200]}")
         ap = api(M, "POST", f"api/hercules/adapt/{aid}/apply")
         sid = ap.get("session_id") or ap.get("id")
         planned = sum(len(e.get("planned") or []) for e in ap.get("exercises") or [] if not e.get("skipped"))
         rs = api(M, "POST", "api/hercules/restore", {"session_id": sid})
         restored = sum(len(e.get("planned") or []) for e in rs.get("exercises") or [] if not e.get("skipped"))
-        need(restored > planned, f"«ripristina» non rimette le serie tolte: {planned} → {restored}")
+        need(restored > planned, f"«restore» does not put back the removed sets: {planned} → {restored}")
         api(M, "POST", f"api/hercules/sessions/{sid}/discard")
-        need(not rs.get("adaptation_id"), "dopo «ripristina» la sessione è ancora adattata")
-        return f"serie pianificate: adattata {planned} → ripristinata {restored}"
-    step(A, "Adattamento: applica e «ripristina»")(apply_restore)
+        need(not rs.get("adaptation_id"), "after «restore» the session is still adapted")
+        return f"planned sets: adapted {planned} → restored {restored}"
+    step(A, "Adaptation: apply and «restore»")(apply_restore)
 
     def body_goal():
         api(M, "POST", "api/hercules/measurements", {"kind": "bodyweight", "value": 78.4})
         g = api(M, "POST", "api/hercules/goals", {"scope": "any", "times": 3, "per": "week", "label": "Banco 3/settimana"})
         s = api(M, "GET", "api/hercules/summary")
-        return f"peso + obiettivo {g.get('label')} · riepilogo: {s.get('text', '')[:100]}"
-    step(A, "Peso, obiettivo «3 volte a settimana», riepilogo")(body_goal)
+        return f"weight + goal {g.get('label')} · summary: {s.get('text', '')[:100]}"
+    step(A, "Weight, goal «3 times a week», summary")(body_goal)
 
 
 # ── Hygieia (Self care) ──────────────────────────────────────────────────────
@@ -313,24 +325,24 @@ def flow_hygieia(ctx: dict) -> None:
     def products():
         t0 = time.time()
         cleanser = api(M, "POST", f"{P}/products", {"name": f"Banco Detergente schiumoso {RUN}", "brand": "CeraVe",
-                                                    "areas": ["viso"], "category": "detergente", "size": 236,
+                                                    "areas": ["face"], "category": "cleanser", "size": 236,
                                                     "pao_months": 12, "status": "in_use"})
         secs = time.time() - t0
-        need(cleanser.get("opened_at") == TODAY.isoformat(), f"opened_at {cleanser.get('opened_at')} (atteso oggi)")
+        need(cleanser.get("opened_at") == TODAY.isoformat(), f"opened_at {cleanser.get('opened_at')} (today expected)")
         need(cleanser.get("expires_at") or cleanser.get("pao_expires_at") or "pao" in json.dumps(cleanser),
-             "nessun conto alla rovescia PAO")
-        ret = api(M, "POST", f"{P}/products", {"name": f"Banco Siero retinolo {RUN}", "brand": "Banco", "areas": ["viso"],
-                                               "category": "siero", "actives": ["retinolo"], "status": "in_use"})
-        aha = api(M, "POST", f"{P}/products", {"name": f"Banco Tonico glicolico {RUN}", "brand": "Banco", "areas": ["viso"],
-                                               "category": "tonico", "actives": ["aha_glicolico"], "status": "in_use"})
+             "no PAO countdown")
+        ret = api(M, "POST", f"{P}/products", {"name": f"Banco Siero retinolo {RUN}", "brand": "Banco", "areas": ["face"],
+                                               "category": "serum", "actives": ["retinol"], "status": "in_use"})
+        aha = api(M, "POST", f"{P}/products", {"name": f"Banco Tonico glicolico {RUN}", "brand": "Banco", "areas": ["face"],
+                                               "category": "toner", "actives": ["aha_glycolic"], "status": "in_use"})
         ctx.update(cleanser=cleanser["id"], retinol=ret["id"], aha=aha["id"])
-        return f"3 prodotti; il primo salvato in {secs:.1f} s con apertura oggi e PAO 12 mesi"
-    step(A, "Aggiungi prodotti (detergente con PAO, retinolo, AHA)")(products)
+        return f"3 products; the first saved in {secs:.1f} s, opened today, PAO 12 months"
+    step(A, "Add products (cleanser with PAO, retinol, AHA)")(products)
     if "retinol" not in ctx:
         return
 
     def routine():
-        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Viso sera {RUN}", "areas": ["viso"], "slot": "evening",
+        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Viso sera {RUN}", "areas": ["face"], "slot": "evening",
                                              "cadence": {"mode": "daily"}, "reminder": True, "steps": [
             {"product_id": ctx["cleanser"]},
             {"product_id": ctx["retinol"], "cadence": {"mode": "target", "times": 3, "per": "week"}},
@@ -339,9 +351,9 @@ def flow_hygieia(ctx: dict) -> None:
         warn = json.dumps(r.get("warnings") or r.get("conflicts") or r.get("check") or "")
         ck = api(M, "GET", f"{P}/check", query={"routine_id": r["id"]})
         text = json.dumps(ck, ensure_ascii=False)
-        need("AHA" in text or "aha" in text, f"selfcare_check non avvisa retinolo+AHA: {text[:300]}")
-        return f"routine con 3 passi; avviso: {(warn if warn not in ('""', '[]') else text)[:160]}"
-    step(A, "Routine «Viso sera»: retinolo 3/sett, AHA 1/sett, avviso conflitto")(routine)
+        need("AHA" in text or "aha" in text, f"selfcare_check does not warn about retinol+AHA: {text[:300]}")
+        return f"routine with 3 steps; warning: {(warn if warn not in ('""', '[]') else text)[:160]}"
+    step(A, "Routine «Evening face»: retinol 3/week, AHA 1/week, conflict warning")(routine)
     if "routine" not in ctx:
         return
 
@@ -351,32 +363,32 @@ def flow_hygieia(ctx: dict) -> None:
         text = json.dumps(plan, ensure_ascii=False)
         steps = plan.get("steps") or []
         aha = next((s for s in steps if (s.get("product") or {}).get("id") == ctx["aha"]), {})
-        need(aha, f"passo AHA assente nel piano: {text[:300]}")
-        need(not aha.get("include") and "retinolo" in (aha.get("reason") or ""),
-             f"AHA: include={aha.get('include')} stato={aha.get('state')} motivo «{aha.get('reason')}»")
-        return f"AHA dopo la sera col retinolo: {aha.get('state')} · {aha.get('reason') or aha.get('hint')}"
-    step(A, "Dopo la sera col retinolo l'AHA dice «non oggi»")(retinol_evening)
+        need(aha, f"AHA step missing in the plan: {text[:300]}")
+        need(not aha.get("include") and "retinol" in (aha.get("reason") or ""),
+             f"AHA: include={aha.get('include')} state={aha.get('state')} reason «{aha.get('reason')}»")
+        return f"AHA after the retinol evening: {aha.get('state')} · {aha.get('reason') or aha.get('hint')}"
+    step(A, "After the retinol evening the AHA says «not today»")(retinol_evening)
 
     def versions():
         old = api(M, "GET", f"{P}/routines/{ctx['routine']}")
-        api(M, "PUT", f"{P}/routines/{ctx['routine']}", {"steps": (old.get("steps") or [])[:2], "reason": "banco: tolgo AHA"})
+        api(M, "PUT", f"{P}/routines/{ctx['routine']}", {"steps": (old.get("steps") or [])[:2], "reason": "bench: AHA removed"})
         new = api(M, "GET", f"{P}/routines/{ctx['routine']}")
         vers = new.get("versions") or new.get("history") or []
         per = api(M, "GET", f"{P}/period", query={"date": TODAY.isoformat()})
-        need(len(vers) >= 2 or new.get("version", 1) >= 2, f"nessuna nuova versione: {json.dumps(new)[:300]}")
+        need(len(vers) >= 2 or new.get("version", 1) >= 2, f"no new version: {json.dumps(new)[:300]}")
         api(M, "POST", f"{P}/routines/{ctx['routine']}/undo")
-        return f"versioni {len(vers) or new.get('version')}, periodo di oggi: {str(per)[:100]}; annullata"
-    step(A, "Modificare la routine crea una versione (+ «come era» nel periodo, annulla)")(versions)
+        return f"versions {len(vers) or new.get('version')}, today's period: {str(per)[:100]}; undone"
+    step(A, "Changing the routine creates a version (+ «as it was» in the period, undo)")(versions)
 
     def quick_and_streak():
         chips = api(M, "GET", f"{P}/quick/routines")
         items = chips.get("items", chips) if isinstance(chips, dict) else chips
-        need(any(c.get("id") == ctx["routine"] for c in items), f"routine non tra i chip della Home: {str(items)[:200]}")
+        need(any(c.get("id") == ctx["routine"] for c in items), f"routine not among the Home chips: {str(items)[:200]}")
         out = api(M, "POST", f"{P}/quick/product/{ctx['cleanser']}", {})
         api(M, "DELETE", f"{P}/quick/product/{ctx['cleanser']}")
         st = api(M, "GET", f"{P}/stats", query={"days": 30})
-        return f"«{out.get('label')}» + Annulla; stats chiavi {sorted(st)[:6]}"
-    step(A, "Home: un tocco su prodotto e routine, Annulla, statistiche")(quick_and_streak)
+        return f"«{out.get('label')}» + Undo; stats keys {sorted(st)[:6]}"
+    step(A, "Home: one tap on product and routine, Undo, statistics")(quick_and_streak)
 
     def tools_chat():
         r = chat("cosa uso stasera? #tool selfcare_today {}")
@@ -385,32 +397,32 @@ def flow_hygieia(ctx: dict) -> None:
                   + json.dumps({"product": ctx["cleanser"], "status": "finished"}))
         need(r2["tools"] and r2["tools"][0]["ok"], f"selfcare_product_update: {r2['tools'][:1]}")
         p = api(M, "GET", f"{P}/products/{ctx['cleanser']}")
-        need(p.get("status") == "finished", f"dopo la chat il detergente è «{p.get('status')}»")
+        need(p.get("status") == "finished", f"after the chat the cleanser is «{p.get('status')}»")
         shop = api(M, "GET", f"{P}/shopping")
         in_shop = ctx["cleanser"] in json.dumps(shop)
-        return f"stasera: {r['tools'][0]['preview'][:90]} · detergente finito (UI: {p.get('status')}), lista spesa: {in_shop}"
-    step(A, "Chat «cosa uso stasera?» / «ho finito il detergente» → strumenti → UI")(tools_chat)
+        return f"tonight: {r['tools'][0]['preview'][:90]} · cleanser finished (UI: {p.get('status')}), shopping list: {in_shop}"
+    step(A, "Chat «what do I use tonight?» / «I finished the cleanser» → tools → UI")(tools_chat)
 
     def reminder_chain():
         code, _ = http("PUT", f"{THEMIS}/api/settings/key/hygieia.reminder.enabled", {"value": True, "actor": "banco"})
-        need(code == 200, f"Themis non accetta hygieia.reminder.enabled → {code}")
-        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Crema mani {RUN}", "areas": ["mani"], "slot": "anytime",
+        need(code == 200, f"Themis does not accept hygieia.reminder.enabled → {code}")
+        r = api(M, "POST", f"{P}/routines", {"name": f"Banco Crema mani {RUN}", "areas": ["hands"], "slot": "anytime",
                                              "cadence": {"mode": "daily"}, "reminder": True,
                                              "steps": [{"label": "crema mani"}]})
         ctx["hands"] = r["id"]
         key = f"selfcare.reminder.{r['id']}"
         out = api(M, "POST", f"{P}/reminders/run")
         mine = [i for i in out.get("items", []) if i.get("routine_id") == r["id"]]
-        need(mine and mine[0].get("send"), f"il job non manda il promemoria per una routine giornaliera da fare: {out}")
+        need(mine and mine[0].get("send"), f"the job does not send the reminder for a daily routine to do: {out}")
         again = api(M, "POST", f"{P}/reminders/run")
         twice = [i for i in again.get("items", []) if i.get("routine_id") == r["id"]]
-        need(twice and not twice[0].get("send"), f"secondo giro nello stesso giorno: {twice}")
+        need(twice and not twice[0].get("send"), f"second round on the same day: {twice}")
         time.sleep(2)
         live = [n for n in inbox() if r["id"] in json.dumps(n.get("link") or {})]
-        need(len(live) == 1, f"notifiche per la routine nell'inbox WebUI: {len(live)}")
+        need(len(live) == 1, f"notifications for the routine in the WebUI inbox: {len(live)}")
         ctx["hands_key"], ctx["hands_note"] = key, live[0]
-        return f"1 promemoria inviato, il secondo giro dice «{twice[0].get('why')}», 1 notifica nell'inbox WebUI"
-    step(A, "Promemoria (interruttore acceso in Themis): un invio al giorno, notifica nella WebUI")(reminder_chain)
+        return f"1 reminder sent, the second round says «{twice[0].get('why')}», 1 notification in the WebUI inbox"
+    step(A, "Reminder (switch on in Themis): one send a day, notification in the WebUI")(reminder_chain)
     if "hands_key" in ctx:
         hermes_chain(A, M, ctx["hands"], ctx["hands_key"], ctx["hands_note"])
 
@@ -422,9 +434,9 @@ def hermes_chain(A: str, module: str, rid: str, key: str, first: dict) -> None:
         "kind": "selfcare.reminder", "service": module, "source": module, "domain": "selfcare", "_source": module,
         "_title": "Self care", "target": "owner", "replaces": key, "level": "info", "_message": first.get("message"),
         "_actions": [
-            {"id": "done", "label": "Fatto", "style": "primary", "service": module, "method": "POST",
+            {"id": "done", "label": "Done", "style": "primary", "service": module, "method": "POST",
              "path": f"/api/selfcare/quick/routine/{rid}", "body": {"source": "reminder_button"}, "resolves": True},
-            {"id": "skip", "label": "Salta", "service": module, "method": "POST",
+            {"id": "skip", "label": "Skip", "service": module, "method": "POST",
              "path": f"/api/selfcare/routines/{rid}/skip", "body": {"source": "reminder_button"}}],
         "_link": {"module": module, "page": f"routine/{rid}"}}}
 
@@ -434,48 +446,48 @@ def hermes_chain(A: str, module: str, rid: str, key: str, first: dict) -> None:
             need(code == 200, f"ingest → {code} {str(out)[:200]}")
             time.sleep(1)
         live = [n for n in inbox() if rid in json.dumps(n.get("link") or {}) and n.get("pending")]
-        need(len(live) == 1, f"notifiche vive {len(live)} (attesa 1)")
+        need(len(live) == 1, f"live notifications {len(live)} (1 expected)")
         rep = json.dumps(live[0].get("repeat"), ensure_ascii=False)
-        need("2" in rep, f"contatore «saltato» assente: repeat={rep}")
+        need("2" in rep, f"«skipped» counter missing: repeat={rep}")
         code, out = answer(first["id"], "done")
-        need(code == 409, f"il bottone sulla notifica sostituita risponde {code} (atteso 409): {str(out)[:200]}")
+        need(code == 409, f"the button on the replaced notification answers {code} (409 expected): {str(out)[:200]}")
         hermes_chain.live = live[0]
-        return f"1 notifica viva, repeat={rep}; bottone sulla vecchia → 409"
-    step(A, "Hermes: stesso promemoria per 3 giorni → una notifica «Saltato 2 volte», la vecchia dice «già sostituita»")(three_days)
+        return f"1 live notification, repeat={rep}; button on the old one → 409"
+    step(A, "Hermes: same reminder for 3 days → one notification «Skipped 2 times», the old one says «already replaced»")(three_days)
     live = getattr(hermes_chain, "live", None)
     if not live:
         return
 
     def done_button():
         code, out = answer(live["id"], "done")
-        need(code == 200, f"Fatto → {code} {str(out)[:300]}")
+        need(code == 200, f"Done → {code} {str(out)[:300]}")
         logs = api(module, "GET", "api/selfcare/logs", query={"routine_id": rid, "days": 2})["items"]
-        need(any(l.get("status") == "done" for l in logs), "dopo «Fatto» la routine non risulta fatta oggi")
+        need(any(l.get("status") == "done" for l in logs), "after «Done» the routine is not done today")
         code, _ = hub("hermes", "POST", "api/events/ingest", from_module)
         time.sleep(1)
         fresh = [n for n in inbox() if rid in json.dumps(n.get("link") or {}) and n.get("pending")]
-        need(len(fresh) == 1 and not fresh[0].get("repeat"), f"dopo Fatto la catena non riparte da zero: {fresh[:1]}")
-        return f"«Fatto» eseguito dal modulo ({str(out)[:80]}), routine fatta, il promemoria dopo riparte da zero"
-    step(A, "Hermes: «Fatto» chiude la catena e registra la routine")(done_button)
+        need(len(fresh) == 1 and not fresh[0].get("repeat"), f"after Done the chain does not start again from zero: {fresh[:1]}")
+        return f"«Done» run by the module ({str(out)[:80]}), routine done, the next reminder starts from zero"
+    step(A, "Hermes: «Done» closes the chain and logs the routine")(done_button)
 
 
-# ── Guardaroba (Wardrobe) ────────────────────────────────────────────────────
+# ── Wardrobe ───────────────────────────────────────────────────────────────
 
 def flow_wardrobe(ctx: dict) -> None:
-    A = "Guardaroba (Wardrobe)"
+    A = "Wardrobe"
     M = "wardrobe"
     P = "api/wardrobe"
 
     def pieces():
         made = {}
-        spec = [("shirt", "Camicia azzurra", ["azzurro"], 2, 3, ["ufficio"], (120, 170, 230)),
-                ("polo", "Polo bianca", ["bianco"], 2, 2, ["casual"], (240, 240, 240)),
-                ("longsleeve", "Maglia righe", ["blu"], 2, 2, ["ufficio"], (60, 80, 160)),
-                ("trousers", "Pantaloni grigi lana", ["grigio"], 3, 4, ["ufficio"], (120, 120, 120)),
-                ("sweater", "Maglione blu scuro", ["blu"], 4, 3, ["ufficio", "casual"], (20, 30, 80)),
-                ("raincoat", "Impermeabile nero", ["nero"], 3, 3, ["ufficio", "casual"], (10, 10, 10)),
-                ("coat", "Cappotto pesante antracite", ["grigio"], 5, 4, ["ufficio"], (50, 50, 55)),
-                ("boots", "Stivaletti marroni", ["marrone"], 3, 3, ["ufficio", "casual"], (110, 70, 30)),
+        spec = [("shirt", "Camicia azzurra", ["light_blue"], 2, 3, ["office"], (120, 170, 230)),
+                ("polo", "Polo bianca", ["white"], 2, 2, ["casual"], (240, 240, 240)),
+                ("longsleeve", "Maglia righe", ["blue"], 2, 2, ["office"], (60, 80, 160)),
+                ("trousers", "Pantaloni grigi lana", ["gray"], 3, 4, ["office"], (120, 120, 120)),
+                ("sweater", "Maglione blu scuro", ["blue"], 4, 3, ["office", "casual"], (20, 30, 80)),
+                ("raincoat", "Impermeabile nero", ["black"], 3, 3, ["office", "casual"], (10, 10, 10)),
+                ("coat", "Cappotto pesante antracite", ["gray"], 5, 4, ["office"], (50, 50, 55)),
+                ("boots", "Stivaletti marroni", ["brown"], 3, 3, ["office", "casual"], (110, 70, 30)),
                 ("sandals", "Sandali estivi", ["beige"], 1, 1, ["casual"], (230, 210, 170))]
         for cat, name, colors, warmth, formality, occ, rgb in spec:
             seasons = ["summer"] if cat == "sandals" else ["autumn", "winter", "spring"]
@@ -483,48 +495,48 @@ def flow_wardrobe(ctx: dict) -> None:
                     "formality": formality, "occasions": occ, "seasons": seasons,
                     **({"weather": {"rain_ok": cat != "sandals"}} if cat in ("raincoat", "boots", "sandals") else {})}
             if cat == "shirt":
-                body["photo"] = {"name": "camicia.png", "mime": "image/png", "data_b64": png(rgb).split(",", 1)[1]}
+                body["photo"] = {"name": "shirt.png", "mime": "image/png", "data_b64": png(rgb).split(",", 1)[1]}
             made[cat] = api(M, "POST", f"{P}/pieces", body)
         ctx["w"] = {k: v["id"] for k, v in made.items()}
         shirt = made["shirt"]
-        need(shirt.get("photos"), f"la camicia non ha la foto: {str(shirt)[:200]}")
+        need(shirt.get("photos"), f"the shirt has no photo: {str(shirt)[:200]}")
         ph = shirt["photos"][0]
         pid = ph.get("id") if isinstance(ph, dict) else ph
         code = http("GET", f"{WEBUI}/api/webui/plugins/wardrobe/image?" + urllib.parse.urlencode(
             {"path": f"{P}/files/{pid}?size=thumb"}))[0]
-        need(code == 200, f"la miniatura via WebUI risponde {code}")
-        return f"{len(made)} capi in pochi secondi, la camicia con foto (miniatura servita dalla WebUI)"
-    step(A, "Aggiungi capi (uno con foto) e vedi la miniatura")(pieces)
+        need(code == 200, f"the thumbnail through the WebUI answers {code}")
+        return f"{len(made)} pieces in a few seconds, the shirt with photo (thumbnail served by the WebUI)"
+    step(A, "Add pieces (one with photo) and see the thumbnail")(pieces)
     if "w" not in ctx:
         return
     w = ctx["w"]
 
     def filters():
-        found = api(M, "GET", f"{P}/pieces", query={"category": "shirt", "season": "autumn", "q": "azzurra"})
-        need(any(i["id"] == w["shirt"] for i in found.get("items") or []), "filtro categoria/stagione/testo non trova la camicia")
+        found = api(M, "GET", f"{P}/pieces", query={"category": "shirt", "season": "autumn", "q": "light_blue"})
+        need(any(i["id"] == w["shirt"] for i in found.get("items") or []), "category/season/text filter does not find the shirt")
         sem = chat("trova la giacca pesante scura #tool wardrobe_search " + json.dumps({"query": "giacca pesante scura"}))
         need(sem["tools"] and sem["tools"][0]["ok"], f"wardrobe_search: {sem['tools'][:1]}")
         hit = f"Cappotto pesante antracite {RUN}" in sem["tools"][0]["preview"]
-        return f"filtri ok · ricerca semantica via chat eseguita; trova il cappotto: {hit} (con il LLM finto gli embedding sono casuali)"
-    step(A, "Filtri e ricerca «giacca pesante scura» (chat → wardrobe_search)")(filters)
+        return f"filters ok · semantic search through chat run; finds the coat: {hit} (with the fake LLM the embeddings are random)"
+    step(A, "Filters and search «heavy dark jacket» (chat → wardrobe_search)")(filters)
 
     def suggest():
         api(M, "PATCH", f"{P}/pieces/{w['coat']}", {"status": "laundry"})
-        out = api(M, "POST", f"{P}/suggest", {"occasion": "ufficio", "temp_c": 8, "rain": True, "count": 3,
+        out = api(M, "POST", f"{P}/suggest", {"occasion": "office", "temp_c": 8, "rain": True, "count": 3,
                                               "date": (TODAY + timedelta(days=1)).isoformat()})
         items = out.get("items") or out.get("suggestions") or []
-        need(len(items) == 3, f"{len(items)} proposte invece di 3: {str(out)[:300]}")
-        need(out.get("occasion") == "office", f"«ufficio» non diventa l'occasione «office» del vocabolario: {out.get('occasion')}")
+        need(len(items) == 3, f"{len(items)} suggestions instead of 3: {str(out)[:300]}")
+        need(out.get("occasion") == "office", f"«ufficio» does not become the vocabulary occasion «office»: {out.get('occasion')}")
         text = json.dumps(items, ensure_ascii=False)
-        need(w["coat"] not in text, "suggerito il cappotto che è in lavanderia")
-        need(w["sandals"] not in text, "suggeriti i sandali estivi con 8 gradi e pioggia")
+        need(w["coat"] not in text, "suggested the coat that is in the laundry")
+        need(w["sandals"] not in text, "suggested the summer sandals with 8 degrees and rain")
         why = items[0].get("reasons") or items[0].get("why") or ""
         r = chat("Cosa mi metto domani per ufficio, 8 gradi, pioggia #tool wardrobe_suggest "
-                 + json.dumps({"occasion": "ufficio", "temp_c": 8, "rain": True}))
-        need(r["tools"] and r["tools"][0]["ok"], f"wardrobe_suggest dalla chat: {r['tools'][:1]}")
+                 + json.dumps({"occasion": "office", "temp_c": 8, "rain": True}))
+        need(r["tools"] and r["tools"][0]["ok"], f"wardrobe_suggest from the chat: {r['tools'][:1]}")
         api(M, "PATCH", f"{P}/pieces/{w['coat']}", {"status": "active"})
-        return f"{len(items)} proposte senza lavanderia né sandali; motivi: {str(why)[:120]}"
-    step(A, "«Cosa mi metto domani, ufficio, 8 gradi, pioggia» (API e chat)")(suggest)
+        return f"{len(items)} suggestions without laundry or sandals; reasons: {str(why)[:120]}"
+    step(A, "«What do I wear tomorrow, office, 8 degrees, rain» (API and chat)")(suggest)
 
     def outfit_and_worn():
         o = api(M, "POST", f"{P}/outfits", {"name": f"Banco Ufficio pioggia {RUN}", "rating": 4, "favorite": True,
@@ -536,36 +548,36 @@ def flow_wardrobe(ctx: dict) -> None:
         ctx["outfit"] = o["id"]
         chips = api(M, "GET", f"{P}/quick/outfits")
         items = chips.get("items", chips) if isinstance(chips, dict) else chips
-        need(any(c.get("id") == o["id"] for c in items), f"l'outfit preferito non è tra i chip della Home: {str(items)[:200]}")
+        need(any(c.get("id") == o["id"] for c in items), f"the favourite outfit is not among the Home chips: {str(items)[:200]}")
         out = api(M, "POST", f"{P}/quick/{o['id']}", {})
         shirt = api(M, "GET", f"{P}/pieces/{w['shirt']}")
         need(str(shirt.get("last_worn") or shirt.get("stats", {}).get("last_worn") or "").startswith(TODAY.isoformat()),
-             f"la camicia non risulta indossata oggi: {str({k: shirt.get(k) for k in ('last_worn', 'stats')})[:200]}")
-        return f"outfit di 5 capi, «{out.get('label', out)}» con un tocco, ultimo uso aggiornato"
-    step(A, "Outfit per posizione, «Indossato» con un tocco dalla Home")(outfit_and_worn)
+             f"the shirt is not worn today: {str({k: shirt.get(k) for k in ('last_worn', 'stats')})[:200]}")
+        return f"outfit of 5 pieces, «{out.get('label', out)}» with one tap, last use updated"
+    step(A, "Outfit by slot, «Worn» with one tap from Home")(outfit_and_worn)
 
     def donate():
         api(M, "PATCH", f"{P}/pieces/{w['raincoat']}", {"status": "donated"})
         o = api(M, "GET", f"{P}/outfits/{ctx['outfit']}")
         flag = json.dumps(o, ensure_ascii=False)
-        need(o.get("complete") is False, f"l'outfit non è «da rivedere» (complete={o.get('complete')}): {flag[:200]}")
-        return "outfit segnato «da rivedere» dopo aver donato l'impermeabile"
-    step(A, "Donare un capo segna i suoi outfit «da rivedere»")(donate)
+        need(o.get("complete") is False, f"the outfit is not «to review» (complete={o.get('complete')}): {flag[:200]}")
+        return "outfit marked «to review» after giving away the raincoat"
+    step(A, "Giving a piece away marks its outfits «to review»")(donate)
 
     def stats_and_packing():
         st = api(M, "GET", f"{P}/stats")
-        need(st, "statistiche vuote")
+        need(st, "empty statistics")
         pk = api(M, "POST", f"{P}/collections/packing", {"name": f"Banco Milano {RUN}", "from": TODAY.isoformat(),
                                                          "to": (TODAY + timedelta(days=2)).isoformat(),
-                                                         "occasion": "ufficio", "temp_c": 9, "rain": True})
+                                                         "occasion": "office", "temp_c": 9, "rain": True})
         n = len(pk.get("piece_ids") or pk.get("items") or [])
-        need(n >= 3, f"valigia con {n} capi: {str(pk)[:300]}")
+        need(n >= 3, f"suitcase with {n} pieces: {str(pk)[:300]}")
         code, mc = http("GET", "http://localhost:19017/api/module/context")
-        return f"stats chiavi {sorted(st)[:6]} · valigia con {n} voci · contesto: {str((mc or {}).get('text', mc))[:90]}"
-    step(A, "Statistiche, valigia per 3 giorni, contesto per l'assistente")(stats_and_packing)
+        return f"stats keys {sorted(st)[:6]} · suitcase with {n} items · context: {str((mc or {}).get('text', mc))[:90]}"
+    step(A, "Statistics, suitcase for 3 days, context for the assistant")(stats_and_packing)
 
 
-# ── Sistema: agenda, presenza, impostazioni, plugin, MCP esterno ─────────────
+# ── System: agenda, presence, settings, plugins, external MCP ────────────────
 
 def setting(key: str, value) -> tuple[int, object]:
     """Like the WebUI settings panel (actor = webui)."""
@@ -573,37 +585,37 @@ def setting(key: str, value) -> tuple[int, object]:
 
 
 def flow_agenda(ctx: dict) -> None:
-    A = "Promemoria e agenda (Chronos)"
+    A = "Reminders and agenda (Chronos)"
 
     def registered():
         items = api("chronos", "GET", "api/agenda/items")["items"]
         keys = {i["key"] for i in items}
         want = {"hercules.reminder", "hygieia.planner", "hygieia.alerts", "wardrobe.reminder", "wardrobe.review"}
-        need(want <= keys, f"mancano nell'agenda: {sorted(want - keys)}")
-        return f"{len(items)} regole; i moduli nuovi hanno registrato {', '.join(sorted(want))}"
-    step(A, "I moduli registrano i loro job nell'agenda dell'assistente")(registered)
+        need(want <= keys, f"missing in the agenda: {sorted(want - keys)}")
+        return f"{len(items)} rules; the new modules registered {', '.join(sorted(want))}"
+    step(A, "The modules register their jobs in the assistant agenda")(registered)
 
     def run_now():
         out = api("chronos", "POST", "api/agenda/items/hygieia.planner/run")
         time.sleep(3)
         runs = api("chronos", "GET", "api/agenda/runs", query={"owner": "hygieia", "limit": 5})
         rows = runs.get("items") or runs.get("runs") or []
-        need(rows, f"nessuna esecuzione registrata: {str(runs)[:300]}")
+        need(rows, f"no run recorded: {str(runs)[:300]}")
         last = rows[0]
-        need(last.get("status") == "ok", f"ultima esecuzione hygieia: {str(last)[:300]}")
-        return f"«Esegui ora» → {str(out)[:80]}; esecuzione {last.get('key') or last.get('item_key')} {last.get('status')}"
-    step(A, "«Esegui ora» di hygieia.planner da Chronos → esecuzione ok")(run_now)
+        need(last.get("status") == "ok", f"last hygieia run: {str(last)[:300]}")
+        return f"«Run now» → {str(out)[:80]}; run {last.get('key') or last.get('item_key')} {last.get('status')}"
+    step(A, "«Run now» of hygieia.planner from Chronos → run ok")(run_now)
 
 
 def flow_presence(ctx: dict) -> None:
-    A = "Presenza dell'assistente"
+    A = "Assistant presence"
 
     def awake_from_chat():
         chat("ciao, sono qui")
         st = http("GET", f"{WEBUI}/api/webui/presence")[1]
-        need(isinstance(st, dict) and st.get("base") == "awake", f"dopo la chat lo stato è {str(st)[:200]}")
-        return f"{st.get('emoji')} {st.get('label')} · effetti {st.get('effects')}"
-    step(A, "Chat → stato «Sveglio» (badge WebUI)")(awake_from_chat)
+        need(isinstance(st, dict) and st.get("base") == "awake", f"after the chat the state is {str(st)[:200]}")
+        return f"{st.get('emoji')} {st.get('label')} · effects {st.get('effects')}"
+    step(A, "Chat → state «Awake» (WebUI badge)")(awake_from_chat)
 
     def dnd():
         code, _ = http("POST", f"{WEBUI}/api/webui/presence/dnd", {"minutes": 5})
@@ -612,13 +624,13 @@ def flow_presence(ctx: dict) -> None:
         need(st.get("base") == "dnd" and st["effects"].get("notify.level") == "urgent", f"DND: {str(st)[:200]}")
         http("DELETE", f"{WEBUI}/api/webui/presence/dnd")
         back = http("GET", f"{WEBUI}/api/webui/presence")[1]
-        need(back.get("base") != "dnd", "DND non si spegne")
-        return f"DND → notifiche solo urgenti; spento → {back.get('label')}"
-    step(A, "Non disturbare dalla WebUI: notifiche solo urgenti, poi si spegne")(dnd)
+        need(back.get("base") != "dnd", "DND does not turn off")
+        return f"DND → urgent notifications only; off → {back.get('label')}"
+    step(A, "Do not disturb from the WebUI: urgent notifications only, then off")(dnd)
 
     def idle_live_setting():
         code, out = setting("chronos.presence.idle_after", 1)
-        need(code == 200, f"impostazione → {code} {str(out)[:200]}")
+        need(code == 200, f"setting → {code} {str(out)[:200]}")
         deadline, st = time.time() + 150, {}
         while time.time() < deadline:
             st = http("GET", f"{WEBUI}/api/webui/presence")[1]
@@ -627,22 +639,22 @@ def flow_presence(ctx: dict) -> None:
             time.sleep(10)
         waited = int(150 - (deadline - time.time()))
         setting("chronos.presence.idle_after", 5)
-        need(st.get("base") == "idle", f"con idle_after=1 dopo {waited} s lo stato è {st.get('base')}")
+        need(st.get("base") == "idle", f"with idle_after=1 after {waited} s the state is {st.get('base')}")
         chat("eccomi di nuovo")
         again = http("GET", f"{WEBUI}/api/webui/presence")[1]
-        need(again.get("base") == "awake", f"dopo la chat: {again.get('base')}")
-        return f"soglia 1 min dal pannello → «In attesa» dopo ~{waited} s; la chat riporta «Sveglio»; soglia rimessa a 5"
-    step(A, "Soglia «idle» cambiata dal pannello vale subito; la chat risveglia")(idle_live_setting)
+        need(again.get("base") == "awake", f"after the chat: {again.get('base')}")
+        return f"threshold 1 min from the panel → «Waiting» after ~{waited} s; the chat brings back «Awake»; threshold back to 5"
+    step(A, "«idle» threshold changed from the panel applies at once; the chat wakes up")(idle_live_setting)
 
     def tool_and_context():
-        r = chat("come stai? #tool stato {}")
-        need(r["tools"] and r["tools"][0]["ok"], f"stato: {r['tools'][:1]}")
-        return f"stato → {r['tools'][0]['preview'][:120]}"
-    step(A, "Strumento «stato» dalla chat (come stai?)")(tool_and_context)
+        r = chat("come stai? #tool assistant_status {}")
+        need(r["tools"] and r["tools"][0]["ok"], f"status: {r['tools'][:1]}")
+        return f"status → {r['tools'][0]['preview'][:120]}"
+    step(A, "Tool «status» from the chat (how are you?)")(tool_and_context)
 
 
 def flow_settings(ctx: dict) -> None:
-    A = "Impostazioni centrali (Themis)"
+    A = "Central settings (Themis)"
 
     def set_history_undo():
         key = "hygieia.default_pao_months"
@@ -650,37 +662,37 @@ def flow_settings(ctx: dict) -> None:
         need(code == 200, f"PUT → {code} {str(out)[:200]}")
         items = http("GET", f"{WEBUI}/api/webui/central-settings/items?module=hygieia")[1]["items"]
         val = next(i for i in items if i["key"] == key)
-        need(val["value"] == 18 and val.get("updated_by") == "webui", f"valore {val['value']} da {val.get('updated_by')}")
+        need(val["value"] == 18 and val.get("updated_by") == "webui", f"value {val['value']} by {val.get('updated_by')}")
         p18 = api("hygieia", "POST", "api/selfcare/products", {"name": f"Banco crema senza PAO {RUN}", "status": "in_use"})
         hist = http("GET", f"{WEBUI}/api/webui/central-settings/key/{key}/history")[1]
         code, _ = http("POST", f"{WEBUI}/api/webui/central-settings/key/{key}/undo", {})
         items = http("GET", f"{WEBUI}/api/webui/central-settings/items?module=hygieia")[1]["items"]
         back = next(i for i in items if i["key"] == key)["value"]
-        need(back == 12, f"dopo Annulla il valore è {back}")
+        need(back == 12, f"after Undo the value is {back}")
         p12 = api("hygieia", "POST", "api/selfcare/products", {"name": f"Banco crema senza PAO bis {RUN}", "status": "in_use"})
         need(abs((p18.get("expires_in") or 0) - 547) <= 2 and abs((p12.get("expires_in") or 0) - 365) <= 2,
-             f"scadenza dopo l'apertura: con 18 mesi {p18.get('expires_in')} giorni, con 12 {p12.get('expires_in')}")
+             f"expiry after opening: with 18 months {p18.get('expires_in')} days, with 12 {p12.get('expires_in')}")
         n = len(hist.get("items", hist)) if isinstance(hist, (dict, list)) else "?"
-        return f"18 mesi salvato dalla WebUI → nuovo prodotto scade tra {p18['expires_in']} g; storia {n} voci; Annulla → 12 → {p12['expires_in']} g"
-    step(A, "Cambia un valore dalla WebUI, storia, Annulla; il modulo lo usa subito")(set_history_undo)
+        return f"18 months saved from the WebUI → new product expires in {p18['expires_in']} d; history {n} items; Undo → 12 → {p12['expires_in']} d"
+    step(A, "Change a value from the WebUI, history, Undo; the module uses it at once")(set_history_undo)
 
     def bad_value():
         code, out = setting("hygieia.default_pao_months", 999)
-        need(code in (400, 422), f"valore fuori range accettato: {code}")
-        return f"999 rifiutato ({code}): {str(out)[:100]}"
-    step(A, "Un valore fuori dai limiti viene rifiutato")(bad_value)
+        need(code in (400, 422), f"out of range value accepted: {code}")
+        return f"999 refused ({code}): {str(out)[:100]}"
+    step(A, "A value out of the limits is refused")(bad_value)
 
     def modules():
         mods = http("GET", f"{WEBUI}/api/webui/central-settings/modules")[1]["modules"]
         names = {m["module"] for m in mods}
         want = {"hercules", "hygieia", "wardrobe", "chronos", "oracle", "hermes", "themis"}
-        need(want <= names, f"moduli senza impostazioni nel pannello: {sorted(want - names)}")
-        return f"{len(names)} moduli nel pannello"
-    step(A, "Tutti i moduli dichiarano le loro impostazioni")(modules)
+        need(want <= names, f"modules without settings in the panel: {sorted(want - names)}")
+        return f"{len(names)} modules in the panel"
+    step(A, "Every module declares its settings")(modules)
 
 
 def flow_plugins(ctx: dict) -> None:
-    A = "Plugin dei moduli nella WebUI"
+    A = "Module plugins in the WebUI"
 
     def catalog():
         cat = http("GET", f"{WEBUI}/api/webui/plugins/catalog")[1]
@@ -693,9 +705,9 @@ def flow_plugins(ctx: dict) -> None:
         need(not offline, f"plugin offline: {offline}")
         ctx["catalog"] = cat
         c = cat["contributions"]["webui"]
-        return (f"{len(mods)} moduli · {len(c['page'])} pagine · {len(c['widget'])} widget · "
-                f"{len(c['quick_action'])} azioni rapide")
-    step(A, "Catalogo: tutti i moduli online con pagine, widget e azioni rapide")(catalog)
+        return (f"{len(mods)} modules · {len(c['page'])} pages · {len(c['widget'])} widgets · "
+                f"{len(c['quick_action'])} quick actions")
+    step(A, "Catalog: every module online with pages, widgets and quick actions")(catalog)
 
     def quick_sources():
         c = (ctx.get("catalog") or {}).get("contributions", {}).get("webui", {})
@@ -709,17 +721,17 @@ def flow_plugins(ctx: dict) -> None:
                 bad.append(f"{q['id']}:{code}")
             else:
                 counts.append(f"{q['id']} {len(items)}")
-        need(not bad, f"sorgenti dei chip in errore: {bad}")
+        need(not bad, f"chip sources failing: {bad}")
         return " · ".join(counts)
-    step(A, "Home: ogni azione rapida con chip ha la sua lista")(quick_sources)
+    step(A, "Home: every quick action with chips has its list")(quick_sources)
 
     def forbidden_path():
         code, _ = http("GET", f"{WEBUI}/api/webui/plugins/hygieia/call/api/wardrobe/pieces")
-        need(code == 403, f"un plugin chiama un altro modulo e ottiene {code}")
+        need(code == 403, f"a plugin calls another module and gets {code}")
         code, _ = http("GET", f"{WEBUI}/api/webui/plugins/wardrobe/call/health")
-        need(code == 403, f"un plugin chiama un percorso fuori dal suo prefisso e ottiene {code}")
-        return "fuori dal proprio prefisso → 403"
-    step(A, "Un plugin può chiamare solo il proprio modulo")(forbidden_path)
+        need(code == 403, f"a plugin calls a path outside its prefix and gets {code}")
+        return "outside its own prefix → 403"
+    step(A, "A plugin can call only its own module")(forbidden_path)
 
     def bundles():
         c = (ctx.get("catalog") or {}).get("contributions", {}).get("webui", {})
@@ -729,9 +741,9 @@ def flow_plugins(ctx: dict) -> None:
             code, body = http("GET", f"{WEBUI}/api/webui/plugins/{bnd['module']}/bundle/{file}")
             if code != 200 or len(str(body)) < 500:
                 bad.append(f"{bnd['module']}:{code}")
-        need(c.get("bundle") and not bad, f"bundle non serviti: {bad}")
+        need(c.get("bundle") and not bad, f"bundles not served: {bad}")
         return f"{len(c['bundle'])} bundle JS serviti"
-    step(A, "I bundle dei plugin sono serviti")(bundles)
+    step(A, "The plugin bundles are served")(bundles)
 
     def icons():
         c = (ctx.get("catalog") or {}).get("contributions", {}).get("webui", {})
@@ -740,12 +752,12 @@ def flow_plugins(ctx: dict) -> None:
         src = (ROOT / "Hestia-WebUI/frontend/src/app/ui/icon.component.ts").read_text(encoding="utf-8")
         known = set(re.findall(r"^\s+'?([a-z-]+)'?:", src, re.M))
         missing = sorted(i for i in used - known if i)
-        need(not missing, f"icone dei plugin che la WebUI non conosce (mostra «info»): {missing}")
-        return f"{len(used - {None, ''})} icone dei plugin tutte disegnate"
-    step(A, "Ogni icona usata dai plugin esiste nella WebUI")(icons)
+        need(not missing, f"plugin icons the WebUI does not know (shows «info»): {missing}")
+        return f"{len(used - {None, ''})} plugin icons, all drawn"
+    step(A, "Every icon used by the plugins exists in the WebUI")(icons)
 
 def flow_mcp(ctx: dict) -> None:
-    A = "MCP esterno (Accessi AI)"
+    A = "External MCP (AI access)"
     door = f"{WEBUI}/mcp"
 
     def rpc(token: str, method: str, params: dict | None = None):
@@ -755,13 +767,13 @@ def flow_mcp(ctx: dict) -> None:
     def create():
         r = api("mcp", "POST", "api/mcp/accesses", {"name": f"Banco lettura {RUN}", "scope": "read", "expires_days": 1})
         tok = r.get("token")
-        need(tok, f"nessun token: {str(r)[:200]}")
+        need(tok, f"no token: {str(r)[:200]}")
         ctx["mcp_read"], ctx["mcp_read_id"] = tok, (r.get("access") or r).get("access_id") or (r.get("access") or {}).get("id")
         lines = r.get("setup") or r.get("lines") or {}
         claude = lines.get("claude_code") or lines.get("claude") or json.dumps(lines)[:160]
-        need("/mcp" in json.dumps(lines), f"riga di configurazione senza /mcp: {str(lines)[:200]}")
-        return f"token creato; riga: {re.sub(r'hst_[A-Za-z0-9_-]+', 'hst_…', str(claude))[:140]}"
-    step(A, "Accessi AI → nuovo token di sola lettura con la riga `claude mcp add`")(create)
+        need("/mcp" in json.dumps(lines), f"configuration line without /mcp: {str(lines)[:200]}")
+        return f"token created; line: {re.sub(r'hst_[A-Za-z0-9_-]+', 'hst_…', str(claude))[:140]}"
+    step(A, "AI access → new read-only token with the `claude mcp add` line")(create)
     if "mcp_read" not in ctx:
         return
 
@@ -772,12 +784,12 @@ def flow_mcp(ctx: dict) -> None:
         code, out = rpc(ctx["mcp_read"], "tools/list")
         need(code == 200, f"tools/list → {code}")
         tools = [t["name"] for t in out["result"]["tools"]]
-        need("forge_tasks" in tools, f"forge_tasks non esposto: {tools[:20]}")
+        need("forge_tasks" in tools, f"forge_tasks not exposed: {tools[:20]}")
         code, res = rpc(ctx["mcp_read"], "tools/call", {"name": "forge_tasks", "arguments": {}})
         need(code == 200 and not (res.get("result") or {}).get("isError"), f"forge_tasks → {code} {str(res)[:200]}")
         ctx["mcp_tools"] = tools
-        return f"{len(tools)} strumenti esterni ({', '.join(tools[:6])}…); forge_tasks risponde"
-    step(A, "initialize, tools/list (solo strumenti «external»), forge_tasks")(list_and_call)
+        return f"{len(tools)} external tools ({', '.join(tools[:6])}…); forge_tasks answers"
+    step(A, "initialize, tools/list (only «external» tools), forge_tasks")(list_and_call)
 
     def refusals():
         code, _ = rpc("hestia_sbagliato_123", "tools/list")
@@ -785,17 +797,17 @@ def flow_mcp(ctx: dict) -> None:
         write_tool = next((t for t in ("settings_propose", "forge_task_note", "forge_develop") if t in ctx.get("mcp_tools", [])),
                           "settings_propose")
         code, out = rpc(ctx["mcp_read"], "tools/call", {"name": write_tool, "arguments": {}})
-        need(code == 403 or "403" in str(out) or "sola lettura" in str(out).lower() or "read" in str(out).lower(),
-             f"strumento di scrittura con accesso in lettura → {code} {str(out)[:200]}")
+        need(code == 403 or "403" in str(out) or "read" in str(out).lower(),
+             f"write tool with read access → {code} {str(out)[:200]}")
         setting("mcp.external.max_calls_per_min", 3)
         codes = [rpc(ctx["mcp_read"], "tools/list")[0] for _ in range(5)]
         setting("mcp.external.max_calls_per_min", 60)
-        need(429 in codes, f"oltre il limite (3/min) i codici sono {codes}")
+        need(429 in codes, f"over the limit (3/min) the codes are {codes}")
         api("mcp", "POST", f"api/mcp/accesses/{ctx['mcp_read_id']}/revoke")
         code, _ = rpc(ctx["mcp_read"], "tools/list")
-        need(code == 401, f"token revocato → {code}")
-        return f"sbagliato 401 · scrittura in sola lettura rifiutata · limite {codes} · revocato 401"
-    step(A, "401 token sbagliato/revocato, 403 scrittura in sola lettura, 429 oltre il limite")(refusals)
+        need(code == 401, f"revoked token → {code}")
+        return f"wrong 401 · write with read-only refused · limit {codes} · revoked 401"
+    step(A, "401 wrong/revoked token, 403 write with read-only, 429 over the limit")(refusals)
 
     def oauth_meta():
         code, meta = http("GET", f"{WEBUI}/.well-known/oauth-authorization-server")
@@ -804,9 +816,9 @@ def flow_mcp(ctx: dict) -> None:
         need(code == 200, f"protected-resource → {code}")
         code, reg = http("POST", f"{WEBUI}/oauth/register", {"client_name": "Banco connector",
                                                             "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"]})
-        need(code in (200, 201) and reg.get("client_id"), f"registrazione client → {code} {str(reg)[:200]}")
-        return f"metadati OAuth, risorsa protetta e registrazione dinamica ok (client {reg['client_id'][:8]}…)"
-    step(A, "Connettore claude.ai: metadati OAuth 2.1 e registrazione client")(oauth_meta)
+        need(code in (200, 201) and reg.get("client_id"), f"client registration → {code} {str(reg)[:200]}")
+        return f"OAuth metadata, protected resource and dynamic registration ok (client {reg['client_id'][:8]}…)"
+    step(A, "claude.ai connector: OAuth 2.1 metadata and client registration")(oauth_meta)
 
 
 # ── WebUI in Chromium: pages with data, Home, notifications, chat ────────────
@@ -830,7 +842,7 @@ def _errors_on(page) -> list[str]:
     return page.evaluate("""() => {
       const out = [];
       const walk = (root) => root.querySelectorAll('*').forEach(el => {
-        if (el.tagName === 'HXK-STATE' && el.getAttribute('kind') === 'error') out.push((el.getAttribute('message') || el.textContent || 'errore').trim().slice(0, 120));
+        if (el.tagName === 'HXK-STATE' && el.getAttribute('kind') === 'error') out.push((el.getAttribute('message') || el.textContent || 'error').trim().slice(0, 120));
         if (el.shadowRoot) walk(el.shadowRoot);
       });
       walk(document);
@@ -839,7 +851,7 @@ def _errors_on(page) -> list[str]:
 
 
 def flow_webui(ctx: dict) -> None:
-    A = "WebUI nel browser (desktop, telefono, temi)"
+    A = "WebUI in the browser (desktop, phone, themes)"
     SHOTS.mkdir(parents=True, exist_ok=True)
     try:
         pw, br = browser()
@@ -861,14 +873,14 @@ def flow_webui(ctx: dict) -> None:
                 if errs:
                     bad.append(f"{href}: {errs[0]}")
                 if label == "phone" and wide > 4:
-                    bad.append(f"{href}: scorre in orizzontale di {wide}px")
+                    bad.append(f"{href}: scrolls sideways by {wide}px")
                 page.screenshot(path=str(SHOTS / f"{label}-{scheme}-{href.strip('/').replace('/', '_')}.png"), full_page=True)
             page.close()
-            need(not bad and not js, f"problemi: {bad[:6]} · errori JS: {js[:3]}")
-            return f"{len(PAGES)} pagine senza errori, screenshot {label}-{scheme}-*.png"
+            need(not bad and not js, f"problems: {bad[:6]} · JS errors: {js[:3]}")
+            return f"{len(PAGES)} pages without errors, screenshots {label}-{scheme}-*.png"
         return run
-    step(A, "Giro delle pagine con i dati del banco — desktop, tema chiaro")(tour("desk", {"width": 1440, "height": 900}, "light"))
-    step(A, "Giro delle pagine — telefono 360 px, tema scuro")(tour("phone", {"width": 360, "height": 780}, "dark"))
+    step(A, "Tour of the pages with the bench data — desktop, light theme")(tour("desk", {"width": 1440, "height": 900}, "light"))
+    step(A, "Tour of the pages — phone 360 px, dark theme")(tour("phone", {"width": 360, "height": 780}, "dark"))
 
     def home_quick():
         # the hygieia flow already logged them today: undo once so the chip is «to do» again
@@ -879,22 +891,22 @@ def flow_webui(ctx: dict) -> None:
         page.goto(f"{WEBUI}/home", wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(2000)
         chip = page.locator("hx-quick-strip").get_by_text(re.compile(r"Banco Crema mani")).first
-        need(chip.count(), "nessun chip self care sulla Home")
+        need(chip.count(), "no self care chip on Home")
         before = len(api("hygieia", "GET", "api/selfcare/logs", query={"days": 1})["items"])
         chip.click()
         page.wait_for_timeout(2500)
         page.screenshot(path=str(SHOTS / "phone-home-quick.png"), full_page=True)
         after = len(api("hygieia", "GET", "api/selfcare/logs", query={"days": 1})["items"])
-        undo = page.get_by_text("Annulla").first
+        undo = page.get_by_text(ui("Undo")).first
         undone = None
         if undo.count():
             undo.click()
             page.wait_for_timeout(2000)
             undone = len(api("hygieia", "GET", "api/selfcare/logs", query={"days": 1})["items"])
         page.close()
-        need(after != before or undone is not None, f"il tocco non ha cambiato i registri ({before}→{after})")
-        return f"tocco sul chip: registri {before}→{after}, Annulla → {undone}"
-    step(A, "Home sul telefono: un tocco su un chip self care, poi Annulla")(home_quick)
+        need(after != before or undone is not None, f"the tap did not change the logs ({before}→{after})")
+        return f"tap on the chip: logs {before}→{after}, Undo → {undone}"
+    step(A, "Home on the phone: one tap on a self care chip, then Undo")(home_quick)
 
     def notification_button():
         rid = ctx.get("hands")
@@ -904,21 +916,21 @@ def flow_webui(ctx: dict) -> None:
                     "kind": "selfcare.reminder", "service": "hygieia", "source": "hygieia", "domain": "selfcare",
                     "_source": "hygieia", "_title": "Self care", "target": "owner", "replaces": f"selfcare.reminder.{rid}",
                     "level": "info", "_message": "Banco: crema mani dal browser", "_link": {"module": "hygieia", "page": f"routine/{rid}"},
-                    "_actions": [{"id": "skip", "label": "Salta", "service": "hygieia", "method": "POST",
+                    "_actions": [{"id": "skip", "label": "Skip", "service": "hygieia", "method": "POST",
                                   "path": f"/api/selfcare/routines/{rid}/skip", "body": {}}]}})
         page = br.new_page(viewport={"width": 1280, "height": 900})
         page.goto(f"{WEBUI}/p/hermes/notifications", wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(2000)
-        btn = page.get_by_text("Salta", exact=True).first
-        need(btn.count(), "nessun bottone «Salta» nella pagina Notifiche")
+        btn = page.get_by_text(ui("Skip"), exact=True).first
+        need(btn.count(), "no «Skip» button on the Notifications page")
         btn.click()
         page.wait_for_timeout(2500)
-        page.screenshot(path=str(SHOTS / "desk-notifiche-risposta.png"), full_page=True)
+        page.screenshot(path=str(SHOTS / "desk-notifications-answer.png"), full_page=True)
         page.close()
         logs = api("hygieia", "GET", "api/selfcare/logs", query={"routine_id": rid, "days": 1})["items"] if rid else []
-        need(not rid or any(l.get("status") == "skipped" for l in logs), "«Salta» dal browser non ha registrato lo skip")
-        return "bottone «Salta» nella pagina Notifiche → il modulo registra lo skip"
-    step(A, "Notifiche: rispondere con un bottone dal browser")(notification_button)
+        need(not rid or any(l.get("status") == "skipped" for l in logs), "«Skip» from the browser did not log the skip")
+        return "«Skip» button on the Notifications page → the module logs the skip"
+    step(A, "Notifications: answer with a button from the browser")(notification_button)
 
     def webui_chat_presence():
         setting("chronos.presence.idle_after", 1)
@@ -935,23 +947,23 @@ def flow_webui(ctx: dict) -> None:
         box.fill("cosa uso stasera? #tool selfcare_today {}")
         box.press("Enter")
         page.wait_for_timeout(12000)
-        page.screenshot(path=str(SHOTS / "desk-chat-strumento.png"), full_page=True)
+        page.screenshot(path=str(SHOTS / "desk-chat-tool.png"), full_page=True)
         page.close()
         st = http("GET", f"{WEBUI}/api/webui/presence")[1]
         setting("chronos.presence.idle_after", 5)
-        need(idle == "idle", f"prima di scrivere lo stato era {idle}")
-        need(st.get("base") == "awake", f"dopo un messaggio nella chat WebUI lo stato è ancora «{st.get('label')}»")
-        return "da «In attesa» un messaggio nella chat WebUI riporta «Sveglio»; risposta con lo strumento nello screenshot"
-    step(A, "Chat WebUI: scrivere riporta la presenza a «Sveglio»")(webui_chat_presence)
+        need(idle == "idle", f"before writing the state was {idle}")
+        need(st.get("base") == "awake", f"after a message in the WebUI chat the state is still «{st.get('label')}»")
+        return "from «Waiting» a message in the WebUI chat brings back «Awake»; answer with the tool in the screenshot"
+    step(A, "WebUI chat: writing brings the presence back to «Awake»")(webui_chat_presence)
 
     br.close()
     pw.stop()
 
 
-# ── Esporta e importa (docs/work/2026-10-20-import-export) ──────────────────
+# ── Export and import (docs/work/2026-10-20-import-export) ───────────────────
 
 def flow_transfer(ctx: dict) -> None:
-    A = "Esporta e importa"
+    A = "Export and import"
     T = f"{WEBUI}/api/webui/transfer"
     state: dict = {}
 
@@ -960,7 +972,7 @@ def flow_transfer(ctx: dict) -> None:
         need(code == 200, f"modules → {code} {str(out)[:200]}")
         names = {m["module"] for m in out["modules"]}
         want = {"hercules", "hygieia", "wardrobe", "plutus", "scout", "oracle", "chronos", "themis"}
-        need(want <= names, f"moduli senza esporta/importa: {sorted(want - names)}")
+        need(want <= names, f"modules without export/import: {sorted(want - names)}")
         counts = {}
         for m in sorted(names):
             code, d = http("GET", f"{T}/{m}/describe")
@@ -968,7 +980,7 @@ def flow_transfer(ctx: dict) -> None:
             counts[m] = sum(s.get("count") or 0 for s in d["sections"])
         state["modules"] = sorted(names)
         return ", ".join(f"{m} {n}" for m, n in counts.items())
-    step(A, "Ogni modulo dice cosa può esportare")(modules)
+    step(A, "Every module says what it can export")(modules)
 
     def export_all():
         file = {"hestia": "transfer", "format": 1, "modules": {}, "files": {}}
@@ -982,13 +994,13 @@ def flow_transfer(ctx: dict) -> None:
                 file["files"].setdefault(m, {})[fid] = f
         text = json.dumps(file).lower()
         for word in ("api_key", "password", "access_token", "refresh_token", "client_secret"):
-            need(word not in text, f"nel file c'è «{word}»")
+            need(word not in text, f"the file holds «{word}»")
         state["file"] = file
         OUT.mkdir(exist_ok=True)
         (OUT / "banco.hestia.json").write_text(json.dumps(file), encoding="utf-8")
         recs = sum(len(b["records"]) for m in file["modules"].values() for b in m["sections"].values())
-        return f"{recs} record, {sum(len(v) for v in file['files'].values())} file, nessuna chiave o password"
-    step(A, "Esporta tutto (con le foto), senza segreti")(export_all)
+        return f"{recs} records, {sum(len(v) for v in file['files'].values())} files, no key or password"
+    step(A, "Export everything (with the photos), without secrets")(export_all)
 
     def preview_same():
         file = state["file"]
@@ -999,38 +1011,38 @@ def flow_transfer(ctx: dict) -> None:
             t = rep["totals"]
             if t["added"] or t["updated"] or t["deleted"]:
                 changed.append(f"{m}: {t}")
-        need(not changed, f"lo stesso file sullo stesso Hestia cambierebbe qualcosa: {changed[:3]}")
-        return "anteprima Unisci dello stesso file: nessuna modifica"
-    step(A, "Anteprima sullo stesso Hestia: niente da cambiare")(preview_same)
+        need(not changed, f"the same file on the same Hestia would change something: {changed[:3]}")
+        return "Merge preview of the same file: no change"
+    step(A, "Preview on the same Hestia: nothing to change")(preview_same)
 
     def settings_roundtrip():
         key = "hygieia.default_pao_months"
         setting(key, 15)
         code, exp = http("POST", f"{T}/themis/export", {"sections": {"hygieia": {}}})
-        need(code == 200 and exp["sections"].get("hygieia"), f"export impostazioni → {code} {str(exp)[:200]}")
+        need(code == 200 and exp["sections"].get("hygieia"), f"settings export → {code} {str(exp)[:200]}")
         setting(key, 20)
         merge = http("POST", f"{T}/themis/import", {"data": exp, "mode": "merge", "dry_run": True})[1]
-        need(merge["sections"]["hygieia"]["skipped"] >= 1, f"Unisci non ignora il valore più recente: {merge['totals']}")
+        need(merge["sections"]["hygieia"]["skipped"] >= 1, f"Merge does not skip the newer value: {merge['totals']}")
         rep = http("POST", f"{T}/themis/import", {"data": exp, "mode": "replace", "dry_run": False})[1]
         items = http("GET", f"{WEBUI}/api/webui/central-settings/items?module=hygieia")[1]["items"]
         val = next(i for i in items if i["key"] == key)
         setting(key, 12)
-        need(val["value"] == 15 and val.get("updated_by") == "import", f"dopo Sostituisci: {val['value']} da {val.get('updated_by')}")
-        return f"15 esportato, 20 qui: Unisci lo lascia, Sostituisci rimette 15 (autore «import»); {rep['totals']}"
-    step(A, "Impostazioni: Unisci tiene il valore più recente, Sostituisci rimette quello del file")(settings_roundtrip)
+        need(val["value"] == 15 and val.get("updated_by") == "import", f"after Replace: {val['value']} by {val.get('updated_by')}")
+        return f"15 exported, 20 here: Merge leaves it, Replace puts back 15 (author «import»); {rep['totals']}"
+    step(A, "Settings: Merge keeps the newer value, Replace puts back the file's one")(settings_roundtrip)
 
     def restore_points():
         file = {"hestia": "transfer", "format": 1, "exported_at": datetime.now().isoformat(), "modules": {}}
         code, out = http("POST", f"{T}/restore-points", {"label": f"Banco {RUN}", "modules": ["themis"], "file": file})
-        need(code == 200 and out.get("id"), f"salvataggio → {code} {str(out)[:200]}")
+        need(code == 200 and out.get("id"), f"save → {code} {str(out)[:200]}")
         lst = http("GET", f"{T}/restore-points")[1]
-        need(any(p["id"] == out["id"] for p in lst["items"]), "il punto non è nella lista")
+        need(any(p["id"] == out["id"] for p in lst["items"]), "the point is not in the list")
         back = http("GET", f"{T}/restore-points/{out['id']}")[1]
         need(isinstance(back, dict) and back.get("hestia") == "transfer", f"riletto: {str(back)[:200]}")
         code, _ = http("DELETE", f"{T}/restore-points/{out['id']}")
-        need(code == 200, f"eliminazione → {code}")
-        return f"salvato, elencato (ne tiene {lst['keep']}), riletto ed eliminato"
-    step(A, "Punti di ripristino: salva, elenca, rileggi, elimina")(restore_points)
+        need(code == 200, f"delete → {code}")
+        return f"saved, listed (keeps {lst['keep']}), read again and deleted"
+    step(A, "Restore points: save, list, read again, delete")(restore_points)
 
     def page():
         SHOTS.mkdir(parents=True, exist_ok=True)
@@ -1042,81 +1054,81 @@ def flow_transfer(ctx: dict) -> None:
             pg.goto(f"{WEBUI}/settings?tab=transfer", wait_until="networkidle", timeout=60000)
             pg.wait_for_timeout(2500)
             first = pg.locator(".mod .name").first
-            need(first.count(), "nessun modulo nella pagina Esporta")
+            need(first.count(), "no module on the Export page")
             first.click()
             pg.wait_for_timeout(800)
-            pg.screenshot(path=str(SHOTS / "desk-transfer-esporta.png"), full_page=True)
+            pg.screenshot(path=str(SHOTS / "desk-transfer-export.png"), full_page=True)
             page_ = pg.locator("app-transfer-settings")
-            page_.get_by_text("Importa", exact=True).first.click()
+            page_.get_by_text(ui("Import"), exact=True).first.click()
             pg.wait_for_timeout(500)
             page_.locator("input[type=file]").set_input_files(str(OUT / "banco.hestia.json"))
             pg.wait_for_timeout(1500)
-            page_.get_by_text("Anteprima", exact=True).first.click()
+            page_.get_by_text(ui("Preview"), exact=True).first.click()
             pg.wait_for_timeout(8000)
-            pg.screenshot(path=str(SHOTS / "desk-transfer-anteprima.png"), full_page=True)
+            pg.screenshot(path=str(SHOTS / "desk-transfer-preview.png"), full_page=True)
             phone = br.new_page(viewport={"width": 360, "height": 780}, color_scheme="dark")
             phone.goto(f"{WEBUI}/settings?tab=transfer", wait_until="networkidle", timeout=60000)
             phone.wait_for_timeout(2000)
             wide = phone.evaluate("document.documentElement.scrollWidth - window.innerWidth")
             phone.screenshot(path=str(SHOTS / "phone-dark-transfer.png"), full_page=True)
-            need(not js, f"errori JS: {js[:3]}")
-            need(wide <= 4, f"sul telefono scorre in orizzontale di {wide}px")
-            return "Esporta, Importa con anteprima, telefono: screenshot desk-transfer-*.png, phone-dark-transfer.png"
+            need(not js, f"JS errors: {js[:3]}")
+            need(wide <= 4, f"on the phone it scrolls sideways by {wide}px")
+            return "Export, Import with preview, phone: screenshots desk-transfer-*.png, phone-dark-transfer.png"
         finally:
             br.close()
             pw.stop()
-    step(A, "Pagina Impostazioni → Esporta e importa nel browser")(page)
+    step(A, "Page Settings → Export and import in the browser")(page)
 
 
-# ── New modules (dossier 2026-10-24-whole-brainstorm-cindy W5–W7) ────────────
+# ── New modules (dossier 2026-10-24-whole-cindy-brainstorm W5–W7) ────────────
 
-def flow_vita(ctx: dict) -> None:
-    A = "Moduli nuovi: Scadenze, Persone, Alimentazione, Documenti, Aspetto, Immagini, Casa"
+def flow_life(ctx: dict) -> None:
+    A = "New modules: Deadlines, People, Nutrition, Documents, Look, Images, Home"
     soon = (TODAY + timedelta(days=5)).isoformat()
 
     def kairos():
         d = api("kairos", "POST", "api/deadlines", {"title": f"Banco bollo auto {RUN}", "due": soon, "amount": 120.5,
                                                    "recurrence": "yearly"})
         did = d.get("id") or (d.get("deadline") or {}).get("id")
-        need(did, f"nessun id: {str(d)[:200]}")
+        need(did, f"no id: {str(d)[:200]}")
         items = api("kairos", "GET", "api/deadlines", query={"days": 30})["items"]
-        need(any(i["id"] == did for i in items), "la scadenza non è nella lista dei prossimi 30 giorni")
+        need(any(i["id"] == did for i in items), "the deadline is not in the list of the next 30 days")
         cal = api("chronos", "GET", "api/agenda/items")["items"]
-        need(any(i["key"] == f"kairos.{did}" for i in cal), f"nessun evento kairos.{did} nel calendario")
+        need(any(i["key"] == f"kairos.{did}" for i in cal), f"no event kairos.{did} in the calendar")
         done = api("kairos", "POST", f"api/deadlines/{did}/done")
         nxt = (done.get("deadline") or done).get("due", "")
-        need(nxt[:4] == str(TODAY.year + 1) or nxt > soon, f"«Fatto» su una annuale non la sposta: {str(done)[:200]}")
-        return f"creata, in calendario come kairos.{did[:8]}…, «Fatto» → prossima {nxt[:10]}"
-    step(A, "Scadenze: nuova annuale → lista + calendario; «Fatto» la sposta all'anno dopo")(kairos)
+        need(nxt[:4] == str(TODAY.year + 1) or nxt > soon, f"«Done» on a yearly one does not move it: {str(done)[:200]}")
+        return f"created, in the calendar as kairos.{did[:8]}…, «Done» → next {nxt[:10]}"
+    step(A, "Deadlines: new yearly → list + calendar; «Done» moves it to the next year")(kairos)
 
     def hera():
         bday = (TODAY + timedelta(days=3)).isoformat()
-        p = api("hera", "POST", "api/people", {"name": f"Banco Anna {RUN}", "relation": "amica", "birthday": bday,
+        p = api("hera", "POST", "api/people", {"name": f"Banco Anna {RUN}", "relation": "friend", "birthday": bday,
                                                "likes": ["tè verde"]})
         pid = p.get("id") or (p.get("person") or {}).get("id")
-        need(pid, f"nessun id: {str(p)[:200]}")
+        need(pid, f"no id: {str(p)[:200]}")
         up = api("hera", "GET", "api/people/upcoming", query={"days": 7})
         rows = up.get("items") or up.get("upcoming") or []
-        need(any(pid in json.dumps(r) for r in rows), f"il compleanno fra 3 giorni non è in «Prossimi»: {str(up)[:300]}")
+        need(any(pid in json.dumps(r) for r in rows), f"the birthday in 3 days is not in «Upcoming»: {str(up)[:300]}")
         api("hera", "POST", f"api/people/{pid}/gift", {"idea": "Banco libro"})
-        api("hera", "POST", f"api/people/{pid}/contact", {"note": "sentita al banco"})
+        api("hera", "POST", f"api/people/{pid}/contact", {"note": "talked to on the bench"})
         got = api("hera", "GET", f"api/people/{pid}")
-        need("Banco libro" in json.dumps(got), "l'idea regalo non è salvata")
-        return f"persona creata, compleanno nei prossimi 7 giorni, idea regalo e contatto salvati"
-    step(A, "Persone: compleanno in arrivo, idea regalo, ultimo contatto")(hera)
+        need("Banco libro" in json.dumps(got), "the gift idea is not saved")
+        return "person created, birthday in the next 7 days, gift idea and contact saved"
+    step(A, "People: birthday coming, gift idea, last contact")(hera)
 
     def demeter():
         api("demeter", "POST", "api/food/meals", {"text": f"Banco pasta al pomodoro {RUN}", "slot": "lunch",
                                                   "kcal": 650, "protein": 20})
         today = api("demeter", "GET", "api/food/today")
-        need(f"Banco pasta al pomodoro {RUN}" in json.dumps(today, ensure_ascii=False), f"il pasto non è in «Oggi»: {str(today)[:300]}")
+        need(f"Banco pasta al pomodoro {RUN}" in json.dumps(today, ensure_ascii=False), f"the meal is not in «Today»: {str(today)[:300]}")
         s = api("demeter", "POST", "api/food/supplements", {"name": f"Banco vitamina D {RUN}", "dose": "1000 UI",
                                                             "time_of_day": "morning"})
         sid = s.get("id") or (s.get("supplement") or {}).get("id")
-        need(sid, f"integratore senza id: {str(s)[:200]}")
+        need(sid, f"supplement without id: {str(s)[:200]}")
         api("demeter", "POST", f"api/food/supplements/{sid}/take")
-        return "pasto in «Oggi», integratore creato e preso"
-    step(A, "Alimentazione: pasto di oggi e integratore preso")(demeter)
+        return "meal in «Today», supplement created and taken"
+    step(A, "Nutrition: today's meal and supplement taken")(demeter)
 
     def calliope():
         out = {}
@@ -1128,112 +1140,112 @@ def flow_vita(ctx: dict) -> None:
             need(d.get("created", True) and (d.get("id") or (d.get("document") or {}).get("id")), f"{fmt}: {str(d)[:300]}")
             did = d.get("id") or d["document"]["id"]
             b = api("calliope", "GET", f"api/office/{did}/b64")
-            need(len(b.get("data_b64") or "") > 200, f"{fmt}: file vuoto")
+            need(len(b.get("data_b64") or "") > 200, f"{fmt}: empty file")
             out[fmt] = len(base64.b64decode(b["data_b64"]))
-        return " · ".join(f"{k} {v} byte" for k, v in out.items()) + " (controllati dopo la creazione)"
-    step(A, "Documenti: PDF, Word ed Excel veri, ricontrollati e scaricabili")(calliope)
+        return " · ".join(f"{k} {v} byte" for k, v in out.items()) + " (checked after creation)"
+    step(A, "Documents: real PDF, Word and Excel, checked again and downloadable")(calliope)
 
     def aphrodite():
         now = api("aphrodite", "GET", "api/appearance/now", query={"client": "webui"})
         prof = now.get("profile") or {}
-        need((prof.get("palette") or {}).get("accent"), f"nessuna palette: {str(now)[:300]}")
+        need((prof.get("palette") or {}).get("accent"), f"no palette: {str(now)[:300]}")
         profiles = api("aphrodite", "GET", "api/appearance/profiles")
         n = len(profiles.get("items") or profiles.get("profiles") or [])
-        return f"oggi «{prof.get('name')}» (effetto {prof.get('effect') or 'nessuno'}), {n} stili; perché: {str(now.get('why'))[:80]}"
-    step(A, "Aspetto: stile di oggi con palette ed effetto")(aphrodite)
+        return f"today «{prof.get('name')}» (effect {prof.get('effect') or 'none'}), {n} styles; why: {str(now.get('why'))[:80]}"
+    step(A, "Look: today's style with palette and effect")(aphrodite)
 
     def apollo():
         st = api("apollo", "GET", "api/images/status")
-        need("configured" in st, f"stato senza «configured»: {str(st)[:200]}")
-        return ("ComfyUI non configurato (atteso sul banco): le richieste restano in coda" if not st["configured"]
-                else f"ComfyUI raggiungibile: {st.get('reachable')}")
-    step(A, "Immagini: stato del motore (ComfyUI)")(apollo)
+        need("configured" in st, f"status without «configured»: {str(st)[:200]}")
+        return ("ComfyUI not configured (expected on the bench): the requests stay queued" if not st["configured"]
+                else f"ComfyUI reachable: {st.get('reachable')}")
+    step(A, "Images: engine status (ComfyUI)")(apollo)
 
     def lares():
         st = api("lares", "GET", "api/home/status")
-        need(isinstance(st, dict), f"stato: {str(st)[:200]}")
+        need(isinstance(st, dict), f"status: {str(st)[:200]}")
         return f"Home Assistant: {str(st)[:140]}"
-    step(A, "Casa: stato di Home Assistant (non collegato sul banco)")(lares)
+    step(A, "Home: Home Assistant status (not linked on the bench)")(lares)
 
     def by_chat():
         r = chat('#tool deadlines_list {}')
         t = next((x for x in r["tools"] if x["tool"] == "deadlines_list"), None)
-        need(t and t["ok"] is not False, f"lo strumento non è stato chiamato: {[x['tool'] for x in r['tools']]}")
-        need("Banco bollo" in (t["preview"] or "") or "Scadenze" in (t["preview"] or ""), f"anteprima: {str(t)[:200]}")
-        return "chat → deadlines_list (stesso strumento che usa Telegram) ok"
-    step(A, "Chat: l'assistente usa gli strumenti dei moduli nuovi")(by_chat)
+        need(t and t["ok"] is not False, f"the tool was not called: {[x['tool'] for x in r['tools']]}")
+        need("Banco bollo" in (t["preview"] or "") or ui("Deadlines") in (t["preview"] or ""), f"preview: {str(t)[:200]}")
+        return "chat → deadlines_list (the same tool Telegram uses) ok"
+    step(A, "Chat: the assistant uses the tools of the new modules")(by_chat)
 
 
 def flow_shell(ctx: dict) -> None:
-    A = "WebUI nuova: Adesso, Scopri, conversazioni ed etichette, notifiche push"
+    A = "New WebUI: Now, Discover, conversations and labels, push notifications"
 
-    def taps_and_adesso():
+    def taps_and_now():
         at = datetime.now().isoformat(timespec="seconds")
         api("metis", "POST", "api/metis/usage", {"taps": [
-            {"client": "webui", "kind": "tool", "ref": "deadlines_list", "label": "Scadenze", "at": at},
-            {"client": "webui", "kind": "page", "ref": "/p/kairos/deadlines", "label": "Scadenze", "at": at}]})
-        a = api("metis", "GET", "api/metis/adesso", query={"client": "webui"})
-        s = api("metis", "GET", "api/metis/scopri", query={"limit": 20})
+            {"client": "webui", "kind": "tool", "ref": "deadlines_list", "label": "Deadlines", "at": at},
+            {"client": "webui", "kind": "page", "ref": "/p/kairos/deadlines", "label": "Deadlines", "at": at}]})
+        a = api("metis", "GET", "api/metis/now", query={"client": "webui"})
+        s = api("metis", "GET", "api/metis/discover", query={"limit": 20})
         na, ns = len(a.get("items") or []), len(s.get("items") or [])
-        need(ns, f"«Scopri» vuoto: {str(s)[:200]}")
-        return f"tap registrati; Adesso {na} proposte, Scopri {ns} idee"
-    step(A, "Tap della WebUI → Adesso e Scopri")(taps_and_adesso)
+        need(ns, f"«Discover» empty: {str(s)[:200]}")
+        return f"taps recorded; Now {na} suggestions, Discover {ns} ideas"
+    step(A, "WebUI taps → Now and Discover")(taps_and_now)
 
     def chats():
         sid = f"banco-tag-{RUN}"
         chat("Ciao, questa è una conversazione di prova del banco", session=sid)
         r = chat('#tool chat_tag {"tags": "banco", "session_id": "%s"}' % sid, session=sid)
         t = next((x for x in r["tools"] if x["tool"] == "chat_tag"), None)
-        need(t and t["ok"] is not False, f"chat_tag non chiamato: {[x['tool'] for x in r['tools']]}")
+        need(t and t["ok"] is not False, f"chat_tag not called: {[x['tool'] for x in r['tools']]}")
         undo_frame = next((e for e in r["events"] if e.get("type") == "changes"), None)
         lst = api("oracle", "GET", "api/ui/chats", query={"tag": "banco"})
-        need(any(i["session_id"] == sid for i in lst.get("items") or []), f"la conversazione non ha l'etichetta: {str(lst)[:300]}")
+        need(any(i["session_id"] == sid for i in lst.get("items") or []), f"the conversation has no label: {str(lst)[:300]}")
         api("oracle", "PUT", f"api/ui/chats/{sid}", {"pinned": True, "title": f"Banco conversazione {RUN}"})
         top = api("oracle", "GET", "api/ui/chats", query={"limit": 1})["items"][0]
-        need(top["session_id"] == sid and top["pinned"], f"la fissata non è in cima: {str(top)[:200]}")
+        need(top["session_id"] == sid and top["pinned"], f"the pinned one is not on top: {str(top)[:200]}")
         msgs = api("oracle", "GET", f"api/ui/chats/{sid}/messages")
-        need(len(msgs.get("items") or []) >= 2, "i messaggi non tornano")
+        need(len(msgs.get("items") or []) >= 2, "the messages do not come back")
         api("oracle", "PUT", f"api/ui/chats/{sid}", {"pinned": False})
-        return (f"etichetta «banco» dalla chat, fissata in cima, {len(msgs['items'])} messaggi riaperti"
-                + ("; riga «Ho fatto» con Annulla" if undo_frame else "; nessun frame «Ho fatto»"))
-    step(A, "Conversazioni: etichetta dalla chat, fissa, titolo, riapri")(chats)
+        return (f"label «bench» from the chat, pinned on top, {len(msgs['items'])} messages opened again"
+                + ("; «Done» row with Undo" if undo_frame else "; no «Done» frame"))
+    step(A, "Conversations: label from the chat, pin, title, open again")(chats)
 
     def push_key():
         code, out = http("GET", f"{WEBUI}/api/webui/plugins/hermes/call/api/ui/push/key")
-        need(code in (200, 503), f"chiave push → {code} {str(out)[:200]}")
-        return "chiave VAPID pronta" if code == 200 and (out or {}).get("public_key") else f"push non configurato ({code})"
-    step(A, "Notifiche push: chiave del browser")(push_key)
+        need(code in (200, 503), f"push key → {code} {str(out)[:200]}")
+        return "VAPID key ready" if code == 200 and (out or {}).get("public_key") else f"push not configured ({code})"
+    step(A, "Push notifications: browser key")(push_key)
 
     def pages():
         try:
             pw, br = browser()
         except Exception as exc:  # noqa: BLE001
-            raise Fail(f"Chromium non disponibile: {exc}") from None
+            raise Fail(f"Chromium not available: {exc}") from None
         SHOTS.mkdir(parents=True, exist_ok=True)
         bad, seen, js = [], [], []
         try:
             pg = br.new_page(viewport={"width": 1366, "height": 860})
             pg.on("pageerror", lambda e: js.append(str(e)[:160]))
-            for path in ("/home", "/scopri", "/sistema", "/chat", "/p/kairos/deadlines", "/p/hera/people",
+            for path in ("/home", "/discover", "/system", "/chat", "/p/kairos/deadlines", "/p/hera/people",
                          "/p/demeter/today", "/p/calliope/documents", "/p/aphrodite/look", "/p/apollo/images",
                          "/p/lares/home"):
                 pg.goto(WEBUI + path, wait_until="networkidle", timeout=60000)
                 pg.wait_for_timeout(1200)
                 errs = _errors_on(pg)
                 name = path.strip("/").replace("/", "_") or "root"
-                pg.screenshot(path=str(SHOTS / f"nuovo_{name}.png"), full_page=False)
+                pg.screenshot(path=str(SHOTS / f"new_{name}.png"), full_page=False)
                 (bad if errs else seen).append(f"{path}: {errs[:2]}" if errs else path)
         finally:
             br.close()
             pw.stop()
-        need(not bad and not js, f"pagine con errori: {bad} · errori JS: {js[:3]}")
-        return f"{len(seen)} pagine aperte senza errori (screenshot nuovo_*.png)"
-    step(A, "Pagine nuove nel browser (Scopri, Sistema, moduli nuovi)")(pages)
+        need(not bad and not js, f"pages with errors: {bad} · JS errors: {js[:3]}")
+        return f"{len(seen)} pages opened without errors (screenshots new_*.png)"
+    step(A, "New pages in the browser (Discover, System, new modules)")(pages)
 
 
 AREAS = {"hercules": flow_hercules, "hygieia": flow_hygieia, "wardrobe": flow_wardrobe, "agenda": flow_agenda,
          "presence": flow_presence, "settings": flow_settings, "plugins": flow_plugins, "mcp": flow_mcp, "webui": flow_webui,
-         "transfer": flow_transfer, "vita": flow_vita, "shell": flow_shell}
+         "transfer": flow_transfer, "life": flow_life, "shell": flow_shell}
 
 
 def main(argv: list[str]) -> int:

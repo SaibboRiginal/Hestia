@@ -1,4 +1,4 @@
-"""Brainstorm + Cindy wave 2 on Chronos (docs/work/2026-10-24-whole-brainstorm-cindy): routines in words,
+"""Brainstorm + Cindy wave 2 on Chronos (docs/work/2026-10-24-whole-cindy-brainstorm): routines in words,
 special events, smart calendar, the life API tools. Archive mocked in memory."""
 from __future__ import annotations
 

@@ -326,7 +326,7 @@ owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoi
 with one line «Domani a Casa: 10–18°, pioggia 15–17» (warning tone when rainy; no Casa → empty piece). Modules
 read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
 
-### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W4
+### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W4
 
 Hecate owns the devices and only passes data on, as **device feeds** (`hestia_common.feeds`): modules declare
 `capabilities.feeds = {kind: path}` in their Hub registration, Hecate discovers them and POSTs each item through the
@@ -434,7 +434,7 @@ just runs the normal watcher. `users.watch` expires after 7 days → daily agend
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 4; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 

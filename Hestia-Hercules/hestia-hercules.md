@@ -161,7 +161,7 @@ calendar before `fitness_confirm_activity` (all slots, some by number, or times 
 - Store kinds `activity_plan`, `activity` (written by the server only; refused from the offline sync),
   `calendar_link`, `activity_nudge`.
 
-## From the watch (feed `wearable.daily`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W4 B10)
+## From the watch (feed `wearable.daily`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W4 B10)
 
 Hecate pushes each day read from Garmin to `POST /api/hercules/wearable` (`hestia_common.feeds`, declared as
 `capabilities.feeds`). Outdoor activities (corsa, bici, camminata, nuoto) become done activities like «Ho corso»
@@ -175,7 +175,7 @@ there is no check-in made by hand; the adaptation of today's workout reads it li
 line «Attività: …», field `activities_week`), not only gym sessions.
 `GET /api/hercules/summary` and `GET /api/hercules/next` (tools `fitness_summary`, `fitness_next_workout`) return a `display` card: the week lines with Inizia / Come mi sento (or Registra serie / Concludi during a session); the next workout with exercises, sets and suggested weight, buttons Inizia (preset template) / Adatta a come sto / Sposta / Salta oggi. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 

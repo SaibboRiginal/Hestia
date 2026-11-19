@@ -3,7 +3,7 @@
 **Role:** Nutrition («Alimentazione») — diet, meals, supplements and intakes; a coach of the weekly plan
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19026 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5, brainstorm A5)
+**Port:** 19026 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A5)
 
 ---
 

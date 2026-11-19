@@ -251,11 +251,11 @@ Argus reports the number of degraded services to Chronos presence (`health.degra
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
 
-## Redaction (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 19)
+## Redaction (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 19)
 Log samples sent to Oracle for analysis and the context of Forge proposals pass through
 `hestia_common.redact.redact` first: keys, tokens, emails, phone numbers, chat ids, home paths become placeholders.
 
-## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3)
+## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3)
 - Every `argus.performance.every_cycles` cycles a sample runs in its own thread: per module CPU % (delta between
   `stats(one_shot)` samples), memory (usage − inactive file cache), start time, restarts (read-only Docker socket),
   the `/health` response time (`HealthReport.ms`), the Hub round trip; at most hourly the data size from Archive

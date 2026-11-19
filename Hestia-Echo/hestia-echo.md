@@ -75,7 +75,7 @@ notification first, then asks Echo (use `hermes.notification`) and sends an `upd
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
 never changes.
 
-## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-whole-brainstorm-cindy`)
+## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-whole-cindy-brainstorm`)
 
 - **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voce», Telegram «Registra la
   mia voce», tool `voice_print_record`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker

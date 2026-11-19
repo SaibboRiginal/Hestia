@@ -1,4 +1,4 @@
-"""Hestia-Lares — the house on Home Assistant («Home», port 19024, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A3).
+"""Hestia-Lares — the house on Home Assistant («Home», port 19024, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A3).
 
 Home Assistant is reached only from here (``LARES_HA_URL`` / ``LARES_HA_TOKEN`` in env). State changes arrive by
 push on the HA websocket; favourites in Archive (``/api/home-store``); the chosen person entity → presence signal

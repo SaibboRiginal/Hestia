@@ -1,4 +1,4 @@
-"""Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-whole-brainstorm-cindy W6). Markers: unit, api"""
+"""Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-whole-cindy-brainstorm W6). Markers: unit, api"""
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -180,7 +180,7 @@ def test_endpoints_and_tool_cards():
 
 
 def test_recent_lists_last_taps_newest_first_within_hours():
-    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-hestia-alive F3)."""
+    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-living-hestia F3)."""
     u, _ = _usage()
     now = datetime.now(timezone.utc)
     u.record([{"client": "telegram", "kind": "tool", "ref": "palestra_oggi", "at": (now - timedelta(hours=30)).isoformat()},

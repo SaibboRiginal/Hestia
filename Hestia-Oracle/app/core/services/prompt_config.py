@@ -135,7 +135,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "- Do not say it was done. Say in one line what is needed to do it (or ask for the missing data).\n"
         "- Do not talk about memory or notifications unless they named them."
     ),
-    # A turn heard and answered aloud: the client says so with `spoken` (docs/work/2026-11-06-hestia-alive F1).
+    # A turn heard and answered aloud: the client says so with `spoken` (docs/work/2026-11-06-living-hestia F1).
     "voice_turn_contract": (
         "SPOKEN TURN (the answer is read aloud):\n"
         "- 1-2 spoken sentences. More only if they ask for details.\n"

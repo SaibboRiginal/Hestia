@@ -113,7 +113,7 @@ export class ChatService {
         mode,
         model,
         ...(context ? { context } : {}),
-        // Live mode «Parla»: Hestia answers as speech, short (docs/work/2026-11-06-hestia-alive F1).
+        // Live mode «Parla»: Hestia answers as speech, short (docs/work/2026-11-06-living-hestia F1).
         ...(spoken ? { spoken: true } : {}),
       });
     } catch (err: any) {

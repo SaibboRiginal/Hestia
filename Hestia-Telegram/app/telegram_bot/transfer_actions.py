@@ -1,4 +1,4 @@
-"""Esporta e importa from Telegram (dossier docs/work/2026-10-24-whole-brainstorm-cindy F; format and module contract:
+"""Esporta e importa from Telegram (dossier docs/work/2026-10-24-whole-cindy-brainstorm F; format and module contract:
 docs/work/2026-10-20-import-export).
 
 Like the WebUI page, the client orchestrates: every module exports and imports only its own data through Hub

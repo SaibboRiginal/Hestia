@@ -1,4 +1,4 @@
-"""One prompt for every situation (docs/work/2026-11-12-prompt-every-situation).
+"""One prompt for every situation (docs/work/2026-11-12-prompt-for-every-situation).
 
 The same building blocks reach the model whatever the mode (Rapida, auto, Pensata, CoT), the path (small talk
 shortcut, agent loop, external agent, another AI, a text a module asks for) and the client: who the assistant is,

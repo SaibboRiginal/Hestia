@@ -1,4 +1,4 @@
-"""Components, origin label and undo buttons under an answer (docs/work/2026-10-24-whole-brainstorm-cindy)."""
+"""Components, origin label and undo buttons under an answer (docs/work/2026-10-24-whole-cindy-brainstorm)."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

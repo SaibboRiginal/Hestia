@@ -114,7 +114,7 @@ default `/code/ui/dist`, built from `ui/` in the image), mounts `/api/ui/manifes
 ## Device feeds (`hestia_common.feeds`)
 
 Data from the owner's devices, pushed by Hecate to the modules that asked for it (dossier
-`2026-10-24-whole-brainstorm-cindy` W4). A module declares `caps.update(feeds.capabilities({"wearable.daily":
+`2026-10-24-whole-cindy-brainstorm` W4). A module declares `caps.update(feeds.capabilities({"wearable.daily":
 "/api/hercules/wearable"}))`; Hecate's `FeedPublisher(HUB).publish(kind, item)` discovers subscribers on the Hub
 (cache 60 s; the first publish always reads the registry, also right after boot) and POSTs the item through the Hub → `{delivered, failed}`. Kinds: `wearable.daily`,
 `phone.notification`, `phone.state`. A failure is logged `[🔄]`; the next sync or push carries the data again.
@@ -276,7 +276,7 @@ personal language `themis.personal.language` (it/en, default it; `identity.langu
 `language_name()`, dossier `docs/work/2026-11-14-personal-language`): what she writes on her own follows it, the chat
 follows the language of the owner's last message. Other braces are untouched, so the template
 can be formatted after. The rendered text is English like every text the model reads
-(`docs/work/2026-11-12-prompt-every-situation`). A module rarely needs this: a text for the owner is asked to Oracle
+(`docs/work/2026-11-12-prompt-for-every-situation`). A module rarely needs this: a text for the owner is asked to Oracle
 with `/api/llm/generate {voice: true}` and Oracle adds who speaks. The product and modules stay Hestia.
 
 **Texts people read** (dossier `docs/work/2026-11-16-name-everywhere`): where a fixed text speaks of the assistant as a
@@ -542,7 +542,7 @@ modules by it). A failure, or a finished download over 200 MB, goes to Notifiche
 - No service registration or Hub contracts.
 - No runtime dependencies beyond Python stdlib + common third-party packages.
 
-## Wave 1 helpers (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
+## Wave 1 helpers (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 - `hestia_common.redact` (Cindy 19): `redact(text)` / `redact_obj(obj)` replace secrets and personal data (keys,
   tokens, passwords in assignments and URLs, emails, phone numbers, IBAN, card numbers, chat ids, home paths, private
   IPs) with `[segreto]`, `[email]`, … before text leaves the house (Argus → Oracle, Forge task prompts).

@@ -362,7 +362,7 @@ def athena_talk(days: int = 7) -> dict[str, Any]:
 
 @app.get("/api/athena/evidence")
 def athena_evidence() -> dict[str, Any]:
-    """First observe, then propose (docs/work/2026-11-13-observe-then-propose): the findings she is still
+    """First observe, then propose (docs/work/2026-11-13-observe-first-then-propose): the findings she is still
     collecting proof for, the days she has been observing and what she needs before proposing."""
     from .core import athena_settings as AS
     return {"known_days": runtime.evidence.known_days(),

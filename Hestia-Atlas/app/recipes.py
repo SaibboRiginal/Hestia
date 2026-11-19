@@ -1,4 +1,4 @@
-"""Site recipes (Cindy 12, dossier docs/work/2026-10-24-whole-brainstorm-cindy W3).
+"""Site recipes (Cindy 12, dossier docs/work/2026-10-24-whole-cindy-brainstorm W3).
 
 A recipe is a small declarative script for a site used often: go to → type → click → wait → extract. No model
 looks at the page at every step: the assistant (tool ``atlas_recipe``) or a module (Scout, via Hub

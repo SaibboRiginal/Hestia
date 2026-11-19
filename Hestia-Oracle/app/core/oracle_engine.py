@@ -2661,7 +2661,7 @@ class OracleEngine:
 
         return tools
 
-    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-whole-brainstorm-cindy) ─────────
+    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-whole-cindy-brainstorm) ─────────
     def _agent_manifest(self, tools: list[ToolDefinition], *, live: "queue.Queue[str]", nested_log: list[dict],
                         user_message: str, history_text: str, session_id: str, origin: dict, mode: str,
                         datetime_context: str) -> list[ToolDefinition]:
@@ -3499,7 +3499,7 @@ class OracleEngine:
         return "\n".join(lines)
 
     def _save_history(self, session_id: str, user_message: str, answer: str, trace_id: str | None = None) -> None:
-        # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-hestia-alive F4).
+        # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-living-hestia F4).
         from core.services.reaction_marker import strip as _strip_reaction
         emoji, answer = _strip_reaction(answer)
         if emoji and not answer.strip():

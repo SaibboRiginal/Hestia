@@ -1,4 +1,4 @@
-"""Clean text before it leaves for a model (Cindy idea 19, dossier docs/work/2026-10-24-whole-brainstorm-cindy).
+"""Clean text before it leaves for a model (Cindy idea 19, dossier docs/work/2026-10-24-whole-cindy-brainstorm).
 
 Logs, health reports and Forge requests may carry secrets and personal data: tokens, keys, passwords in URLs,
 e-mail addresses, phone numbers, chat ids, home paths with the user name, IBANs, private IPs. Every module that

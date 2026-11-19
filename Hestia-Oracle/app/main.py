@@ -109,7 +109,7 @@ _oracle_mcp_tools = [
         clients=["telegram", "ui"], response_mode="oracle_natural",
         telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Documents", "primary": 3}),
-    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-whole-brainstorm-cindy W7) ─────────
+    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-whole-cindy-brainstorm W7) ─────────
     MCPTool(
         name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_tag, **kw),
@@ -786,7 +786,7 @@ class ChatRequest(BaseModel):
     # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-from-scratch §5.10).
     quoted: Optional[dict] = None
     # The turn was heard and is answered aloud (WebUI «Parla», Telegram voice note with spoken replies): the answer
-    # follows the voice contract (docs/work/2026-11-06-hestia-alive F1).
+    # follows the voice contract (docs/work/2026-11-06-living-hestia F1).
     spoken: bool = False
 
 
@@ -1018,7 +1018,7 @@ def _with_personal_settings(client_instructions: Optional[str], client: Optional
 
 
 def _awareness_lines() -> list[str]:
-    """Owner turns only: today's mood, the last notifications sent, the last things opened (hestia-alive F3)."""
+    """Owner turns only: today's mood, the last notifications sent, the last things opened (living-hestia F3)."""
     try:
         return awareness.lines_for_turn(engine._hub, _oracle_settings.get_int(_oracle_settings.AWARENESS_ITEMS, 0))
     except Exception as exc:  # never blocks a turn
@@ -1053,7 +1053,7 @@ def chat_endpoint(req: ChatRequest, request: Request):
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         if req.spoken:
             instructions = "\n".join(p for p in (instructions, _prompt_config.voice_turn_contract()) if p)
-        # Emoji reactions (hestia-alive F4): only clients that can show them get the prompt line and the filter.
+        # Emoji reactions (living-hestia F4): only clients that can show them get the prompt line and the filter.
         reacts = (req.client or "") in reaction_marker.CLIENTS and turn_origin["level"] == "utente"
         if reacts:
             instructions = "\n".join(p for p in (instructions, reaction_marker.INSTRUCTION) if p)
@@ -1290,7 +1290,7 @@ class ChatReactionRequest(BaseModel):
 @app.post("/api/chat/reaction")
 def chat_reaction(req: ChatReactionRequest):
     """The owner reacted with an emoji to one of Hestia's messages (WebUI, Telegram): one short history line so the
-    next turn knows it (docs/work/2026-11-06-hestia-alive F4). No LLM call."""
+    next turn knows it (docs/work/2026-11-06-living-hestia F4). No LLM call."""
     emoji = str(req.emoji or "").strip()[:8]
     quoted = " ".join(str(req.text or "").split())[:120]
     if not req.session_id.strip():

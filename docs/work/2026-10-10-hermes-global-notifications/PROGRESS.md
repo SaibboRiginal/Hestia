@@ -16,4 +16,4 @@ Spec: `SPEC.md` v1.3 · resume from the first unchecked box.
 - [x] P5 Docs: hestia-hermes.md, hestia-telegram.md, hestia-webui.md, swagger, ARCHITECTURE rule
 - [ ] Marko: .NET build + real run (WebUI backend not buildable in the cloud container); pytest per user rule not run by Claude — .NET build + Angular build verified 2026-10-18 (docs/work/2026-10-18-module-consistency), real run left
 - [x] Retract delay is the Themis setting `hermes.retract.after` (default 6 h), done with central settings P6
-- [x] Real run on the cloud bench (2026-10-19): module reminder → WebUI inbox, answer with a button from the Notifiche page in Chromium → the module logs it → `docs/work/2026-10-19-real-runs-bench/`. Telegram not testable from the cloud (api.telegram.org blocked)
+- [x] Real run on the cloud bench (2026-10-19): module reminder → WebUI inbox, answer with a button from the Notifiche page in Chromium → the module logs it → `docs/work/2026-10-19-bench-real-runs/`. Telegram not testable from the cloud (api.telegram.org blocked)

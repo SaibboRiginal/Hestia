@@ -1,5 +1,5 @@
 """Learning log, memory review and docs check endpoints + MCP tools (dossier
-docs/work/2026-10-24-whole-brainstorm-cindy W3: Cindy 8, 18, 29)."""
+docs/work/2026-10-24-whole-cindy-brainstorm W3: Cindy 8, 18, 29)."""
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,4 @@
-"""What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-hestia-alive F3).
+"""What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-living-hestia F3).
 
 Up to four short background lines, read at turn time through Hub (each source owns its data):
 - the owner's mood of today (Psyche ``GET /api/mood/today`` → ``summary``);

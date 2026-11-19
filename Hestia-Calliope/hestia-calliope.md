@@ -4,7 +4,7 @@
 Word or an Excel file with one of three shared themes, checks it and keeps it
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · reportlab · python-docx · openpyxl · pypdf
-**Port:** 19027 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5)
+**Port:** 19027 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5)
 
 ---
 

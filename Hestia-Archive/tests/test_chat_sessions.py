@@ -1,4 +1,4 @@
-"""Conversation list, tags, pinned (Cindy 26, dossier 2026-10-24-whole-brainstorm-cindy W7) on in-memory SQLite."""
+"""Conversation list, tags, pinned (Cindy 26, dossier 2026-10-24-whole-cindy-brainstorm W7) on in-memory SQLite."""
 from __future__ import annotations
 
 import sys

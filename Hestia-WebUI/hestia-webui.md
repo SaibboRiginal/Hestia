@@ -131,7 +131,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   *Spesa veloce*) and Iris' core page **Email** (subscriptions, deliveries, «Controlla email»). No WebUI code: both
   come from the Hub plugin catalog.
 
-### Adesso, Scopri, aspetto, Web Push (2026-10-29, dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W7)
+### Adesso, Scopri, aspetto, Web Push (2026-10-29, dossier `docs/work/2026-10-24-whole-cindy-brainstorm` W7)
 
 - **Taps** (`services/metis.service.ts`): every page opened (`/p/<module>/<page>` → `<module>.<page>`, WebUI pages
   → `webui.<path>`) and every quick action or suggested tool run is a tap, sent in batches (20 s, 40 max, on tab
@@ -212,7 +212,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 in chat she answers in the language you write) → saved live. Later: Sistema → Impostazioni → Personali.
 - **She wrote first**: a Hermes push whose payload has `_chat` (Athena «parla con te») is also added to the open
   chat as a message of hers (it stays in Notifiche too).
-- **Reactions** (dossier `docs/work/2026-11-06-hestia-alive`): Oracle's `reaction` frame shows Hestia's emoji on the
+- **Reactions** (dossier `docs/work/2026-11-06-living-hestia`): Oracle's `reaction` frame shows Hestia's emoji on the
   owner's bubble; `final.reaction_only` removes the empty answer bubble. Under her messages the smile button opens
   six emoji (👍 ❤️ 😂 😮 😢 🙏); a tap shows it at once and posts `POST /api/webui/chat/reaction` (same emoji again =
   taken away). Chat reactions are real emoji (chat content), the rest of the UI keeps the stroke icons; the list lives in `features/chat/reaction-emoji.ts`, the one file the icon gate (`check_icons.py`) exempts.
@@ -316,7 +316,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - Chat header ⚙ (`<hx-chat-quick-settings>`): tone and instructions for **this conversation** (scope session,
   id chosen by the backend); *Come predefinito* drops the override. Oracle applies them (`client: "webui"`).
 
-### Mode, reasoning display, context gauge (2026-10-11, `docs/work/2026-10-11-chat-modes-context/`)
+### Mode, reasoning display, context gauge (2026-10-11, `docs/work/2026-10-11-chat-mode-context/`)
 - Composer `<hx-chat-mode>`: Auto · Rapida · Pensata · CoT (Oracle `oracle.chat.mode`). Loads the value of this
   conversation from Themis, a pick is saved with scope session and sent with every message; ChatHub passes
   `auto|quick|thinking|cot`, anything else as "" (= Oracle uses the setting; retry uses it too). Default in
@@ -635,7 +635,7 @@ something moves, every 10 s otherwise. Backend `DownloadsController`: `GET /api/
 through the Hub; one not answering is listed as offline, never named to the user) and `POST
 /api/webui/downloads/{module}/{op}` with body `{id}` (ids carry «:»).
 
-### Sidebar with one rule, conversations, bubble, microphone, dividers (2026-11-13, dossier `docs/work/2026-11-13-sidebar-e-chat`)
+### Sidebar with one rule, conversations, bubble, microphone, dividers (2026-11-13, dossier `docs/work/2026-11-13-sidebar-and-chat`)
 
 Replaces what the 2026-10-29 section says about the sidebar's top and the «Sistema» entry.
 

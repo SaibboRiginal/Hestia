@@ -131,11 +131,11 @@ Design dossier: `docs/work/2026-10-10-central-settings/`.
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Impostazioni: 4 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-## Proposals on Telegram (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3, parity F)
+## Proposals on Telegram (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 3, parity F)
 Tool `settings_proposals(status?)` → `GET /api/settings/proposals` (pending by default): the owner sees on Telegram
 what the assistant proposed and confirms from the notification as usual.
 

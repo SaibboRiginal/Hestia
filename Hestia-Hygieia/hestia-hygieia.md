@@ -116,7 +116,7 @@ reminder), notifiche.voce (true: notifications also as voice, `voice_setting`), 
 there and used only when wanted. Week start and currency are the personal settings `themis.personal.week_start` /
 `themis.personal.currency` (owner Themis, read with `follow_personal()`), never a module copy.
 
-## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
+## Spoken evening diary and the watch (W4, dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 
 - **Diario a voce** (B9): the evening recap piece carries the button «Racconta la giornata» (`recap.piece(...,
   actions=)`, a `command` action that opens the tool `selfcare_journal_voice`) until today has a «giornata» entry.
@@ -163,7 +163,7 @@ Hub tag `coach`; `app/core/coach.py` mounted with `hestia_common.coach.CoachRout
 ## Telegram card (`display`)
 `GET /api/selfcare/today` and `GET /api/selfcare/overview` (tools `selfcare_today`, `selfcare_summary`) return a `display` card: routines with state (da fare in orange, fatta in green), the steps of today, a «Fatta: <routine>» button for the first one due; the overview with alerts, products in use, routines and Oggi / Prodotti / Statistiche. Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 

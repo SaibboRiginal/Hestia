@@ -5,7 +5,7 @@
    Telegram is not checked here: it has no icons; its rule (one area emoji, tone dots, no emoji in tool titles)
    is checked by ``check_telegram.py``.
    Exempt: ``CHAT_CONTENT`` (the chat's emoji reactions are chat content, real emoji like any chat app; Marko
-   2026-11-06, docs/work/2026-11-06-hestia-alive F4).
+   2026-11-06, docs/work/2026-11-06-living-hestia F4).
 """
 from __future__ import annotations
 

@@ -4,7 +4,7 @@
 gift ideas, notes, last contact and how often to hear from them
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `hestia_common.module_kit`
-**Port:** 19025 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5, brainstorm A4)
+**Port:** 19025 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A4)
 
 ---
 

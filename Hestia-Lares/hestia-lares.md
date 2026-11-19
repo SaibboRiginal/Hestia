@@ -4,7 +4,7 @@
 who is at home
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Docker · `websockets` · `hestia_common.module_kit`
-**Port:** 19024 · Dossier: `docs/work/2026-10-24-whole-brainstorm-cindy/` (W5, brainstorm A3)
+**Port:** 19024 · Dossier: `docs/work/2026-10-24-whole-cindy-brainstorm/` (W5, brainstorm A3)
 
 ---
 

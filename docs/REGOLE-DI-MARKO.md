@@ -2,7 +2,7 @@
 
 Hestia's owner decided these rules in conversations outside the repo. They are written here so that every
 developer — human, Claude Code in Forge, any model — sees them (Cindy idea 11, dossier
-`docs/work/2026-10-24-whole-brainstorm-cindy`). Technical contracts stay in `docs/ARCHITECTURE.md`; this file is
+`docs/work/2026-10-24-whole-cindy-brainstorm`). Technical contracts stay in `docs/ARCHITECTURE.md`; this file is
 the **why** and the product invariants. When a rule changes, add the new decision with its date, do not rewrite
 history. No personal data here: the repository is public.
 

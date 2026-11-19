@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Esporta e importa da terminale — the same `.hestia` file as the WebUI page (dossier docs/work/2026-10-20-import-export).
+"""Export and import from a terminal — the same `.hestia` file as the WebUI page (dossier docs/work/2026-10-20-import-export).
 
 Talks only to Hub (``--hub``, default ``$HUB_API_URL`` or http://localhost:19001/api); every module exports/imports its own
 data through ``/api/transfer/*``, Themis the settings.
 
     python tools/hestia_transfer.py modules
-    python tools/hestia_transfer.py export -o casa.hestia                      # everything
-    python tools/hestia_transfer.py export -o palestra.hestia hercules themis:hercules --since 2026-10-19 --files
-    python tools/hestia_transfer.py preview casa.hestia --mode merge
-    python tools/hestia_transfer.py import casa.hestia --mode merge            # asks before writing; saves a backup first
+    python tools/hestia_transfer.py export -o home.hestia                      # everything
+    python tools/hestia_transfer.py export -o gym.hestia hercules themis:hercules --since 2026-10-19 --files
+    python tools/hestia_transfer.py preview home.hestia --mode merge
+    python tools/hestia_transfer.py import home.hestia --mode merge            # asks before writing; saves a backup first
 
 Selection: ``<module>`` (all its sections) or ``<module>:<section>[,<section>]``; settings are ``themis:<module>``.
 The file holds personal data: keep it out of the repository (``*.hestia`` is git-ignored).
@@ -23,6 +23,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib import request as urlrequest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _texts import is_yes, tr  # noqa: E402  texts in the owner's language
 
 FORMAT = 1
 
@@ -57,7 +60,7 @@ def read_file(path: str) -> dict:
     raw = Path(path).read_bytes()
     data = json.loads(gzip.decompress(raw) if raw[:2] == b"\x1f\x8b" else raw)
     if data.get("hestia") != "transfer" or (data.get("format") or 1) > FORMAT:
-        raise SystemExit("non è un file di Hestia, o è di una versione più recente")
+        raise SystemExit(tr("not a Hestia file, or one of a newer version"))
     return data
 
 
@@ -71,7 +74,7 @@ def selection(specs: list[str], available: dict) -> dict[str, dict]:
     for spec in specs or list(available):
         owner, _, sections = spec.partition(":")
         if owner not in available:
-            raise SystemExit(f"{owner}: modulo senza esporta/importa (disponibili: {', '.join(sorted(available))})")
+            raise SystemExit(tr("{0}: no export or import here (available: {1})", owner, ", ".join(sorted(available))))
         out.setdefault(owner, {}).update({s: {} for s in sections.split(",") if s})
     return out
 
@@ -87,7 +90,7 @@ def build(hub: Hub, sel: dict, since: str | None, files: bool) -> dict:
             f = hub.call(owner, "GET", f"api/transfer/files/{fid}")
             data["files"].setdefault(owner, {})[fid] = {k: f.get(k) for k in ("mime", "sha256", "meta", "data_b64")}
         n = sum(len(b["records"]) for b in out["sections"].values())
-        print(f"  {owner}: {n} record in {len(out['sections'])} sezioni, {len(out.get('files') or [])} file")
+        print("  " + tr("{0}: {1} records in {2} sections, {3} files", owner, n, len(out["sections"]), len(out.get("files") or [])))
     return data
 
 
@@ -97,7 +100,7 @@ def run_import(hub: Hub, data: dict, mode: str, dry_run: bool, only: list[str]) 
     reports = {}
     for owner, sections in sel.items():
         if owner not in available:
-            print(f"  {owner}: non presente qui, saltato")
+            print("  " + tr("{0}: not here, skipped", owner))
             continue
         files_map = {}
         if not dry_run:
@@ -108,10 +111,10 @@ def run_import(hub: Hub, data: dict, mode: str, dry_run: bool, only: list[str]) 
             "data": data["modules"][owner], "mode": mode, "dry_run": dry_run, "sections": sections or None,
             "files_map": files_map})
         for sid, r in rep["sections"].items():
-            parts = [f"{r[k]} {label}" for k, label in (("added", "nuovi"), ("updated", "aggiornati"),
-                                                        ("skipped", "ignorati"), ("deleted", "eliminati"),
-                                                        ("problems", "problemi")) if r.get(k)]
-            print(f"  {owner}/{sid}: {', '.join(parts) or 'nessuna modifica'}")
+            parts = [tr(label, r[k]) for k, label in (("added", "{0} new"), ("updated", "{0} updated"),
+                                                      ("skipped", "{0} ignored"), ("deleted", "{0} deleted"),
+                                                      ("problems", "{0} problems")) if r.get(k)]
+            print(f"  {owner}/{sid}: {', '.join(parts) or tr('no changes')}")
             for p in r["items"]["problems"][:10]:
                 print(f"      ! {p}")
     return reports
@@ -125,15 +128,15 @@ def main() -> None:
     ex = sub.add_parser("export")
     ex.add_argument("select", nargs="*")
     ex.add_argument("-o", "--output", default=f"hestia-{datetime.now():%Y-%m-%d}.hestia")
-    ex.add_argument("--since", help="solo modifiche da questa data (AAAA-MM-GG)")
-    ex.add_argument("--files", action="store_true", help="includi le foto")
+    ex.add_argument("--since", help=tr("only changes since this date (YYYY-MM-DD)"))
+    ex.add_argument("--files", action="store_true", help=tr("include the photos"))
     for name in ("preview", "import"):
         p = sub.add_parser(name)
         p.add_argument("file")
         p.add_argument("select", nargs="*")
         p.add_argument("--mode", choices=("append", "merge", "replace"), default="merge")
         if name == "import":
-            p.add_argument("--yes", action="store_true", help="non chiedere conferma")
+            p.add_argument("--yes", action="store_true", help=tr("don't ask to confirm"))
     args = ap.parse_args()
     hub = Hub(args.hub)
 
@@ -146,22 +149,22 @@ def main() -> None:
         since = f"{args.since}T00:00:00+00:00" if args.since and "T" not in args.since else args.since
         data = build(hub, selection(args.select, hub.modules()), since, args.files)
         write_file(args.output, data)
-        print(f"scritto {args.output}")
+        print(tr("{0} written", args.output))
         return
     data = read_file(args.file)
-    print("anteprima:")
+    print(tr("preview:"))
     run_import(hub, data, args.mode, True, args.select)
     if args.cmd == "preview":
         return
-    if not args.yes and input(f"importare con modo {args.mode}? [s/N] ").strip().lower() not in ("s", "si", "sì", "y"):
+    if not args.yes and not is_yes(input(tr("import with mode {0}? [y/N] ", args.mode))):
         return
-    backup = f"prima-di-importare-{datetime.now():%Y%m%d-%H%M%S}.hestia"
+    backup = f"before-import-{datetime.now():%Y%m%d-%H%M%S}.hestia"
     owners = [o for o in data["modules"] if o in hub.modules()]
     sel = {o: {s: {} for s in data["modules"][o]["sections"]} for o in owners}
     write_file(backup, build(hub, sel, None, False))
-    print(f"punto di ripristino: {backup}")
+    print(tr("restore point: {0}", backup))
     run_import(hub, data, args.mode, False, args.select)
-    print("fatto")
+    print(tr("done"))
 
 
 if __name__ == "__main__":

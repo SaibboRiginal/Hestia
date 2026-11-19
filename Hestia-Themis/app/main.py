@@ -346,7 +346,7 @@ try:
                 path="/api/settings/key/{key}/undo-propose", clients=["ui"], telegram_visible=False,
                 telegram_group="system",
                 telegram={"section": "Settings"}),
-        # Telegram parity (dossier docs/work/2026-10-24-whole-brainstorm-cindy F): proposals waiting for the owner.
+        # Telegram parity (dossier docs/work/2026-10-24-whole-cindy-brainstorm F): proposals waiting for the owner.
         MCPTool(name="settings_proposals",
                 description="Setting change proposals waiting for the user's confirmation (or all).",
                 parameters={"type": "object", "properties": {

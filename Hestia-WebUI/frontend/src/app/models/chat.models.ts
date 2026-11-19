@@ -29,7 +29,7 @@ export interface ChatMessage {
   origin?: { kind: string; level: string; label: string };
   /** Oracle's id of this turn: 👍/👎 send it so the vote lands on this answer (training dataset). */
   traceId?: string;
-  /** Emoji reaction on this bubble, like any chat (docs/work/2026-11-06-hestia-alive F4): on the owner's message it
+  /** Emoji reaction on this bubble, like any chat (docs/work/2026-11-06-living-hestia F4): on the owner's message it
    *  is Hestia's, on Hestia's message it is the owner's. */
   reaction?: string;
   /** The model that wrote this answer (the chat marks where it changes inside a conversation). */

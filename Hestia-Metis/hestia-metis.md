@@ -76,7 +76,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   user request → starts now; module request (e.g. Athena) → agenda task `metis.train.<job>` at the next window
   opening, fired via Hub with `schedule=now`. `schedule=window|now` forces it. Move/cancel it from the agenda.
 
-### Usage log, «Adesso», «Scopri» (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 6)
+### Usage log, «Adesso», «Scopri» (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, wave 6)
 - **Taps**: clients push what the owner starts (`POST /api/metis/usage`, Telegram in the background at every action
   start; the WebUI in wave 7). Rows in Archive `metis-store` (kind `tap`: client, kind tool|page|action, ref, weekday,
   hour). Kept 180 days. Only the owner's own taps; nothing leaves Hestia.
@@ -120,7 +120,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
 | `POST` | `/api/metis/usage` | Taps `{taps:[{client, kind, ref, label?, at?}]}` (422 if none valid) |
 | `GET` | `/api/metis/usage/stats` | Taps by client, top tools |
-| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-alive`) |
+| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-living-hestia`) |
 | `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
 | `GET` | `/api/metis/tools/now` · `/tools/discover` | The two tools (display cards) |
@@ -215,7 +215,7 @@ Window-mode trainings also wait for presence `work.heavy` allow/local: held → 
 ## Telegram menus
 Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 7 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
