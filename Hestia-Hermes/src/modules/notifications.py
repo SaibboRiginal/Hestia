@@ -137,7 +137,8 @@ def digest_line(spec: dict[str, Any], limit: int = 90) -> str:
     if title:
         return clip(title, limit)
     for line in str(spec.get("message") or "").splitlines():
-        text = plain(line).strip("•·-* ")
+        # ids and commands in <code>/<pre> (notices stored before 2026-11-19) are not for the owner
+        text = plain(re.sub(r"<(code|pre)>.*?</\1>", " ", line)).strip("•·-* ")
         if len(re.sub(r"[\W_]+", "", text)) >= 3:
             return clip(text, limit)
     return ""

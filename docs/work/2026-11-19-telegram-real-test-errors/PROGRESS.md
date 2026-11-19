@@ -8,3 +8,4 @@
 - [x] Argus: areas instead of modules, no raw lines
 - [x] Plutus/Oracle: no import id, area name
 - [x] Catalog, docs, gates
+- [x] v1.1: digest hides ids of notices stored before the fix
