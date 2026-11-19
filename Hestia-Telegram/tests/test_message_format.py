@@ -254,3 +254,13 @@ class TestPrettifyLinkLabel:
     def test_empty_label_uses_domain(self):
         result = mf.prettify_link_label("", "https://example.com/property/123")
         assert "example.com" in result
+
+
+@pytest.mark.format
+def test_plain_list_card_stays_one_message():
+    """Regression (real test 2026-11-19): a summary card with bullets arrived as one bubble per line."""
+    text = "🔵 <b>While I was resting</b>\n<b>3 notifications</b> while I was resting:\n• one\n• two\n• three"
+    msgs, mode = mf.build_delivery_messages(text, parse_mode="HTML")
+    assert mode == "HTML" and len(msgs) == 1 and "• three" in msgs[0]
+    links = 'Results:\n• <a href="https://e.com/1">One</a>\n• <a href="https://e.com/2">Two</a>'
+    assert len(mf.build_delivery_messages(links, parse_mode="HTML")[0]) >= 2

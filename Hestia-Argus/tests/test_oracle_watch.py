@@ -74,7 +74,9 @@ def test_alerts_not_narrated_while_offline(watch, monkeypatch):
     oracle_watch.observe("down", now=0)
     oracle_watch.observe("down", now=61)
     text = alert_worker._narrate_batch([ServiceAlert(service="scout", kind="health", level="CRITICAL", message="x")])
-    assert asked == [] and "scout" in text
+    from hestia_common.areas import module_label
+    from hestia_common.i18n import t
+    assert asked == [] and t(module_label("scout")) in text and "scout" not in text  # area name, never the module
 
 
 @pytest.mark.unit

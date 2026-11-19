@@ -252,8 +252,10 @@ def _split_html_link_bullets(html_text: str) -> list[str]:
         )
 
     bullet_lines = [line for line in lines if is_bullet_line(line)]
-    
-    if bullet_lines:
+
+    # Only a list of links (listings, results) becomes one message per bullet; a plain list (a summary, a card)
+    # stays ONE message, otherwise every line arrives as its own bubble.
+    if bullet_lines and any(has_link(line) for line in bullet_lines):
         messages = []
         intro_lines = [line for line in lines if line not in bullet_lines and line.strip()]
         intro_text = "\n".join(intro_lines).strip()
@@ -322,20 +324,7 @@ def build_chat_messages(raw_markdown: str) -> list[str]:
 
         links = link_pattern.findall(paragraph)
         if not links:
-            # Split bullet lists into individual messages
-            _lines = [l.strip() for l in paragraph.splitlines() if l.strip()]
-            _bullet_lines = [l for l in _lines if re.match(_BULLET_RE, l)]
-            if _bullet_lines:
-                _non_bullets = [l for l in _lines if l not in _bullet_lines]
-                if _non_bullets:
-                    intro = format_for_telegram("\n".join(_non_bullets)).strip()
-                    if intro:
-                        messages.extend(split_long_message(intro))
-                for bl in _bullet_lines:
-                    rendered = format_for_telegram(bl).strip()
-                    if rendered:
-                        messages.extend(split_long_message(rendered))
-                continue
+            # A plain list stays in its message (one bubble per line only for lists of links).
             rendered = format_for_telegram(paragraph).strip()
             if rendered:
                 messages.extend(split_long_message(rendered))

@@ -11,7 +11,7 @@ Flow
    ``argus.alerts.batch_window`` seconds (central setting, default 60).  Every new alert resets the
    timer, so a burst settles into a single dispatch.
 5. When the timer fires, the whole batch is narrated by Oracle in one natural
-   Italian message and sent via Hermes as a single Telegram notification.
+   message in the owner's language and sent via Hermes as a single Telegram notification.
 6. Recoveries bypass batching: they are sent immediately via Oracle.
 7. While Oracle is offline (``oracle_watch``) Oracle is not asked: fixed text at once, no waits.
 """
@@ -101,7 +101,10 @@ def _flush_batch() -> None:
     logger.info("event=flushing_batch_alert Flushing batch of %d alert(s)", len(batch))
     text = _narrate_batch(batch)
     event_payload = {
+        "_title": _title(batch),
         "_message": text,
+        "_level": "warning",
+        "_source": "argus",
         "alerts": [
             {"service": a.service, "kind": a.kind,
                 "level": a.level, "message": a.message}
@@ -121,52 +124,54 @@ def _flush_batch() -> None:
         logger.warning("event=batch_dispatch_failed_alert Batch dispatch failed (%d alert(s))", len(batch))
 
 
+def _area(service: str) -> str:
+    """People's name for the part of the assistant (never the module name)."""
+    from hestia_common.areas import module_label
+    return tr(module_label(service))
+
+
 def _narrate_batch(alerts: list[ServiceAlert]) -> str:
-    """Ask Oracle for a natural summary in the owner's language; fall back to compact plain text."""
+    """Ask Oracle for a plain summary in the owner's language; fall back to one line per area (no module names,
+    no raw log lines: the owner reads it)."""
     lines = []
     for a in alerts:
+        area = _area(a.service)
         if a.kind == "health":
-            lines.append(
-                tr("- Service '{0}': state {1} — {2}", a.service, a.level.upper(), a.message)
-            )
+            lines.append(f"- area «{area}»: state {a.level.upper()} — {a.message[:200]}")
         elif a.kind == "performance":
-            lines.append(tr("- Service '{0}' performance: {1}", a.service, a.message))
+            lines.append(f"- area «{area}» slow: {a.message[:200]}")
         else:
-            lines.append(
-                tr("- Service '{0}' [{1}]: {2}", a.service, a.level.upper(), a.message[:300])
-            )
+            lines.append(f"- area «{area}» [{a.level.upper()}]: {a.message[:300]}")
     raw = "\n".join(lines)
 
     prompt = (
-        f"You noticed these problems in your own system. Tell the owner, 4-5 lines at most.\n"
-        f"- Which services are involved and what seems to be happening.\n"
-        f"- A short excerpt of the raw error only if it helps.\n"
-        f"- Format: HTML <b> and <i> only. No Markdown, no JSON, no bulleted lists.\n\n"
+        "You noticed these problems in your own system. Tell the owner, 3-4 short lines.\n"
+        "- Which part is affected and what it means for him, plain words.\n"
+        "- No module, service, file or code names, no raw errors, no ids.\n"
+        "- Format: HTML <b> and <i> only. No Markdown, no JSON, no lists.\n\n"
         f"PROBLEMS:\n{raw}"
     )
 
     narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
     if narrated and narrated.strip():
-        count = tr(" · {0} events", len(alerts)) if len(alerts) > 1 else ""
-        return f"🔔 <b>{tr('{assistant} Monitor')}{count}</b>\n\n{narrated.strip()}"
+        return narrated.strip()
 
-    # Fallback: compact grouped plain text (still a single message, not one per alert)
-    by_service: dict[str, list[str]] = {}
+    # Fallback: one line per area (still a single message, not one per alert)
+    by_area: dict[str, list[ServiceAlert]] = {}
     for a in alerts:
-        by_service.setdefault(a.service, []).append(
-            f"[{a.level}] {a.message[:200]}")
+        by_area.setdefault(_area(a.service), []).append(a)
+    out = []
+    for area, items in by_area.items():
+        down = any(a.kind == "health" for a in items)
+        slow = all(a.kind == "performance" for a in items)
+        what = (tr("«{0}» is not answering", area) if down else
+                tr("«{0}» is slow", area) if slow else tr("«{0}» had errors", area))
+        out.append(f"• {what}" + (f" · {tr('{0} times', len(items))}" if len(items) > 1 else ""))
+    return "\n".join(out)
 
-    fallback_lines = []
-    for svc, msgs in by_service.items():
-        fallback_lines.append(f"<b>{svc}</b>: {msgs[0]}")
-        if len(msgs) > 1:
-            fallback_lines.append(tr("  <i>(+{0} more)</i>", len(msgs) - 1))
 
-    count = len(alerts)
-    return (
-        f"⚠️ <b>{tr('{assistant} Monitor')} — {tr('{0} alerts', count) if count > 1 else tr('1 alert')}</b>\n\n"
-        + "\n".join(fallback_lines)
-    )
+def _title(alerts: list[ServiceAlert]) -> str:
+    return tr("Something is not working") if len(alerts) == 1 else tr("Some things are not working")
 
 
 # ---------------------------------------------------------------------------
@@ -202,19 +207,17 @@ def send_recovery(service: str) -> None:
     for status in ("down", "degraded"):
         _clear(_health_fingerprint(service, status))
 
-    prompt = (
-        f"The service '{service}' of your own system is back online. Tell the owner in one short line."
-    )
+    area = _area(service)
+    prompt = (f"The part «{area}» of your own system works again. Tell the owner in one short line, plain words, "
+              "no module or code names.")
     narrated = "" if oracle_watch.is_offline() else oracle_client.analyze(prompt, voice=True)
-    if narrated and narrated.strip():
-        text = f"✅ <b>{tr('{assistant} Monitor')}</b>\n\n{narrated.strip()}"
-    else:
-        text = tr("✅ <b>{assistant} Monitor</b>\n<code>{0}</code> is back online.", service)
+    text = narrated.strip() if narrated and narrated.strip() else tr("«{0}» works again.", area)
 
     hermes_client.publish_event(
         domain="system",
         event_type="service.health",
         entity_id=service,
-        payload={"_message": text, "service": service, "status": "recovered"},
+        payload={"_title": tr("Working again"), "_message": text, "_level": "success", "_source": "argus",
+                 "service": service, "status": "recovered"},
     )
     logger.info("event=recovery_notification_published Recovery notification published for: %s", service)

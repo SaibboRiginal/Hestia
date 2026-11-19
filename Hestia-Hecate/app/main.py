@@ -249,6 +249,7 @@ def _notify_action_required(
     action: str,
     message: str,
     actions: list[dict[str, str]] | None = None,
+    title: str = "",
 ) -> None:
     """Push a service action-required notification via Hermes.
 
@@ -277,10 +278,14 @@ def _notify_action_required(
     _payload: dict = {
         "action": action,
         "_message": message,
+        "_title": title,
+        "_source": "hecate",
         "service": "hecate",
+        # One live notice per problem: while it is unanswered a new one is the same notice, not a second copy.
+        "dedupe_key": f"hecate.{action}",
     }
     if actions:
-        _payload["_actions"] = actions
+        _payload["_actions"] = [{**a, "text": tr(a["text"])} if a.get("text") else a for a in actions]
     try:
         requests.post(
             f"{HUB_API_URL}/route/hermes/api/events/ingest",
@@ -322,25 +327,21 @@ def _check_auth_and_notify() -> None:
     registry_status = _calendar_registry.status_report()
     unavailable = registry_status.get("unavailable", {})
     if "google" in unavailable and _provider_env_is_configured("google"):
-        reason = unavailable["google"]
+        logger.warning("event=google_calendar_unavailable reason=%s", str(unavailable["google"])[:200])
         _notify_action_required(
             "reauth_google_calendar",
-            (
-                tr("⚠️ <b>Google Calendar</b> is not signed in.\n\n{0}\n\nUse the button below to sign in again.", reason)
-            ),
-            actions=_reauth_actions,
+            tr("I can't see your calendar: Google is not connected. Sign in again with the button below."),
+            actions=_reauth_actions, title=tr("Google Calendar not connected"),
         )
 
     # 2) Mail provider check (lazy-init — force init to detect auth state)
     mail = _get_mail_provider()
     if not mail.is_available() and _provider_env_is_configured("google"):
-        mail_error = mail._init_error or "Gmail provider not available"
+        logger.warning("event=gmail_unavailable reason=%s", str(mail._init_error or "not available")[:200])
         _notify_action_required(
             "reauth_google_gmail",
-            (
-                tr("⚠️ <b>Gmail</b> is not accessible.\n\n{0}\n\nUse the button below to sign in again with the gmail.readonly scope.", mail_error)
-            ),
-            actions=_reauth_actions,
+            tr("I can't read your mail: Google is not connected. Sign in again with the button below."),
+            actions=_reauth_actions, title=tr("Gmail not connected"),
         )
 
 
@@ -1054,8 +1055,11 @@ def _parse_since(since: str | None) -> datetime | None:
 
 def _mail_unavailable(exc: MailUnavailable, q: str = "") -> dict:
     if exc.auth_required:
+        # The technical reason stays in the log; the owner reads what to do.
+        logger.warning("event=gmail_unavailable reason=%s", str(exc)[:200])
         _notify_action_required(
-            "reauth_google_gmail", tr("⚠️ <b>Gmail</b> not accessible: {0}.", exc), actions=_REAUTH_ACTIONS)
+            "reauth_google_gmail", tr("I can't read your mail: Google is not connected. Sign in again with the button below."),
+            actions=_REAUTH_ACTIONS, title=tr("Gmail not connected"))
     return {"status": "error", "query": q, "count": 0, "messages": [], "error": str(exc),
             "action_required": "reauth_google" if exc.auth_required else None}
 
@@ -1695,7 +1699,7 @@ def _start_google_device_auto_poll() -> None:
             if status == "error":
                 _notify_action_required(
                     "google_reauth_failed",
-                    tr("❌ <b>Google sign-in failed:</b> {0}\n\nTry again with the button below.", result.get('error', 'unknown')),
+                    tr("Google did not complete the sign-in. Try again with the button below."), title=tr("Google sign-in failed"),
                     actions=[{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}],
                 )
                 return
@@ -1707,7 +1711,7 @@ def _start_google_device_auto_poll() -> None:
         logger.warning("event=google_auto_poll_timeout")
         _notify_action_required(
             "google_reauth_timeout",
-            tr("⏰ <b>Google sign-in expired.</b>\n\nRestart it with the button below."),
+            tr("The sign-in took too long. Restart it with the button below."), title=tr("Google sign-in expired"),
             actions=[{"text": "🔑 Sign in to Google again", "command": "gateway_auth_initiate_google"}],
         )
 

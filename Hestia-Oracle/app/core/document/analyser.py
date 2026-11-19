@@ -93,8 +93,9 @@ class DocumentAnalyser:
             # A module took the file (e.g. bank statement → Expenses): its answer is the reply, the file is its data
             # (blob), so no copy in the RAG archive.
             self._save_history(session_id, filename or mime_type, user_message, handed["text"])
+            from hestia_common.areas import module_label
             yield stream_emitter.emit_signal(
-                event="attachment_handled", message=tr("📎 Handed to {0}.", handed['service']),
+                event="attachment_handled", message=tr("📎 Handed to «{0}».", tr(module_label(handed['service']))),
                 data={k: handed.get(k) for k in ("service", "blob_id", "import_id") if handed.get(k)})
             logger.info("event=analyser_done session_id=%s total_ms=%s route=handoff service=%s", session_id,
                         int((time.perf_counter() - t0) * 1000), handed["service"])

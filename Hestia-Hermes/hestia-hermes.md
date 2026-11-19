@@ -283,7 +283,7 @@ Env keeps only infrastructure: `HUB_API_URL`, `ARCHIVE_API_URL`, `HERMES_SERVICE
 
 ## Assistant presence
 
-Notifications below the presence `notify.level` (all/important/urgent) are **held**: stored, delivered silently, marked `held`. When the level relaxes Chronos calls `POST /api/notifications/release-held` and Hermes sends one digest «While I was resting». `important` holds info/success without actions; `urgent` lets through only errors and events flagged `_urgent`.
+Notifications below the presence `notify.level` (all/important/urgent) are **held**: stored, delivered silently, marked `held`. When the level relaxes Chronos calls `POST /api/notifications/release-held` and Hermes sends one digest «While I was resting». Each digest line (`digest_line`) is the plain title — or the first real line of the message — with HTML stripped and cut on a word with «…»; the source module is never shown. `important` holds info/success without actions; `urgent` lets through only errors and events flagged `_urgent`.
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Notifications»; deliveries subtitle «What was sent, to whom and how it went»; agenda title «Clean the notifications already handled».
 

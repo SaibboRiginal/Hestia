@@ -409,9 +409,9 @@ def test_api_chat_attachment_handoff(api):
     c, main, fake = api
     fake.blobs["chatblob"] = base64.b64encode(_pdf(_STMT)).decode()
     out = c.post("/api/finance/attachments", json={"blob_id": "chatblob", "filename": "ottobre.pdf"}).json()
-    assert out["handled"] and "Li registro?" in out["text"] and out["import_id"] in out["text"]
-    assert c.post("/api/finance/tools/import_statement",
-                  json={"import_id": out["import_id"], "commit": "true"}).json()["committed"]
+    # the owner never reads ids; «yes» commits the latest preview without one
+    assert out["handled"] and "Li registro?" in out["text"] and out["import_id"] not in out["text"]
+    assert c.post("/api/finance/tools/import_statement", json={"commit": "true"}).json()["committed"]
     again = c.post("/api/finance/attachments", json={"blob_id": "chatblob"}).json()
     assert again["handled"] and "ci sono già tutti" in again["text"]
     assert c.post("/api/finance/attachments", json={"blob_id": "missing"}).json()["handled"] is False

@@ -137,9 +137,10 @@ user/Argus ──► POST /forge/tasks ──► proposed ─approve─► queue
 - **Verification:** Forge runs `HEPHAESTUS_FORGE_TEST_CMD` on the touched services' `tests/` (never trusts the agent).
 - **Merge:** `git merge --no-ff` into base branch (repo must be on base branch and clean). **Rollback:** `git revert -m 1`.
 - **Deploy (optional):** `HEPHAESTUS_FORGE_DEPLOY_CMD` (`{services}` placeholder), then health check via Hub; unhealthy (checked after `hephaestus.forge.verify_delay`) + setting `hephaestus.forge.auto_rollback` (default on) → revert + redeploy.
-- **Notifications:** start, review request (summary + diff stat + test result), merge/deploy, rollback → Telegram via Hermes (`HEPHAESTUS_NOTIFY_TARGET`) + `system/hephaestus.forge` event.
+- **Notifications:** start, review request (summary + diff stat + test result), merge/deploy, rollback → ONE Hermes ingest per event (`system/hephaestus.forge`, `_title` + `_message` + `_actions`, `dedupe_key forge.<id>.<state>.<title>`), delivered by Hermes to every client (`HEPHAESTUS_NOTIFY_TARGET`). The owner never reads ids, module names or commands to type: every decision is a button (Start / Discard, Apply / Discard, Start now, Undo) calling `/forge/tasks/{id}/approve|reject|rollback` (docs/work/2026-11-19-telegram-real-test-errors).
+- **One proposal per trouble:** a non-user source (Argus, Asclepius…) proposing again for the same `origin.service` + `origin.kind` while a task is still open (`OPEN_STATES`) gets the open task back, no twin.
 - **Resilience:** task state persisted in `data/forge/tasks.json`; queued/running/approved tasks resume after restart.
-- **Human gate on merge:** nothing merges without "approva sviluppo <id>" unless the group is in `full_auto`.
+- **Human gate on merge:** nothing merges without the owner's «Apply» (button, or the WebUI Development page) unless the group is in `full_auto`.
 - Who may start/merge alone: see *Permission modes* below.
 
 ### Engines — Oracle's chain and Claude Code
@@ -174,7 +175,7 @@ Themis). Safety switches: the assistant may read them but never propose them (`o
 
 | Mode | Athena/Argus tasks | Your tasks | Merge/deploy |
 |---|---|---|---|
-| `ask` | wait for "approva sviluppo <id>" | start | waits for you |
+| `ask` | wait for the owner's «Start» | start | waits for you |
 | `auto` | start on their own branch | start | waits for you |
 | `full_auto` | start | start | automatic if engine ok + tests green (health check, auto rollback) |
 
@@ -223,7 +224,7 @@ The Pro plan has a weekly limit. Forge spends on autonomous work only what would
 | Athena / Argus | state `scheduled` → starts only **at night** (`night`, default 00:00-07:00) in the **last `window_hours`** (48) before the weekly reset, max `night_max_tasks` (3) per night, one at a time |
 | Athena / Argus, last `final_hours` (6) before reset | any time, no cap: the remaining quota is used up |
 
-- Approving a proposed/scheduled claude task keeps it in the window; "approve development <id> **now**" (`now=true`) runs it now.
+- Approving a proposed/scheduled claude task keeps it in the window; the «Start now» button (`now=true`) runs it now.
 - If Claude answers with a usage-limit error, Forge pauses all budgeted work until the reset (`phase=exhausted`) and
   re-schedules the task.
 - The remaining % is not readable by programs: the policy is time-based + Claude's own limit signal.

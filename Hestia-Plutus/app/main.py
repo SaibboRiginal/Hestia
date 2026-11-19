@@ -407,7 +407,7 @@ def attachment(body: dict = Body(...)):
         text = ((tr("I read the statement ({0}): 1 transaction to add, new expenses {1}", period, _money(v['total_new_spent'], cur)) if n == 1 else tr("I read the statement ({0}): {1} transactions to add, new expenses {2}", period, n, _money(v['total_new_spent'], cur)))
                 + ((tr(", 1 linked to a PayPal payment already logged (counted once)") if link == 1 else tr(", {0} linked to PayPal payments already logged (counted once)", link)) if link else "")
                 + ((tr(", 1 already there") if dup == 1 else tr(", {0} already there", dup)) if dup else "")
-                + tr(". Shall I log them? Answer «yes» or check them in Expenses › Import. (import_id {0})", v['id']))
+                + tr(". Shall I log them? Answer «yes» or check them in Expenses › Import."))
     return {"handled": True, "text": text, "import_id": v["id"], "counts": c}
 
 
@@ -803,6 +803,9 @@ try:
         return {"items": [f"{c['id']} = {c['label']} ({c.get('kind')})" for c in plutus.categories()]}
 
     def _import(blob_id: str = "", account: str = "hype", commit: bool = False, import_id: str = "") -> dict:
+        if commit and not import_id:
+            # «yes» to the statement just read in chat: the latest preview (the owner never sees ids).
+            import_id = next((i["id"] for i in statements.imports() if i.get("status") == "preview"), "")
         if import_id and commit:
             v = statements.commit(import_id)
             signals.changed()
@@ -810,7 +813,7 @@ try:
         v = statements.preview(blob_id=blob_id, account=account, source="chat")
         return {"import_id": v["id"], "period": v["period"], "counts": v["counts"], "how": v["how"],
                 "total_new_spent": v["total_new_spent"], "currency": v["currency"],
-                "next": "ask the user to confirm, then finance_import_statement with import_id and commit=true",
+                "next": "ask the user to confirm, then finance_import_statement with commit=true (import_id optional: latest preview)",
                 "sample": [f"{r['date']} {r['merchant']} {r['amount']:.2f} [{r['state']}]" for r in v["rows"][:8]]}
 
     def _recurring() -> dict:
@@ -874,7 +877,7 @@ try:
                 clients=["ui"], telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_import_statement", description=("Bank statement PDF sent in chat (blob_id of the attachment): first a preview (new transactions, "
-                                                              "already present, linked to PayPal), then, after the user's yes, import_id + commit=true. "
+                                                              "already present, linked to PayPal), then, after the user's yes, commit=true (import_id optional: the latest preview). "
                                                               "account hype (default) or another bank."),
                 parameters={"type": "object", "properties": {"blob_id": S, "account": S, "commit": B, "import_id": S}},
                 handler=_t(_import), title="Import bank statement", method="POST", clients=["ui"],

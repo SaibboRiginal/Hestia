@@ -284,3 +284,5 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
+
+**2026-11-19** (dossier `docs/work/2026-11-19-telegram-real-test-errors`): monitor notices carry a plain `_title` («Something is not working», «Working again») and name the **area** (`module_label`, e.g. «Agenda»), never the module; no raw log lines and no HTML code in the fallback text (one line per area: not answering / slow / had errors · N times). The model is told: no module, file or code names, no raw errors. The «{assistant} Monitor» heading is gone.
