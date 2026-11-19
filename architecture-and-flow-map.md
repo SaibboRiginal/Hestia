@@ -170,7 +170,7 @@ flowchart LR
 
 ### Self-development flow (Forge)
 1. User on Telegram: "aggiungi X" → Oracle (classifier: domain `system`) → tool `forge_develop` → Hub → Hephaestus.
-2. Athena (idle retrospective) and Argus (recurring errors) also submit via Hub; the permission mode
+2. Athena (idle retrospective) and Argus (recurring errors and recurring `[🔄]` fallbacks, with `title` + `origin`) also submit via Hub; the permission mode
    (`ask | auto | full_auto`, per group local/cloud) decides if coding starts alone.
 3. Forge creates a git worktree + branch, runs the engine:
    - `local` / `cloud` → LLM turns through **Oracle `/api/llm/chat`** (Oracle owns providers and keys);

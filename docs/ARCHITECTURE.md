@@ -273,6 +273,7 @@ System health and log intelligence monitor.
 - Sole monitoring authority for health/log anomaly detection.
 - Aggregates service health and logs via Hub monitor APIs.
 - Emits remediation intents when auto-fix policy allows.
+- Recurring errors and recurring `[🔄]` fallback lines become Forge proposals with a plain `title` and their `origin` (kind, area, count, window, sample line): nothing is declared in advance, what keeps falling back gets fixed (dossier `docs/work/2026-11-18-problemi-del-test` F).
 - Does not mutate source code or execute code changes directly.
 
 ### Hestia-Hephaestus 🔧
