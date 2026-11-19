@@ -1,5 +1,5 @@
 /**
- * Hera («Persone») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * Hera («People») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
  * docs/work/2026-10-24-whole-brainstorm-cindy W7). Pages and widget declared in Hestia-Hera/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
@@ -7,8 +7,8 @@ import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
 
 const API = '/api/people';
 const RELATIONS = [
-  { value: 'partner', label: tr('Partner') }, { value: 'famiglia', label: tr('Family') }, { value: 'amico', label: tr('Friend') },
-  { value: 'collega', label: tr('alt::Link') }, { value: 'altro', label: tr('Other') }];
+  { value: 'partner', label: tr('Partner') }, { value: 'family', label: tr('Family') }, { value: 'friend', label: tr('Friend') },
+  { value: 'colleague', label: tr('Colleague') }, { value: 'other', label: tr('Other') }];
 const relLabel = (r: string) => RELATIONS.find(x => x.value === r)?.label || tr('Other');
 
 async function call<T = any>(host: HestiaHost, method: HttpMethod, path: string, body?: unknown): Promise<ApiResult<T>> {
@@ -42,7 +42,7 @@ export class HeraPeople extends HestiaElement {
   declare adding: boolean;
   declare draft: Record<string, any>;
   static styles = [...HestiaElement.styles, styles];
-  constructor() { super(); this.items = undefined; this.soon = []; this.q = ''; this.adding = false; this.draft = { relation: 'amico' }; }
+  constructor() { super(); this.items = undefined; this.soon = []; this.q = ''; this.adding = false; this.draft = { relation: 'friend' }; }
   connectedCallback() { super.connectedCallback(); this.load(); this.onHost('refresh', () => this.load()); }
   async load() {
     const [r, u] = await Promise.all([call(this.host, 'GET', ''), call(this.host, 'GET', '/upcoming')]);
@@ -53,7 +53,7 @@ export class HeraPeople extends HestiaElement {
   private async save() {
     if (!String(this.draft.name || '').trim()) { this.host.toast(tr('The name is needed'), 'warning'); return; }
     const r = await call(this.host, 'POST', '', this.draft);
-    if (r.ok) { this.adding = false; this.draft = { relation: 'amico' }; this.host.toast(tr('{0} saved', r.data.name), 'success'); this.load(); }
+    if (r.ok) { this.adding = false; this.draft = { relation: 'friend' }; this.host.toast(tr('{0} saved', r.data.name), 'success'); this.load(); }
   }
   render() {
     if (this.items === undefined) return html`<hxk-state kind="loading"></hxk-state>`;

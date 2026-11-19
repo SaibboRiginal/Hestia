@@ -1,8 +1,8 @@
-"""Hestia-Psyche — how the owner feels over time («Umore», port 19029, dossier docs/work/2026-10-30-mood-diary).
+"""Hestia-Psyche — how the owner feels over time («Mood», port 19029, dossier docs/work/2026-10-30-mood-diary).
 
 Data in Archive (``/api/mood-store``), check-ins from a tap, a tool or Oracle's quiet capture from chat
 (capability ``mood_capture_endpoint``: no confirmation, merged within ``psyche.capture.merge_minutes``, undone by
-«non segnarlo»), trend and insights computed here, reflection signals and weekly metrics for Athena, a recap piece,
+«don't log it»), trend and insights computed here, reflection signals and weekly metrics for Athena, a recap piece,
 the evening check-in as an agenda job, tools for the assistant and Telegram, a WebUI plugin.
 """
 from __future__ import annotations
@@ -29,7 +29,7 @@ from hestia_common.settings_client import setting
 from hestia_common.signals_client import Signals, signals_rule
 from hestia_common.transfer import StoreSection, Transfer
 
-from .core.service import CAUSES, LABELS, MOOD_WORDS, Psyche, mood_word
+from .core.service import CAUSES, LABELS, MOOD_WORDS, Psyche, mood_word, name
 
 API = "/api/mood"
 DOMAIN = "mood"
@@ -89,7 +89,7 @@ def insights():
 
 @app.get(f"{API}/options")
 def options():
-    return {"labels": list(LABELS), "causes": list(CAUSES),
+    return {"labels": list(LABELS), "causes": list(CAUSES), "names": {k: name(k) for k in (*LABELS, *CAUSES)},
             "levels": [{"value": k, "label": v} for k, v in MOOD_WORDS.items()]}
 
 
@@ -101,7 +101,7 @@ def capture(body: dict = Body(...)):
 
 @app.post(f"{API}/capture/undo")
 def capture_undo():
-    """«Non segnarlo»: today's last chat capture goes away."""
+    """«Don't log it»: today's last chat capture goes away."""
     return _changed(psyche.undo_capture())
 
 
@@ -127,7 +127,7 @@ def checkin():
 @app.get("/api/module/context")
 def module_context(budget: int = 400, topic: str = ""):
     """Assistant/Athena context contract (tag ``context``): the last 7 days in one line, or the insights."""
-    if topic in ("insights", "andamento", "mood_drop", "low_streak", "energy_low", "good_streak"):
+    if topic in ("insights", "trend", "mood_drop", "low_streak", "energy_low", "good_streak"):
         text = " ".join(psyche.insights()["sentences"])
     else:
         text = psyche.context_text(budget)
@@ -155,7 +155,7 @@ def _line(r: dict) -> list[str]:
     if r.get("energy"):
         meta.append(tr("energy {0}/5", r['energy']))
     if r.get("labels"):
-        meta.append(", ".join(r["labels"][:3]))
+        meta.append(", ".join(name(x) for x in r["labels"][:3]))
     return meta
 
 
@@ -191,7 +191,7 @@ def _history(days: int = 30) -> dict:
     return {"days": h["days"], "stats": st,
             "display": display(tr("Mood, last {0} days", days), subtitle=sub,
                                items=[item(f"{d['date'][8:10]}/{d['date'][5:7]}", [f"{d['mood']}/5 {d['mood_word']}",
-                                                                                 ", ".join(d["labels"][:3])],
+                                                                                 ", ".join(name(x) for x in d["labels"][:3])],
                                            tone=_tone(d["mood"])) for d in reversed(h["days"][-20:])],
                                lines=[] if h["days"] else [tr("No data in this period.")])}
 
@@ -215,7 +215,7 @@ LV = {"type": "integer", "minimum": 1, "maximum": 5}
 G = "mood"
 kit.tools([
     MCPTool(name="mood_log", description=("Log how the user feels: mood 1-5 (1 very low, 3 so-so, 5 great), energy and stress 1-5, labels, "
-                                          "causes, note, date (YYYY-MM-DD or ieri). Only if they ask."),
+                                          "causes, note, date (YYYY-MM-DD, today or yesterday). Only if they ask."),
             summary="Record how you are.",
             parameters={"type": "object", "properties": {
                 "mood": LV, "energy": LV, "stress": LV,
@@ -242,7 +242,7 @@ kit.tools([
 ], prefix="mood_")
 
 transfer = Transfer("psyche", kit.hub, sections=[
-    StoreSection("umore", "Mood", kit.store, ["mood"], icon="smile",
+    StoreSection("mood", "Mood", kit.store, ["mood"], icon="smile",
                  title=lambda r: f"{r['data'].get('date', '')} · {mood_word(r['data'].get('mood'))}"),
 ])
 app.include_router(transfer.router())

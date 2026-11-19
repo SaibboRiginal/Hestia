@@ -67,5 +67,257 @@
  ],
  "token_sample": [
   "The quick brown fox jumps over the lazy dog."
+ ],
+ "mood.rules": {
+  "lexicon": [
+   [
+    "exhausted|worn out|dead tired|wrecked|knackered",
+    "tired",
+    2,
+    1,
+    null
+   ],
+   [
+    "tired|sleepy|drained|low on energy",
+    "tired",
+    3,
+    2,
+    null
+   ],
+   [
+    "full of energy|pumped|on fire",
+    "energized",
+    5,
+    5,
+    null
+   ],
+   [
+    "energi[sz]ed|in shape|fit",
+    "energized",
+    4,
+    5,
+    null
+   ],
+   [
+    "calm|relaxed|at peace|serene",
+    "calm",
+    4,
+    null,
+    1
+   ],
+   [
+    "over the moon|amazing|fantastic|great",
+    "happy",
+    5,
+    null,
+    null
+   ],
+   [
+    "happy|glad|cheerful|in a good mood|good|fine|well",
+    "happy",
+    4,
+    null,
+    null
+   ],
+   [
+    "motivated|inspired",
+    "motivated",
+    4,
+    4,
+    null
+   ],
+   [
+    "bored|apathetic",
+    "bored",
+    3,
+    2,
+    null
+   ],
+   [
+    "nervous|irritated|tense|on edge|under pressure",
+    "nervous",
+    2,
+    null,
+    4
+   ],
+   [
+    "anxious|worried|stressed|panicking",
+    "anxious",
+    2,
+    null,
+    5
+   ],
+   [
+    "sad|depressed|blue|gloomy",
+    "sad",
+    2,
+    null,
+    null
+   ],
+   [
+    "awful|terrible|like crap|rock bottom",
+    "down",
+    1,
+    null,
+    null
+   ],
+   [
+    "down|low|in a bad mood|discouraged|bad",
+    "down",
+    2,
+    null,
+    null
+   ],
+   [
+    "angry|mad|furious|pissed off",
+    "angry",
+    2,
+    null,
+    4
+   ],
+   [
+    "sick|ill|have a fever|have a cold|have a headache|have the flu",
+    "ill",
+    2,
+    2,
+    null
+   ],
+   [
+    "so-so|okay|ok|normal",
+    null,
+    3,
+    null,
+    null
+   ]
+  ],
+  "day": "\\b(?:what an? |an? )?(heavy|hard|rough|bad|awful|endless|great|fantastic|wonderful|perfect|quiet|easy) day\\b",
+  "day_levels": {
+   "heavy": 2,
+   "hard": 2,
+   "rough": 2,
+   "bad": 2,
+   "awful": 1,
+   "endless": 2,
+   "great": 5,
+   "fantastic": 5,
+   "wonderful": 5,
+   "perfect": 5,
+   "quiet": 4,
+   "easy": 4
+  },
+  "day_tired": [
+   "heavy",
+   "hard",
+   "endless"
+  ],
+  "needs_verb": [
+   "good",
+   "fine",
+   "well",
+   "bad",
+   "okay",
+   "ok",
+   "normal",
+   "low",
+   "down",
+   "great",
+   "fit",
+   "blue",
+   "mad"
+  ],
+  "first_person": "\\b(i am|i'm|im|i feel|i'm feeling|today|this morning|tonight|lately|these days|what a day|day|i have (?:a fever|a cold|a headache|the flu))\\b",
+  "verb_before": "\\b(i am|i'm|im|i feel|i'm feeling|feeling|i felt)\\s+(?:really\\s+|very\\s+|so\\s+|quite\\s+|a bit\\s+|too\\s+)?$",
+  "own_verb": "\\b(i am|i'm|im|i feel)\\b",
+  "third_person": "\\b(is|are|was|were|seems|you're|he's|she's|they're)\\b",
+  "not_now": "^\\s*(why|how come|if|when|even if|in case|who|what)\\b|\\b(yesterday|last week|was|would be|will be)\\b",
+  "negation": "\\b(not|never|n't|no longer|at all)\\s+(?:\\w+\\s+){0,2}$",
+  "negated_good": [
+   "good",
+   "fine",
+   "well",
+   "great"
+  ],
+  "split": ",|\\bbut\\b|\\band then\\b",
+  "continue_with": "i'm ",
+  "undo": "\\bdon'?t (?:log|record|save|write) (?:it|that|my mood)\\b|\\bremove (?:the|my|that) mood\\b|\\bdelete (?:the|my) (?:last )?mood\\b|\\bnot true,? i'?m (?:fine|not)\\b"
+ },
+ "day.today": [
+  "today"
+ ],
+ "day.yesterday": [
+  "yesterday"
+ ],
+ "months": [
+  "january",
+  "february",
+  "march",
+  "april",
+  "may",
+  "june",
+  "july",
+  "august",
+  "september",
+  "october",
+  "november",
+  "december"
+ ],
+ "kairos.due_re": [
+  "due",
+  "deadline",
+  "expir",
+  "renew",
+  "to pay",
+  "payment due",
+  "invoice",
+  "bill"
+ ],
+ "kairos.mail": [
+  "deadline",
+  "due",
+  "expires",
+  "bill",
+  "invoice",
+  "renewal",
+  "payment"
+ ],
+ "kairos.category_re.bill": [
+  "bill",
+  "electricity",
+  "gas",
+  "water",
+  "energy",
+  "invoice"
+ ],
+ "kairos.category_re.insurance": [
+  "insurance",
+  "policy"
+ ],
+ "kairos.category_re.car_tax": [
+  "car tax",
+  "road tax"
+ ],
+ "kairos.category_re.inspection": [
+  "inspection",
+  "mot"
+ ],
+ "kairos.category_re.service": [
+  "car service",
+  "maintenance"
+ ],
+ "kairos.category_re.document": [
+  "identity card",
+  "passport",
+  "driving licen",
+  "permit"
+ ],
+ "kairos.category_re.subscription": [
+  "subscription",
+  "renewal"
+ ],
+ "kairos.category_re.tax": [
+  "tax"
+ ],
+ "people.anniversary": [
+  "anniversary"
  ]
 }

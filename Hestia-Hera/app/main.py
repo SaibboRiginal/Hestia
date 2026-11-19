@@ -1,4 +1,4 @@
-"""Hestia-Hera — important people («Persone», port 19025, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A4).
+"""Hestia-Hera — important people («People», port 19025, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A4).
 
 Data in Archive (``/api/people-store``), dates in the calendar as Chronos special events, notices through Hermes,
 settings in Themis, the daily check in the agenda, tools for the assistant and Telegram over MCP.
@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common import i18n
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
@@ -134,7 +135,7 @@ def _get(person: str) -> dict:
 
 def _add(name: str, relation: str = "", birthday: str = "", likes: list | None = None, notes: str = "",
          contact_every_days: int | None = None) -> dict:
-    p = people.save({"name": name, "relation": relation or "altro", "birthday": birthday, "likes": likes or [],
+    p = people.save({"name": name, "relation": relation or "other", "birthday": birthday, "likes": likes or [],
                      "notes": notes, "contact_every_days": contact_every_days})
     return {"saved": True, "id": p["id"], "name": p["name"], "undo": undo("people_delete", person=p["id"]),
             "display": _card(p)}
@@ -146,7 +147,7 @@ def _update(person: str, relation: str = "", birthday: str = "", notes: str = ""
                               "contact_every_days": contact_every_days}.items() if v}
     if date_label and date_day:
         body["dates"] = [{"label": date_label, "day": date_day, "kind": "anniversary"
-                          if "anniversario" in date_label.casefold() else "custom"}]
+                          if any(w in date_label.casefold() for w in i18n.words("people.anniversary")) else "custom"}]
     p = people.save(body, people.find(person)["id"])
     return {"saved": True, "display": _card(p)}
 
@@ -161,10 +162,10 @@ kit.tools([
     MCPTool(name="people_get", description="A person's card: dates, likes, gift ideas, last contact.",
             parameters={"type": "object", "properties": {"person": P}, "required": ["person"]}, handler=_get,
             title="Person card", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "People"}),
-    MCPTool(name="people_add", description=("Add a person. relation: partner|famiglia|amico|collega|altro; birthday DD/MM or YYYY-MM-DD "
+    MCPTool(name="people_add", description=("Add a person. relation: partner|family|friend|colleague|other; birthday DD/MM or YYYY-MM-DD "
                                             "(goes into the calendar with a reminder)."),
             parameters={"type": "object", "properties": {"name": S, "relation": {"type": "string", "enum": [
-                "partner", "famiglia", "amico", "collega", "altro"]}, "birthday": S, "likes": L, "notes": S,
+                "partner", "family", "friend", "colleague", "other"]}, "birthday": S, "likes": L, "notes": S,
                 "contact_every_days": I}, "required": ["name"]},
             handler=_add, title="Add person", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "People", "primary": 2}),
@@ -211,8 +212,8 @@ def _short(p: dict) -> dict:
 
 
 transfer = Transfer("hera", kit.hub, sections=[
-    StoreSection("persone", "People", kit.store, ["person"], icon="user", title=lambda r: r["data"].get("name", "")),
-    StoreSection("contatti", "Contacts", kit.store, ["interaction"], icon="list", depends_on=["persone"]),
+    StoreSection("people", "People", kit.store, ["person"], icon="user", title=lambda r: r["data"].get("name", "")),
+    StoreSection("contacts", "Contacts", kit.store, ["interaction"], icon="list", depends_on=["people"]),
 ])
 app.include_router(transfer.router())
 kit.caps.update({"special_moment_endpoint": f"{API}/moment", **recap.capabilities()})

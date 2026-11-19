@@ -1,4 +1,4 @@
-"""Kairos — deadlines of everything, with advice («Scadenze», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 B7).
+"""Kairos — deadlines of everything, with advice («Deadlines», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 B7).
 
 Bills, insurance, car tax, inspection, servicing, documents, subscriptions. A deadline has a due day, an optional
 amount, a recurrence (rolls on when marked paid/done), a lead time and an advice line (deterministic per category;
@@ -17,33 +17,32 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso
+from hestia_common import i18n
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_kairos.service")
 
 CATEGORIES = {
-    "bolletta": ("Bolletta", 5, "Check the reading and that the charge went through; compare with the same month last year."),
-    "assicurazione": ("Insurance", 30, "A month before, ask for two quotes: the automatic renewal often costs more."),
-    "bollo": ("Car tax", 15, "You pay online (PagoPA) or at the tobacconist; check the region and the amount."),
-    "revisione": ("Review", 30, "Book the centre in time; bring the logbook and the previous certificate."),
-    "tagliando": ("Tagliando", 21, "Ask for the quote first and check what the service booklet foresees."),
-    "documento": ("Document", 60, "ID card and passport: the appointment at the town hall or police station can take weeks."),
-    "abbonamento": ("Subscription", 7, "Decide whether to keep it before the renewal: cancelling afterwards costs a month."),
-    "tassa": ("Tasse", 15, "Check the F24 or the notice; record the receipt after paying."),
-    "altro": ("Deadline", 7, ""),
+    "bill": ("alt::Bill", 5, "Check the reading and that the charge went through; compare with the same month last year."),
+    "insurance": ("Insurance", 30, "A month before, ask for two quotes: the automatic renewal often costs more."),
+    "car_tax": ("Car tax", 15, "You pay online (PagoPA) or at the tobacconist; check the region and the amount."),
+    "inspection": ("Car inspection", 30, "Book the centre in time; bring the logbook and the previous certificate."),
+    "service": ("Car service", 21, "Ask for the quote first and check what the service booklet foresees."),
+    "document": ("Document", 60, "ID card and passport: the appointment at the town hall or police station can take weeks."),
+    "subscription": ("Subscription", 7, "Decide whether to keep it before the renewal: cancelling afterwards costs a month."),
+    "tax": ("pl::Taxes", 15, "Check the F24 or the notice; record the receipt after paying."),
+    "other": ("Deadline", 7, ""),
 }
 RECURRENCES = ("none", "monthly", "bimonthly", "quarterly", "semiannual", "yearly", "biennial")
 _MONTHS = {"none": 0, "monthly": 1, "bimonthly": 2, "quarterly": 3, "semiannual": 6, "yearly": 12, "biennial": 24}
-_IT_MONTHS = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre",
-              "ottobre", "novembre", "dicembre")
-_DATE_RES = (re.compile(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b"),
-             re.compile(r"\b(\d{1,2})\s+(" + "|".join(_IT_MONTHS) + r")\s+(\d{4})\b", re.I))
-_DUE_WORDS = re.compile(r"scaden|entro il|da pagare|rinnov|revision|bollo|fattura|bolletta|pagamento entro", re.I)
 _AMOUNT = re.compile(r"(?:€|EUR)\s?(\d[\d.]*,\d{2}|\d+(?:\.\d{2})?)|(\d[\d.]*,\d{2})\s?(?:€|EUR|euro)", re.I)
-_CATEGORY_WORDS = (("bolletta", r"bollett|luce|gas|acqua|energia|enel|fattura"), ("assicurazione", r"assicura|polizza|rca"),
-                   ("bollo", r"bollo"), ("revisione", r"revision"), ("tagliando", r"tagliand|manutenzion"),
-                   ("documento", r"carta d'identit|passaporto|patente|permesso"), ("abbonamento", r"abbonament|rinnovo"),
-                   ("tassa", r"f24|imu|tari|tassa|agenzia delle entrate"))
+# The words of deadlines, months and categories in every language: locales/<lang>/words.json («kairos.*», «months»).
+
+
+def _date_res() -> tuple[re.Pattern, ...]:
+    months = "|".join(re.escape(m) for names in i18n.word_tables("months").values() for m in names)
+    return (re.compile(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\b"),
+            re.compile(r"\b(\d{1,2})\s+(" + (months or r"(?!x)x") + r")\s+(\d{4})\b", re.I))
 
 
 def add_months(d: date, months: int) -> date:
@@ -54,17 +53,20 @@ def add_months(d: date, months: int) -> date:
 
 def guess_category(text: str) -> str:
     low = (text or "").lower()
-    return next((c for c, rx in _CATEGORY_WORDS if re.search(rx, low)), "altro")
+    for cat in CATEGORIES:
+        if re.search(i18n.words_pattern(f"kairos.category_re.{cat}", whole=False), low):
+            return cat
+    return "other"
 
 
 def find_due(text: str, today: date) -> date | None:
     """The first future date in a text that talks about a deadline (deterministic; None when unsure)."""
-    if not _DUE_WORDS.search(text or ""):
+    if not re.search(i18n.words_pattern("kairos.due_re", whole=False), text or "", re.I):
         return None
-    for rx in _DATE_RES:
+    for rx in _date_res():
         for m in rx.finditer(text):
             d, mo, y = m.group(1), m.group(2), m.group(3)
-            mo = _IT_MONTHS.index(mo.lower()) + 1 if not mo.isdigit() else int(mo)
+            mo = i18n.month_number(mo) if not mo.isdigit() else int(mo)
             y = int(y) + (2000 if len(y) == 2 else 0)
             try:
                 when = date(y, mo, int(d))
@@ -102,9 +104,9 @@ class Deadlines:
     # ── reading ─────────────────────────────────────────────────────────────
     def view(self, d: dict) -> dict:
         due = date.fromisoformat(d["due"])
-        label, lead, advice = CATEGORIES.get(d.get("category") or "altro", CATEGORIES["altro"])
-        return {**d, "category_label": label, "in_days": (due - self.today()).days,
-                "advice": d.get("advice") or advice,
+        label, lead, advice = CATEGORIES.get(d.get("category") or "other", CATEGORIES["other"])
+        return {**d, "category_label": tr(label), "in_days": (due - self.today()).days,
+                "advice": d.get("advice") or (tr(advice) if advice else ""),
                 "lead_days": d.get("lead_days") if d.get("lead_days") is not None else lead}
 
     def list(self, status: str = "open", days: int | None = None, category: str = "") -> list[dict]:
@@ -140,7 +142,7 @@ class Deadlines:
         except ValueError:
             raise Invalid(tr("due date YYYY-MM-DD")) from None
         category = body.get("category") or old.get("category") or guess_category(title)
-        category = category if category in CATEGORIES else "altro"
+        category = category if category in CATEGORIES else "other"
         recurrence = body.get("recurrence") or old.get("recurrence") or "none"
         if recurrence not in RECURRENCES:
             raise Invalid(tr("recurrence: ") + ", ".join(RECURRENCES))
@@ -187,7 +189,7 @@ class Deadlines:
 
     def snooze(self, ref: str, days: int = 3) -> dict:
         d = self.find(ref)
-        # «Fra N giorni» = remind again then: the stage already notified must fire once more after the pause
+        # «In N days» = remind again then: the stage already notified must fire once more after the pause
         data = {**{k: v for k, v in d.items() if k != "id"}, "snoozed_until":
                 (self.today() + timedelta(days=max(1, int(days)))).isoformat(), "notified": {},
                 "updated_at": now_iso()}
@@ -270,10 +272,10 @@ class Deadlines:
                                              "_title": f"{d['title']} {when}", "target": "owner", "icon": "clock",
                                              "level": "warning" if stage == "today" else "info",
                                              "_message": d.get("advice") or "", "replaces": f"kairos.{d['id']}",
-                                             "_actions": [{"id": "fatto", "label": tr("Done"), "style": "primary",
+                                             "_actions": [{"id": "done", "label": tr("Done"), "style": "primary",
                                                            "service": "kairos", "path": f"/api/deadlines/{d['id']}/done",
                                                            "body": {}, "resolves": True},
-                                                          {"id": "dopo", "label": tr("In 3 days"), "service": "kairos",
+                                                          {"id": "later", "label": tr("In 3 days"), "service": "kairos",
                                                            "path": f"/api/deadlines/{d['id']}/snooze",
                                                            "body": {"days": 3}}]}})
             raw = self.store.data("deadline", d["id"]) or {}

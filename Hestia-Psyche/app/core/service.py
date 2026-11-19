@@ -1,4 +1,4 @@
-"""Psyche — how the owner feels over time («Umore», dossier docs/work/2026-10-30-mood-diary).
+"""Psyche — how the owner feels over time («Mood», dossier docs/work/2026-10-30-mood-diary).
 
 A check-in is one row ``mood``: mood 1–5 (required), energy and stress 1–5 (optional), labels and causes from a
 closed vocabulary, a note, and — when it came from chat — the owner's own words (``quote``). Rows come from a tap
@@ -16,14 +16,17 @@ from typing import Any, Callable
 from zoneinfo import ZoneInfo
 
 from hestia_common.module_kit import Invalid, NotFound, new_id, now_iso, parse_dt
+from hestia_common import i18n
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_psyche.service")
 
 KIND = "mood"
-LABELS = ("stanco", "carico", "sereno", "contento", "motivato", "annoiato", "nervoso", "ansioso", "triste", "giù",
-          "arrabbiato", "malato")
-CAUSES = ("lavoro", "sonno", "persone", "salute", "sport", "soldi", "casa", "tempo libero", "meteo")
+LABELS = ("tired", "energized", "calm", "happy", "motivated", "bored", "nervous", "anxious", "sad", "down",
+          "angry", "ill")
+CAUSES = ("work", "sleep", "people", "health", "sport", "money", "home", "free_time", "weather")
+# What a person reads for each id (through tr); the owner's own words for them live in words.json («mood.label.<id>»).
+NAMES = {**{k: f"mood::{k}" for k in LABELS}, "free_time": "mood::free time"}
 SOURCES = ("chat", "tap", "webui", "telegram", "external", "checkin")
 MOOD_WORDS = {1: "mood::very low", 2: "mood::low", 3: "mood::so-so", 4: "mood::good", 5: "mood::great"}   # shown through tr
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
@@ -45,17 +48,24 @@ def _level(value: Any, field: str, required: bool = False) -> int | None:
     return n
 
 
-def _vocab(values: Any, allowed: tuple[str, ...]) -> list[str]:
-    """Keep only words of the vocabulary (case and «giu/giù» tolerant), in order, no duplicates."""
+def _vocab(values: Any, allowed: tuple[str, ...], words: str) -> list[str]:
+    """Keep only ids of the vocabulary, in order, no duplicates; the owner's words for them in any language
+    (a word of «mood.label.tired» → tired) count too."""
     if isinstance(values, str):
         values = [v for v in values.replace(";", ",").split(",")]
+    known = {**i18n.word_map(words), **{a: a for a in allowed}}
     out: list[str] = []
-    norm = {a.replace("ù", "u"): a for a in allowed}
     for v in values or []:
-        key = str(v or "").strip().lower().replace("ù", "u")
-        if key in norm and norm[key] not in out:
-            out.append(norm[key])
+        key = str(v or "").strip().lower()
+        ident = known.get(key) or known.get(key.replace("_", " ")) or ""
+        if ident in allowed and ident not in out:
+            out.append(ident)
     return out
+
+
+def name(ident: str) -> str:
+    """The text a person reads for a label or a cause id."""
+    return tr(NAMES.get(ident, f"mood::{ident}"))
 
 
 def mood_word(level: int | float | None) -> str:
@@ -86,9 +96,9 @@ class Psyche:
             else:
                 d.setdefault(f, None)
         if "labels" in body or not old:
-            d["labels"] = _vocab(body.get("labels"), LABELS)
+            d["labels"] = _vocab(body.get("labels"), LABELS, "mood.label")
         if "causes" in body or not old:
-            d["causes"] = _vocab(body.get("causes"), CAUSES)
+            d["causes"] = _vocab(body.get("causes"), CAUSES, "mood.cause")
         if "note" in body or not old:
             d["note"] = str(body.get("note") or "").strip()[:NOTE_MAX]
         if "quote" in body or not old:
@@ -108,9 +118,9 @@ class Psyche:
         if not value:
             return self.today()
         text = str(value).strip().lower()
-        if text in ("oggi", "today"):
+        if text in ("today", *i18n.words("day.today")):
             return self.today()
-        if text in ("ieri", "yesterday"):
+        if text in ("yesterday", *i18n.words("day.yesterday")):
             return self.today() - timedelta(days=1)
         try:
             d = date.fromisoformat(text[:10])
@@ -153,9 +163,9 @@ class Psyche:
             if age <= timedelta(minutes=merge):
                 quote = " · ".join(q for q in (last.get("quote"), str(body.get("quote") or "").strip()) if q)
                 merged = {**body, "labels": list(dict.fromkeys((last.get("labels") or [])
-                                                               + _vocab(body.get("labels"), LABELS))),
+                                                               + _vocab(body.get("labels"), LABELS, "mood.label"))),
                           "causes": list(dict.fromkeys((last.get("causes") or [])
-                                                       + _vocab(body.get("causes"), CAUSES))),
+                                                       + _vocab(body.get("causes"), CAUSES, "mood.cause"))),
                           "quote": quote[-QUOTE_MAX:]}
                 for f in ("energy", "stress"):
                     if merged.get(f) in (None, ""):
@@ -283,18 +293,18 @@ class Psyche:
                 out["weekdays"] = {WEEKDAYS[k]: round(v, 2) for k, v in sorted(wd.items())}
         labels = Counter(l for d in recent for l in d["labels"])
         if labels:
-            top = [f"{l} ({n})" for l, n in labels.most_common(3)]
+            top = [f"{name(l)} ({n})" for l, n in labels.most_common(3)]
             s.append(tr("The most frequent words: ") + ", ".join(top) + ".")
         bad_causes = Counter(c for d in recent if d["mood"] <= 2 for c in d["causes"])
         if bad_causes:
             c, n = bad_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("On bad days «{0}» comes up often ({1} times).", c, n))
+                s.append(tr("On bad days «{0}» comes up often ({1} times).", name(c), n))
         good_causes = Counter(c for d in recent if d["mood"] >= 4 for c in d["causes"])
         if good_causes:
             c, n = good_causes.most_common(1)[0]
             if n >= 2:
-                s.append(tr("On good days there is often «{0}» ({1} times).", c, n))
+                s.append(tr("On good days there is often «{0}» ({1} times).", name(c), n))
         out["labels"] = dict(labels.most_common(8))
         return out
 
@@ -351,7 +361,7 @@ class Psyche:
         s = self.summary(rows)
         done = []
         if s:
-            extra = ", ".join(s["labels"][:3])
+            extra = ", ".join(name(x) for x in s["labels"][:3])
             done.append({"text": tr("Mood {0}/5 · {1}", s['mood'], s['mood_word']) + (f" · {extra}" if extra else ""),
                          "tone": "success" if s["mood"] >= 4 else "warning" if s["mood"] <= 2 else ""})
         recent = self.days(14, day)

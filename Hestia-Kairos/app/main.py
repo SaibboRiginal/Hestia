@@ -1,4 +1,4 @@
-"""Hestia-Kairos — deadlines with advice («Scadenze», port 19028, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 B7).
+"""Hestia-Kairos — deadlines with advice («Deadlines», port 19028, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 B7).
 
 Data in Archive (``/api/deadlines-store``), each open deadline in the calendar (agenda events), mails by push from
 Iris (subscription ``kairos:mail``: only proposals the owner confirms), notices through Hermes, the daily check in
@@ -11,6 +11,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body
+from hestia_common import i18n
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 try:
@@ -35,8 +36,7 @@ API = "/api/deadlines"
 DOMAIN = "deadlines"
 MAIL_KEY = "mail"
 ADVICE_USE = "kairos.advice"
-DEFAULT_MAIL_WORDS = ["scadenza", "scade", "bolletta", "fattura", "rinnovo", "bollo", "revisione", "polizza",
-                      "pagamento"]
+DEFAULT_MAIL_WORDS = list(i18n.words("kairos.mail"))   # every language: locales/<lang>/words.json
 
 kit = ModuleKit("kairos", port=19028, api=API, domain=DOMAIN, title="Deadlines", store="deadlines-store",
                 when_to_use="deadlines: bills, insurance, car tax, car inspection, service, documents, subscriptions",
@@ -271,7 +271,7 @@ kit.tools([
 ], prefix="deadlines_")
 
 transfer = Transfer("kairos", kit.hub, sections=[
-    StoreSection("scadenze", "Deadlines", kit.store, ["deadline"], icon="clock", title=lambda r: r["data"].get("title", "")),
+    StoreSection("deadlines", "Deadlines", kit.store, ["deadline"], icon="clock", title=lambda r: r["data"].get("title", "")),
 ])
 app.include_router(transfer.router())
 kit.caps.update({**recap.capabilities(), **llm_capabilities([

@@ -76,5 +76,346 @@
  ],
  "token_sample": [
   "La volpe marrone veloce salta sopra il cane pigro."
+ ],
+ "mood.rules": {
+  "lexicon": [
+   [
+    "stanc[oa] mort[oa]|distrutt[oa]|esaust[oa]|sfinit[oa]|a pezzi|cott[oa]|spompat[oa]|stanchissim[oa]",
+    "tired",
+    2,
+    1,
+    null
+   ],
+   [
+    "stanc[oa]|assonnat[oa]|senza energi[ae]|scaric[oa]",
+    "tired",
+    3,
+    2,
+    null
+   ],
+   [
+    "carichissim[oa]|gasatissim[oa]|pien[oa] di energia",
+    "energized",
+    5,
+    5,
+    null
+   ],
+   [
+    "caric[oa]|gasat[oa]|in forma|spacco",
+    "energized",
+    4,
+    5,
+    null
+   ],
+   [
+    "seren[oa]|tranquill[oa]|rilassat[oa]|in pace",
+    "calm",
+    4,
+    null,
+    1
+   ],
+   [
+    "felicissim[oa]|alla grande|benissimo|al settimo cielo|da dio",
+    "happy",
+    5,
+    null,
+    null
+   ],
+   [
+    "felice|content[oa]|allegr[oa]|di buon umore|soddisfatt[oa]|bene",
+    "happy",
+    4,
+    null,
+    null
+   ],
+   [
+    "motivat[oa]|carico di voglia|ispirat[oa]",
+    "motivated",
+    4,
+    4,
+    null
+   ],
+   [
+    "annoiat[oa]|apatic[oa]",
+    "bored",
+    3,
+    2,
+    null
+   ],
+   [
+    "nervos[oa]|irritat[oa]|agitat[oa]|teso|tesa|sotto pressione",
+    "nervous",
+    2,
+    null,
+    4
+   ],
+   [
+    "ansios[oa]|in ansia|preoccupat[oa]|stressat[oa]|stressatissim[oa]|in panico",
+    "anxious",
+    2,
+    null,
+    5
+   ],
+   [
+    "triste|depress[oa]|abbattut[oa]|malinconic[oa]|giù di morale",
+    "sad",
+    2,
+    null,
+    null
+   ],
+   [
+    "malissimo|uno schifo|di merda|a terra|uno straccio",
+    "down",
+    1,
+    null,
+    null
+   ],
+   [
+    "giù|giu|demoralizzat[oa]|di cattivo umore|scoraggiat[oa]|male",
+    "down",
+    2,
+    null,
+    null
+   ],
+   [
+    "arrabbiat[oa]|incazzat[oa]|furios[oa]|furibond[oa]",
+    "angry",
+    2,
+    null,
+    4
+   ],
+   [
+    "malat[oa]|influenzat[oa]|raffreddat[oa]|con la febbre|ho la febbre|ho mal di testa|ho l'influenza",
+    "ill",
+    2,
+    2,
+    null
+   ],
+   [
+    "così così|cosi cosi|insomma|normale",
+    null,
+    3,
+    null,
+    null
+   ]
+  ],
+  "day": "\\b(?:che |una )?giornata (pesante|dura|storta|no|di merda|schifosa|orribile|infinita|ottima|fantastica|splendida|bellissima|top|perfetta|tranquilla|leggera)\\b",
+  "day_levels": {
+   "pesante": 2,
+   "dura": 2,
+   "storta": 2,
+   "no": 2,
+   "di merda": 1,
+   "schifosa": 1,
+   "orribile": 1,
+   "infinita": 2,
+   "ottima": 5,
+   "fantastica": 5,
+   "splendida": 5,
+   "bellissima": 5,
+   "top": 5,
+   "perfetta": 5,
+   "tranquilla": 4,
+   "leggera": 4
+  },
+  "day_tired": [
+   "pesante",
+   "dura",
+   "infinita"
+  ],
+  "needs_verb": [
+   "bene",
+   "male",
+   "benissimo",
+   "malissimo",
+   "normale",
+   "insomma",
+   "così così",
+   "cosi cosi",
+   "teso",
+   "tesa",
+   "a terra",
+   "da dio",
+   "cotto",
+   "cotta",
+   "giu"
+  ],
+  "first_person": "\\b(sono|son|mi sento|sto|mi sono|mi trovo|oggi|stamattina|stasera|stanotte|ultimamente|in questi giorni|da qualche giorno|che giornata|giornata|spacco|ho (?:la febbre|mal di \\w+|l'influenza))\\b",
+  "verb_before": "\\b(sto|mi sento|sono|son|mi sono sentit[oa])\\s+(?:proprio\\s+|davvero\\s+|molto\\s+|un po'?\\s+|abbastanza\\s+|così\\s+|troppo\\s+)?$",
+  "own_verb": "\\b(sono|mi sento|sto)\\b",
+  "third_person": "\\b(è|e'|sei|siamo|siete|era|erano|sembra|sembri)\\b",
+  "not_now": "^\\s*(perch[eé]|come mai|se|quando|anche se|nel caso|qualora|chi|cosa)\\b|\\b(ieri|l'altro ieri|la settimana scorsa|ero|fossi|sarei|sarò|sarai)\\b",
+  "negation": "\\b(non|mai|né|nemmeno|neanche|per niente)\\s+(?:\\w+\\s+){0,2}$",
+  "negated_good": [
+   "bene",
+   "benissimo",
+   "in forma",
+   "alla grande"
+  ],
+  "split": ",|\\bma\\b|\\bperò\\b|\\be poi\\b",
+  "continue_with": "sono ",
+  "undo": "\\bnon (?:lo |l')?(?:segnare|segnarlo|registrare|registrarlo|salvare|salvarlo|scriverlo)\\b|\\btogli(?:lo)? (?:l'umore|dall'umore|quello che ho detto)\\b|\\bcancella (?:l'umore|l'ultimo umore)\\b|\\bnon (?:segnare|registrare) l'umore\\b|\\bnon è vero,? (?:sto bene|non sono)\\b"
+ },
+ "mood.label.tired": [
+  "stanco",
+  "stanca"
+ ],
+ "mood.label.energized": [
+  "carico",
+  "carica"
+ ],
+ "mood.label.calm": [
+  "sereno",
+  "serena"
+ ],
+ "mood.label.happy": [
+  "contento",
+  "contenta",
+  "felice"
+ ],
+ "mood.label.motivated": [
+  "motivato",
+  "motivata"
+ ],
+ "mood.label.bored": [
+  "annoiato",
+  "annoiata"
+ ],
+ "mood.label.nervous": [
+  "nervoso",
+  "nervosa"
+ ],
+ "mood.label.anxious": [
+  "ansioso",
+  "ansiosa"
+ ],
+ "mood.label.sad": [
+  "triste"
+ ],
+ "mood.label.down": [
+  "giù",
+  "giu"
+ ],
+ "mood.label.angry": [
+  "arrabbiato",
+  "arrabbiata"
+ ],
+ "mood.label.ill": [
+  "malato",
+  "malata"
+ ],
+ "mood.cause.work": [
+  "lavoro"
+ ],
+ "mood.cause.sleep": [
+  "sonno"
+ ],
+ "mood.cause.people": [
+  "persone"
+ ],
+ "mood.cause.health": [
+  "salute"
+ ],
+ "mood.cause.sport": [
+  "sport"
+ ],
+ "mood.cause.money": [
+  "soldi"
+ ],
+ "mood.cause.home": [
+  "casa"
+ ],
+ "mood.cause.free_time": [
+  "tempo libero"
+ ],
+ "mood.cause.weather": [
+  "meteo",
+  "tempo"
+ ],
+ "day.today": [
+  "oggi"
+ ],
+ "day.yesterday": [
+  "ieri"
+ ],
+ "months": [
+  "gennaio",
+  "febbraio",
+  "marzo",
+  "aprile",
+  "maggio",
+  "giugno",
+  "luglio",
+  "agosto",
+  "settembre",
+  "ottobre",
+  "novembre",
+  "dicembre"
+ ],
+ "kairos.due_re": [
+  "scaden",
+  "entro il",
+  "da pagare",
+  "rinnov",
+  "revision",
+  "bollo",
+  "fattura",
+  "bolletta",
+  "pagamento entro"
+ ],
+ "kairos.mail": [
+  "scadenza",
+  "scade",
+  "bolletta",
+  "fattura",
+  "rinnovo",
+  "bollo",
+  "revisione",
+  "polizza",
+  "pagamento"
+ ],
+ "kairos.category_re.bill": [
+  "bollett",
+  "luce",
+  "gas",
+  "acqua",
+  "energia",
+  "enel",
+  "fattura"
+ ],
+ "kairos.category_re.insurance": [
+  "assicura",
+  "polizza",
+  "rca"
+ ],
+ "kairos.category_re.car_tax": [
+  "bollo"
+ ],
+ "kairos.category_re.inspection": [
+  "revision"
+ ],
+ "kairos.category_re.service": [
+  "tagliand",
+  "manutenzion"
+ ],
+ "kairos.category_re.document": [
+  "carta d'identit",
+  "passaporto",
+  "patente",
+  "permesso"
+ ],
+ "kairos.category_re.subscription": [
+  "abbonament",
+  "rinnovo"
+ ],
+ "kairos.category_re.tax": [
+  "f24",
+  "imu",
+  "tari",
+  "tassa",
+  "agenzia delle entrate"
+ ],
+ "people.anniversary": [
+  "anniversario"
  ]
 }

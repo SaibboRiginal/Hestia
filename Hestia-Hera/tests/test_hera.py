@@ -33,7 +33,7 @@ def test_parse_day_forms():
 
 def test_card_dates_go_to_calendar(hp):
     people, hub = hp
-    p = people.save({"name": "Anna", "relation": "amico", "birthday": "14/02", "likes": "libri, tè"})
+    p = people.save({"name": "Anna", "relation": "friend", "birthday": "14/02", "likes": "libri, tè"})
     assert p["likes"] == ["libri", "tè"] and p["dates"][0]["kind"] == "birthday"
     assert ("chronos", "POST", "api/special") in hub.calls
     people.gift_idea("anna", "Un romanzo di Calvino")
@@ -45,7 +45,7 @@ def test_card_dates_go_to_calendar(hp):
 
 def test_contact_due_and_daily_notice(hp):
     people, hub = hp
-    p = people.save({"name": "Nonna", "relation": "famiglia", "contact_every_days": 7})
+    p = people.save({"name": "Nonna", "relation": "family", "contact_every_days": 7})
     people.contact(p["id"], when=(people.today() - timedelta(days=8)).isoformat())
     assert people.list()[0]["contact_due_in"] == -1
     assert people.daily()["due"] == 1 and ("hermes", "POST", f"hera-contact-{p['id']}") in hub.calls

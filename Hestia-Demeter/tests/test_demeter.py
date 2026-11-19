@@ -44,8 +44,8 @@ def test_meals_diet_and_estimate(nf):
     assert food.diet()["rules"] == ["poco zucchero", "verdura a ogni pasto"] and "changed" in events
     with pytest.raises(Invalid):
         food.set_diet({"kcal": 100})
-    a = food.add_meal("Pasta al pomodoro", slot="pranzo")
-    food.add_meal("Yogurt", slot="spuntino", kcal=120, protein=10)
+    a = food.add_meal("Pasta al pomodoro", slot="lunch")
+    food.add_meal("Yogurt", slot="snack", kcal=120, protein=10)
     assert food.day_summary()["unknown"] == 1
     est = food.estimate(a["id"])
     assert est["kcal"] == 640 and est["estimated"] is True and ("oracle", "POST", "demeter.estimate") in hub.calls

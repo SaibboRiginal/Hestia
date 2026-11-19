@@ -61,6 +61,42 @@ def words(name: str, lang: str | None = None) -> tuple[str, ...]:
     return tuple(dict.fromkeys(out))
 
 
+def word_tables(name: str) -> dict[str, Any]:
+    """The structured entry *name* of ``words.json`` per language (``{lang: value}``, languages without it left out):
+    for a parser that needs more than a list of words (a lexicon, a table of levels, a set of rules)."""
+    out: dict[str, Any] = {}
+    for code in languages():
+        value = catalog("words", code).get(str(name or ""))
+        if value not in (None, "", [], {}):
+            out[code] = value
+    return out
+
+
+def word_map(prefix: str) -> dict[str, str]:
+    """``{word: id}`` from every list ``<prefix>.<id>`` of every language (``word_map("mood.label")`` →
+    {"stanco": "tired", "tired": "tired", …}); the id itself is always a word of its own list."""
+    out: dict[str, str] = {}
+    lead = f"{prefix}."
+    for code in languages():
+        for key, value in catalog("words", code).items():
+            if key.startswith(lead) and isinstance(value, list):
+                ident = key[len(lead):]
+                out.setdefault(ident.lower(), ident)
+                for w in value:
+                    out.setdefault(str(w).strip().lower(), ident)
+    return out
+
+
+def month_number(word: str) -> int:
+    """1-12 for a month name of any language (``words.json`` «months»: twelve names, January first), else 0."""
+    low = str(word or "").strip().lower()
+    for names in word_tables("months").values():
+        for i, name in enumerate(names or [], 1):
+            if low and str(name).lower() == low:
+                return i
+    return 0
+
+
 def words_pattern(name: str, lang: str | None = None, *, whole: bool = True) -> str:
     """A regex alternation of the words of *name* (longest first, escaped; each word may itself be a regex when the
     list name ends in ``_re``)."""

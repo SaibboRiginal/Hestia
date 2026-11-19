@@ -1,4 +1,4 @@
-"""Demeter — nutrition («Alimentazione», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A5).
+"""Demeter — nutrition («Nutrition», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A5).
 
 The diet (daily kcal and protein targets, rules in plain words), the meals Marko logs (text; kcal and protein when they are
 known, otherwise an estimate the assistant writes later through Oracle use case ``demeter.estimate``, marked as
@@ -21,7 +21,7 @@ from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 
 logger = logging.getLogger("hestia_demeter.service")
 
-SLOTS = {"colazione": "Breakfast", "pranzo": "Lunch", "cena": "Dinner", "spuntino": "Snack"}
+SLOTS = {"breakfast": "Breakfast", "lunch": "Lunch", "dinner": "Dinner", "snack": "Snack"}
 TIMES = {"morning": "in the morning", "midday": "at lunch", "afternoon": "in the afternoon", "evening": "in the evening",
          "any": "whenever you like"}
 ESTIMATE_USE = "demeter.estimate"
@@ -29,7 +29,7 @@ ESTIMATE_USE = "demeter.estimate"
 
 def guess_slot(at: datetime) -> str:
     h = at.hour
-    return "colazione" if h < 11 else "pranzo" if h < 15 else "spuntino" if h < 18 else "cena"
+    return "breakfast" if h < 11 else "lunch" if h < 15 else "snack" if h < 18 else "dinner"
 
 
 def parse_estimate(text: str | None) -> dict | None:
@@ -227,7 +227,7 @@ class Nutrition:
         for s in self.supplements():
             n = {"id": f"supplement.{s['id']}", "title": s["name"] + (f" ({s['dose']})" if s.get("dose") else ""),
                  "kind": "slot", "per": "day", "count": 1, "time_of_day": s["time_of_day"], "days": s.get("days") or [],
-                 "tags": [f"supplement.{s['id']}"], "priority": "should", "link": "integratori",
+                 "tags": [f"supplement.{s['id']}"], "priority": "should", "link": "supplements",
                  "reason": tr("on a full stomach") if s.get("with_food") else ""}
             if s.get("training_days_only"):
                 n["with"] = {"tag": "workout", "relation": "same_day"}

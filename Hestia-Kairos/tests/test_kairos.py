@@ -40,7 +40,7 @@ def kd():
 def test_helpers():
     assert add_months(date(2026, 1, 31), 1) == date(2026, 2, 28)
     assert add_months(date(2026, 11, 15), 3) == date(2027, 2, 15)
-    assert guess_category("Polizza RCA auto") == "assicurazione"
+    assert guess_category("Polizza RCA auto") == "insurance"
     today = date(2026, 10, 1)
     assert find_due("La bolletta scade il 15/10/2026", today) == date(2026, 10, 15)
     assert find_due("Pagamento entro il 3 novembre 2026", today) == date(2026, 11, 3)
@@ -53,10 +53,10 @@ def test_save_calendar_and_recurring_done(kd):
     deadlines, hub, agenda = kd
     due = (deadlines.today() + timedelta(days=10)).isoformat()
     d = deadlines.save({"title": "Bollo auto", "due": due, "recurrence": "yearly", "amount": 180})
-    assert d["category"] == "bollo" and d["lead_days"] == 15 and ("show", f"kairos.{d['id']}") in agenda.calls
+    assert d["category"] == "car_tax" and d["lead_days"] == 15 and ("show", f"kairos.{d['id']}") in agenda.calls
     rolled = deadlines.done(d["id"])
     assert rolled["status"] == "open" and rolled["due"] == add_months(date.fromisoformat(due), 12).isoformat()
-    one = deadlines.save({"title": "Rinnovo passaporto", "due": due, "category": "documento"})
+    one = deadlines.save({"title": "Rinnovo passaporto", "due": due, "category": "document"})
     assert deadlines.done(one["id"])["status"] == "done" and ("done", f"kairos.{one['id']}") in agenda.calls
     with pytest.raises(Invalid):
         deadlines.save({"title": "X", "due": "domani"})
@@ -78,7 +78,7 @@ def test_mail_proposal_confirm_and_dedupe(kd):
 
 def test_daily_notices_once_per_stage(kd):
     deadlines, hub, _ = kd
-    d = deadlines.save({"title": "Tari", "due": (deadlines.today() + timedelta(days=3)).isoformat(), "category": "tassa"})
+    d = deadlines.save({"title": "Tari", "due": (deadlines.today() + timedelta(days=3)).isoformat(), "category": "tax"})
     assert deadlines.daily() == {"sent": 1}
     assert deadlines.daily() == {"sent": 0}
     deadlines.snooze(d["id"], 2)
@@ -89,7 +89,7 @@ def test_snooze_reminds_again_after_the_pause(kd):
     """Regression: «Fra 3 giorni» kept the stage marked as notified, so the reminder never came back."""
     deadlines, _, _ = kd
     real_today = deadlines.today()
-    d = deadlines.save({"title": "Bollo", "due": (real_today + timedelta(days=10)).isoformat(), "category": "bollo"})
+    d = deadlines.save({"title": "Bollo", "due": (real_today + timedelta(days=10)).isoformat(), "category": "car_tax"})
     assert deadlines.daily() == {"sent": 1}
     deadlines.snooze(d["id"], 3)
     assert deadlines.daily() == {"sent": 0}                      # still paused
@@ -108,7 +108,7 @@ def test_endpoints_and_tools(monkeypatch):
     c = TestClient(main.app)
     due = (date.today() + timedelta(days=40)).isoformat()
     did = c.post("/api/deadlines", json={"title": "Assicurazione casa", "due": due}).json()["id"]
-    assert c.get("/api/deadlines").json()["items"][0]["category"] == "assicurazione"
+    assert c.get("/api/deadlines").json()["items"][0]["category"] == "insurance"
     assert c.post("/api/deadlines/tools/done", json={"deadline": did}).json()["status"] == "done"
     assert c.post("/api/deadlines/tools/advice", json={"deadline": "Assicurazione"}).status_code in (200, 404)
     assert c.get("/api/deadlines/categories").json()["recurrences"][0] == "none"
