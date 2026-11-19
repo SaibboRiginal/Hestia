@@ -161,6 +161,7 @@ Proactive dispatch core — the only outbound messenger to the user's clients.
 - What a notification shows the owner (every module, 2026-11-19): a plain `_title` and text in his language, the
   area (`hestia_common.areas.module_label`) never the module name, no ids, no raw errors or log lines, no HTML code,
   no command to type: a decision is an `_actions` button. One notice per event (`dedupe_key`), one proposal per trouble.
+  Summaries built from stored notices (digest) apply the same rule to old rows.
 - Voice: a module that wants its notifications also as audio says so with its own setting `<module>.notifications.voice`
   (`hestia_common.reminders.voice_setting`) and the event flag `_voice`; Hermes sends the text first, then the audio
   made by Echo as an `update` (Telegram: voice message replying to it; WebUI inbox: «Ascolta»). Superseded → audio dropped.
