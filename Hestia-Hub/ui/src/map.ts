@@ -1,7 +1,7 @@
 /**
- * <hub-map> — "Mappa": every service registered on Hub (and Hub itself): online by heartbeat, node, version,
- * last heartbeat, topology tags, registry revision; "Verifica salute" also probes each health endpoint.
- * <hub-online-widget> — "Servizi online": n / total, the offline ones by name.
+ * <hub-map> — "Map": every service registered on Hub (and Hub itself): online by heartbeat, node, version,
+ * last heartbeat, topology tags, registry revision; "Check health" also probes each health endpoint.
+ * <hub-online-widget> — "Online services": n / total, the offline ones by name.
  * SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, locale, tr } from '@hestia/webui-sdk';
@@ -137,7 +137,7 @@ export class HubOnlineWidget extends HestiaElement {
     const d = this.data;
     const off = (d.services || []).filter((s: any) => !s.online).map((s: any) => s.name);
     const small = this.ctx?.size === 's';
-    return html`<div class="w" @click=${() => this.host.navigate('mappa')}>
+    return html`<div class="w" @click=${() => this.host.navigate('map')}>
       <span class="small muted">${tr("Services online")}</span>
       <div class="big">${d.online_count}<span class="muted" style="font-size:15px"> / ${d.services_count}</span></div>
       ${off.length ? html`<div class="row wrap">${(small ? off.slice(0, 2) : off.slice(0, 6)).map((n: string) => html`<hxk-badge tone="danger">${n}</hxk-badge>`)}

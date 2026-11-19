@@ -216,7 +216,7 @@ def run_daily(today: date | None = None) -> dict:
             hermes_client.publish_event("assistant", "special.today", s["key"], {
                 "_title": s["title"], "_message": tr("Today: <b>{0}</b>{1}.", s['title'], who), "_source": tr("Calendar"),
                 "_level": "success", "dedupe_key": f"special.today:{s['key']}:{today.isoformat()}",
-                "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
+                "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "events"}})
             moment = {"key": s["key"], "title": s["title"], "kind": s["kind"], "person": s.get("person"),
                       "person_id": s.get("person_id"), "date": today.isoformat()}
             _push_moment(moment)
@@ -230,7 +230,7 @@ def run_daily(today: date | None = None) -> dict:
             hermes_client.publish_event("assistant", "special.soon", s["key"], {
                 "_title": tr("In {0} days", s['in_days']), "_source": tr("Calendar"), "_level": "info",
                 "_message": tr("In {0} days: <b>{1}</b>{2} ({3}/{4}).", s['in_days'], s['title'], who, s['next'][8:10], s['next'][5:7]),
-                "dedupe_key": f"special.soon:{s['key']}:{s['next']}", "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "eventi"}})
+                "dedupe_key": f"special.soon:{s['key']}:{s['next']}", "replaces": f"special.{s['key']}", "_link": {"module": "chronos", "page": "events"}})
     logger.info("event=special_daily today=%d soon=%d", len(now), len(lead))
     return {"today": [s["key"] for s in now], "soon": [s["key"] for s in lead]}
 

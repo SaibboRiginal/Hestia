@@ -1,4 +1,4 @@
-"""Calliope — real documents («Documenti», Cindy 21, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5).
+"""Calliope — real documents («Documents», Cindy 21, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5).
 
 The assistant writes a small HTML draft; Calliope turns it into PDF, Word or Excel with one of three shared themes,
 opens the result again to check it (pages/sheets, the title, every «must contain» text), keeps the file in Archive
@@ -41,7 +41,7 @@ class Documents:
             raise Invalid(tr("format: pdf, docx or xlsx"))
         if len(html or "") > MAX_HTML:
             raise Invalid(tr("text too long"))
-        theme = theme if theme in THEMES else (self.get("calliope.tema", "moderno") or "moderno")
+        theme = theme if theme in THEMES else (self.get("calliope.theme", "modern") or "modern")
         must = [must_contain] if isinstance(must_contain, str) else list(must_contain or [])
         blocks = parse(html)
         if not blocks:

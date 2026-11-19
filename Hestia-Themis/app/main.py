@@ -59,13 +59,13 @@ registry.register(SELF_OWNER, list(PERSONAL.values()))
 app = FastAPI(title="Hestia-Themis", version=SERVICE_VERSION)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-# ── WebUI plugin (core module, Sistema section): Registro ────────────────────
+# ── WebUI plugin (core module, System section): Log ────────────────────
 UI_DIST = os.getenv("THEMIS_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 ui = PluginClient("themis", title="Settings log", icon="settings", color="gray", kind="core", dist=UI_DIST,
                   description="Who changed which setting, when and how: changes, proposals, undo.",
                   version=SERVICE_VERSION)
 ui.webui(entry="themis.js", api_prefix="/api/settings/",
-         pages=[page("registro", "Log", element="themis-log", icon="settings", order=160,
+         pages=[page("log", "Log", element="themis-log", icon="settings", order=160,
                      help="Every setting change and proposal: who (you, Athena, Oracle, a client, an external AI), when, from what to what. Undo the latest change; proposals wait for you.")])
 app.include_router(ui.router())
 app.include_router(transfer.router())   # /api/transfer/* (settings of every module)
@@ -156,7 +156,7 @@ def settings_modules():
 def settings_i18n(lang: str = ""):
     """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
     ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
-    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:lei|lui}`` in those texts
+    English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:her|his}`` in those texts
     (docs/work/2026-11-16-name-everywhere). Public through the WebUI: only the assistant's name, never the owner's."""
     from hestia_common import identity
     ident = _i18n.identity_now()
@@ -165,7 +165,7 @@ def settings_i18n(lang: str = ""):
     if code != _i18n.SOURCE:
         messages = {k: v for k, v in _i18n.catalog("messages", code).items() if isinstance(v, str) and v}
     return {"language": code, "messages": messages, "assistant": ident.get("assistant") or identity.DEFAULT_NAME,
-            "gender": ident.get("gender") or "lei"}
+            "gender": ident.get("gender") or "she"}
 
 
 # ── settings ─────────────────────────────────────────────────────────────────
@@ -217,7 +217,7 @@ def settings_history(key: str, scope: str = "system", scope_id: str = "", limit:
 def settings_history_all(limit: int = 50, offset: int = 0, module: str = "", actor: str = "", key: str = "",
                          sessions: bool = False):
     """Every setting change (all keys, newest first, paged): who, when, old → new, ``undoable``
-    (WebUI plugin page «Registro»). ``actor`` = comma list of user | oracle | athena | external (any external:<name>) | <client>…"""
+    (WebUI plugin page «Log»). ``actor`` = comma list of user | oracle | athena | external (any external:<name>) | <client>…"""
     return themis.history_all(limit=limit, offset=offset, module=module, actor=actor, key=key, sessions=sessions)
 
 
@@ -376,7 +376,7 @@ _REGISTRATION = {
                      # Assistant tools appear when the chat is about Hestia itself / its settings.
                      "module_tool_domains": ["system", "settings"],
                      # Owner of the "settings" tools: without it Oracle's domain gate dropped them, so «rispondimi
-                     # più diretto» became a memory instead of a proposal (bench with a real model, 2026-10-30).
+                     # more direct» became a memory instead of a proposal (bench with a real model, 2026-10-30).
                      "owns_tool_domains": ["settings"],
                      "settings": "/api/settings", "settings_register": "/api/settings/register",
                      "settings_revision": "/api/settings/revision"},

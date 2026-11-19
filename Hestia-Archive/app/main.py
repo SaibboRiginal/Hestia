@@ -257,7 +257,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "preferences_active",
                 "title": "Active preferences",
-                "telegram_group": "memoria",
+                "telegram_group": "memory",
                 "telegram": {"section": "Notes and preferences"},
                 "description": "Show the user's active preferences",
                 "method": "GET",
@@ -269,7 +269,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notifications_active",
                 "title": "Automatic alerts",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts", "label": "Automatic alerts"},
                 "description": "Show the active automatic notifications",
                 "method": "GET",
@@ -280,7 +280,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notices_recent",
                 "title": "Recent notices",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
                 "description": "Show the latest notices sent",
                 "method": "GET",
@@ -293,7 +293,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notification_off",
                 "title": "Turn off a notice",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
                 "description": "Turn off a notification by subscription_id",
                 "method": "PATCH",
@@ -317,7 +317,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "notification_on",
                 "title": "Turn a notice back on",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Automatic alerts"},
                 "description": "Turn a notification back on by subscription_id",
                 "method": "PATCH",
@@ -342,7 +342,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "calendar_subscribe",
                 "title": "Turn on calendar reminders",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Get automatic reminders for calendar events",
                 "method": "POST",
@@ -363,7 +363,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "calendar_unsubscribe",
                 "title": "Turn off calendar reminders",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Stop automatic calendar reminders",
                 "method": "PATCH",
@@ -377,7 +377,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "system_subscribe",
                 "title": "Turn on system alerts",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Get notifications about the services' status",
                 "method": "POST",
@@ -398,7 +398,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "system_unsubscribe",
                 "title": "Turn off system alerts",
-                "telegram_group": "notifiche",
+                "telegram_group": "notifications",
                 "telegram": {"section": "Reminders and alerts"},
                 "description": "Stop notifications about the services' status",
                 "method": "PATCH",
@@ -411,7 +411,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             {
                 "command": "archive_reconcile",
                 "title": "Reconcile archive",
-                "telegram_group": "sistema",
+                "telegram_group": "system",
                 "telegram": {"section": "Advanced"},
                 "description": "Run a reconciliation maintenance on Archive entity records",
                 "method": "POST",

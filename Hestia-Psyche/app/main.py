@@ -120,7 +120,7 @@ def checkin():
     if not ask:
         return {"sent": False, "reason": "already_logged"}
     sent = kit.hub.notify(reminder_event(module="psyche", domain=DOMAIN, key=ask["key"], title=tr("Mood"),
-                                         text=ask["text"], actions=ask["actions"], page="umore"))
+                                         text=ask["text"], actions=ask["actions"], page="mood"))
     return {"sent": sent}
 
 
@@ -256,11 +256,11 @@ kit.agenda_rules(lambda: [
 ])
 kit.on_warm(signals.changed)
 kit.webui(icon="smile", color="yellow", description="How you are over time: days, energy, trend.",
-          pages=[page("umore", "Mood", element="psyche-mood", icon="smile", order=240,
+          pages=[page("mood", "Mood", element="psyche-mood", icon="smile", order=240,
                       help="How you feel day by day. When you say how you are in chat («today I'm tired») the assistant records it by itself; here you see it, fix it or remove it.")],
-          widgets=[widget("umore", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
-                          open_page="umore", icon="smile")],
-          quick_actions=[quick_action("come-stai", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
+          widgets=[widget("mood", "Mood", element="psyche-widget", sizes=["s", "m"], size="s", auto=True,
+                          open_page="mood", icon="smile")],
+          quick_actions=[quick_action("how-are-you", "How are you?", "POST", f"{API}/tap", icon="smile", group="Mood",
                                       params={"mood": {"type": "int", "label": "Mood 1-5", "min": 1, "max": 5}},
                                       order=240)])
 kit.finish()

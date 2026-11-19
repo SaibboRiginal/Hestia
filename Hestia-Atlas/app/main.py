@@ -40,7 +40,7 @@ class FetchService(HestiaServiceBase):
                 {
                     "command": "fetch_page",
                     "title": "Read a web page",
-                    "telegram_group": "memoria",
+                    "telegram_group": "memory",
                     "telegram": {"section": "Web", "label": "Read a page"},
                     "description": "Fetches HTML by attaching to host Edge via CDP only",
                     "method": "POST",
@@ -52,7 +52,7 @@ class FetchService(HestiaServiceBase):
                 {
                     "command": "web_search",
                     "title": "Search the web",
-                    "telegram_group": "memoria",
+                    "telegram_group": "memory",
                     "telegram": {"section": "Web"},
                     "description": "Search via DuckDuckGo Instant Answer API",
                     "method": "GET",
@@ -303,7 +303,7 @@ _atlas_mcp_tools = [
         parameters={
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Recipe name (e.g. duckduckgo, pagina)"},
+                "name": {"type": "string", "description": "Recipe name (e.g. duckduckgo, page)"},
                 "params": {"type": "object", "description": "Recipe parameters (e.g. {\"q\": \"...\"})"},
             },
         },

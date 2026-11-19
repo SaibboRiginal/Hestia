@@ -406,7 +406,7 @@ def test_endpoints_and_manifest(monkeypatch):
     assert client.get("/api/voice/usage").json()["totals"]["calls"] == 1
     assert client.get("/api/voice/providers/options").json()["options"][1]["value"] == "uno"
     manifest = client.get("/api/ui/manifest").json()
-    assert manifest["kind"] == "core" and manifest["clients"]["webui"]["page"][0]["id"] == "voce"
+    assert manifest["kind"] == "core" and manifest["clients"]["webui"]["page"][0]["id"] == "voice"
     caps = main._registration()["capabilities"]
     assert caps["voice"]["api"] == "/api/voice"
 
@@ -580,7 +580,7 @@ def test_sample_says_the_chosen_name_and_gender():
     from app.core import lang
     assert lang.sample("it") == "Ciao, sono Hestia. Questa è la mia voce."
     assert lang.sample("ja").startswith("こんにちは、ヘスティアです")            # default name in its own script
-    leo = {"assistant": "Leo", "gender": "lui"}
+    leo = {"assistant": "Leo", "gender": "he"}
     assert lang.sample("pt", leo) == "Olá, eu sou o Leo. Esta é a minha voz."
     assert lang.sample("ja", leo).startswith("こんにちは、Leoです") and lang.sample("xx", leo).startswith("Ciao, sono Leo")
 

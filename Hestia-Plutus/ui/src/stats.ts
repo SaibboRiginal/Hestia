@@ -25,7 +25,7 @@ export class PlutusStats extends HestiaElement {
     const s = this.s;
     const unit = s?.currency === 'EUR' ? '€' : s?.currency || '';
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Statistics")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Statistics")}</h1></div>
       <div class="tabs">${[3, 6, 12, 24].map(n => html`<button class="tab" aria-pressed=${this.months === n} @click=${() => { this.months = n; this.s = undefined; this.load(); }}>${n} ${tr("months")}</button>`)}</div>
       ${s === undefined ? html`<hxk-state kind="loading"></hxk-state>` : s === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         <hxk-stat .items=${[{ label: tr('Average spending per month'), value: money(s.avg_spent, s.currency) },
@@ -37,7 +37,7 @@ export class PlutusStats extends HestiaElement {
         ${s.categories.length ? html`<div class="card col"><h2>${tr("By category")}</h2>
           <hxk-chart type="line" height="180" unit=${unit} .labels=${s.months.map((m: any) => m.label.split(' ')[0].slice(0, 3))}
             .series=${s.categories.slice(0, 6).map((c: any) => ({ name: c.label, values: s.months.map((m: any) => m.by_category[c.id] || 0) }))}></hxk-chart>
-          <div class="list">${s.categories.map((c: any) => html`<div class="li" @click=${() => this.host.navigate('movimenti', { categoria: c.id })}>
+          <div class="list">${s.categories.map((c: any) => html`<div class="li" @click=${() => this.host.navigate('transactions', { categoria: c.id })}>
             ${catDot(c)}<span class="grow truncate">${c.label}</span><span class="small muted tnum">${tr("average")} ${money(c.avg, s.currency)}</span>
             <span class="tnum amt">${money(c.total, s.currency)}</span></div>`)}</div></div>` : nothing}
         ${s.merchants.length ? html`<div class="card col"><h2>${tr("Merchants")}</h2>${s.merchants.map((m: any) => html`<div class="between small" style="padding:4px 0">
@@ -82,7 +82,7 @@ export class PlutusCategories extends HestiaElement {
     const cats = this.cats;
     const rules = this.rules.filter(r => !this.q || `${r.pattern} ${this.label(r.category)}`.toLowerCase().includes(this.q.toLowerCase()));
     return html`<div class="page">
-      <div class="head"><button class="link" @click=${() => this.host.navigate('panoramica')}>${tr('‹ Expenses')}</button><h1>${tr("Categories and rules")}</h1></div>
+      <div class="head"><button class="link" @click=${() => this.host.navigate('overview')}>${tr('‹ Expenses')}</button><h1>${tr("Categories and rules")}</h1></div>
       ${cats === undefined ? html`<hxk-state kind="loading"></hxk-state>` : cats === null ? html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>` : html`
         <div class="card col"><h2>${tr("Categories")}</h2>
           <div class="list">${cats.map(c => html`<div class="li" style="cursor:default;${c.archived ? 'opacity:.55' : ''}">${catDot(c)}

@@ -86,16 +86,16 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
         best = progression.fmt_kg(s["best"]) + (" kg" if s["metric"] == "best_e1rm" else "")
         out.append(signal(f"stall:{s['exercise_id']}", tr("{0} stuck for {1} sessions: {2} does not go past {3}", s['exercise'], s['exposures'], what, best), kind="trend", severity="attenzione",
                           metrics={"exposures": s["exposures"], "best": s["best"], "recent": s["recent"]},
-                          page=f"esercizi/{s['exercise_id']}"))
+                          page=f"exercises/{s['exercise_id']}"))
     low = low_checkins(h, today)
     if len(low) >= DELOAD_CHECKINS:
         out.append(signal("deload", tr("Low energy {0} times in 7 days: consider a deload week", len(low)),
-                          kind="trend", severity="attenzione", metrics={"low_checkins": len(low)}, page="allenamento"))
+                          kind="trend", severity="attenzione", metrics={"low_checkins": len(low)}, page="training"))
     missed = missed_streak(h, today)
     if len(missed) >= 2:
         out.append(signal("missed_streak", tr("{0} scheduled workouts skipped in a row (last {1})", len(missed), _fmt_day(missed[0])), kind="streak",
                           severity="alta" if len(missed) >= 4 else "attenzione", metrics={"missed": len(missed)},
-                          page="allenamento"))
+                          page="training"))
     seen = set()
     for pr in records.recent_prs(data, PR_DAYS, h.formula(), limit=20):
         if pr["exercise_id"] in seen:
@@ -104,13 +104,13 @@ def evaluate(h: "Hercules", today: date | None = None) -> tuple[list[dict], list
         out.append(signal(f"pr:{pr['exercise_id']}", tr("New record {0}: {1} {2}", pr['exercise'], pr['label'], progression.fmt_kg(pr['value'])), kind="milestone", severity="info", ttl_days=PR_DAYS,
                           metrics={"value": pr["value"], "previous": pr.get("previous") or 0},
                           period=(local_date(pr.get("date"), h.tz) or today).isoformat(),
-                          page=f"esercizi/{pr['exercise_id']}"))
+                          page=f"exercises/{pr['exercise_id']}"))
     for g in h.goals():
         p = g["progress"]
         if p["per"] == "week" and p["behind"] and p["days_left"] <= 2:
             out.append(signal("week_goal", (tr("Week goal behind: {0}/{1}, 1 day left", p['done'], p['times']) if p['days_left'] == 1 else tr("Week goal behind: {0}/{1}, {2} days left", p['done'], p['times'], p['days_left'])), kind="goal", severity="attenzione",
                               metrics={"done": p["done"], "times": p["times"], "days_left": p["days_left"]},
-                              period=iso_week(today), page="progressi"))
+                              period=iso_week(today), page="progress"))
             break
     return out, weekly_metrics(h, data, today)
 

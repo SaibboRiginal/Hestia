@@ -139,7 +139,7 @@ Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`)
 `app/ui_api.py` declares the plugin and serves its data; `ui/src/` is the Lit bundle (built with the shared SDK in
 the Node stage of the Dockerfile; `ui/dist/` is git-ignored). The image keeps the bundle in `/ui/dist`
 (`SCOUT_UI_DIST`), outside `/code`, because compose mounts `Hestia-Scout/app` over `/code`.
-- Pages: **Case** (`/p/scout/case`: KPI, search, città, ordinamento, Da valutare/Preferite/Scartate/Tutte, prezzo
+- Pages: **Case** (`/p/scout/houses`: KPI, search, città, ordinamento, Da valutare/Preferite/Scartate/Tutte, prezzo
   max, locali, stato; cards with ☆ Preferita and Scarta + Annulla), **Annuncio** (`case/:key`: photos, facts,
   features, description, map link, "Apri annuncio", "Chiedi a Hestia", status correction), **Statistiche case**.
 - Widgets: *Case in numeri* and *Nuove case* (param città, giorni) on the automatic Home; *Case preferite*,

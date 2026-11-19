@@ -151,7 +151,7 @@ reads only those (links between areas, then details through `/api/module/context
 from hestia_common.signals_client import Signals, signal, metric, signals_rule, iso_week, last_weeks
 
 signals = Signals("hercules", "fitness", evaluate=svc.signals)   # svc.signals() -> (signals, metrics)
-signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progressi")
+signal("stall:panca", "Allenamento: panca ferma da 3 sedute", kind="trend", severity="attenzione", page="progress")
 metric("fitness.sessions", iso_week(day), 3, label="Allenamenti")
 signals.changed()     # after a write: debounced re-evaluation in background (push, never poll)
 signals.run()         # agenda job POST <api>/signals/run → evaluate + sync
@@ -295,7 +295,7 @@ from hestia_common.reminders import reminder_settings, reminder_event
 settings.declare([..., *reminder_settings("hercules", help="…")])   # <m>.reminder.enabled (off) + .max_per_week
 hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
     module="hercules", domain="fitness", key="hercules.reminder", title="Allenamento", text="…",
-    actions=[{"id": "skip", "label": "Salta oggi"}], page="allenamento"))
+    actions=[{"id": "skip", "label": "Salta oggi"}], page="training"))
 ```
 
 The body is a `service.action_required` event on domain `system` (where Hermes' owner subscription listens; the
@@ -326,8 +326,8 @@ from hestia_common.plugin_client import PluginClient, page, widget, quick_action
 
 ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/ui/dist")
 ui.webui(entry="scout.js", api_prefix="/api/ui/",
-         pages=[page("case", "Case", element="scout-listings", icon="home")],
-         widgets=[widget("nuove", "Nuove case", element="scout-new-widget", sizes=["m", "l"], auto=True)],
+         pages=[page("houses", "Case", element="scout-listings", icon="home")],
+         widgets=[widget("new", "Nuove case", element="scout-new-widget", sizes=["m", "l"], auto=True)],
          quick_actions=[quick_action("fetch", "Controlla email", "POST", "/api/ui/cycle", icon="refresh")])
 app.include_router(ui.router())                       # GET /api/ui/manifest · GET /ui/<client>/<file>
 registration["capabilities"].update(ui.capabilities(base_url))   # ui_manifest + ui_version

@@ -430,7 +430,7 @@ def _notify_changes(moved: list[dict], items: list[dict], before: dict, today: d
 def _deliver(key: str, title: str, text: str) -> bool:
     from hestia_common.reminders import reminder_event
     body = reminder_event(module=OWNER, domain="coach", key=key, title=title, text=text, actions=[],
-                          page="settimana")
+                          page="week")
     return hermes_client.publish_event(body["domain"], body["event_type"], body["entity_id"], body["payload"])
 
 

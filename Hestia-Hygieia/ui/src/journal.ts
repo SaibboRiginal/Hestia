@@ -41,7 +41,7 @@ export class HygieiaJournal extends HestiaElement {
   }
   private async drop(id: string) { await call(this.host, 'DELETE', `${API}/journal/${id}`); this.load(); }
   render() {
-    const back = html`<button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button>`;
+    const back = html`<button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button>`;
     if (!this.m) return html`<div class="page">${back}<hxk-state kind="loading"></hxk-state></div>`;
     const ms = this.metrics(), series = this.data?.series?.[this.area] || {};
     return html`<div class="page">

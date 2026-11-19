@@ -232,14 +232,14 @@ ui = PluginClient("oracle", title="Assistant", icon="brain", color="purple", kin
                   description="How the assistant works: requests, models used, tokens and costs, documents, memory.",
                   version=os.getenv("ORACLE_SERVICE_VERSION", "1.0.0"))
 ui.webui(entry="oracle.js", api_prefix="/api/ui/",
-         pages=[page("cervello", "Requests and models", element="oracle-brain", icon="brain", order=120,
+         pages=[page("brain", "Requests and models", element="oracle-brain", icon="brain", order=120,
                      help="What Oracle does: latest requests (domain, tools, model, times), Claude Code status; Usage tab (calls, tokens, cache and costs per module and conversation) and Models tab (providers, model chains, use chosen by each module)."),
-                page("documenti", "Documents", element="oracle-documents", icon="file", order=121,
+                page("documents", "Documents", element="oracle-documents", icon="file", order=121,
                      help="The files you shared with {assistant} (in chat or from here): search them like the chat does, add new ones, keep them forever or delete them."),
-                page("memoria", "Memory", element="oracle-memory", icon="bookmark", order=122,
+                page("memory", "Memory", element="oracle-memory", icon="bookmark", order=122,
                      help="What {assistant} remembers about you: learned in chat or noted by an external AI (Claude, ChatGPT) linked to {assistant}. Search, filter by origin, forget.")],
-         widgets=[widget("uso-oggi", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
-                         size="m", open_page="cervello", icon="chart",
+         widgets=[widget("usage-today", "Model usage today", element="oracle-usage-widget", sizes=["s", "m", "l"],
+                         size="m", open_page="brain", icon="chart",
                          help="Today's calls, tokens and cost, per model.")])
 app.include_router(ui.router())
 

@@ -653,7 +653,7 @@ def reminder_check():
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="hercules", domain="fitness", key="hercules.reminder", title=tr("Training"), text=text,
-            actions=actions, page="allenamento", voice=bool(settings.get("hercules.notifiche.voce", True))),
+            actions=actions, page="training", voice=bool(settings.get("hercules.notifiche.voce", True))),
             timeout=8)
         hercules.mark_reminder_sent()
         logger.info("event=hercules_reminder_sent template=%s hint=%s", tpl.get("id"), goal["hint"])
@@ -668,7 +668,7 @@ def _notify(msg: dict, title: str) -> bool:
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="hercules", domain="fitness", key=msg["key"], title=title, text=msg["text"],
-            actions=msg["actions"], page="allenamento"), timeout=8)
+            actions=msg["actions"], page="training"), timeout=8)
         return True
     except Exception as exc:
         logger.warning("[🔄] event=hercules_activity_notify_failed key=%s error=%s fallback=none", msg.get("key"), exc)
@@ -801,46 +801,46 @@ ui = PluginClient("hercules", title="Training", icon="dumbbell", color="red",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hercules.js", api_prefix=f"{API}/",
-    pages=[page("allenamento", "Training", element="hercules-today", icon="dumbbell", order=30,
+    pages=[page("training", "Training", element="hercules-today", icon="dumbbell", order=30,
                 help="Today's workout: check-in, start, log sets with the timer."),
-           page("schede", "Workout plans", element="hercules-templates", icon="list", order=31, parent="allenamento"),
-           page("schede/:id", "Workout plan", element="hercules-template", detail=True, parent="allenamento"),
-           page("esercizi", "Exercises", element="hercules-exercises", icon="search", order=32, parent="allenamento"),
-           page("esercizi/:id", "Exercise", element="hercules-exercise", detail=True, parent="allenamento"),
-           page("storico", "History", element="hercules-history", icon="history", order=33, parent="allenamento"),
-           page("storico/:id", "Training", element="hercules-session", detail=True, parent="allenamento"),
-           page("progressi", "Progress", element="hercules-progress", icon="chart", order=34, parent="allenamento"),
-           page("corpo", "Body", element="hercules-body", icon="scale", order=35, parent="allenamento")],
-    widgets=[widget("prossimo", "Next workout", element="hercules-next-widget", sizes=["m", "l"], auto=True,
-                    open_page="allenamento", icon="dumbbell"),
-             widget("settimana", "Training week", element="hercules-week-widget", sizes=["s", "m", "l"],
-                    auto=True, open_page="progressi", icon="calendar"),
-             widget("fatto", "Done today", element="hercules-quick-widget", sizes=["m", "l"], open_page="schede",
+           page("plans", "Workout plans", element="hercules-templates", icon="list", order=31, parent="training"),
+           page("plans/:id", "Workout plan", element="hercules-template", detail=True, parent="training"),
+           page("exercises", "Exercises", element="hercules-exercises", icon="search", order=32, parent="training"),
+           page("exercises/:id", "Exercise", element="hercules-exercise", detail=True, parent="training"),
+           page("history", "History", element="hercules-history", icon="history", order=33, parent="training"),
+           page("history/:id", "Training", element="hercules-session", detail=True, parent="training"),
+           page("progress", "Progress", element="hercules-progress", icon="chart", order=34, parent="training"),
+           page("body", "Body", element="hercules-body", icon="scale", order=35, parent="training")],
+    widgets=[widget("coming-up", "Next workout", element="hercules-next-widget", sizes=["m", "l"], auto=True,
+                    open_page="training", icon="dumbbell"),
+             widget("week", "Training week", element="hercules-week-widget", sizes=["s", "m", "l"],
+                    auto=True, open_page="progress", icon="calendar"),
+             widget("done", "Done today", element="hercules-quick-widget", sizes=["m", "l"], open_page="plans",
                     icon="check"),
-             widget("record", "Recent records", element="hercules-prs-widget", sizes=["m", "l"], open_page="progressi",
+             widget("record", "Recent records", element="hercules-prs-widget", sizes=["m", "l"], open_page="progress",
                     icon="trophy"),
-             widget("esercizio", "Exercise progress", element="hercules-exercise-widget", sizes=["m", "l", "xl"],
-                    params={"exercise": {"type": "string", "label": "Exercise (name)"}}, open_page="esercizi",
+             widget("exercise", "Exercise progress", element="hercules-exercise-widget", sizes=["m", "l", "xl"],
+                    params={"exercise": {"type": "string", "label": "Exercise (name)"}}, open_page="exercises",
                     icon="chart"),
-             widget("muscoli", "Volume per muscle", element="hercules-volume-widget", sizes=["m", "l"],
-                    params={"weeks": {"type": "int", "label": "Weeks", "default": 4}}, open_page="progressi",
+             widget("muscles", "Volume per muscle", element="hercules-volume-widget", sizes=["m", "l"],
+                    params={"weeks": {"type": "int", "label": "Weeks", "default": 4}}, open_page="progress",
                     icon="chart"),
-             widget("peso", "Body weight", element="hercules-weight-widget", sizes=["s", "m", "l"], open_page="corpo",
+             widget("weight", "Body weight", element="hercules-weight-widget", sizes=["s", "m", "l"], open_page="body",
                     icon="scale"),
              widget("live", "Workout in progress", element="hercules-live-widget", sizes=["m", "l"],
-                    open_page="allenamento", icon="timer")],
+                    open_page="training", icon="timer")],
     quick_actions=[
-        quick_action("fatto", "Mark done", "POST", f"{API}/quick/{{id}}", icon="check", group="Training",
+        quick_action("done", "Mark done", "POST", f"{API}/quick/{{id}}", icon="check", group="Training",
                      source=f"{API}/quick/templates", undo={"method": "DELETE", "path": f"{API}/quick/{{id}}"},
                      favorite=True, order=30),
-        quick_action("inizia", "Start today's workout", "POST", f"{API}/sessions/start-next", icon="play",
+        quick_action("start", "Start today's workout", "POST", f"{API}/sessions/start-next", icon="play",
                      group="Training", order=31),
-        quick_action("peso", "Log body weight", "POST", f"{API}/quick-bodyweight", icon="scale",
+        quick_action("weight", "Log body weight", "POST", f"{API}/quick-bodyweight", icon="scale",
                      group="Training", params={"peso": {"type": "float", "label": "Weight (kg)"}}, order=32),
-        quick_action("corsa", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
+        quick_action("run", "I went running", "POST", f"{API}/activities/quick-run", icon="run", group="Training",
                      params={"km": {"type": "float", "label": "Km (optional)"}},
                      undo={"method": "DELETE", "path": f"{API}/activities/quick-run"}, order=34),
-        quick_action("salta", "Skip today", "POST", f"{API}/days/skip", icon="skip", group="Training",
+        quick_action("skip", "Skip today", "POST", f"{API}/days/skip", icon="skip", group="Training",
                      undo={"method": "DELETE", "path": f"{API}/days/skip"}, order=33),
     ],
 )

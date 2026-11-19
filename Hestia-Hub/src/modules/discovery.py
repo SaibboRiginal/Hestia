@@ -166,8 +166,8 @@ def _normalize_clients(raw_clients: list | None) -> list[str]:
 def _mcp_commands_cache_invalidate(service_name: str | None = None) -> None:
     """Clear the MCP tool discovery cache (used on registry changes)."""
     if service_name:
-        keys_to_del = [k for k in _mcp_commands_cache if k.startswith(f"{service_name}:")]
-        for k in keys_to_del:
+        stale = [k for k in _mcp_commands_cache if k.startswith(f"{service_name}:")]
+        for k in stale:
             _mcp_commands_cache.pop(k, None)
     else:
         _mcp_commands_cache.clear()
@@ -331,7 +331,7 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
 
     - ``tool`` (MCP, client ``*``) and ``command`` (per client) come from the existing discovery.
     - ``page`` · ``widget`` · ``quick_action`` (+ ``bundle``) come from each module's UI manifest.
-    Offline modules keep their last manifest with ``online: false`` so clients can say "non raggiungibile".
+    Offline modules keep their last manifest with ``online: false`` so clients can say "not reachable".
     ``local_manifests`` = manifests served in-process (Hub's own plugin: Hub never registers with itself);
     always online, and they win over a registered service with the same name.
     """

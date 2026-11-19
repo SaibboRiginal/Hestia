@@ -10,7 +10,7 @@ using Hestia.WebUI.Services;
 /// connectors, ChatGPT). Like <c>/mcp</c> it is not under /api/webui (no WebUI login): metadata, registration, token
 /// and revoke go as they are through Hub to Hestia-MCP, with the public address this request came in on in
 /// <c>X-Hestia-Public-Base</c> (issuer, metadata URLs). <c>/oauth/authorize</c> never issues a code here: it parks the
-/// request on Hestia-MCP and sends the browser to the consent card on the Accessi AI page (<c>/p/mcp/accessi?oauth=…</c>),
+/// request on Hestia-MCP and sends the browser to the consent card on the Accessi AI page (<c>/p/mcp/accesses?oauth=…</c>),
 /// which sits behind the normal WebUI login. SPEC docs/work/2026-10-18-core-modules-and-external-mcp §B3.
 /// </summary>
 [ApiController]
@@ -134,7 +134,7 @@ public class OAuthDoorController : ControllerBase
         string Str(string key) => payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty(key, out var v)
             && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
         if (status < 400 && Str("status") == "consent")
-            return Redirect($"/p/mcp/accessi?oauth={Uri.EscapeDataString(Str("request_id"))}");
+            return Redirect($"/p/mcp/accesses?oauth={Uri.EscapeDataString(Str("request_id"))}");
         var redirect = Str("redirect");
         if (status < 400 && redirect.Length > 0)
             return Redirect(redirect);   // the client's registered redirect_uri, checked by Hestia-MCP

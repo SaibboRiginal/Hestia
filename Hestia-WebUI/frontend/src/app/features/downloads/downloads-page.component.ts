@@ -38,7 +38,7 @@ export function bytes(n: number): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <hx-page-header  [title]="'alt::Download' | tr"  [subtitle]="'Models and voices {assistant} downloads: progress, pause, retry, space' | tr">
-      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voce"  [title]="'Prepare the voice: it\\'s done from the Voice page' | tr"><span class="lbl">{{ "Voice" | tr }}</span></a>
+      <a hx-btn size="sm" variant="ghost" icon="volume" routerLink="/p/echo/voice"  [title]="'Prepare the voice: it\\'s done from the Voice page' | tr"><span class="lbl">{{ "Voice" | tr }}</span></a>
       <a hx-btn size="sm" variant="ghost" icon="brain" routerLink="/setup"  [title]="'Choose the brain' | tr"><span class="lbl">{{ "Choose the brain" | tr }}</span></a>
     </hx-page-header>
     <div class="body">

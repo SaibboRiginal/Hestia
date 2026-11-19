@@ -547,7 +547,7 @@ def alerts_run():
                         "path": f"{API}/products/{pid}/repurchase", "body": {}, "resolves": True}]
         try:
             _emit(f"selfcare.alert.{key}", "Self care", a["text"], actions, level=a.get("level") or "info",
-                  page=f"prodotti/{pid}")
+                  page=f"products/{pid}")
             hygieia.store.upsert("alert", key, {"sent": today.isoformat(), "type": a["type"], "product_id": pid})
             sent.append(a["key"])
         except Exception as exc:
@@ -581,28 +581,28 @@ ui = PluginClient("hygieia", title="Self care", icon="sparkle", color="pink",
                   version=SERVICE_VERSION)
 ui.webui(
     entry="hygieia.js", api_prefix=f"{API}/",
-    pages=[page("oggi", "Self care", element="hygieia-today", icon="sparkle", order=40,
+    pages=[page("today", "Self care", element="hygieia-today", icon="sparkle", order=40,
                 help="Today's routines: one tap to mark them done."),
-           page("routine", "Routine", element="hygieia-routines", icon="list", order=41, parent="oggi"),
-           page("routine/:id", "Routine", element="hygieia-routine", detail=True, parent="oggi"),
-           page("prodotti", "Products", element="hygieia-products", icon="drop", order=42, parent="oggi"),
-           page("prodotti/:id", "Product", element="hygieia-product", detail=True, parent="oggi"),
-           page("diario", "Diary", element="hygieia-journal", icon="edit", order=43, parent="oggi"),
-           page("statistiche", "Statistics and history", element="hygieia-stats", icon="chart", order=44, parent="oggi"),
-           page("spesa", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="oggi")],
-    widgets=[widget("oggi", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
-                    open_page="oggi", icon="sparkle"),
-             widget("prossima", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="oggi",
+           page("routine", "Routine", element="hygieia-routines", icon="list", order=41, parent="today"),
+           page("routine/:id", "Routine", element="hygieia-routine", detail=True, parent="today"),
+           page("products", "Products", element="hygieia-products", icon="drop", order=42, parent="today"),
+           page("products/:id", "Product", element="hygieia-product", detail=True, parent="today"),
+           page("diary", "Diary", element="hygieia-journal", icon="edit", order=43, parent="today"),
+           page("statistics", "Statistics and history", element="hygieia-stats", icon="chart", order=44, parent="today"),
+           page("shopping", "Shopping list", element="hygieia-shopping", icon="cart", order=45, parent="today")],
+    widgets=[widget("today", "Today's self care", element="hygieia-today-widget", sizes=["m", "l"], auto=True,
+                    open_page="today", icon="sparkle"),
+             widget("next", "Next routine", element="hygieia-next-widget", sizes=["s", "m"], open_page="today",
                     icon="clock"),
              widget("prodotti", "Expiring and to buy again", element="hygieia-alerts-widget", sizes=["m", "l"],
-                    open_page="spesa", icon="drop"),
-             widget("settimana", "Self care week", element="hygieia-week-widget", sizes=["s", "m", "l"],
-                    open_page="statistiche", icon="calendar")],
+                    open_page="shopping", icon="drop"),
+             widget("week", "Self care week", element="hygieia-week-widget", sizes=["s", "m", "l"],
+                    open_page="statistics", icon="calendar")],
     quick_actions=[
-        quick_action("fatta", "Routine done", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
+        quick_action("done", "Routine done", "POST", f"{API}/quick/routine/{{id}}", icon="check", group="Self care",
                      source=f"{API}/quick/routines", undo={"method": "DELETE", "path": f"{API}/quick/routine/{{id}}"},
                      favorite=True, order=40),
-        quick_action("uso", "Product used", "POST", f"{API}/quick/product/{{id}}", icon="drop", group="Self care",
+        quick_action("use", "Product used", "POST", f"{API}/quick/product/{{id}}", icon="drop", group="Self care",
                      source=f"{API}/quick/products", undo={"method": "DELETE", "path": f"{API}/quick/product/{{id}}"},
                      order=41),
     ],

@@ -17,7 +17,7 @@ export function assistantName(): string { return String(catalog().assistant || '
 export function named(text: string): string {
   const s = text == null ? '' : String(text);
   if (!s.includes('{assistant}') && !s.includes('{g:')) return s;
-  const he = catalog().gender === 'lui';
+  const he = catalog().gender === 'he';
   return s.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, a, b) => (he ? b : a)).split('{assistant}').join(assistantName());
 }
 

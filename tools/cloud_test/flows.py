@@ -811,11 +811,11 @@ def flow_mcp(ctx: dict) -> None:
 
 # ── WebUI in Chromium: pages with data, Home, notifications, chat ────────────
 
-PAGES = ["/home", "/p/hercules/allenamento", "/p/hercules/schede", "/p/hercules/storico", "/p/hercules/progressi",
-         "/p/hercules/corpo", "/p/hygieia/oggi", "/p/hygieia/routine", "/p/hygieia/prodotti", "/p/hygieia/statistiche",
-         "/p/hygieia/spesa", "/p/wardrobe/capi", "/p/wardrobe/outfit", "/p/wardrobe/cosa-mi-metto",
-         "/p/wardrobe/statistiche", "/p/wardrobe/liste", "/p/hermes/notifiche", "/p/hermes/consegne",
-         "/p/chronos/agenda", "/p/chronos/esecuzioni", "/p/mcp/accessi", "/p/themis/registro", "/settings"]
+PAGES = ["/home", "/p/hercules/training", "/p/hercules/plans", "/p/hercules/history", "/p/hercules/progress",
+         "/p/hercules/body", "/p/hygieia/today", "/p/hygieia/routine", "/p/hygieia/products", "/p/hygieia/statistics",
+         "/p/hygieia/shopping", "/p/wardrobe/items", "/p/wardrobe/outfit", "/p/wardrobe/what-to-wear",
+         "/p/wardrobe/statistics", "/p/wardrobe/lists", "/p/hermes/notifications", "/p/hermes/deliveries",
+         "/p/chronos/agenda", "/p/chronos/runs", "/p/mcp/accesses", "/p/themis/log", "/settings"]
 
 
 def browser():
@@ -907,7 +907,7 @@ def flow_webui(ctx: dict) -> None:
                     "_actions": [{"id": "skip", "label": "Salta", "service": "hygieia", "method": "POST",
                                   "path": f"/api/selfcare/routines/{rid}/skip", "body": {}}]}})
         page = br.new_page(viewport={"width": 1280, "height": 900})
-        page.goto(f"{WEBUI}/p/hermes/notifiche", wait_until="networkidle", timeout=60000)
+        page.goto(f"{WEBUI}/p/hermes/notifications", wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(2000)
         btn = page.get_by_text("Salta", exact=True).first
         need(btn.count(), "nessun bottone «Salta» nella pagina Notifiche")
@@ -1171,7 +1171,7 @@ def flow_shell(ctx: dict) -> None:
         at = datetime.now().isoformat(timespec="seconds")
         api("metis", "POST", "api/metis/usage", {"taps": [
             {"client": "webui", "kind": "tool", "ref": "deadlines_list", "label": "Scadenze", "at": at},
-            {"client": "webui", "kind": "page", "ref": "/p/kairos/scadenze", "label": "Scadenze", "at": at}]})
+            {"client": "webui", "kind": "page", "ref": "/p/kairos/deadlines", "label": "Scadenze", "at": at}]})
         a = api("metis", "GET", "api/metis/adesso", query={"client": "webui"})
         s = api("metis", "GET", "api/metis/scopri", query={"limit": 20})
         na, ns = len(a.get("items") or []), len(s.get("items") or [])
@@ -1214,9 +1214,9 @@ def flow_shell(ctx: dict) -> None:
         try:
             pg = br.new_page(viewport={"width": 1366, "height": 860})
             pg.on("pageerror", lambda e: js.append(str(e)[:160]))
-            for path in ("/home", "/scopri", "/sistema", "/chat", "/p/kairos/scadenze", "/p/hera/persone",
-                         "/p/demeter/oggi", "/p/calliope/documenti", "/p/aphrodite/aspetto", "/p/apollo/immagini",
-                         "/p/lares/casa"):
+            for path in ("/home", "/scopri", "/sistema", "/chat", "/p/kairos/deadlines", "/p/hera/people",
+                         "/p/demeter/today", "/p/calliope/documents", "/p/aphrodite/look", "/p/apollo/images",
+                         "/p/lares/home"):
                 pg.goto(WEBUI + path, wait_until="networkidle", timeout=60000)
                 pg.wait_for_timeout(1200)
                 errs = _errors_on(pg)

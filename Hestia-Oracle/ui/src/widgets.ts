@@ -28,7 +28,7 @@ export class OracleUsageWidget extends HestiaElement {
     const t = this.data.today || {};
     const rows: any[] = this.data.today_by_model || [];
     const size = this.ctx?.size || 'm';
-    return html`<div class="w" @click=${() => this.host.navigate('cervello')}>
+    return html`<div class="w" @click=${() => this.host.navigate('brain')}>
       <span class="small muted">${tr("Model usage today")}</span>
       <div class="big">${num(t.calls)} <span class="small muted" style="font-weight:400">${tr("calls")}</span></div>
       <div class="small muted">${num(t.input_tokens)} / ${num(t.output_tokens)} ${tr("token")}${t.cost_usd ? ` · ${cost(t.cost_usd)}` : ''}</div>

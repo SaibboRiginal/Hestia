@@ -147,7 +147,7 @@ def test_generate_voice_flag_reaches_the_chain(monkeypatch):
 def test_texts_she_writes_on_her_own_follow_the_language_setting(engine, monkeypatch):  # noqa: F811
     """Notifications, recaps and formatted results use the owner's language setting, never the data's language;
     the chat keeps following the language of the owner's last message (docs/work/2026-11-14-personal-language)."""
-    monkeypatch.setattr(prompt_config, "_identity", lambda: {"assistant": "Hestia", "gender": "lei",
+    monkeypatch.setattr(prompt_config, "_identity", lambda: {"assistant": "Hestia", "gender": "she",
                                                             "owner_name": "", "owner": "", "language": "en"})
     assert "Write in English" in prompt_config.prompt("module_voice_instruction")
     assert prompt_config.owner_language() == "en"

@@ -1,4 +1,4 @@
-"""Comandi page (WebUI plugin of this module): browse the tools the WebUI sees and run one with arguments.
+"""Commands page (WebUI plugin of this module): browse the tools the WebUI sees and run one with arguments.
 
 Same list and same rules as the internal ``/mcp`` for client ``webui`` (the MCPServer is reused, nothing is
 duplicated); the page reaches it through the WebUI plugin proxy, so it lives under this plugin's ``api_prefix``

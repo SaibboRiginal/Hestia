@@ -87,7 +87,7 @@ class ScoutWorker:
     def _publish_entity_event(self, entity_id: str, payload: dict) -> bool:
         """Publish entity.upserted to Hermes via Hub. Returns True on success."""
         # _link: the WebUI opens the listing in Scout's plugin page (several → the list page).
-        link = {"module": "scout", "page": f"case/{listing_key(str(entity_id))}", "list": "case"}
+        link = {"module": "scout", "page": f"houses/{listing_key(str(entity_id))}", "list": "case"}
         event_payload = {
             "event_type": "entity.upserted",
             "domain": self.target_domain,

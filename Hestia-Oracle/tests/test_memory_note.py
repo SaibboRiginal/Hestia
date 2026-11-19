@@ -150,4 +150,4 @@ class TestMemoryNoteApi:
     def test_manifest_has_memoria_page(self, main_mod):
         m = TestClient(main_mod.app).get("/api/ui/manifest").json()
         ids = {p["id"]: p for p in m["clients"]["webui"]["page"]}
-        assert ids["memoria"]["element"] == "oracle-memory" and ids["memoria"]["order"] == 122
+        assert ids["memory"]["element"] == "oracle-memory" and ids["memory"]["order"] == 122

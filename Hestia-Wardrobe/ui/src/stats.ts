@@ -46,7 +46,7 @@ export class WardrobeStats extends WardrobeElement {
       </div>
       ${s.gaps.length ? html`<div class="card col"><h3>${tr("What's missing")}</h3>${s.gaps.map((x: string) => html`<div class="row"><hxk-icon name="pin" size="14"></hxk-icon>${x}</div>`)}</div>` : nothing}
       <div class="card col"><div class="between"><h3>${tr("Forgotten")}</h3><span class="small muted">${plural(s.forgotten.length, 'garment', 'garments')}</span></div>
-        ${s.forgotten.length ? html`<div class="list">${s.forgotten.slice(0, 30).map((f: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + f.id)}>
+        ${s.forgotten.length ? html`<div class="list">${s.forgotten.slice(0, 30).map((f: any) => html`<div class="li" @click=${() => this.host.navigate('items/' + f.id)}>
             <span class="thumb">${img(this.host, f.photo, f.name)}</span><span class="grow truncate">${f.name}</span>
             <span class="small muted">${f.last_worn ? relDays(f.last_worn) : tr('never recorded')}</span></div>`)}</div>`
           : html`<div class="empty">${tr("Nothing forgotten.")}</div>`}</div>
@@ -54,8 +54,8 @@ export class WardrobeStats extends WardrobeElement {
         ${!u.has_marks ? html`<div class="empty">${tr("Mark «Worn» only when you want: with a few marks here appear the most used items and the cost per use.")}</div>` : html`
           ${u.per_month.values.some((v: number) => v) ? html`<hxk-chart type="bar" .labels=${u.per_month.labels.map((l: string) => l.slice(5) + '/' + l.slice(2, 4))} .series=${[{ name: tr('Marks'), values: u.per_month.values }]} height="140"></hxk-chart>` : nothing}
           <div class="grid" style="--min:260px">
-            <div class="col"><span class="small muted">${tr("Most worn")}</span>${u.most_worn.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}><span class="grow truncate">${p.name}</span><span class="small muted">${p.wears}×</span></div>`)}</div>
-            ${u.cost_per_wear.length ? html`<div class="col"><span class="small muted">${tr("Cost per use")}</span>${u.cost_per_wear.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('capi/' + p.id)}>
+            <div class="col"><span class="small muted">${tr("Most worn")}</span>${u.most_worn.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('items/' + p.id)}><span class="grow truncate">${p.name}</span><span class="small muted">${p.wears}×</span></div>`)}</div>
+            ${u.cost_per_wear.length ? html`<div class="col"><span class="small muted">${tr("Cost per use")}</span>${u.cost_per_wear.map((p: any) => html`<div class="li" @click=${() => this.host.navigate('items/' + p.id)}>
               <span class="grow truncate">${p.name}</span><span class="small muted">${money(p.cost_per_wear, t.currency)} · ${p.wears}×</span></div>`)}</div>` : nothing}
           </div>
           <span class="small muted">${plural(u.never_marked, 'garment', 'garments')} ${tr("never recorded: normal if you don't record every day.")}</span>`}

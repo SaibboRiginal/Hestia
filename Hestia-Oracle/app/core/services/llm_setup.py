@@ -630,7 +630,7 @@ def downloads():
             from hestia_common.module_kit import Hub
             hub = Hub(os.getenv("HUB_API_URL", "http://hestia_hub:19001/api"))
             _downloads = Downloads("oracle", state_path=Path(os.getenv("ORACLE_DATA_DIR", "data")) / "downloads.json",
-                                   hub=hub, page="cervello")
+                                   hub=hub, page="brain")
             _downloads.source("ollama", _run_pull, remove=_remove_model)
         return _downloads
 

@@ -60,7 +60,7 @@ Hephaestus ships its own inside view on the client plugin contract (`hestia_comm
   browser (commit graph, commit, files at any ref, branches, compare, tags, dossiers). **Copia per AI** (§B5): pick
   tasks (or the current one) → `GET /forge/tasks/export` markdown → clipboard (fallback/also `.md` download); the
   markdown comes from the forge_task / forge_tasks views and is never written to the repo. Badge: `GET /forge/counts`
-  field `review` (awaiting_review + proposed). Links: `/p/hephaestus/sviluppo?task=<id>` (short ids ok),
+  field `review` (awaiting_review + proposed). Links: `/p/hephaestus/development?task=<id>` (short ids ok),
   `?view=repo`. What the old WebUI controller added is sent by the plugin: actions `by=user`, new tasks
   `source=ui, requested_by=user` (the Forge defaults are the same).
   Panoramica shows the **Revisione automatica** card (Cindy 3, W7): verdict, issues by priority with file and

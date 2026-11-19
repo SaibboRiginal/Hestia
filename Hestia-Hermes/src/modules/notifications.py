@@ -763,7 +763,7 @@ class NotificationCenter:
         self.publish(message=message, event_type="assistant.pending_reminder", domain="assistant",
                      title=tr("To decide: {0}", len(due)), level="info", source="hermes",
                      replaces="hermes.pending_reminder",
-                     link={"module": "hermes", "page": "notifiche", "params": {"filter": "pending"}})
+                     link={"module": "hermes", "page": "notifications", "params": {"filter": "pending"}})
         logger.info("event=notification_pending_reminded count=%d", len(due))
         return {"reminded": len(due)}
 

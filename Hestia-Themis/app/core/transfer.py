@@ -50,7 +50,7 @@ class SettingsSection(Section):
 
     def subtitle(self, rec: dict) -> str:
         d = self.themis.registry.definition(rec.get("setting") or "") or {}
-        layer = {"system": "", "profile": "profilo", "client": f"client {rec.get('scope_id')}"}.get(rec.get("scope"), "")
+        layer = {"system": "", "profile": "profile", "client": f"client {rec.get('scope_id')}"}.get(rec.get("scope"), "")
         return " · ".join(x for x in (d.get("group"), layer) if x)
 
     def same(self, a: dict, b: dict) -> bool:
@@ -72,7 +72,7 @@ class SettingsSection(Section):
     def write(self, records: list[dict], deletes: list[dict], *, mode: str) -> None:
         for r in records:
             self.themis.set(r["setting"], r.get("value"), scope=r.get("scope"), scope_id=r.get("scope_id") or None,
-                            actor=ACTOR, reason="importazione")
+                            actor=ACTOR, reason="import")
         for d in deletes:
             self.themis.reset(d["setting"], scope=d.get("scope"), scope_id=d.get("scope_id") or None, actor=ACTOR)
 

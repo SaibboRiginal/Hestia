@@ -239,11 +239,11 @@ kit.caps.update({**recap.capabilities(), **llm_capabilities([
             help="Estimates kcal and protein of a meal described in words.")])})
 kit.capabilities(transfer.capabilities)
 kit.webui(icon="leaf", color="green", description="Diet, meals with estimated calories, supplements in the week plan.",
-          pages=[page("oggi", "Nutrition", element="demeter-today", icon="leaf", order=80,
+          pages=[page("today", "Nutrition", element="demeter-today", icon="leaf", order=80,
                       help="The meals of the day with calories and protein (estimated by the assistant if you don't write them), the supplements to take."),
-                 page("dieta", "Diet", element="demeter-diet", icon="target", order=81, parent="oggi"),
-                 page("integratori", "Supplements", element="demeter-supplements", icon="droplet", order=82,
-                      parent="oggi")],
-          widgets=[widget("oggi", "Today's nutrition", element="demeter-widget", sizes=["s", "m"], size="m",
-                          auto=True, open_page="oggi", icon="leaf")])
+                 page("diet", "Diet", element="demeter-diet", icon="target", order=81, parent="today"),
+                 page("supplements", "Supplements", element="demeter-supplements", icon="droplet", order=82,
+                      parent="today")],
+          widgets=[widget("today", "Today's nutrition", element="demeter-widget", sizes=["s", "m"], size="m",
+                          auto=True, open_page="today", icon="leaf")])
 kit.finish()

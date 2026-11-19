@@ -264,4 +264,4 @@ def test_plugin_pages_reach_routines_and_special_under_the_api_prefix(store):
     src = (Path(__file__).parents[1] / "ui" / "src" / "index.ts").read_text(encoding="utf-8")
     defined = set(re.findall(r"'(chronos-[a-z-]+)'\s*:", src))
     assert {p["element"] for p in pages.values()} <= defined
-    assert pages["routine"]["element"] == "chronos-routines" and pages["eventi"]["element"] == "chronos-special"
+    assert pages["routine"]["element"] == "chronos-routines" and pages["events"]["element"] == "chronos-special"

@@ -20,10 +20,10 @@ export const routes: Routes = [
     children: [
       ...APP_MODULES.map(m => ({ path: m.path, loadComponent: m.load, title: `${m.label} · ${assistantName()}` })),
       // Built-in pages that moved into their module as plugins (old links, bookmarks, ?task=… keep working).
-      { path: 'notifications', redirectTo: '/p/hermes/notifiche' },
-      { path: 'commands', redirectTo: '/p/mcp/comandi' },
-      { path: 'forge', redirectTo: '/p/hephaestus/sviluppo' },
-      { path: 'documents', redirectTo: '/p/oracle/documenti' },
+      { path: 'notifications', redirectTo: '/p/hermes/notifications' },
+      { path: 'commands', redirectTo: '/p/mcp/commands' },
+      { path: 'forge', redirectTo: '/p/hephaestus/development' },
+      { path: 'documents', redirectTo: '/p/oracle/documents' },
       { path: 'calendar', redirectTo: '/p/chronos/agenda' },
       { path: 'download', loadComponent: () => import('./features/downloads/downloads-page.component').then(m => m.DownloadsPageComponent), title: tr('Downloads · {assistant}') },
       { path: 'aggiornamenti', loadComponent: () => import('./features/updates/updates-page.component').then(m => m.UpdatesPageComponent), title: tr('Updates · {assistant}') },

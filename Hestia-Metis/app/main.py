@@ -79,7 +79,7 @@ ui = PluginClient("metis", title="Improvement", icon="flask", color="purple", ki
                   description="Continuous improvement: where {assistant} gets it wrong, datasets and model training.",
                   version=SERVICE_VERSION)
 ui.webui(entry="metis.js", api_prefix="/api/metis/",
-         pages=[page("miglioramento", "Improvement", element="metis-improvement", icon="chart", order=180,
+         pages=[page("improvement", "Improvement", element="metis-improvement", icon="chart", order=180,
                      help="Where {assistant} answers worst according to your ratings, the collected datasets and the LoRA trainings (planned in the agenda's night window, running, finished).")])
 
 # ── Assistant agenda (Chronos) ────────────────────────────────────────────────

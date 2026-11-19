@@ -749,19 +749,19 @@ class Plutus:
         if mid > 0 and now > self.UNUSUAL_RATIO * mid:
             sigs.append(signal("unusual_week", tr("High spending week: {0:.0f}{1} against {2:.0f}{3} usually.", now, sym, mid, sym), kind="anomaly", severity="attenzione",
                                metrics={"spent": round(now, 2), "median_8w": round(mid, 2)}, period=this_week,
-                               page="statistiche"))
+                               page="statistics"))
         # recurring payments found in the last days
         since = (self.today() - timedelta(days=self.NEW_RECURRING_DAYS)).isoformat()
         for r in self.detect_recurring():
             if r.get("status") != "dismissed" and (r.get("found_at") or "") >= since:
                 period = {"weekly": tr("weekly"), "monthly": tr("monthly"), "yearly": tr("yearly")}.get(r["period"], "")
                 sigs.append(signal(f"new_subscription:{r['id']}", tr("New recurring payment: {0} {1:.2f}{2} {3}.", r['merchant'], r['amount'], sym, period), kind="trend", severity="info",
-                                   metrics={"amount": r["amount"], "count": r["count"]}, page="abbonamenti"))
+                                   metrics={"amount": r["amount"], "count": r["count"]}, page="subscriptions"))
         # rows waiting for a category
         n = sum(1 for t in self._tx_rows() if t.get("status") == "to_review")
         if n >= self.TO_REVIEW_MIN:
             sigs.append(signal("to_review", tr("{0} expense transactions to review.", n), kind="trend", severity="info",
-                               metrics={"count": n}, page="movimenti"))
+                               metrics={"count": n}, page="transactions"))
         # weekly metrics: total + top 4 categories of the period
         mets = [metric("finance.spent", w, weeks[w]["total"], tr("Weekly spending")) for w in order]
         totals: dict[str, float] = defaultdict(float)

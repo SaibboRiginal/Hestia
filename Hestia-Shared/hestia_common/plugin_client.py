@@ -11,9 +11,9 @@ own configuration (visibility, dashboards) as its own Themis settings.
     ui = PluginClient("scout", title="Scout", icon="home", color="amber", dist="/code/app/ui/dist")
     ui.webui(
         entry="scout.js", api_prefix="/api/ui/",
-        pages=[page("case", "Houses", element="scout-listings", icon="home", order=10),
-               page("case/:id", "Listing", element="scout-listing", detail=True)],
-        widgets=[widget("nuove", "New houses", element="scout-new-widget", sizes=["m", "l"], auto=True,
+        pages=[page("houses", "Houses", element="scout-listings", icon="home", order=10),
+               page("houses/:id", "Listing", element="scout-listing", detail=True)],
+        widgets=[widget("new", "New houses", element="scout-new-widget", sizes=["m", "l"], auto=True,
                         params={"city": {"type": "string", "label": "City"}})],
         quick_actions=[quick_action("fetch", "Check email", "POST", "/api/ui/cycle", icon="refresh")],
     )

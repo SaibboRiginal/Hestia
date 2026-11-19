@@ -116,7 +116,7 @@ resets the ticked keys that are only here. Hub capability `transfer.settings: tr
 Core module (`kind: "core"`, WebUI *Sistema* section, order 160), `api_prefix` `/api/settings/` (Themis' own
 routes). No widget.
 - page **Registro** (`themis-log`): every setting change — who (Tu / Tu via WebUI or Telegram, Oracle, Athena, a
-  client, an external AI `external:<name>`), when, old → new, kind (annullata, predefinito, proposta approvata,
+  client, an external AI `external:<name>`), when, old → new, kind (undo, reset, proposal approved,
   preset), scope — filters by who and module, paged; **Annulla** on the latest change of a key = the existing
   `POST /api/settings/key/{key}/undo` (same as *Annulla ultima* in Impostazioni; the undo is logged too).
   Proposals: pending ones on top (**Approva / Rifiuta** = the existing user answer, `by: webui`), the decided ones
@@ -151,7 +151,7 @@ of `locales/<lang>/messages.json` (English source → that language; English or 
 map; no `lang` = «Lingua»). (2026-11-16: the source flipped from Italian to English, dossier `2026-11-14-english-backend` v2.0.)
 The WebUI serves it to the browser before the app starts (`/api/webui/i18n.js`).
 **2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the catalog also carries `assistant` and `gender`
-(the assistant's chosen name and she/he, never the owner's name) for `{assistant}` / `{g:lei|lui}` in the texts.
+(the assistant's chosen name and she/he, never the owner's name) for `{assistant}` / `{g:her|his}` in the texts.
 Themis's own fixed texts read the personal settings with `Themis.personal(key)` (registered as the i18n reader).
 
 **2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».

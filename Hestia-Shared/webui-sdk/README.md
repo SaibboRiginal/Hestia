@@ -33,7 +33,7 @@ class ScoutListings extends HestiaElement {
   render() {
     if (this.items === null) return html`<hxk-state kind="loading"></hxk-state>`;
     return html`<div class="page"><h1>Case</h1><div class="grid">
-      ${this.items.map(i => html`<hxk-card clickable heading=${i.title} @click=${() => this.host.navigate('case/' + i.id)}>${i.price}</hxk-card>`)}
+      ${this.items.map(i => html`<hxk-card clickable heading=${i.title} @click=${() => this.host.navigate('houses/' + i.id)}>${i.price}</hxk-card>`)}
     </div></div>`;
   }
 }

@@ -319,19 +319,19 @@ class Psyche:
         if len(last7) >= 3 and len(prev21) >= 5 and mean(prev21) - mean(last7) >= 1:
             sigs.append(signal("mood_drop", tr("Mood going down: average {0:.1f} in the last 7 days against {1:.1f} before.", mean(last7), mean(prev21)), kind="trend", severity="attenzione",
                                metrics={"last7": round(mean(last7), 2), "before": round(mean(prev21), 2)},
-                               page="umore"))
+                               page="mood"))
         low = self.streak(lambda d: d["mood"] <= 2, recent)
         if low >= 3:
             sigs.append(signal("low_streak", tr("{0} days in a row with low mood.", low), kind="streak",
-                               severity="attenzione", metrics={"days": low}, page="umore", ttl_days=2))
+                               severity="attenzione", metrics={"days": low}, page="mood", ttl_days=2))
         tired = self.streak(lambda d: bool(d.get("energy")) and d["energy"] <= 2, recent)
         if tired >= 3:
             sigs.append(signal("energy_low", tr("{0} days in a row with little energy: a lighter week might help.", tired), kind="streak", severity="attenzione",
-                               metrics={"days": tired}, page="umore", ttl_days=2))
+                               metrics={"days": tired}, page="mood", ttl_days=2))
         good = self.streak(lambda d: d["mood"] >= 4, recent)
         if good >= 5:
             sigs.append(signal("good_streak", tr("{0} days in a row in a good mood.", good), kind="milestone",
-                               severity="info", metrics={"days": good}, page="umore", ttl_days=2))
+                               severity="info", metrics={"days": good}, page="mood", ttl_days=2))
         mets: list[dict] = []
         by_week: dict[str, list[dict]] = {}
         for d in self.days(12 * 7):

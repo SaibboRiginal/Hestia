@@ -12,7 +12,7 @@ Word or an Excel file with one of three shared themes, checks it and keeps it
 
 - Draft: `h1–h3, p, ul/ol/li, table/tr/th/td, b/strong, i/em, br` (plain text = paragraphs on blank lines). One parser
   → blocks; the three renderers read the same blocks, so the formats say the same thing.
-- Themes `classico` (Times, blue), `moderno` (Helvetica, teal, default = Themis `calliope.tema`), `sobrio`
+- Themes `classic` (Times, blue), `modern` (Helvetica, teal, default = Themis `calliope.theme`), `plain`
   (Helvetica, grey). PDF: A4, title and date on top, page numbers. Excel: every table is a sheet named by the heading
   before it, numbers as numbers (Italian decimals), header row frozen; the rest goes to a «Note» sheet.
 - **Final check** before delivering: the file opens again, has pages/sheets, contains the title (PDF/Word) and every

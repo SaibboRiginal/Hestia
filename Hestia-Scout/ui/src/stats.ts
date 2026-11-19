@@ -33,7 +33,7 @@ export class ScoutStats extends HestiaElement {
     if (!this.s) return html`<div class="page"><hxk-state kind="loading"></hxk-state></div>`;
     const s = this.s;
     return html`<div class="page">
-      <button class="back" @click=${() => this.host.navigate('case')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Houses")}</button>
+      <button class="back" @click=${() => this.host.navigate('houses')}><hxk-icon name="chevron-left"></hxk-icon>${tr("Houses")}</button>
       <div class="head"><h1>${tr("House statistics")}</h1>
         <select aria-label=${tr("City")} @change=${(e: Event) => { this.city = (e.target as HTMLSelectElement).value; this.load(); }}>
           <option value="">${tr("All cities")}</option>
@@ -56,7 +56,7 @@ export class ScoutStats extends HestiaElement {
       </div>
       ${this.city ? nothing : html`<hxk-card heading=${tr("Prices per city")}>
         ${s.price_by_city.length ? html`<table><thead><tr><th>${tr("City")}</th><th class="n">${tr("Houses")}</th><th class="n">${tr("Average price")}</th><th class="n">€/m²</th></tr></thead>
-          <tbody>${s.price_by_city.map(c => html`<tr class="click" @click=${() => this.host.navigate('case', { city: c.city })}>
+          <tbody>${s.price_by_city.map(c => html`<tr class="click" @click=${() => this.host.navigate('houses', { city: c.city })}>
             <td>${c.city}</td><td class="n">${c.count}</td><td class="n">${euro(c.avg_price)}</td><td class="n">${c.avg_ppm2 ? num(c.avg_ppm2) : '—'}</td></tr>`)}</tbody></table>`
           : html`<hxk-state kind="empty" text=${tr("The cities come from the addresses of the listings")}></hxk-state>`}
       </hxk-card>`}
@@ -127,8 +127,8 @@ abstract class ListWidget extends HestiaElement {
     if (!this.items.length) return html`<hxk-state kind="empty" text=${this.emptyText()}></hxk-state>`;
     return html`<hxk-list .items=${this.items.map(l => ({ id: l.id, title: euro(l.price) + ' · ' + l.title, subtitle: facts(l), image: l.image || undefined,
         icon: l.image ? undefined : 'home', badge: l.flag === 'favorite' ? { text: tr('f::favourite'), tone: 'warning' } : undefined }))}
-      @item-click=${(e: CustomEvent) => this.host.navigate('case/' + e.detail.id)}></hxk-list>
-      ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('case', this.openQuery())}>${tr("Others")} ${this.total - this.items.length} →</button>` : nothing}`;
+      @item-click=${(e: CustomEvent) => this.host.navigate('houses/' + e.detail.id)}></hxk-list>
+      ${this.total > this.items.length ? html`<button class="more" @click=${() => this.host.navigate('houses', this.openQuery())}>${tr("Others")} ${this.total - this.items.length} →</button>` : nothing}`;
   }
 }
 

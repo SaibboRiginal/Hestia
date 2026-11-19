@@ -41,7 +41,7 @@ class TestDocumentsPage:
     def test_manifest_has_documenti_page(self, main_mod):
         m = TestClient(main_mod.app).get("/api/ui/manifest").json()
         ids = {p["id"]: p for p in m["clients"]["webui"]["page"]}
-        assert ids["documenti"]["element"] == "oracle-documents" and ids["documenti"]["order"] == 121
+        assert ids["documents"]["element"] == "oracle-documents" and ids["documents"]["order"] == 121
 
     def test_list_reads_archive_through_hub(self, rig):
         c, engine = rig

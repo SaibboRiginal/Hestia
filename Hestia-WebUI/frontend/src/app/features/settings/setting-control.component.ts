@@ -134,7 +134,7 @@ export class SettingControlComponent {
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
   /** Object values with a dedicated editor: link to it (the JSON stays editable below). */
   editorLink(editor?: string): { path: string; label: string } | null {
-    return editor?.startsWith('llm_') ? { path: '/p/oracle/cervello', label: tr('Edit in Oracle · Brain · Models') } : null;
+    return editor?.startsWith('llm_') ? { path: '/p/oracle/brain', label: tr('Edit in Oracle · Brain · Models') } : null;
   }
 
   commitJson(v: string) {

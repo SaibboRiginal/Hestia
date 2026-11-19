@@ -130,7 +130,7 @@ export class ScoutListings extends HestiaElement {
       <div class="head">
         <div><h1>${tr("Houses")}</h1><div class="sub">${s ? tr("{0} houses followed · {1} new this week", num(s.total), num(s.new)) : tr('Listings arrived by email')}</div></div>
         <div class="acts">
-          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistiche')}>${tr("Statistics")}</hxk-button>
+          <hxk-button variant="ghost" icon="chart" @click=${() => this.host.navigate('statistics')}>${tr("Statistics")}</hxk-button>
           <hxk-button icon="refresh" ?loading=${this.cycling} @click=${() => this.cycle()}>${tr("Check emails")}</hxk-button>
         </div>
       </div>
@@ -185,7 +185,7 @@ export class ScoutListings extends HestiaElement {
 
   private card(l: Listing) {
     const stop = (e: Event) => e.stopPropagation();
-    return html`<article class="lc ${l.flag}" @click=${() => this.host.navigate('case/' + l.id)}>
+    return html`<article class="lc ${l.flag}" @click=${() => this.host.navigate('houses/' + l.id)}>
       ${photo(l.image)}
       <div class="lb">
         <div class="price">${euro(l.price)}${l.price_per_m2 ? html`<span class="ppm">${num(l.price_per_m2)} €/m²</span>` : nothing}</div>

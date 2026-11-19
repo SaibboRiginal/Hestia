@@ -175,7 +175,7 @@ export class HephaestusSviluppo extends HestiaElement {
     if (id) params['task'] = id;
     if (view === 'repo') params['view'] = 'repo';
     this.lastQueryTask = id || undefined;
-    this.host.navigate('sviluppo', params);
+    this.host.navigate('development', params);
   }
 
   private measure() {

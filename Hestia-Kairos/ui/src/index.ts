@@ -76,7 +76,7 @@ export class KairosList extends Base {
   }
   private row(d: any) {
     return html`<div class="dl">
-      <div class="grow click" @click=${() => this.host.navigate('scadenza/' + d.id)}>
+      <div class="grow click" @click=${() => this.host.navigate('deadline/' + d.id)}>
         <div>${d.title}${d.amount ? html` <span class="muted">· ${money(d.amount)}</span>` : nothing}</div>
         <div class="small muted">${d.category_label} · ${dayLabel(d.due)}${d.recurrence !== 'none' ? ` · ${RECURRENCE[d.recurrence]}` : ''}</div></div>
       ${d.status === 'open' ? html`<hxk-badge tone=${tone(d.in_days, d.lead_days)}>${when(d.in_days)}</hxk-badge>
@@ -130,7 +130,7 @@ export class KairosDetail extends Base {
   private async deleteDeadline() {
     if (!await this.host.confirm(tr('Delete the deadline?'), tr('It disappears from the calendar too.'), { label: tr('Delete'), danger: true })) return;
     const r = await call(this.host, 'DELETE', `/${this.did}`);
-    if (r.ok) this.host.navigate('scadenze');
+    if (r.ok) this.host.navigate('deadlines');
   }
   render() {
     const d = this.d;
@@ -162,7 +162,7 @@ export class KairosWidget extends HestiaElement {
     if (this.items === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     const n = this.ctx?.size === 's' ? 1 : this.ctx?.size === 'm' ? 3 : 6;
     return html`<div class="col" style="gap:6px">
-      ${this.items.length ? this.items.slice(0, n).map(d => html`<div class="between small click" @click=${() => this.host.navigate('scadenza/' + d.id)}>
+      ${this.items.length ? this.items.slice(0, n).map(d => html`<div class="between small click" @click=${() => this.host.navigate('deadline/' + d.id)}>
         <span class="truncate">${d.title}</span><hxk-badge tone=${tone(d.in_days, d.lead_days)}>${when(d.in_days)}</hxk-badge></div>`)
         : html`<div class="small muted">${tr("Nothing in the next 30 days.")}</div>`}
     </div>`;

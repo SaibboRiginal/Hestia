@@ -220,7 +220,7 @@ def test_identity_defaults_to_hestia_she_and_asks_the_name():
 
 @pytest.mark.unit
 def test_identity_follows_the_personal_settings(ident):
-    ident(assistant_name="Leo", assistant_gender="lui", owner_name="Marco", owner_call="Marko")
+    ident(assistant_name="Leo", assistant_gender="he", owner_name="Marco", owner_call="Marko")
     text = prompt_config.analyst_persona_default()
     assert text.startswith("You are Leo, the personal assistant of Marko:")
     assert "a man" in text and "a woman" not in text

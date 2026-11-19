@@ -64,7 +64,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
 | POST | `/mcp` | **Public MCP door for external AIs** (`McpDoorController`): body + `Authorization: Bearer` → Hub → Hestia-MCP `/mcp/external` (token, scope, rate limit there); no WebUI login, always a token, also at home. GET/DELETE → 405 |
 | GET | `/.well-known/oauth-protected-resource[/mcp]` · `/.well-known/oauth-authorization-server` | OAuth metadata (`OAuthDoorController` → Hub → Hestia-MCP, with `X-Hestia-Public-Base`) |
 | POST | `/oauth/register` · `/oauth/token` · `/oauth/revoke` | OAuth 2.1 for claude.ai / ChatGPT connectors (form or JSON body + `Authorization` forwarded) |
-| GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/accessi?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
+| GET | `/oauth/authorize` | Parks the request on Hestia-MCP → 302 to `/p/mcp/accesses?oauth=<id>` (consent card, behind login); refused client/redirect → plain error page; other errors → 302 to the client's registered redirect |
 | GET | `/api/webui/plugins/{module}/image?path=` | Module image as bytes |
 | GET | `/api/webui/transfer/modules` | Modules with the `transfer` capability (Hub registry) — «Esporta e importa» |
 | GET · POST | `/api/webui/transfer/{module}/describe` · `/{module}/items|export|import|files` · GET `/{module}/files/{id}` | Forwarded to the module's `/api/transfer/*` (only modules advertising `transfer`) |
@@ -139,7 +139,7 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   Metis plugin door. Offline taps wait for the next one.
 - **Adesso** (`features/plugins/adesso-row.component.ts`): Home row above the quick strip, from
   `GET /api/metis/adesso?client=webui` (up to 6, each with its reason); a tap opens the tool on the *Comandi* page
-  (`/p/mcp/comandi?command=…&args=…&run=1`: run at once when nothing required is missing). Hidden when empty. The
+  (`/p/mcp/commands?command=…&args=…&run=1`: run at once when nothing required is missing). Hidden when empty. The
   Ctrl/⌘+K palette lists the same items first, in the group *Adesso*.
 - **Scopri** (`/scopri`, `features/scopri/`; like «Sistema», its header leaves 56 px for the phone menu button): features never or rarely used (`GET /api/metis/scopri?limit=50`),
   grouped by module, search, *Prova* opens the tool like *Adesso*.
@@ -221,7 +221,7 @@ in chat she answers in the language you write) → saved live. Later: Sistema �
   (`hx-icon` and the SDK's `hxk-icon`); the chat notice `mood.saved` «Umore segnato» needs no client change.
 - Icons `mic`, `mic-off`, `volume`, `waveform` in the shared icon set (`hx-icon` and the SDK's `hxk-icon`).
 
-### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifiche`, `services/notifications.service.ts`)
+### Notifiche (2026-10-10; since 2026-10-19 Hermes' plugin page `/p/hermes/notifications`, `services/notifications.service.ts`)
 
 The page moved into Hermes (plugin, badge from its own counts); `/notifications` redirects there keeping the query.
 The WebUI keeps `NotificationsService`: SignalR pushes, toasts (mode shared with the page through localStorage + the
@@ -249,11 +249,11 @@ per browser (`core/theme/looks.ts`); thin themed scrollbars; sidebar shows one s
 connection only when it is not «Connesso»).
 Rules for new UI: **`frontend/DESIGN-SYSTEM.md`**.
 
-### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/sviluppo`)
+### Sviluppo page (2026-10-04; since 2026-10-19 Hephaestus' plugin page `/p/hephaestus/development`)
 
 Moved into Hephaestus (`Hestia-Hephaestus/ui/src/sviluppo.ts` + `ui/src/forge/`, adds *Copia per AI*); `/forge`
 redirects keeping `?task=` / `?view=`. Same behaviour as described here. Comandi & MCP (`/commands` →
-`/p/mcp/comandi`) and Documenti (`/documents` → `/p/oracle/documenti`) moved the same way; their old WebUI
+`/p/mcp/commands`) and Documenti (`/documents` → `/p/oracle/documents`) moved the same way; their old WebUI
 controllers are gone (chat upload stays in `ChatController`).
 Codex / Claude Code style page for Forge, Hestia's self-development engine:
 - **Task** mode: left = task list (search, filters Tutti/Aperti/Applicati/Non riusciti, live state dot);
@@ -271,7 +271,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   commit detail (files + diff), file browser at any ref (markdown preview), branches with ahead/behind and Forge
   task links, compare, tags, `docs/work` dossiers with version/status/progress, root CHANGELOG.
 - Live: while a task works the page polls every 4 s (task + new transcript events), files every ~12 s;
-  the list refreshes every 15 s. Deep link `/forge?task=<id>` (Agenda Forge items: **Apri in Sviluppo** → `/p/hephaestus/sviluppo?task=`),
+  the list refreshes every 15 s. Deep link `/forge?task=<id>` (Agenda Forge items: **Apri in Sviluppo** → `/p/hephaestus/development?task=`),
   `/forge?view=repo`.
 - Width: ≥1280 px three columns; 861–1279 list + centre with *Conversazione / Dettagli*; ≤860 px one column
   (list → task with back button).
@@ -303,7 +303,7 @@ Codex / Claude Code style page for Forge, Hestia's self-development engine:
   options else dropdown, number + unit, model name with suggestions from `options`, 24h time, text, list one per
   line, JSON). An `object` setting with an `editor` hint (`llm_providers`, `llm_chains`, `llm_usecases`: Oracle's
   providers, chains and use cases) also shows the link «Modifica in Oracle · Cervello · Modelli» to its dedicated
-  editor (`/p/oracle/cervello`, tab Modelli); the JSON stays editable. Emits only complete values; Themis validates
+  editor (`/p/oracle/brain`, tab Modelli); the JSON stays editable. Emits only complete values; Themis validates
   and its Italian error goes to a toast.
   Reusable outside the page (chat quick menu, P4).
 - `central-settings.store.ts`: loads every setting once (`items` without filters), reloads what Themis answers after every change (toast with *Annulla*) and polls
@@ -674,7 +674,7 @@ them; no personal data).
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 The catalog also brings `assistant` and `gender` (dossier `docs/work/2026-11-16-name-everywhere`): `tr` fills
-`{assistant}` and `{g:lei|lui}` («Crea con {assistant}»), and so do the SDK `tr` of the plugins and the plugin
+`{assistant}` and `{g:her|his}` («Create with {assistant}»), and so do the SDK `tr` of the plugins and the plugin
 manifests (`plugins.service.ts` `namedCatalog`: titles, labels, help, descriptions). Saving the assistant's name or
 she/he reloads the page (`followIdentity`), except during the setup.
 

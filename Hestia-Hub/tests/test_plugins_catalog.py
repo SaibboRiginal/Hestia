@@ -17,8 +17,8 @@ def ui(tmp_path):
     client = PluginClient("scout", title="Scout", icon="home", dist=tmp_path)
     client.webui(
         entry="scout.js",
-        pages=[page("case", "Case", element="scout-listings"), page("case/:id", "Annuncio", element="scout-listing")],
-        widgets=[widget("nuove", "Nuove case", element="scout-new", sizes=["m", "l"], auto=True,
+        pages=[page("houses", "Case", element="scout-listings"), page("houses/:id", "Annuncio", element="scout-listing")],
+        widgets=[widget("new", "Nuove case", element="scout-new", sizes=["m", "l"], auto=True,
                         params={"city": {"type": "string"}})],
         quick_actions=[quick_action("fetch", "Controlla email", "POST", "/api/ui/cycle",
                                     undo={"method": "DELETE", "path": "/api/ui/cycle"})],

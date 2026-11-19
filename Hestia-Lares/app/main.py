@@ -183,10 +183,10 @@ app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
 kit.on_warm(lambda: threading.Thread(target=_listen, daemon=True, name="lares-ha-ws").start())
 kit.webui(icon="home", color="teal", description="The house on Home Assistant: lights, shutters, climate, scenes, quick actions.",
-          pages=[page("casa", "Home", element="lares-home", icon="home", order=230,
+          pages=[page("home", "Home", element="lares-home", icon="home", order=230,
                       help="The house now, the quick actions and all Home Assistant devices by type.")],
-          widgets=[widget("casa", "Home", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
-                          open_page="casa", icon="home")],
-          quick_actions=[quick_action("azione", "Home", "POST", f"{API}/favorites/{{id}}/run", icon="home",
+          widgets=[widget("home", "Home", element="lares-widget", sizes=["s", "m", "l"], size="m", auto=True,
+                          open_page="home", icon="home")],
+          quick_actions=[quick_action("action", "Home", "POST", f"{API}/favorites/{{id}}/run", icon="home",
                                       group="Home", source=f"{API}/quick", order=230)])
 kit.finish()

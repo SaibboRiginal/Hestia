@@ -50,7 +50,7 @@ def test_signals_keys_on_fake_data(cared):
     signals, _ = cared.signals()
     by_key = {s["key"]: s for s in signals}
     drop = by_key["adherence_drop"]
-    assert drop["kind"] == "trend" and drop["severity"] == "attenzione" and drop["page"] == "statistiche"
+    assert drop["kind"] == "trend" and drop["severity"] == "attenzione" and drop["page"] == "statistics"
     assert drop["metrics"]["previous"] - drop["metrics"]["percent"] >= 20
     goal = by_key[f"goal:{cared._ids['many']}"]
     assert goal["kind"] == "goal" and goal["page"] == f"routine/{cared._ids['many']}"

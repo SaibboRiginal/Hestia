@@ -73,7 +73,7 @@ export class WardrobeSuggest extends WardrobeElement {
         : !res.items.length ? html`<hxk-state kind="empty" text=${res.hint || tr('No proposals.')}></hxk-state>` : html`
         <div class="grid" style="--min:300px">${res.items.map((s: any, i: number) => html`<div class="card sug">
           <div class="between"><h2 class="truncate">${s.saved ? s.name : tr("Idea {0}", i + 1)}</h2>${s.saved ? html`<hxk-badge tone="accent">${tr("saved")}</hxk-badge>` : nothing}</div>
-          <div class="pcs">${s.pieces.map((p: any) => html`<div class="tile" @click=${() => this.host.navigate('capi/' + p.id)}>
+          <div class="pcs">${s.pieces.map((p: any) => html`<div class="tile" @click=${() => this.host.navigate('items/' + p.id)}>
             <div class="ph">${img(this.host, p.photo, p.name)}</div><div class="tx"><span class="lab">${m?.slots[p.slot] || p.slot}</span><span class="nm">${p.name}</span>${dots(p.colors, 9)}</div></div>`)}</div>
           <div class="reasons">${s.reasons.map((r: string) => html`<span class="pill">${r}</span>`)}</div>
           <div class="row wrap"><hxk-button variant="primary" size="sm" icon="check" @click=${() => this.save(s, true)}>${this.day ? tr('Mark for that day') : tr('I\'m wearing this')}</hxk-button>

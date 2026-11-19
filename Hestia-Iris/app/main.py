@@ -32,7 +32,7 @@ from hestia_common.plugin_client import PluginClient, page, quick_action
 from hestia_common.settings_client import SettingsClient
 
 logger, log_buffer = setup_service_logging("hestia_iris")
-# «Lingua» (themis.personal.language): the fixed texts of this module follow the owner's language
+# «Language» (themis.personal.language): the fixed texts of this module follow the owner's language
 settings = SettingsClient("iris").follow_personal()
 
 app = FastAPI(title="Hestia-Iris", version="1.0.0")
@@ -135,7 +135,7 @@ ui = PluginClient("iris", title="Email", icon="mail", color="blue", kind="core",
 ui.webui(entry="iris.js", api_prefix="/api/email/",
          pages=[page("email", "Email", element="iris-email", icon="mail", order=145,
                      help="One mailbox check for all of {assistant}: Iris passes to every module the emails it asked for (Scout the listings, Expenses the PayPal receipts). Here you see subscriptions, latest deliveries and the state of the check, and you can check right away.")],
-         quick_actions=[quick_action("controlla", "Check emails", "POST", "/api/email/check", icon="refresh",
+         quick_actions=[quick_action("check", "Check emails", "POST", "/api/email/check", icon="refresh",
                                      group="System", order=145)])
 app.include_router(ui.router())
 
@@ -387,7 +387,7 @@ def email_unsubscribe(owner: str, key: str) -> dict[str, Any]:
 
 @app.post("/api/email/subscriptions/{owner}/{key}/backfill")
 def email_backfill(owner: str, key: str, req: BackfillRequest | None = None) -> dict[str, Any]:
-    """Deliver the matching mails of the last days again (the module's «controlla ora»; Archive dedupes)."""
+    """Deliver the matching mails of the last days again (the module's «check now»; Archive dedupes)."""
     return dispatcher.backfill(f"{owner}:{key}", (req or BackfillRequest()).days)
 
 
@@ -412,7 +412,7 @@ def email_dispatch_status(limit: int = Query(default=50, ge=1, le=200)) -> dict[
 
 @app.post("/api/email/check")
 def email_check_now() -> dict[str, Any]:
-    """«Controlla ora»: ask Hecate's watcher for one check (same as the agenda job)."""
+    """«Check now»: ask Hecate's watcher for one check (same as the agenda job)."""
     status, payload = _hub_call("hecate", "POST", "api/gateway/mail/watch/run", body={"trigger": "webui"},
                                 timeout=100)
     if not status or status >= 400:

@@ -117,10 +117,10 @@ class TestUiApi:
         web = m["clients"]["webui"]
         assert web["entry"] == "/ui/webui/oracle.js" and web["api_prefix"] == "/api/ui/"
         pages = {p["id"]: p for p in web["page"]}
-        assert pages["cervello"]["element"] == "oracle-brain" and pages["cervello"]["order"] == 120
+        assert pages["brain"]["element"] == "oracle-brain" and pages["brain"]["order"] == 120
         widgets = {w["id"]: w for w in web["widget"]}
-        assert widgets["uso-oggi"]["element"] == "oracle-usage-widget"
-        assert widgets["uso-oggi"]["open_page"] == "cervello"
+        assert widgets["usage-today"]["element"] == "oracle-usage-widget"
+        assert widgets["usage-today"]["open_page"] == "brain"
 
     def test_activity(self, client):
         activity_log.record_turn(session_id="s", mode="auto", route="agent", model="m", provider="p",

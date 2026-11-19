@@ -13041,7 +13041,7 @@ paths:
   /.well-known/oauth-authorization-server (WebUI door):
     get:
       tags: [WebUI]
-      summary: "Public OAuth door (OAuthDoorController, no WebUI login): /.well-known/oauth-*, /oauth/register|token|revoke → Hub → Hestia-MCP with X-Hestia-Public-Base; /oauth/authorize → 302 /p/mcp/accessi?oauth=<id> (consent card)"
+      summary: "Public OAuth door (OAuthDoorController, no WebUI login): /.well-known/oauth-*, /oauth/register|token|revoke → Hub → Hestia-MCP with X-Hestia-Public-Base; /oauth/authorize → 302 /p/mcp/accesses?oauth=<id> (consent card)"
       servers:
         - url: http://localhost:19015
       responses:

@@ -626,15 +626,15 @@ class Wardrobe:
             n = len(f["forgotten"])
             sigs.append(signal("forgotten", tr("Wardrobe: {0} items not worn for {1}+ days.", n, self.FORGOTTEN_DAYS),
                                kind="trend", severity="info", metrics={"count": n, "days": self.FORGOTTEN_DAYS},
-                               page="statistiche"))
+                               page="statistics"))
         if len(f["laundry"]) >= self.LAUNDRY_MIN:
             n = len(f["laundry"])
             sigs.append(signal("laundry_backlog", tr("Wardrobe: {0} items in the laundry for more than {1} days.", n, self.LAUNDRY_DAYS), kind="anomaly", severity="attenzione",
-                               metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="capi"))
+                               metrics={"count": n, "days": self.LAUNDRY_DAYS}, page="items"))
         if f["repair"]:
             n = len(f["repair"])
             sigs.append(signal("to_repair", tr("Wardrobe: {0} items to repair.", n), kind="trend", severity="info",
-                               metrics={"count": n}, page="capi"))
+                               metrics={"count": n}, page="items"))
         weeks = last_weeks(12, f["today"])
         per_week = {w: 0 for w in weeks}
         for w in f["wears"]:

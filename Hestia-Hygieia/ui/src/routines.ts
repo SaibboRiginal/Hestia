@@ -89,7 +89,7 @@ export class HygieiaRoutines extends HestiaElement {
     </div></div>`;
   }
   render() {
-    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('oggi')}>${tr("‹ Today")}</button><h1>${tr("Routine")}</h1></div>
+    const head = html`<div class="between wrap"><div class="head"><button class="link" @click=${() => this.host.navigate('today')}>${tr("‹ Today")}</button><h1>${tr("Routine")}</h1></div>
       <hxk-button variant="primary" icon="plus" @click=${() => this.startCreate()}>${tr("f::New")}</hxk-button></div>`;
     if (this.items === undefined) return html`<div class="page">${head}<hxk-state kind="loading"></hxk-state></div>`;
     if (this.items === null) return html`<div class="page">${head}<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state></div>`;
@@ -243,7 +243,7 @@ export class HygieiaRoutine extends HestiaElement {
             <hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: null })}>${tr("Resume")}</hxk-button>`
           : [7, 14, 30].map(d => html`<hxk-button size="sm" @click=${() => this.updStep(i, { paused_until: addDays(today(), d) })}>${d} ${tr("days")}</hxk-button>`)}
         </div>
-        ${s.product_id ? html`<div><button class="link small" @click=${() => this.host.navigate('prodotti/' + s.product_id)}>${tr("Open the product ›")}</button></div>` : nothing}
+        ${s.product_id ? html`<div><button class="link small" @click=${() => this.host.navigate('products/' + s.product_id)}>${tr("Open the product ›")}</button></div>` : nothing}
       </div>` : nothing}
     </div>`;
   }
@@ -258,7 +258,7 @@ export class HygieiaRoutine extends HestiaElement {
         <div class="grow"><div class="truncate">${productName(p)}</div><div class="small muted">${label(this.m?.categories, p.category)}${(p.actives || []).length ? ' · ' + p.actives.map((a: any) => label(this.m?.actives, a.name)).join(', ') : ''}</div></div>
         <hxk-icon name="plus"></hxk-icon></div>`)}</div>
       ${this.q.trim() ? html`<hxk-button icon="plus" @click=${() => this.addLabel()}>${tr("Step without product: «")}${this.q.trim()}»</hxk-button>` : nothing}
-      <button class="link small" @click=${() => this.host.navigate('prodotti', { nuovo: '1' })}>${tr("The product isn't there? Add it ›")}</button>
+      <button class="link small" @click=${() => this.host.navigate('products', { nuovo: '1' })}>${tr("The product isn't there? Add it ›")}</button>
     </div></div>`;
   }
 

@@ -173,7 +173,7 @@ class TestRecapPiece:
 @pytest.mark.unit
 class TestSignalsClient:
     def test_signal_and_metric_shapes(self):
-        s = signal("stall:panca", "Panca ferma da 3 sedute", kind="trend", severity="attenzione", page="schede")
+        s = signal("stall:panca", "Panca ferma da 3 sedute", kind="trend", severity="attenzione", page="plans")
         assert s["topic"] == "stall:panca" and s["ttl_days"] == 7
         with pytest.raises(ValueError):
             signal("x", "y", severity="rossa")

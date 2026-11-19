@@ -209,7 +209,7 @@ are spread over `/api/notifications`, `/api/events`…, so the pages use small `
   Since W7 (dossier 2026-10-24-whole-brainstorm-cindy) the *Da rispondere* filter reads **Da decidere**; a secret
   notification shows its form in the card (password fields masked, *Invia* → `/api/ui/inbox/{id}/secret`, the
   values leave the page and are never kept); a button whose answer is `{execute: "command", command}` opens that tool
-  on the *Comandi* page (`/p/mcp/comandi?command=…`).
+  on the *Comandi* page (`/p/mcp/commands?command=…`).
 - sub-page **Consegne** (`hermes-deliveries`, order 141, parent `notifiche`; rebuilt 2026-11-18, dossier
   `docs/work/2026-11-18-real-test-problems` F): grouped by day; each row = the icon of its area (`area` from
   `hestia_common.areas`, never a module name), the title without HTML and ONE sentence on what happened (delivered

@@ -301,7 +301,7 @@ def test_mcp_tools_and_manifest():
     assert manifest["module"] == "wardrobe"
     webui = manifest["clients"]["webui"]
     assert any(q["id"] == "indossato" for q in webui.get("quick_action") or [])
-    assert {"capi", "outfit", "cosa-mi-metto"} <= {p["id"] for p in webui["page"]}
+    assert {"items", "outfit", "what-to-wear"} <= {p["id"] for p in webui["page"]}
 
 
 @pytest.mark.unit
@@ -389,7 +389,7 @@ def test_signals_forgotten_laundry_repair_and_worn_metric(wd):
     sigs, mets = wd.signals()
     by = {s["key"]: s for s in sigs}
     assert set(by) == {"forgotten", "laundry_backlog", "to_repair"}
-    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "statistiche"
+    assert by["forgotten"]["metrics"]["count"] >= 1 and by["forgotten"]["page"] == "statistics"
     assert by["laundry_backlog"]["severity"] == "attenzione" and by["laundry_backlog"]["metrics"]["count"] == 3
     assert by["to_repair"]["metrics"]["count"] == 1
     assert all(s["text"].startswith("Guardaroba") and "Wardrobe" not in s["text"] for s in sigs)

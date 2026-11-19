@@ -112,8 +112,8 @@ def test_personal_places_validate_and_resolve_through_hecate():
 def test_identity_settings_are_personal_with_hestia_she_by_default():
     from hestia_common.settings_client import PERSONAL
     assert PERSONAL["themis.personal.assistant_name"]["default"] == "Hestia"
-    assert PERSONAL["themis.personal.assistant_gender"]["default"] == "lei"
-    assert [o["value"] for o in PERSONAL["themis.personal.assistant_gender"]["options"]] == ["lei", "lui"]
+    assert PERSONAL["themis.personal.assistant_gender"]["default"] == "she"
+    assert [o["value"] for o in PERSONAL["themis.personal.assistant_gender"]["options"]] == ["she", "he"]
     assert PERSONAL["themis.personal.owner_name"]["default"] == "" and "themis.personal.owner_call" in PERSONAL
 
 
@@ -125,7 +125,7 @@ def test_identity_render_name_gender_owner():
     # Names and gendered words come from the template; what the library adds is English like every hidden text.
     assert she.startswith("Sei Hestia, amica di the person writing to you. You do not know their name yet")
     assert she.endswith('JSON {"a": 1} {tools}')                       # other braces untouched
-    values = {identity.ASSISTANT_NAME: " Leo{}\n", identity.ASSISTANT_GENDER: "lui",
+    values = {identity.ASSISTANT_NAME: " Leo{}\n", identity.ASSISTANT_GENDER: "he",
               identity.OWNER_NAME: "Marco", identity.OWNER_CALL: ""}
     he = identity.render(template, identity.read(values.get))
     assert he.startswith("Sei Leo, amico di Marco. Their name is Marco: use it now and then")
@@ -153,14 +153,14 @@ def test_named_fills_only_name_and_gender():
     from hestia_common import identity
     she = identity.named("Chiedi a {assistant}, {g:sola|solo} {0} {owner}")
     assert she == "Chiedi a Hestia, sola {0} {owner}"                  # other braces stay for str.format
-    he = identity.named("Chiedi a {assistant}, {g:sola|solo}", {"assistant": "Leo", "gender": "lui"})
+    he = identity.named("Chiedi a {assistant}, {g:sola|solo}", {"assistant": "Leo", "gender": "he"})
     assert he == "Chiedi a Leo, solo" and identity.named("Nessun token") == "Nessun token"
 
 
 @pytest.mark.unit
 def test_fixed_texts_say_the_chosen_name_in_every_language(monkeypatch):
     from hestia_common import i18n
-    values = {"themis.personal.assistant_name": "Leo", "themis.personal.assistant_gender": "lui",
+    values = {"themis.personal.assistant_name": "Leo", "themis.personal.assistant_gender": "he",
               "themis.personal.language": "it"}
     monkeypatch.setattr(i18n, "_reader", values.get)
     assert i18n.t("Planned by {assistant}") == "Pianificato da Leo"
@@ -192,9 +192,9 @@ def test_localize_walks_lists_under_kept_keys(monkeypatch):
     from hestia_common import i18n
     values = {"themis.personal.language": "it"}
     monkeypatch.setattr(i18n, "_reader", values.get)
-    out = i18n.localize({"page": [{"id": "consegne", "label": "Deliveries"}], "action": {"label": "Plan"},
+    out = i18n.localize({"page": [{"id": "deliveries", "label": "Deliveries"}], "action": {"label": "Plan"},
                          "status": "Deliveries", "area_label": "alt::Day", "args": {"q": "Deliveries"}})
-    assert out["page"] == [{"id": "consegne", "label": "Consegne"}]
+    assert out["page"] == [{"id": "deliveries", "label": "Consegne"}]
     assert out["status"] == "Deliveries"                 # a string under a kept key is an id, never translated
     assert out["area_label"] == "Giornata"
     assert out["args"] == {"q": "Deliveries"}            # the owner's data stays as it is

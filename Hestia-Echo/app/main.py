@@ -117,7 +117,7 @@ hub = Hub(HUB_API_URL)
 
 # Voice models (Whisper, Piper, Kokoro, the voiceprint) go through the shared download manager: progress, resume,
 # retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-one-click-setup §4.3).
-downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voce")
+downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voice")
 downloads.source("whisper", _standards.whisper_download)
 _standards.DOWNLOADS = downloads
 
@@ -135,7 +135,7 @@ def _notify(event: dict) -> None:
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
             module="echo", domain="system", key="echo.audio_space", title=event["title"], text=event["text"],
-            actions=[], page="voce", level="warning"))
+            actions=[], page="voice", level="warning"))
     except Exception as exc:
         logger.warning("[🔄] event=voice_notify_failed error=%s", exc)
 
@@ -452,7 +452,7 @@ ui = PluginClient("echo", title="Voice", icon="mic", color="teal", kind="core", 
                   description="{assistant}'s listening and voice: providers, chains, uses, tests, usage and stored audio.",
                   version=SERVICE_VERSION)
 ui.webui(entry="echo.js", api_prefix=f"{API}/",
-         pages=[page("voce", "Voice", element="echo-voice", icon="mic", order=125,
+         pages=[page("voice", "Voice", element="echo-voice", icon="mic", order=125,
                      help="How {assistant} listens and speaks: providers, listening and voice chains, uses of every module, external mode, microphone and voice test, usage and costs, your recordings.")])
 # ── MCP tools (assistant, Telegram, WebUI): your voice ───────────────────────
 from hestia_common.mcp_helpers import MCPTool, create_mcp_router  # noqa: E402

@@ -62,7 +62,7 @@ export const colorIndex = (c: string | undefined) => (Math.max(0, COLORS.indexOf
 /** One transaction row (list, widget, detail «simili»). */
 export function txRow(host: HestiaHost, t: any, cur: string) {
   const sub = [t.category_label, t.account, SOURCE[t.source] || t.source].filter(Boolean).join(' · ');
-  return html`<div class="li" @click=${() => host.navigate('movimenti/' + t.id)}>
+  return html`<div class="li" @click=${() => host.navigate('transactions/' + t.id)}>
     ${catDot(t)}
     <div class="grow"><div class="truncate"><b>${t.merchant || t.description || tr('Transaction')}</b></div>
       <div class="small muted truncate">${dayLabel(t.date)} · ${sub}</div></div>

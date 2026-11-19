@@ -509,10 +509,10 @@ export class SetupPageComponent {
   ownerName = '';
   ownerCall = '';
   assistantName = DEFAULT_ASSISTANT;
-  assistantGender = signal<'lei' | 'lui'>('lei');
+  assistantGender = signal<'she' | 'he'>('she');
   language = signal('it');
   readonly languages = LANGUAGES;
-  readonly genderOptions: { value: 'lei' | 'lui'; label: string }[] = [{ value: 'lei', label: tr('A woman') }, { value: 'lui', label: tr('A man') }];
+  readonly genderOptions: { value: 'she' | 'he'; label: string }[] = [{ value: 'she', label: tr('A woman') }, { value: 'he', label: tr('A man') }];
 
   screen = signal<Screen>('benvenuto');
   /** The furthest screen reached in this run: the summary jumps back freely, forward only up to here. */
