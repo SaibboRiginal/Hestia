@@ -178,8 +178,8 @@ Provider access model (single entry point):
 - Domain-level email business APIs are owned by Iris; Hecate can proxy/provider-orchestrate calls through Hub-routed contracts.
 - **Mail watcher (one per mailbox):** Chronos job `hecate.mail_watch` (default every 15 min, Themis
   `hecate.mail.watch_interval`) → Gmail history API (`historyId` cursor in `data/mail_watch.json`; expired → `[🔄]`
-  search fallback). Optional real push: Gmail `users.watch` + Pub/Sub **streaming pull** (no public URL needed, env
-  `HECATE_GMAIL_PUBSUB_*`, renewed by `hecate.mail_watch_renew`); then the check slows to a safety net
+  search fallback). Optional real push: Gmail `users.watch` + Pub/Sub **streaming pull** (no public URL needed, linked
+  from the «Gmail instant notices» card in Connections, renewed by `hecate.mail_watch_renew`); then the check slows to a safety net
   (`hecate.mail.safety_interval`). New mails go to Iris `POST /api/email/incoming`. Hecate never decides who gets a mail.
 - **Weather** (Open-Meteo, free, no key): `/api/gateway/weather/now|forecast|at|place|places`, tools
   `weather_now`/`weather_forecast` (tool domain `weather`). Places come from the personal setting
@@ -429,7 +429,7 @@ Nutrition module «Nutrition» (port 19026, `food_*` tools): diet, meals (kcal e
 next to the workout when asked). Rows in Archive `food-store`. Details: `Hestia-Demeter/hestia-demeter.md`.
 
 ### Hestia-Lares 💡
-House module «Home» (port 19024, `home_*` tools): the only caller of Home Assistant (`LARES_HA_URL`/`LARES_HA_TOKEN`),
+House module «Home» (port 19024, `home_*` tools): the only caller of Home Assistant (linked from Connections: address in Themis, token `LARES_KEY_HOME_ASSISTANT`),
 websocket push of state changes into a mirror, commands, scenes, quick actions (Archive `home-store`), the owner's
 person entity → presence signal `home.present`. Details: `Hestia-Lares/hestia-lares.md`.
 
@@ -440,7 +440,7 @@ Details: `Hestia-Calliope/hestia-calliope.md`.
 
 ### Hestia-Apollo 🎨
 Images module «Images» (port 19022, `image_*` tools): the only caller of image generators (remote ComfyUI,
-`APOLLO_COMFYUI_URL`); flows per purpose uploaded by the owner, one job worker woken by new jobs, ComfyUI websocket,
+linked from Connections: address in Themis, optional key `APOLLO_KEY_COMFYUI`); flows per purpose uploaded by the owner, one job worker woken by new jobs, ComfyUI websocket,
 images in Archive blobs, `callback` push to the requester or a Hermes notice. Details: `Hestia-Apollo/hestia-apollo.md`.
 
 ### Hestia-Aphrodite 🌸

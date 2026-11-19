@@ -22,10 +22,9 @@ import app.main as hecate_main
 class TestProviderDetection:
     def test_no_env_vars_no_providers(self, monkeypatch):
         for key in [
-            "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID",
-            "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
-            "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET",
-            "OUTLOOK_TENANT_ID", "OUTLOOK_REFRESH_TOKEN",
+            "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "HECATE_KEY_GOOGLE_CLIENT_ID",
+            "HECATE_KEY_GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN",
+            "HECATE_KEY_OUTLOOK_CLIENT_ID", "HECATE_KEY_OUTLOOK_CLIENT_SECRET", "HECATE_KEY_OUTLOOK_TENANT",
             "HECATE_ENABLE_PROVIDER_GOOGLE", "HECATE_ENABLE_PROVIDER_MICROSOFT",
         ]:
             monkeypatch.delenv(key, raising=False)

@@ -136,8 +136,8 @@ class TestPendingReminder:
 class TestWebPush:
     def test_off_without_keys(self, monkeypatch):
         from modules import webpush
-        monkeypatch.delenv("HERMES_VAPID_PUBLIC_KEY", raising=False)
-        monkeypatch.delenv("HERMES_VAPID_PRIVATE_KEY", raising=False)
+        monkeypatch.delenv("HERMES_KEY_VAPID_PUBLIC", raising=False)
+        monkeypatch.delenv("HERMES_KEY_VAPID_PRIVATE", raising=False)
         assert not webpush.configured()
         assert webpush.send_all(MagicMock(), {"title": "x"}) == 0
 
@@ -178,3 +178,19 @@ def test_digest_line_is_plain_and_hides_ids_and_sources():
     long = {"title": "The assistant keeps using its backup way for the weather forecast every morning", "source": "x"}
     cut = digest_line(long, 40)
     assert cut.endswith("…") and len(cut) <= 40 and long["title"].startswith(cut[:-1])
+
+
+def test_webpush_keys_made_once_and_saved_through_hephaestus(monkeypatch):
+    """First start: the VAPID pair is made by Hermes itself, used at once and saved as HERMES_KEY_VAPID_* (no hand
+    edit of .env — docs/work/2026-11-19-unified-connections); with keys already there nothing happens."""
+    from modules import webpush
+    monkeypatch.delenv(webpush.PUBLIC_ENV, raising=False)
+    monkeypatch.delenv(webpush.PRIVATE_ENV, raising=False)
+    saved = []
+    monkeypatch.setattr(webpush.threading, "Thread",
+                        lambda target, **kw: type("T", (), {"start": lambda self: target()})())
+    assert webpush.ensure_keys(lambda values: saved.append(values) or True, retry_seconds=0, tries=2) is True
+    assert webpush.configured() and len(saved) == 1
+    assert set(saved[0]) == {webpush.PUBLIC_ENV, webpush.PRIVATE_ENV}
+    assert len(webpush.public_key()) > 80 and "=" not in webpush.public_key()
+    assert webpush.ensure_keys(lambda values: saved.append(values) or True) is False and len(saved) == 1

@@ -143,7 +143,7 @@ def test_login_endpoint_never_echoes_password(api):
 def test_phone_webhook(api, monkeypatch):
     client, _, sent = api
     assert client.post("/api/gateway/phone/push", json={"type": "state"}).status_code == 503
-    monkeypatch.setenv("HECATE_PHONE_TOKEN", "tok")
+    monkeypatch.setenv("HECATE_KEY_PHONE", "tok")
     assert client.post("/api/gateway/phone/push", json={}, headers={"X-Hestia-Phone-Token": "no"}).status_code == 401
     monkeypatch.setattr(devices_api.hecate_settings, "get",
                         lambda k, d=None: {"hecate.phone.home_wifi": ["CasaNet"],
@@ -219,15 +219,15 @@ def test_feed_publisher_reads_the_registry_right_after_boot(monkeypatch):
     assert feeds.FeedPublisher("http://hub/api", session=Session()).subscribers("wearable.daily")
 
 
-def test_devices_page_is_a_plugin_under_the_gateway_prefix():
-    """WebUI «Dispositivi»: the manifest names only elements the bundle defines and calls only /api/gateway/…"""
-    import re
-    from pathlib import Path
+def test_connections_are_in_the_manifest_under_the_gateway_prefix():
+    """No page of its own any more: the WebUI «Connections» page draws Hecate's services (catalog type «connection»),
+    calling only /api/gateway/… (docs/work/2026-11-19-unified-connections)."""
     import main
     web = main.ui.manifest()["clients"]["webui"]
-    src = (Path(__file__).parents[1] / "ui" / "src" / "index.ts").read_text(encoding="utf-8")
-    assert {p["element"] for p in web["page"]} <= set(re.findall(r"'(hecate-[a-z-]+)'\s*:", src))
-    assert web["api_prefix"] == "/api/gateway/" and web["entry"] == "/ui/webui/hecate.js"
+    assert web["api_prefix"] == "/api/gateway/" and web["entry"] == "" and not web.get("page")
+    ids = [c["id"] for c in web["connection"]]
+    assert {"google", "outlook", "gmail_push", "garmin", "phone"} <= set(ids)
+    assert {c["source"] for c in web["connection"]} == {"/api/gateway/connections"}
     assert main.ui.capabilities("http://h:1")["ui_manifest"] == "http://h:1/api/ui/manifest"
 
 

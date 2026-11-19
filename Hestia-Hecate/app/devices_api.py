@@ -6,7 +6,7 @@ Dossier docs/work/2026-10-24-whole-cindy-brainstorm W4. Hecate owns the devices 
   09:30, user-movable) reads yesterday and today and pushes each day as the ``wearable.daily`` feed (Hercules:
   activities + readiness, Hygieia: sleep) and tells presence when the owner woke up.
 - **Phone**: a Tasker-like app POSTs to ``/api/gateway/phone/push`` with header ``X-Hestia-Phone-Token`` =
-  ``HECATE_PHONE_TOKEN`` (env, secret; empty = the webhook answers 503). ``{type: state, wifi, charging, battery}``
+  ``HECATE_KEY_PHONE`` (env, secret; empty = the webhook answers 503). ``{type: state, wifi, charging, battery}``
   → presence signals ``phone.home`` / ``phone.charging`` + feed ``phone.state``; ``{type: notification, app, title,
   text}`` → feed ``phone.notification`` when the app is in ``hecate.phone.app`` (empty list = every app).
 """
@@ -200,9 +200,9 @@ def _app_wanted(app: str) -> bool:
 @router.post("/api/gateway/phone/push")
 def phone_push(body: dict = Body(...), x_hestia_phone_token: str = Header(default="")):
     """Webhook of the phone (Tasker, MacroDroid…): ``{type: state|notification, …}``."""
-    secret = os.getenv("HECATE_PHONE_TOKEN", "")
+    secret = os.getenv("HECATE_KEY_PHONE", "")
     if not secret:
-        raise HTTPException(status_code=503, detail=tr("phone not configured (HECATE_PHONE_TOKEN)"))
+        raise HTTPException(status_code=503, detail=tr("phone not linked yet: create its key in Connections"))
     if not hmac.compare_digest(str(x_hestia_phone_token or ""), secret):
         logger.warning("event=phone_push_refused reason=token")
         raise HTTPException(status_code=401, detail=tr("invalid token"))
@@ -237,7 +237,7 @@ def phone_push(body: dict = Body(...), x_hestia_phone_token: str = Header(defaul
 
 @router.get("/api/gateway/phone/status")
 def phone_status():
-    return {"configured": bool(os.getenv("HECATE_PHONE_TOKEN")), "last": dict(_phone_state),
+    return {"configured": bool(os.getenv("HECATE_KEY_PHONE")), "last": dict(_phone_state),
             "home_wifi": len(hecate_settings.get(PHONE_HOME_WIFI) or []), "apps": hecate_settings.get(PHONE_APPS) or []}
 
 

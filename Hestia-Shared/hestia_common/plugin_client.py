@@ -40,7 +40,7 @@ from typing import Any
 logger = logging.getLogger("hestia_common.plugins")
 
 SDK_VERSION = "1"
-UI_KINDS = ("page", "widget", "quick_action", "settings_panel")
+UI_KINDS = ("page", "widget", "quick_action", "settings_panel", "connection")
 CLIENTS = {"webui", "telegram"}
 SIZES = ("s", "m", "l", "xl")
 METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
@@ -141,6 +141,7 @@ class PluginClient:
         self.dist = Path(dist) if dist else None
         self.version = version or os.getenv("SERVICE_VERSION", "") or "1.0.0"
         self._clients: dict[str, dict] = {}
+        self._connections: Any = None
 
     # ── declaring ──────────────────────────────────────────────────────────
     def client(self, client: str, *, entry: str = "", api_prefix: str = "/api/ui/", **contributions: list) -> "PluginClient":
@@ -168,6 +169,18 @@ class PluginClient:
         extra = {"settings_panel": settings_panels} if settings_panels else {}
         return self.client("webui", entry=entry, api_prefix=api_prefix, page=pages or [],
                            widget=widgets or [], quick_action=quick_actions or [], **extra)
+
+    def connections(self, connections: Any) -> "PluginClient":
+        """The module's connectors (``hestia_common.connections.Connections``) in the WebUI manifest, as the catalog
+        type ``connection``: the static list (label, group, search words) is read at every manifest, the live state
+        comes from ``<api_prefix>connections``. Their prefix must be the plugin ``api_prefix``."""
+        block = self._clients.get("webui")
+        if block is None:
+            raise ValueError(f"{self.module}: declare webui() before connections()")
+        if connections.prefix != block["api_prefix"]:
+            raise ValueError(f"{self.module}: connections prefix {connections.prefix!r} != api_prefix {block['api_prefix']!r}")
+        self._connections = connections
+        return self
 
     def _validate(self, client: str, block: dict) -> None:
         prefix = block["api_prefix"]
@@ -207,9 +220,19 @@ class PluginClient:
                 h.update(f"{f.relative_to(self.dist)}:{st.st_size}:{int(st.st_mtime)}".encode())
         return h.hexdigest()[:10]
 
+    def _with_connections(self) -> dict:
+        if self._connections is None:
+            return self._clients
+        clients = dict(self._clients)
+        block = dict(clients["webui"])
+        source = f"{block['api_prefix']}connections"
+        block["connection"] = [{**c, "source": source} for c in self._connections.manifest()]
+        clients["webui"] = block
+        return clients
+
     def manifest(self) -> dict:
         body = {"module": self.module, "title": self.title, "icon": self.icon, "color": self.color,
-                "description": self.description, "kind": self.kind, "clients": self._clients}
+                "description": self.description, "kind": self.kind, "clients": self._with_connections()}
         digest = hashlib.sha1((json.dumps(body, sort_keys=True) + self._bundle_hash()).encode()).hexdigest()[:10]
         return {**body, "version": f"{self.version}+{digest}"}
 

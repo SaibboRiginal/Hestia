@@ -62,6 +62,16 @@ export interface PluginSettingsPanel extends Contribution {
   help?: string;
 }
 
+/** An external service a module links (hestia_common.connections): the live state comes from `source`. */
+export interface PluginConnection extends Contribution {
+  what: string;
+  group: 'account' | 'device' | 'home_service' | string;
+  keywords: string[];
+  in_setup: boolean;
+  order: number;
+  source: string;        // GET under the module's api_prefix → {items}
+}
+
 export interface PluginBundle { id: string; module: string; entry: string; api_prefix: string; sdk: string; version: string; online: boolean; }
 
 export interface PluginCatalog {
@@ -69,7 +79,8 @@ export interface PluginCatalog {
   ui_revision: string;
   modules: PluginModule[];
   contributions: { webui?: { page?: PluginPage[]; widget?: PluginWidget[]; quick_action?: QuickActionDef[];
-                             settings_panel?: PluginSettingsPanel[]; bundle?: PluginBundle[] } };
+                             settings_panel?: PluginSettingsPanel[]; connection?: PluginConnection[];
+                             bundle?: PluginBundle[] } };
 }
 
 /** One placed widget on a dashboard (WebUI setting webui.dashboards). */

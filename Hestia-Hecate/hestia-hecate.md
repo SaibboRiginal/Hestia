@@ -56,8 +56,8 @@ Adding a new data source = implementing this interface and registering the conne
 | `GET` | `/api/gateway/auth/status` | Auth/configuration state by provider |
 | `GET` | `/api/gateway/outbound/mcp` | Outbound MCP servers (third-party MCP servers Hestia may use): `{servers: [{name, host, auth, status}], how_to}` from `HECATE_MCP_<NAME>_URL/_KEY`, never a key (`app/core/outbound.py`); shown on WebUI *Accessi AI → Servizi esterni* |
 | `POST` | `/api/gateway/auth/refresh/{provider}` | Re-acquire token via provider.refresh() (real OAuth refresh) |
-| `GET` | `/api/gateway/auth/google` | «Google» card (Dispositivi and the guided setup): `{client_set, linked, pending, auth_url, redirect_uri, public_redirect, error}` (never the secret) |
-| `POST` | `/api/gateway/auth/google/client` | The OAuth client typed in the page `{client_id, client_secret}` or the downloaded JSON `{json}` (`installed`/`web`) → kept in `data/google_client.json` (owner-only), used at once; env `GOOGLE_CLIENT_ID/SECRET` still wins |
+| `GET` | `/api/gateway/auth/google` | «Google» card (Connections and the guided setup): `{client_set, linked, pending, auth_url, redirect_uri, public_redirect, error}` (never the secret) |
+| `POST` | `/api/gateway/auth/google/client` | The OAuth client typed in the page `{client_id, client_secret}` or the downloaded JSON `{json}` (`installed`/`web`) → saved as `HECATE_KEY_GOOGLE_CLIENT_ID/SECRET` in Hecate's `.env` by Hephaestus (`hestia_common.connections`), used at once (`data/google_client.json` is no longer read: link Google again once) |
 | `POST` | `/api/gateway/auth/initiate/{provider}` | Start OAuth flow: Google redirect URL or Microsoft device-code |
 | `GET` | `/api/gateway/auth/poll/{provider}` | Poll completion of pending OAuth device-code flow |
 | `POST` | `/api/gateway/auth/complete/{provider}` | Exchange auth code (or full pasted redirect URL) for token; returns `granted_scopes`, reloads Calendar + Gmail |
@@ -90,11 +90,13 @@ Adding a new data source = implementing this interface and registering the conne
 | `DELETE` | `/api/gateway/drive/files/{id}` | Move to the Drive trash |
 | `GET` | `/api/gateway/garmin/status` | Garmin state `{connected, tokens, env_credentials, waiting_code, last_sync, last_error}` |
 | `POST` | `/api/gateway/garmin/connect` | «Link Garmin»: Hermes secret form (email + password) to the owner |
-| `GET` | `/api/gateway/connections` | Every linkable service, same shape `{id, label, icon, what, state, detail, step, actions}` (`?place=setup`: only the ones offered in the setup) |
+| `GET` | `/api/gateway/connections` | Hecate's linkable services, shared shape `{id, label, icon, what, group, keywords, state, detail, step, actions, test}` (`?place=setup`: only the ones offered in the setup) |
 | `POST` | `/api/gateway/connections/{id}` | The current step's values `{values}` → `{item, open_url?, message?}`; refused → 422 with the reason in words |
-| `POST` | `/api/gateway/connections/{id}/{action}` | A button of the card (`sync`, `again`, `cancel`, `client`) → `{item, …}` |
+| `POST` | `/api/gateway/connections/{id}/{action}` | A button of the card (`sync`, `again`, `cancel`, `client`, `hide`) → `{item, …}`; `test` → `{result: {ok, detail, facts, at}}` |
+| `POST` | `/api/connections/reload-keys` | Hephaestus wrote a `HECATE_KEY_*`: re-read them from `.env` → `{keys}` (names only) |
+| `GET` | `/api/gateway/connections-overview` | Every module's connections in one list (Hub catalog + each module's `connections`) `{items, display, unreachable}`: tool `connections_status` |
 | `DELETE` | `/api/gateway/connections/{id}` | Unlink → `{item}` |
-| `POST` | `/api/gateway/garmin/login` | Target of the secret form and of the Dispositivi form `{direct?, values: {email, password} \| {code}}` → `connected \| needs_code` (second form, or with `direct` the code asked in the page) |
+| `POST` | `/api/gateway/garmin/login` | Target of the secret form and of the Garmin card in Connections `{direct?, values: {email, password} \| {code}}` → `connected \| needs_code` (second form, or with `direct` the code asked in the page) |
 | `DELETE` | `/api/gateway/garmin` | Forget Garmin (delete the tokens) |
 | `GET` | `/api/gateway/garmin/day?day=` | One normalised day (sleep, steps, resting HR, body battery, HRV, readiness, stress, activities) |
 | `POST` | `/api/gateway/garmin/sync` | `{days}` (default 2) → feed `wearable.daily` per day (agenda job `hecate.garmin.sync`, daily 09:30) |
@@ -118,7 +120,8 @@ Adding a new data source = implementing this interface and registering the conne
    (Desktop clients accept any `http://localhost:<port>` redirect; no redirect URI to register.)
    Using a *Web application* client instead? Add the exact `GOOGLE_OAUTH_REDIRECT_URI`
    (default `http://localhost:19003/api/gateway/auth/callback/google`) to its authorized redirect URIs.
-4. Put `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `Hestia-Hecate/app/.env`, restart Hecate.
+4. WebUI → **Connections** → Google: type the client ID and secret (or paste the JSON). Hestia saves them as
+   `HECATE_KEY_GOOGLE_CLIENT_ID/SECRET` in Hecate's `.env` (never by hand) and uses them at once.
 5. Authorize — pick one:
    - **From Telegram (works from the phone):** ask "collega Google Calendar". Open the link,
      grant access. The final `localhost` page will not load on the phone — that's expected.
@@ -143,25 +146,30 @@ Adding a new data source = implementing this interface and registering the conne
 | No `refresh_token` returned | Remove the app at myaccount.google.com/permissions, re-authorize. |
 | `state mismatch` | URL from an older attempt → use the latest link. |
 
-### Connected services: one list, one card (2026-11-07)
+### Connections: one list, one card (2026-11-07, shared contract 2026-11-19)
 
-Every account or device Hecate links is a **connector** (`app/connections.py`) with the same shape, and the WebUI
-draws all of them with one element, `<hecate-connections>` (`ui/src/connections.ts`): the Dispositivi page shows the
-whole list, the guided setup screen «Your services» the ones with `in_setup` (`?place=setup`, the phone is not
-offered there). A row = service, one line on what it gives, state (collegato / in attesa / non collegato); opening
-it shows the current **step** at once, the same way for every service: fields + one button (`kind: form`, optional
-`guide` and `link`), or a page opened in another tab that the card polls every 5 s with an optional field to paste
-(`kind: wait`). Buttons of a connected service come from `actions` (`sync`, `forget`, `again`…). A search box
-appears past 6 services. A new service = one more `Connector` registered in `main.py`: no new card.
+Every account or device Hecate links is a **connector** on the shared contract `hestia_common.connections`
+(`app/connections.py`, dossier `docs/work/2026-11-19-unified-connections`): Hecate declares them with
+`PluginClient.webui(entry="", api_prefix="/api/gateway/").connections(hub)`, and the WebUI page **Connections**
+(`/connections`, SDK element `<hxk-connections>`) draws them next to the ones of every other module (Apollo's
+ComfyUI, Lares' Home Assistant…), grouped Accounts / Devices / Home services, with a «Test» button on each card.
+The guided setup shows the ones with `in_setup`. Hecate has no WebUI bundle of its own any more (the old
+Devices page and `ui/` are gone; `/p/hecate/devices` redirects to `/connections`).
 
-| Connector | Steps |
-|---|---|
-| `google` | OAuth client of Google Cloud (id + secret or the JSON, short guide + link) → «Link Google» opens Google's page (`open_url`) → waits (`poll`) or the pasted address/code → connected; actions «Link again», «Change Google Cloud access» |
-| `garmin` | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Read now», «Unlink» |
-| `phone` | three steps to follow on the phone (Tasker/MacroDroid); connected once it has sent a signal (Dispositivi only) |
+A typed secret is saved by Hephaestus into Hecate's `.env` as `HECATE_KEY_<NAME>` and re-read live
+(`POST /api/connections/reload-keys`); sign-in tokens stay in `data/` (`google_token.json`, `outlook_token.json`,
+Garmin tokens).
 
-The old endpoints (`auth/google*`, `auth/initiate|poll|complete/google`, `garmin/*`) stay for Telegram, the
-assistant tools and the secret forms; the connectors call the same code.
+| Connector | Group | Steps |
+|---|---|---|
+| `google` | account | OAuth client of Google Cloud (id + secret or the JSON → `HECATE_KEY_GOOGLE_CLIENT_ID/SECRET`) → «Link Google» opens Google's page → waits or the pasted address/code → connected; actions «Link again», «Change Google Cloud access» |
+| `outlook` | account | the Microsoft app (client ID, tenant default `common`, optional secret → `HECATE_KEY_OUTLOOK_CLIENT_ID/_TENANT/_CLIENT_SECRET`, short guide + link) → Microsoft's device code shown in the card, polled → connected (refresh token in `data/outlook_token.json`, kept on rotation); actions «Change the Microsoft app», «Unlink» |
+| `gmail_push` | account | optional Gmail instant notices: topic + subscription (Themis `hecate.gmail.push_topic` / `hecate.gmail.push_subscription`) + the service account JSON (`HECATE_KEY_GMAIL_PUBSUB_ACCOUNT`, base64) → the stream restarts; not in the setup |
+| `garmin` | device | email + password (used once, never stored) → the two-step code when Garmin asks → connected, first read in background; actions «Read now», «Unlink» |
+| `phone` | device | «Create the phone's key» → `HECATE_KEY_PHONE` (random, shown once in the card) + how to set Tasker/MacroDroid; connected once it has sent a signal; not in the setup |
+
+The old endpoints (`auth/google*`, `auth/initiate|poll|complete/google|microsoft`, `garmin/*`) stay for Telegram,
+the assistant tools and the secret forms; the connectors call the same code.
 
 ### OAuth Flow (API)
 
@@ -196,7 +204,8 @@ in background and notifies success/failure/timeout on Telegram. Google rejects i
 MCP/Hub tools: `gateway_auth_status`, `gateway_auth_verify`, `gateway_auth_initiate_google`,
 `gateway_auth_complete_google`, `gateway_auth_initiate_microsoft`, `gateway_auth_poll` (the generic
 `gateway_auth_complete` tool was a double of the Google one, removed 2026-11-14; the endpoint
-`/api/gateway/auth/complete/{provider}` stays).
+`/api/gateway/auth/complete/{provider}` stays). `connections_status` (section «Linked accounts»): every module's
+connections and their state, from `GET /api/gateway/connections-overview`.
 
 ### Token Refresh
 
@@ -265,8 +274,8 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `HECATE_SERVICE_BASE_URL` | `http://hestia_hecate:19003` | URL reported to Hub registry |
 | `HECATE_SERVICE_VERSION` | `1.0.0` | Version reported to Hub |
 | `HECATE_MCP_<NAME>_URL` · `HECATE_MCP_<NAME>_KEY` | — | Outbound MCP server address and its key (optional, sent as Bearer); one pair per server |
-| `GOOGLE_CLIENT_ID` | — | Google OAuth client ID (never expires) |
-| `GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret (never expires) |
+| `HECATE_KEY_GOOGLE_CLIENT_ID` | — | Google OAuth client ID, written by Hestia from Connections → Google (never by hand) |
+| `HECATE_KEY_GOOGLE_CLIENT_SECRET` | — | Google OAuth client secret, written the same way |
 | `GOOGLE_REFRESH_TOKEN` | — | Google OAuth refresh token (never expires — the only secret needed for API access) |
 | `GOOGLE_TOKEN_JSON` | — | Bundled alternative — refresh_token extracted from here if `GOOGLE_REFRESH_TOKEN` not set |
 | `GOOGLE_TOKEN_FILE` | `/code/data/google_token.json` | Persistent token cache (volume-mounted `data/` dir) |
@@ -274,29 +283,23 @@ Env holds only secrets, infrastructure and credential-bound deployment choices
 | `GOOGLE_OAUTH_SCOPES` | `calendar gmail.readonly gmail.send drive.file` (full URLs) | Space/comma separated scopes |
 | `GOOGLE_CREDENTIALS_JSON` | — | Google service account JSON (JSON string; not a path) |
 | `GOOGLE_SERVICE_ACCOUNT_JSON` | — | Alias for `GOOGLE_CREDENTIALS_JSON` |
-| `OUTLOOK_CLIENT_ID` | — | Microsoft OAuth app client ID |
-| `OUTLOOK_CLIENT_SECRET` | — | Microsoft OAuth client secret |
-| `OUTLOOK_TENANT_ID` | — | Microsoft Azure tenant ID |
-| `OUTLOOK_REFRESH_TOKEN` | — | Outlook OAuth refresh token |
+| `HECATE_KEY_OUTLOOK_CLIENT_ID` · `_TENANT` · `_CLIENT_SECRET` | — | The Microsoft app, written by Hestia from Connections → Outlook (never by hand); sign-in token in `data/outlook_token.json` |
 | `HECATE_ENABLE_PROVIDER_GOOGLE` | `false` | Force-enable Google provider even without credentials (deployment choice tied to credentials → stays in env) |
 | `HECATE_ENABLE_PROVIDER_MICROSOFT` | `false` | Force-enable Microsoft provider even without credentials |
 | `GOOGLE_OAUTH_FLOW_MODE` | `redirect` | `redirect` (PKCE; any device with the Cloudflare tunnel, paste-URL fallback otherwise) or `device_code` (Desktop/TV clients only) |
 | `GOOGLE_TUNNEL_URL_FILE` | `/code/data/tunnel-url.txt` | Public tunnel URL written by `cloudflare-tunnel.bat`, used as redirect base |
 | `GOOGLE_OAUTH_REDIRECT_URI` | `http://localhost:19003/api/gateway/auth/callback/google` | Redirect URI for `redirect` flow mode |
 | `HECATE_MAIL_WATCH_STATE` | `/code/data/mail_watch.json` | Mail watcher state file (history cursor, pending ids) |
-| `HECATE_GMAIL_PUBSUB_TOPIC` | — | Optional Gmail push: `projects/<project>/topics/<topic>` |
-| `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` | — | Optional Gmail push: `projects/<project>/subscriptions/<sub>` (pull). Push is active only when topic + subscription are set |
-| `HECATE_GMAIL_PUBSUB_CREDENTIALS` | `/code/data/gmail-pubsub-sa.json` | Service-account JSON key (only *Pub/Sub Subscriber*) used for the streaming pull |
+| `HECATE_KEY_GMAIL_PUBSUB_ACCOUNT` | — | Gmail instant notices: the service account JSON (base64), written by Hestia from Connections; topic and subscription are Themis settings |
 | `GARMIN_EMAIL` · `GARMIN_PASSWORD` | — | Optional: Garmin Connect login without the secret form (used once to get the tokens) |
 | `HECATE_GARMIN_TOKENS` | `/code/data/garmin` | Garmin tokens (`garmin_tokens.json`, garminconnect ≥ 0.3), data volume |
-| `HECATE_PHONE_TOKEN` | — | Secret the phone sends in `X-Hestia-Phone-Token`; empty = phone webhook off (503) |
-| `HECATE_UI_DIST` | `/ui/dist` | WebUI plugin bundle folder (set in the Dockerfile; infra only) |
+| `HECATE_KEY_PHONE` | — | The phone's key (sent in `X-Hestia-Phone-Token`), created in Connections → Android phone; empty = phone webhook off (503) |
 | `LOG_LEVEL` | `INFO` | Boot log level only; runtime level = setting `hecate.log.level` |
 
 **Canonical Google OAuth setup (no expiring values):**
 ```
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
+HECATE_KEY_GOOGLE_CLIENT_ID=...
+HECATE_KEY_GOOGLE_CLIENT_SECRET=...
 GOOGLE_REFRESH_TOKEN=...
 ```
 These three values **never expire**. On every cold start, Hecate constructs fresh
@@ -334,7 +337,7 @@ Hub. Kinds: `wearable.daily` (Hercules: activities + morning check-in; Hygieia: 
 (Plutus: bank app notifications → transactions to review), `phone.state`. The first push after a restart always
 reads the Hub registry (an empty cache is never taken as fresh, regression test in `tests/test_devices.py`).
 
-- **Garmin** (B10, `garminconnect`, unofficial): «Link Garmin» in the Dispositivi page opens the form right in the
+- **Garmin** (B10, `garminconnect`, unofficial): «Link Garmin» in the Connections page opens the form right in the
   card (email, password, then the two-step code there too: `POST /api/gateway/garmin/login {direct: true, values}`),
   so there is no notification to chase; from Telegram or the assistant (tool `garmin_link`) a Hermes secret form
   is sent instead. The password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
@@ -344,18 +347,15 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   link). A refused login answers 422 with the reason in words (`GarminService.explain`: wrong email/password,
   too many attempts, Garmin not answering) and logs `[🔄] event=garmin_login_failed error=<type>`.
 - **Phone** (Cindy 32): Tasker / MacroDroid POST `https://<tunnel>/api/gateway/phone/push` with header
-  `X-Hestia-Phone-Token: <HECATE_PHONE_TOKEN>`. On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
+  `X-Hestia-Phone-Token: <the phone's key>` (Connections → Android phone → «Create the phone's key», kept as `HECATE_KEY_PHONE`). On Wi-Fi change: `{"type":"state","wifi":"%WIFII_SSID",
   "charging":true,"battery":80}` → presence signals `phone.home`, `phone.charging` (overlay state «Outside home», no
   effect; it is on when `phone.home` **or** the house signal `home.present` from Lares is explicitly false — a source
   that never sent anything does not count, fixed in W5) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
   "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.phone.app`.
 - Tools (Telegram + WebUI, section «Devices»): `garmin_status`, `garmin_link`, `garmin_sync`,
   `garmin_day`, `garmin_unlink`, `phone_status`. Tests: `tests/test_devices.py`.
-- WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `devices` →
-  `<hecate-devices>`, order 105): Garmin state, «Link Garmin» (form in the card, code included), «Read now», «Unlink»,
-  last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built
-  by the Dockerfile Node stage into `/ui/dist/webui/hecate.js` (`HECATE_UI_DIST`, outside `/code`); `ui_manifest` /
-  `ui_version` in the Hub registration.
+- WebUI: the cards of Garmin and the phone are on the **Connections** page (shared contract above); the old
+  Devices page and its bundle are gone.
 
 ### Mail (`providers/mail.py`)
 
@@ -385,7 +385,7 @@ The **only** place in Hestia that looks for new mail; no module polls mail (rule
 
 ### Gmail push via Pub/Sub (`core/gmail_pubsub.py`, optional)
 
-Inactive until `HECATE_GMAIL_PUBSUB_TOPIC` and `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` are set. Hecate keeps one
+Inactive until the «Gmail instant notices» card (Connections) has topic, subscription and the service account. Hecate keeps one
 **streaming pull** open on the subscription (outgoing connection → real push without a public URL); every message
 just runs the normal watcher. `users.watch` expires after 7 days → daily agenda job **`hecate.mail_watch_renew`**
 (`POST /api/gateway/mail/watch/renew`), registered only when configured and retired otherwise. Stream errors →
@@ -400,9 +400,9 @@ just runs the normal watcher. `users.watch` expires after 7 days → daily agend
 4. *Subscriptions* → **Create subscription** on the topic, delivery type **Pull**. Note
    `projects/<project>/subscriptions/<sub>`.
 5. *IAM → Service accounts* → create one with **only Pub/Sub Subscriber** (on the subscription is enough) →
-   *Keys* → add a JSON key. Put the file at `HECATE_GMAIL_PUBSUB_CREDENTIALS` (default
-   `Hestia-Hecate/data/gmail-pubsub-sa.json`, never committed).
-6. Set `HECATE_GMAIL_PUBSUB_TOPIC` and `HECATE_GMAIL_PUBSUB_SUBSCRIPTION` in Hecate's env, restart Hecate.
+   *Keys* → add a JSON key.
+6. WebUI → **Connections** → «Gmail instant notices»: paste topic, subscription and the JSON key → «Save and turn on»
+   (the stream restarts by itself; the JSON is saved as `HECATE_KEY_GMAIL_PUBSUB_ACCOUNT`, never by hand).
 7. Check `GET /api/gateway/mail/watch` → `push.configured=true`, `push.active=true`, `push.watch_expiration` set.
 
 ## Provider Credential Ownership
@@ -432,7 +432,7 @@ just runs the normal watcher. `users.watch` expires after 7 days → daily agend
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 4; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 5; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
 
 ## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and

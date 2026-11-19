@@ -10,8 +10,11 @@ who is at home
 
 ## Responsibility
 
-- The only module that talks to Home Assistant. Env (infrastructure/secret): `LARES_HA_URL`, `LARES_HA_TOKEN`
-  (long-lived access token). Empty → «the home is not linked», nothing else breaks.
+- The only module that talks to Home Assistant. Linked from the **Home Assistant** card on the WebUI page Connections
+  (`hestia_common.connections`): address = Themis setting `lares.home_assistant.address`, long-lived access token =
+  `LARES_KEY_HOME_ASSISTANT` (written by Hephaestus into Lares' `.env`, re-read live). A new address or token
+  reconnects the push stream (`HomeAssistant.configure`); «Test» answers with version, home name and device count.
+  Not linked → «the home is not linked», nothing else breaks.
 - **Push, not poll**: a websocket to `/api/websocket` (auth, `subscribe_events state_changed`) keeps an in-memory
   mirror of the entities of the domains `light, switch, cover, climate, fan, media_player, lock, scene, script,
   sensor, binary_sensor, person`; one full `GET /api/states` on every (re)connect; reconnect with backoff 5 s → 5 min
@@ -39,7 +42,7 @@ Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by 
 
 ## Tests
 
-`Hestia-Lares/tests/test_lares.py` (fake Home Assistant, no network).
+`Hestia-Lares/tests/test_lares.py`, `tests/test_connection.py` (fake Home Assistant, no network).
 
 **2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: The Casa widget no longer repeats «Home» under the frame title and calls `markEmpty()` when there is nothing to show.
 
@@ -51,3 +54,5 @@ Page **Casa** (`lares-home`: status, quick actions to run or remove, devices by 
 **2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Language»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
 **2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+
+**2026-11-19 (unified connections, dossier `docs/work/2026-11-19-unified-connections`)**: Home Assistant is linked from the Connections page; `LARES_HA_URL/TOKEN` are gone. Endpoints of the shared contract under `/api/home/connections` and `POST /api/connections/reload-keys`.

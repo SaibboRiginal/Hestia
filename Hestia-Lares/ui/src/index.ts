@@ -70,7 +70,8 @@ export class LaresHome extends HestiaElement {
     if (s === undefined) return html`<hxk-state kind="loading"></hxk-state>`;
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     if (!s.configured) return html`<div class="page"><h1>${tr("Home")}</h1><div class="card col"><b>${tr("The home is not linked yet.")}</b>
-      <div class="small muted">${tr("The Home Assistant address and an access token (profile › long-lived token) are needed in the configuration file: LARES_HA_URL and LARES_HA_TOKEN. Then restart this part.")}</div></div></div>`;
+      <div class="small muted">${tr("The Home Assistant address and an access token (profile › long-lived token) are needed.")}</div>
+      <div class="row"><hxk-button variant="primary" icon="link" @click=${() => this.host.openConnection('home_assistant')}>${tr("Link Home Assistant")}</hxk-button></div></div></div>`;
     if (!s.connected) return html`<div class="page"><h1>${tr("Home")}</h1><hxk-state kind="error" text=${s.error || tr('Home Assistant doesn\'t answer.')} @retry=${() => this.load()}></hxk-state></div>`;
     const tabs = TABS.filter(d => this.items.some(e => e.domain === d));
     const q = this.q.trim().toLowerCase();

@@ -78,6 +78,13 @@ export class CommandPaletteComponent {
         run: () => void this.router.navigateByUrl(d.id === 'home' ? '/home' : '/d/' + d.id) })),
       ...APP_MODULES.filter(m => m.path !== 'home').map(m => ({ id: 'app:' + m.path, label: m.label, hint: assistantName(), icon: m.icon, group: tr('Pages'),
         run: () => void this.router.navigateByUrl('/' + m.path) })),
+      { id: 'app:connections', label: tr('Connections'), hint: assistantName(), icon: 'link', group: tr('Pages'),
+        more: tr('accounts devices services link'), run: () => void this.router.navigateByUrl('/connections') },
+      // Every external service a module links (ComfyUI, Home Assistant, Google, Garmin…): found by name, what it
+      // gives, its search words and the module's name, opened on its card.
+      ...this.plugins.connections().map(c => ({ id: 'cn:' + c.id, label: c.label, hint: tr('Connections · ') + mod(c.module),
+        icon: c.icon || 'link', group: tr('Connections'), more: `${c.what} ${(c.keywords ?? []).join(' ')} ${c.module}`,
+        run: () => void this.router.navigate(['/connections'], { queryParams: { open: c.id } }) })),
     ];
   });
   /** Every setting (central and personal): found by name, help or key, opened already on it. Shown only while

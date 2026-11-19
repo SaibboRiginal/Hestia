@@ -34,6 +34,7 @@ interface Crumb { label: string; link?: string; }
 const SYSTEM_PAGES = [
   { id: 'app.system', label: tr('Overview'), icon: 'grid', link: '/system' },
   { id: 'app.updates', label: tr('Updates'), icon: 'refresh', link: '/updates' },
+  { id: 'app.connections', label: tr('Connections'), icon: 'link', link: '/connections' },
   { id: 'app.machines', label: tr('Machines'), icon: 'host', link: '/machines' },
   { id: 'app.download', label: tr('alt::Download'), icon: 'download', link: '/download' },
 ];

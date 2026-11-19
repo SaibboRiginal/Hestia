@@ -69,6 +69,8 @@ export class PluginsService {
   readonly allWidgets = computed(() => this.webui().widget ?? []);
   readonly allQuick = computed(() => this.webui().quick_action ?? []);
   readonly settingsPanels = computed(() => this.webui().settings_panel ?? []);
+  /** Every external service a module links (catalog type «connection»): page «Connections», Ctrl+K, setup. */
+  readonly connections = computed(() => this.webui().connection ?? []);
   readonly bundles = computed(() => new Map((this.webui().bundle ?? []).map(b => [b.module, b] as [string, PluginBundle])));
 
   /** Sidebar pages: visible, top-level or children, in the user's order then the manifest order. */
@@ -267,6 +269,16 @@ export class PluginsService {
   }
 
   // ── bundles ──────────────────────────────────────────────────────────
+  private sdkLoad: Promise<boolean> | null = null;
+  /** The plugin SDK alone (its `hxk-*` kit), for a core page that draws a kit element (`hxk-connections`). */
+  loadSdk(): Promise<boolean> {
+    return this.sdkLoad ??= dynamicImport('/plugins/_sdk/sdk.js').then(() => true, e => {
+      console.warn('event=plugin_sdk_failed', e);
+      this.sdkLoad = null;
+      return false;
+    });
+  }
+
   /** Loads (once per version) the module's WebUI bundle: fetched with the token, imported as a blob module. */
   loadBundle(module: string): Promise<boolean> {
     const existing = this.bundleLoads.get(module);
@@ -343,6 +355,8 @@ export class PluginsService {
       link: (page: string, params?: Record<string, string>, other?: string) => svc.link(other || module, page, params),
       openSetting: (key?: string) =>
         void svc.router.navigate(['/settings'], { queryParams: key ? { key } : { tab: 'system', module } }),
+      openConnection: (id?: string) =>
+        void svc.router.navigate(['/connections'], { queryParams: id ? { open: `${module}.${id}` } : {} }),
       toast: (text: string, t?: string, action?: { label: string; run: () => void }) => svc.toasts.show(text, tone(t), action, action ? 6000 : 4500),
       confirm: (title: string, text: string, o?: { label?: string; danger?: boolean }) => svc.dialogs.confirm(title, text, o?.label ?? tr('Confirm'), !!o?.danger),
       assistant: (o: { label: string; hints?: Record<string, string | number>; prompt?: string; suggestions?: string[] }) =>
@@ -493,7 +507,7 @@ function namedCatalog(cat: PluginCatalog): PluginCatalog {
     modules: (cat.modules ?? []).map(fix),
     contributions: { ...cat.contributions, webui: w ? {
       ...w, page: w.page?.map(fix), widget: w.widget?.map(fix), quick_action: w.quick_action?.map(fix),
-      settings_panel: w.settings_panel?.map(fix),
+      settings_panel: w.settings_panel?.map(fix), connection: w.connection?.map(fix),
     } : w },
   };
 }

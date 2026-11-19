@@ -21,9 +21,9 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Hygieia | Domain (Self care) | Yes (products, routines) | No | Archive store, agenda job + Hermes for reminders, WebUI plugin |
 | Wardrobe | Domain (Wardrobe) | Yes (pieces, outfits, suggestions) | No | Archive store + blobs, agenda + Hermes, WebUI plugin |
 | Plutus | Domain (Finance) | Yes (expenses, budgets, statements) | No | PayPal mails by push (Iris), statement PDF via plugin or chat (Oracle hand-off), Archive `finance-store`, agenda + Hermes, WebUI plugin «Expenses» |
-| Apollo | Domain (Images) | Yes (flows per purpose, job queue) | Yes (remote ComfyUI, `APOLLO_COMFYUI_URL`) | The only caller of image generators; ComfyUI websocket push; images in Archive blobs; `callback` push to the requester |
+| Apollo | Domain (Images) | Yes (flows per purpose, job queue) | Yes (remote ComfyUI, linked from Connections) | The only caller of image generators; ComfyUI websocket push; images in Archive blobs; `callback` push to the requester |
 | Aphrodite | Domain (Appearance) | Yes (which look is on) | No | Profiles, pets, per-client choice; today's moment pushed by Chronos; asks pictures to Apollo; clients read `/now` |
-| Lares | Domain (House) | Yes (devices, quick actions) | Yes (Home Assistant, `LARES_HA_URL`/`LARES_HA_TOKEN`) | The only caller of Home Assistant; websocket push of state changes; presence signal `home.present` |
+| Lares | Domain (House) | Yes (devices, quick actions) | Yes (Home Assistant, linked from Connections) | The only caller of Home Assistant; websocket push of state changes; presence signal `home.present` |
 | Hera | Domain (People) | Yes (cards, gifts, contacts) | No | Dates as Chronos special events (stable keys), gift ideas on `special_moment`, agenda + Hermes |
 | Demeter | Domain (Nutrition) | Yes (diet, meals, supplements) | No | Coach of the weekly plan (tag `coach`), kcal estimates through Oracle, Archive `food-store` |
 | Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `document_create`, file under the Telegram card |
@@ -153,7 +153,7 @@ flowchart LR
 
 ### Incoming mail flow (push, no module polls)
 1. Hecate watches Gmail: Chronos job `hecate.mail_watch` (default 15 min, history API) or, when configured, Gmail
-   Pub/Sub streaming pull (`HECATE_GMAIL_PUBSUB_*`; the job then stays as a safety net, `hecate.mail_watch_renew` daily).
+   Pub/Sub streaming pull (card «Gmail instant notices» in Connections; the job then stays as a safety net, `hecate.mail_watch_renew` daily).
 2. Hecate → Iris `POST /api/email/incoming` with the new mails' headers.
 3. Iris matches them against module subscriptions (`hestia_common.mail_client`, `/api/email/subscriptions`).
 4. For each match Iris stores the full mail in Archive as a raw record under the subscriber's domain (deduped), then
@@ -370,11 +370,13 @@ SPEC `docs/work/2026-10-20-layered-reflection`.
    «The models are ready»: WebUI `setup/brain/hello` → Hephaestus → Hub → Oracle `/api/llm/generate`
    (use case `hephaestus.setup`) → the assistant's first message shown on the page. Voce/Ascolto «Ascolta» and
    «Try speaking»: WebUI `setup/voice/preview|hear` → Hephaestus → Hub → Echo `/api/voice/setup/preview|hear`.
-2c. Connected services: setup screen «Your services» and the Dispositivi page mount Hecate's one list
-   `<hecate-connections>` → WebUI `/api/webui/plugins/hecate/call/…` → Hub → Hecate `GET /api/gateway/connections`
-   (every service the same shape and step) and `POST /api/gateway/connections/{id}` (Google: OAuth client kept in
-   `Hestia-Hecate/data`, Google's page in a new tab, callback or pasted address, token in `data/google_token.json`;
-   Garmin: email + password once, then the code, tokens in `data/garmin`).
+2c. Connections (`hestia_common.connections`): setup screen «Your services» and the page **Connections** mount
+   `<hxk-connections>` with every module that has `connection` contributions in the Hub catalog → WebUI
+   `/api/webui/plugins/<module>/call/…` → Hub → the module's `GET {api_prefix}connections` (every service the same
+   shape and step), `POST …/connections/{id}` and `…/{id}/test`. A typed secret → module → Hub → Hephaestus
+   `POST /api/setup/connection-secret` → `<MODULE>_KEY_*` in that module's `.env` → Hub → module
+   `POST /api/connections/reload-keys` (live, else container re-created). An address → Themis setting. Sign-in
+   tokens stay in the module's `data/` (Google `google_token.json`, Outlook `outlook_token.json`, Garmin `data/garmin`).
 3. Telegram: token → `Hestia-Telegram/app/.env` + re-create → one-time code on screen → the user writes it to the
    bot → Telegram (no owner yet) → Hub → Hephaestus `setup/telegram/claim` → `ALLOWED_USER_ID` → bot re-created.
 4. Backup passphrase → root `.env` → `hestia_archive` re-created.

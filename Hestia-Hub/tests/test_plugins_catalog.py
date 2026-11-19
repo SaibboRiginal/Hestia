@@ -96,6 +96,22 @@ class TestHubCatalog:
         assert webui["widget"][0]["module"] == "scout" and webui["bundle"][0]["entry"] == "/ui/webui/scout.js"
         assert cat["modules"][0]["online"] is True and cat["modules"][0]["kind"] == "domain"
 
+    def test_connections_reach_the_catalog_with_their_prefix(self, monkeypatch):
+        """A module with only connection cards (no pages): the bundle entry still names its api_prefix, so the WebUI
+        proxy lets the cards call it (docs/work/2026-11-19-unified-connections)."""
+        from hestia_common.connections import Connections, Connector
+        conns = Connections("apollo", "/api/images/")
+        conns.register(type("C", (Connector,), {"id": "comfyui", "label": "ComfyUI", "group": "home_service",
+                                               "state": lambda self: {"status": "off"}})())
+        mod = PluginClient("apollo", title="Apollo")
+        mod.webui(entry="", api_prefix="/api/images/").connections(conns)
+        monkeypatch.setattr(disc.requests, "get", lambda url, timeout=0: _Resp(mod.manifest()))
+        reg = ServiceRegistry()
+        reg.register({"name": "apollo", "base_url": "http://a", "capabilities": mod.capabilities("http://a")})
+        webui = disc.discover_catalog(reg, client="webui", types=["connection"])["contributions"]["webui"]
+        assert webui["connection"][0]["id"] == "apollo.comfyui" and webui["connection"][0]["source"] == "/api/images/connections"
+        assert webui["bundle"][0]["api_prefix"] == "/api/images/" and webui["bundle"][0]["entry"] == ""
+
     def test_core_kind_and_badge_reach_the_catalog(self, monkeypatch):
         core = PluginClient("athena", title="Athena", kind="core")
         core.webui(entry="athena.js", api_prefix="/api/athena/",

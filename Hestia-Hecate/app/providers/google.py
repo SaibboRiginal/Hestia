@@ -222,8 +222,8 @@ class GoogleCalendarProvider(AbstractCalendarProvider):
         Duplicates (same refresh token) are dropped.  Missing client id/secret
         are filled from the canonical env vars.
         """
-        env_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-        env_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+        env_id = os.getenv("HECATE_KEY_GOOGLE_CLIENT_ID", "").strip()
+        env_secret = os.getenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "").strip()
         raw: list[tuple[str, dict]] = []
 
         file_data = GoogleCalendarProvider._read_token_file()
@@ -295,7 +295,7 @@ def load_google_credentials():
     errors: list[str] = []
     for source, data in candidates:
         if not data.get("client_id") or not data.get("client_secret"):
-            errors.append(f"{source}: GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET missing")
+            errors.append(f"{source}: HECATE_KEY_GOOGLE_CLIENT_ID/HECATE_KEY_GOOGLE_CLIENT_SECRET missing")
             continue
         try:
             creds = Credentials.from_authorized_user_info(data, data.get("scopes") or _SCOPES)

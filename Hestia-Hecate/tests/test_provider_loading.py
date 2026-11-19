@@ -9,12 +9,12 @@ def test_detect_gateway_providers_empty(monkeypatch):
     keys = [
         "GOOGLE_TOKEN_JSON",
         "GOOGLE_CREDENTIALS_JSON",
-        "GOOGLE_CLIENT_ID",
-        "GOOGLE_CLIENT_SECRET",
+        "HECATE_KEY_GOOGLE_CLIENT_ID",
+        "HECATE_KEY_GOOGLE_CLIENT_SECRET",
         "GOOGLE_REFRESH_TOKEN",
-        "OUTLOOK_CLIENT_ID",
-        "OUTLOOK_CLIENT_SECRET",
-        "OUTLOOK_TENANT_ID",
+        "HECATE_KEY_OUTLOOK_CLIENT_ID",
+        "HECATE_KEY_OUTLOOK_CLIENT_SECRET",
+        "HECATE_KEY_OUTLOOK_TENANT",
         "OUTLOOK_REFRESH_TOKEN",
         "HECATE_ENABLE_PROVIDER_GOOGLE",
         "HECATE_ENABLE_PROVIDER_MICROSOFT",
@@ -27,8 +27,8 @@ def test_detect_gateway_providers_empty(monkeypatch):
 
 
 def test_detect_gateway_providers_configured_google(monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "x")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "y")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "x")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "y")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "z")
     monkeypatch.delenv("HECATE_ENABLE_PROVIDER_GOOGLE", raising=False)
 

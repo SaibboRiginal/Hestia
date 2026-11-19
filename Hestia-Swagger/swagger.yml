@@ -3499,7 +3499,7 @@ paths:
   /api/gateway/connections:
     get:
       tags: [Hecate]
-      summary: "Every service Hecate can link, the same shape for all {items[{id, label, icon, what, state connected|waiting|not_connected, detail, step{kind form|wait, text, fields[], submit, guide?, link?, url?}, actions[]}]}; place=setup → only the ones offered in the guided setup"
+      summary: "Hecate's connection cards (Google, Outlook, Gmail instant notices, Garmin, Android phone; hestia_common.connections shared shape) {items[{id, label, icon, what, group, keywords, state connected|waiting|not_connected, detail, step{kind form|wait, text, fields[], submit, guide?, link?, code?, url?}, actions[], test}]}; place=setup → only the ones offered in the guided setup"
       servers:
         - url: http://localhost:19003
       parameters:
@@ -3529,7 +3529,7 @@ paths:
   /api/gateway/connections/{cid}/{action}:
     post:
       tags: [Hecate]
-      summary: "A button of a service's card (sync, again, cancel, client) → {item, open_url?, message?}"
+      summary: "A button of a service's card (sync, again, cancel, client, hide) → {item, open_url?, message?}; test → {result: {ok, detail, facts[], at}}"
       servers:
         - url: http://localhost:19003
       parameters:
@@ -3538,10 +3538,29 @@ paths:
       responses:
         "200": {description: OK}
         "422": {description: "refused: detail says why in words"}
+  /api/gateway/connections-overview:
+    get:
+      tags: [Hecate]
+      summary: "Every module's connections in one list (Hub catalog «connection» + each module's GET …/connections) → {items, display, unreachable[]}; tool connections_status"
+      servers:
+        - url: http://localhost:19003
+      responses:
+        "200": {description: OK}
+  /api/connections/reload-keys:
+    post:
+      tags: [Hecate, Apollo, Lares, Hermes]
+      summary: "Re-read the module's own <MODULE>_KEY_* lines of its .env (no restart), called by Hephaestus after a connection card saved a key"
+      servers:
+        - url: http://localhost:19003
+        - url: http://localhost:19022
+        - url: http://localhost:19024
+        - url: http://localhost:19005
+      responses:
+        "200": {description: "{status, keys[]} (names that have a value, never a value)"}
   /api/gateway/garmin/login:
     post:
       tags: [Hecate]
-      summary: "Secret form target, and the Devices page form ({direct: true}: the two-step code is asked in the page, no Hermes form) {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
+      summary: "Secret form target, and the Garmin card of Connections ({direct: true}: the two-step code is asked in the page, no Hermes form) {values{email, password} | values{code}} → {status connected | needs_code}; password never stored"
       servers:
         - url: http://localhost:19003
       responses:
@@ -7851,6 +7870,15 @@ paths:
   #  HEPHAESTUS — 19010
   # ══════════════════════════════════════════════════════════════════════════
 
+  /api/setup/connection-secret:
+    post:
+      tags: [Hephaestus]
+      summary: "A connection card's keys {module apollo|lares|hecate|hermes, values{<MODULE>_KEY_<NAME>: value}} → written in that module's .env (empty = cleared), re-read live else container re-created → {keys, applied, reloaded, detail}; values never logged or returned"
+      servers:
+        - url: http://localhost:19010
+      responses:
+        "200": {description: OK}
+        "422": {description: "key not allowed for that module, or value refused"}
   /api/setup/state:
     get:
       tags: [Hephaestus]
@@ -14091,6 +14119,48 @@ paths:
 
   # ── Apollo (port 19022) — tools also as REST under /api/images/tools/<name>; /mcp; recap/transfer/settings as every module
 
+  /api/images/connections:
+    get:
+      tags: [Apollo]
+      summary: "Apollo's (ComfyUI) connection cards (hestia_common.connections, shared shape): {items[{id, label, icon, what, group account|device|home_service, keywords, state, detail, step, actions, test}]}; place=setup → only the ones in the guided setup"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: place, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/images/connections/{cid}:
+    post:
+      tags: [Apollo]
+      summary: "The current step's values {values} (address, key; never logged) → {item, message?}"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
+    delete:
+      tags: [Apollo]
+      summary: "Unlink (address cleared, key removed) → {item}"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/images/connections/{cid}/{action}:
+    post:
+      tags: [Apollo]
+      summary: "A button of the card (edit, cancel; test → {result: {ok, detail, facts[], at}})"
+      servers:
+        - url: http://localhost:19022
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+        - {name: action, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
   /api/images/status:
     get:
       tags: [Apollo]
@@ -14367,6 +14437,48 @@ paths:
 
   # ── Lares (port 19024) — tools also as REST under /api/home/tools/<name>; /mcp; recap/transfer/settings as every module
 
+  /api/home/connections:
+    get:
+      tags: [Lares]
+      summary: "Lares' (Home Assistant) connection cards (hestia_common.connections, shared shape): {items[{id, label, icon, what, group account|device|home_service, keywords, state, detail, step, actions, test}]}; place=setup → only the ones in the guided setup"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: place, in: query, required: false, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/home/connections/{cid}:
+    post:
+      tags: [Lares]
+      summary: "The current step's values {values} (address, key; never logged) → {item, message?}"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
+    delete:
+      tags: [Lares]
+      summary: "Unlink (address cleared, key removed) → {item}"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+  /api/home/connections/{cid}/{action}:
+    post:
+      tags: [Lares]
+      summary: "A button of the card (edit, cancel; test → {result: {ok, detail, facts[], at}})"
+      servers:
+        - url: http://localhost:19024
+      parameters:
+        - {name: cid, in: path, required: true, schema: {type: string}}
+        - {name: action, in: path, required: true, schema: {type: string}}
+      responses:
+        "200": {description: OK}
+        "422": {description: "refused: detail says why in words"}
   /api/home/status:
     get:
       tags: [Lares]

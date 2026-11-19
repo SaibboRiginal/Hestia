@@ -145,7 +145,7 @@ personal setting `themis.personal.places` (one Casa; empty place = Casa). Outdoo
 ## 5a. Mail flow (push) — subscribe, never poll
 
 Gmail → Hecate watcher (Chronos job `hecate.mail_watch`, default 15 min, history API; optional Gmail Pub/Sub streaming
-pull via `HECATE_GMAIL_PUBSUB_*`, then the job is only a safety net) → Iris `POST /api/email/incoming` → match against
+pull linked from Connections → «Gmail instant notices», then the job is only a safety net) → Iris `POST /api/email/incoming` → match against
 subscriptions → full mail stored in Archive as raw record under the subscriber's domain → doorbell
 `POST route/<module>/<path> {owner, key, domain, count, reference_ids}`. A module declares rules with
 `hestia_common.mail_client.MailClient(owner).subscribe_async(rules)`, processes `/api/archive/<domain>/unevaluated`

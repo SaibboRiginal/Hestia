@@ -74,7 +74,7 @@ class Home:
 
     def _ensure(self) -> None:
         if not self.ha.configured:
-            raise Invalid(tr("the home is not linked: the Home Assistant address and token are needed in the .env file"))
+            raise Invalid(tr("the home is not linked: link Home Assistant in Connections"))
         if not self.entities:
             try:
                 self.load()

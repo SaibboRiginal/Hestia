@@ -286,8 +286,8 @@ def discover_commands(registry: ServiceRegistry, client_key: str = "") -> list[d
 # The catalog is one view, organized by client × type, over tools, commands and UI contributions.
 _UI_MANIFEST_TTL = 300.0
 _ONLINE_WINDOW = 180.0          # modules re-register every 60 s
-CATALOG_TYPES = ("tool", "command", "page", "widget", "quick_action", "settings_panel")
-UI_TYPES = ("page", "widget", "quick_action", "settings_panel")
+CATALOG_TYPES = ("tool", "command", "page", "widget", "quick_action", "settings_panel", "connection")
+UI_TYPES = ("page", "widget", "quick_action", "settings_panel", "connection")
 # Command discovery predates the catalog: the WebUI's commands use the client key "ui".
 _COMMAND_CLIENT_KEY = {"webui": "ui"}
 
@@ -361,8 +361,9 @@ def discover_catalog(registry: ServiceRegistry, client: str = "", types: list[st
                 continue
             if not isinstance(block, dict):
                 continue
-            if block.get("entry"):
-                add(cl, "bundle", {"id": name, "module": name, "entry": block["entry"], "api_prefix": block.get("api_prefix", ""),
+            # A module with connections but no page still needs its api_prefix known (WebUI proxy guard): empty entry.
+            if block.get("entry") or block.get("connection"):
+                add(cl, "bundle", {"id": name, "module": name, "entry": block.get("entry") or "", "api_prefix": block.get("api_prefix", ""),
                                    "sdk": block.get("sdk", ""), "version": manifest.get("version", ""), "online": online})
             for kind in UI_TYPES:
                 if kind not in wanted:

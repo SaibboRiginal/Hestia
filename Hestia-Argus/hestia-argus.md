@@ -128,7 +128,7 @@ read at use time, so changes apply live unless marked *restart*. Safety switches
 | `argus.logs.hub_limit` | int | `200` | Max log rows per service per poll/report (hub source) |
 | `argus.logs.seen_cache_size` | int | `5000` | Dedupe memory for hub-sourced log events (min 500) |
 | `argus.logs.ignore_health_access` | bool | `true` | Drop `/health` access lines (docker source) |
-| `argus.logs.ignore_patterns` | list | `["OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set"]` | Substrings whose lines are dropped (docker source) |
+| `argus.logs.ignore_patterns` | list | `["Outlook not linked"]` | Substrings whose lines are dropped (docker source) |
 | `argus.logs.buffer_size` | int | `500` | Log events kept per container (docker source) — *restart* |
 | `argus.logs.backfill_minutes` | int (min) | `0` | Past logs read on first poll of a container (docker source) |
 | `argus.alerts.cooldown` | int (min) | `60` | Minimum time between repeated alerts with the same fingerprint |

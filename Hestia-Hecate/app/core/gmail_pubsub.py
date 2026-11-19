@@ -5,14 +5,16 @@ and Pub/Sub delivers notifications on it as they happen, so it is real push **wi
 (the quick tunnel URL changes at every restart). Each notification only says "the mailbox changed":
 Hecate then runs the normal watcher (history API), which stays the single source of truth.
 
-Configuration (infrastructure, env — one-time setup in Marko's Google Cloud project, see hestia-hecate.md):
-- ``HECATE_GMAIL_PUBSUB_TOPIC``         projects/<project>/topics/<topic> (publisher: gmail-api-push@system.gserviceaccount.com)
-- ``HECATE_GMAIL_PUBSUB_SUBSCRIPTION``  projects/<project>/subscriptions/<sub> (pull)
-- ``HECATE_GMAIL_PUBSUB_CREDENTIALS``   service account JSON with only "Pub/Sub Subscriber" (default data/gmail-pubsub-sa.json)
+Configuration: the «Gmail instant notices» card (Connections, dossier docs/work/2026-11-19-unified-connections):
+- Themis ``hecate.gmail.push_topic``         projects/<project>/topics/<topic> (publisher: gmail-api-push@system.gserviceaccount.com)
+- Themis ``hecate.gmail.push_subscription``  projects/<project>/subscriptions/<sub> (pull)
+- ``HECATE_KEY_GMAIL_PUBSUB_ACCOUNT``        the service account JSON with only "Pub/Sub Subscriber", base64, in Hecate's .env
 ``users.watch`` expires after 7 days: the agenda job ``hecate.mail_watch_renew`` renews it daily.
 """
 from __future__ import annotations
 
+import base64
+import json
 import logging
 import os
 import threading
@@ -23,20 +25,39 @@ from typing import Any, Callable
 logger = logging.getLogger("hestia_hecate.gmail_pubsub")
 
 
+TOPIC = "hecate.gmail.push_topic"
+SUBSCRIPTION = "hecate.gmail.push_subscription"
+ACCOUNT_KEY = "HECATE_KEY_GMAIL_PUBSUB_ACCOUNT"
+
+
+def _setting(key: str) -> str:
+    from core.hecate_settings import settings
+    return str(settings.get(key) or "").strip()
+
+
 def topic() -> str:
-    return os.getenv("HECATE_GMAIL_PUBSUB_TOPIC", "").strip()
+    return _setting(TOPIC)
 
 
 def subscription() -> str:
-    return os.getenv("HECATE_GMAIL_PUBSUB_SUBSCRIPTION", "").strip()
+    return _setting(SUBSCRIPTION)
 
 
-def credentials_file() -> str:
-    return os.getenv("HECATE_GMAIL_PUBSUB_CREDENTIALS", "/code/data/gmail-pubsub-sa.json").strip()
+def account_info() -> dict:
+    """The service account JSON saved by the card (base64 in Hecate's .env); {} when missing or broken."""
+    raw = os.getenv(ACCOUNT_KEY, "").strip()
+    if not raw:
+        return {}
+    try:
+        data = json.loads(base64.b64decode(raw).decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        logger.warning("event=gmail_pubsub_account_unreadable")
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def configured() -> bool:
-    return bool(topic() and subscription())
+    return bool(topic() and subscription() and os.getenv(ACCOUNT_KEY, "").strip())
 
 
 class PubSubListener:
@@ -48,6 +69,7 @@ class PubSubListener:
                                       "messages": 0, "error": None, "watch_expiration": None,
                                       "watch_renewed_at": None}
         self._thread: threading.Thread | None = None
+        self._future: Any = None
 
     def status(self) -> dict:
         return {**self.state, "configured": configured(), "topic": topic() or None}
@@ -62,6 +84,18 @@ class PubSubListener:
         self._thread.start()
         return True
 
+    def restart(self) -> bool:
+        """The card changed topic, subscription or account: drop the open stream; the loop reconnects with the new
+        values, or ends when the card turned it off."""
+        future = self._future
+        if future is not None:
+            try:
+                future.cancel()
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("[🔄] event=gmail_pubsub_cancel_failed error=%s", exc)
+        self.state.update(active=False, error=None)
+        return self.start()
+
     def _callback(self, message) -> None:
         try:
             message.ack()
@@ -72,24 +106,29 @@ class PubSubListener:
 
     def _loop(self) -> None:
         backoff = 30
-        while True:
+        while configured():
             try:
                 from google.cloud import pubsub_v1  # optional dependency, imported only when configured
                 from google.oauth2 import service_account
 
-                creds = service_account.Credentials.from_service_account_file(
-                    credentials_file(), scopes=["https://www.googleapis.com/auth/pubsub"])
+                creds = service_account.Credentials.from_service_account_info(
+                    account_info(), scopes=["https://www.googleapis.com/auth/pubsub"])
                 subscriber = pubsub_v1.SubscriberClient(credentials=creds)
                 future = subscriber.subscribe(subscription(), callback=self._callback)
+                self._future = future
                 self.state.update(active=True, error=None)
                 logger.info("event=gmail_pubsub_listening subscription=%s", subscription())
                 backoff = 30
-                future.result()          # blocks while the stream is open
+                future.result()          # blocks while the stream is open (restart() cancels it)
             except Exception as exc:
                 self.state.update(active=False, error=str(exc)[:300])
                 logger.warning("[🔄] event=gmail_pubsub_stream_failed error=%s retry_in=%ss", exc, backoff)
+                if not configured():
+                    break
                 time.sleep(backoff)
                 backoff = min(backoff * 2, 1800)
+        self.state.update(active=False)
+        logger.info("event=gmail_pubsub_stopped reason=not_configured")
 
     def renew(self, gmail) -> dict:
         """(Re)start Gmail notifications on the topic; returns Gmail's ``{historyId, expiration}``."""

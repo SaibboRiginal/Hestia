@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { marked } from 'marked';
 import { Router, RouterLink } from '@angular/router';
 import { UI } from '../../ui';
-import { PluginOutletComponent } from '../plugins/plugin-outlet.component';
+import { ConnectionsComponent } from '../connections/connections.component';
 import { PluginsService } from '../plugins/plugins.service';
 import { HomeProgram, ServiceCheck, ServiceRow, SetupChainComponent, chosenKeys, keyStep, ranked } from './setup-chain.component';
 import { PickItem, family } from './setup-pick.component';
@@ -56,7 +56,7 @@ function store(key: string, value: string): void {
  */
 @Component({
   selector: 'app-setup-page',
-  imports: [TrPipe, ...UI, FormsModule, RouterLink, SetupChainComponent, PluginOutletComponent, AssistantTextComponent],
+  imports: [TrPipe, ...UI, FormsModule, RouterLink, SetupChainComponent, ConnectionsComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="bar">
@@ -261,9 +261,9 @@ function store(key: string, value: string): void {
 
             @case ('external_ais') {
               <h1>{{ "Your services" | tr }}</h1>
-              <p class="lead">{{ "If you want, link them now. You can also do it later from the Devices page." | tr }}</p>
+              <p class="lead">{{ "If you want, link them now. You can also do it later from the Connections page." | tr }}</p>
               <div class="outlets">
-                <hx-plugin-outlet module="hecate" element="hecate-connections" [ctx]="{ params: { place: 'setup' } }" />
+                <hx-connections place="setup" />
               </div>
             }
 
@@ -428,7 +428,7 @@ function store(key: string, value: string): void {
     .same input { margin-top: 3px; accent-color: var(--accent); width: 16px; height: 16px; flex: none; }
     .same span { display: flex; flex-direction: column; gap: 1px; }
     .outlets { display: flex; flex-direction: column; gap: 12px; }
-    .outlets hx-plugin-outlet { flex: none; }
+    .outlets hx-connections { flex: none; }
     .engines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-3); line-height: 1.45; }
     .engines b { color: var(--text-2); font-weight: 600; }
     .urlrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
