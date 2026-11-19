@@ -124,7 +124,7 @@ PERSONAL: dict[str, dict] = {d["key"]: d for d in (
             help="Your places (Home, Work, Gym…): one is Home, the default place for the weather; the agenda and the workouts recognise events at these places. The city is enough, or the address with the city."),
     setting("themis.personal.birth_date", "Date of birth", "string", "", group="Personal",
             help="YYYY-MM-DD. Your birthday goes into the special events (you can change it there too)."),
-    # Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita): read by every prompt
+    # Who you are and who the assistant is (docs/work/2026-11-12-identity-and-proactivity): read by every prompt
     # that speaks to the owner through ``hestia_common.identity``.
     setting("themis.personal.owner_name", "Your name", "string", "", group="You and the assistant", order=1,
             help="Your name. The assistant knows it is yours and calls you by name."),

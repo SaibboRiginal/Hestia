@@ -1,4 +1,4 @@
-"""LLM usage store — rows written by Oracle and summed (docs/work/2026-10-19-oracle-a-blocchi §E).
+"""LLM usage store — rows written by Oracle and summed (docs/work/2026-10-19-oracle-blocks §E).
 
 Runs the real router on an in-memory SQLite: only the llm_usage table is created.
 """

@@ -10,7 +10,7 @@ One Oracle stream → ONE answer message (split only when > 4096 chars):
     │ [ Ascolta ] [ 👍 ] [ 👎 ]                               │  one row (voice_service)
     └────────────────────────────────────────────────────────┘
 
-Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-da-zero §7).
+Settings: thinking_display and notice_mode (chat_settings). No emoji (docs/work/2026-10-23-telegram-from-scratch §7).
 Notices are the standard Oracle `notice` packets.
 """
 from __future__ import annotations
@@ -71,7 +71,7 @@ class ReplyRenderer:
         self._last_edit = 0.0
         self._last_sent = ""
         self.finalized = False
-        self.reaction = ""                   # Hestia's emoji on the owner's message (hestia-viva F4)
+        self.reaction = ""                   # Hestia's emoji on the owner's message (hestia-alive F4)
         self.origin_label = ""               # who started the turn when it is not the owner (Cindy 6)
         self.buttons: list[dict] = []        # hestia-ui buttons of the answer (Cindy 9)
         self.changes: dict | None = None     # `changes` frame: writes of this turn with undo (Cindy 13)

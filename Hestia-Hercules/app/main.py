@@ -535,7 +535,7 @@ def _activity_hints() -> list[dict]:
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     facts = hercules.recap(day, nxt)
     try:
         outdoor = activities.recap(day, nxt)
@@ -663,7 +663,7 @@ def reminder_check():
     return {"send": True, "text": text}
 
 
-# ── outdoor activities (dossier 2026-10-20-meteo-hecate §3.8) ─────────────────
+# ── outdoor activities (dossier 2026-10-20-weather-hecate §3.8) ─────────────────
 def _notify(msg: dict, title: str) -> bool:
     try:
         hub.call("hermes", "POST", "api/events/ingest", body=reminder_event(
@@ -1091,51 +1091,51 @@ try:
         MCPTool(name="fitness_summary", description=("Training at a glance: next workout, goal (e.g. 2/3 this week), recent records, plateaus, "
                                                      "skipped days, low-energy signals. Use it first for any question about gym/training."), parameters={"type": "object", "properties": {}},
                 handler=_t(_summary), title="Workout summary", path=f"{API}/summary", clients=["telegram", "ui"],
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Today", "summary": True}),
         MCPTool(name="fitness_next_workout", description="The next workout with exercises and suggested weights (automatic progression) and the reason.", parameters={"type": "object", "properties": {}},
                 handler=_t(_next), title="Today's workout", path=f"{API}/next", clients=["telegram", "ui"],
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Today", "primary": 2}),
         MCPTool(name="fitness_history", description="Past workouts (days back, exercise filter).",
                 parameters={"type": "object", "properties": {"days": I, "exercise": S, "limit": I}},
                 handler=_t(_history), title="Workout history", path=f"{API}/sessions", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "History and statistics", "label": "History"}),
         MCPTool(name="fitness_exercise_stats", description="Records and trend of an exercise (estimated max, top weight, last sessions, plateau).", parameters={"type": "object", "properties": {"exercise": S},
                                                                        "required": ["exercise"]},
                 handler=_t(_exercise_stats), title="Exercise statistics", path=f"{API}/records", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "History and statistics"}),
         MCPTool(name="fitness_search_exercises", description="Search exercises in the catalogue (name or muscle: chest, shoulders, arms, back, core, legs).", parameters={"type": "object", "properties": {"query": S, "muscle": S}},
                 handler=_t(_search), title="Search exercises", path=f"{API}/exercises", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "Workout plans"}),
         MCPTool(name="fitness_templates", description="The user's workout templates with exercises and duration.",
                 parameters={"type": "object", "properties": {}}, handler=_t(_templates), title="Workout plans",
-                path=f"{API}/templates", clients=["telegram", "ui"], telegram_group="allenamento",
+                path=f"{API}/templates", clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Workout plans", "primary": 5}),
         MCPTool(name="fitness_start_session", description="Start a workout (template by name, empty = today's).",
                 parameters={"type": "object", "properties": {"template": S}}, handler=_t(_start),
                 title="Start workout", method="POST", path=f"{API}/sessions", clients=["telegram", "ui"],
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Today", "primary": 1}),
         MCPTool(name="fitness_log_sets", description=("Log sets in the workout in progress from text: 'panca 80x8, 80x8, 77.5x7; trazioni 8, 7, 6'. "
                                                       "Weight x reps (x sets), optional @RPE."),
                 parameters={"type": "object", "properties": {"text": S}, "required": ["text"]}, handler=_t(_log),
                 title="Log set", method="POST", path=f"{API}/sessions/log-text", clients=["telegram", "ui"],
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Today"}),
         MCPTool(name="fitness_finish_session", description="Finish the workout in progress: summary and new records.",
                 parameters={"type": "object", "properties": {"notes": S, "effort": I}}, handler=_t(_finish),
                 title="End workout", method="POST", path=f"{API}/sessions/{{id}}/finish",
-                clients=["telegram", "ui"], telegram_group="allenamento",
+                clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Today"}),
         MCPTool(name="fitness_checkin", description=("Save how the user feels today: energy 1-5, sleep 1-5, soreness, pain (shoulder, knee, back…), minutes available."),
                 parameters={"type": "object", "properties": {"energy": I, "sleep": I, "soreness": L, "pain_areas": L,
                                                              "time_minutes": I, "free_text": S}},
                 handler=_t(_checkin), title="How are you today", method="POST", path=f"{API}/checkin", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "Today", "label": "Check-in"}),
         MCPTool(name="fitness_adapt_today", description=("Propose today's workout adapted to how the user feels (energy 1-5, minutes, pain, soreness, "
                                                          "missing equipment, intent lighter|shorter|harder). It does NOT apply it: show the user 'trace' "
@@ -1145,32 +1145,32 @@ try:
                                                              "soreness": L, "equipment_missing": L, "intent": S,
                                                              "free_text": S}},
                 handler=_t(_adapt), title="Adapt workout", method="POST", path=f"{API}/adapt", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "Today"}),
         MCPTool(name="fitness_apply_adaptation", description="Apply the proposed adaptation (only after the user's yes).",
                 parameters={"type": "object", "properties": {"adaptation_id": S}, "required": ["adaptation_id"]},
                 handler=_t(_apply), title="Apply adaptation", method="POST", path=f"{API}/adapt/{{adaptation_id}}/apply",
-                clients=["ui"], telegram_visible=False, telegram_group="allenamento",
+                clients=["ui"], telegram_visible=False, telegram_group="training",
                 telegram={"section": "Today"}),
         MCPTool(name="fitness_restore_today", description="Restore today's original workout template (undo the adaptation).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_restore), title="Restore today's plan",
-                method="POST", path=f"{API}/restore", clients=["ui"], telegram_visible=False, telegram_group="allenamento",
+                method="POST", path=f"{API}/restore", clients=["ui"], telegram_visible=False, telegram_group="training",
                 telegram={"section": "Today"}),
         MCPTool(name="fitness_skip_day", description="Mark a day's workout as skipped (default today).",
                 parameters={"type": "object", "properties": {"date": S, "note": S}}, handler=_t(_skip),
                 title="Skip workout", method="POST", path=f"{API}/days/skip", clients=["telegram", "ui"],
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Today", "primary": 6, "label": "Skip today"}),
         MCPTool(name="fitness_postpone", description="Move today's workout (or date_from's) to the day 'to' (YYYY-MM-DD).",
                 parameters={"type": "object", "properties": {"to": S, "date_from": S}, "required": ["to"]},
                 handler=_t(_postpone), title="Move workout", method="POST", path=f"{API}/days/postpone",
-                clients=["ui"], telegram_visible=False, telegram_group="allenamento",
+                clients=["ui"], telegram_visible=False, telegram_group="training",
                 telegram={"section": "Today"}),
         MCPTool(name="fitness_feedback", description=("Save feedback on the workout or an exercise. tags: too_heavy, too_light, pain, great, tired, "
                                                       "bored, short_time, technique. The rules use it next time."),
                 parameters={"type": "object", "properties": {"text": S, "tags": L, "exercise": S}}, handler=_t(_feedback),
                 title="How the workout went", method="POST", path=f"{API}/feedback", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "Today", "label": "Feedback"}),
         MCPTool(name="fitness_edit_template", description=("Edit a workout template: remove/add an exercise, sets and reps. Only after the user said yes in "
                                                            "chat. Undoable with fitness_undo_template."),
@@ -1178,24 +1178,24 @@ try:
                                                              "sets": I, "reps_min": I, "reps_max": I,
                                                              "changes": {"type": "object"}}, "required": ["template"]},
                 handler=_t(_edit_template), title="Edit plan", method="PUT", path=f"{API}/templates/{{id}}",
-                clients=["ui"], telegram_visible=False, telegram_group="allenamento",
+                clients=["ui"], telegram_visible=False, telegram_group="training",
                 telegram={"section": "Workout plans"}),
         MCPTool(name="fitness_undo_template", description="Undo the last change to a workout template.",
                 parameters={"type": "object", "properties": {"template": S}, "required": ["template"]},
                 handler=_t(_undo_template), title="Undo plan change", method="POST",
-                path=f"{API}/templates/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="allenamento",
+                path=f"{API}/templates/{{id}}/undo", clients=["ui"], telegram_visible=False, telegram_group="training",
                 telegram={"section": "Workout plans"}),
         MCPTool(name="fitness_log_measurement", description="Log body weight (kg) or a measurement (kind: waist, chest, arm, thigh, body_fat…).", parameters={"type": "object", "properties": {
                     "value": {"type": "number"}, "kind": S}, "required": ["value"]},
                 handler=_t(_measure), title="Log weight", method="POST", path=f"{API}/measurements",
-                clients=["telegram", "ui"], telegram_group="allenamento",
+                clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Goals and body", "primary": 3}),
         MCPTool(name="fitness_set_goal", description=("Set a training goal: times per day|week|month; scope any, template (target = template name) or "
                                                       "muscle (petto, spalle, braccia, schiena, core, gambe)."),
                 parameters={"type": "object", "properties": {"times": I, "per": S, "scope": S, "target": S,
                                                              "active": {"type": "boolean"}}, "required": ["times"]},
                 handler=_t(_goal), title="Workout goal", method="POST", path=f"{API}/goals", clients=["ui"],
-                telegram_visible=False, telegram_group="allenamento",
+                telegram_visible=False, telegram_group="training",
                 telegram={"section": "Goals and body"}),
         MCPTool(name="fitness_plan_activity", description=("Intention of an outdoor activity («ho voglia di correre 2 volte questa settimana»): kind "
                                                            "corsa|bici|camminata|nuoto|altro, times, place (name of a saved place or a city; empty = Casa), "
@@ -1203,7 +1203,7 @@ try:
                                                            "commitments; does NOT write the calendar: show the moments and ask for confirmation."),
                 parameters={"type": "object", "properties": {"kind": S, "times": I, "place": S, "minutes": I, "week": S}},
                 handler=_t(_plan_activity), title="Schedule task", method="POST",
-                path=f"{API}/activities/propose", clients=["telegram", "ui"], telegram_group="allenamento",
+                path=f"{API}/activities/propose", clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Activity"}),
         MCPTool(name="fitness_confirm_activity", description=("Confirm the proposed intention (after the user's yes): slots = numbers of the moments to keep "
                                                               "or ISO times the user chose (empty = all). Creates the events in the «Allenamenti» calendar and "
@@ -1211,19 +1211,19 @@ try:
                 parameters={"type": "object", "properties": {"plan_id": S, "slots": L}, "required": ["plan_id"]},
                 handler=_t(_confirm_activity), title="Confirm task", method="POST",
                 path=f"{API}/activities/{{plan_id}}/confirm", clients=["ui"], telegram_visible=False,
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Activity"}),
         MCPTool(name="fitness_log_activity", description=("Log an activity done («I ran 5 km»): kind, date (empty = today), minutes, km, note. Closes the planned moment of that day if there is one."),
                 parameters={"type": "object", "properties": {"kind": S, "date": S, "minutes": I,
                                                              "km": {"type": "number"}, "note": S}},
                 handler=_t(_log_activity), title="Log activity", method="POST", path=f"{API}/activities/log",
-                clients=["telegram", "ui"], telegram_group="allenamento",
+                clients=["telegram", "ui"], telegram_group="training",
                 telegram={"section": "Activity", "primary": 4}),
         MCPTool(name="fitness_activities", description=("Outdoor activities of this week: intentions with progress (e.g. Corsa 1/2), planned moments and "
                                                         "activities done."),
                 parameters={"type": "object", "properties": {}}, handler=_t(_activities_week),
                 title="This week's tasks", path=f"{API}/activities", clients=["telegram", "ui"],
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Activity"}),
         MCPTool(name="fitness_activity_outcome", description=("Outcome of a planned moment: outcome done|missed|moved (to = new ISO time; empty = the best one "
                                                               "left in the week)."),
@@ -1231,13 +1231,13 @@ try:
                             "required": ["plan_id", "slot_id"]},
                 handler=_t(_activity_outcome), title="Task outcome", method="POST",
                 path=f"{API}/activities/{{plan_id}}/slots/{{slot_id}}/done", clients=["ui"], telegram_visible=False,
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Activity"}),
         MCPTool(name="fitness_cancel_activity", description="Cancel an intention (removes its future events from the calendar).",
                 parameters={"type": "object", "properties": {"plan_id": S}, "required": ["plan_id"]},
                 handler=_t(_cancel_activity), title="Cancel task", method="DELETE",
                 path=f"{API}/activities/{{plan_id}}", clients=["ui"], telegram_visible=False,
-                telegram_group="allenamento",
+                telegram_group="training",
                 telegram={"section": "Activity"}),
     ]
     def _coerced(t: MCPTool):

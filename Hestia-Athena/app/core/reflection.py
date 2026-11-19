@@ -1,4 +1,4 @@
-"""Life reflection («Vita») — the coordinator layer above the modules (docs/work/2026-10-20-riflessione-a-livelli).
+"""Life reflection («Vita») — the coordinator layer above the modules (docs/work/2026-10-20-layered-reflection).
 
 The modules judge their own data and publish short signals + weekly metrics (``hestia_common.signals_client``,
 Archive ``signals-store``). This track reads ONLY those, never the raw data:
@@ -234,7 +234,7 @@ class LifeReflection:
             return False
 
     def recap_piece(self, day: str) -> dict:
-        """Athena's piece of the daily recap (contract of docs/work/2026-10-20-recap-giornaliero §3.2)."""
+        """Athena's piece of the daily recap (contract of docs/work/2026-10-20-daily-recap §3.2)."""
         items = [o for o in self.observations(since_days=3) if o.get("day") == day]
         base = {"module": "athena", "title": tr("To keep an eye on"), "icon": "eye", "emoji": "👀", "order": 900}
         if not items:

@@ -10,7 +10,7 @@ import { TrPipe } from '../../core/i18n';
 
 /** A module's page (SPEC §4.3): the plugin element fills the page; the shell gives only the frame, and one gear in
  *  the top right corner that opens the settings of the module the page belongs to (when it has any): the same
- *  shortcut on every module page, drawn once here (dossier docs/work/2026-11-12-contesto-e-scorciatoie §3.3). */
+ *  shortcut on every module page, drawn once here (dossier docs/work/2026-11-12-context-and-shortcuts §3.3). */
 @Component({
   selector: 'app-plugin-page',
   imports: [TrPipe, PluginOutletComponent, EmptyStateComponent, SettingLinkComponent, SpinnerComponent],

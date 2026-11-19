@@ -76,7 +76,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
             <hx-icon name="search" [size]="18" /><span>{{ "Search" | tr }}</span><kbd>{{ "Ctrl K" | tr }}</kbd>
           </button>
         </div>
-        <!-- Pinned entries stay where they are (dossier 2026-11-18-problemi-del-test D): their own block above the scroll
+        <!-- Pinned entries stay where they are (dossier 2026-11-18-real-test-problems D): their own block above the scroll
              area, scrolling by itself only when it holds many. -->
         @if (pinnedSection(); as ps) {
           <div class="pinned-block"><ng-container *ngTemplateOutlet="section; context: { $implicit: ps }" /></div>
@@ -371,7 +371,7 @@ const CRUMB_SECTIONS = ['pinned', 'dashboards', 'modules', 'system'];
   `],
 })
 export class ShellComponent {
-  /** The site calls itself with the name the owner chose (docs/work/2026-11-17-nome-dei-client). */
+  /** The site calls itself with the name the owner chose (docs/work/2026-11-17-client-names). */
   readonly name = assistantName();
   /** Chat has its own place on top of the sidebar. */
   readonly top = APP_MODULES.filter(m => !m.bottom && m.path !== 'chat');
@@ -469,7 +469,7 @@ export class ShellComponent {
       const e = sec.items.find(x => x.id === active);
       if (!e || !CRUMB_SECTIONS.includes(sec.key)) continue;
       const parent = e.child ? sec.items.find(x => x.id === e.parent) : undefined;
-      // Every piece is a way back (dossier 2026-11-18-problemi-del-test D): the section opens its overview (Sistema) or
+      // Every piece is a way back (dossier 2026-11-18-real-test-problems D): the section opens its overview (Sistema) or
       // its first page, the parent its own page.
       const sectionLink = sec.key === 'system' ? '/sistema' : sec.items.find(x => !x.child)?.link;
       return [{ label: sec.label, link: sectionLink }, ...(parent ? [{ label: parent.label, link: parent.link }] : []),

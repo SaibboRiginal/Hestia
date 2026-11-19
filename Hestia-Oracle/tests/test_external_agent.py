@@ -1,4 +1,4 @@
-"""External brain mode (dossier 2026-10-19-oracle-a-blocchi §D): mode per use case, the MCP bridge, the session
+"""External brain mode (dossier 2026-10-19-oracle-blocks §D): mode per use case, the MCP bridge, the session
 cache, Claude Code and Codex adapters with fake CLIs, engine fallback. No real CLI or network."""
 from __future__ import annotations
 

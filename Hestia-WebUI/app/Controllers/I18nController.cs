@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Fixed texts of the shell and the plugins in the owner's language (dossier docs/work/2026-11-14-backend-inglese):
+/// Fixed texts of the shell and the plugins in the owner's language (dossier docs/work/2026-11-14-english-backend):
 /// browser → WebUI → Hub → Themis /api/settings/i18n → {language, messages (English source → translation)}.
 /// Public like /auth/access: the login page needs it too and it carries no personal data.
 /// </summary>
@@ -32,13 +32,13 @@ public class I18nController : ControllerBase
     {
         var json = JsonSerializer.Serialize(await Catalog());
         Response.Headers.CacheControl = "no-store";
-        // The tab is called with the assistant's name from the first paint (docs/work/2026-11-17-nome-dei-client).
+        // The tab is called with the assistant's name from the first paint (docs/work/2026-11-17-client-names).
         return Content($"globalThis.__hestiaI18n = {json};\nif (globalThis.__hestiaI18n.assistant) document.title = globalThis.__hestiaI18n.assistant;\n",
             "text/javascript; charset=utf-8");
     }
 
     /// <summary>The installed app (PWA) is called with the name the owner gave the assistant
-    /// (docs/work/2026-11-17-nome-dei-client): the manifest is written from the catalog, Hestia when unknown.</summary>
+    /// (docs/work/2026-11-17-client-names): the manifest is written from the catalog, Hestia when unknown.</summary>
     [HttpGet("~/api/webui/manifest.webmanifest")]
     public async Task<IActionResult> Manifest()
     {

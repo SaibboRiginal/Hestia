@@ -1,5 +1,5 @@
 """Optional ``display`` block next to a tool's data: how a client without a model shows the result
-(docs/work/2026-10-23-telegram-da-zero §6).
+(docs/work/2026-10-23-telegram-from-scratch §6).
 
 A module returns its usual JSON plus ``"display": display(...)``. Telegram draws it as one card (title, subtitle,
 lines, items, next-step buttons); the WebUI ignores it; Hestia-MCP removes it for every caller except Telegram, so

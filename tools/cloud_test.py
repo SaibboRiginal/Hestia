@@ -27,7 +27,7 @@ What it adapts, and only here (docker-compose.cloud-test.yml + this script; up-a
 - LLM: GEMINI_API_KEY in the environment → every Oracle chain but embedding becomes Gemini (Themis); otherwise a
   deterministic fake Ollama answers "[LLM finto] …" and the report says so.
 Generated .env files hold no personal data and are git-ignored; existing ones are never overwritten.
-SPEC: docs/work/2026-10-19-banco-prova-cloud/SPEC.md
+SPEC: docs/work/2026-10-19-cloud-test-bench/SPEC.md
 """
 from __future__ import annotations
 

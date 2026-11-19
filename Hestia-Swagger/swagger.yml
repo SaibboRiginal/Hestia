@@ -515,7 +515,7 @@ components:
               written_at: {type: string, format: date-time}
         quoted:
           type: object
-          description: "The earlier message the user replied to or quoted (Telegram reply / quote): context for this turn only, added as one instruction line; the saved user message stays `message` (docs/work/2026-10-23-telegram-da-zero §5.10)."
+          description: "The earlier message the user replied to or quoted (Telegram reply / quote): context for this turn only, added as one instruction line; the saved user message stays `message` (docs/work/2026-10-23-telegram-from-scratch §5.10)."
           properties:
             text: {type: string}
             from: {type: string, enum: [assistant, user, notification]}
@@ -524,7 +524,7 @@ components:
         spoken:
           type: boolean
           default: false
-          description: "The turn was heard and is answered aloud (WebUI Parla, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-hestia-viva"
+          description: "The turn was heard and is answered aloud (WebUI Parla, Telegram voice note with spoken replies): Oracle adds the voice contract (1-2 spoken sentences, no lists/markdown). docs/work/2026-11-06-hestia-alive"
 
     DisplayBlock:
       type: object
@@ -4108,7 +4108,7 @@ paths:
   /api/chat/steer:
     post:
       tags: [Oracle]
-      summary: "«Add now»: a text for the chat turn of this session that is still running (dossier 2026-11-18-problemi-del-test B)"
+      summary: "«Add now»: a text for the chat turn of this session that is still running (dossier 2026-11-18-real-test-problems B)"
       description: "The chat agent loop reads it at its next step and emits the signal {type: signal, event: chat.steer_taken, data: {ids}}. A text that arrives when no chat loop runs is refused; one not taken before the loop ends is dropped: in both cases the client sends it as the next message."
       servers:
         - url: http://localhost:19004
@@ -4134,7 +4134,7 @@ paths:
   /api/chat/reaction:
     post:
       tags: [Oracle]
-      summary: "The owner reacted with an emoji to one of Hestia's messages: one history line so the next turn knows it (no LLM call). docs/work/2026-11-06-hestia-viva"
+      summary: "The owner reacted with an emoji to one of Hestia's messages: one history line so the next turn knows it (no LLM call). docs/work/2026-11-06-hestia-alive"
       description: "Stream side: for webui/telegram owner turns /api/chat may emit {type: reaction, emoji} before the text; final then carries reaction and, for a reaction-only answer, reaction_only: true with reply ''."
       servers:
         - url: http://localhost:19004
@@ -4157,7 +4157,7 @@ paths:
   /api/chat/opener:
     post:
       tags: [Oracle]
-      summary: "She writes first: one or two plain-text sentences in the persona from the reasons Athena brings (no tools, nothing saved). docs/work/2026-11-12-identita-e-proattivita"
+      summary: "She writes first: one or two plain-text sentences in the persona from the reasons Athena brings (no tools, nothing saved). docs/work/2026-11-12-identity-and-proactivity"
       servers:
         - url: http://localhost:19004
       requestBody:
@@ -4169,7 +4169,7 @@ paths:
               properties:
                 reasons: {type: array, items: {type: string}, description: "why now: mood, what an area noticed, a long silence"}
                 avoid: {type: array, items: {type: string}, description: "what she already wrote lately"}
-                past: {type: array, items: {type: string}, description: "the last days: how the owner was, what she wrote and whether they answered (docs/work/2026-11-13-prima-osserva-poi-propone)"}
+                past: {type: array, items: {type: string}, description: "the last days: how the owner was, what she wrote and whether they answered (docs/work/2026-11-13-observe-then-propose)"}
       responses:
         "200": {description: "{text} | {text: '', skip: nothing_to_say}"}
         "503": {description: "no model available or the model failed"}
@@ -5829,7 +5829,7 @@ paths:
   /api/presence/dnd:
     post:
       tags: [Chronos — Presence]
-      summary: Non disturbare on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `nondisturbare`
+      summary: Non disturbare on (minutes or until; empty = chronos.presence.dnd_default_duration). MCP tool `dnd_on`
       servers:
         - url: http://localhost:19007
       requestBody:
@@ -5840,7 +5840,7 @@ paths:
         "200": {description: current state}
     delete:
       tags: [Chronos — Presence]
-      summary: Non disturbare off. MCP tool `disturbami`
+      summary: Non disturbare off. MCP tool `dnd_off`
       servers:
         - url: http://localhost:19007
       responses:
@@ -7327,7 +7327,7 @@ paths:
           description: "{from, to, days: 1, count, items[...], display}"
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  MCP — 19013  (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2)
+  #  MCP — 19013  (docs/work/2026-10-18-core-modules-and-external-mcp §B2)
   # ══════════════════════════════════════════════════════════════════════════
 
   /mcp:
@@ -8951,7 +8951,7 @@ paths:
   /api/metis/usage/recent:
     get:
       tags: [Metis]
-      summary: "The owner's last taps, newest first (Oracle awareness lines, docs/work/2026-11-06-hestia-viva)"
+      summary: "The owner's last taps, newest first (Oracle awareness lines, docs/work/2026-11-06-hestia-alive)"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -8963,7 +8963,7 @@ paths:
   /api/metis/traces:
     post:
       tags: [Metis]
-      summary: "Oracle pushes one finished chat turn for the training dataset (docs/work/2026-10-30-dataset-allenamento)"
+      summary: "Oracle pushes one finished chat turn for the training dataset (docs/work/2026-10-30-training-dataset)"
       description: "Body {trace_id, session_id, client, at, route, mode, use_case, model, provider, origin, domains, system,
         history, user, answer, tools[{name, description, parameters}], steps[{turn, tool, params, ok, writes, result}],
         total_ms, usage}. Not stored when the conversation is training_off; adds signals rephrase/correction/tool_failed."
@@ -9050,19 +9050,19 @@ paths:
         "200": {description: "{trace_id, status}"}
         "422": {description: "Unknown decision, review not found, edit without answer"}
 
-  /api/metis/tools/rivedi:
+  /api/metis/tools/review:
     get:
       tags: [Metis]
-      summary: "Tool metis_rivedi: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
+      summary: "Tool metis_review: «Da rivedere» card (next correction, Accetta / Correggi io / Scarta)"
       servers:
         - url: http://localhost:19014
       responses:
         "200": {description: "{items, pending, reviews, display}"}
 
-  /api/metis/tools/rivedi_decidi:
+  /api/metis/tools/review_decide:
     post:
       tags: [Metis]
-      summary: "Tool metis_rivedi_decidi {trace_id, decision, answer?}: decides and returns the next card"
+      summary: "Tool metis_review_decide {trace_id, decision, answer?}: decides and returns the next card"
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -9112,10 +9112,10 @@ paths:
         "200": {description: "{name, mime, data_b64}"}
         "404": {description: "Unknown export"}
 
-  /api/metis/tools/dataset_esporta:
+  /api/metis/tools/dataset_download:
     post:
       tags: [Metis]
-      summary: "Tool metis_dataset_esporta {in_chiaro?, include_unreviewed?}: exports and returns a card with the zip"
+      summary: "Tool metis_dataset_download {in_chiaro?, include_unreviewed?}: exports and returns a card with the zip"
       servers:
         - url: http://localhost:19014
       requestBody:
@@ -9163,10 +9163,10 @@ paths:
       responses:
         "200": {description: "{client, items[{tool, title, description (for people), module, area, area_label, area_icon, area_order, uses, reason}], total, tools}"}
 
-  /api/metis/tools/adesso:
+  /api/metis/tools/now:
     get:
       tags: [Metis]
-      summary: "Tool metis_adesso: the Adesso list as a display card with one button per item"
+      summary: "Tool metis_now: the Adesso list as a display card with one button per item"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -9174,10 +9174,10 @@ paths:
       responses:
         "200": {description: "adesso payload + display"}
 
-  /api/metis/tools/scopri:
+  /api/metis/tools/discover:
     get:
       tags: [Metis]
-      summary: "Tool metis_scopri: the Scopri list as a display card"
+      summary: "Tool metis_discover: the Scopri list as a display card"
       servers:
         - url: http://localhost:19014
       parameters:
@@ -10803,7 +10803,7 @@ paths:
         "200": {description: OK}
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  PLUTUS — 19020  (expenses, domain finance — docs/work/2026-10-19-email-push-spese §4)
+  #  PLUTUS — 19020  (expenses, domain finance — docs/work/2026-10-19-email-push-expenses §4)
   #  Errors on every /api/finance path: 422 invalid input {detail}, 404 not found {detail},
   #  503 Archive unreachable {detail}. GET /api/module/context: shared contract, see Wardrobe.
   # ══════════════════════════════════════════════════════════════════════════
@@ -12821,7 +12821,7 @@ paths:
   /api/athena/talk:
     get:
       tags: [Athena]
-      summary: "What the assistant wrote first («parla con te»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identita-e-proattivita"
+      summary: "What the assistant wrote first («parla con te»), newest first, with the reasons, the drive and whether the owner answered; state = her drive to write now. docs/work/2026-11-12-identity-and-proactivity"
       servers:
         - url: http://localhost:19009
       parameters:
@@ -12832,7 +12832,7 @@ paths:
   /api/athena/evidence:
     get:
       tags: [Athena]
-      summary: "First observe, then propose: findings she is still collecting proof for before an improvement or a setting proposal. docs/work/2026-11-13-prima-osserva-poi-propone"
+      summary: "First observe, then propose: findings she is still collecting proof for before an improvement or a setting proposal. docs/work/2026-11-13-observe-then-propose"
       servers:
         - url: http://localhost:19009
       responses:
@@ -12845,7 +12845,7 @@ paths:
       description: >
         Active module signals (Archive signals-store, worst first), weekly series of the last `weeks` weeks, the
         links found between areas (Pearson, closed weeks) and the observations of the last 14 days.
-        SPEC docs/work/2026-10-20-riflessione-a-livelli.
+        SPEC docs/work/2026-10-20-layered-reflection.
       servers:
         - url: http://localhost:19009
       parameters:
@@ -12861,7 +12861,7 @@ paths:
       tags: [Athena]
       summary: Athena's piece of the daily recap («Da tenere d'occhio») — real path /api/module/recap
       description: >
-        Recap contract (docs/work/2026-10-20-recap-giornaliero §3.2), advertised as capability recap_endpoint.
+        Recap contract (docs/work/2026-10-20-daily-recap §3.2), advertised as capability recap_endpoint.
         The life observations stored that day; deterministic, no model call. Observations reach the user only here.
       servers:
         - url: http://localhost:19009
@@ -12951,7 +12951,7 @@ paths:
       summary: The installed app's manifest, named with the assistant's chosen name (no token required to call it)
       description: >-
         name/short_name = the assistant's name from the catalog (Hestia when unknown), description and lang in «Lingua».
-        Cache-Control no-store (dossier docs/work/2026-11-17-nome-dei-client).
+        Cache-Control no-store (dossier docs/work/2026-11-17-client-names).
       servers:
         - url: http://localhost:19015
       responses:
@@ -13286,7 +13286,7 @@ paths:
           description: "{public_url, detected}"
 
   # ══════════════════════════════════════════════════════════════════════════
-  #  ECHO — 19021  (voice core — docs/work/2026-10-20-modulo-voce)
+  #  ECHO — 19021  (voice core — docs/work/2026-10-20-voice-module)
   #  Errors: 422 invalid input {detail}, 404 not found {detail}, 503 chain exhausted {detail, tried}.
   # ══════════════════════════════════════════════════════════════════════════
 

@@ -19,7 +19,7 @@ export interface ChatMessage {
   icon?: string;
   /** The answer failed: drawn with an alert icon in the danger colour. */
   error?: boolean;
-  /** A voice message (dossier modulo-voce §7.2): local recording, shown as an audio bubble with its transcript. */
+  /** A voice message (dossier voice-module §7.2): local recording, shown as an audio bubble with its transcript. */
   audio?: { url: string; seconds: number };
   /** The voice message is being transcribed (the text arrives, then it is sent like a typed one). */
   transcribing?: boolean;
@@ -29,7 +29,7 @@ export interface ChatMessage {
   origin?: { kind: string; level: string; label: string };
   /** Oracle's id of this turn: 👍/👎 send it so the vote lands on this answer (training dataset). */
   traceId?: string;
-  /** Emoji reaction on this bubble, like any chat (docs/work/2026-11-06-hestia-viva F4): on the owner's message it
+  /** Emoji reaction on this bubble, like any chat (docs/work/2026-11-06-hestia-alive F4): on the owner's message it
    *  is Hestia's, on Hestia's message it is the owner's. */
   reaction?: string;
   /** The model that wrote this answer (the chat marks where it changes inside a conversation). */

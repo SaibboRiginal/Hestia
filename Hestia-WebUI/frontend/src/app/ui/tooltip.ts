@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 /**
- * One tooltip for the whole site (dossier docs/work/2026-11-18-problemi-del-test D).
+ * One tooltip for the whole site (dossier docs/work/2026-11-18-real-test-problems D).
  *
  * Nothing to declare: every `title` — in the WebUI and inside the module plugins (their shadow roots are open, the
  * event path reaches them) — and the `aria-label` of a button or link with no visible text get the same tooltip:

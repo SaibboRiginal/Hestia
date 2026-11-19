@@ -8,7 +8,7 @@ import { assistantName, tr } from './core/i18n';
 
 export const routes: Routes = [
   { path: 'login', loadComponent: () => import('./features/login/login-page.component').then(m => m.LoginPageComponent) },
-  // Guided setup after the install (docs/work/2026-10-30-setup-un-click §4.2): full screen, outside the shell.
+  // Guided setup after the install (docs/work/2026-10-30-one-click-setup §4.2): full screen, outside the shell.
   // The address is the same in every language (the installer prints it); the old Italian one still works.
   { path: 'setup', canActivate: [authGuard], title: tr('Setup · {assistant}'),
     loadComponent: () => import('./features/setup/setup-page.component').then(m => m.SetupPageComponent) },

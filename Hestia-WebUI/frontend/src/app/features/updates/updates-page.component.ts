@@ -16,7 +16,7 @@ export interface UpdateStatus {
 }
 
 /**
- * «Aggiornamenti» (docs/work/2026-10-30-setup-un-click §4.4): the installed version, the new one with what it brings,
+ * «Aggiornamenti» (docs/work/2026-10-30-one-click-setup §4.4): the installed version, the new one with what it brings,
  * «Installa» (Hestia moves to it and comes back by itself if something does not answer), «Torna alla versione di
  * prima», the history. Browser → WebUI → Hub → Hephaestus /api/setup/update*.
  */

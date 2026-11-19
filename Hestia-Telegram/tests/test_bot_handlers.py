@@ -240,7 +240,7 @@ class TestSessionStore:
         assert s1 != s2
 
 
-# ── The bot is called as the owner wants (docs/work/2026-11-17-nome-dei-client) ─────────────────────────────
+# ── The bot is called as the owner wants (docs/work/2026-11-17-client-names) ─────────────────────────────
 
 @pytest.mark.unit
 class TestChosenName:

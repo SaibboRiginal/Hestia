@@ -1,5 +1,5 @@
 """Themis inside view (WebUI plugin «Registro»): manifest, GET /api/settings/history (all keys, paged),
-proposals status=all. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked.
+proposals status=all. SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked.
 
 Markers: unit, api
 """

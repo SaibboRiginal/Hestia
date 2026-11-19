@@ -157,7 +157,7 @@ def settings_i18n(lang: str = ""):
     """The fixed-text catalog for clients (WebUI shell and plugins): ``{language, messages, assistant, gender}`` where
     ``messages`` maps the English source text to the owner's language (English = empty map: the source is already
     English) and ``assistant``/``gender`` fill ``{assistant}`` and ``{g:lei|lui}`` in those texts
-    (docs/work/2026-11-16-nome-ovunque). Public through the WebUI: only the assistant's name, never the owner's."""
+    (docs/work/2026-11-16-name-everywhere). Public through the WebUI: only the assistant's name, never the owner's."""
     from hestia_common import identity
     ident = _i18n.identity_now()
     code = (lang or themis.owner_language() or _i18n.FALLBACK)[:2]
@@ -317,14 +317,14 @@ try:
                     "limit": {"type": "integer"}}},
                 handler=_tool_search, title="Search settings", method="GET",
                 path="/api/settings/search", clients=["telegram", "ui", "external"], response_mode="oracle_natural",
-                telegram_visible=False, telegram_group="sistema",
+                telegram_visible=False, telegram_group="system",
                 telegram={"section": "Settings", "primary": 5, "label": "Settings"}),
         MCPTool(name="settings_get",
                 description="Detail of a setting: description, allowed values, current value, state.",
                 parameters={"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]},
                 handler=_tool_get, title="Setting detail", method="GET",
                 path="/api/settings/key/{key}", clients=["telegram", "ui", "external"], telegram_visible=False,
-                telegram_group="sistema",
+                telegram_group="system",
                 telegram={"section": "Settings"}),
         MCPTool(name="settings_propose",
                 description=("Propose to the user a change of a setting. It does NOT apply it: the user confirms or refuses "
@@ -336,7 +336,7 @@ try:
                     "required": ["key", "value"]},
                 handler=_tool_propose, title="Change a setting", method="POST",
                 path="/api/settings/proposals", clients=["ui", "external"], telegram_visible=False,
-                telegram_group="sistema",
+                telegram_group="system",
                 telegram={"section": "Settings"}),
         MCPTool(name="settings_undo",
                 description="Propose to undo the last change of a setting (the user confirms).",
@@ -344,9 +344,9 @@ try:
                     "key": {"type": "string"}, "reason": {"type": "string"}}, "required": ["key"]},
                 handler=_tool_undo, title="Undo a change", method="POST",
                 path="/api/settings/key/{key}/undo-propose", clients=["ui"], telegram_visible=False,
-                telegram_group="sistema",
+                telegram_group="system",
                 telegram={"section": "Settings"}),
-        # Telegram parity (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F): proposals waiting for the owner.
+        # Telegram parity (dossier docs/work/2026-10-24-whole-brainstorm-cindy F): proposals waiting for the owner.
         MCPTool(name="settings_proposals",
                 description="Setting change proposals waiting for the user's confirmation (or all).",
                 parameters={"type": "object", "properties": {
@@ -356,7 +356,7 @@ try:
                 title="Pending proposals", method="GET", path="/api/settings/proposals",
                 clients=["telegram", "ui", "external"], response_mode="oracle_natural",
                 response_prompt="Short list: '• setting — proposed value — why'. None: one sentence.",
-                telegram_visible=True, telegram_group="sistema",
+                telegram_visible=True, telegram_group="system",
                 telegram={"section": "Settings", "label": "Proposals"}),
     ]
     app.include_router(create_mcp_router(_themis_mcp_tools, service_name="themis"))

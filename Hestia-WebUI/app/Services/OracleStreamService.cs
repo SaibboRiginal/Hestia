@@ -91,7 +91,7 @@ public class OracleStreamService
         // Messages queued while the assistant could not answer: one turn, the model decides how (oracle-offline v3 C).
         if (queued is { Count: > 0 })
             body["queued"] = queued;
-        // Live mode «Parla»: answered aloud (hestia-viva F1).
+        // Live mode «Parla»: answered aloud (hestia-alive F1).
         if (spoken)
             body["spoken"] = true;
 

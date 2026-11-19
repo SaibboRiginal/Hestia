@@ -1,4 +1,4 @@
-"""Chat with the assistant (docs/work/2026-10-23-telegram-da-zero §7, §5.10).
+"""Chat with the assistant (docs/work/2026-10-23-telegram-from-scratch §7, §5.10).
 
 A message (typed, voice note, file) is one chat turn: Oracle streams the answer into one message (``ReplyRenderer``),
 notices go under it in italics, «Ascolta» and the vote share one row. A reply to a message — or a quote of part of
@@ -47,7 +47,7 @@ def consume_oracle_stream(res, renderer: "ReplyRenderer", signals: list, questio
         elif kind == "token":
             renderer.on_token(str(data.get("text") or ""))
         elif kind == "reaction":
-            # Hestia reacts to the owner's message (hestia-viva F4): applied by run_chat_turn on that message.
+            # Hestia reacts to the owner's message (hestia-alive F4): applied by run_chat_turn on that message.
             renderer.reaction = str(data.get("emoji") or "")[:16]
         elif kind == "final":
             renderer.trace_id = str(data.get("trace_id") or "")[:40]
@@ -126,7 +126,7 @@ def ask_oracle(chat_id, session_id: str, user_text: str, status_message_id: int,
                extra_instructions: str = "", queued: list[dict] | None = None,
                quoted: dict | None = None, spoken: bool = False) -> OracleResult:
     """Stream one chat turn from Oracle into a renderer on ``status_message_id``.
-    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (hestia-viva F1).
+    ``spoken``: the answer is also said aloud, so Oracle keeps it short and speakable (hestia-alive F1).
     ``queued``: messages written while the assistant could not answer ([{text, written_at}]), answered in one turn
     where the assistant decides how (oracle-offline v3 C). ``quoted``: the message replied to (context).
     Raises ``OracleUnavailable`` when Oracle did not accept the request."""
@@ -199,7 +199,7 @@ def run_chat_turn(message, chat_id, user_text: str, *, status_msg=None, spoken: 
     """One chat turn: Oracle streams the reply into ``status_msg`` (queued while unavailable). ``spoken``: the
     text came from a voice note (live mode answers it by voice too).
 
-    One answer at a time per chat (dossier problemi-del-test B): a text written meanwhile waits with «Add now»
+    One answer at a time per chat (dossier real-test-problems B): a text written meanwhile waits with «Add now»
     (``chat_wait``) and goes as the next turn when the answer ends."""
     while not chat_wait.start(chat_id, core.get_session(chat_id)):
         if chat_wait.hold(message, chat_id, user_text, status_msg=status_msg):
@@ -433,7 +433,7 @@ def handle_file_message(message) -> None:
 
 
 def handle_voice_note(message) -> bool:
-    """A voice note is a chat message (SPEC modulo-voce §7.1): transcribe, show what was understood, then the
+    """A voice note is a chat message (SPEC voice-module §7.1): transcribe, show what was understood, then the
     normal chat turn. False = could not listen: the caller falls back to the document path ``[🔄]``."""
     chat_id = message.chat.id
     if message.content_type == "voice":

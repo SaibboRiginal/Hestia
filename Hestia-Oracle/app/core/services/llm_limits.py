@@ -1,4 +1,4 @@
-"""Provider limits learned from the provider's own answers (dossier docs/work/2026-11-18-problemi-del-test, E).
+"""Provider limits learned from the provider's own answers (dossier docs/work/2026-11-18-real-test-problems, E).
 
 Nothing is declared or hardcoded: when a provider answers «limit reached» (429) and says which limit (Gemini
 ``QuotaFailure``: ``quotaId`` …RequestsPerMinute… / …RequestsPerDay… and ``quotaValue``), the limit is learned for that

@@ -1,4 +1,4 @@
-"""Display blocks for Telegram (docs/work/2026-10-23-telegram-da-zero §6): plain Italian, existing tools."""
+"""Display blocks for Telegram (docs/work/2026-10-23-telegram-from-scratch §6): plain Italian, existing tools."""
 import pytest
 
 from app import main

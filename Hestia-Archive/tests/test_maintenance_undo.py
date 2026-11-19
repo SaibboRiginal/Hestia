@@ -1,6 +1,6 @@
 """Maintenance reconcile keeps what it deletes, and undo puts it back (in-memory SQLite).
 
-Backs Hephaestus «Annulla riparazione» on Archive: docs/work/2026-10-30-cose-aperte.
+Backs Hephaestus «Annulla riparazione» on Archive: docs/work/2026-10-30-open-items.
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""B9 spoken evening diary (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4): the transcript becomes the day's
+"""B9 spoken evening diary (dossier docs/work/2026-10-24-whole-brainstorm-cindy W4): the transcript becomes the day's
 «giornata» entry, the evening recap offers «Racconta la giornata» until the day is told, reflection gets a signal.
 Markers: unit
 """

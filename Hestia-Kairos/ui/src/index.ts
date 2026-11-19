@@ -1,6 +1,6 @@
 /**
  * Kairos («Scadenze») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Pages and widget declared in Hestia-Kairos/app/main.py.
+ * docs/work/2026-10-24-whole-brainstorm-cindy W7). Pages and widget declared in Hestia-Kairos/app/main.py.
  */
 import { HestiaElement, css, definePlugin, html, nothing, locale, tr } from '@hestia/webui-sdk';
 import type { ApiResult, HestiaHost, HttpMethod } from '@hestia/webui-sdk';
@@ -123,7 +123,7 @@ export class KairosDetail extends Base {
   private async save() { const r = await call(this.host, 'PUT', `/${this.did}`, this.draft); if (r.ok) { this.d = r.data; this.host.toast(tr('f::Saved'), 'success'); } }
   private async advise() {
     this.thinking = true;
-    const r = await call(this.host, 'POST', '/tools/consiglio', { deadline: this.did });
+    const r = await call(this.host, 'POST', '/tools/advice', { deadline: this.did });
     this.thinking = false;
     if (r.ok && r.data.advice) this.d = { ...this.d, advice: r.data.advice };
   }

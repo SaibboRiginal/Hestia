@@ -1,4 +1,4 @@
-"""Hestia-Hera — important people («Persone», port 19025, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
+"""Hestia-Hera — important people («Persone», port 19025, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A4).
 
 Data in Archive (``/api/people-store``), dates in the calendar as Chronos special events, notices through Hermes,
 settings in Themis, the daily check in the agenda, tools for the assistant and Telegram over MCP.
@@ -153,7 +153,7 @@ def _update(person: str, relation: str = "", birthday: str = "", notes: str = ""
 
 S, I, L = {"type": "string"}, {"type": "integer"}, {"type": "array", "items": {"type": "string"}}
 P = {"type": "string", "description": "person's name or id"}
-G = "persone"
+G = "people"
 kit.tools([
     MCPTool(name="people_list", description="The important people saved (query = part of the name or relation).",
             parameters={"type": "object", "properties": {"query": S}}, handler=_list, title="People",
@@ -182,7 +182,7 @@ kit.tools([
             parameters={"type": "object", "properties": {"person": P, "idea": S}, "required": ["person", "idea"]},
             handler=lambda person, idea: {"saved": True, **_short(people.gift_idea(person, idea))},
             title="Gift idea", method="POST", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Regali", "primary": 3}),
+            telegram={"section": "Gifts", "primary": 3}),
     MCPTool(name="people_like", description="Save a like (or with dislike=true something they do not like).",
             parameters={"type": "object", "properties": {"person": P, "text": S, "dislike": {"type": "boolean"}},
                         "required": ["person", "text"]},
@@ -202,7 +202,7 @@ kit.tools([
                                                                                 tr("in {0} d", u['in_days'])])
                                          for u in people.upcoming(days)[:20]])},
             title="Upcoming dates", clients=["telegram", "ui"], telegram_group=G,
-            telegram={"section": "Regali", "primary": 4}),
+            telegram={"section": "Gifts", "primary": 4}),
 ], prefix="people_")
 
 

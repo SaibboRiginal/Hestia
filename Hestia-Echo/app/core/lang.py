@@ -13,7 +13,7 @@ logger = logging.getLogger("echo.lang")
 NAMES = {"it": "lang::Italian", "en": "lang::English", "es": "lang::Spanish", "fr": "lang::French", "de": "lang::German", "pt": "lang::Portuguese",
          "ja": "lang::Japanese", "zh": "lang::Chinese", "hi": "lang::Hindi", "nl": "lang::Dutch", "pl": "lang::Polish", "ru": "lang::Russian"}
 # What the setup's «Ascolta» says, in the language of the voice tried. ``{assistant}`` is the name the owner gave her
-# (docs/work/2026-11-16-nome-ovunque); scripts that do not use Latin letters keep their own spelling only for the
+# (docs/work/2026-11-16-name-everywhere); scripts that do not use Latin letters keep their own spelling only for the
 # default name. Each sentence is in its own language on purpose (the voice of that language reads it).
 SAMPLE = {"it": "Ciao, sono {assistant}. Questa è la mia voce.", "en": "Hi, I'm {assistant}. This is my voice.",
           "es": "Hola, soy {assistant}. Esta es mi voz.", "fr": "Bonjour, je suis {assistant}. Voici ma voix.",

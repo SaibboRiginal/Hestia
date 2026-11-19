@@ -3,7 +3,7 @@ PayPal↔bank linking, summaries and statistics. Storage = ``Store`` (Archive ``
 
 Money is signed: expense < 0, income/refund > 0. Totals never count ``linked_to`` rows (the same payment seen twice,
 e.g. PayPal mail + the card row «PAYPAL *X» in the bank statement) nor transfers between own accounts.
-SPEC docs/work/2026-10-19-email-push-spese §4.
+SPEC docs/work/2026-10-19-email-push-expenses §4.
 """
 from __future__ import annotations
 
@@ -634,7 +634,7 @@ class Plutus:
                 "to_review": last["to_review"]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): spent and earned on ``day`` by
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): spent and earned on ``day`` by
         category, movements to review, confirmed recurring payments due on ``nxt``, month budget. No LLM."""
         cats, cur = self.category_map(), self.currency()
 

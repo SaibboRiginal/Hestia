@@ -1,4 +1,4 @@
-"""Impostazioni › Menu: change the menus from Telegram (docs/work/2026-10-23-telegram-da-zero §5.11).
+"""Impostazioni › Menu: change the menus from Telegram (docs/work/2026-10-23-telegram-from-scratch §5.11).
 
 Every change edits the user's layout (Themis ``telegram.menu.layout``), is saved at once and the card is redrawn.
 Callback data ``m:…``: ``root`` · ``a:<area>`` · ``p:<area>`` primary list · ``pu|pd|px:<area>:<i>`` up/down/remove ·
@@ -59,7 +59,7 @@ def _failed(chat_id, message_id, back: str) -> None:
 def root(chat_id, message_id=None) -> None:
     menu = model.current()
     rows = ui.grid([ui.button(a.button_text, f"m:a:{a.key}", icon=a.icon) for a in menu.all_areas
-                    if a.sections or a.key != "altro"])
+                    if a.sections or a.key != "other"])
     rows.append([ui.button(tr("New area"), "m:new"), ui.button(tr("Restore everything"), "m:reset")])
     rows.append([ui.button(tr("‹ Settings"), "n:imp")])
     lines = [ui.note(tr("Choose an area to change name, emoji, order and main actions."))]
@@ -144,7 +144,7 @@ def move_target(chat_id, short: str, message_id=None) -> None:
     if not name or not current:
         return root(chat_id, message_id)
     rows = ui.grid([ui.button(a.button_text, f"m:mto:{short}:{a.key}") for a in menu.all_areas
-                    if a.key not in (current.key, "altro")])
+                    if a.key not in (current.key, "other")])
     rows.append([ui.button(tr(ui.BACK), f"m:mv:{current.key}:0")])
     _place(chat_id, ui.card(tr("Where do I move «{0}»?", menu.label(name)), []), rows, message_id)
 

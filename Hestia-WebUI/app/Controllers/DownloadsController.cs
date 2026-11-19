@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Hestia.WebUI.Services;
 
 /// <summary>
-/// Page «Download» (SPEC docs/work/2026-10-30-setup-un-click §4.3): every module downloads its own things
+/// Page «Download» (SPEC docs/work/2026-10-30-one-click-setup §4.3): every module downloads its own things
 /// (hestia_common.downloads, capability <c>downloads</c>); this controller lists them all and forwards the buttons
 /// (pausa, riprendi, riprova, annulla, elimina) to the owner. Browser → WebUI → Hub → module.
 /// </summary>

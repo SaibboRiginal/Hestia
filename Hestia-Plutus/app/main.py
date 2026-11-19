@@ -1,7 +1,7 @@
 """Hestia-Plutus — expenses (domain ``finance``): PayPal mails by push, bank statements (Hype PDF), quick entry,
 categories that learn, budgets, recurring payments, statistics.
 
-SPEC docs/work/2026-10-19-email-push-spese §4. Data in Archive (``/api/finance-store``, PDFs in ``/api/blobs``),
+SPEC docs/work/2026-10-19-email-push-expenses §4. Data in Archive (``/api/finance-store``, PDFs in ``/api/blobs``),
 mails pushed by Iris (subscription ``plutus:paypal``), settings in Themis, schedules in the agenda (Chronos),
 notifications through Hermes, UI as a plugin bundle (``ui/``), assistant tools over MCP, text understanding via
 Oracle only when the deterministic parsers cannot.
@@ -319,7 +319,7 @@ def export():
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     return recap.piece("plutus", tr("Expenses"), icon="wallet", emoji="💶", order=60, **plutus.recap(day, nxt))
 
 
@@ -830,23 +830,23 @@ try:
     I = {"type": "integer"}
     N = {"type": "number"}
     B = {"type": "boolean"}
-    G = "spese"
+    G = "expenses"
     _tools = [
         MCPTool(name="finance_summary", description=("Expenses of the month (or 'month' YYYY-MM-DD): spent, income, budget, pace, categories, main "
                                                      "merchants, upcoming recurring payments. Use it first for questions on money, expenses, budget."), parameters={"type": "object", "properties": {"month": S}},
-                handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_summary), title="This month's expenses", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "summary": True}),
         MCPTool(name="finance_search", description=("Search transactions: query (merchant/description), category, month or since/until YYYY-MM-DD, "
                                                     "account (paypal, hype, contanti…), to_review. Also gives the total."),
                 parameters={"type": "object", "properties": {"query": S, "category": S, "month": S, "since": S,
                                                              "until": S, "account": S, "to_review": B, "limit": I}},
-                handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_search), title="Search transactions", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "primary": 2}),
         MCPTool(name="finance_add", description=("Log an expense (e.g. 'I spent €12 at the bar' = amount 12, merchant bar, category ristoranti) or an income (income=true). date YYYY-MM-DD (default today), account contanti (default) | hype | paypal."),
                 parameters={"type": "object", "properties": {"amount": N, "category": S, "merchant": S, "date": S,
                                                              "account": S, "note": S, "income": B},
                             "required": ["amount"]},
-                handler=_t(_add), title="Log expense", method="POST", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_add), title="Log expense", method="POST", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Transactions", "primary": 1}),
         MCPTool(name="finance_update", description=("Fix a transaction (id from finance_search): category, amount, date, merchant, note. always=true "
                                                     "→ from now on the same category for that merchant."),
@@ -854,39 +854,39 @@ try:
                                                              "merchant": S, "note": S, "always": B},
                             "required": ["id"]},
                 handler=_t(_update), title="Fix transaction", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Transactions"}),
         MCPTool(name="finance_delete", description="Delete a transaction (id). Only after the user's yes.",
                 parameters={"type": "object", "properties": {"id": S}, "required": ["id"]},
                 handler=_t(_delete), title="Delete transaction", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Transactions"}),
         MCPTool(name="finance_budget", description="Budget of the month by category and total, with what was spent.",
                 parameters={"type": "object", "properties": {"month": S}}, handler=_t(_budget),
-                title="Budget", clients=["telegram", "ui"], telegram_group="spese",
+                title="Budget", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Budget and categories", "primary": 3}),
         MCPTool(name="finance_set_budget", description="Set the monthly budget of a category (or 'total'). amount 0 = remove. Only after the user's yes.",
                 parameters={"type": "object", "properties": {"category": S, "amount": N}, "required": ["amount"]},
                 handler=_t(_set_budget), title="Set budget", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_categories", description="The expense categories (id = name).",
                 parameters={"type": "object", "properties": {}}, handler=_t(_categories), title="Categories",
-                clients=["ui"], telegram_visible=False, telegram_group="spese",
+                clients=["ui"], telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Budget and categories"}),
         MCPTool(name="finance_import_statement", description=("Bank statement PDF sent in chat (blob_id of the attachment): first a preview (new transactions, "
                                                               "already present, linked to PayPal), then, after the user's yes, import_id + commit=true. "
                                                               "account hype (default) or another bank."),
                 parameters={"type": "object", "properties": {"blob_id": S, "account": S, "commit": B, "import_id": S}},
                 handler=_t(_import), title="Import bank statement", method="POST", clients=["ui"],
-                telegram_visible=False, telegram_group="spese",
+                telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Import"}),
         MCPTool(name="finance_recurring", description="Recurring payments and subscriptions recognised (amount, period, next date).", parameters={"type": "object", "properties": {}},
-                handler=_t(_recurring), title="Subscriptions", clients=["telegram", "ui"], telegram_group="spese",
+                handler=_t(_recurring), title="Subscriptions", clients=["telegram", "ui"], telegram_group="expenses",
                 telegram={"section": "Statistics", "primary": 4}),
         MCPTool(name="finance_stats", description="Trend of the last months: totals, by category, merchants.",
                 parameters={"type": "object", "properties": {"months": I}}, handler=_t(_stats),
-                title="Expense statistics", clients=["ui"], telegram_visible=False, telegram_group="spese",
+                title="Expense statistics", clients=["ui"], telegram_visible=False, telegram_group="expenses",
                 telegram={"section": "Statistics", "label": "Statistics"}),
     ]
 

@@ -1,6 +1,6 @@
 /**
- * Aphrodite («Aspetto») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
- * docs/work/2026-10-24-tutto-brainstorm-cindy W7). Page declared in Hestia-Aphrodite/app/main.py. The WebUI itself
+ * Aphrodite («Look») WebUI plugin (plugin contract docs/work/2026-10-17-client-plugins/SPEC.md §4; dossier
+ * docs/work/2026-10-24-whole-brainstorm-cindy W7). Page declared in Hestia-Aphrodite/app/main.py. The WebUI itself
  * draws the look (palette, effect, pet) from GET /api/appearance/now.
  */
 import { HestiaElement, css, definePlugin, html, nothing, tr } from '@hestia/webui-sdk';
@@ -59,7 +59,7 @@ export class AphroditeLook extends HestiaElement {
   private async savePet() {
     const d = this.petDraft;
     if (!d.name?.trim()) { this.host.toast(tr('What is its name?'), 'warning'); return; }
-    const r = await call(this.host, 'POST', '/tools/animale', { name: d.name, species: d.species || 'cat', look: d.look || '' });
+    const r = await call(this.host, 'POST', '/tools/pet_create', { name: d.name, species: d.species || 'cat', look: d.look || '' });
     if (r.ok) { this.petDraft = null; this.host.toast(tr('Pet created: the images arrive when they\'re ready'), 'success'); this.load(); }
   }
   private async uploadPose(pet: any, pose: string) {
@@ -69,7 +69,7 @@ export class AphroditeLook extends HestiaElement {
     if (r.ok) this.load();
   }
   private async regenerate(target: 'pet' | 'profile', ref: string) {
-    const r = await call(this.host, 'POST', '/tools/genera', { target, ref });
+    const r = await call(this.host, 'POST', '/tools/generate', { target, ref });
     if (r.ok) this.host.toast(r.data.jobs?.some((j: any) => j.status === 'failed') ? tr('The image generator is not ready') : tr('Requests: they arrive when ready'), 'info');
   }
   private async saveProfile() {

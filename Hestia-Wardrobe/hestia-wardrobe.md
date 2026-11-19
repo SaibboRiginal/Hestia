@@ -3,7 +3,7 @@
 **Role:** Wardrobe — every garment, shoe and accessory, outfits, «Cosa mi metto», laundry, packing lists, stats
 **Node:** main host (with the other domain modules)
 **Stack:** Python · FastAPI · Pillow · Docker · WebUI plugin bundle (Lit, `ui/`)
-**Port:** 19017 · Dossier: `docs/work/2026-10-17-modulo-guardaroba/`
+**Port:** 19017 · Dossier: `docs/work/2026-10-17-wardrobe-module/`
 
 ---
 
@@ -57,7 +57,7 @@
 - `GET /api/module/recap?day=&next=`: piece «Guardaroba» of the daily recap (what was worn; laundry as note).
   Capability `recap_endpoint`.
 
-## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-riflessione-a-livelli`)
+## Reflection signals (`hestia_common.signals_client`, dossier `docs/work/2026-10-20-layered-reflection`)
 
 Deterministic, no LLM; texts say «Guardaroba», never the module name. Stored in Archive `signals-store` through
 `Signals("wardrobe", "wardrobe").sync()` (only changes written, signals gone are retracted).
@@ -84,7 +84,7 @@ agenda job `wardrobe.signals` (daily 17:30, editable) → `POST /api/wardrobe/si
 
 ## Client UI (plugin contract)
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Seasons leaf/sun/leaf/snowflake, favourites and rating star, rain umbrella, done check.
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Seasons leaf/sun/leaf/snowflake, favourites and rating star, rain umbrella, done check.
 
 Bundle `ui/src/index.ts` → `/ui/webui/wardrobe.js` (built in the Dockerfile). Pages: capi, capi/:id, accessori,
 outfit, outfit/:id, cosa-mi-metto, statistiche, liste, liste/:id, vocabolari. Widgets: oggi (auto, one-tap
@@ -113,7 +113,7 @@ A photo (jpeg/png/webp) sent on Telegram or in the WebUI chat with «guardaroba�
 caption reaches `POST /api/wardrobe/attachments {blob_id}` through Oracle's attachment hand-off (capability
 `attachment_handlers`). The piece is recognised with `describe-photo` and saved right away with the photo as cover;
 the reply names it and carries `[capo <id>]` so «no, è nera» edits it. Not recognised (AI away, unknown category) →
-nothing is saved and the reply asks what it is. Dossier `docs/work/2026-10-30-cose-aperte`.
+nothing is saved and the reply asks what it is. Dossier `docs/work/2026-10-30-open-items`.
 
 ## Export and import (`/api/transfer/*`, dossier `docs/work/2026-10-20-import-export`)
 
@@ -131,19 +131,19 @@ Reminder rows are never exported. Settings travel through Themis.
 `python -m pytest -q -m "unit or api or format" Hestia-Wardrobe/tests` (fake Hub with Archive store and blobs in memory).
 
 ## Telegram card (`display`)
-Tools `wardrobe_summary` and `wardrobe_suggest` return a `display` card: the summary lines with laundry and forgotten pieces; outfit ideas (pieces and the first reason) with one «Metto …» button per idea (`wardrobe_log_worn` with the outfit or its pieces) and «Altre idee». Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-da-zero §6).
+Tools `wardrobe_summary` and `wardrobe_suggest` return a `display` card: the summary lines with laundry and forgotten pieces; outfit ideas (pieces and the first reason) with one «Metto …» button per idea (`wardrobe_log_worn` with the outfit or its pieces) and «Altre idee». Built with `hestia_common.display`; Hestia-MCP keeps it only for Telegram (docs/work/2026-10-23-telegram-from-scratch §6).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Counts through the SDK `plural()` («1 capo»).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Counts through the SDK `plural()` («1 capo»).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the photo prompt are English; the clothing name is asked in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the photo prompt are English; the clothing name is asked in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. Chat words for occasions/styles match English labels, the owner's language and Italian.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge. Chat words for occasions/styles match English labels, the owner's language and Italian.

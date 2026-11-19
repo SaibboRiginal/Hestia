@@ -1,4 +1,4 @@
-"""Usage rows: one per LLM call, pushed to Archive (dossier ``docs/work/2026-10-19-oracle-a-blocchi`` §E).
+"""Usage rows: one per LLM call, pushed to Archive (dossier ``docs/work/2026-10-19-oracle-blocks`` §E).
 
 A chain step runs inside ``step(...)``: the provider's token counts (``llm_stats.record``) land in the step's
 context, and when the step ends ``finish`` builds the row: time, module (prefix of the use case), client and

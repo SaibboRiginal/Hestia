@@ -1,4 +1,4 @@
-"""Guided setup «Benvenuto» — the orchestration behind the WebUI screens (docs/work/2026-10-30-setup-un-click §4.2).
+"""Guided setup «Benvenuto» — the orchestration behind the WebUI screens (docs/work/2026-10-30-one-click-setup §4.2).
 
 Hephaestus owns it because it already holds the repo (``/repo``, where the ``.env`` files live) and the Docker socket
 (to re-create a container with a new secret). It never decides anything: every value comes from the person on the

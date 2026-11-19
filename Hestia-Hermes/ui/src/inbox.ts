@@ -3,7 +3,7 @@
  * Filters (da leggere / da decidere / tutte, modulo, altri client), answers with the notification's buttons
  * (first answer wins; a button that opens a tool goes to its form in «Comandi»), the secret form (values go to the
  * module that asked, never stored: Cindy 4), seen / all seen, «Apri» on a module page (`_link`), load more.
- * Ported from the WebUI built-in page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4).
+ * Ported from the WebUI built-in page (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4).
  * Live toasts and the toast preference stay in the WebUI shell (it is the client); this page polls the
  * counters while visible and reloads when they move.
  */
@@ -101,7 +101,7 @@ export class HermesInbox extends HestiaElement {
   declare busy: string; declare toastMode: ToastMode; declare playing: string; declare voiceBusy: string;
   /** Values typed in a secret form, per notification; cleared as soon as they are sent. */
   declare secrets: Record<string, Record<string, string>>;
-  /** A notification question (2026-10-30-domande-nelle-notifiche): options picked (multiple) and the free answer. */
+  /** A notification question (2026-10-30-questions-in-notifications): options picked (multiple) and the free answer. */
   declare picks: Record<string, string[]>;
   declare others_text: Record<string, string>;
   private audio: HTMLAudioElement | null = null;
@@ -190,7 +190,7 @@ export class HermesInbox extends HestiaElement {
     this.stopVoice();
   }
 
-  // ── voice (a module asked for its notifications also as audio, dossier modulo-voce §7.3) ──
+  // ── voice (a module asked for its notifications also as audio, dossier voice-module §7.3) ──
   private stopVoice() {
     this.audio?.pause();
     if (this.audio?.src) URL.revokeObjectURL(this.audio.src);

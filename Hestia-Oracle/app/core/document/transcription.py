@@ -1,6 +1,6 @@
 """Audio inside documents → text, asked to the voice module Echo (Oracle only calls LLMs).
 
-Dossier ``docs/work/2026-10-20-modulo-voce`` §7: Whisper left Oracle. Echo runs its listening chain for the use
+Dossier ``docs/work/2026-10-20-voice-module`` §7: Whisper left Oracle. Echo runs its listening chain for the use
 ``oracle.documenti`` (declared in Oracle's Hub registration, suggested chain ``ascolto-preciso``); Marko chooses
 the chain in the «Voce» page. Empty string = Echo unreachable or nothing heard: the caller falls back to a model
 that hears audio natively, if the document chain has one.

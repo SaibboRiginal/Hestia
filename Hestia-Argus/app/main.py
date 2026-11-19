@@ -118,7 +118,7 @@ try:
             response_prompt=(
                 ("Be VERY brief. One opening line with the count (e.g. '9/9 services online'). Then a bullet list • per service: name if up, name — reason if down/degraded. If everything works write only the opening line, no list. No extra paragraph, no conclusion.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Health and logs", "summary": True}),
         MCPTool(
             name="system_log",
@@ -137,7 +137,7 @@ try:
             response_prompt=(
                 ("Be VERY brief. No events: one sentence 'No recent warnings.' Otherwise: one line with the total, then a bullet • per problem as '• [LEVEL] service — short message'. Group by service when several come from the same one. No intro, no conclusion.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Health and logs", "label": "Logs"}),
         MCPTool(
             name="system_analysis",
@@ -149,7 +149,7 @@ try:
             response_prompt=(
                 ("Be brief and direct. ALWAYS this structure: 1) One line of overall state (e.g. 'System healthy' or 'X problems found'). 2) If there are problems: a bullet list • per issue — service, symptom, likely cause. 3) If needed: a bullet list • of suggested actions, max 3. Prefer bullets to paragraphs. No opening or closing text. Use the 'summary' field as the base (the AI analysis already done).")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Health and logs", "label": "Analysis"}),
         MCPTool(
             name="system_performance",
@@ -161,7 +161,7 @@ try:
             response_prompt=(
                 ("Be brief. One summary line (e.g. 'All normal'). Then only the modules above or near the limits in 'thresholds': '• name — memory MB · CPU % · response ms'. Then one line on stored data (GB and growth of the day) if 'storage' is there. No conclusion.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Health and logs", "label": "Performance"}),
         MCPTool(
             name="system_incidents",
@@ -175,7 +175,7 @@ try:
                 ("Be brief. First the open problems, then the most recent closed ones: '• service — when — what "
                  "was done — how it ended'. If none: one sentence.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Repairs", "label": "History"}),
     ]
     app.include_router(create_mcp_router(_argus_mcp_tools, service_name="argus"))

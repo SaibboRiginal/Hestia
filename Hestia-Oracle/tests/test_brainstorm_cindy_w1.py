@@ -1,4 +1,4 @@
-"""Wave 1 of docs/work/2026-10-24-tutto-brainstorm-cindy: loop guard, no replay, origin, goal, changes,
+"""Wave 1 of docs/work/2026-10-24-whole-brainstorm-cindy: loop guard, no replay, origin, goal, changes,
 components in answers, llama-server slots, vision bridge."""
 from __future__ import annotations
 

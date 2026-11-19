@@ -1,4 +1,4 @@
-"""Chat modes (oracle.chat.mode) and per-conversation usage (dossier 2026-10-11-chat-modalita-contesto)."""
+"""Chat modes (oracle.chat.mode) and per-conversation usage (dossier 2026-10-11-chat-modes-context)."""
 import pytest
 
 from core.services import llm_stats, oracle_settings

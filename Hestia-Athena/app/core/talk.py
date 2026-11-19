@@ -1,5 +1,5 @@
-"""«Parla con te»: the assistant writes first, like a person (docs/work/2026-11-12-identita-e-proattivita,
-timing and memory: docs/work/2026-11-13-prima-osserva-poi-propone).
+"""«Parla con te»: the assistant writes first, like a person (docs/work/2026-11-12-identity-and-proactivity,
+timing and memory: docs/work/2026-11-13-observe-then-propose).
 
 Third output of Athena, next to the system briefs and the life observations (which stay in the evening recap):
 

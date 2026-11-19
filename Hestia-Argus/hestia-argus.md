@@ -65,12 +65,12 @@ Hub Monitor Logs / Docker Tails │
 
 ## WebUI plugin (core, *Sistema*)
 
-Tiles «Unhealthy» and «Open incidents» open their list (dossier `docs/work/2026-11-18-problemi-del-test` D).
+Tiles «Unhealthy» and «Open incidents» open their list (dossier `docs/work/2026-11-18-real-test-problems` D).
 
-Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icone-nei-client`): `<hxk-icon name tone>`. Action history icons: detected alert, status arrows-v, alert bell, remediation wrench, recheck pulse, recovered check-circle; a failed action shows x-circle (danger).
+Icons, never emoji (DESIGN-SYSTEM rule, `docs/work/2026-10-20-icons-in-clients`): `<hxk-icon name tone>`. Action history icons: detected alert, status arrows-v, alert bell, remediation wrench, recheck pulse, recovered check-circle; a failed action shows x-circle (danger).
 
 Argus ships its "inside view" on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`, order
-110; SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A6). Manifest: `app/core/ui_plugin.py` (its
+110; SPEC `docs/work/2026-10-18-core-modules-and-external-mcp` §A2/A6). Manifest: `app/core/ui_plugin.py` (its
 `ui_manifest`/`ui_version` go in the Hub registration capabilities). Bundle: `ui/` (Lit, `@hestia/webui-sdk`) built in
 the Docker image's Node stage to `/ui/dist/webui/argus.js` (`ARGUS_UI_DIST`, outside `/code` so the dev mount does
 not hide it). `api_prefix` = `/api/argus/` (no duplicate endpoints).
@@ -212,7 +212,7 @@ Recurring errors become fix *proposals* for Hephaestus Forge (`app/core/forge_pr
   Forge's permission mode decides (`ask` / `auto` / `full_auto`, defaults local=auto, cloud=ask).
 - One proposal per signature per `argus.forge.cooldown` (86400 s). Failed posts retry on next occurrence.
 - Disable with setting `argus.forge.enabled=false`. Hephaestus/Argus own errors are excluded.
-- **Recurring fallbacks count too** (2026-11-18, dossier `docs/work/2026-11-18-problemi-del-test` F): a `[🔄]` line
+- **Recurring fallbacks count too** (2026-11-18, dossier `docs/work/2026-11-18-real-test-problems` F): a `[🔄]` line
   (a recovery path, usually WARNING) that keeps coming means the main path stopped working, mostly because something
   outside changed (a provider's answer, an API, a model). Same threshold/window/cooldown; the request asks to find why
   the main path broke. Nothing is declared in advance («si rompe? si aggiusta»).
@@ -249,13 +249,13 @@ recovered → entry completed and recovery notice. Visible/movable/cancellable f
 Argus reports the number of degraded services to Chronos presence (`health.degraded_services`, on change or every 10 min, ttl 30 min): enough of them make the assistant «Stanco». Oracle down past the grace → `oracle.offline` (see *Oracle offline*): overlay «Non disponibile».
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sistema › Salute e log: 3; sistema › Riparazioni: 1 (area › section: tools).
 
-## Redaction (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 19)
+## Redaction (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 19)
 Log samples sent to Oracle for analysis and the context of Forge proposals pass through
 `hestia_common.redact.redact` first: keys, tokens, emails, phone numbers, chat ids, home paths become placeholders.
 
-## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3)
+## Performance and storage growth (Cindy D16 + 25, `app/services/performance.py`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3)
 - Every `argus.performance.every_cycles` cycles a sample runs in its own thread: per module CPU % (delta between
   `stats(one_shot)` samples), memory (usage − inactive file cache), start time, restarts (read-only Docker socket),
   the `/health` response time (`HealthReport.ms`), the Hub round trip; at most hourly the data size from Archive
@@ -267,20 +267,20 @@ Log samples sent to Oracle for analysis and the context of Forge proposals pass 
 - API: `GET /api/argus/performance` (last sample + thresholds) · `GET /api/argus/performance/history?service=&hours=`.
   Tools: `system_performance`, `system_incidents` (remediation history; Telegram «Salute e log» / «Riparazioni»).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Salute»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «Salute del sistema non raggiungibile».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Salute»; recheck rows say «Ricontrolla <name for people>» with «non risponde / risponde a fatica / stato sconosciuto» instead of the raw error; agenda template title «Ricontrolla {service}»; widget offline text «Salute del sistema non raggiungibile».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and answer instructions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and answer instructions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): monitor messages are titled «{assistant} Monitor» (Italian «Monitor di …») with the chosen name.
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): monitor messages are titled «{assistant} Monitor» (Italian «Monitor di …») with the chosen name.
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
-The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-moduli-come-agenti`.
+The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.

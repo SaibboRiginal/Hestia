@@ -1,4 +1,4 @@
-"""Quiet mood capture — «oggi sono stanco» is written down without asking (dossier docs/work/2026-10-30-diario-umore).
+"""Quiet mood capture — «oggi sono stanco» is written down without asking (dossier docs/work/2026-10-30-mood-diary).
 
 After the answer, in the background step that already runs the memory extraction, Oracle looks at the user's
 message for how they feel *now*. A deterministic gate comes first (no model): the message is split into clauses and

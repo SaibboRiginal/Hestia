@@ -1,4 +1,4 @@
-"""OAuth 2.1 authorization server of Hestia's MCP (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B3, §B6).
+"""OAuth 2.1 authorization server of Hestia's MCP (docs/work/2026-10-18-core-modules-and-external-mcp §B3, §B6).
 
 For the clients that only speak OAuth (claude.ai web/mobile custom connectors, ChatGPT). Everything public goes
 through the WebUI door (the only service behind the tunnel), which forwards here through Hub and passes the public

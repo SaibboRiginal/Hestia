@@ -34,7 +34,7 @@ export class ChatService {
   isStreaming = signal(false);
   currentStreamingId = signal<string | null>(null);
   pendingQuestion = signal<PendingQuestion | null>(null);
-  /** Written while the answer runs (dossier 2026-11-18-problemi-del-test B): sent when it ends, or «Add now»
+  /** Written while the answer runs (dossier 2026-11-18-real-test-problems B): sent when it ends, or «Add now»
    *  hands one to the running answer (`sent` = asked, it disappears when the assistant takes it). */
   waiting = signal<WaitingText[]>([]);
   /** Session and mode of the running answer: the waiting texts go there. */
@@ -113,7 +113,7 @@ export class ChatService {
         mode,
         model,
         ...(context ? { context } : {}),
-        // Live mode «Parla»: Hestia answers as speech, short (docs/work/2026-11-06-hestia-viva F1).
+        // Live mode «Parla»: Hestia answers as speech, short (docs/work/2026-11-06-hestia-alive F1).
         ...(spoken ? { spoken: true } : {}),
       });
     } catch (err: any) {
@@ -126,7 +126,7 @@ export class ChatService {
   }
 
   /**
-   * A voice message (dossier modulo-voce §7.2): the audio bubble appears at once, the voice module transcribes it
+   * A voice message (dossier voice-module §7.2): the audio bubble appears at once, the voice module transcribes it
    * (recording kept with the message), then the text goes to Hestia exactly like a typed one.
    */
   async sendVoice(audio: Blob, mime: string, seconds: number, sessionId: string, mode = 'auto'): Promise<string | null> {
@@ -367,7 +367,7 @@ export class ChatService {
         break;
 
       case 'changes': {
-        // «Ho fatto» under the answer (Cindy 13): can arrive before or after `final`.
+        // «What I did» under the answer (Cindy 13): can arrive before or after `final`.
         const target = streamId ?? this.lastAssistantId;
         if (target && event.items?.length) this.patch(target, { changes: event.items.map(c => ({ ...c, done: false })) });
         break;
@@ -375,7 +375,7 @@ export class ChatService {
 
       case 'error':
         if (streamId && event.content) {
-          this.finalizeStreaming(streamId, event.content, undefined, undefined, true);
+          this.finalizeStreaming(streamId, tr(event.content), undefined, undefined, true);   // the server's own texts are English sources
         }
         break;
 
@@ -488,8 +488,8 @@ export class ChatService {
     }
     const n: ChatNotice = {
       id: uid(), kind: event.kind || 'info', level: event.level || 'info',
-      icon: event.icon || 'info', emoji: event.emoji, title: event.title || tr('Info'),
-      detail: event.detail || '', data: event.data,
+      icon: event.icon || 'info', emoji: event.emoji, title: event.title ? tr(event.title) : tr('Info'),
+      detail: event.detail ? tr(event.detail) : '', data: event.data,
     };
     if (!this.noticePrefs.allows(n)) return;
     const target = this.currentStreamingId() ?? this.lastAssistantId;

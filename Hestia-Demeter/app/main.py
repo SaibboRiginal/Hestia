@@ -1,4 +1,4 @@
-"""Hestia-Demeter — nutrition («Alimentazione», port 19026, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A5).
+"""Hestia-Demeter — nutrition («Alimentazione», port 19026, dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A5).
 
 Data in Archive (``/api/food-store``): diet, meals, supplements and intakes. A coach of the weekly plan (Hub tag
 ``coach``, ``/api/coach/*``), kcal estimates from Oracle (use case ``demeter.stima``, async, never blocking the log),
@@ -33,7 +33,7 @@ API = "/api/food"
 kit = ModuleKit("demeter", port=19026, api=API, domain="food", title="Nutrition", store="food-store",
                 tags=("coach",),
                 when_to_use="nutrition: diet, meals eaten, calories, supplements to take",
-                manual="Diet (cibo_dieta: daily kcal and protein, rules), meals (cibo_pasto logs what was eaten; if no kcal given the assistant estimates them), day summary (cibo_oggi), supplements with time of day (cibo_integratori, cibo_preso).")
+                manual="Diet (food_diet: daily kcal and protein, rules), meals (food_meal logs what was eaten; if no kcal given the assistant estimates them), day summary (food_today), supplements with time of day (food_supplements, food_taken).")
 app = kit.app
 coach = CoachClient("demeter", kit.hub_url)
 
@@ -146,8 +146,8 @@ def _today_display(t: dict) -> dict:
     items += [item((tr("Taken: ") if s["taken"] else tr("To take: ")) + s["name"], [tr(TIMES[s["time_of_day"]])])
               for s in t["supplements"]]
     return display(tr("At the table today"), lines=lines, items=items,
-                   actions=[action(tr("Log meal"), "cibo_pasto", style="primary")] +
-                           [action(tr("Taken {0}", s['name']), "cibo_preso", {"supplement": s["id"]})
+                   actions=[action(tr("Log meal"), "food_meal", style="primary")] +
+                           [action(tr("Taken {0}", s['name']), "food_taken", {"supplement": s["id"]})
                             for s in t["supplements"] if not s["taken"]][:3])
 
 
@@ -155,7 +155,7 @@ def _meal(text: str, slot: str = "", kcal: int | None = None, protein: int | Non
     meal = food.add_meal(text, slot=slot, day=date, kcal=kcal, protein=protein)
     _estimate_async(meal)
     return {"saved": True, "id": meal["id"], "slot": meal["slot"], "estimating": meal["kcal"] is None,
-            "undo": undo("cibo_pasto_elimina", meal=meal["id"])}
+            "undo": undo("food_meal_delete", meal=meal["id"])}
 
 
 def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", notes: str = "") -> dict:
@@ -165,7 +165,7 @@ def _diet(kcal: int | None = None, protein: int | None = None, rules: str = "", 
     else:
         d = {**food.diet(), "unchanged": True}   # read only: no «Fatto» in the chat
     lines = [tr("Goal: {0} kcal · {1} g protein", d['kcal'] or '—', d['protein'] or '—')] + d["rules"][:10]
-    return {**d, "display": display(tr("Diet"), lines=lines, actions=[action(tr("Edit"), "cibo_dieta")])}
+    return {**d, "display": display(tr("Diet"), lines=lines, actions=[action(tr("Edit"), "food_diet")])}
 
 
 def _supplements() -> dict:
@@ -173,41 +173,41 @@ def _supplements() -> dict:
     return {"items": items, "display": display(tr("Supplements"), items=[
         item(s["name"], [s.get("dose") or "", tr(TIMES[s["time_of_day"]]), tr("paused") if s["status"] == "paused" else ""])
         for s in items], lines=[] if items else [tr("No supplements.")],
-        actions=[action(tr("Add"), "cibo_integratore", style="primary")])}
+        actions=[action(tr("Add"), "food_supplement", style="primary")])}
 
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 SUP = {"type": "string", "description": "supplement id or name"}
-G = "alimentazione"
+G = "nutrition"
 kit.tools([
-    MCPTool(name="cibo_oggi", description="Today's summary: meals, kcal and protein against the diet, supplements.",
+    MCPTool(name="food_today", description="Today's summary: meals, kcal and protein against the diet, supplements.",
             parameters={"type": "object", "properties": {"date": S}},
             handler=lambda date="": (lambda t: {**t, "display": _today_display(t)})(
                 food.day_summary(__import__("datetime").date.fromisoformat(date) if date else None)),
             title="Today", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Meals", "primary": 1}),
-    MCPTool(name="cibo_pasto", description=("Log a meal: text (what), slot colazione|pranzo|cena|spuntino, kcal and protein if known "
+    MCPTool(name="food_meal", description=("Log a meal: text (what), slot colazione|pranzo|cena|spuntino, kcal and protein if known "
                                             "(otherwise the assistant estimates them)."),
             parameters={"type": "object", "properties": {"text": S, "slot": {"type": "string", "enum": list(SLOTS)},
                                                          "kcal": I, "protein": I, "date": S}, "required": ["text"]},
             handler=_meal, title="Log meal", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Meals", "primary": 2}),
-    MCPTool(name="cibo_pasti", description="Meals of the last days (days, default 7).",
+    MCPTool(name="food_meals", description="Meals of the last days (days, default 7).",
             parameters={"type": "object", "properties": {"days": I}},
             handler=lambda days=7: {"items": food.meals("", days)}, title="Meals", clients=["telegram", "ui"],
             telegram_group=G, telegram={"section": "Meals"}),
-    MCPTool(name="cibo_pasto_elimina", description="Delete a logged meal.",
+    MCPTool(name="food_meal_delete", description="Delete a logged meal.",
             parameters={"type": "object", "properties": {"meal": S}, "required": ["meal"]},
             handler=lambda meal: food.delete_meal(meal), title="Delete meal", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Meals"}),
-    MCPTool(name="cibo_dieta", description=("The diet: with no arguments it shows it; kcal, protein (g), rules (one per line) and notes "
+    MCPTool(name="food_diet", description=("The diet: with no arguments it shows it; kcal, protein (g), rules (one per line) and notes "
                                             "change it."),
             parameters={"type": "object", "properties": {"kcal": I, "protein": I, "rules": S, "notes": S}},
             handler=_diet, title="Diet", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Diet", "primary": 3}),
-    MCPTool(name="cibo_integratori", description="The supplements the user takes.",
+    MCPTool(name="food_supplements", description="The supplements the user takes.",
             parameters={"type": "object", "properties": {}}, handler=_supplements, title="Supplements",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Supplements", "primary": 4}),
-    MCPTool(name="cibo_integratore", description=("Add or edit a supplement: name, dose, time_of_day morning|midday|afternoon|evening|any, days "
+    MCPTool(name="food_supplement", description=("Add or edit a supplement: name, dose, time_of_day morning|midday|afternoon|evening|any, days "
                                                   "(0=Mon..6=Sun, empty = every day), training_days_only, with_food, status active|paused."),
             parameters={"type": "object", "properties": {
                 "supplement": SUP, "name": S, "dose": S, "time_of_day": {"type": "string", "enum": list(TIMES)},
@@ -217,15 +217,15 @@ kit.tools([
                 kw, food.find_supplement(supplement)["id"] if supplement else None),
             title="Supplement", method="POST", clients=["telegram", "ui"], telegram_group=G,
             telegram={"section": "Supplements"}),
-    MCPTool(name="cibo_preso", description="Mark a supplement as taken (today or date).",
+    MCPTool(name="food_taken", description="Mark a supplement as taken (today or date).",
             parameters={"type": "object", "properties": {"supplement": SUP, "date": S}, "required": ["supplement"]},
             handler=lambda supplement, date="": food.take(supplement, date), title="Taken", method="POST",
             clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Supplements", "primary": 5}),
-    MCPTool(name="cibo_integratore_elimina", description="Delete a supplement.",
+    MCPTool(name="food_supplement_delete", description="Delete a supplement.",
             parameters={"type": "object", "properties": {"supplement": SUP}, "required": ["supplement"]},
             handler=lambda supplement: food.delete_supplement(supplement), title="Delete supplement",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Supplements"}),
-], prefix="cibo_")
+], prefix="food_")
 
 transfer = Transfer("demeter", kit.hub, sections=[
     StoreSection("dieta", "Diet", kit.store, ["diet"], icon="leaf"),

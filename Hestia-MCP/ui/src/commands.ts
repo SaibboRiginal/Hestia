@@ -2,7 +2,7 @@
  * <mcp-commands> — "Comandi & MCP": every tool the WebUI sees (the same ones chat, Telegram and external AIs use),
  * grouped by module; pick one, fill its arguments (from its JSON schema) and run it like Hestia would.
  * Reads GET /api/mcp/ui/tools · POST /api/mcp/ui/tools/call · POST /api/mcp/ui/tools/format (Oracle natural text).
- * Ported from the built-in WebUI page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4).
+ * Ported from the built-in WebUI page (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4).
  * `?command=<tool>` opens that tool's form (Adesso, Scopri, notification buttons); `&args=<json>` fills it and
  * `&run=1` runs it at once when nothing required is missing (brainstorm W7).
  */

@@ -1,4 +1,4 @@
-"""Lares — the house on Home Assistant («Casa», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A3).
+"""Lares — the house on Home Assistant («Casa», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A3).
 
 A live mirror of the entities Marko cares about (lights, switches, covers, climate, sensors, scenes, the person),
 fed by the Home Assistant websocket (push; a full read only on connect). Commands go to HA services. Favourites

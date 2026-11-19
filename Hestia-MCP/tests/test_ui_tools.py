@@ -1,4 +1,4 @@
-"""Tests — Comandi page reads/calls (/api/mcp/ui/tools…, SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4)."""
+"""Tests — Comandi page reads/calls (/api/mcp/ui/tools…, SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4)."""
 from __future__ import annotations
 
 import pytest

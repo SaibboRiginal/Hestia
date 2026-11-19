@@ -26,7 +26,7 @@ A quick, single-page reference for service roles, dependencies, and runtime data
 | Lares | Domain (House) | Yes (devices, quick actions) | Yes (Home Assistant, `LARES_HA_URL`/`LARES_HA_TOKEN`) | The only caller of Home Assistant; websocket push of state changes; presence signal `home.present` |
 | Hera | Domain (People) | Yes (cards, gifts, contacts) | No | Dates as Chronos special events (stable keys), gift ideas on `special_moment`, agenda + Hermes |
 | Demeter | Domain (Nutrition) | Yes (diet, meals, supplements) | No | Coach of the weekly plan (tag `coach`), kcal estimates through Oracle, Archive `food-store` |
-| Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `documento_crea`, file under the Telegram card |
+| Calliope | Domain (Documents) | Yes (HTML → PDF/Word/Excel + check) | No | Files in Archive blobs, tool `document_create`, file under the Telegram card |
 | Kairos | Domain (Deadlines) | Yes (recurrence, advice, proposals) | No | Mail push (Iris) → proposals confirmed via Hermes, calendar mirror (agenda events), daily notices |
 | Psyche | Domain (Mood) | Yes (summaries, insights, signals) | No | Oracle quiet capture from chat (capability `mood_capture_endpoint`, no confirmation), recap piece, evening check-in via agenda + Hermes, weekly metrics for Athena |
 | Themis | Core | No | No | Settings registry; pushes values (and followed personal values) to modules |
@@ -133,7 +133,7 @@ flowchart LR
 
 ## Practical Flows
 
-### Model call deadline flow (dossier `docs/work/2026-11-18-problemi-del-test` A)
+### Model call deadline flow (dossier `docs/work/2026-11-18-real-test-problems` A)
 1. Module → Hub `POST /api/route/oracle/api/llm/generate` with `timeout_seconds` → Hub adds `X-Hestia-Deadline` (now + timeout).
 2. Oracle LLM bus: the call waits for the local worker; deadline passed while waiting → not run, `504` to the caller.
 3. The owner's chat arrives while a background call runs → that call is stopped (Ollama connection closed), the owner
@@ -220,7 +220,7 @@ flowchart LR
    chat + Notifiche; the owner's answer is a normal `/api/chat` turn (awareness line «Oggi gli hai scritto tu»).
 7. Mini App: «Apri» / menu button → WebUI page with `#tgWebAppData` → WebUI `POST /api/webui/auth/telegram` → Hub →
    Telegram `POST /api/webapp/verify` (bot-token HMAC, owner only) → 12-hour session token.
-8. Writing while she answers (dossier `docs/work/2026-11-18-problemi-del-test` B): the client holds the text (one
+8. Writing while she answers (dossier `docs/work/2026-11-18-real-test-problems` B): the client holds the text (one
    answer at a time per chat) and sends it as the next `/api/chat` turn; «Add now» → WebUI `ChatHub` `steer` / Telegram
    callback `cw:` → Oracle `POST /api/chat/steer` → the chat agent loop reads it at its next step → stream signal
    `chat.steer_taken {ids}` (not taken = sent next). WebUI «/» in the chat box → Hestia-MCP `GET /api/mcp/ui/tools` →
@@ -243,7 +243,7 @@ flowchart LR
    Deleting a conversation: WebUI «…» → Oracle `DELETE /api/ui/chats/{id}` → Archive `DELETE /api/chat/sessions/{id}`
    (messages + title/tags/pin) and Metis forgets its saved turns. The model that answered travels with the answer:
    Oracle `final.model` → Archive `chat_history.model` → WebUI divider / Telegram line where it changes.
-7. Training dataset (docs/work/2026-10-30-dataset-allenamento): after each owner turn Oracle → Hub →
+7. Training dataset (docs/work/2026-10-30-training-dataset): after each owner turn Oracle → Hub →
    `metis /api/metis/traces` (background) → Archive `/api/dataset-store`; Metis reads chat meta `training_off`
    (`/api/chat/sessions/{id}/meta`); a deleted or excluded chat → Oracle → `DELETE metis /api/metis/traces`. The
    `final` frame carries `trace_id`; Telegram/WebUI votes send it as feedback `interaction_id`.
@@ -261,7 +261,7 @@ flowchart LR
 7. A rule a module no longer declares is retired by the module itself: `POST /api/agenda/retire {owner, keys}`
    (only rules it created; user items stay). Example: Scout retired `scout.email_cycle`.
 
-### Routine and special-moment flow (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W2)
+### Routine and special-moment flow (dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W2)
 1. A routine is a Chronos agenda rule `routine.<…>` with an instruction: by time (job → `POST /api/routines/{key}/run`),
    by mail (Chronos subscribes to Iris; Iris rings `/api/routines/mail`) or by a module signal (`/api/routines/signal`).
 2. Run: optional pre-check tool through Hestia-MCP (empty → stop) → Oracle `/api/chat` with origin `routine:<key>` →
@@ -331,7 +331,7 @@ SPEC `docs/work/2026-10-19-oracle-offline` (v3).
    relevance gate.
 3. Accepted observations are stored (signals-store, `ref_id=athena`) and served as Athena's recap piece
    (`GET /api/module/recap`, «Da tenere d'occhio»); no Hermes notice. Setting ideas → Themis proposal.
-SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
+SPEC `docs/work/2026-10-20-layered-reflection`.
 
 ### Backup flow (Archive → Google Drive)
 1. Chronos agenda job `archive.backup` (daily) → Archive `POST /api/backup/run`: `pg_dump` from one snapshot +
@@ -344,7 +344,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    stores answer `epoch`, module mirrors (Hercules, Hygieia, Wardrobe, Plutus) reload. SPEC
    `docs/work/2026-10-20-backup-drive`.
 
-### Guided setup flow («Benvenuto», dossier `docs/work/2026-10-30-setup-un-click`)
+### Guided setup flow («Benvenuto», dossier `docs/work/2026-10-30-one-click-setup`)
 1. Installer → `.hestia-install/hardware.json` → browser `/setup` → WebUI `/api/webui/setup/*` → Hub →
    Hephaestus `/api/setup/*` (state in `Hestia-Hephaestus/data/setup.json`).
 2. Brain: Hephaestus → Hub → Oracle `/api/llm/setup/catalog` (Oracle asks the PC's model programs on their ports:
@@ -381,7 +381,7 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 
 ### Download flow (page «Download», `hestia_common.downloads`)
 1. WebUI `/api/webui/downloads` → Hub registry (capability `downloads`) → each module `GET /api/downloads` via Hub.
-2. Oracle: setup or tool `modelli_scarica` → job source `ollama` → Ollama `/api/pull` stream. Echo: `/api/voice/
+2. Oracle: setup or tool `models_download` → job source `ollama` → Ollama `/api/pull` stream. Echo: `/api/voice/
    models/prefetch` or first use → source `http` (Range resume) / `whisper`.
 3. Buttons → WebUI `POST /api/webui/downloads/{module}/{op}` → module `/api/downloads/{id}/{op}`. Failure or big
    finished download → Hermes `/api/events/ingest` → Notifiche.
@@ -446,14 +446,14 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
 
 - This file is a quick architecture map. Detailed endpoint contracts remain in each service `hestia-*.md` and in `Hestia-Swagger/swagger.yml`.
 
-### Mood (dossier `docs/work/2026-10-30-diario-umore`)
+### Mood (dossier `docs/work/2026-10-30-mood-diary`)
 1. Chat «oggi sono stanco» → Oracle answers → background: gate `mood_clauses` → prompt `mood_capture_template` (or
    lexicon fallback) → Hub `registry/services` (capability `mood_capture_endpoint`) → Psyche `POST /api/mood/capture`
    (merge within 2 h) → notice `mood.saved` streamed after the answer. «Non segnarlo» → `/api/mood/capture/undo`.
 2. Psyche → `signals-store` (signals + weekly `mood.avg`/`mood.energy`) → Athena reflection; recap piece «Umore»;
    agenda job `psyche.checkin` → Hermes question with one-tap answers → `POST /api/mood`.
 
-### W5 modules (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+### W5 modules (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
 1. People: a card's dates → Hera → Chronos `api/special` (key `hera-<id>-<n>`) → lead notice and greeting by Chronos;
    on the day `special_moment` → Hera (gift ideas notice) and Aphrodite (the owner's own moments change the look).
 2. Deadlines: Hecate → Iris → Kairos `/mail` (doorbell) → proposal card in Hermes → «Aggiungi» → agenda event
@@ -462,18 +462,18 @@ SPEC `docs/work/2026-10-20-riflessione-a-livelli`.
    state «Fuori casa» (declared by Hecate with `phone.home`). Commands: tool → Lares → HA REST service.
 4. Images: tool or module → Apollo job → ComfyUI `/prompt` + websocket → `/history` + `/view` → Archive blobs →
    `callback` push (e.g. Aphrodite) or Hermes notice; tool answers carry `display.files` → Telegram photo.
-5. Documents: tool `documento_crea` → Calliope renders, reopens and checks → Archive blob → `display.files` →
+5. Documents: tool `document_create` → Calliope renders, reopens and checks → Archive blob → `display.files` →
    Telegram document.
 6. Nutrition: Demeter `/api/coach/needs` (supplements as slots, «with workout») → Chronos weekly plan; intake →
    `coach.done`; meal without numbers → Oracle `demeter.stima` in the background.
 
-### Texts for people and look (dossier `docs/work/2026-10-29-revisione-e-test-frontend` v2)
+### Texts for people and look (dossier `docs/work/2026-10-29-frontend-review-and-tests` v2)
 1. Tool `summary` (MCPTool) → module `tools/list` → Hub catalog (`summary`, `telegram_group`) → Hestia-MCP
    `/api/mcp/ui/tools` and Metis `/api/metis/scopri` add `area*` + text for people (`hestia_common.areas`) →
    WebUI «Comandi» and «Scopri» group by area; Telegram's menus use the same `AREAS`.
 2. Look: Impostazioni → Aspetto → ThemeService (theme × style × knobs, localStorage) → tokens and
    `data-style/glass/motion` on `<html>` → Angular pages and plugin shadow roots (tokens inherit).
-3. Language (dossier `docs/work/2026-11-14-backend-inglese`): Themis `themis.personal.language` → every module's
+3. Language (dossier `docs/work/2026-11-14-english-backend`): Themis `themis.personal.language` → every module's
    `SettingsClient.follow_personal()` → `hestia_common.i18n` (process reader) → `tr("Text")` (English source) looks
    up `locales/it/messages.json` (missing → the English source) → Telegram buttons, cards, keyboard,
    commands, and every module's notices, error details and cards; Themis serves setting texts translated. Model

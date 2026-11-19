@@ -48,12 +48,12 @@ Marko. Satellites: Hub unit/api tests (`Hestia-Hub/tests/test_hub_nodes.py`: pai
 rewrite, satellite-first routing); a two-machine run (central + PC with `--join`) is Marko's. «Aggiorna Hestia»:
 `Hestia-Hephaestus/tests/test_updater.py` (real git repos with tags, fake Docker: notes, restart only what changed,
 way back on a failed health check, local work refused); a real update needs a first tag `v1.0.0`. Dossier:
-`docs/work/2026-10-30-setup-un-click/`.
+`docs/work/2026-10-30-one-click-setup/`.
 
 ## Banco di prova cloud (whole stack, no local PC)
 
 Runs every service for real (WebUI .NET + Angular included) in a **Claude cloud session** or a **GitHub Codespace**,
-then checks it like a user. Dossier: `docs/work/2026-10-19-banco-prova-cloud/`.
+then checks it like a user. Dossier: `docs/work/2026-10-19-cloud-test-bench/`.
 
 ```
 python tools/cloud_test.py          # no argument: starts Hestia if it is off, prints the login link + a short Italian guide (also `help`)
@@ -66,7 +66,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 ```
 
 - Output: `.cloud-test/report.md` + `.cloud-test/screens/*.png` (git-ignored).
-- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-prove-reali-banco/`): areas hercules, hygieia, wardrobe,
+- `flows` (`tools/cloud_test/flows.py`, dossier `docs/work/2026-10-19-real-runs-bench/`): areas hercules, hygieia, wardrobe,
   agenda, presence, settings, plugins, mcp, webui, transfer, vita (new modules), shell (Adesso, Scopri, chats, push) (none = all); report `.cloud-test/flows.md`, screenshots `.cloud-test/flows/`.
   Chat steps use the fake LLM's scripted tools: a message with `#tool <name> {json}` makes it call that tool once.
 - Brain: `GEMINI_API_KEY` (or `ORACLE_KEY_GEMINI`) in the environment (cloud environment variable / Codespaces secret,
@@ -93,7 +93,7 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   Browser «ERR_INVALID_RESPONSE» on the link = the forwarded port talks HTTPS to the WebUI (plain HTTP): *Ports* tab →
   row 19015 → right click → *Change Port Protocol → HTTP* (the devcontainer now sets HTTP for 19015/19000).
 
-## Setups that need Marko's devices (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`)
+## Setups that need Marko's devices (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`)
 
 - **Garmin** (W4 B10): `pip` gets `garminconnect` with the Hecate image (`up-all.bat --build`). Telegram → Sistema →
   Dispositivi → «Collega Garmin» → «Inserisci» → email + password (+ the code Garmin mails, second form). Then

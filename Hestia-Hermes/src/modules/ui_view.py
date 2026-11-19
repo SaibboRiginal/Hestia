@@ -1,6 +1,6 @@
 """Hermes inside view (WebUI plugin page «Consegne», widget «Consegne oggi»).
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Read-only: what was sent to which client,
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Read-only: what was sent to which client,
 held / quiet / retracted / superseded, answers, subscriptions. The inbox stays the WebUI Notifiche page.
 Data = the notification rows Hermes already keeps in Archive (``outbound_events``, channel ``notification``,
 per-client ``deliveries`` in the payload) and the active subscriptions.

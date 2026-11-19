@@ -185,9 +185,9 @@ try:
             path="/api/feedback",
             clients=["telegram", "ui"],
             response_mode="direct",
-            telegram_visible=False, telegram_group="sistema",
-                telegram={"section": "interno"}),
-        # Backup from every client (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F). Restore is NOT a tool:
+            telegram_visible=False, telegram_group="system",
+                telegram={"section": "internal"}),
+        # Backup from every client (dossier docs/work/2026-10-24-whole-brainstorm-cindy F). Restore is NOT a tool:
         # only the owner restores (Telegram «Ripristina un backup», WebUI Backup panel), never the assistant.
         MCPTool(
             name="backup_status",
@@ -196,7 +196,7 @@ try:
             handler=lambda **_kw: {"status": "ok"}, title="Backup status", method="GET",
             path="/api/backup/status", clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Two or three lines: last backup (when, result), last check, any problem.",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Data and backups", "label": "Backup"}),
         MCPTool(
             name="backup_list",
@@ -204,7 +204,7 @@ try:
             parameters={"type": "object", "properties": {}},
             handler=lambda **_kw: {"status": "ok"}, title="Saved backups", method="GET",
             path="/api/backup/list", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Data and backups"}),
         MCPTool(
             name="backup_run",
@@ -212,7 +212,7 @@ try:
             parameters={"type": "object", "properties": {}},
             handler=lambda **_kw: {"status": "ok"}, title="Back up now", method="POST",
             path="/api/backup/run", clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Data and backups", "label": "Back up now"}),
     ]
     app.include_router(
@@ -255,7 +255,7 @@ _HUB_REGISTRATION_PAYLOAD = {
         "api_prefix": "/api",
         "commands": [
             {
-                "command": "preferenze_attive",
+                "command": "preferences_active",
                 "title": "Active preferences",
                 "telegram_group": "memoria",
                 "telegram": {"section": "Notes and preferences"},
@@ -267,7 +267,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "List the active preferences briefly, grouped by domain, in natural language.",
             },
             {
-                "command": "notifiche_attive",
+                "command": "notifications_active",
                 "title": "Automatic alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts", "label": "Automatic alerts"},
@@ -278,7 +278,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_mode": "raw_json",
             },
             {
-                "command": "avvisi_recenti",
+                "command": "notices_recent",
                 "title": "Recent notices",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts"},
@@ -291,7 +291,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Recent notices timeline: for each the item's full title, key payload details, 24h date/time, delivered yes/no. Link on the title, never 'Open'. Concise.",
             },
             {
-                "command": "notifica_disattiva",
+                "command": "notification_off",
                 "title": "Turn off a notice",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts"},
@@ -315,7 +315,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm clearly that the notification is off.",
             },
             {
-                "command": "notifica_attiva",
+                "command": "notification_on",
                 "title": "Turn a notice back on",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Automatic alerts"},
@@ -340,7 +340,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             # ── Calendar reminder subscriptions ───────────────────────────────
             {
-                "command": "iscriviti_calendario",
+                "command": "calendar_subscribe",
                 "title": "Turn on calendar reminders",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},
@@ -361,7 +361,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm briefly that calendar reminders are on.",
             },
             {
-                "command": "disiscriviti_calendario",
+                "command": "calendar_unsubscribe",
                 "title": "Turn off calendar reminders",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},
@@ -375,7 +375,7 @@ _HUB_REGISTRATION_PAYLOAD = {
             },
             # ── System health alert subscriptions ─────────────────────────────
             {
-                "command": "iscriviti_sistema",
+                "command": "system_subscribe",
                 "title": "Turn on system alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},
@@ -396,7 +396,7 @@ _HUB_REGISTRATION_PAYLOAD = {
                 "response_prompt": "Confirm briefly that system alerts are on.",
             },
             {
-                "command": "disiscriviti_sistema",
+                "command": "system_unsubscribe",
                 "title": "Turn off system alerts",
                 "telegram_group": "notifiche",
                 "telegram": {"section": "Reminders and alerts"},

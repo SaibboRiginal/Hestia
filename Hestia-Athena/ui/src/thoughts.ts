@@ -1,11 +1,11 @@
 /**
  * <athena-thoughts> — "Pensieri": every Athena cycle, observe → think → gate (5 factors) → act, with accepted /
  * discarded candidates and why; open commitments; «Pensa ora» runs a cycle now and the list refreshes when done.
- * Two tracks (docs/work/2026-10-20-riflessione-a-livelli): Vita (signals → links → details → observations for the
+ * Two tracks (docs/work/2026-10-20-layered-reflection): Vita (signals → links → details → observations for the
  * evening recap) and Sistema (Hestia's own health).
  * Reads GET /api/athena/thinking/summary?track= · /api/athena/commitments; POST /api/athena/think?track=,
  * POST /api/athena/commitments/{id}/resolve.
- * Same page, no new one (docs/work/2026-11-13-prima-osserva-poi-propone): Sistema shows what she is still collecting
+ * Same page, no new one (docs/work/2026-11-13-observe-then-propose): Sistema shows what she is still collecting
  * proof for (GET /api/athena/evidence); the third tab «Ti scrive» shows how much she wants to write now, why, what
  * she wrote and whether you answered (GET /api/athena/talk), with «Scrivimi ora» (POST /api/athena/think?track=parla).
  */

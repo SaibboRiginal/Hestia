@@ -67,7 +67,7 @@ public class ChatController : ControllerBase
 
     public record ReactionBody(string? Emoji, string? Text);
 
-    /// <summary>The owner reacted with an emoji to one of Hestia's messages (docs/work/2026-11-06-hestia-viva F4):
+    /// <summary>The owner reacted with an emoji to one of Hestia's messages (docs/work/2026-11-06-hestia-alive F4):
     /// Oracle keeps one history line so the next turn knows it. Empty emoji = reaction taken away.</summary>
     [HttpPost("reaction")]
     public async Task<IActionResult> Reaction([FromBody] ReactionBody body)

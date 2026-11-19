@@ -1,4 +1,4 @@
-"""Learning log with undo and memory review proposals (docs/work/2026-10-24-tutto-brainstorm-cindy W3,
+"""Learning log with undo and memory review proposals (docs/work/2026-10-24-whole-brainstorm-cindy W3,
 Cindy 8 + 18). Archive and Oracle are an in-memory fake behind ``Learning._route``."""
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ def test_review_proposes_and_changes_nothing_until_applied():
     assert any(e["action"] == "retire" and e["memory_id"] == 2 for e in learning.log())
 
 
-# ── Telegram parity: memory clean-ups and commitments are tools too (docs/work/2026-10-30-cose-aperte) ──
+# ── Telegram parity: memory clean-ups and commitments are tools too (docs/work/2026-10-30-open-items) ──
 @pytest.mark.unit
 def test_memory_tools_point_at_real_routes():
     import re

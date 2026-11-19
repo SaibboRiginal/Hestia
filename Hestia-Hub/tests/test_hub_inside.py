@@ -1,4 +1,4 @@
-"""Tests — Hub "inside view" WebUI plugin (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A3/A6).
+"""Tests — Hub "inside view" WebUI plugin (docs/work/2026-10-18-core-modules-and-external-mcp §A2/A3/A6).
 
 Hub's own manifest (kind core, Mappa page, Servizi online widget, order 100), its presence in the catalog
 (Hub never registers with itself), /api/ui/map, and routing ``/api/route/hub/...`` in-process.

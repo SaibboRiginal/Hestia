@@ -180,7 +180,7 @@ def test_oracle_evaluator_sends_use_case_not_model(monkeypatch):
 
 @pytest.mark.unit
 class TestListingDisplay:
-    """Telegram card of a search (docs/work/2026-10-23-telegram-da-zero §6)."""
+    """Telegram card of a search (docs/work/2026-10-23-telegram-from-scratch §6)."""
 
     def test_card_has_link_price_surface(self):
         with patch("tools.retrieval.ScoutRetrievalService.__init__", return_value=None):

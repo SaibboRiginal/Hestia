@@ -1,6 +1,6 @@
 """The owner's devices: Garmin watch (B10) and Android phone as a sensor (Cindy 32).
 
-Dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4. Hecate owns the devices and only passes their data on:
+Dossier docs/work/2026-10-24-whole-brainstorm-cindy W4. Hecate owns the devices and only passes their data on:
 - **Garmin**: «Collega Garmin» asks email/password with the Hermes secret form (never stored, only the tokens in
   ``HECATE_GARMIN_TOKENS``), a second form for the two-step code; the agenda job ``hecate.garmin.sync`` (daily
   09:30, user-movable) reads yesterday and today and pushes each day as the ``wearable.daily`` feed (Hercules:
@@ -264,19 +264,19 @@ def tools(MCPTool) -> list:
         return MCPTool(name=name, title=title, description=description,
                        parameters={"type": "object", "properties": props or {}, "required": required or []},
                        handler=lambda **kw: {"status": "ok", "tool": name, "params": kw}, method=method, path=path,
-                       clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="sistema",
+                       clients=["telegram", "ui"], response_mode="oracle_natural", telegram_group="system",
                        telegram={"section": tr("Devices"), **({"label": label} if label else {})})
     return [
-        t("garmin_stato", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
+        t("garmin_status", "Garmin", "Whether the Garmin watch is linked and when the last data was read.", "GET",
           "/api/gateway/garmin/status", label="Garmin"),
-        t("garmin_collega", "Link Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
-        t("garmin_sincronizza", "Read Garmin now", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
+        t("garmin_link", "Link Garmin", "Send the user the form to link Garmin Connect (email and password do not pass through the chat).", "POST", "/api/gateway/garmin/connect"),
+        t("garmin_sync", "Read Garmin now", ("Read now sleep, steps, heart rate and activities of the last days (days, default 2) and pass "
                                                      "them to training and self care."), "POST", "/api/gateway/garmin/sync",
           {"days": {"type": "integer", "minimum": 1, "maximum": 14}}),
-        t("garmin_giorno", "Garmin data of one day", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
+        t("garmin_day", "Garmin data of one day", ("Sleep, steps, resting heart rate, body battery, HRV, readiness and activities of a day (day "
                                                         "YYYY-MM-DD, empty = today)."), "GET", "/api/gateway/garmin/day",
           {"day": {"type": "string", "format": "date", "title": "Day"}}),
-        t("garmin_scollega", "Disconnect Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
+        t("garmin_unlink", "Disconnect Garmin", "Remove the access to Garmin (deletes the tokens).", "DELETE",
           "/api/gateway/garmin"),
-        t("telefono_stato", "Phone", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Phone"),
+        t("phone_status", "Phone", "Last state sent by the phone (at home, charging, battery) and whether the link is set up.", "GET", "/api/gateway/phone/status", label="Phone"),
     ]

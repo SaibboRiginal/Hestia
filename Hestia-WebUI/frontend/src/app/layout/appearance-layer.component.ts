@@ -19,8 +19,8 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
 /**
  * Never in the way (pointer-events off): the light effect of the active graphic profile (snow, leaves, petals,
  * confetti, hearts, stars, pumpkins, a warm sun) — only on Home, and the falling bits fade out after about ten
- * seconds so reading is never disturbed (dossier 2026-10-29-revisione-e-test-frontend §6.4) — and the mascot on every
- * page (`<hx-mascot>`, dossier 2026-11-18-problemi-del-test G).
+ * seconds so reading is never disturbed (dossier 2026-10-29-frontend-review-and-tests §6.4) — and the mascot on every
+ * page (`<hx-mascot>`, dossier 2026-11-18-real-test-problems G).
  * With «riduci movimento» or the «Animazioni: ridotte» knob the effect is off.
  */
 @Component({

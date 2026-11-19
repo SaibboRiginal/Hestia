@@ -18,7 +18,7 @@ SPEC: docs/work/2026-10-10-hermes-global-notifications/SPEC.md
 - Secret form (Cindy 4): ``_secret {service, path, fields: [{name, label, type}]}`` asks the owner for values
   (a password, a token). The client shows a form; ``POST /api/notifications/{id}/secret`` claims the notification
   (first answer wins) and forwards the values to the module through the Hub. Hermes never stores or logs them.
-- Question (dossier 2026-10-30-domande-nelle-notifiche): ``_question {kind, options, allow_other, service, path,
+- Question (dossier 2026-10-30-questions-in-notifications): ``_question {kind, options, allow_other, service, path,
   method?, body?}`` asks like the chat card (confirm, single/multiple choice, free text, «Altro…»). Clients see only
   the question; ``POST /api/notifications/{id}/reply {client, answer}`` claims it (first answer wins) and forwards
   ``{...body, answer, answers, client, notification_id}`` to the module through the Hub.
@@ -357,7 +357,7 @@ class NotificationCenter:
         """Store one notification and fan it out to every client.
         ``replaces``: key of a repeat chain — never deduped, supersedes the previous open one.
         ``voice``: the sending module wants it also as audio (its ``<module>.notifiche.voce``): the written
-        notification goes out first, the audio follows as an ``update`` with ``voice`` (dossier modulo-voce §7.3)."""
+        notification goes out first, the audio follows as an ``update`` with ``voice`` (dossier voice-module §7.3)."""
         if replaces:
             dedupe_key = replaces
         elif dedupe_key:
@@ -856,7 +856,7 @@ class NotificationCenter:
                 "pending": sum(1 for v in views if v["pending"])}
 
     def recap(self, day: str) -> dict[str, Any]:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): how many notifications ``day``
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): how many notifications ``day``
         brought (the important ones named) and which are still waiting for an answer. The recap itself is left out."""
         rows = self.archive.get_outbound_events({"channel": CHANNEL, "order_by": "created", "limit": 200,
                                                  "lifecycle_states": ",".join(LISTED_STATES)})

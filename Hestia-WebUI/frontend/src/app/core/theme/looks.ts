@@ -5,7 +5,7 @@ import { tr } from '../i18n';
  * A style is a preset of four knobs (corners, borders, transparency, animations) plus a few tokens of its own;
  * every knob can then be changed on its own (Impostazioni → Personali → Aspetto). ThemeService turns the
  * result into tokens on <html> and the attributes data-style / data-glass / data-motion, so plugins follow too.
- * Dossier: docs/work/2026-10-29-revisione-e-test-frontend §6.
+ * Dossier: docs/work/2026-10-29-frontend-review-and-tests §6.
  */
 export type Corners = 'squadrati' | 'normali' | 'arrotondati';
 export type Borders = 'leggeri' | 'normali' | 'marcati';

@@ -47,7 +47,7 @@ function store(key: string, value: string): void {
 }
 
 /**
- * Guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click §4.2, layout of round 7): full screen, one column, one
+ * Guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup §4.2, layout of round 7): full screen, one column, one
  * question per screen with the buttons always at the bottom; on top the step («3/11 Memoria») opens the list of the
  * steps and the downloads. The recommended answer is preselected, «Più tardi» on the optional ones. Every answer is
  * saved at once (server side), and the screen is remembered, so closing the browser resumes where it was. Secrets go

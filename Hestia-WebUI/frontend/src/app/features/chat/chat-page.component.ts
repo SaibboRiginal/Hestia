@@ -183,7 +183,7 @@ export function dayLabel(d: Date, now = new Date()): string {
         </div>
       }
       <div class="composer hx-glass" [class.disabled]="signalR.connectionState() !== 'connected'">
-        <!-- Written while the answer runs (dossier 2026-11-18-problemi-del-test B): it goes when the answer ends,
+        <!-- Written while the answer runs (dossier 2026-11-18-real-test-problems B): it goes when the answer ends,
              or «Add now» gives it to the answer being written. -->
         @if (chat.waiting().length) {
           <ul class="waiting" [attr.aria-label]="'Waiting to be sent' | tr">
@@ -210,7 +210,7 @@ export function dayLabel(d: Date, now = new Date()): string {
             <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? ('Release to cancel' | tr) : ('Release to send · slide left to cancel' | tr) }}</span>
           </div>
         }
-        <!-- «/»: the commands, filtered while typing; the chosen one runs here (dossier problemi-del-test B). -->
+        <!-- «/»: the commands, filtered while typing; the chosen one runs here (dossier real-test-problems B). -->
         @if (slashQuery() !== null) {
           <hx-chat-commands #cmds [query]="slashQuery() ?? ''" (done)="commandDone($event)" (closed)="slashClosed = true" />
         }
@@ -231,7 +231,7 @@ export function dayLabel(d: Date, now = new Date()): string {
                     [loading]="dictBusy()" [attr.aria-pressed]="dictating()" [attr.aria-label]="micLabel()" [title]="micLabel()"
                     (pointerdown)="micDown($event)" (pointermove)="micMove($event)" (pointerup)="micUp()"
                     (pointercancel)="micCancel()" (contextmenu)="$event.preventDefault()" (click)="micKey($event)"></button>
-            <!-- «Talk» lives with the other voice button, in the box (dossier 2026-11-18-problemi-del-test D). -->
+            <!-- «Talk» lives with the other voice button, in the box (dossier 2026-11-18-real-test-problems D). -->
             <button hx-btn [variant]="live.on ? 'primary' : 'ghost'" size="sm" icon="waveform" iconOnly (click)="toggleLive()"
                     [attr.aria-pressed]="live.on" [attr.aria-label]="('Talk with ' | tr) + identity.assistant() + (' by voice' | tr)"></button>
             @if (text.trim() && !recording()) { <button hx-btn variant="primary" size="sm" icon="send" iconOnly  [attr.aria-label]="'Send' | tr" (click)="send()"></button> }
@@ -389,7 +389,7 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   text = '';
   mode = signal('auto');   // hx-chat-mode: this conversation's mode (Themis), sent with every message
   rated = signal<Record<string, 'good' | 'bad'>>({});
-  /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-hestia-viva F4). */
+  /** Emoji reactions on Hestia's messages, like any chat (docs/work/2026-11-06-hestia-alive F4). */
   readonly reactions = REACTION_EMOJI;
   /** The assistant's chosen name (personal setting): the chat talks about her or him by name. */
   readonly identity = inject(IdentityService);

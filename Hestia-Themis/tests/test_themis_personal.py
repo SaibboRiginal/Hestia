@@ -106,7 +106,7 @@ def test_personal_places_validate_and_resolve_through_hecate():
     assert opts["options"][0]["label"] == "Casa · Milano" and calls == [("hecate", "/api/gateway/weather/places")]
 
 
-# ── Who you are and who the assistant is (docs/work/2026-11-12-identita-e-proattivita) ───────────────────────
+# ── Who you are and who the assistant is (docs/work/2026-11-12-identity-and-proactivity) ───────────────────────
 
 @pytest.mark.unit
 def test_identity_settings_are_personal_with_hestia_she_by_default():
@@ -134,7 +134,7 @@ def test_identity_render_name_gender_owner():
 
 @pytest.mark.unit
 def test_language_is_personal_and_fills_owner_language():
-    """One language setting for everything she writes on her own (docs/work/2026-11-14-lingua-personale)."""
+    """One language setting for everything she writes on her own (docs/work/2026-11-14-personal-language)."""
     from hestia_common import identity
     from hestia_common.settings_client import PERSONAL
     spec = PERSONAL[identity.LANGUAGE]
@@ -146,7 +146,7 @@ def test_language_is_personal_and_fills_owner_language():
     assert identity.read({identity.LANGUAGE: "klingon"}.get)["language"] == "it"     # unknown → default
 
 
-# ── The chosen name in every fixed text (docs/work/2026-11-16-nome-ovunque) ──────────────────────────────────
+# ── The chosen name in every fixed text (docs/work/2026-11-16-name-everywhere) ──────────────────────────────────
 
 @pytest.mark.unit
 def test_named_fills_only_name_and_gender():
@@ -187,7 +187,7 @@ def test_setting_labels_with_the_name_are_rendered_in_italian_too(monkeypatch):
 
 @pytest.mark.unit
 def test_localize_walks_lists_under_kept_keys(monkeypatch):
-    """Dossier 2026-11-18-problemi-del-test C: a plugin's ``page`` list and an ``action`` object hold people texts;
+    """Dossier 2026-11-18-real-test-problems C: a plugin's ``page`` list and an ``action`` object hold people texts;
     only string values under KEEP_KEYS stay as they are. A tag never reaches people."""
     from hestia_common import i18n
     values = {"themis.personal.language": "it"}

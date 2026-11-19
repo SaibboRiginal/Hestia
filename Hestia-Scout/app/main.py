@@ -112,7 +112,7 @@ retrieval_service = _build_retrieval_service()
 worker = ScoutWorker(target_domain=TARGET_DOMAIN)
 
 
-# ── Email by PUSH (SPEC docs/work/2026-10-19-email-push-spese) ─────────────
+# ── Email by PUSH (SPEC docs/work/2026-10-19-email-push-expenses) ─────────────
 # Scout no longer polls: it subscribes to Iris with its mail rules (scout.mail.*). Iris stores each matching
 # mail in Archive (domain real_estate) and calls POST /api/scout/mail; the cycle processes the pending records.
 # The old agenda job "scout.email_cycle" is retired on existing installs.
@@ -461,7 +461,7 @@ if _HAS_MCP:
                 }, handler=_mcp_scout_search,
                 title="Search houses", method="POST", path="/api/tools/real_estate/search",
                 clients=["*"], response_mode="oracle_natural", response_prompt="",
-                telegram_visible=True, telegram_group="case",
+                telegram_visible=True, telegram_group="houses",
                 telegram={"section": "Houses", "primary": 2}),
         MCPTool(name="scout_reconcile",
                 description="Run Scout data reconciliation maintenance.",
@@ -474,7 +474,7 @@ if _HAS_MCP:
                 title="Reconcile houses", method="POST", path="/api/module/maintenance/reconcile",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Summarise the Scout reconciliation result: whether it was a dry run and what was checked.",
-                telegram_visible=True, telegram_group="case",
+                telegram_visible=True, telegram_group="houses",
                 telegram={"section": "Advanced"}),
         MCPTool(name="scout_fetch",
                 description="Check listing emails NOW: Iris passes the last day's listing mails again and Scout "
@@ -485,7 +485,7 @@ if _HAS_MCP:
                 title="Check house emails", method="POST", path="/api/scout/check",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Confirm the fetch cycle started and that the logs show the result.",
-                telegram_visible=True, telegram_group="case",
+                telegram_visible=True, telegram_group="houses",
                 telegram={"section": "Houses", "primary": 3, "label": "Check emails"}),
         MCPTool(name="scout_stats",
                 description="Return real_estate domain statistics: total entities, "
@@ -496,7 +496,7 @@ if _HAS_MCP:
                 title="House statistics", method="GET", path="/api/scout/stats",
                 clients=["telegram", "ui"], response_mode="oracle_natural",
                 response_prompt="Show the real estate statistics readably.",
-                telegram_visible=True, telegram_group="case",
+                telegram_visible=True, telegram_group="houses",
                 telegram={"section": "Houses", "summary": True}),
     ]
     api_app.include_router(create_mcp_router(mcp_tools, service_name="scout"))

@@ -1,4 +1,4 @@
-"""Conversations: list, tags, pinned (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7): tools chat_tag /
+"""Conversations: list, tags, pinned (Cindy 26, dossier 2026-10-24-whole-brainstorm-cindy W7): tools chat_tag /
 chat_list and the WebUI doors /api/ui/chats*, all passing through to Archive."""
 from __future__ import annotations
 

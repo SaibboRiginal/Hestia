@@ -1,4 +1,4 @@
-"""Running an action (docs/work/2026-10-23-telegram-da-zero §5.5): ask what the tool needs, in words and with buttons,
+"""Running an action (docs/work/2026-10-23-telegram-from-scratch §5.5): ask what the tool needs, in words and with buttons,
 confirm when it writes, run it, show the result in the same message.
 
 One flow per chat, persisted in ``store`` (survives a restart). Callback data:

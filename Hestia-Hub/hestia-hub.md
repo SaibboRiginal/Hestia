@@ -24,7 +24,7 @@ Hub is **fully generic**: no domain, no DB, no user/business logic.
 - Keep metadata: name, base URL, health endpoint, tags, capabilities.
 
 ### Persistent registry (snapshot)
-SPEC `docs/work/2026-10-20-hub-registro-persistente`. Code: `src/modules/snapshot.py`.
+SPEC `docs/work/2026-10-20-hub-persistent-registry`. Code: `src/modules/snapshot.py`.
 - Hub saves its routing table to `/code/data/registry.json` (volume `./Hestia-Hub/data`), atomically: at once on
   a real change (created / updated / deregister), heartbeat-only refreshes at most every 30 s (written during the
   register call, no timer), and on shutdown.
@@ -51,7 +51,7 @@ SPEC `docs/work/2026-10-20-hub-registro-persistente`. Code: `src/modules/snapsho
 ### Machines: central and satellites (2026-10-31, `src/modules/nodes.py`, `src/modules/relay.py`)
 One Hestia can run on several machines of the home network: the **central** one (always on: memory, settings,
 WebUI, Telegram) and **satellites** (voice and model training near a video card). SPEC
-`docs/work/2026-10-30-setup-un-click` §4.0.
+`docs/work/2026-10-30-one-click-setup` §4.0.
 - **Pairing**: `POST /api/nodes/pair` gives a code (6 digits, 10 minutes, single use, burned after 5 wrong tries).
   The satellite's installer sends it to `POST /api/nodes/join {code, name, address}` and gets a **token** (shown
   once; the Hub keeps only its sha256 in `/code/data/nodes.json`).
@@ -95,7 +95,7 @@ WebUI, Telegram) and **satellites** (voice and model training near a video card)
 ## WebUI plugin (core, *Sistema*)
 
 Hub ships its own "inside view" on the client plugin contract (`hestia_common.plugin_client`, `kind="core"`,
-order 100; SPEC `docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2). Code: `src/modules/inside.py` (manifest +
+order 100; SPEC `docs/work/2026-10-18-core-modules-and-external-mcp` §A2). Code: `src/modules/inside.py` (manifest +
 read model), bundle `ui/` (Lit, `@hestia/webui-sdk`) built in the Docker image's Node stage to `/ui/dist/webui/hub.js`
 (`HUB_UI_DIST`, outside `/code/src` so the dev mount does not hide it). `api_prefix` = `/api/ui/`.
 
@@ -148,10 +148,10 @@ checks Hercules, Hygieia and Plutus.
 `capabilities.owns_tool_domains: [...]` lets a non-`layer:domain` service own a tool domain in Oracle's tool
 filtering (Argus and Hephaestus own `system`, so Forge/system tools reach the LLM).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Mappa del sistema»; catalog tool/command entries carry `summary` and `telegram_group` (area, `hestia_common.areas`); map offline text «Mappa non raggiungibile».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Mappa del sistema»; catalog tool/command entries carry `summary` and `telegram_group` (area, `hestia_common.areas`); map offline text «Mappa non raggiungibile».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): texts and page descriptions that spoke of «Hestia» as the assistant use the chosen name (`{assistant}`).

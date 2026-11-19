@@ -1,4 +1,4 @@
-"""Who may use Hestia's MCP from outside: accesses (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B6).
+"""Who may use Hestia's MCP from outside: accesses (docs/work/2026-10-18-core-modules-and-external-mcp §B6).
 
 An access = name, scope (read | write), the tools it may use ([] = every tool a module opened to external
 clients), expiry. Stored in Archive (``/api/mcp-access-store``) through Hub; the token is shown once at

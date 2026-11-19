@@ -30,8 +30,8 @@ class NotFound(LookupError):
 
 WEEK_START_KEY = "themis.personal.week_start"   # personal settings shared by every module (owner Themis)
 CURRENCY_KEY = "themis.personal.currency"
-DIARY_AREA = "giornata"                  # B9 spoken evening diary: one free entry about the day
-DIARY_TOOL = "selfcare_diario_voce"
+DIARY_AREA = "day"                  # B9 spoken evening diary: one free entry about the day
+DIARY_TOOL = "selfcare_journal_voice"
 DIARY_VOICE_USE = "hygieia.diario"
 
 
@@ -1053,7 +1053,7 @@ class Hygieia:
                            "steps": [x["label"] for x in p["steps"] if x["include"]]} for p in s["plan"]["routines"]]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): routines done, skipped or left
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): routines done, skipped or left
         due on ``day``, products used, routines due on ``nxt``, product alerts. Plain data, no LLM."""
         routines = {r["id"]: r for r in self.items("routine")}
         products = {p["id"]: p for p in self.items("product")}
@@ -1103,7 +1103,7 @@ class Hygieia:
                 "audio_id": heard.get("blob_id") or "", "duration_s": heard.get("duration_s")}
         return self.journal_add(body, source="voce")[0]
 
-    # ── reflection signals (docs/work/2026-10-20-riflessione-a-livelli) ──────
+    # ── reflection signals (docs/work/2026-10-20-layered-reflection) ──────
     def signals(self) -> tuple[list[dict], list[dict]]:
         """Deterministic signals + weekly metrics for the reflection layer (``signals_client.Signals.run``)."""
         from . import signals as signals_engine

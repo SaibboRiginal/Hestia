@@ -1,5 +1,5 @@
 """Context window of the LOCAL runtimes, read from the program itself (dossier
-docs/work/2026-11-12-contesto-e-scorciatoie §3.1).
+docs/work/2026-11-12-context-and-shortcuts §3.1).
 
 The owner sets the window once, in the program that runs the model (Ollama, LM Studio, llama-server…).
 Oracle reads it from there instead of imposing its own number:

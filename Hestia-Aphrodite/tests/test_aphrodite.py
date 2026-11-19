@@ -32,10 +32,10 @@ def ap():
 
 def test_calendar_rules():
     assert easter(2027) == date(2027, 3, 28) and easter(2026) == date(2026, 4, 5)
-    assert holiday(date(2026, 12, 31)) == "capodanno" and holiday(date(2026, 12, 20)) == "natale"
+    assert holiday(date(2026, 12, 31)) == "new_year" and holiday(date(2026, 12, 20)) == "christmas"
     assert holiday(date(2027, 1, 7)) is None and holiday(date(2026, 10, 31)) == "halloween"
-    assert holiday(date(2026, 4, 6)) == "pasqua" and season(date(2026, 7, 1)) == "estate"
-    assert season(date(2026, 12, 25)) == "inverno"
+    assert holiday(date(2026, 4, 6)) == "easter" and season(date(2026, 7, 1)) == "summer"
+    assert season(date(2026, 12, 25)) == "winter"
 
 
 def test_moment_wins_and_choice_off_is_standard(ap):
@@ -45,7 +45,7 @@ def test_moment_wins_and_choice_off_is_standard(ap):
     look.moment({"key": "special.birthday.owner", "kind": "birthday", "title": "Il tuo compleanno",
                  "date": today.isoformat()})
     n = look.now("webui")
-    assert n["profile"]["key"] == "compleanno" and n["profile"]["effect"] == "confetti"
+    assert n["profile"]["key"] == "birthday" and n["profile"]["effect"] == "confetti"
     look.set_choice("webui", auto=False)
     assert look.now("webui")["profile"]["key"] == "standard"
 
@@ -66,13 +66,13 @@ def test_pet_pictures_by_push(ap):
     look.image_done({"ref": f"pet:{pet['id']}:happy", "status": "done", "blob_ids": ["b9"]})
     look.set_choice("webui", pet=pet["id"])
     assert look.now()["pet"]["images"] == {"happy": "b9"}
-    look.generate("profile", "natale")
-    look.image_done({"ref": "profile:natale:background", "status": "done", "blob_ids": ["b10"]})
-    assert look.profile("natale")["background"] == "b10" and look.profile("natale")["builtin"] is True
+    look.generate("profile", "christmas")
+    look.image_done({"ref": "profile:christmas:background", "status": "done", "blob_ids": ["b10"]})
+    assert look.profile("christmas")["background"] == "b10" and look.profile("christmas")["builtin"] is True
 
 
 def test_drawn_mascot_by_default_and_can_be_turned_off(ap):
-    """The mascot shows without any picture (dossier 2026-11-18-problemi-del-test G)."""
+    """The mascot shows without any picture (dossier 2026-11-18-real-test-problems G)."""
     look, _ = ap
     assert look.now()["pet"]["drawn"] == "ember"                  # never chosen: the built-in mascot
     assert [p["id"] for p in look.pets()][:3] == ["builtin:ember", "builtin:cat", "builtin:owl"]
@@ -96,7 +96,7 @@ def test_endpoints_and_tools(monkeypatch):
     monkeypatch.setattr(main, "look", Appearance(Store(hub, "appearance-store", min_refresh_seconds=0), hub))
     c = TestClient(main.app)
     assert c.get("/api/appearance/now").json()["profile"]["key"]
-    assert c.post("/api/appearance/tools/scelta", json={"auto": "false"}).json()["auto"] is False
+    assert c.post("/api/appearance/tools/choice", json={"auto": "false"}).json()["auto"] is False
     assert c.get("/api/appearance/now?client=webui").json()["profile"]["key"] == "standard"
-    assert c.post("/api/appearance/tools/animale", json={"name": "Pip"}).json()["images_asked"] == 3
+    assert c.post("/api/appearance/tools/pet_create", json={"name": "Pip"}).json()["images_asked"] == 3
     assert main.kit.registration()["capabilities"]["special_moment_endpoint"] == "/api/appearance/moment"

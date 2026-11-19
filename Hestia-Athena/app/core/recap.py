@@ -1,6 +1,6 @@
 """Daily recap — collect every module's piece, have Oracle write it, Hermes deliver it.
 
-Dossier ``docs/work/2026-10-20-recap-giornaliero``. Independent from the thinking loop: the recap runs when its
+Dossier ``docs/work/2026-10-20-daily-recap``. Independent from the thinking loop: the recap runs when its
 agenda job fires (``athena.recap.evening`` by default, or a «Recap» template the user adds), when the user asks
 in chat (tool ``recap_today``) or from the quick action.
 

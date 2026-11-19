@@ -1,4 +1,4 @@
-"""The message she wrote first stays in the conversation (docs/work/2026-11-16-nome-ovunque).
+"""The message she wrote first stays in the conversation (docs/work/2026-11-16-name-everywhere).
 
 Athena decides to write, Oracle writes it, Hermes delivers it (kind ``athena.talk``): it lives in Hermes, not in a
 conversation. When the owner then writes, on any client and on any later day, his first turn after that message

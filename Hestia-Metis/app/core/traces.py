@@ -1,4 +1,4 @@
-"""Training dataset, phase D1 «Registra» (docs/work/2026-10-30-dataset-allenamento).
+"""Training dataset, phase D1 «Registra» (docs/work/2026-10-30-training-dataset).
 
 Oracle pushes one **trace** per finished chat turn the owner typed (``POST /api/metis/traces``): system prompt, the
 history text the model got, the user message, every tool call with arguments and result, the final answer, model

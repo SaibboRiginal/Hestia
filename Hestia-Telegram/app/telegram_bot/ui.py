@@ -1,4 +1,4 @@
-"""Telegram visual grammar (docs/work/2026-10-23-telegram-da-zero §3) — every message is built from these.
+"""Telegram visual grammar (docs/work/2026-10-23-telegram-from-scratch §3) — every message is built from these.
 
 Rules: bold title, plain body, italic for secondary info and outcomes, ``•`` items, ``·`` separator inside a line.
 At most one marker per message, on its title line: a tone dot (notifications, outcomes, errors) or the area emoji

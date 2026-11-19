@@ -68,7 +68,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "4. Automatic alerts and notifications: you CAN (subscriptions). Never say you cannot.\n"
         "5. Memory: memory.save only new lasting facts, third person; reminders and routines go to their own "
         "tools. 'Forget X' -> memory.search, then memory.forget by id.\n"
-        "6. 'Remind me' once -> agenda_assistente_aggiungi (works without a linked calendar); repeated -> "
+        "6. 'Remind me' once -> assistant_agenda_add (works without a linked calendar); repeated -> "
         "routine_create. Calendar event only if they talk about an appointment or the calendar.\n"
         "7. Many records -> summarise, show the best. Context records only if relevant. Always apply the "
         "owner's preferences."
@@ -135,7 +135,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "- Do not say it was done. Say in one line what is needed to do it (or ask for the missing data).\n"
         "- Do not talk about memory or notifications unless they named them."
     ),
-    # A turn heard and answered aloud: the client says so with `spoken` (docs/work/2026-11-06-hestia-viva F1).
+    # A turn heard and answered aloud: the client says so with `spoken` (docs/work/2026-11-06-hestia-alive F1).
     "voice_turn_contract": (
         "SPOKEN TURN (the answer is read aloud):\n"
         "- 1-2 spoken sentences. More only if they ask for details.\n"
@@ -208,7 +208,7 @@ _DEFAULT_PROMPTS: dict[str, str] = {
         "- {{\"action\":\"DEPRECATE\",\"id\":<pref_id>}}\n"
         "Output ONLY a JSON array, or NONE."
     ),
-    # Quiet mood capture (docs/work/2026-10-30-diario-umore): runs only after the deterministic gate found a
+    # Quiet mood capture (docs/work/2026-10-30-mood-diary): runs only after the deterministic gate found a
     # first-person «sono stanco»-like clause.
     "mood_capture_template": (
         "Read how the owner feels NOW.\n"

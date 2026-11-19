@@ -37,7 +37,7 @@ def reminder_settings(module: str, *, group: str = "Reminders", help: str = "", 
 
 def voice_setting(module: str, default: bool, *, group: str = "Reminders", help: str = "", order: int = 9) -> dict:
     """``<module>.notifiche.voce``: whether this module's notifications also arrive as a voice message
-    (dossier docs/work/2026-10-20-modulo-voce §7.3). Each module picks its own default: on where a notification
+    (dossier docs/work/2026-10-20-voice-module §7.3). Each module picks its own default: on where a notification
     reads well aloud (reminders, recaps), off where it is a list or numbers. Pass the value to
     ``reminder_event(voice=...)``; the written notification never changes."""
     return setting(f"{module}.notifiche.voce", "Notifications by voice too", "bool", bool(default), group=group,
@@ -53,7 +53,7 @@ def reminder_event(*, module: str, domain: str, key: str, title: str, text: str,
     ``resolves: true``; ``page`` opens the module's plugin page from the notification (``_link``).
     The envelope domain is ``system``: Hermes' standing owner subscription listens there; the module's
     own domain travels in the payload.
-    ``question`` asks like the chat card (dossier docs/work/2026-10-30-domande-nelle-notifiche): ``{kind:
+    ``question`` asks like the chat card (dossier docs/work/2026-10-30-questions-in-notifications): ``{kind:
     confirm|single_choice|multi_choice|free_text, options, allow_other, service, path, method?, body?}``; the answer
     reaches ``path`` as ``{...body, answer, answers, client, notification_id}``."""
     payload: dict[str, Any] = {

@@ -60,7 +60,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "email_search", "params": kw},
             title="Search messages", method="GET", path="/api/email/messages",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="posta",
+            telegram_visible=True, telegram_group="mail",
                 telegram={"section": "Messages", "primary": 1}),
         MCPTool(
             name="email_send",
@@ -78,7 +78,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "email_send", "params": kw},
             title="Write a message", method="POST", path="/api/email/send",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="posta",
+            telegram_visible=True, telegram_group="mail",
                 telegram={"section": "Messages", "primary": 2, "label": "Write"}),
         MCPTool(
             name="email_thread",
@@ -93,7 +93,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "email_thread", "params": kw},
             title="Open conversation", method="GET", path="/api/email/threads/$arg.id",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="posta",
+            telegram_visible=True, telegram_group="mail",
                 telegram={"section": "Messages"}),
         MCPTool(
             name="email_subscriptions",
@@ -102,7 +102,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "email_subscriptions", "params": kw},
             title="Email subscriptions", method="GET", path="/api/email/dispatch",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=True, telegram_group="posta",
+            telegram_visible=True, telegram_group="mail",
                 telegram={"section": "alt::Subscriptions", "primary": 3, "label": "alt::Subscriptions"}),
         MCPTool(
             name="iris_reconcile",
@@ -117,7 +117,7 @@ try:
             title="Reconcile mail", method="POST", path="/api/module/maintenance/reconcile",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Summarise the Iris reconciliation result: the state of the email module.",
-            telegram_visible=True, telegram_group="posta",
+            telegram_visible=True, telegram_group="mail",
                 telegram={"section": "Advanced"}),
     ]
     app.include_router(create_mcp_router(_iris_mcp_tools, service_name="iris"))

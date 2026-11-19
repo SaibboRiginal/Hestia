@@ -1,4 +1,4 @@
-"""Reflection signals (docs/work/2026-10-20-riflessione-a-livelli): short deterministic facts about the user's self
+"""Reflection signals (docs/work/2026-10-20-layered-reflection): short deterministic facts about the user's self
 care + weekly series, published to Archive through ``hestia_common.signals_client``.
 
 Built on what the planner and the statistics already judge (cadence goals, ``goal_state``, ``routine_stats`` streaks,

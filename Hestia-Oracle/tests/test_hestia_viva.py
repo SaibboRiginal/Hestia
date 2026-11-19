@@ -1,4 +1,4 @@
-"""Hestia viva (docs/work/2026-11-06-hestia-viva): persona, spoken turns, controls gate, awareness lines, reactions.
+"""Hestia viva (docs/work/2026-11-06-hestia-alive): persona, spoken turns, controls gate, awareness lines, reactions.
 
 No LLM, no network: Hub, engine and settings are mocked. Markers: unit, api."""
 from __future__ import annotations
@@ -197,7 +197,7 @@ def test_ollama_native_tools_keep_the_persona_as_system(monkeypatch):
     assert system.startswith("Sei Hestia. PERSONA") and "engine" not in system and "TOOLS:" in system
 
 
-# ── Identity: name, she/he, owner (docs/work/2026-11-12-identita-e-proattivita) ──────────────────────────────
+# ── Identity: name, she/he, owner (docs/work/2026-11-12-identity-and-proactivity) ──────────────────────────────
 
 @pytest.fixture
 def ident(monkeypatch):
@@ -245,7 +245,7 @@ def test_style_lets_her_chat_and_bans_bot_phrases():
     assert "one-word greeting" not in text and "sono qui" in text and "Fammi sapere" in text
 
 
-# ── She writes first («parla con te», docs/work/2026-11-12-identita-e-proattivita) ───────────────────────────
+# ── She writes first («parla con te», docs/work/2026-11-12-identity-and-proactivity) ───────────────────────────
 
 @pytest.mark.unit
 def test_opener_prompt_carries_reasons_memories_and_what_she_already_wrote():
@@ -302,7 +302,7 @@ def test_opener_endpoint_writes_or_stays_silent(client):
         assert http.post("/api/chat/opener", json={}).status_code == 503
 
 
-# ── Her first message stays in the conversation; transcripts use her name (docs/work/2026-11-16-nome-ovunque) ──
+# ── Her first message stays in the conversation; transcripts use her name (docs/work/2026-11-16-name-everywhere) ──
 
 class _Hub:
     def __init__(self, items):

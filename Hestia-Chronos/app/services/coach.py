@@ -1,4 +1,4 @@
-"""Weekly coach plan — Chronos side (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §5–§6).
+"""Weekly coach plan — Chronos side (SPEC docs/work/2026-10-20-coach-of-every-kind §5–§6).
 
 Chronos asks every service with the Hub tag ``coach`` what it needs (``GET /api/coach/needs``), places the needs in
 the user's free time with the generic planner (``coach_planner``), stores the plan as assistant-agenda items and

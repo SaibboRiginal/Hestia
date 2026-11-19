@@ -1,7 +1,7 @@
 /**
  * <hephaestus-repairs> — "Riparazioni": the remediation tasks of Hephaestus (runbook, consent, dry-run,
  * outcome, whether it can be undone, notes). Read only: approving or undoing a repair keeps its consent path
- * (chat / Telegram tools). SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
+ * (chat / Telegram tools). SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATE, CONSENT, when, short } from './util';

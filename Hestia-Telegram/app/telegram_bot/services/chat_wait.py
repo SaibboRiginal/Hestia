@@ -1,4 +1,4 @@
-"""Messages written while the assistant is still answering in the same chat (dossier 2026-11-18-problemi-del-test B).
+"""Messages written while the assistant is still answering in the same chat (dossier 2026-11-18-real-test-problems B).
 
 One answer at a time per chat: a text that arrives meanwhile waits (a short note with «Add now» under it) and goes as
 the next message when the answer ends; several waiting texts go together, in order. «Add now» hands the text to the

@@ -16,7 +16,7 @@ export function settingQuery(t: SettingTarget): Record<string, string> {
 /**
  * <hx-setting-link key="oracle.chat.mode" /> — the one shortcut next to a value that comes from a setting:
  * a small «cambia» that opens Impostazioni already on that setting, highlighted. Same component everywhere
- * (dossier docs/work/2026-11-12-contesto-e-scorciatoie §3.3). `key` = central setting · `module` = that module's
+ * (dossier docs/work/2026-11-12-context-and-shortcuts §3.3). `key` = central setting · `module` = that module's
  * settings · `section` (+ `row`) = a personal one. `label=""` shows the gear alone.
  */
 @Component({

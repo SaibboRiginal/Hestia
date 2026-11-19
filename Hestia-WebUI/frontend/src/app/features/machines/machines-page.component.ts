@@ -24,7 +24,7 @@ const JOB: Record<string, string> = { echo: tr('voice'), metis: tr('model traini
 const SCRIPT = 'https://raw.githubusercontent.com/SaibboRiginal/Hestia/main';
 
 /**
- * «Macchine» (docs/work/2026-10-30-setup-un-click §4.0): the central home and its satellites. Link a machine with a
+ * «Macchine» (docs/work/2026-10-30-one-click-setup §4.0): the central home and its satellites. Link a machine with a
  * one-time code (the satellite's installer sends it), unlink it, and let the brain's local models run on its video
  * card. Browser → WebUI → Hub → Hephaestus /api/setup/machines* (→ Hub /api/nodes, Oracle /api/llm/setup/machine).
  */

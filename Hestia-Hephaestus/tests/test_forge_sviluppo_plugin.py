@@ -1,4 +1,4 @@
-"""Sviluppo page as a Hephaestus plugin (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4, §B5):
+"""Sviluppo page as a Hephaestus plugin (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A4, §B5):
 badge counts and «Copia per AI» markdown, built from the forge_task / forge_tasks views.
 
 Markers: unit, api

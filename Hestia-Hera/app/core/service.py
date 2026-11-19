@@ -1,4 +1,4 @@
-"""Hera — the important people («Persone», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 A4).
+"""Hera — the important people («Persone», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 A4).
 
 A card per person: relation, birthday and other dates, likes and dislikes, gift ideas (from conversations: the
 assistant adds them with ``people_gift_idea``), notes, last contact and how often Marko wants to hear from them.

@@ -316,7 +316,7 @@ Google), `no_token`, `drive_api_disabled` (enable *Google Drive API* in the Clou
 does. Logs `event=drive_upload|drive_download|drive_delete …`. Setup: enable *Google Drive API* and add the scope
 `.../auth/drive.file` to the consent screen, then re-authorize Google once.
 
-### Weather (`providers/weather.py`) — dossier `docs/work/2026-10-20-meteo-hecate`
+### Weather (`providers/weather.py`) — dossier `docs/work/2026-10-20-weather-hecate`
 
 Open-Meteo (free, no key): forecast (current, daily, hourly, 16 days, `timezone=auto`) and geocoding (city level:
 an address resolves through its city; saved lat/lon skip geocoding). `WeatherService` caches per rounded lat/lon and
@@ -326,7 +326,7 @@ owned by Hecate). Daily recap: `GET /api/module/recap` (capability `recap_endpoi
 with one line «Domani a Casa: 10–18°, pioggia 15–17» (warning tone when rainy; no Casa → empty piece). Modules
 read it through Hub with `hestia_common.weather_client` (Wardrobe, Chronos, Hercules).
 
-### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-tutto-brainstorm-cindy` W4
+### Devices: Garmin and the phone (`providers/garmin.py`, `devices_api.py`) — dossier `docs/work/2026-10-24-whole-brainstorm-cindy` W4
 
 Hecate owns the devices and only passes data on, as **device feeds** (`hestia_common.feeds`): modules declare
 `capabilities.feeds = {kind: path}` in their Hub registration, Hecate discovers them and POSTs each item through the
@@ -336,7 +336,7 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
 
 - **Garmin** (B10, `garminconnect`, unofficial): «Collega Garmin» in the Dispositivi page opens the form right in the
   card (email, password, then the two-step code there too: `POST /api/gateway/garmin/login {direct: true, values}`),
-  so there is no notification to chase; from Telegram or the assistant (tool `garmin_collega`) a Hermes secret form
+  so there is no notification to chase; from Telegram or the assistant (tool `garmin_link`) a Hermes secret form
   is sent instead. The password is used once and never stored, only the tokens in `HECATE_GARMIN_TOKENS`. Agenda job `hecate.garmin.sync` (daily 09:30, movable) reads yesterday + today and pushes them; presence
   signal `wearable.woke_at`. A missing part (e.g. HRV on an older watch) is skipped, the day stays.
   Login uses `garminconnect ≥ 0.3.20` (its own Garmin login; the old `garth` one stopped working when Garmin
@@ -349,8 +349,8 @@ reads the Hub registry (an empty cache is never taken as fresh, regression test 
   effect; it is on when `phone.home` **or** the house signal `home.present` from Lares is explicitly false — a source
   that never sent anything does not count, fixed in W5) + feed `phone.state`. On a notification of a chosen app: `{"type":"notification","app":"%an","title":"%ntitle",
   "text":"%ntext"}` → feed `phone.notification` when the app is in `hecate.telefono.app`.
-- Tools (Telegram + WebUI, section «Dispositivi»): `garmin_stato`, `garmin_collega`, `garmin_sincronizza`,
-  `garmin_giorno`, `garmin_scollega`, `telefono_stato`. Tests: `tests/test_devices.py`.
+- Tools (Telegram + WebUI, section «Dispositivi»): `garmin_status`, `garmin_link`, `garmin_sync`,
+  `garmin_day`, `garmin_unlink`, `phone_status`. Tests: `tests/test_devices.py`.
 - WebUI plugin **Dispositivi** (W7; `kind="core"`, `api_prefix` `/api/gateway/`, page `dispositivi` →
   `<hecate-devices>`, order 105): Garmin state, «Collega Garmin» (form in the card, code included), «Leggi adesso», «Scollega»,
   last reading and error; the phone's last state, home Wi-Fi names and apps, how to set it up. Bundle `ui/` built
@@ -432,21 +432,21 @@ just runs the normal watcher. `users.watch` expires after 7 days → daily agend
 4. Keep canonical payloads rich at source; client-facing detail level is controlled by client rendering policy (minimal/compact/rich), not by deleting upstream semantics.
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 4; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: giornata › Calendario: 1; sistema › Account collegati: 4; sistema › Avanzate: 3; giornata › Meteo: 2 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Account e dispositivi»; agenda job titles «Controlla le email nuove» and «Rinnova l'avviso di Gmail» (no module name).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Account e dispositivi»; agenda job titles «Controlla le email nuove» and «Rinnova l'avviso di Gmail» (no module name).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions and the module manual are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the Google sign-in result page and the sign-in texts use the assistant's chosen name.
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): the Google sign-in result page and the sign-in texts use the assistant's chosen name.

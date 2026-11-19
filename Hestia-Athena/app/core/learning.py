@@ -1,10 +1,10 @@
-"""What the assistant learned, with undo (Cindy 8 + 18, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W3).
+"""What the assistant learned, with undo (Cindy 8 + 18, dossier docs/work/2026-10-24-whole-brainstorm-cindy W3).
 
 - **Learning log**: every change the nightly consolidation makes to the memory (new fact, fact retired by a
   conflict, reinforced pattern, weight decay) is a row of Archive ``/api/athena-store`` (kind ``learning``) with
   ``before`` / ``after`` and, for a new fact, the owner's exact words it comes from (``quote``). «Annulla» restores
   ``before``, but only while the memory is still as the assistant left it: an edit of the owner wins (409).
-- **«Rivedi cosa sai di me»** (``memory_rivedi``): exact duplicates are found without a model; then one model call
+- **«Rivedi cosa sai di me»** (``memory_review``): exact duplicates are found without a model; then one model call
   (use case ``athena.strategia``) looks for contradictions, near duplicates and stale facts. Nothing is changed:
   each finding is a proposal (kind ``memory_proposal``) sent as a Hermes card «Applica» / «Lascia».
 """

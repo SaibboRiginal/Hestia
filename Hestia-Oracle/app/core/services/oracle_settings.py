@@ -19,7 +19,7 @@ except ModuleNotFoundError:  # local runs without PYTHONPATH
         sys.path.insert(0, str(_shared))
     from hestia_common.settings_client import SettingsClient, preset, setting
 
-# ── Models: providers · chains · use cases (dossier docs/work/2026-10-19-oracle-a-blocchi) ─────────
+# ── Models: providers · chains · use cases (dossier docs/work/2026-10-19-oracle-blocks) ─────────
 # Three object settings edited by the WebUI page Modelli (Oracle → Cervello): named providers (keys stay in env
 # ORACLE_KEY_<NAME>), reusable chains of provider/model steps, use case → chain/mode overrides.
 PROVIDERS_KEY = "oracle.providers"
@@ -35,7 +35,7 @@ BRAIN_FALLBACK = "oracle.brain.fallback"
 BRAIN_MODES = [("interna", "Internal"), ("esterna", "External")]
 BRAIN_AGENTS = [("claude", "Claude Code (subscription)"), ("codex", "Codex (ChatGPT)")]
 BRAIN_FALLBACKS = [("interna", "Redo the turn in internal mode"), ("nessuno", "None: tell me it did not answer")]
-# Operating mode (dossier docs/work/2026-11-06-moduli-come-agenti): how a chat turn works. More values may come.
+# Operating mode (dossier docs/work/2026-11-06-modules-as-agents): how a chat turn works. More values may come.
 OPERATING_MODE = "oracle.operating_mode"
 OPERATING_MODES = [("classic", "Classic"), ("agents", "Module agents")]
 AGENTS_MAX_PER_TURN = "oracle.agents.max_per_turn"

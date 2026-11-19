@@ -11,7 +11,7 @@
 # ASCII only on purpose: PowerShell 5.1 reads a BOM-less file as ANSI, and a BOM breaks `irm | iex`. Accented letters
 # in messages are written ~e ~a ~o ~u ~i ~E (e/a/o/u/i with grave accent, e acute) and << >> (Italian quotes);
 # Expand-Text turns them back at print time.
-# SPEC: docs/work/2026-10-30-setup-un-click
+# SPEC: docs/work/2026-10-30-one-click-setup
 [CmdletBinding()]
 param(
     [string]$Dir = '',                 # empty = where it is launched (see below)
@@ -424,7 +424,7 @@ function Write-Hardware {
     Write-Log "hardware gpu=`"$gpu`" vram_gb=$vram role=$($script:Role) lan_ip=$($script:LanIp)"
 }
 
-# -- machines: role, LAN address, link to the central one (docs/work/2026-10-30-setup-un-click 4.0) -------------
+# -- machines: role, LAN address, link to the central one (docs/work/2026-10-30-one-click-setup 4.0) -------------
 function Resolve-Role {
     if ($Join) {
         if ($script:Role -and $script:Role -ne 'satellite') { Stop-Install (T '-Join is only for a satellite.' '-Join serve solo per un satellite.') }

@@ -28,7 +28,7 @@ function rule(s: any): string {
   return parts.join(' · ') || tr('no rule');
 }
 
-/** «Subscribed modules» opens them: each with what it asks for (dossier 2026-11-18-problemi-del-test D). */
+/** «Subscribed modules» opens them: each with what it asks for (dossier 2026-11-18-real-test-problems D). */
 function owners(subs: any[]): { title: string; subtitle: string }[] {
   const by = new Map<string, string[]>();
   for (const s of subs) by.set(s.owner, [...(by.get(s.owner) || []), s.title || s.key]);

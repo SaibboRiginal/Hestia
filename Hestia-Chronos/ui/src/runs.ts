@@ -1,7 +1,7 @@
 /**
  * <chronos-runs> — «Esecuzioni»: every run of the assistant agenda's jobs/tasks (riuscito / fallito / saltato,
  * duration, who started it) and the rules each module registered. «Riprova» = the agenda's run-now action.
- * The calendar stays the WebUI Agenda page. SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2.
+ * The calendar stays the WebUI Agenda page. SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2.
  */
 import { HestiaElement, html, css, nothing, tr } from '@hestia/webui-sdk';
 import { API, STATUS, ms, retry, when } from './util';

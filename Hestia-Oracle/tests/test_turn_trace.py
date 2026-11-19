@@ -1,4 +1,4 @@
-"""Turn traces for the training dataset (docs/work/2026-10-30-dataset-allenamento, D1). No network, no LLM."""
+"""Turn traces for the training dataset (docs/work/2026-10-30-training-dataset, D1). No network, no LLM."""
 from __future__ import annotations
 
 import json

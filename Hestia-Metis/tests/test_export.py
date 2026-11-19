@@ -1,4 +1,4 @@
-"""Training dataset D3 «Esporta» (docs/work/2026-10-30-dataset-allenamento §3.4). Markers: unit"""
+"""Training dataset D3 «Esporta» (docs/work/2026-10-30-training-dataset §3.4). Markers: unit"""
 import base64
 import io
 import json

@@ -28,7 +28,7 @@ export function bytes(n: number): string {
 }
 
 /**
- * «Download» (docs/work/2026-10-30-setup-un-click §4.3): everything Hestia downloads — Oracle's models, Echo's voices —
+ * «Download» (docs/work/2026-10-30-one-click-setup §4.3): everything Hestia downloads — Oracle's models, Echo's voices —
  * with progress, speed and time left; pause, resume, retry, cancel, delete to free space. Each module owns its downloads
  * (hestia_common.downloads); this page only lists them through the WebUI backend and the Hub.
  */

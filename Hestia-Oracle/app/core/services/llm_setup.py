@@ -1,4 +1,4 @@
-"""Guided setup of the brain (docs/work/2026-10-30-setup-un-click §4.2 «Cervello»).
+"""Guided setup of the brain (docs/work/2026-10-30-one-click-setup §4.2 «Cervello»).
 
 What the setup screen needs from Oracle, and only from Oracle (it owns the providers):
 - ``runtimes(vram_gb, hosts)``: the programs that run models at home (Ollama, LM Studio, Jan, llama.cpp, vLLM), on

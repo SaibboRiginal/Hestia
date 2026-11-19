@@ -1,4 +1,4 @@
-"""Tests — named providers, model chains, use cases, migration (dossier 2026-10-19-oracle-a-blocchi).
+"""Tests — named providers, model chains, use cases, migration (dossier 2026-10-19-oracle-blocks).
 All network calls mocked."""
 from __future__ import annotations
 
@@ -159,7 +159,7 @@ class TestChainAgent:
             list(agent.ask_stream("x"))
 
     def test_embedding_chain_falls_back_to_the_next_model(self, monkeypatch, fake_agents):
-        """The memory chain has real fallback models (dossier 2026-11-18-problemi-del-test E2): every stored vector
+        """The memory chain has real fallback models (dossier 2026-11-18-real-test-problems E2): every stored vector
         keeps the model that made it, so the next model can answer."""
         agent = self._chain(monkeypatch, [{"provider": "ollama", "model": "e1"}, {"provider": "gemini", "model": "e2"}],
                             uc="oracle.embedding", chain="embedding")

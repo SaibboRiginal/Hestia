@@ -1,6 +1,6 @@
 """Device feeds: data from the owner's devices pushed to the modules that asked for it.
 
-Dossier ``docs/work/2026-10-24-tutto-brainstorm-cindy`` W4 (B10 Garmin, Cindy 32 phone as a sensor). Hecate owns the
+Dossier ``docs/work/2026-10-24-whole-brainstorm-cindy`` W4 (B10 Garmin, Cindy 32 phone as a sensor). Hecate owns the
 devices (Garmin account, the phone's webhook); it never decides what the data means. A module that wants a kind of
 data declares it in its Hub registration and Hecate pushes every new item to it through the Hub (push, not poll):
 

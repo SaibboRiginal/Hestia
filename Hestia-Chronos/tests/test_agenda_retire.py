@@ -1,5 +1,5 @@
 """Modules retire default rules they no longer declare (Scout's mail poll → push). Archive mocked in memory.
-SPEC docs/work/2026-10-19-email-push-spese §3.3."""
+SPEC docs/work/2026-10-19-email-push-expenses §3.3."""
 from __future__ import annotations
 
 from unittest.mock import patch

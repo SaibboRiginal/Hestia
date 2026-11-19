@@ -1,6 +1,6 @@
 """Hermes inside view (WebUI plugin «Consegne»): manifest + /api/ui/* reads.
 
-SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2. Archive is mocked.
+SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2. Archive is mocked.
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ class TestDeliveryView:
         assert "ref" not in v["clients"]["telegram"]
 
     def test_title_plain_and_area_not_module(self):
-        """Deliveries page (dossier 2026-11-18-problemi-del-test F): no HTML in the title, the area instead of the module."""
+        """Deliveries page (dossier 2026-11-18-real-test-problems F): no HTML in the title, the area instead of the module."""
         from modules.ui_view import delivery_view
         v = delivery_view(_row("n9", n={"title": "<b>Nuova casa</b> a Udine"}))
         assert v["title"] == "Nuova casa a Udine"

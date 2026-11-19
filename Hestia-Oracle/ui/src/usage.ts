@@ -1,5 +1,5 @@
 /**
- * <oracle-usage> — Cervello tab «Uso»: every LLM call kept in Archive (dossier 2026-10-19-oracle-a-blocchi §E).
+ * <oracle-usage> — Cervello tab «Uso»: every LLM call kept in Archive (dossier 2026-10-19-oracle-blocks §E).
  * Cards per module (calls, calls/hour, tokens, cache, cost, fallbacks), calls per day, sessions (tap → their calls),
  * which chain step answered. Reads GET /api/ui/usage?group=…&days=… and /api/ui/usage/calls.
  */

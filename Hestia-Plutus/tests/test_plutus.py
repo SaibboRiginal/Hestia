@@ -419,7 +419,7 @@ def test_api_chat_attachment_handoff(api):
     assert caps["attachment_handlers"][0]["path"] == "/api/finance/attachments"
 
 
-# ── daily recap piece (docs/work/2026-10-20-recap-giornaliero) ─────────────
+# ── daily recap piece (docs/work/2026-10-20-daily-recap) ─────────────
 def test_recap_spent_today_by_category_and_budget(pl):
     pl.add_tx({"amount": "12,50", "merchant": "Esselunga", "category": "spesa"})
     pl.add_tx({"amount": 30, "merchant": "Esselunga", "category": "spesa"})
@@ -551,7 +551,7 @@ def test_api_context_topic_and_signals_run(api, monkeypatch):
     assert "/api/finance/signals/run" in str(job)
 
 
-# ── coach of the weekly plan (SPEC 2026-10-20-coach-di-ogni-tipo §7.3) ───────
+# ── coach of the weekly plan (SPEC 2026-10-20-coach-of-every-kind §7.3) ───────
 def test_coach_budget_targets_and_review_block(pl):
     from hestia_common.coach import validate_need
 

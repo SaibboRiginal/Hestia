@@ -98,7 +98,7 @@ _CLAIMED_ACTION = re.compile(
     r"tutt|ogni)\b", re.IGNORECASE)
 
 # Tools every turn keeps whatever its domain: reminders, routines and asking the user back.
-_ALWAYS_TOOLS = frozenset({"agenda_assistente_aggiungi", "routine_create", "ask_user", "module_manual"})
+_ALWAYS_TOOLS = frozenset({"assistant_agenda_add", "routine_create", "ask_user", "module_manual"})
 
 def _turn_tool_domains(available_domains: list[str], intent) -> list[str]:
     """Domains whose tools the agent gets this turn: the classified ones (+ ``_ALWAYS_TOOLS``) when the classifier
@@ -269,7 +269,7 @@ class OracleEngine:
 
         # ── Infrastructure services ───────────────────────────────────────────
         self._hub = HubClient(self._hub_url)
-        # Tools of every module: only through Hestia's one MCP server (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2).
+        # Tools of every module: only through Hestia's one MCP server (docs/work/2026-10-18-core-modules-and-external-mcp §B2).
         self._mcp = MCPClient(self._hub_url, client="oracle")
 
         # Small TTL cache for quasi-static discovery endpoints (TTL: oracle.cache.schemas_ttl, live).
@@ -792,7 +792,7 @@ class OracleEngine:
     def close_open_questions(self, session_id: str) -> int:
         """The owner wrote (or spoke) in this session: the message itself answers the open ``ask_user`` questions
         (they are in the history). Closed here and in Archive, so a reload does not draw the card again and a late
-        tap is told the question is closed (dossier docs/work/2026-10-30-domande-nelle-notifiche)."""
+        tap is told the question is closed (dossier docs/work/2026-10-30-questions-in-notifications)."""
         if not session_id:
             return 0
         closed: list[dict] = []
@@ -904,7 +904,7 @@ class OracleEngine:
                 provider=agent.provider, domains=domains, tool_log=tool_log,
                 total_ms=int((time.perf_counter() - t0) * 1000), message=user_message,
                 usage_before=usage_before, usage_after=llm_stats.session_usage(session_id), trace_id=trace_id)
-            # Training dataset (docs/work/2026-10-30-dataset-allenamento): what the model saw and did → Metis.
+            # Training dataset (docs/work/2026-10-30-training-dataset): what the model saw and did → Metis.
             if turn_trace.wanted(origin=origin, save_history=save_history, session_id=session_id):
                 parts = trace_parts or {}
                 turn_trace.send(self._hub, turn_trace.build(
@@ -948,7 +948,7 @@ class OracleEngine:
 
         # ── Resolve agent by use case ──────────────────────────────────────────
         agent = self._resolve_agent(model)
-        # Brain mode (dossier 2026-10-19-oracle-a-blocchi §D): esterna = an agent CLI runs the loop below.
+        # Brain mode (dossier 2026-10-19-oracle-blocks §D): esterna = an agent CLI runs the loop below.
         from core.services import external_agent, llm_chains
         chat_use_case = llm_chains.SLOTS.get(model, llm_chains.GENERAL)
         external = external_agent.mode_for(chat_use_case) == "esterna"
@@ -981,7 +981,7 @@ class OracleEngine:
             len(available_domains or []),
         )
 
-        # The local model is busy with background work (dossier 2026-11-18-problemi-del-test A): say so, the owner
+        # The local model is busy with background work (dossier 2026-11-18-real-test-problems A): say so, the owner
         # goes first (the bus stops that call when it can) instead of a silent wait.
         from core.services import llm_bus
         if llm_bus.current() == llm_bus.CHAT and llm_bus.busy_with_background():
@@ -990,7 +990,7 @@ class OracleEngine:
         # ── Phase 2: CLASSIFY (single call: mode + domain + action_intent) ────
         temporal_context = self._current_datetime_context()
         t_classify = time.perf_counter()
-        # Operating mode «agents» (docs/work/2026-11-06-moduli-come-agenti): no classifier, the main brain sees one
+        # Operating mode «agents» (docs/work/2026-11-06-modules-as-agents): no classifier, the main brain sees one
         # agent per module and decides itself (small talk = one call, no tool).
         from core.services import oracle_settings as _opmode
         agents_mode = _opmode.operating_mode() == "agents"
@@ -1471,7 +1471,7 @@ class OracleEngine:
                 # Agenda / Forge effects get their own kind so clients refresh calendar / Sviluppo.
                 if entry.get("ok") and entry.get("confirm"):
                     kind = "action.needs_approval"   # a proposal (Themis): nothing is done until the user confirms
-                elif entry.get("ok") and "agenda_assistente" in tname:
+                elif entry.get("ok") and "assistant_agenda" in tname:
                     kind = "agenda.planned"
                 elif entry.get("ok") and "forge_develop" in tname:
                     kind = "forge.task"
@@ -2661,7 +2661,7 @@ class OracleEngine:
 
         return tools
 
-    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-tutto-brainstorm-cindy) ─────────
+    # ── Turn tools, origin gate, goal rounds (dossier 2026-10-24-whole-brainstorm-cindy) ─────────
     def _agent_manifest(self, tools: list[ToolDefinition], *, live: "queue.Queue[str]", nested_log: list[dict],
                         user_message: str, history_text: str, session_id: str, origin: dict, mode: str,
                         datetime_context: str) -> list[ToolDefinition]:
@@ -3273,7 +3273,7 @@ class OracleEngine:
     def _embed(self, text: str) -> list[float]:
         """Embed *text* along the embedding chain.  Rulebook 1.6: WORKS or LOG AND FAIL.
         The vector carries ``.model`` (``provider/model`` that made it): whoever stores it keeps the model, so a
-        search compares it only with a query of the same model (dossier 2026-11-18-problemi-del-test E2)."""
+        search compares it only with a query of the same model (dossier 2026-11-18-real-test-problems E2)."""
         try:
             vector, model = self._agents.embedding.embed_tagged(text)
             if vector:
@@ -3499,7 +3499,7 @@ class OracleEngine:
         return "\n".join(lines)
 
     def _save_history(self, session_id: str, user_message: str, answer: str, trace_id: str | None = None) -> None:
-        # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-hestia-viva F4).
+        # A leading reaction marker is not part of the answer text (docs/work/2026-11-06-hestia-alive F4).
         from core.services.reaction_marker import strip as _strip_reaction
         emoji, answer = _strip_reaction(answer)
         if emoji and not answer.strip():

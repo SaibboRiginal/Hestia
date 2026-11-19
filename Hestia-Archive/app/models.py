@@ -59,7 +59,7 @@ class ChatHistory(Base):
 
 
 class ChatSessionMeta(Base):
-    """What the owner sets on a conversation (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7): its own
+    """What the owner sets on a conversation (Cindy 26, dossier 2026-10-24-whole-brainstorm-cindy W7): its own
     title, coloured tags and «fissata». Messages stay in ``chat_history``; a session without a row has none."""
     __tablename__ = "chat_session_meta"
 
@@ -67,7 +67,7 @@ class ChatSessionMeta(Base):
     title = Column(String, nullable=True)
     tags = Column(JSONB, nullable=True)          # [{"name": "lavoro", "color": "blue"}]
     pinned = Column(Boolean, nullable=False, default=False)
-    # «Non usare per l'allenamento» (docs/work/2026-10-30-dataset-allenamento): no trace of it in the dataset.
+    # «Non usare per l'allenamento» (docs/work/2026-10-30-training-dataset): no trace of it in the dataset.
     training_off = Column(Boolean, nullable=True, default=False)
     client = Column(String, nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -557,7 +557,7 @@ class MCPAccess(Base):
     calls_date = Column(String, nullable=True)                    # YYYY-MM-DD of calls_day
     calls_day = Column(Integer, nullable=False, default=0)
     calls_total = Column(BigInteger, nullable=False, default=0)
-    # OAuth accesses (kind oauth, docs/work/2026-10-18-moduli-core-e-mcp-esterno §B6): token_hash = the current
+    # OAuth accesses (kind oauth, docs/work/2026-10-18-core-modules-and-external-mcp §B6): token_hash = the current
     # short-lived access token, refresh_hash = the current refresh token (rotated on use; the previous one is kept
     # to spot a replay), token_expires_at = when the access token stops. Hashes only.
     client_id = Column(String, nullable=True, index=True)
@@ -603,7 +603,7 @@ class MCPOAuthCode(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
-# ── LLM usage — owner of the semantics: Hestia-Oracle (docs/work/2026-10-19-oracle-a-blocchi §E) ───
+# ── LLM usage — owner of the semantics: Hestia-Oracle (docs/work/2026-10-19-oracle-blocks §E) ───
 
 class LLMUsage(Base):
     """One LLM call made by Oracle (a chain step, Forge's chat, an agent run): who asked (module from the use case
@@ -682,73 +682,73 @@ ArgusRecord = _module_record_model(
 
 HermesRecord = _module_record_model(
     "HermesRecord", "hermes_records",
-    "One row of Hestia-Hermes (Web Push subscription of a browser, docs/work/2026-10-24-tutto-brainstorm-cindy). "
+    "One row of Hestia-Hermes (Web Push subscription of a browser, docs/work/2026-10-24-whole-brainstorm-cindy). "
     "Owner of the semantics: Hestia-Hermes.")
 
 AthenaRecord = _module_record_model(
     "AthenaRecord", "athena_records",
     "One row of Hestia-Athena (learning log entry with before/after, memory review proposal, "
-    "docs/work/2026-10-24-tutto-brainstorm-cindy). Owner of the semantics: Hestia-Athena.")
+    "docs/work/2026-10-24-whole-brainstorm-cindy). Owner of the semantics: Hestia-Athena.")
 
 ChronosRecord = _module_record_model(
     "ChronosRecord", "chronos_records",
     "One row of Hestia-Chronos (routine result kept for the recap, smart-calendar «keep as is» choice, "
-    "docs/work/2026-10-24-tutto-brainstorm-cindy). Owner of the semantics: Hestia-Chronos.")
+    "docs/work/2026-10-24-whole-brainstorm-cindy). Owner of the semantics: Hestia-Chronos.")
 
 SignalRecord = _module_record_model(
     "SignalRecord", "signal_records",
-    "One row of the reflection signals (docs/work/2026-10-20-riflessione-a-livelli): a module's signal or weekly "
+    "One row of the reflection signals (docs/work/2026-10-20-layered-reflection): a module's signal or weekly "
     "metric (ref_id = module), or one of Athena's observations (ref_id = athena). Owner of the semantics: each "
     "writer for its own rows; shape in hestia_common.signals_client.")
 
 
 ImagesRecord = _module_record_model(
     "ImagesRecord", "images_records",
-    "One row of the image module Hestia-Apollo (flow, job), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the image module Hestia-Apollo (flow, job), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Apollo.")
 
 AppearanceRecord = _module_record_model(
     "AppearanceRecord", "appearance_records",
-    "One row of the appearance module Hestia-Aphrodite (profile, pet, client choice, today's moment), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the appearance module Hestia-Aphrodite (profile, pet, client choice, today's moment), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Aphrodite.")
 
 HomeRecord = _module_record_model(
     "HomeRecord", "home_records",
-    "One row of the house module Hestia-Lares (quick action), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the house module Hestia-Lares (quick action), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Lares.")
 
 PeopleRecord = _module_record_model(
     "PeopleRecord", "people_records",
-    "One row of the people module Hestia-Hera (person card, contact), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the people module Hestia-Hera (person card, contact), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Hera.")
 
 FoodRecord = _module_record_model(
     "FoodRecord", "food_records",
-    "One row of the nutrition module Hestia-Demeter (diet, meal, supplement, intake), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the nutrition module Hestia-Demeter (diet, meal, supplement, intake), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Demeter.")
 
 OfficeRecord = _module_record_model(
     "OfficeRecord", "office_records",
-    "One row of the documents module Hestia-Calliope (created document), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the documents module Hestia-Calliope (created document), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Calliope.")
 
 DeadlinesRecord = _module_record_model(
     "DeadlinesRecord", "deadlines_records",
-    "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-tutto-brainstorm-cindy W5. "
+    "One row of the deadlines module Hestia-Kairos (deadline), docs/work/2026-10-24-whole-brainstorm-cindy W5. "
     "Owner of the semantics: Hestia-Kairos.")
 
 MoodRecord = _module_record_model(
     "MoodRecord", "mood_records",
-    "One row of the mood module Hestia-Psyche (check-in), docs/work/2026-10-30-diario-umore. "
+    "One row of the mood module Hestia-Psyche (check-in), docs/work/2026-10-30-mood-diary. "
     "Owner of the semantics: Hestia-Psyche.")
 
 MetisRecord = _module_record_model(
     "MetisRecord", "metis_records",
-    "One row of the usage log of Hestia-Metis (tap, idea), docs/work/2026-10-24-tutto-brainstorm-cindy W6. "
+    "One row of the usage log of Hestia-Metis (tap, idea), docs/work/2026-10-24-whole-brainstorm-cindy W6. "
     "Owner of the semantics: Hestia-Metis.")
 
 DatasetRecord = _module_record_model(
     "DatasetRecord", "dataset_records",
     "One row of the training dataset of Hestia-Metis (trace of a chat turn, toolset, signal), "
-    "docs/work/2026-10-30-dataset-allenamento. Big rows: read with filters, never mirrored whole. "
+    "docs/work/2026-10-30-training-dataset. Big rows: read with filters, never mirrored whole. "
     "Owner of the semantics: Hestia-Metis.")

@@ -128,13 +128,13 @@ class TestDomainToolFiltering:
         engine._module_registry.get_domain_owners = lambda d: ["plutus"] if d == "finance" else []
         engine._hub.get_commands = lambda: [
             {"command": "finance_add", "service": "plutus", "method": "POST", "path": "/api/x"},
-            {"command": "agenda_assistente_aggiungi", "service": "chronos", "method": "POST", "path": "/api/y"},
+            {"command": "assistant_agenda_add", "service": "chronos", "method": "POST", "path": "/api/y"},
             {"command": "create_event", "service": "chronos", "method": "POST", "path": "/api/z"},
         ]
         intent = SessionIntent(mode="domain_query", explicit_domain="finance", confidence=0.9,
                                valid_domains=["finance"])
         names = {t.name for t in engine._build_domain_tools(intent, "s", None, fallback_domains=["finance"])}
-        assert {"finance_add", "agenda_assistente_aggiungi"} <= names
+        assert {"finance_add", "assistant_agenda_add"} <= names
         assert "create_event" not in names
 
 

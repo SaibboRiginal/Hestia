@@ -1,4 +1,4 @@
-"""Module agents — operating mode ``agents`` (dossier ``docs/work/2026-11-06-moduli-come-agenti``).
+"""Module agents — operating mode ``agents`` (dossier ``docs/work/2026-11-06-modules-as-agents``).
 
 Each module that offers tools gets a specialist agent INSIDE Oracle: its ``when_to_use`` (what it is for), its
 ``manual`` (its rules) and only its own tools. The main brain no longer holds ~265 tools: it sees one tool
@@ -30,7 +30,7 @@ logger = logging.getLogger("hestia_oracle.module_agents")
 TOOL_PREFIX = "agent_"
 USECASE_PREFIX = "agent."
 # Cross-cutting tools the main brain keeps itself (reminders and routines are asked in any conversation).
-MAIN_TOOLS = frozenset({"agenda_assistente_aggiungi", "routine_create", "ask_user"})
+MAIN_TOOLS = frozenset({"assistant_agenda_add", "routine_create", "ask_user"})
 # Replaced by the agents: the manual lives in each agent's prompt.
 DROPPED_TOOLS = frozenset({"module_manual"})
 _SUMMARY_CHARS = 240

@@ -431,7 +431,7 @@ class Echo:
 
 def _with_names(words: str, ident: dict[str, str]) -> str:
     """The recognition hint with the assistant's name and the owner's name first, so a renamed assistant is
-    written right from the first word (docs/work/2026-11-16-nome-ovunque)."""
+    written right from the first word (docs/work/2026-11-16-name-everywhere)."""
     known = {w.strip().lower() for w in words.rstrip(".").split(",") if w.strip()}
     names = []
     for name in (ident.get("assistant"), ident.get("owner")):

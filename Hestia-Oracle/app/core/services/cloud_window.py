@@ -1,4 +1,4 @@
-"""Context window of CLOUD models, read from the service itself (dossier docs/work/2026-11-17-output-compatti v1.1).
+"""Context window of CLOUD models, read from the service itself (dossier docs/work/2026-11-17-compact-outputs v1.1).
 
 The owner never sets a window in Hestia: it is read from the provider for every model (local ones by
 ``core.services.local_window``). Cloud services that declare it in their models API:

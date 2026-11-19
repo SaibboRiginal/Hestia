@@ -1,4 +1,4 @@
-"""LLM usage storage — one row per LLM call made by Oracle (docs/work/2026-10-19-oracle-a-blocchi §E).
+"""LLM usage storage — one row per LLM call made by Oracle (docs/work/2026-10-19-oracle-blocks §E).
 
 Archive only stores and sums: what a module, a chain or a cost means lives in Hestia-Oracle, the only caller
 (``/api/llm/usage``). Oracle sends its retention with every write; older rows are removed then (no timer).

@@ -1,4 +1,4 @@
-"""Components, origin label and undo buttons under an answer (docs/work/2026-10-24-tutto-brainstorm-cindy)."""
+"""Components, origin label and undo buttons under an answer (docs/work/2026-10-24-whole-brainstorm-cindy)."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -75,7 +75,7 @@ def test_component_button_sends_its_text_to_the_chat(bot):
 
 @pytest.mark.unit
 def test_tools_alone_are_not_called_reasoning(bot):
-    """Regression (docs/work/2026-11-11-ragionamento-vuoto): a trace with tool calls only read «Ragionamento · 0 passi»."""
+    """Regression (docs/work/2026-11-11-empty-reasoning): a trace with tool calls only read «Ragionamento · 0 passi»."""
     r = _renderer()
     r.on_thinking({"action": "reasoning", "content": "  \n "})
     r.on_thinking({"action": "tool_call", "tool": "weather_today"})
@@ -119,7 +119,7 @@ def test_a_line_says_when_another_model_answers(bot):
 
 @pytest.mark.unit
 def test_module_agent_frames_become_status_and_steps(bot):
-    """Oracle operating mode «agents»: an agent at work shows one status line and a step each (moduli-come-agenti)."""
+    """Oracle operating mode «agents»: an agent at work shows one status line and a step each (modules-as-agents)."""
     r = _renderer()
     r.on_agent({"type": "agent", "event": "start", "agent_id": "a1", "module": "plutus", "label": "Expenses",
                 "task": "spese di novembre"})

@@ -50,7 +50,7 @@ class MCPTool:
     telegram_visible: bool = True # Ignored by Telegram since 2026-10-24: every tool is on Telegram
     telegram_group: str = "altro" # Telegram area (giornata, allenamento, selfcare, guardaroba, spese, case,
                                   # posta, memoria, sviluppo, sistema, notifiche)
-    # Telegram presentation hints (docs/work/2026-10-23-telegram-da-zero §5.7): section, order, primary,
+    # Telegram presentation hints (docs/work/2026-10-23-telegram-from-scratch §5.7): section, order, primary,
     # summary (area card header), label (short button text, ≤ 24 chars). The user's layout can override them.
     telegram: dict | None = None
     summary: str = ""             # one sentence for people (Scopri, Comandi); empty = cleaned description

@@ -1,5 +1,5 @@
 /**
- * <echo-voice> — page «Voce» (dossier docs/work/2026-10-20-modulo-voce §8): how Hestia listens and speaks.
+ * <echo-voice> — page «Voce» (dossier docs/work/2026-10-20-voice-module §8): how Hestia listens and speaks.
  * Tabs: «Prova» (record the mic → text, text → voice, with the chain and provider that answered), «Motori»
  * (<echo-blocks>: providers, chains, uses), «Uso» (calls, minutes, characters, cost, errors by use and engine),
  * «Audio conservati» (space by class, recordings to listen/download/delete), «La tua voce» (<echo-your-voice>:

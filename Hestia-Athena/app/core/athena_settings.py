@@ -218,7 +218,7 @@ settings.declare([
             max=3000, unit="characters", advanced=True,
             help="How much text to ask an area when a signal deserves a closer look."),
 
-    # ── She writes first (docs/work/2026-11-12-identita-e-proattivita). WHEN = agenda window athena.talk ──
+    # ── She writes first (docs/work/2026-11-12-identity-and-proactivity). WHEN = agenda window athena.talk ──
     setting(TALK_MAX_PER_DAY, "How many times a day", "int", 2, group=_G_TALK, min=0, max=6,
             help="How many times a day it can write to you first, to ask you something or have a chat. It does so only with a real reason. 0 = never. You move the hours in the calendar."),
     setting(TALK_MIN_GAP_HOURS, "Pause between two messages", "int", 4, group=_G_TALK, min=1, max=24, unit="hours",
@@ -226,7 +226,7 @@ settings.declare([
     setting(TALK_EAGERNESS, "How talkative", "int", 3, group=_G_TALK, min=1, max=5,
             help="How much it wants to write to you first. The wish grows if you haven't talked for a while and if it has something real to say, and drops if you don't answer. 1 = only when it has a lot to say, 5 = often. In the first days, knowing little about you, it writes little anyway."),
 
-    # ── First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone) ──
+    # ── First observe, then propose (docs/work/2026-11-13-observe-then-propose) ──
     setting(EVIDENCE_MIN_DAYS, "Days of observation before proposing", "int", 5, group=_G_EVIDENCE, min=0,
             max=30, unit="days", order=0,
             help="After the first start it only observes for these days: no improvement or settings proposals. Real faults are reported at once, and «Pensa ora» does not wait."),
@@ -243,7 +243,7 @@ settings.declare([
     setting(AUDIT_MAX_TURNS, "Answers per audit", "int", 20, group=_G_AUDIT, min=1, max=100,
             help="How many recent answers an audit evaluates if you don't say otherwise."),
 
-    # ── Daily recap (docs/work/2026-10-20-recap-giornaliero). WHEN = agenda job, not a setting ──
+    # ── Daily recap (docs/work/2026-10-20-daily-recap). WHEN = agenda job, not a setting ──
     setting(RECAP_STYLE, "Recap tone", "enum", "amichevole", group=_G_RECAP,
             options=["amichevole", "asciutto"],
             help="How the daily recap is written to you: friendly (a few more words) or dry (just the facts). You move the time in the calendar."),

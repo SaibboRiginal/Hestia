@@ -1,7 +1,7 @@
 # Languages — the standard for every module
 
 Read this before you write any text, in Python, in the WebUI or in a plugin. Dossier with the history:
-`docs/work/2026-11-14-backend-inglese/`. Owner's decision: `docs/REGOLE-DI-MARKO.md` R9.
+`docs/work/2026-11-14-english-backend/`. Owner's decision: `docs/REGOLE-DI-MARKO.md` R9.
 
 ## The rule in one line
 
@@ -107,11 +107,11 @@ python tools/governance/check_i18n.py --merge todo.json   # after filling it in:
 Placeholders must match between source and translation (`Hestia-Telegram/tests/test_language.py` checks it, and
 that every `tr` literal of modules, WebUI and plugins has its Italian).
 
-**The assistant's name** (`docs/work/2026-11-16-nome-ovunque`): where a text speaks of the assistant as a person,
+**The assistant's name** (`docs/work/2026-11-16-name-everywhere`): where a text speaks of the assistant as a person,
 write `{assistant}` and, for gendered words, `{g:her-form|his-form}` (source «What {assistant} thinks on {g:her|his}
 own», Italian «Cosa pensa {assistant} da {g:sola|solo}»), in the source and in the translation; `localize` fills them
 too. `tr` / `t` fill them with the name and she/he the owner chose. The clients are called with that name too
-(`docs/work/2026-11-17-nome-dei-client`): write «Hestia» only for the software itself (releases, updates, the
+(`docs/work/2026-11-17-client-names`): write «Hestia» only for the software itself (releases, updates, the
 installer, the transfer/backup file format, technical module names). Italian agreement uses `{g:…|…}` too
 («da {g:sola|solo}», «{g:tutta|tutto} {assistant}»).
 

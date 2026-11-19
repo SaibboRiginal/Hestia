@@ -2,7 +2,7 @@
  * <chronos-agenda> — "Agenda di Hestia": the assistant's own calendar (month / week / day / list), sidebar with mini
  * calendar, layers and filters, popover details, editor, drag & drop, quick add in words, "Da un modulo…", module
  * logs around an occurrence, ICS file. Keys: T oggi · M/W/D/L viste · N nuovo · ←/→. Ported from the WebUI's
- * built-in calendar page (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno P6); state in cal/store.ts.
+ * built-in calendar page (SPEC docs/work/2026-10-18-core-modules-and-external-mcp P6); state in cal/store.ts.
  */
 import { HestiaElement, css, html, nothing, tr } from '@hestia/webui-sdk';
 import { CalStore } from './cal/store';
@@ -173,7 +173,7 @@ export class ChronosAgenda extends HestiaElement {
     this.sel = null;
     this.host.assistant({ label: tr("Agenda · {0}{1}", fmt.dayLong(d), at ? ', ' + fmt.time(at) : ''), prompt,
       hints: this.hints({ day: dayKey(d), time: at ? fmt.time(at) : undefined, view: this.store.view,
-                          agenda: tr("{assistant}'s agenda (agenda_assistente_* tools)") }) });
+                          agenda: tr("{assistant}'s agenda (assistant_agenda_* tools)") }) });
   }
   private askAbout(ev: CalEvent) {
     const it = ev.item;

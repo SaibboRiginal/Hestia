@@ -1,4 +1,4 @@
-"""WebUI pages inside Telegram (Mini App, docs/work/2026-10-23-telegram-da-zero §5.9 / T7).
+"""WebUI pages inside Telegram (Mini App, docs/work/2026-10-23-telegram-from-scratch §5.9 / T7).
 
 A page that is a picture rather than an action (charts, the agenda week, photo galleries) opens the same WebUI page
 inside Telegram. Telegram opens Mini Apps only on a public HTTPS address: with ``WEBUI_PUBLIC_URL`` (or the

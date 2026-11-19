@@ -436,7 +436,7 @@ def export():
 
 
 def _recap_piece(day, nxt) -> dict:
-    """Daily recap piece (docs/work/2026-10-20-recap-giornaliero)."""
+    """Daily recap piece (docs/work/2026-10-20-daily-recap)."""
     return recap.piece("hygieia", tr("Self care"), icon="droplet", emoji="🧴", order=40, **hygieia.recap(day, nxt))
 
 
@@ -957,7 +957,7 @@ try:
                 handler=_t(_journal_add), title="Write in the diary", method="POST", path=f"{API}/journal", clients=["ui"],
                 telegram_visible=False, telegram_group="selfcare",
                 telegram={"section": "Diary"}),
-        MCPTool(name="selfcare_diario_voce", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
+        MCPTool(name="selfcare_journal_voice", description=("Spoken diary: the user tells the day in a voice message; it is transcribed and saved in the "
                                                           "diary (area giornata). Offered after the evening recap."),
                 parameters={"type": "object", "properties": {
                     "audio": {"type": "string", "contentMediaType": "audio/ogg", "title": "Your voice message"},

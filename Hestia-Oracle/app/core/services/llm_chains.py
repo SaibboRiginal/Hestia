@@ -1,4 +1,4 @@
-"""Model chains and use cases — *which* models, in order, and *what for* (dossier ``2026-10-19-oracle-a-blocchi``).
+"""Model chains and use cases — *which* models, in order, and *what for* (dossier ``2026-10-19-oracle-blocks``).
 
 A **chain** is a named, reusable ordered list of ``provider/model`` steps, like CSS ``font-family``
 (setting ``oracle.chains``): a call tries the first usable step; a step out of quota (429,
@@ -44,7 +44,7 @@ DEFAULT_CHAINS: dict[str, dict] = {
     "codice": {"label": "Code", "steps": [
         _step("llamacpp", "locale"), _step("ollama", "gemma4:e4b"), _step("gemini", "gemini-flash-latest"),
         _step("gemini", "gemini-flash-lite-latest")]},
-    # Cloud only (training dataset review, docs/work/2026-10-30-dataset-allenamento): the owner chose a model stronger
+    # Cloud only (training dataset review, docs/work/2026-10-30-training-dataset): the owner chose a model stronger
     # than the local one; personal data is masked by Metis before the call.
     "cloud": {"label": "Cloud", "steps": [
         _step("gemini", "gemini-flash-latest"), _step("gemini", "gemini-flash-lite-latest")]},
@@ -594,7 +594,7 @@ class ChainAgent:
     def embed(self, text: str) -> list[float]:
         return self._call("embed", text)
 
-    # ── one memory, several embedding models (dossier 2026-11-18-problemi-del-test E2) ─────────────────────
+    # ── one memory, several embedding models (dossier 2026-11-18-real-test-problems E2) ─────────────────────
     # A vector is only comparable with vectors of the same model: what is stored records its model
     # (``embed_tagged``), a search embeds the query with every model it can reach (``embed_all``) and Archive
     # compares each row with the query of its own model. Rows stored before models were recorded belong to the

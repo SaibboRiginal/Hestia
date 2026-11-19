@@ -1,6 +1,6 @@
 name: Installer
 
-# Checks the one-click installers (SPEC docs/work/2026-10-30-setup-un-click §4.5) on the systems they target:
+# Checks the one-click installers (SPEC docs/work/2026-10-30-one-click-setup §4.5) on the systems they target:
 # shellcheck + dry run on Linux and macOS, parse + dry run on Windows, and the images override in step with compose.
 # A real end-to-end install (build of the whole stack) runs by hand (workflow_dispatch) on Linux.
 

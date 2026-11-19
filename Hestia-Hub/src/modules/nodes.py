@@ -1,4 +1,4 @@
-"""Machines of one Hestia — central and satellites (docs/work/2026-10-30-setup-un-click §4.0).
+"""Machines of one Hestia — central and satellites (docs/work/2026-10-30-one-click-setup §4.0).
 
 Single responsibility: pairing and the per-machine join token. The central's Hub shows a pairing code (6 digits,
 10 minutes, 5 tries); the satellite's installer sends it with its name and LAN address and gets a token. From then on

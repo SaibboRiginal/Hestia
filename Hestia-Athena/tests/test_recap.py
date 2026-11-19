@@ -1,4 +1,4 @@
-"""Daily recap (docs/work/2026-10-20-recap-giornaliero): collect pieces from every module with
+"""Daily recap (docs/work/2026-10-20-daily-recap): collect pieces from every module with
 ``recap_endpoint`` (Athena's own included), Oracle writes, template when it cannot, nothing on a quiet day,
 Hermes delivery with ``replaces``, history in Archive."""
 from __future__ import annotations
@@ -155,9 +155,9 @@ def test_has_content():
 def test_piece_actions_ride_under_the_recap():
     """B9: a module piece (even an empty one) can ask for a button under the recap; ids unique per module."""
     pieces = [{"module": "hygieia", "empty": True, "actions": [{"label": "Racconta la giornata",
-                                                                "command": "selfcare_diario_voce"}]},
+                                                                "command": "selfcare_journal_voice"}]},
               {"module": "hercules", "title": "Allenamento", "done": [{"text": "Push A"}]}]
-    assert piece_actions(pieces) == [{"label": "Racconta la giornata", "command": "selfcare_diario_voce",
+    assert piece_actions(pieces) == [{"label": "Racconta la giornata", "command": "selfcare_journal_voice",
                                       "id": "hygieia0"}]
     assert has_content(pieces)
     assert "Racconta" not in template_text(pieces, "sera", date(2026, 10, 29), date(2026, 10, 30))

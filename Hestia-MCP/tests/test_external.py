@@ -1,4 +1,4 @@
-"""Tests — external AIs through an access (docs/work/2026-10-18-moduli-core-e-mcp-esterno §B2, §B6)."""
+"""Tests — external AIs through an access (docs/work/2026-10-18-core-modules-and-external-mcp §B2, §B6)."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

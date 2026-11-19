@@ -1,4 +1,4 @@
-"""Argus WebUI plugin (core module, Sistema section) — SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/A6.
+"""Argus WebUI plugin (core module, Sistema section) — SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/A6.
 
 Page *Salute* (health over time, incidents and what Argus did, log viewer, Ricontrolla), widget *Stato sistema*,
 quick action *Ricontrolla <servizio>* (one chip per service that is not up). Every path is under ``/api/argus/``.

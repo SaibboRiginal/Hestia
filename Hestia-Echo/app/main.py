@@ -1,6 +1,6 @@
 """Hestia-Echo — the voice of Hestia: speech → text (ascolto) and text → speech (voce), files and streams in blocks.
 
-SPEC docs/work/2026-10-20-modulo-voce. Built like Oracle a blocchi: named providers (Themis ``echo.providers``,
+SPEC docs/work/2026-10-20-voice-module. Built like Oracle a blocchi: named providers (Themis ``echo.providers``,
 keys only in env ``ECHO_KEY_<NAME>``), reusable chains with a direction, uses declared by callers, an external
 mode where Echo is only the door (proxy to a speech engine). Echo converts sound ↔ text and nothing else: it never
 calls Oracle and never decides what to answer. Audio is kept in Archive (blobs + ``echo-store``) by the rule
@@ -99,7 +99,7 @@ settings.declare([
     setting("echo.audio.generated_days", "Days for generated audio", "int", 30, group="Audio kept",
             order=21, min=1, max=3650, unit="days",
             help="After the last listen. Listening again regenerates them from the text."),
-    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-tutto-brainstorm-cindy W4) ──
+    # ── La tua voce (Cindy 10 + 17, dossier docs/work/2026-10-24-whole-brainstorm-cindy W4) ──
     setting("echo.impronta.soglia", "How much it must resemble your voice", "float", 0.45, group="Your voice",
             order=40, min=0.1, max=0.9,
             help="With your voiceprint recorded, voices below this similarity (TV, other people) become silence before listening. Higher = stricter."),
@@ -116,7 +116,7 @@ settings.declare([
 hub = Hub(HUB_API_URL)
 
 # Voice models (Whisper, Piper, Kokoro, the voiceprint) go through the shared download manager: progress, resume,
-# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-setup-un-click §4.3).
+# retries, the Download page and a notice when a big one is ready (docs/work/2026-10-30-one-click-setup §4.3).
 downloads = Downloads("echo", state_path=MODELS_DIR / "downloads.json", hub=hub, page="voce")
 downloads.source("whisper", _standards.whisper_download)
 _standards.DOWNLOADS = downloads
@@ -463,31 +463,31 @@ def _t(name, title, description, method, path, props=None, required=None, label=
                    parameters={"type": "object", "properties": props or {}, "required": required or []},
                    handler=lambda **_kw: {"status": "ok"}, method=method, path=path,
                    clients=["telegram", "ui"], response_mode="oracle_natural",
-                   telegram_visible=True, telegram_group="sistema",
+                   telegram_visible=True, telegram_group="system",
                    telegram={"section": tr("Voice"), **({"label": label} if label else {})})
 
 
 _echo_tools = [
-    _t("voce_download", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
-    _t("voce_scarica", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
+    _t("voice_downloads", "Voice download", "The voices and the listening models being downloaded or downloaded, with progress.", "GET", "/api/downloads", label="alt::Download"),
+    _t("voice_download", "Download the voices", ("Download now (or retry) the local voices and listening models of the chains in use, so the "
                                            "first sentence does not wait."), "POST", f"{API}/models/prefetch", label="Download voices"),
-    _t("voce_dizionario", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
+    _t("voice_dictionary", "Voice dictionary", ("The user's own words (names, terms) passed to speech recognition, and those being learned from "
                                                     "their corrections."), "GET", f"{API}/dictionary",
        label="Dictionary"),
-    _t("voce_parola", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
+    _t("voice_word", "Add a word", "Add a word to the voice dictionary (a name, a term speech recognition gets wrong).", "POST", f"{API}/dictionary",
        {"word": {"type": "string", "description": "The word, spelled right"}}, ["word"]),
-    _t("voce_parola_togli", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
+    _t("voice_word_remove", "Remove a word", "Remove a word from the voice dictionary.", "DELETE",
        API + "/dictionary/{word}", {"word": {"type": "string", "description": "The word to remove"}}, ["word"]),
-    _t("voce_correzione", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
+    _t("voice_correction", "Fix a transcription", ("When the user corrects a badly transcribed voice message («I meant …»): text heard and right text; new words enter the dictionary after a few corrections."), "POST", f"{API}/dictionary/learn",
        {"heard": {"type": "string", "description": "What was transcribed"},
         "corrected": {"type": "string", "description": "The right text"}}, ["heard", "corrected"]),
-    _t("voce_impronta", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
+    _t("voice_print", "Your voice", "Whether the user's voiceprint exists and where only their voice is recognised.", "GET",
        f"{API}/voiceprint"),
-    _t("voce_impronta_registra", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
+    _t("voice_print_record", "Record your voice", ("Record at least 10 seconds of the user's voice: then other voices (TV, people) do not end up in "
                                                           "their messages where they chose so."), "POST", f"{API}/voiceprint",
        {"audio": {"type": "string", "contentMediaType": "audio/*",
                   "description": "A voice message of at least 10 seconds where the user speaks"}}, ["audio"]),
-    _t("voce_impronta_togli", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
+    _t("voice_print_remove", "alt::Remove the voiceprint", "Forget the user's voiceprint: listen to every voice.",
        "DELETE", f"{API}/voiceprint"),
 ]
 app.include_router(create_mcp_router(_echo_tools, service_name="echo"))

@@ -1,4 +1,4 @@
-"""Emoji reactions, both ways (docs/work/2026-11-06-hestia-viva F4).
+"""Emoji reactions, both ways (docs/work/2026-11-06-hestia-alive F4).
 
 - Hestia → owner: Oracle streams ``{"type":"reaction","emoji"}``; the bot puts it on the owner's message with
   ``setMessageReaction``. Telegram accepts only its own list of emoji: a near one is mapped (😂 → 🤣), anything else

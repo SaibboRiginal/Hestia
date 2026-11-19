@@ -125,7 +125,7 @@ class AthenaRuntime:
         self.observer = Observer(hub_api_url=self.hub_api_url)
         self.strategist = Strategist(hub_api_url=self.hub_api_url)
         self.consolidator = MemoryConsolidator(hub_api_url=self.hub_api_url)
-        # Daily recap (docs/work/2026-10-20-recap-giornaliero): independent from the thinking loop.
+        # Daily recap (docs/work/2026-10-20-daily-recap): independent from the thinking loop.
         self.recap = RecapComposer(self.hub_api_url)
         self._consolidation_ran_today: str = ""  # date iso
 

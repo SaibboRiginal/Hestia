@@ -360,7 +360,7 @@ class UniversalAgent:
             for t in tools
         ]
         # Hestia's persona stays the system prompt (identity and tone: a separate «tool-calling engine» prompt made
-        # local models answer «sono il motore di ragionamento di Hestia», docs/work/2026-11-06-hestia-viva v1.3);
+        # local models answer «sono il motore di ragionamento di Hestia», docs/work/2026-11-06-hestia-alive v1.3);
         # a short tool rule is added after it. The agent-loop preamble with the tool list is in *user_message*.
         _TOOL_CALLING_SYSTEM = "\n\n".join(p for p in (self.role_prompt.strip(), (
             "TOOLS: if a tool is needed to answer or act, call it before writing. "

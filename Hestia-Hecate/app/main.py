@@ -77,7 +77,7 @@ try:
                 ("Confirm the calendar sync: how many events were found for each provider (Google, Outlook). Be "
                  "brief.")
             ),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Calendar"}),
         MCPTool(
             name="gateway_auth_status",
@@ -89,7 +89,7 @@ try:
             response_prompt=(
                 "List the configured providers and their sign-in state. Be direct."
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_verify",
@@ -108,7 +108,7 @@ try:
             response_prompt=(
                 ("List the state of each provider and say clearly whether notifications were sent for the broken ones. If Google is not signed in, remind the user to use the button to sign in to Google again in the notification they received.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_initiate_google",
@@ -124,7 +124,7 @@ try:
                  "itself; from a phone the final localhost page does not load (normal): copy the whole URL from "
                  "the address bar and paste it here in chat.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts", "primary": 4}),
         MCPTool(
             name="gateway_auth_complete_google",
@@ -145,7 +145,7 @@ try:
             response_prompt=(
                 "If status=authorized confirm Google Calendar is linked. Otherwise report error and hint briefly."
             ),
-            telegram_visible=False, telegram_group="sistema",
+            telegram_visible=False, telegram_group="system",
                 telegram={"section": "Advanced"}),
         MCPTool(
             name="gateway_auth_initiate_microsoft",
@@ -158,7 +158,7 @@ try:
                 ("Show the user the Microsoft device code and verification URL. Ask them to open the URL and "
                  "enter the code. Then use GET /api/gateway/auth/poll/microsoft to check completion.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
             name="gateway_auth_poll",
@@ -177,7 +177,7 @@ try:
                 ("Tell the user whether the Google/Microsoft sign-in completed or is still pending. If completed, "
                  "say Calendar and Gmail now work.")
             ),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Advanced"}),
         MCPTool(
             name="weather_now",
@@ -189,7 +189,7 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Answer in one or two sentences: place, temperature, conditions and whether it will rain today "
                               "(with hours). If status is needs_place or place_not_found explain what is needed.")),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Weather", "primary": 2, "label": "Weather"}),
         MCPTool(
             name="weather_forecast",
@@ -206,7 +206,7 @@ try:
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Summarise the forecast day by day, briefly (min–max, conditions, rain with hours). If status is "
                               "not ok explain what is needed.")),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Weather", "label": "alt::Forecast"}),
         *devices_api.tools(MCPTool),
     ]
@@ -1398,7 +1398,7 @@ def gateway_auth_callback_google(code: str = "", state: str = "", error: str = "
 
 # ── HTML template for the OAuth callback page ──────────────────────────
 def _callback_html(**kw) -> str:
-    """The Google sign-in result page, titled with the assistant's chosen name (docs/work/2026-11-17-nome-dei-client)."""
+    """The Google sign-in result page, titled with the assistant's chosen name (docs/work/2026-11-17-client-names)."""
     from hestia_common.i18n import identity_now
     return _OAUTH_CALLBACK_HTML.format(name=identity_now().get("assistant") or "Hestia", **kw)
 

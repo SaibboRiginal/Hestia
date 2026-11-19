@@ -1,4 +1,4 @@
-"""Limits learned from the provider's 429 (dossier docs/work/2026-11-18-problemi-del-test, E)."""
+"""Limits learned from the provider's 429 (dossier docs/work/2026-11-18-real-test-problems, E)."""
 from __future__ import annotations
 
 import pytest

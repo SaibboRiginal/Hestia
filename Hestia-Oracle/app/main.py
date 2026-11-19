@@ -60,7 +60,7 @@ _oracle_mcp_tools = [
             facts=kw.get("facts", ""), topic=str(kw.get("topic", "") or "")),
         title="Remember this", method="POST", path="/api/memory/note",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Notes and preferences", "primary": 1}),
     MCPTool(
         name="memory_recall",
@@ -75,7 +75,7 @@ _oracle_mcp_tools = [
         handler=lambda **kw: engine._memory_service.recall(query=str(kw.get("query", "") or "")),
         title="What do you remember", method="GET", path="/api/memory/recall",
         clients=["ui", "telegram", "external"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Notes and preferences", "primary": 2}),
     # ── Hestia inside another AI (docs/work/2026-10-30-hestia-in-claude) ────
     MCPTool(
@@ -107,41 +107,41 @@ _oracle_mcp_tools = [
             str(kw.get("query", "")), None, None)),
         title="Search the documents", method="GET", path="/api/documents/search",
         clients=["telegram", "ui"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="memoria",
+        telegram_visible=False, telegram_group="memory",
                 telegram={"section": "Documents", "primary": 3}),
-    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-tutto-brainstorm-cindy W7) ─────────
+    # ── Conversations: tags and list (Cindy 26, dossier 2026-10-24-whole-brainstorm-cindy W7) ─────────
     MCPTool(
         name="chat_tag", description=chat_sessions.TAG_DESCRIPTION, parameters=chat_sessions.TAG_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_tag, **kw),
         title="Tag the conversation", method="POST", path="/api/chats/tag",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     MCPTool(
         name="chat_list", description=chat_sessions.LIST_DESCRIPTION, parameters=chat_sessions.LIST_PARAMETERS,
         handler=lambda **kw: _chat_tool(chat_sessions.tool_list, **kw),
         title="Your conversations", method="GET", path="/api/chats",
         clients=["ui", "telegram"], response_mode="direct",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
-    # ── downloads of the brain's models (docs/work/2026-10-30-setup-un-click §4.3) ──
+    # ── downloads of the brain's models (docs/work/2026-10-30-one-click-setup §4.3) ──
     MCPTool(
-        name="modelli_download", description=("The brain's model downloads: what is downloading, done or failed, "
+        name="models_downloads", description=("The brain's model downloads: what is downloading, done or failed, "
                                               "with progress and time left."),
         parameters={"type": "object", "properties": {}},
         handler=lambda **_kw: {"downloads": _llm_setup.pulls()},
         title="Model downloads", method="GET", path="/api/llm/setup/pulls",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Models"}),
+        telegram_visible=True, telegram_group="system", telegram={"section": "alt::Download", "label": "Models"}),
     MCPTool(
-        name="modelli_scarica", description=("Download (or retry, or resume) a local model for the brain, by its "
+        name="models_download", description=("Download (or retry, or resume) a local model for the brain, by its "
                                              "Ollama name, e.g. qwen3:8b. It runs in the background."),
         parameters={"type": "object", "properties": {"model": {"type": "string", "description": "Ollama model name"}},
                     "required": ["model"]},
         handler=lambda **kw: _llm_setup.pull(str(kw.get("model", ""))),
         title="Download a model", method="POST", path="/api/llm/setup/pull",
         clients=["ui", "telegram"], response_mode="oracle_natural",
-        telegram_visible=True, telegram_group="sistema", telegram={"section": "alt::Download", "label": "Download model"}),
+        telegram_visible=True, telegram_group="system", telegram={"section": "alt::Download", "label": "Download model"}),
     # ── Oracle self-tools (Plan P3c) ───────────────────────────────────────
     MCPTool(
         name="oracle.context_stats",
@@ -157,7 +157,7 @@ _oracle_mcp_tools = [
             session_id=str(kw.get("session_id", ""))),
         title="Chat context", method="GET", path="/api/chat/context",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     MCPTool(
         name="oracle.compact",
@@ -173,7 +173,7 @@ _oracle_mcp_tools = [
             session_id=str(kw.get("session_id", ""))),
         title="Compact the chat", method="POST", path="/api/chat/compact",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Chat"}),
     MCPTool(
         name="oracle.session_info",
@@ -182,7 +182,7 @@ _oracle_mcp_tools = [
         handler=lambda **kw: engine.get_session_info(),
         title="Model status", method="GET", path="/api/sessions",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Health and logs"}),
     MCPTool(
         name="oracle.logs_query",
@@ -202,7 +202,7 @@ _oracle_mcp_tools = [
         ),
         title="Model logs", method="GET", path="/api/logs",
         clients=["telegram", "ui"], response_mode="raw_json",
-        telegram_visible=False, telegram_group="sistema",
+        telegram_visible=False, telegram_group="system",
                 telegram={"section": "Health and logs"}),
 ]
 try:
@@ -225,7 +225,7 @@ from core.services import quoted_context  # noqa: E402
 app.include_router(_oracle_settings.settings.router())
 
 # ── WebUI plugin (core module, Sistema section): Cervello ────────────────────
-# Inside view of Oracle (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): recent turns, LLM use per
+# Inside view of Oracle (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2): recent turns, LLM use per
 # use case/model, tokens/cost per day, Claude Code. Reads under /api/ui/ (Oracle's routes are spread over prefixes).
 UI_DIST = os.getenv("ORACLE_UI_DIST", "/ui/dist")   # outside /code: the compose dev mount of app/ must not hide it
 ui = PluginClient("oracle", title="Assistant", icon="brain", color="purple", kind="core", dist=UI_DIST,
@@ -294,7 +294,7 @@ def ui_code():
     return {"status": "ok", **status(), **runs()}
 
 
-# ── Cervello → Modelli and Uso tabs (dossier docs/work/2026-10-19-oracle-a-blocchi §D-E) ──────────────────
+# ── Cervello → Modelli and Uso tabs (dossier docs/work/2026-10-19-oracle-blocks §D-E) ──────────────────
 _MODEL_PARTS = {"providers": _oracle_settings.PROVIDERS_KEY, "chains": _oracle_settings.CHAINS_KEY,
                 "usecases": _oracle_settings.USECASES_KEY}
 
@@ -500,7 +500,7 @@ def _chat_route(*args, **kwargs):
 
 
 def _forget_if_excluded(session_id: str, body: dict, out: Any) -> Any:
-    """«Non usare per l'allenamento» (docs/work/2026-10-30-dataset-allenamento): Metis drops the saved turns."""
+    """«Non usare per l'allenamento» (docs/work/2026-10-30-training-dataset): Metis drops the saved turns."""
     if str(body.get("training_off")).lower() in ("1", "true", "sì", "si", "yes"):
         sid = str(session_id or (out.get("session_id") if isinstance(out, dict) else "") or "")
         turn_trace.forget_session(engine._hub, sid)
@@ -646,7 +646,7 @@ def llm_usecase_status_endpoint(use_case: str):
     return {"status": "ok", **usecase_status(use_case)}
 
 
-# ── External agent MCP bridge (dossier 2026-10-19-oracle-a-blocchi §D): loopback only, one token per turn ─────
+# ── External agent MCP bridge (dossier 2026-10-19-oracle-blocks §D): loopback only, one token per turn ─────
 def _bridge_guard(request: Request) -> None:
     host = (request.client.host if request.client else "") or ""
     if host not in ("127.0.0.1", "::1", "localhost", "testclient"):
@@ -783,10 +783,10 @@ class ChatRequest(BaseModel):
     # turn where the model decides how (oracle-offline v3 C). `message` is ignored when this is set.
     queued: Optional[list[dict]] = None
     # The earlier message the user replied to or quoted ({text, from: assistant|user|notification, at, ref}):
-    # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-da-zero §5.10).
+    # context for this turn only, never saved as the user's text (docs/work/2026-10-23-telegram-from-scratch §5.10).
     quoted: Optional[dict] = None
     # The turn was heard and is answered aloud (WebUI «Parla», Telegram voice note with spoken replies): the answer
-    # follows the voice contract (docs/work/2026-11-06-hestia-viva F1).
+    # follows the voice contract (docs/work/2026-11-06-hestia-alive F1).
     spoken: bool = False
 
 
@@ -1018,7 +1018,7 @@ def _with_personal_settings(client_instructions: Optional[str], client: Optional
 
 
 def _awareness_lines() -> list[str]:
-    """Owner turns only: today's mood, the last notifications sent, the last things opened (hestia-viva F3)."""
+    """Owner turns only: today's mood, the last notifications sent, the last things opened (hestia-alive F3)."""
     try:
         return awareness.lines_for_turn(engine._hub, _oracle_settings.get_int(_oracle_settings.AWARENESS_ITEMS, 0))
     except Exception as exc:  # never blocks a turn
@@ -1046,14 +1046,14 @@ def chat_endpoint(req: ChatRequest, request: Request):
             # A written or spoken message answers the assistant's open question (it is in the history).
             engine.close_open_questions(current_session)
             if req.save_history is not False:
-                # The message she wrote first goes in this conversation, before his (docs/work/2026-11-16-nome-ovunque).
+                # The message she wrote first goes in this conversation, before his (docs/work/2026-11-16-name-everywhere).
                 from core.services import opener_history
                 opener_history.absorb(engine._hub, _chat_route, current_session)
         mode = _oracle_settings.chat_mode(req.mode, client=req.client or "", session=current_session)
         message, instructions = req.message, quoted_context.with_instructions(req.client_instructions, req.quoted)
         if req.spoken:
             instructions = "\n".join(p for p in (instructions, _prompt_config.voice_turn_contract()) if p)
-        # Emoji reactions (hestia-viva F4): only clients that can show them get the prompt line and the filter.
+        # Emoji reactions (hestia-alive F4): only clients that can show them get the prompt line and the filter.
         reacts = (req.client or "") in reaction_marker.CLIENTS and turn_origin["level"] == "utente"
         if reacts:
             instructions = "\n".join(p for p in (instructions, reaction_marker.INSTRUCTION) if p)
@@ -1290,7 +1290,7 @@ class ChatReactionRequest(BaseModel):
 @app.post("/api/chat/reaction")
 def chat_reaction(req: ChatReactionRequest):
     """The owner reacted with an emoji to one of Hestia's messages (WebUI, Telegram): one short history line so the
-    next turn knows it (docs/work/2026-11-06-hestia-viva F4). No LLM call."""
+    next turn knows it (docs/work/2026-11-06-hestia-alive F4). No LLM call."""
     emoji = str(req.emoji or "").strip()[:8]
     quoted = " ".join(str(req.text or "").split())[:120]
     if not req.session_id.strip():
@@ -1317,7 +1317,7 @@ class ChatOpenerRequest(BaseModel):
 @app.post("/api/chat/opener")
 def chat_opener(req: ChatOpenerRequest):
     """She writes first: one or two sentences in the persona from the reasons Athena brings, what Oracle remembers
-    of the owner and the awareness lines (docs/work/2026-11-12-identita-e-proattivita). Oracle only writes: Athena
+    of the owner and the awareness lines (docs/work/2026-11-12-identity-and-proactivity). Oracle only writes: Athena
     decides when, Hermes delivers. ``{"text": ""}`` = nothing true to say now."""
     from core.services import opener
     if _no_usable_model():
@@ -1360,7 +1360,7 @@ def question_answer_endpoint(req: QuestionAnswerRequest):
 
 @app.post("/api/chat/steer")
 def steer_endpoint(req: SteerRequest):
-    """«Add now»: a text for the chat turn of this session that is still running (dossier problemi-del-test B).
+    """«Add now»: a text for the chat turn of this session that is still running (dossier real-test-problems B).
 
     ``accepted: false`` = no turn is running (or it is ending): the client sends the text as the next message.
     """
@@ -1714,7 +1714,7 @@ def embed_endpoint(req: EmbedRequest):
     The ONLY embedding endpoint in Hestia. All services route through here.
     Every vector keeps the model that made it (``model`` = ``provider/model``): store it with the vector, and search
     with ``all: true`` → ``query_vectors`` (one per model) + ``untagged_model`` for Archive (dossier
-    2026-11-18-problemi-del-test E2).
+    2026-11-18-real-test-problems E2).
     """
     try:
         if req.all:

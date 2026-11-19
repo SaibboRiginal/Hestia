@@ -1,4 +1,4 @@
-"""Memory (embedding) chain with fallback models (dossier docs/work/2026-11-18-problemi-del-test E2): every vector
+"""Memory (embedding) chain with fallback models (dossier docs/work/2026-11-18-real-test-problems E2): every vector
 keeps the model that made it, a search embeds the query with every model it can reach."""
 from __future__ import annotations
 

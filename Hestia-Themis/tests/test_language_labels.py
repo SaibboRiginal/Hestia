@@ -1,4 +1,4 @@
-"""Settings are served in the owner's language (dossier docs/work/2026-11-14-backend-inglese, phase 2b).
+"""Settings are served in the owner's language (dossier docs/work/2026-11-14-english-backend, phase 2b).
 
 Definitions are written in English (the source); ``translated`` gives the Italian at the edge."""
 from __future__ import annotations

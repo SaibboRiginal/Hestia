@@ -14,7 +14,7 @@ from agents.universal_agent import UniversalAgent
 pytestmark = pytest.mark.unit
 
 _TOOLS = [
-    {"name": "voce_impronta_registra", "description": "Registra la voce",
+    {"name": "voice_print_record", "description": "Registra la voce",
      "parameters": {"type": "object", "properties": {
          "audio": {"type": "string", "contentMediaType": "audio/*"}}}},
     {"name": "calendar_list_events", "description": "Eventi",
@@ -41,7 +41,7 @@ def test_every_schema_is_sent_as_json_schema():
     out = agent._ask_with_tools_gemini("Che impegni ho domani?", _TOOLS)
     assert out["tool_call"] == {"name": "calendar_list_events", "params": {"target_providers": ["google"]}}
     decls = models.config.tools[0].function_declarations
-    assert [d.name for d in decls] == ["voce_impronta_registra", "calendar_list_events", "no_params"]
+    assert [d.name for d in decls] == ["voice_print_record", "calendar_list_events", "no_params"]
     if "parameters_json_schema" in type(decls[0]).model_fields:
         assert all(d.parameters is None for d in decls)
         assert decls[0].parameters_json_schema["properties"]["audio"]["contentMediaType"] == "audio/*"

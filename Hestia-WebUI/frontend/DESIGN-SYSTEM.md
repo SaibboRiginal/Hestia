@@ -137,7 +137,7 @@ export class NotesPageComponent {}
   Reload page data on `AssistantService.changed$` (agenda / Forge / action notices).
 - **Side panels are resizable** (the owner likes it): every side column/drawer gets `<hx-resize>` with a `key`
   (shell sidebar, Crea con Hestia, Sviluppo list + context panel, Calendario filters, Impostazioni → Sistema modules).
-- **Tooltips** (dossier `docs/work/2026-11-18-problemi-del-test` D): write a plain `title` (or the `aria-label` of an
+- **Tooltips** (dossier `docs/work/2026-11-18-real-test-problems` D): write a plain `title` (or the `aria-label` of an
   icon-only button) and nothing else: `ui/tooltip.ts` (started by `AppComponent`) gives every one of them, plugins
   included, the same tooltip (hover after 450 ms, keyboard focus, long press on touch). Never build a tooltip of your own.
 - **Numbers that count things open them**: an `hxk-stat` tile that counts items gets `list` (the items, shown in a

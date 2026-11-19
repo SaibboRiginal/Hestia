@@ -278,7 +278,7 @@ def _extract_tool_call(text: str) -> dict | None:
         logger.trace("event=agent_loop_parsed_tool_call format=python_call tool=%s", py_call["name"])
         return py_call
 
-    # 5. The whole answer is «<call:cibo_oggi>{…}</call:cibo_oggi>» (Gemini, bench 2026-10-30: it was the answer).
+    # 5. The whole answer is «<call:food_today>{…}</call:food_today>» (Gemini, bench 2026-10-30: it was the answer).
     tag = _CALL_TAG.fullmatch(text.strip())
     if tag:
         try:

@@ -1,4 +1,4 @@
-"""First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone).
+"""First observe, then propose (docs/work/2026-11-13-observe-then-propose).
 
 An improvement to the code or a change of a setting is a judgement, and one sighting is not enough to make it: on
 the first day Athena knows nothing about how the system normally behaves. So for ``improvement`` and ``setting``

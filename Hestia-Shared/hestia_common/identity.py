@@ -1,4 +1,4 @@
-"""Who the assistant is and whose it is (docs/work/2026-11-12-identita-e-proattivita).
+"""Who the assistant is and whose it is (docs/work/2026-11-12-identity-and-proactivity).
 
 Five personal settings owned by Themis (``settings_client.PERSONAL``): the owner's name, how to call him, the
 assistant's name (default «Hestia»), whether it is a she or a he, and the language of what she writes on her own. Every prompt that speaks to the owner is
@@ -20,8 +20,8 @@ The repository, the modules and the releases keep the name Hestia; the voice and
 
 Texts people read (buttons, notices, help) use the same two tokens where they speak of the assistant as a person
 («Chiedi a {assistant}», «Ciao, sono {assistant}»): :func:`named` fills only ``{assistant}`` and ``{g:…|…}``, and
-``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-nome-ovunque). The clients call
-themselves with it too (docs/work/2026-11-17-nome-dei-client); «Hestia» stays for releases, installer, file format.
+``hestia_common.i18n.t`` calls it on every fixed text (docs/work/2026-11-16-name-everywhere). The clients call
+themselves with it too (docs/work/2026-11-17-client-names); «Hestia» stays for releases, installer, file format.
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""One answer at a time per chat; texts written meanwhile wait, «Add now» (dossier 2026-11-18-problemi-del-test B)."""
+"""One answer at a time per chat; texts written meanwhile wait, «Add now» (dossier 2026-11-18-real-test-problems B)."""
 from __future__ import annotations
 
 from types import SimpleNamespace

@@ -76,9 +76,9 @@ def test_endpoints_and_tools(monkeypatch):
                                                 lambda k, d=None: d, hub=hub))
     monkeypatch.setattr(main, "_estimate_async", lambda meal: None)
     c = TestClient(main.app)
-    assert c.post("/api/food/tools/pasto", json={"text": "Insalata", "kcal": 300}).json()["saved"] is True
+    assert c.post("/api/food/tools/meal", json={"text": "Insalata", "kcal": 300}).json()["saved"] is True
     assert c.get("/api/food/today").json()["kcal"] == 300
-    assert c.post("/api/food/tools/integratore", json={"name": "Omega 3"}).json()["name"] == "Omega 3"
-    assert c.post("/api/food/tools/preso", json={"supplement": "omega"}).json()["taken"] is True
+    assert c.post("/api/food/tools/supplement", json={"name": "Omega 3"}).json()["name"] == "Omega 3"
+    assert c.post("/api/food/tools/taken", json={"supplement": "omega"}).json()["taken"] is True
     assert c.get("/api/coach/needs").json()["needs"][0]["kind"] == "slot"
     assert "coach" in main.kit.registration()["tags"]

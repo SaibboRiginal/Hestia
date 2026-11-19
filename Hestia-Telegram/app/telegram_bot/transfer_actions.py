@@ -1,4 +1,4 @@
-"""Esporta e importa from Telegram (dossier docs/work/2026-10-24-tutto-brainstorm-cindy F; format and module contract:
+"""Esporta e importa from Telegram (dossier docs/work/2026-10-24-whole-brainstorm-cindy F; format and module contract:
 docs/work/2026-10-20-import-export).
 
 Like the WebUI page, the client orchestrates: every module exports and imports only its own data through Hub
@@ -220,24 +220,24 @@ def tools() -> list[catalog.Tool]:
     T = catalog.Tool
     return [
         T("esporta", "Export the data", "A file with your data and settings, to take to another Hestia",
-          group="sistema", hints={"section": "Data and backups"}, handler=esporta),
-        T("importa", "Import data", "Brings data back from a .hestia file (you see a preview first)", group="sistema",
+          group="system", hints={"section": "Data and backups"}, handler=esporta),
+        T("importa", "Import data", "Brings data back from a .hestia file (you see a preview first)", group="system",
           hints={"section": "Data and backups"},
           schema={"type": "object", "required": ["file"], "properties": {"file": {
               "type": "string", "contentMediaType": "application/octet-stream", "title": "The .hestia file"}}},
           handler=importa),
-        T("importa_conferma", "Confirm import", "", group="sistema", hints={"section": "interno"},
+        T("importa_conferma", "Confirm import", "", group="system", hints={"section": "internal"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           writes=True, handler=importa_conferma),
-        T("importa_annulla", "Cancel import", "", group="sistema", hints={"section": "interno"},
+        T("importa_annulla", "Cancel import", "", group="system", hints={"section": "internal"},
           schema={"type": "object", "properties": {"token": {"type": "string"}}, "required": ["token"]},
           handler=importa_annulla),
-        T("ripristina", "Restore a backup", "Brings all data back to a backup on Google Drive", group="sistema",
+        T("ripristina", "Restore a backup", "Brings all data back to a backup on Google Drive", group="system",
           hints={"section": "Data and backups"}, handler=ripristina),
-        T("ripristina_conferma", "f::Restore", "", group="sistema", hints={"section": "interno"},
+        T("ripristina_conferma", "f::Restore", "", group="system", hints={"section": "internal"},
           schema={"type": "object", "properties": {"file_id": {"type": "string"}}, "required": ["file_id"]},
           writes=True, destructive=True, handler=ripristina_conferma),
         T("ripristina_annulla", "Undo restore", "Back to the data before the last restore",
-          group="sistema", hints={"section": "Data and backups"}, writes=True, destructive=True,
+          group="system", hints={"section": "Data and backups"}, writes=True, destructive=True,
           handler=ripristina_annulla),
     ]

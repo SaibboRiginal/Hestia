@@ -1,5 +1,5 @@
 """First observe, then propose: improvements and setting changes wait for proof on several days.
-SPEC docs/work/2026-11-13-prima-osserva-poi-propone. Marker: unit."""
+SPEC docs/work/2026-11-13-observe-then-propose. Marker: unit."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

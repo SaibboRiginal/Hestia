@@ -1,4 +1,4 @@
-"""Tests — a background Ollama call the owner's turn can stop (dossier 2026-11-18-problemi-del-test A). No network."""
+"""Tests — a background Ollama call the owner's turn can stop (dossier 2026-11-18-real-test-problems A). No network."""
 from __future__ import annotations
 
 import json

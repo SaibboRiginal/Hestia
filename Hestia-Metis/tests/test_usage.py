@@ -1,4 +1,4 @@
-"""Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-tutto-brainstorm-cindy W6). Markers: unit, api"""
+"""Usage log, «Adesso», «Scopri» (dossier docs/work/2026-10-24-whole-brainstorm-cindy W6). Markers: unit, api"""
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -125,7 +125,7 @@ def test_scopri_lists_unused_one_per_module_first():
     assert "palestra_oggi" not in names and "spese_elimina" not in names and "solo_webui" not in names
     assert set(names) == {"spese_aggiungi", "meteo_oggi", "diario_scrivi"}
     assert all(i["reason"] == "Non l'hai mai usata" for i in out["items"])
-    # people read areas, never module names (dossier 2026-10-29-revisione-e-test-frontend §6.1)
+    # people read areas, never module names (dossier 2026-10-29-frontend-review-and-tests §6.1)
     by_tool = {i["tool"]: i for i in out["items"]}
     assert by_tool["spese_aggiungi"]["area_label"] == "Expenses"
     assert by_tool["diario_scrivi"]["area_label"] == "Self care"
@@ -166,9 +166,9 @@ def test_endpoints_and_tool_cards():
                                                 "ref": "palestra_oggi"}).json() == {"recorded": 1}
         assert c.post("/api/metis/usage", json={"taps": [{"client": "fax", "ref": "x"}]}).status_code == 422
         assert c.get("/api/metis/adesso", params={"client": "telegram"}).json()["items"][0]["tool"] == "palestra_oggi"
-        card = c.get("/api/metis/tools/adesso", params={"client": "telegram"}).json()
+        card = c.get("/api/metis/tools/now", params={"client": "telegram"}).json()
         assert card["display"]["title"] == "Adesso" and card["display"]["actions"][0]["tool"] == "palestra_oggi"
-        scopri = c.get("/api/metis/tools/scopri").json()
+        scopri = c.get("/api/metis/tools/discover").json()
         assert scopri["display"]["title"] == "Scopri" and scopri["items"]
         assert c.get("/api/metis/usage/stats").json()["taps"] == 1
         assert "pruned" in c.post("/api/metis/adesso/refresh", json={}).json()
@@ -180,7 +180,7 @@ def test_endpoints_and_tool_cards():
 
 
 def test_recent_lists_last_taps_newest_first_within_hours():
-    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-hestia-viva F3)."""
+    """Oracle's awareness lines read the owner's last taps (docs/work/2026-11-06-hestia-alive F3)."""
     u, _ = _usage()
     now = datetime.now(timezone.utc)
     u.record([{"client": "telegram", "kind": "tool", "ref": "palestra_oggi", "at": (now - timedelta(hours=30)).isoformat()},

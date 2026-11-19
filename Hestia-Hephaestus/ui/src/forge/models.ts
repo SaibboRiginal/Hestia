@@ -1,6 +1,6 @@
 /**
  * Types, labels and formatters of the Sviluppo page (ported from the WebUI's built-in features/forge, SPEC
- * docs/work/2026-10-18-moduli-core-e-mcp-esterno §A4). Every call goes to /api/hephaestus/forge|repo/* directly.
+ * docs/work/2026-10-18-core-modules-and-external-mcp §A4). Every call goes to /api/hephaestus/forge|repo/* directly.
  */
 import type { HestiaHost } from '@hestia/webui-sdk';
 import { API } from '../util';

@@ -1,4 +1,4 @@
-"""Turn traces for the training dataset (docs/work/2026-10-30-dataset-allenamento, phase D1).
+"""Turn traces for the training dataset (docs/work/2026-10-30-training-dataset, phase D1).
 
 After every finished chat turn typed by the owner, Oracle pushes **what the model saw and did** to Metis
 (``POST /route/metis/api/metis/traces``), in the background: system prompt, the history text it got, the user

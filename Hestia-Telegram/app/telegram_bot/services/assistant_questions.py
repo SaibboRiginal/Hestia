@@ -6,7 +6,7 @@ confirm and single choice answer at once; multiple choice toggles options (• o
 returns ``resume.message``: sent as the next chat turn, so the reply arrives here like any other.
 
 The same keyboard serves a **notification question** (Hermes ``question``, dossier
-docs/work/2026-10-30-domande-nelle-notifiche): the answer goes to Hermes ``/api/notifications/{id}/reply``. A
+docs/work/2026-10-30-questions-in-notifications): the answer goes to Hermes ``/api/notifications/{id}/reply``. A
 notification arrives unasked, so its free answer is never taken from whatever is written next: «Rispondi…» /
 «Altro…» starts it, or a reply to the notification message.
 """

@@ -1,4 +1,4 @@
-"""Satellite mode — this Hub is a relay to the central one (docs/work/2026-10-30-setup-un-click §4.0).
+"""Satellite mode — this Hub is a relay to the central one (docs/work/2026-10-30-one-click-setup §4.0).
 
 On a satellite the modules keep their usual ``HUB_API_URL`` (``http://hestia_hub:19001/api``) and know nothing
 about machines. This Hub, started with ``HUB_UPSTREAM_URL`` (the central's Hub API), ``HUB_NODE_TOKEN`` (from

@@ -7,7 +7,7 @@ import { PLAY_FORMAT, VoiceService, b64ToBlob, blobToB64, recorderMime, speakabl
 import { tr } from '../core/i18n';
 
 /**
- * Live mode «Parla» (dossier docs/work/2026-10-20-modulo-voce §7.1): a conversation by voice with the same Hestia
+ * Live mode «Parla» (dossier docs/work/2026-10-20-voice-module §7.1): a conversation by voice with the same Hestia
  * of the chat (same models, same conversation; no external live service). The browser only:
  * - notices when Marko starts and stops speaking (pause = `echo.live.silence_ms`, from the voice module);
  * - sends the microphone in chunks to the listen stream (partial text shown while speaking);
@@ -15,7 +15,7 @@ import { tr } from '../core/i18n';
  * - stops talking when Marko starts speaking again (or taps «Interrompi»).
  * The chat shows everything as usual: voice bubble + transcript, written answer.
  * A question of the assistant is read with its options; the spoken answer is the next message, which closes it
- * (dossier docs/work/2026-10-30-domande-nelle-notifiche).
+ * (dossier docs/work/2026-10-30-questions-in-notifications).
  */
 export type LiveState = 'off' | 'starting' | 'listening' | 'hearing' | 'thinking' | 'speaking';
 

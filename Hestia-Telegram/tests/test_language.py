@@ -1,4 +1,4 @@
-"""Fixed texts follow the owner's language setting (dossier docs/work/2026-11-14-backend-inglese)."""
+"""Fixed texts follow the owner's language setting (dossier docs/work/2026-11-14-english-backend)."""
 from __future__ import annotations
 
 import re

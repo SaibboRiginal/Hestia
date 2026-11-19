@@ -25,7 +25,7 @@ ALLOWED_TAGS = {
     "finance",
     "coach",        # serves GET /api/coach/needs (weekly plan contract, hestia_common.coach)
     "voice",        # speech core (Echo): STT/TTS for every client
-    # W5 domain modules (docs/work/2026-10-24-tutto-brainstorm-cindy)
+    # W5 domain modules (docs/work/2026-10-24-whole-brainstorm-cindy)
     "images",       # Apollo
     "appearance",   # Aphrodite
     "home",         # Lares (Home Assistant)
@@ -33,7 +33,7 @@ ALLOWED_TAGS = {
     "food",         # Demeter
     "office",       # Calliope (documents)
     "deadlines",    # Kairos
-    "mood",         # Psyche (docs/work/2026-10-30-diario-umore)
+    "mood",         # Psyche (docs/work/2026-10-30-mood-diary)
 }
 
 ALLOWED_TOPOLOGY_DIMENSIONS = {

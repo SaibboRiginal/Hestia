@@ -24,9 +24,9 @@ Metis is the fifth organ in the Hestia organ model. While the other four organs 
 - Balances across quality tiers and domains
 - Exports as ChatML, Alpaca, or ShareGPT JSONL for LoRA training
 - Built datasets are saved as `$METIS_DATA_DIR/datasets/<name>.json` (mounted `Hestia-Metis/data`) and read back after
-  a restart (`docs/work/2026-10-30-cose-aperte`)
+  a restart (`docs/work/2026-10-30-open-items`)
 
-### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-dataset-allenamento`)
+### Training dataset from the owner's chats (dossier `docs/work/2026-10-30-training-dataset`)
 Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.g. online). Phase **D1 «Registra»**:
 - Oracle pushes one **trace** per finished chat turn the owner typed (`POST /api/metis/traces`): system prompt,
   history text, user message, tool calls with arguments and results, answer, model, route (see `hestia-oracle.md`
@@ -50,7 +50,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   teacher answers JSON `verdict keep|fix|drop, confidence, answer, remove_steps, reasons (R1–R8), needs_owner`; it may
   drop wrong tool calls and rewrite the answer, never invent a tool result. Kind `review` (id = trace, `ref_id` =
   status): `accepted` when confidence ≥ `metis.review.auto_accept` (0.85), no `needs_owner` and no 👎 with words;
-  otherwise `pending` → **«Da rivedere»** (WebUI Miglioramento, Telegram `metis_rivedi`): Accetta, Correggi io (your
+  otherwise `pending` → **«Da rivedere»** (WebUI Miglioramento, Telegram `metis_review`): Accetta, Correggi io (your
   answer, status `edited`), Scarta (`rejected`). Teacher away or unusable answer → the run stops there (`[🔄]`).
 - Phase **D3 «Esporta»** (`core/export.py`): `POST /api/metis/export {in_chiaro, include_unreviewed}` builds a zip
   with `sft.jsonl` (OpenAI `messages` with `tool_calls` / `tool` roles + `tools` schemas of the turn), `dpo.jsonl`
@@ -60,7 +60,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   answer. The owner picks at each export: **oscurato** (default, the same masking as the review: Persone names,
   e-mails, phones, IBAN, addresses; Hera away → refused, never half masked) or **in chiaro**. The zip is an Archive
   blob (owner `metis`), the export a dataset-store row kind `export`; download from Miglioramento («Scarica
-  oscurato» / «Scarica in chiaro» + the last five) or Telegram `metis_dataset_esporta` (file under the card).
+  oscurato» / «Scarica in chiaro» + the last five) or Telegram `metis_dataset_download` (file under the card).
 
 ### Benchmark Evaluation
 - Runs held-out eval comparing candidate model vs baseline
@@ -76,11 +76,11 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   user request → starts now; module request (e.g. Athena) → agenda task `metis.train.<job>` at the next window
   opening, fired via Hub with `schedule=now`. `schedule=window|now` forces it. Move/cancel it from the agenda.
 
-### Usage log, «Adesso», «Scopri» (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 6)
+### Usage log, «Adesso», «Scopri» (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 6)
 - **Taps**: clients push what the owner starts (`POST /api/metis/usage`, Telegram in the background at every action
   start; the WebUI in wave 7). Rows in Archive `metis-store` (kind `tap`: client, kind tool|page|action, ref, weekday,
   hour). Kept 180 days. Only the owner's own taps; nothing leaves Hestia.
-- **Adesso** (`GET /api/metis/adesso?client=`, tool `metis_adesso`): no model at read time. In order: agenda items of
+- **Adesso** (`GET /api/metis/adesso?client=`, tool `metis_now`): no model at read time. In order: agenda items of
   the next 3 hours whose `params.tool` names a tool; up to 3 habits (score per tool = recency decay of 21 days ×
   same hour ±1 × same weekday / same kind of day) or recent tools; then up to 3 **ideas**. Each item has its reason
   («Di solito il lunedì a quest'ora», «In agenda alle 18:00: …», «Usata di recente», the idea's own words). Only
@@ -90,7 +90,7 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
   `POST /api/metis/adesso/refresh`: Oracle use case `metis.adesso` (chain veloce) picks 3 tools different from the
   habits, better if little used; the answer is validated against the catalog, kept 8 hours per client. Model away →
   `[🔄]` habits only. The same job prunes old taps.
-- **Scopri** (`GET /api/metis/scopri?client=`, tool `metis_scopri`): catalog tools used at most twice in 90 days,
+- **Scopri** (`GET /api/metis/scopri?client=`, tool `metis_discover`): catalog tools used at most twice in 90 days,
   one per module first, with what they do.
 - Telegram: the Oggi card shows «Adesso» (reason + one button each) instead of its fixed actions when Metis has
   something; `/adesso` and `/scopri` open the two tools.
@@ -104,10 +104,10 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `metis_dataset_status` | Show dataset statistics |
 | `metis_benchmark_run` | Evaluate candidate model vs baseline |
 | `metis_loRA_train` | Orchestrate LoRA fine-tuning run |
-| `metis_adesso` | «Adesso» card: what fits now, each with why and a button |
-| `metis_scopri` | «Scopri» card: features never or rarely used |
-| `metis_rivedi` | «Da rivedere»: the next nightly correction waiting for the owner, Accetta / Correggi io / Scarta |
-| `metis_rivedi_decidi` | `trace_id`, `decision` accept / reject / edit, `answer` (edit); returns the next card |
+| `metis_now` | «Adesso» card: what fits now, each with why and a button |
+| `metis_discover` | «Scopri» card: features never or rarely used |
+| `metis_review` | «Da rivedere»: the next nightly correction waiting for the owner, Accetta / Correggi io / Scarta |
+| `metis_review_decide` | `trace_id`, `decision` accept / reject / edit, `answer` (edit); returns the next card |
 
 ## API Endpoints
 
@@ -120,20 +120,20 @@ Scope (Marko 2026-10-30): build the dataset only; training happens elsewhere (e.
 | `GET` | `/api/metis/dataset/export` · `/dataset/status` | idem |
 | `POST` | `/api/metis/usage` | Taps `{taps:[{client, kind, ref, label?, at?}]}` (422 if none valid) |
 | `GET` | `/api/metis/usage/stats` | Taps by client, top tools |
-| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-viva`) |
+| `GET` | `/api/metis/usage/recent` | The owner's last taps, newest first (`limit` ≤ 20, `hours` ≤ 72): `{items[{client, kind, ref, label, at}]}` — Oracle's awareness lines (dossier `docs/work/2026-11-06-hestia-alive`) |
 | `GET` | `/api/metis/adesso` · `/api/metis/scopri` | Adesso and Scopri lists (`client`, `limit`) |
 | `POST` | `/api/metis/adesso/refresh` | Agenda job: new ideas + prune |
-| `GET` | `/api/metis/tools/adesso` · `/tools/scopri` | The two tools (display cards) |
+| `GET` | `/api/metis/tools/now` · `/tools/discover` | The two tools (display cards) |
 | `POST` | `/api/metis/traces` | Oracle pushes one chat turn trace (422 if trace_id/session_id/user/answer missing; skipped when the chat is `training_off`) |
 | `DELETE` | `/api/metis/traces?session_id=` | Drop a conversation's traces and signals |
 | `GET` | `/api/metis/traces/status` · `/api/metis/traces/recent` | Dataset counts · newest turns, short |
 | `POST` | `/api/metis/review/run` | Agenda job: the teacher reviews the next batch → `{reviewed, failed, accepted, pending, …}` |
 | `GET` | `/api/metis/review/pending` | «Da rivedere» (`limit`): `{items[{trace_id, user, answer, fixed, remove, reasons, confidence, needs_owner}], pending, reviews}` |
 | `POST` | `/api/metis/review/{trace_id}` | Owner decision `{decision: accept|reject|edit, answer?}` |
-| `GET`/`POST` | `/api/metis/tools/rivedi` · `/tools/rivedi_decidi` | The two tools (display card) |
+| `GET`/`POST` | `/api/metis/tools/review` · `/tools/review_decide` | The two tools (display card) |
 | `POST` | `/api/metis/export` | Build the training zip `{in_chiaro?: false, include_unreviewed?: false}` → `{id, name, blob_id, size, sft, dpo, eval, skipped, masked, …}` |
 | `GET` | `/api/metis/export` · `/api/metis/export/{id}/b64` | Recent exports (`limit`) · the zip as base64 `{name, mime, data_b64}` |
-| `POST` | `/api/metis/tools/dataset_esporta` | Tool `metis_dataset_esporta` (card with the file) |
+| `POST` | `/api/metis/tools/dataset_download` | Tool `metis_dataset_download` (card with the file) |
 | `GET` | `/api/metis/lora/jobs` | Training jobs: scheduled (agenda key), running (pid), finished, `no_training_script` |
 | `GET` | `/api/ui/manifest` · `/ui/webui/{file}` | WebUI plugin manifest and bundle (see below) |
 | `GET` | `/api/metis/insights` | Weak spots from graded feedback: `{total_feedback, bad_feedback, bad_ratio, weak_domains[{domain, bad, labels, samples}]}` (`limit`, `since`). Good labels: setting `metis.insights.good_labels` (default `excellent, good`) |
@@ -151,7 +151,7 @@ Default `baseline_model` (benchmark) and `base_model` (LoRA) = the model Oracle 
 ## WebUI plugin (Sistema)
 
 Metis ships its inside view on the client plugin contract (`hestia_common.plugin_client`, SPEC
-`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
+`docs/work/2026-10-18-core-modules-and-external-mcp` §A2/A3), declared in `app/main.py`: kind `core` (WebUI sidebar
 section *Sistema*), `api_prefix` `/api/metis/`, no new endpoint.
 - page **Miglioramento** (`miglioramento`, `metis-improvement`, order 180): *Dataset di allenamento* from
   `/api/metis/traces/status` (saved turns, last 7 days, signals), *Da rivedere* from `/api/metis/review/pending`
@@ -213,24 +213,24 @@ import. Volume `./Hestia-Metis/data:/code/data`.
 Window-mode trainings also wait for presence `work.heavy` allow/local: held → re-planned +30 min (agenda key `metis.train.<job>.<ts>`). A running training is activity `metis.training.<job>` (heavy, gpu).
 
 ## Telegram menus
-Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-da-zero §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 7 (area › section: tools).
+Tool titles are plain Italian without emoji; each tool says where it goes on Telegram with `telegram_group` (area) and `telegram={section, primary, summary, label}` (docs/work/2026-10-23-telegram-from-scratch §5.7, checked by `tools/governance/check_telegram.py`). Here: sviluppo › Dataset e training: 7 (area › section: tools).
 
-## Module guide for the assistant (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, Cindy 30)
+## Module guide for the assistant (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, Cindy 30)
 The Hub registration declares `capabilities.when_to_use` (one line in the assistant's «MODULI» index) and
 `capabilities.manual` (short manual the assistant loads with `module_manual` only when it needs it).
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Plugin title «Miglioramento»; «Scopri» items carry a description for people and `area`, `area_label`, `area_icon`, `area_order` (one per area first); agenda titles «Finestra per allenare i modelli», «Allena il modello: …».
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Plugin title «Miglioramento»; «Scopri» items carry a description for people and `area`, `area_label`, `area_icon`, `area_order` (one per area first); agenda titles «Finestra per allenare i modelli», «Allena il modello: …».
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions, the module manual and the review, ideas and dataset system prompts are English; the reasons people read are in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions, the module manual and the review, ideas and dataset system prompts are English; the reasons people read are in the owner's language. What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; English texts in `Hestia-Shared/hestia_common/locales/en/messages.json`.
 
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): the fixed texts of this module that speak of the assistant
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): the fixed texts of this module that speak of the assistant
 as a person (pages, help, agenda titles, notes) write `{assistant}` and say the name the owner chose; texts about the
 app keep «Hestia».

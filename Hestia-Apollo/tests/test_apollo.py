@@ -55,8 +55,8 @@ def test_job_runs_saves_blob_and_pushes_callback(ai):
     images, hub, comfy = ai
     with pytest.raises(Invalid):
         images.save_flow({"graph": {"1": {"inputs": {}}}})
-    images.save_flow({"name": "SDXL", "purpose": "generico", "graph": {"prompt": GRAPH}})   # whole /prompt body too
-    j = images.request("a cozy house", purpose="sfondo", width=1024, height=576, seed=7,
+    images.save_flow({"name": "SDXL", "purpose": "generic", "graph": {"prompt": GRAPH}})   # whole /prompt body too
+    j = images.request("a cozy house", purpose="background", width=1024, height=576, seed=7,
                        callback={"service": "aphrodite", "path": "/api/appearance/images/done"}, ref="halloween")
     assert j["status"] == "queued"
     assert images.run_next() is True and images.run_next() is False
@@ -90,8 +90,8 @@ def test_endpoints_and_tools(monkeypatch):
     monkeypatch.setattr(main, "comfy", comfy)
     monkeypatch.setattr(imgs, "wait", lambda jid, s: (imgs.run_next(), imgs.job(jid))[1])
     c = TestClient(main.app)
-    assert c.post("/api/images/flows", json={"purpose": "ritratto", "graph": GRAPH}).json()["inputs"]["prompt"]
-    out = c.post("/api/images/tools/crea", json={"prompt": "portrait", "purpose": "ritratto"}).json()
+    assert c.post("/api/images/flows", json={"purpose": "portrait", "graph": GRAPH}).json()["inputs"]["prompt"]
+    out = c.post("/api/images/tools/create", json={"prompt": "portrait", "purpose": "portrait"}).json()
     assert out["status"] == "done" and out["display"]["files"][0]["blob_id"] == "b1"
-    assert c.get("/api/images/flows").json()["items"][0]["purpose"] == "ritratto"
+    assert c.get("/api/images/flows").json()["items"][0]["purpose"] == "portrait"
     assert "graph" not in c.get("/api/images/flows").json()["items"][0]

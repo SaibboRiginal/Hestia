@@ -1,4 +1,4 @@
-"""Spending cards for Telegram (docs/work/2026-10-23-telegram-da-zero §6)."""
+"""Spending cards for Telegram (docs/work/2026-10-23-telegram-from-scratch §6)."""
 import sys
 from pathlib import Path
 

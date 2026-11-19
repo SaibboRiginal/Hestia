@@ -1,4 +1,4 @@
-"""Health history + incidents — what the *Salute* page shows (SPEC 2026-10-18-moduli-core-e-mcp-esterno §A2).
+"""Health history + incidents — what the *Salute* page shows (SPEC 2026-10-18-core-modules-and-external-mcp §A2).
 
 - **History**: per service, one sample per minute (worst status seen in that minute), last 24 h. In memory only:
   an Argus restart starts it again.

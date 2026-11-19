@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { tr } from '../../core/i18n';
 
-/** Guided setup «Benvenuto» (docs/work/2026-10-30-setup-un-click §4.2): browser → WebUI → Hub → Hephaestus. */
+/** Guided setup «Benvenuto» (docs/work/2026-10-30-one-click-setup §4.2): browser → WebUI → Hub → Hephaestus. */
 export interface SetupState {
   completed: boolean;
   later: string[];

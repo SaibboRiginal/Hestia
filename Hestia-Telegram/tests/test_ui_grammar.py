@@ -1,5 +1,5 @@
 """Visual grammar, persisted state, inputs from the schema, results without the model
-(docs/work/2026-10-23-telegram-da-zero §3, §5.5, §5.8, §6)."""
+(docs/work/2026-10-23-telegram-from-scratch §3, §5.5, §5.8, §6)."""
 from __future__ import annotations
 
 from datetime import date

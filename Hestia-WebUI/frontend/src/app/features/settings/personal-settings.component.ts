@@ -82,7 +82,7 @@ export function personalHits(query: string): Map<string, number> {
               @case ('look') {
                 <div class="look">
                   <span>@if (look.now(); as n) { {{ "Now:" | tr }} <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }} } @else { {{ "Standard look" | tr }} }</span>
-                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">{{ "Choose" | tr }}</a>
+                  <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/look">{{ "Choose" | tr }}</a>
                 </div>
               }
               @case ('mascot') {
@@ -92,7 +92,7 @@ export function personalHits(query: string): Map<string, number> {
                       <option value="none" [selected]="!look.now()?.pet">{{ "None" | tr }}</option>
                       @for (p of mascots(); track p.id) { <option [value]="p.id" [selected]="look.now()?.pet?.id === p.id">{{ p.name }}</option> }
                     </select>
-                    <a hx-btn size="sm" variant="ghost" icon="plus" routerLink="/p/aphrodite/aspetto">{{ "Make your own" | tr }}</a>
+                    <a hx-btn size="sm" variant="ghost" icon="plus" routerLink="/p/aphrodite/look">{{ "Make your own" | tr }}</a>
                   } @else { <span>{{ "Not available" | tr }}</span> }
                 </div>
               }

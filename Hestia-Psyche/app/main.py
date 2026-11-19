@@ -1,4 +1,4 @@
-"""Hestia-Psyche — how the owner feels over time («Umore», port 19029, dossier docs/work/2026-10-30-diario-umore).
+"""Hestia-Psyche — how the owner feels over time («Umore», port 19029, dossier docs/work/2026-10-30-mood-diary).
 
 Data in Archive (``/api/mood-store``), check-ins from a tap, a tool or Oracle's quiet capture from chat
 (capability ``mood_capture_endpoint``: no confirmation, merged within ``psyche.capture.merge_minutes``, undone by
@@ -212,7 +212,7 @@ def _delete(id: str = "", last: bool = False) -> dict:
 
 S, I, B = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 LV = {"type": "integer", "minimum": 1, "maximum": 5}
-G = "umore"
+G = "mood"
 kit.tools([
     MCPTool(name="mood_log", description=("Log how the user feels: mood 1-5 (1 very low, 3 so-so, 5 great), energy and stress 1-5, labels, "
                                           "causes, note, date (YYYY-MM-DD or ieri). Only if they ask."),

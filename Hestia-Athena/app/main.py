@@ -160,7 +160,7 @@ service = AthenaService(
 runtime = AthenaRuntime()
 
 # ── WebUI plugin (core module, Sistema section): Pensieri ────────────────────
-# Inside view (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2): every cycle observe → think → gate → act.
+# Inside view (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2): every cycle observe → think → gate → act.
 UI_DIST = os.getenv("ATHENA_UI_DIST", "/ui/dist")   # outside /code/app: the compose dev mount must not hide it
 API = "/api/athena"
 ui = plugin_client("athena", title="Thoughts", icon="zap", color="amber", kind="core", dist=UI_DIST,
@@ -334,7 +334,7 @@ def athena_think_now(track: str = "sistema") -> dict[str, Any]:
     """«Pensa ora»: start one full thinking cycle now (background; past the idle gate and the agenda window).
     ``track`` = ``sistema`` (default) or ``vita``. ``started`` or ``busy`` (a cycle is already running); the
     record appears in /api/athena/thinking."""
-    if track == "parla":       # «Scrivimi ora»: she writes first now (docs/work/2026-11-12-identita-e-proattivita)
+    if track == "parla":       # «Scrivimi ora»: she writes first now (docs/work/2026-11-12-identity-and-proactivity)
         return runtime.talk_now()
     if track not in ("sistema", "vita"):
         raise HTTPException(status_code=422, detail="track: sistema | vita | parla")
@@ -362,7 +362,7 @@ def athena_talk(days: int = 7) -> dict[str, Any]:
 
 @app.get("/api/athena/evidence")
 def athena_evidence() -> dict[str, Any]:
-    """First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone): the findings she is still
+    """First observe, then propose (docs/work/2026-11-13-observe-then-propose): the findings she is still
     collecting proof for, the days she has been observing and what she needs before proposing."""
     from .core import athena_settings as AS
     return {"known_days": runtime.evidence.known_days(),
@@ -394,7 +394,7 @@ def athena_signals(domain: str | None = None, limit: int = 50, weeks: int = 12) 
 
 @app.get("/api/module/recap")
 def module_recap(day: str | None = None, next: str | None = None) -> dict[str, Any]:  # noqa: A002 — contract name
-    """Athena's piece of the daily recap (contract docs/work/2026-10-20-recap-giornaliero §3.2): the life
+    """Athena's piece of the daily recap (contract docs/work/2026-10-20-daily-recap §3.2): the life
     observations of ``day`` under «Da tenere d'occhio», or ``{empty: true}``. Deterministic, no model call."""
     from .core.reflection import local_day
     return runtime.reflection.recap_piece(day or local_day())
@@ -414,7 +414,7 @@ def athena_observation() -> dict[str, Any]:
     }
 
 
-# ── Daily recap (docs/work/2026-10-20-recap-giornaliero) ─────────────────────
+# ── Daily recap (docs/work/2026-10-20-daily-recap) ─────────────────────
 @app.post("/api/athena/recap")
 def athena_recap(body: dict = Body(default={})) -> dict[str, Any]:
     """Compose the recap (agenda job, template, quick action). ``deliver`` false = return the text only."""
@@ -488,9 +488,9 @@ try:
             clients=["telegram", "ui", "external"],
             response_mode="direct",
             telegram_visible=True,
-            telegram_group="giornata",
+            telegram_group="day",
                 telegram={"section": "Recap", "primary": 3, "label": "Recap"}),
-        # Inside view, also for external AIs (SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §B4): read only.
+        # Inside view, also for external AIs (SPEC docs/work/2026-10-18-core-modules-and-external-mcp §B4): read only.
         MCPTool(
             name="athena_thinking",
             description=(
@@ -513,7 +513,7 @@ try:
             clients=["telegram", "ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_commitments",
@@ -527,7 +527,7 @@ try:
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
             response_prompt="Short list: what, since when. No ids.",
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_commitment_resolve",
@@ -542,7 +542,7 @@ try:
             path="/api/athena/commitments/{brief_id}/resolve",
             clients=["telegram", "ui"],
             response_mode="oracle_natural",
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_signals",
@@ -565,7 +565,7 @@ try:
             clients=["telegram", "ui", "external"],
             response_mode="oracle_natural",
             telegram_visible=False,
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Assistant"}),
         MCPTool(
             name="athena_audit_conversation",
@@ -601,7 +601,7 @@ try:
                  "accuracy and usefulness. Be brief.")
             ),
             telegram_visible=True,
-            telegram_group="sistema",
+            telegram_group="system",
                 telegram={"section": "Advanced"}),
     ]
     from .core import memory_api as _memory_api

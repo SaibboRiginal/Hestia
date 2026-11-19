@@ -223,7 +223,7 @@ export class HxkCard extends LitElement {
 /** One entry of the list a tile opens: a plain text or {title, subtitle?}. */
 export type StatListItem = string | { title: string; subtitle?: string };
 /** KPI tiles: items [{label, value, unit?, delta?, tone?, hint?, list?, open?}].
- *  A tile that counts things opens them (dossier 2026-11-18-problemi-del-test D): `list` shows the items in a panel
+ *  A tile that counts things opens them (dossier 2026-11-18-real-test-problems D): `list` shows the items in a panel
  *  under the tiles, `open` runs the plugin's own action (e.g. navigate to the page that lists them). */
 export class HxkStat extends LitElement {
   static properties = { items: { attribute: false }, opened: { state: true } };

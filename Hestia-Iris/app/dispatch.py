@@ -1,4 +1,4 @@
-"""Iris mail dispatch — modules subscribe, Iris pushes matching mail to them (SPEC 2026-10-19-email-push-spese).
+"""Iris mail dispatch — modules subscribe, Iris pushes matching mail to them (SPEC 2026-10-19-email-push-expenses).
 
 - Subscriptions live in Archive (``/api/iris-store``, kind ``subscription``, id ``<owner>:<key>``) so they survive
   restarts; a small in-memory copy serves matching and keeps working when Archive is briefly away.

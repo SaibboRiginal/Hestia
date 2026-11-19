@@ -16,7 +16,7 @@ const MAX = 8;
 const words = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 /**
- * <hx-chat-commands [query]="text after /"> — «/» in the chat box (dossier 2026-11-18-problemi-del-test B): the tools
+ * <hx-chat-commands [query]="text after /"> — «/» in the chat box (dossier 2026-11-18-real-test-problems B): the tools
  * the WebUI can run, filtered while typing (arrows / Tab / Enter pick one). A tool without arguments runs at once; one
  * with arguments shows its fields here. The result goes in the conversation (`done`). Same list and rules as the
  * Comandi page (Hestia-MCP), nothing duplicated.

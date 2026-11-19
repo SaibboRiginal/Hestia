@@ -193,7 +193,7 @@ def test_chain_agent_takes_a_slot_for_local_steps_but_not_for_embeddings(monkeyp
     assert taken == ["usage"]
 
 
-# ── dossier 2026-11-18-problemi-del-test A: deadline and the owner's turn over a running call ──────────────
+# ── dossier 2026-11-18-real-test-problems A: deadline and the owner's turn over a running call ──────────────
 
 @pytest.mark.unit
 def test_call_whose_caller_gave_up_never_runs():

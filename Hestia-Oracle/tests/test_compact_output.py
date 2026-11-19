@@ -1,5 +1,5 @@
 """Shaped outputs for small context windows: hestia_common.compact_output, the tool-result budget that follows the
-window, and result_more (the rest of a shortened result on request). Dossier docs/work/2026-11-17-output-compatti."""
+window, and result_more (the rest of a shortened result on request). Dossier docs/work/2026-11-17-compact-outputs."""
 from __future__ import annotations
 
 import json

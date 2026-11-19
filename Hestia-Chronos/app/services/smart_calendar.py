@@ -1,4 +1,4 @@
-"""Smart calendar assistant (brainstorm B8, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Smart calendar assistant (brainstorm B8, dossier docs/work/2026-10-24-whole-brainstorm-cindy).
 
 Looks at the owner's own events (every source but the assistant's agenda) of the next days and, where two timed
 events overlap, **proposes** to move the later one to the first free slot of the same day — never moves anything by

@@ -4,7 +4,7 @@ name: Release images
 # on native runners, published in the single package ghcr.io/<owner>/hestia as <service>-<version> and
 # <service>-latest, then the GitHub Release is created. The installer and «Aggiorna Hestia» pull these instead of
 # building (docker-compose.images.yml). Images hold only the code of the tag, never .env or data.
-# SPEC: docs/work/2026-10-30-setup-un-click (§4.4).
+# SPEC: docs/work/2026-10-30-one-click-setup (§4.4).
 
 on:
   push:

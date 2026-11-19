@@ -1,4 +1,4 @@
-"""Forge automatic review, team plan and Claude-limit wait (docs/work/2026-10-24-tutto-brainstorm-cindy W3:
+"""Forge automatic review, team plan and Claude-limit wait (docs/work/2026-10-24-whole-brainstorm-cindy W3:
 Cindy 3, 15, 31). Git, tests and the model are stubbed."""
 from __future__ import annotations
 

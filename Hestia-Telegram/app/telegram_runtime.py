@@ -1,4 +1,4 @@
-"""Telegram bot entry point: one router for every button and message (docs/work/2026-10-23-telegram-da-zero §5).
+"""Telegram bot entry point: one router for every button and message (docs/work/2026-10-23-telegram-from-scratch §5).
 
 Messages, in order: the bottom keyboard (exact words) → `/` commands (doors, aliases, any tool by name) → an open
 flow (action, menu editor, chat setting, the assistant's question) → chat. Buttons go by prefix to one handler each;
@@ -172,7 +172,7 @@ def register_handlers() -> None:
     core.bot.register_message_handler(on_file, content_types=["document", "photo", "audio", "voice", "video",
                                                          "video_note"])
     core.bot.register_message_handler(on_message, func=lambda message: True)
-    # The owner's emoji on Hestia's messages (hestia-viva F4)
+    # The owner's emoji on Hestia's messages (hestia-alive F4)
     from telegram_bot.services import reactions
     core.bot.register_message_reaction_handler(reactions.on_owner_reaction, func=lambda update: True)
 
@@ -195,7 +195,7 @@ def setup_bot_profile() -> None:
 
 def set_bot_identity() -> None:
     """The bot is called with the name the owner gave the assistant, and describes itself in «Lingua»
-    (docs/work/2026-11-17-nome-dei-client). The name is sent only when it differs (Telegram limits renames)."""
+    (docs/work/2026-11-17-client-names). The name is sent only when it differs (Telegram limits renames)."""
     from hestia_common.i18n import identity_now
     name = (identity_now().get("assistant") or "Hestia")[:64]
     try:
@@ -249,7 +249,7 @@ def run():
     from telegram_bot.services.chat_queue import drain_async
     drain_async("startup")
     logger.info("event=telegram_interface_starting")
-    # message_reaction is not in Telegram's default updates: list what the bot handles (hestia-viva F4)
+    # message_reaction is not in Telegram's default updates: list what the bot handles (hestia-alive F4)
     core.bot.infinity_polling(allowed_updates=ALLOWED_UPDATES)
 
 

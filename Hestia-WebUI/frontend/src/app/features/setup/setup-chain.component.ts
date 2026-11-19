@@ -49,7 +49,7 @@ export function keyStep(key: string, home: string): { provider: string; model: s
 }
 
 /**
- * THE step of the guided setup (docs/work/2026-10-30-setup-un-click, round 7): Modelli, Memoria, Ascolto and Voce are
+ * THE step of the guided setup (docs/work/2026-10-30-one-click-setup, round 7): Modelli, Memoria, Ascolto and Voce are
  * this same component, only the module behind it changes.
  *
  * On top «Scelti»: what Hestia will use, in order (the local one first, then the cloud ones), each with ↑ and ×.

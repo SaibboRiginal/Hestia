@@ -1,4 +1,4 @@
-"""Tests — guided setup «Cervello» (docs/work/2026-10-30-setup-un-click §4.2). No network: providers mocked."""
+"""Tests — guided setup «Cervello» (docs/work/2026-10-30-one-click-setup §4.2). No network: providers mocked."""
 from __future__ import annotations
 
 import pytest

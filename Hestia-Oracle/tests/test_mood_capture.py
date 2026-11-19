@@ -1,4 +1,4 @@
-"""Quiet mood capture (docs/work/2026-10-30-diario-umore): the deterministic gate, the model answer, the fallback
+"""Quiet mood capture (docs/work/2026-10-30-mood-diary): the deterministic gate, the model answer, the fallback
 when the model is offline or dumb, the undo, the notice. Markers: unit"""
 from __future__ import annotations
 

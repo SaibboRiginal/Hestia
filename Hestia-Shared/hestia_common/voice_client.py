@@ -1,4 +1,4 @@
-"""Client of the voice module Echo, through the Hub (the only door). Dossier ``docs/work/2026-10-20-modulo-voce``.
+"""Client of the voice module Echo, through the Hub (the only door). Dossier ``docs/work/2026-10-20-voice-module``.
 
 Callers (Telegram, Oracle, Hermes, the WebUI backend) never touch audio engines: they send bytes and get text,
 or send text and get bytes. Failures return ``None`` so every caller keeps its own fallback (``[🔄]``).

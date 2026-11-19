@@ -1,4 +1,4 @@
-"""Guided setup «Voce» (docs/work/2026-10-30-setup-un-click §4.2): the same shape as the models screen.
+"""Guided setup «Voce» (docs/work/2026-10-30-one-click-setup §4.2): the same shape as the models screen.
 
 Echo owns the speech providers, so the screen asks Echo only:
 - ``catalog(blocks, language, hosts)``: for each direction (``ascolto`` = listening, ``voce`` = speaking) the providers

@@ -1,4 +1,4 @@
-"""Wardrobe service: everything the REST API, the UI and the MCP tools do (SPEC docs/work/2026-10-17-modulo-guardaroba).
+"""Wardrobe service: everything the REST API, the UI and the MCP tools do (SPEC docs/work/2026-10-17-wardrobe-module).
 
 Reads come from the in-memory mirror (instant stats/suggestions), writes go to Archive first (``Store``).
 """
@@ -575,7 +575,7 @@ class Wardrobe:
                 "favorite_outfits": [o["name"] for o in self.outfits(favorite=True, limit=8)["items"]]}
 
     def recap(self, day: date, nxt: date) -> dict:
-        """Facts for the daily recap (docs/work/2026-10-20-recap-giornaliero): what was worn on ``day``, pieces in
+        """Facts for the daily recap (docs/work/2026-10-20-daily-recap): what was worn on ``day``, pieces in
         the laundry. Nothing worn → nothing to say. No LLM."""
         pieces = {p["id"]: p for p in self.store.items("piece")}
         outfits = {o["id"]: o for o in self.store.items("outfit")}
@@ -599,7 +599,7 @@ class Wardrobe:
         return {"module": "wardrobe", "domain": "wardrobe", "updated_at": now_iso(), "text": text}
 
     # ── reflection signals (hestia_common.signals_client; Athena reads them, never the rows) ──
-    FORGOTTEN_DAYS = 60        # SPEC riflessione-a-livelli: «nothing worn for 60 days»
+    FORGOTTEN_DAYS = 60        # SPEC layered-reflection: «nothing worn for 60 days»
     LAUNDRY_DAYS = 7           # in laundry since a week or more…
     LAUNDRY_MIN = 3            # …at least this many pieces
 

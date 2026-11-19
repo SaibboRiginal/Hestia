@@ -1,4 +1,4 @@
-"""Kairos — deadlines of everything, with advice («Scadenze», dossier docs/work/2026-10-24-tutto-brainstorm-cindy W5 B7).
+"""Kairos — deadlines of everything, with advice («Scadenze», dossier docs/work/2026-10-24-whole-brainstorm-cindy W5 B7).
 
 Bills, insurance, car tax, inspection, servicing, documents, subscriptions. A deadline has a due day, an optional
 amount, a recurrence (rolls on when marked paid/done), a lead time and an advice line (deterministic per category;

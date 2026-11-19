@@ -1,4 +1,4 @@
-"""What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-hestia-viva F3).
+"""What Hestia knows of "now" in an owner's chat turn (docs/work/2026-11-06-hestia-alive F3).
 
 Up to four short background lines, read at turn time through Hub (each source owns its data):
 - the owner's mood of today (Psyche ``GET /api/mood/today`` → ``summary``);
@@ -87,7 +87,7 @@ def notifications_line(payload: Any, limit: int, today: str | None = None) -> st
 
 def talk_line(payload: Any, today: str | None = None) -> str:
     """What she wrote him first today (Athena «parla con te», kind ``athena.talk``): the whole sentence, so his
-    answer in any chat has its context (docs/work/2026-11-12-identita-e-proattivita)."""
+    answer in any chat has its context (docs/work/2026-11-12-identity-and-proactivity)."""
     items = (payload or {}).get("items") if isinstance(payload, dict) else None
     today = today or datetime.now(_tz()).date().isoformat()
     out = []

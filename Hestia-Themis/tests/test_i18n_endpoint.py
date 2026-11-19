@@ -1,4 +1,4 @@
-"""GET /api/settings/i18n: the catalog clients use for their fixed texts (dossier docs/work/2026-11-14-backend-inglese).
+"""GET /api/settings/i18n: the catalog clients use for their fixed texts (dossier docs/work/2026-11-14-english-backend).
 
 Source texts are English: Italian gets the it catalog, English (and a language without a catalog) gets an empty map."""
 import pytest
@@ -20,7 +20,7 @@ def test_i18n_catalog_follows_the_language(monkeypatch):
 
 @pytest.mark.api
 def test_i18n_catalog_carries_the_assistant_name_never_the_owner(monkeypatch):
-    """«Ask {assistant}» in the WebUI says the chosen name (docs/work/2026-11-16-nome-ovunque)."""
+    """«Ask {assistant}» in the WebUI says the chosen name (docs/work/2026-11-16-name-everywhere)."""
     from fastapi.testclient import TestClient
     from app import main
     from hestia_common import i18n

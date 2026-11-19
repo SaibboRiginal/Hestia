@@ -1,4 +1,4 @@
-"""Actions that belong to the Telegram client itself (docs/work/2026-10-23-telegram-da-zero §5.2): new conversation,
+"""Actions that belong to the Telegram client itself (docs/work/2026-10-23-telegram-from-scratch §5.2): new conversation,
 voice answers, help, WebUI access, saved documents, quick reminder/task, a new automatic alert.
 
 They are ``catalog.Tool`` like every module tool (same flow, same confirm, same result card), with a ``handler``
@@ -212,7 +212,7 @@ def _nuovo_avviso(chat_id, args):
         raise ActionError(tr("I couldn't create the alert, try again shortly."))
     text = str((payload or {}).get("message") or tr("Alert created.")) if isinstance(payload, dict) else tr("Alert created.")
     return Rendered(ui.outcome(tr("Automatic alert")) + "\n" + ui.esc(ui.strip_emoji(text)),
-                    actions=[Action(tr("Active alerts"), "notifiche_attive")])
+                    actions=[Action(tr("Active alerts"), "notifications_active")])
 
 
 def _pausa_voto(chat_id, args):
@@ -226,49 +226,49 @@ def tools() -> list[catalog.Tool]:
     T = catalog.Tool
     dt = {"type": "string", "format": "date-time", "title": "When"}
     return [
-        T("nuova", "New conversation", "Starts from scratch: the previous chat is forgotten", group="sistema",
+        T("nuova", "New conversation", "Starts from scratch: the previous chat is forgotten", group="system",
           hints={"section": "Chat"}, writes=True, handler=_nuova),
-        T("voce", "Voice replies", "Turns voice replies to voice messages on or off", group="sistema",
+        T("voce", "Voice replies", "Turns voice replies to voice messages on or off", group="system",
           hints={"section": "Chat"}, handler=_voce),
-        T("voce_on", "Turn on voice replies", "", group="sistema", hints={"section": "interno"},
+        T("voce_on", "Turn on voice replies", "", group="system", hints={"section": "internal"},
           handler=lambda c, a: _voce(c, a, on=True)),
-        T("voce_off", "Turn off voice replies", "", group="sistema", hints={"section": "interno"},
+        T("voce_off", "Turn off voice replies", "", group="system", hints={"section": "internal"},
           handler=lambda c, a: _voce(c, a, on=False)),
-        T("aiuto", "How to use it", "Quick guide and shortcuts", group="sistema", hints={"section": "Chat"},
+        T("aiuto", "How to use it", "Quick guide and shortcuts", group="system", hints={"section": "Chat"},
           handler=_aiuto),
-        T("webui_token", "Access to the web page", "A code to enter the web page", group="sistema",
+        T("webui_token", "Access to the web page", "A code to enter the web page", group="system",
           hints={"section": "Web page", "primary": 3, "label": "Web access"}, writes=False,
           handler=_webui_token),
-        T("webui_status", "Web access status", "", group="sistema", hints={"section": "Web page"},
+        T("webui_status", "Web access status", "", group="system", hints={"section": "Web page"},
           handler=_webui_status),
-        T("webui_revoke", "Revoke web access", "Closes access to the web page", group="sistema",
+        T("webui_revoke", "Revoke web access", "Closes access to the web page", group="system",
           hints={"section": "Web page"}, writes=True, destructive=True, handler=_webui_revoke),
-        T("documenti", "Saved documents", "The files you sent me that I remember", group="memoria",
+        T("documenti", "Saved documents", "The files you sent me that I remember", group="memory",
           hints={"section": "Documents", "primary": 4}, handler=_documenti),
-        T("documento_fissa", "Keep a document", "", group="memoria", hints={"section": "Documents"},
+        T("documento_fissa", "Keep a document", "", group="memory", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
           handler=_documento_fissa),
-        T("documento_elimina", "Delete a document", "", group="memoria", hints={"section": "Documents"},
+        T("documento_elimina", "Delete a document", "", group="memory", hints={"section": "Documents"},
           schema=_schema({"document_id": {**S, "title": "Document"}}, ["document_id"]), writes=True,
           destructive=True, handler=_documento_elimina),
-        T("nuovo_promemoria", "New reminder", "I'll remind you at the right time", group="giornata",
+        T("nuovo_promemoria", "New reminder", "I'll remind you at the right time", group="day",
           hints={"section": "Reminders and tasks", "primary": 5},
           schema=_schema({"title": {**S, "title": "About what"}, "start_at": dt,
                           "note": {**S, "title": "Note"}}, ["title", "start_at"]),
           writes=True, handler=_nuovo_promemoria),
-        T("nuova_attivita", "New task", "Something to do, with or without a deadline", group="giornata",
+        T("nuova_attivita", "New task", "Something to do, with or without a deadline", group="day",
           hints={"section": "Reminders and tasks"},
           schema=_schema({"title": {**S, "title": "What"}, "due": {"type": "string", "format": "date",
                                                                    "title": "By when"},
                           "note": {**S, "title": "Note"}}, ["title"]),
           writes=True, handler=_nuova_attivita),
         T("nuovo_avviso", "New automatic alert", "Tell me what to keep an eye on and when to alert you",
-          group="notifiche", hints={"section": "Automatic alerts", "primary": 1},
+          group="notifications", hints={"section": "Automatic alerts", "primary": 1},
           schema=_schema({"request": {**S, "title": "What should I keep an eye on?",
                                       "examples": ["houses in Udine under €150,000"]}}, ["request"]),
           writes=True, handler=_nuovo_avviso),
         T("pausa_voto", "No more rating requests", "For a few days I won't ask you to rate answers",
-          group="sistema", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
+          group="system", hints={"section": "Chat"}, writes=True, handler=_pausa_voto),
         *transfer_tools(),
     ]
 

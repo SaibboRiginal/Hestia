@@ -16,7 +16,7 @@ const FLUSH_MS = 20_000;
 const MAX_BATCH = 40;
 
 /**
- * Usage taps and suggestions of the WebUI (dossier 2026-10-24-tutto-brainstorm-cindy C11 + C14, W7): every page
+ * Usage taps and suggestions of the WebUI (dossier 2026-10-24-whole-brainstorm-cindy C11 + C14, W7): every page
  * opened and every action run becomes a tap, sent in batches to Metis (`POST /api/metis/usage`) so «Adesso» learns
  * from this client too; reads «Adesso» and «Scopri». Everything goes through the Metis plugin door (api_prefix
  * /api/metis/), never a new URL.

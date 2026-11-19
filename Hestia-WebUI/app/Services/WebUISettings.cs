@@ -76,7 +76,7 @@ public class WebUISettings
             "Dashboard della WebUI: titolo e widget dei moduli con posizione, misura e parametri.", oracle: "propose"),
         UserSetting("webui.plugins.prefs", "Preferenze dei plugin", "object", new Dictionary<string, object?>(), 14,
             "Preferenze che ogni plugin salva per questa WebUI."),
-        // Sidebar arranged by the user (docs/work/2026-10-18-moduli-core-e-mcp-esterno §A5): pinned entries move
+        // Sidebar arranged by the user (docs/work/2026-10-18-core-modules-and-external-mcp §A5): pinned entries move
         // into «Fissati» and leave their own section (the list is computed, never stored twice).
         UserSetting("webui.sidebar.pinned", "Voci fissate nella barra laterale", "list", Array.Empty<string>(), 15,
             "Voci della barra laterale fissate in cima, in ordine (es. app.chat, scout.case, dash.casa)."),

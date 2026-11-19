@@ -19,7 +19,7 @@ function readPlace(): Place | null {
 }
 
 /**
- * <hx-mascot> — the mascot in a corner of every page (dossier 2026-11-18-problemi-del-test G). The built-in ones
+ * <hx-mascot> — the mascot in a corner of every page (dossier 2026-11-18-real-test-problems G). The built-in ones
  * (Aphrodite `pet.drawn`: ember, cat, owl) are drawn here and need no picture; a pet with pictures uses them. It shows
  * what is happening: thinking while the answer is prepared, speaking while it is written or read aloud, listening in
  * «Talk», sleeping at night, happy when tapped. Drag it: it docks to the nearest side (the place is kept on this

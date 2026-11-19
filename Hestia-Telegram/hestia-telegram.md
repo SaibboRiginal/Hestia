@@ -3,7 +3,7 @@
 **Role:** User Interface — Telegram client (chat, every assistant function, notifications)
 **Node:** Raspberry Pi (Always-On)
 **Stack:** Python · pyTelegramBotAPI · requests · Docker
-**Design dossier:** `docs/work/2026-10-23-telegram-da-zero` (SPEC v3.2, section 10 = as built)
+**Design dossier:** `docs/work/2026-10-23-telegram-from-scratch` (SPEC v3.2, section 10 = as built)
 
 ---
 
@@ -37,7 +37,7 @@ Telegram never decides domain things: modules own their tools and data, Oracle i
 - **Bottom keyboard** (always there): Oggi · Aree · Notifiche · Impostazioni. Tapping a key during a guided action
   leaves it.
 - **`/` menu** (10): `oggi`, `aree`, `adesso`, `scopri`, `notifiche`, `impostazioni`, `nuova`, `voce`, `stato`,
-  `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_adesso`, `metis_scopri`). Old names keep
+  `aiuto` (`/adesso` and `/scopri` are aliases of the tools `metis_now`, `metis_discover`). Old names keep
   working (`ALIASES`: `/start`, `/clear`, `/settings`, `/comandi`, `/scout_list` → `scout.search` since its double `scout_listings` was removed on 2026-11-14…); any tool name typed as `/name k=v free text`
   starts that action with the values given.
 - **Cards**: Home (greeting, notifications to see), Oggi (agenda + weather + «Adesso»: up to 4 suggestions read from
@@ -108,20 +108,20 @@ subscription compile), `pausa_voto`.
   `quoted: {text, from: assistant|user|notification, at, ref}` with `/api/chat`; Oracle uses it for that turn only.
 - Under an answer: Ascolta · 👍 · 👎 on one row (vote shown at `telegram.feedback.prompt_rate`). The vote buttons carry
   Oracle's `trace_id` of the turn (`fb:good:<id>`), saved as the feedback `interaction_id`, so the vote lands on that
-  answer in the training dataset (docs/work/2026-10-30-dataset-allenamento).
+  answer in the training dataset (docs/work/2026-10-30-training-dataset).
 - Requests carry `"client": "telegram"`; Oracle adds tone and personal instructions itself.
 
-### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-modulo-voce`)
+### Voice (`services/voice_service.py`, dossier `docs/work/2026-10-20-voice-module`)
 - A voice note is transcribed by Echo (use `telegram.vocale`) and shown as «*testo*», then handled like the same
   sentence typed (or as the answer of an open guided action). Echo down → «Non riesco ad ascoltare il vocale adesso,
   puoi scrivermelo?» (`[🔄]`).
 - «Ascolta» (`voice:play`): Echo reads the reply (use `telegram.risposta`), kept so a second tap does not regenerate.
 - `/voce` toggles spoken answers to voice notes (session setting `voice_live`); the written reply always stays.
   With spoken answers on, the voice note's turn goes to Oracle with `spoken: true` (short, speakable answer).
-- **She wrote first** (dossier `docs/work/2026-11-12-identita-e-proattivita`): a notification whose payload has
+- **She wrote first** (dossier `docs/work/2026-11-12-identity-and-proactivity`): a notification whose payload has
   `_chat` is sent as plain chat text (escaped, no card, no tone dot, no cut at 80 characters) and remembered like an
   answer of hers («Ascolta» and the owner's reactions work on it). Hermes never retracts it.
-- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame →
+- **Reactions** (`services/reactions.py`, dossier `docs/work/2026-11-06-hestia-alive`): Oracle's `reaction` frame →
   `setMessageReaction` on the owner's message (Telegram's own emoji list; a near one is mapped, 😂 → 🤣, otherwise
   skipped); `final.reaction_only` → no text, the «Sto pensando…» message is deleted. The owner's reactions on her
   messages (`message_reaction` updates, asked for in `ALLOWED_UPDATES`) → Oracle `POST /api/chat/reaction` with the
@@ -140,7 +140,7 @@ mode and instructions are central settings (Themis, layer client `telegram`) thr
 A text written while the assistant is still answering in the same chat waits (note «In attesa» with the button
 «Aggiungi ora», callback `cw:<id>`) and goes as the next turn when the answer ends; several waiting texts go
 together, in order. «Aggiungi ora» → Oracle `POST /api/chat/steer`: the running answer reads it at its next step
-(signal `chat.steer_taken`); a text it did not take still goes next. Dossier `docs/work/2026-11-18-problemi-del-test` B.
+(signal `chat.steer_taken`); a text it did not take still goes next. Dossier `docs/work/2026-11-18-real-test-problems` B.
 
 ### Confirm cards and assistant questions
 - An Oracle `question` with `question_id` (e.g. a Themis proposal made in this chat) becomes a card with two
@@ -197,7 +197,7 @@ Env keeps only secrets/infrastructure: `TELEGRAM_BOT_TOKEN`, `ALLOWED_USER_ID`, 
 
 Removed with the redesign: `telegram.alerts.buffer_window`, `telegram.commands.hidden*`, `telegram.signals.*`.
 Removed 2026-11-14: `telegram.chat.locale` (read by nobody): the language of notifications and formatted results is
-the personal setting `themis.personal.language` (`docs/work/2026-11-14-lingua-personale`).
+the personal setting `themis.personal.language` (`docs/work/2026-11-14-personal-language`).
 
 ## API Endpoints (control server, `services/control_service.py`)
 
@@ -245,13 +245,13 @@ message is the answer). The callback is answered at once, then the answer goes t
 `/api/chat/question-answer`; its `resume` message is sent as the next chat turn, so the reply comes as usual. A
 question no longer open answers «⌛ Questa domanda non è più aperta».
 
-**Questions in notifications** (dossier `docs/work/2026-10-30-domande-nelle-notifiche`): a Hermes notification with `question` gets the same
+**Questions in notifications** (dossier `docs/work/2026-10-30-questions-in-notifications`): a Hermes notification with `question` gets the same
 keyboard (`assistant_questions.notification_rows`), the answer goes to Hermes `/api/notifications/{id}/reply`
 (first answer wins; «Questa domanda è già stata gestita» otherwise). A notification arrives unasked, so its free answer
 is never the next message written: «Rispondi…» / «Altro…» starts it (callback `askw:`), or a reply to the notification
 message is the answer (`notifications.answer_by_reply`). «Apri» stays under the keyboard.
 
-## Answer extras (dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 1)
+## Answer extras (dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 1)
 `services/answer_extras.py` + `ReplyRenderer`:
 - ```` ```hestia-ui ```` components in an answer are shown as plain text (`ui_blocks.to_text`); their buttons
   become an inline keyboard «Scegli» whose tap sends the button's text as the next chat message (callback `uisend:`).
@@ -260,7 +260,7 @@ message is the answer (`notifications.answer_by_reply`). «Apri» stays under th
   (callback `undo:`, same chat only, 24 h) runs the undo tool through Hestia-MCP; on failure the button stays.
 - `goal.progress` notices («🎯 Obiettivo») follow the normal notice settings.
 
-## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`, wave 3, parity F)
+## Data and backup (`app/telegram_bot/transfer_actions.py`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy`, wave 3, parity F)
 - «Esporta i dati»: Telegram (a client, like the WebUI page) asks every module with the `transfer` capability for its
   export through Hub and sends `hestia-AAAA-MM-GG.hestia` (gzip JSON, same format, no photos) as a document.
 - «Importa dati»: asks for the file, shows the preview (dry run), «Importa» merges (adds/updates, never deletes) and
@@ -269,9 +269,9 @@ message is the answer (`notifications.answer_by_reply`). «Apri» stays under th
 - «Ripristina un backup» (list of Drive backups → «Ripristina <data>», destructive confirm) and «Annulla ripristino»
   call Archive `/api/backup/restore` · `/undo`; status, list and «Backup adesso» are Archive tools.
 
-**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-revisione-e-test-frontend`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).
+**2026-10-29 (texts for people, dossier `docs/work/2026-10-29-frontend-review-and-tests`)**: Menu areas (`AREAS`, `SERVICE_AREAS`) now come from `hestia_common.areas`, the same list the WebUI uses (web clients draw `icon`, Telegram keeps `emoji`).
 
-## Setup mode: link the owner with a code (`services/setup_link.py`, dossier `docs/work/2026-10-30-setup-un-click`)
+## Setup mode: link the owner with a code (`services/setup_link.py`, dossier `docs/work/2026-10-30-one-click-setup`)
 
 While `ALLOWED_USER_ID` is empty the bot answers nobody, except a message of exactly 6 digits: it is sent to
 Hephaestus (`POST /route/hephaestus/api/setup/telegram/claim {code, user_id}`); the right code (shown by the guided
@@ -279,7 +279,7 @@ setup in the browser) makes the sender the owner («Fatto, ti riconosco!»), a w
 to open the setup. Hephaestus then writes `ALLOWED_USER_ID` and re-creates the bot. The guided setup itself stays in
 the browser on purpose: tokens and keys must not travel in a chat.
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool and field descriptions are
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool and field descriptions are
 English (for the model); the help under each form field comes from the field `title`, then the people catalog
 `hestia_common/locales/<lang>/tools.json` (`i18n.param_help`, language `themis.personal.language` via
 `settings.follow_personal()`), then the description.
@@ -290,12 +290,12 @@ outcomes and errors; the bottom keyboard is shown translated and `Menu.door_for_
 the translated label; bot commands and description, form field labels, result field labels and dates too.
 A file sent without a caption asks the model in English and to answer in the owner's language.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
-**2026-11-16** (dossier `docs/work/2026-11-16-nome-ovunque`): fixed texts that speak of the assistant as a person
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16** (dossier `docs/work/2026-11-16-name-everywhere`): fixed texts that speak of the assistant as a person
 use the chosen name (`{assistant}` through `hestia_common.i18n.t`, e.g. the setup link «parlare con …»); «Apri
 Hestia» and other texts about the app keep «Hestia».
 
-**2026-11-17** (dossier `docs/work/2026-11-17-nome-dei-client`): the bot takes the assistant's chosen name (`set_bot_identity`: `setMyName` only when it differs) and describes itself in «Lingua» («I'm {assistant}, your personal assistant…»); a change of name, she/he or language runs `setup_bot_profile` again (`on_personal_change`). `/start` greets the owner by name.
+**2026-11-17** (dossier `docs/work/2026-11-17-client-names`): the bot takes the assistant's chosen name (`set_bot_identity`: `setMyName` only when it differs) and describes itself in «Lingua» («I'm {assistant}, your personal assistant…»); a change of name, she/he or language runs `setup_bot_profile` again (`on_personal_change`). `/start` greets the owner by name.
 
 ## Module agents (Oracle operating mode «agents», 2026-11-17)
-The `agent` frame (a module agent at work) becomes one status line «<job>: al lavoro…» and one step per start/end in the reasoning block (`ReplyRenderer.on_agent`); the label is translated with `tr`. Dossier `docs/work/2026-11-06-moduli-come-agenti`.
+The `agent` frame (a module agent at work) becomes one status line «<job>: al lavoro…» and one step per start/end in the reasoning block (`ReplyRenderer.on_agent`); the label is translated with `tr`. Dossier `docs/work/2026-11-06-modules-as-agents`.

@@ -7,7 +7,7 @@ import { TrPipe } from '../../core/i18n';
 const SOURCE_ICON: Record<string, string> = { agenda: 'calendar', habit: 'repeat', recent: 'history', idea: 'sparkle' };
 
 /**
- * Home row «Adesso» (dossier 2026-10-24-tutto-brainstorm-cindy C11, W7): what makes sense now, from the agenda,
+ * Home row «Adesso» (dossier 2026-10-24-whole-brainstorm-cindy C11, W7): what makes sense now, from the agenda,
  * habits, recent use and a few ideas, each with its reason. A tap opens the tool (run at once when it needs nothing
  * more) and is remembered, so the row learns. Hidden when there is nothing to suggest.
  */

@@ -161,7 +161,7 @@ try:
                 ("Show the agenda events readably and in order: title, date/time, place (if any) and a short "
                  "description for each. Group by day. Friendly and brief.")
             ),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Agenda", "primary": 1, "label": "Agenda"}),
         MCPTool(
             name="agenda_today",
@@ -173,7 +173,7 @@ try:
             response_prompt=(
                 "Show today's events briefly. If there are none, say so clearly."
             ),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Agenda", "summary": True, "label": "Today"}),
         MCPTool(
             name="create_event",
@@ -199,7 +199,7 @@ try:
                 ("Confirm the event was created, short and natural: title, start date/time; mention the link or "
                  "id if the provider returned one.")
             ),
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Calendar", "primary": 4}),
         MCPTool(
             name="calendar_list_events",
@@ -218,7 +218,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "calendar_list_events", "params": kw},
             title="Events in a period", method="POST", path="/api/calendar/events/list",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Calendar"}),
         MCPTool(
             name="calendar_update_event",
@@ -236,7 +236,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "calendar_update_event", "params": kw},
             title="Edit event", method="PATCH", path="/api/calendar/events/$arg.event_id",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Calendar"}),
         MCPTool(
             name="calendar_delete_event",
@@ -253,7 +253,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "calendar_delete_event", "params": kw},
             title="Delete event", method="DELETE", path="/api/calendar/events/$arg.event_id",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Calendar"}),
         MCPTool(
             name="chronos_reconcile",
@@ -269,10 +269,10 @@ try:
             title="Reconcile calendar", method="POST", path="/api/module/maintenance/reconcile",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Summarise the Chronos reconciliation result: which ticks ran and whether it was a dry run.",
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Advanced"}),
         MCPTool(
-            name="agenda_assistente",
+            name="assistant_agenda",
             description=(
                 ("The assistant's own agenda (NOT the user's calendar): what the assistant and its modules "
                  "planned — windows (e.g. Claude Pro at night), periodic jobs, repair tasks, events.")
@@ -280,15 +280,15 @@ try:
             parameters={"type": "object", "properties": {
                 "days": {"type": "integer", "description": "days ahead (default 7)"},
                 "owner": {"type": "string", "description": "module: hephaestus, scout, athena..."}}},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda", "params": kw},
             title="Assistant agenda", method="GET", path="/api/agenda",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(("Chronological list grouped by day: time, title, module. Mark skipped occurrences. No JSON. Show "
                               "the id in brackets.")),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_aggiungi",
+            name="assistant_agenda_add",
             description="Add an event/task/window/job to the assistant's own agenda (on demand)",
             parameters={"type": "object", "properties": {
                 "title": {"type": "string", "description": "title"},
@@ -299,13 +299,13 @@ try:
                 "description": {"type": "string", "description": "details"},
                 "parent": {"type": "string", "description": "key of the linked item (cascading cancel)"}},
                 "required": ["title", "start_at"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_aggiungi", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_add", "params": kw},
             title="Schedule for the assistant", method="POST", path="/api/agenda/items",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda", "label": "alt::Plan"}),
         MCPTool(
-            name="agenda_assistente_sposta",
+            name="assistant_agenda_move",
             description="Move/edit an item of the assistant's own agenda (new time, recurrence, pause)",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"},
@@ -314,35 +314,35 @@ try:
                 "recurrence": {"type": "string", "description": "new RRULE"},
                 "status": {"type": "string", "description": "confirmed | paused"}},
                 "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_sposta", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_move", "params": kw},
             title="Move an entry", method="PATCH", path="/api/agenda/items/{ref}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_salta",
+            name="assistant_agenda_skip",
             description=("Skip (dismiss) the next occurrence of an item of the assistant's own agenda, without deleting "
                          "the rule"),
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"},
                 "occurrence": {"type": "string", "description": "ISO occurrence (empty = next)"}},
                 "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_salta", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_skip", "params": kw},
             title="Skip once", method="POST", path="/api/agenda/items/{ref}/skip",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_ripristina",
+            name="assistant_agenda_restore",
             description="Restore a skipped occurrence of an item of the assistant's own agenda",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"},
                 "occurrence": {"type": "string", "description": "skipped ISO occurrence"}},
                 "required": ["ref", "occurrence"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_ripristina", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_restore", "params": kw},
             title="Restore once", method="POST", path="/api/agenda/items/{ref}/unskip",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
             name="agenda_standard",
@@ -354,23 +354,23 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "agenda_standard", "params": kw},
             title="Standard tasks", method="GET", path="/api/agenda/standard",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_standard_ripristina",
+            name="agenda_standard_restore",
             description=(("Put a standard activity back as its module defines it (reactivates a deleted or paused "
                           "activity, undoes changes). 'key' from the agenda_standard list.")),
             parameters={"type": "object", "properties": {
                 "key": {"type": "string", "description": "key of the standard activity"}},
                 "required": ["key"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_standard_ripristina", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "agenda_standard_restore", "params": kw},
             title="Restore standard tasks", method="POST",
             path="/api/agenda/standard/{key}/restore",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_sposta_occorrenza",
+            name="assistant_agenda_move_occurrence",
             description=(("Move ONLY one occurrence of a recurring item (an exception, like 'only this event'); reset=true "
                           "puts it back at the original time")),
             parameters={"type": "object", "properties": {
@@ -380,23 +380,23 @@ try:
                 "end_at": {"type": "string", "description": "new ISO end"},
                 "reset": {"type": "boolean", "description": "restore the original time"}},
                 "required": ["ref", "occurrence"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_sposta_occorrenza", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_move_occurrence", "params": kw},
             title="Move once", method="POST", path="/api/agenda/items/{ref}/move",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_modelli",
+            name="assistant_agenda_templates",
             description=(("Templates the modules offer to create items (e.g. Scout: periodic real estate search). Use it "
-                          "before agenda_assistente_da_modello")),
+                          "before assistant_agenda_from_template")),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_modelli", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_templates", "params": kw},
             title="Agenda templates", method="GET", path="/api/agenda/templates",
             clients=["ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_da_modello",
+            name="assistant_agenda_from_template",
             description="Create an item of the assistant's own agenda from a module template (fields in values)",
             parameters={"type": "object", "properties": {
                 "owner": {"type": "string", "description": "module of the template"},
@@ -406,82 +406,82 @@ try:
                 "end_at": {"type": "string", "description": "ISO end (windows)"},
                 "recurrence": {"type": "string", "description": "RRULE if recurring"}},
                 "required": ["owner", "template_id", "start_at"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_da_modello", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_from_template", "params": kw},
             title="Create from template", method="POST", path="/api/agenda/templates/{owner}/{template_id}/create",
             clients=["ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_collega",
+            name="assistant_agenda_link",
             description=("Link an item to a parent item: cancelling the parent cancels the child, a child's error marks "
                          "the parent"),
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the child item"},
                 "parent": {"type": "string", "description": "parent key (empty = unlink)"}},
                 "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_collega", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_link", "params": kw},
             title="Link entries", method="POST", path="/api/agenda/items/{ref}/link",
             clients=["ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_annulla",
+            name="assistant_agenda_cancel",
             description="Cancel an item of the assistant's own agenda for good",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"}}, "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_annulla", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_cancel", "params": kw},
             title="Undo an entry", method="DELETE", path="/api/agenda/items/{ref}",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="agenda_assistente_esegui",
+            name="assistant_agenda_run",
             description="Run now the action of a job/task of the assistant's own agenda",
             parameters={"type": "object", "properties": {
                 "ref": {"type": "string", "description": "id or key of the item"}}, "required": ["ref"]},
-            handler=lambda **kw: {"status": "ok", "tool": "agenda_assistente_esegui", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_agenda_run", "params": kw},
             title="alt::Run now", method="POST", path="/api/agenda/items/{ref}/run",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Assistant agenda"}),
         MCPTool(
-            name="stato",
+            name="assistant_status",
             description=(("The assistant's activity state: awake, waiting, nap, deep sleep, do not disturb (+ "
                           "busy/tired…), last interaction, work in progress and effects (what is allowed now). Use it when "
                           "the user asks how you are, what you are doing, how long since you last talked.")),
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "stato", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "assistant_status", "params": kw},
             title="Assistant status", method="GET", path="/api/presence",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt=(
                 ("Describe the assistant's state in 2-4 lines in the first person: label, since when, last "
                  "interaction (client and how long ago), work in progress (activities) and, if relevant, what is "
                  "put off (effects with defer/save). No JSON, no technical keys.")),
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant", "primary": 1, "label": "Status"}),
         MCPTool(
-            name="nondisturbare",
+            name="dnd_on",
             description=(("Turn on «Do not disturb»: only urgent notifications get through. minutes = duration (empty = default), until = until an ISO 8601 time.")),
             parameters={"type": "object", "properties": {
                 "minutes": {"type": "integer", "description": "Duration in minutes (empty = default)"},
                 "until": {"type": "string", "description": "Until when, ISO 8601"}}},
-            handler=lambda **kw: {"status": "ok", "tool": "nondisturbare", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "dnd_on", "params": kw},
             title="Do not disturb", method="POST", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Confirm in one line that «Do not disturb» is on and until when (dnd_until, local time).",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant", "primary": 2}),
         MCPTool(
-            name="disturbami",
+            name="dnd_off",
             description="Turn off «Do not disturb».",
             parameters={"type": "object", "properties": {}},
-            handler=lambda **kw: {"status": "ok", "tool": "disturbami", "params": kw},
+            handler=lambda **kw: {"status": "ok", "tool": "dnd_off", "params": kw},
             title="Remove do not disturb", method="DELETE", path="/api/presence/dnd",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Confirm in one line that «Do not disturb» is off and say the new state (label).",
-            telegram_visible=True, telegram_group="sistema",
+            telegram_visible=True, telegram_group="system",
                 telegram={"section": "Assistant"}),
-        # ── Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo §6) ──
+        # ── Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind §6) ──
         MCPTool(
             name="coach_week",
             description=(("The user's week plan: workouts, routines and the rest placed in their free time, goals, what does not fit and why. Use it for «what do I have planned this week», «when do I train», «how is the plan».")),
@@ -493,7 +493,7 @@ try:
             response_prompt=(("Summarise the plan by day: time and what (short version if given). Then, if any, what does not "
                               "fit and why, and the goals. Brief, no JSON, no module names. Show the key in brackets only if "
                               "the user wants to move something.")),
-            telegram_visible=True, telegram_group="giornata",
+            telegram_visible=True, telegram_group="day",
                 telegram={"section": "Weekly plan", "primary": 6, "label": "Week plan"}),
         MCPTool(
             name="coach_replan",
@@ -510,7 +510,7 @@ try:
             title="Redo the plan", method="POST", path="/api/agenda/coach/replan",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="Say in 2-3 lines what is in the plan of the next days now and what does not fit.",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Weekly plan"}),
         MCPTool(
             name="coach_move",
@@ -523,7 +523,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "coach_move", "params": kw},
             title="Move in the plan", method="POST", path="/api/agenda/coach/items/{ref}/move",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Weekly plan"}),
         MCPTool(
             name="coach_skip",
@@ -534,7 +534,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "coach_skip", "params": kw},
             title="Skip in the plan", method="POST", path="/api/agenda/coach/items/{ref}/skip",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Weekly plan"}),
         MCPTool(
             name="coach_add_busy",
@@ -546,7 +546,7 @@ try:
             handler=lambda **kw: {"status": "ok", "tool": "coach_add_busy", "params": kw},
             title="Commitment for the plan", method="POST", path="/api/agenda/coach/busy",
             clients=["telegram", "ui"], response_mode="oracle_natural",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Weekly plan"}),
         MCPTool(
             name="coach_review",
@@ -557,7 +557,7 @@ try:
             title="How the week went", method="GET", path="/api/agenda/coach/review",
             clients=["telegram", "ui"], response_mode="oracle_natural",
             response_prompt="2-4 lines: what went well, what was skipped. No JSON, no module names.",
-            telegram_visible=False, telegram_group="giornata",
+            telegram_visible=False, telegram_group="day",
                 telegram={"section": "Weekly plan"}),
     ]
     import life_api as _life_api
@@ -752,7 +752,7 @@ def _recap_with_life(day, nxt) -> dict:
     return facts
 
 
-# Daily recap piece (docs/work/2026-10-20-recap-giornaliero): the user's events, assistant tasks, failed jobs.
+# Daily recap piece (docs/work/2026-10-20-daily-recap): the user's events, assistant tasks, failed jobs.
 app.include_router(recap_contract.recap_router(
     "chronos", lambda day, nxt: recap_contract.piece("chronos", tr("Agenda"), icon="calendar", emoji="📅", order=10,
                                                      **_recap_with_life(day, nxt))))
@@ -1315,7 +1315,7 @@ def agenda_window(key: str) -> dict:
 
 
 # ─────────────────────────────────────────────────────────────────────
-#  Weekly coach plan (SPEC docs/work/2026-10-20-coach-di-ogni-tipo)
+#  Weekly coach plan (SPEC docs/work/2026-10-20-coach-of-every-kind)
 #  Under the plugin's api_prefix (/api/agenda/) so the «La tua settimana» page needs nothing else.
 # ─────────────────────────────────────────────────────────────────────
 

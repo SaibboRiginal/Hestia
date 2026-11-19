@@ -1,5 +1,5 @@
 """Tests — the window of a local model is read from its program, not imposed
-(dossier docs/work/2026-11-12-contesto-e-scorciatoie §3.1). All network calls mocked."""
+(dossier docs/work/2026-11-12-context-and-shortcuts §3.1). All network calls mocked."""
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch

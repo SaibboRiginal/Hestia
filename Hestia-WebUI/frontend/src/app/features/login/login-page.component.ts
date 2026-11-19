@@ -32,7 +32,7 @@ import { assistantName, tr, TrPipe } from '../../core/i18n';
   `],
 })
 export class LoginPageComponent {
-  /** The name the owner gave the assistant (the site calls itself that, docs/work/2026-11-17-nome-dei-client). */
+  /** The name the owner gave the assistant (the site calls itself that, docs/work/2026-11-17-client-names). */
   readonly name = assistantName();
   private auth = inject(AuthService);
   private router = inject(Router);

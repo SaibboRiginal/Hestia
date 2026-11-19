@@ -165,7 +165,7 @@ def test_recent_failure_does_not_refuse_the_chat(monkeypatch):
 
 @pytest.mark.unit
 def test_a_new_message_closes_open_questions():
-    """2026-10-30-domande-nelle-notifiche: an answer spoken or typed instead of the card closes the question, here and
+    """2026-10-30-questions-in-notifications: an answer spoken or typed instead of the card closes the question, here and
     in Archive (also one asked before a restart), so a reload does not draw it again."""
     import threading
     from types import SimpleNamespace

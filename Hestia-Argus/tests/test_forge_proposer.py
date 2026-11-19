@@ -1,5 +1,5 @@
 """Recurring errors and recurring fallbacks become fix proposals with a title the owner can read
-(dossier docs/work/2026-11-18-problemi-del-test F)."""
+(dossier docs/work/2026-11-18-real-test-problems F)."""
 from __future__ import annotations
 
 import pytest

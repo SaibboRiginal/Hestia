@@ -1,4 +1,4 @@
-"""Athena inside view (WebUI plugin «Pensieri», SPEC docs/work/2026-10-18-moduli-core-e-mcp-esterno §A2/§B4):
+"""Athena inside view (WebUI plugin «Pensieri», SPEC docs/work/2026-10-18-core-modules-and-external-mcp §A2/§B4):
 every candidate kept with the gate's reason and outcome, «Pensa ora», compact summary, manifest, MCP tool."""
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ class TestGateHistory:
         assert rt._thinking_records[-1]["candidates"][0]["outcome"] == "forge_skipped"
 
     def test_improvement_without_proof_is_kept_collecting_not_proposed(self, rt, monkeypatch):
-        """First observe, then propose (docs/work/2026-11-13-prima-osserva-poi-propone)."""
+        """First observe, then propose (docs/work/2026-11-13-observe-then-propose)."""
         c = ActionCandidate(title="Migliora prompt", kind="improvement", signals=HIGH)
         sent = []
         monkeypatch.setattr(rt, "_send_to_forge", lambda *a: sent.append(a) or True)

@@ -1,4 +1,4 @@
-"""Tests — hestia_common.downloads (docs/work/2026-10-30-setup-un-click §4.3). No network: HTTP faked."""
+"""Tests — hestia_common.downloads (docs/work/2026-10-30-one-click-setup §4.3). No network: HTTP faked."""
 from __future__ import annotations
 
 import hashlib

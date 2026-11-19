@@ -109,7 +109,7 @@ def test_approve_with_engine_choice(monkeypatch):
 
 
 def test_proposal_keeps_its_title_and_origin(monkeypatch):
-    """Development page (dossier 2026-11-18-problemi-del-test F): a module's proposal shows its own title, in the
+    """Development page (dossier 2026-11-18-real-test-problems F): a module's proposal shows its own title, in the
     owner's language, and where it comes from; the notice uses the title."""
     forge = _forge(monkeypatch, paused=False)
     task = forge.submit(request="Fix recurring error in service 'oracle' (seen 3x in 60 min).", source="argus",

@@ -1,4 +1,4 @@
-"""Secrets the guided setup may write (docs/work/2026-10-30-setup-un-click §4.2).
+"""Secrets the guided setup may write (docs/work/2026-10-30-one-click-setup §4.2).
 
 Secrets stay where the rules want them, in the ``.env`` files of the repo (mounted at ``/repo``), so a later
 ``docker compose up`` keeps them. Only the keys of ``WHITELIST`` (and ``ORACLE_KEY_<NAME>``, ``ECHO_KEY_<NAME>``) are accepted, a value is

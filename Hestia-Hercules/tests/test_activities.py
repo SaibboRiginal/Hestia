@@ -1,4 +1,4 @@
-"""Hercules outdoor activities (dossier 2026-10-20-meteo-hecate §3.8): slot picker, propose → confirm →
+"""Hercules outdoor activities (dossier 2026-10-20-weather-hecate §3.8): slot picker, propose → confirm →
 calendar «Allenamenti» + agenda question, outcome, log, morning coach line. Fake Hub (Hecate/Hermes) + fake agenda.
 
 Markers: unit

@@ -1,4 +1,4 @@
-"""Default menus — DATA ONLY (docs/work/2026-10-23-telegram-da-zero §5.11, layer 1).
+"""Default menus — DATA ONLY (docs/work/2026-10-23-telegram-from-scratch §5.11, layer 1).
 
 Change the look of Telegram's menus here or, without touching code, in the Themis setting
 ``telegram.menu.layout`` (same shape, every part optional, later wins). Tools that nothing mentions still appear:
@@ -35,8 +35,8 @@ ALIASES = {
     "start": "home", "help": "aiuto", "comandi": "aree", "menu": "aree", "clear": "nuova", "settings": "impostazioni",
     "set": "impostazioni", "live": "voce_on", "chat": "voce_off", "documents": "documenti",
     "create_event": "create_event", "create_reminder": "nuovo_promemoria", "create_task": "nuova_attivita",
-    "notifica_add": "nuovo_avviso", "notifica_get": "notifiche_attive", "notifica_remove": "notifica_disattiva",
-    "adesso": "metis_adesso", "scopri": "metis_scopri",
+    "notifica_add": "nuovo_avviso", "notifica_get": "notifications_active", "notifica_remove": "notification_off",
+    "adesso": "metis_now", "scopri": "metis_discover",
     "webui_revoke": "webui_revoke", "revoke_webui": "webui_revoke", "scout_list": "scout.search",
 }
 
@@ -46,7 +46,7 @@ from hestia_common.areas import AREAS, SERVICE_AREAS  # noqa: E402,F401
 
 # Section shown last inside «Tutte le azioni», and sections never shown (used by the client itself).
 LAST_SECTION = "Advanced"
-HIDDEN_SECTIONS = ["interno"]
+HIDDEN_SECTIONS = ["internal"]
 
 # What the «Oggi» card shows (tools rendered one under the other) and its buttons.
 TODAY = {"tools": ["agenda_today", "weather_now"], "actions": ["agenda", "create_event", "nuovo_promemoria"]}

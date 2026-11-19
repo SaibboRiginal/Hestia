@@ -39,7 +39,7 @@ def register_on_hub(
             # Module agent (Oracle operating mode «agents») + module index: what it is for, its rules.
             "when_to_use": "calendar events, the assistant's agenda (reminders, planned jobs), routines and the week plan",
             "manual": "Calendar: agenda/agenda_today read, create_event/calendar_update_event/calendar_delete_event change "
-                      "events. Assistant agenda (agenda_assistente*): one-off reminders and planned jobs, move, skip, "
+                      "events. Assistant agenda (assistant_agenda*): one-off reminders and planned jobs, move, skip, "
                       "cancel. Coach week plan: coach_week, coach_move, coach_skip, coach_replan. Delete only when the "
                       "owner asks; times in the owner's timezone.",
             "title": "Agenda",

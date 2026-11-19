@@ -1,5 +1,5 @@
 """Learning log, memory review and docs check endpoints + MCP tools (dossier
-docs/work/2026-10-24-tutto-brainstorm-cindy W3: Cindy 8, 18, 29)."""
+docs/work/2026-10-24-whole-brainstorm-cindy W3: Cindy 8, 18, 29)."""
 from __future__ import annotations
 
 import logging
@@ -99,7 +99,7 @@ def mcp_tools() -> list:
     from hestia_common.mcp_helpers import MCPTool
 
     def tool(name, description, method, path, title, *, params=None, required=None, label="", section="Memory",
-             group="memoria", prompt=""):
+             group="memory", prompt=""):
         schema = {"type": "object", "properties": params or {}}
         if required:
             schema["required"] = required
@@ -109,7 +109,7 @@ def mcp_tools() -> list:
                        telegram_group=group, telegram={"section": section, **({"label": label} if label else {})})
 
     return [
-        tool("memory_rivedi", ("«Review what you know about me»: look for duplicates, contradictions and old things in the memory and propose them (the user confirms each). It deletes nothing by itself."), "POST",
+        tool("memory_review", ("«Review what you know about me»: look for duplicates, contradictions and old things in the memory and propose them (the user confirms each). It deletes nothing by itself."), "POST",
              "/api/athena/memory/review", "Review what you know about me", label="Review memory"),
         tool("memory_learning", ("What the assistant learned recently (memories added, removed, reinforced), with the user's "
                                  "exact words each one comes from."), "GET", "/api/athena/learning",
@@ -128,5 +128,5 @@ def mcp_tools() -> list:
              "/api/athena/memory/proposals/{pid}/dismiss", "Discard cleanup", params={"pid": {"type": "string"}},
              required=["pid"]),
         tool("docs_check", "Check whether the repo docs follow the code and propose the fixes to development.", "POST", "/api/athena/docs/check", "Check the documents", section="Development",
-             group="sviluppo", label="Check documents"),
+             group="development", label="Check documents"),
     ]

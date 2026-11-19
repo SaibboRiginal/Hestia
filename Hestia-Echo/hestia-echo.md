@@ -4,7 +4,7 @@
 for every client. Built like Oracle a blocchi: named providers, chains, uses declared by modules, external mode.
 **Node:** main host (local engines want the CPU/GPU of the PC)
 **Stack:** Python · FastAPI · ffmpeg · faster-whisper · Piper · Kokoro (onnx) · Docker · WebUI plugin bundle (Lit, `ui/`)
-**Port:** 19021 · Core module (`kind="core"`, page «Voce» order 125) · Dossier: `docs/work/2026-10-20-modulo-voce/`
+**Port:** 19021 · Core module (`kind="core"`, page «Voce» order 125) · Dossier: `docs/work/2026-10-20-voice-module/`
 
 ---
 
@@ -75,10 +75,10 @@ notification first, then asks Echo (use `hermes.notifica`) and sends an `update`
 message replying to the notification (deleted with it), the WebUI inbox shows «Ascolta». The written notification
 never changes.
 
-## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-tutto-brainstorm-cindy`)
+## «La tua voce»: voiceprint and personal dictionary (W4, dossier `2026-10-24-whole-brainstorm-cindy`)
 
 - **Voiceprint** (Cindy 10, `app/core/voiceprint.py`): Marko records ~10 s once (page «Voce», Telegram «Registra la
-  mia voce», tool `voce_impronta_registra`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
+  mia voce», tool `voice_print_record`, at least 6 s of speech). Echo keeps a speaker embedding (WeSpeaker
   ResNet34 ONNX, downloaded on first use into `ECHO_MODELS_DIR/speaker`) in `echo-store` (`kind=voiceprint`) and the
   recording as a kept `recording`. On the uses in `echo.impronta.usi` (default the WebUI live listening) every 1.5 s
   window of speech under `echo.impronta.soglia` (cosine, 0.45) becomes silence **before** transcription and before
@@ -87,11 +87,11 @@ never changes.
 - **End of turn**: live mode closes a turn after `echo.live.silence_ms` (1250 ms) of real silence of the owner.
 - **Personal dictionary** (Cindy 17, `app/core/dictionary.py`): names and terms passed to every listening engine as
   a hint (Whisper `initial_prompt`, OpenAI `prompt`, ≤ 80 words). Words added by hand are confirmed at once; a
-  correction of a transcript (`POST /dictionary/learn`, tool `voce_correzione`) makes the new words candidates,
+  correction of a transcript (`POST /dictionary/learn`, tool `voice_correction`) makes the new words candidates,
   confirmed after `echo.dizionario.conferme` (2) corrections. Rows `kind=word` (id = normalised word).
   The hint always starts with the assistant's chosen name and the owner's name (personal settings), so a new
   name is written right from the first word; the setup «Ascolta» says «Ciao, sono <name>» in the voice's language
-  (`lang.sample`, dossier `docs/work/2026-11-16-nome-ovunque`).
+  (`lang.sample`, dossier `docs/work/2026-11-16-name-everywhere`).
 
 ## Clients
 
@@ -172,21 +172,21 @@ silence, seq dedupe, sentence blocks), keeping (reuse, cleanup, space rule, warn
 `test_your_voice.py`: dictionary (add, learn to confirmation, hint in the engine options), voiceprint (enroll,
 other voices muted, live cache, unchanged without print or engine).
 
-MCP tools (Telegram + WebUI, section «Voce»): `voce_dizionario`, `voce_parola`, `voce_parola_togli`,
-`voce_correzione`, `voce_impronta`, `voce_impronta_registra` (a voice note), `voce_impronta_togli`.
+MCP tools (Telegram + WebUI, section «Voce»): `voice_dictionary`, `voice_word`, `voice_word_remove`,
+`voice_correction`, `voice_print`, `voice_print_record` (a voice note), `voice_print_remove`.
 Echo's Hub capabilities declare `owns_tool_domains: ["voice"]`, so Oracle's domain gate keeps these tools in chat
 (without it they never reached the assistant; found on the real-model bench, 2026-10-30).
 
 
-**2026-11-14 (backend English, dossier `docs/work/2026-11-14-backend-inglese`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
+**2026-11-14 (backend English, dossier `docs/work/2026-11-14-english-backend`)**: tool descriptions are English (for the model). What people read about the tools comes from `hestia_common/locales/<lang>/tools.json`.
 
-**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
+**2026-11-14 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the module follows the personal setting «Lingua» (`settings.follow_personal()`), so the fixed texts it shows go out in the owner's language through `hestia_common.i18n.t`.
 
-**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
+**2026-11-15 (owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the notices, errors and cards this module shows go through `hestia_common.i18n.t` and follow «Lingua».
 
-**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-backend-inglese`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
+**2026-11-15 (WebUI page in the owner's language, dossier `docs/work/2026-11-14-english-backend`)**: the texts of this module's WebUI page and widgets go through `tr` of `@hestia/webui-sdk` and follow «Lingua»; source texts in English, Italian in `Hestia-Shared/hestia_common/locales/it/messages.json`.
 
-**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-backend-inglese` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
+**2026-11-16 (no Italian in the code, dossier `docs/work/2026-11-14-english-backend` v2.0)**: every text is English in the code; Italian lives only in `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at registration (manifest, capabilities, agenda rules, settings) are plain English, translated at the edge.
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
-The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-moduli-come-agenti`.
+The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.

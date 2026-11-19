@@ -10,7 +10,7 @@ Doors used, like the clients do:
 - notifications through the WebUI inbox (/api/webui/notifications → Hermes) and its answer buttons
 - pages through Chromium (Playwright) on the real WebUI, desk and phone
 Every run creates its own data with a «Banco» prefix; nothing is deleted from the volumes.
-Output: .cloud-test/flows.md + .cloud-test/flows/*.png. SPEC: docs/work/2026-10-19-prove-reali-banco/SPEC.md
+Output: .cloud-test/flows.md + .cloud-test/flows/*.png. SPEC: docs/work/2026-10-19-real-runs-bench/SPEC.md
 """
 from __future__ import annotations
 
@@ -1068,7 +1068,7 @@ def flow_transfer(ctx: dict) -> None:
     step(A, "Pagina Impostazioni → Esporta e importa nel browser")(page)
 
 
-# ── New modules (dossier 2026-10-24-tutto-brainstorm-cindy W5–W7) ────────────
+# ── New modules (dossier 2026-10-24-whole-brainstorm-cindy W5–W7) ────────────
 
 def flow_vita(ctx: dict) -> None:
     A = "Moduli nuovi: Scadenze, Persone, Alimentazione, Documenti, Aspetto, Immagini, Casa"
@@ -1156,11 +1156,11 @@ def flow_vita(ctx: dict) -> None:
     step(A, "Casa: stato di Home Assistant (non collegato sul banco)")(lares)
 
     def by_chat():
-        r = chat('#tool scadenze_list {}')
-        t = next((x for x in r["tools"] if x["tool"] == "scadenze_list"), None)
+        r = chat('#tool deadlines_list {}')
+        t = next((x for x in r["tools"] if x["tool"] == "deadlines_list"), None)
         need(t and t["ok"] is not False, f"lo strumento non è stato chiamato: {[x['tool'] for x in r['tools']]}")
         need("Banco bollo" in (t["preview"] or "") or "Scadenze" in (t["preview"] or ""), f"anteprima: {str(t)[:200]}")
-        return "chat → scadenze_list (stesso strumento che usa Telegram) ok"
+        return "chat → deadlines_list (stesso strumento che usa Telegram) ok"
     step(A, "Chat: l'assistente usa gli strumenti dei moduli nuovi")(by_chat)
 
 
@@ -1170,7 +1170,7 @@ def flow_shell(ctx: dict) -> None:
     def taps_and_adesso():
         at = datetime.now().isoformat(timespec="seconds")
         api("metis", "POST", "api/metis/usage", {"taps": [
-            {"client": "webui", "kind": "tool", "ref": "scadenze_list", "label": "Scadenze", "at": at},
+            {"client": "webui", "kind": "tool", "ref": "deadlines_list", "label": "Scadenze", "at": at},
             {"client": "webui", "kind": "page", "ref": "/p/kairos/scadenze", "label": "Scadenze", "at": at}]})
         a = api("metis", "GET", "api/metis/adesso", query={"client": "webui"})
         s = api("metis", "GET", "api/metis/scopri", query={"limit": 20})

@@ -1,4 +1,4 @@
-"""Navigation cards (docs/work/2026-10-23-telegram-da-zero §5.1–5.4): Home, Oggi, Aree, area card, all actions,
+"""Navigation cards (docs/work/2026-10-23-telegram-from-scratch §5.1–5.4): Home, Oggi, Aree, area card, all actions,
 Notifiche, Impostazioni. One live navigation message per chat, edited in place; opening a new one collapses the old.
 
 Callback data (≤ 64 bytes, short ids from ``store``):
@@ -134,7 +134,7 @@ def home(chat_id) -> None:
         lines.append((tr("• 1 notification to see") if waiting == 1 else tr("• {0} notifications to see", waiting)))
     lines.append(ui.note(tr("Write what you need, or use the buttons below.")))
     from hestia_common.i18n import identity_now
-    owner = identity_now().get("owner") or ""          # how he asked to be called (docs/work/2026-11-17-nome-dei-client)
+    owner = identity_now().get("owner") or ""          # how he asked to be called (docs/work/2026-11-17-client-names)
     html = ui.card(tr("Hi, {0}", owner) if owner else tr("Hi"), lines, subtitle=_today_words())
     core.bot.send_message(chat_id, html, parse_mode="HTML", reply_markup=reply_keyboard(menu),
                           disable_web_page_preview=True)
@@ -144,7 +144,7 @@ def home(chat_id) -> None:
 
 def oggi(chat_id, message_id: int | None = None) -> None:
     menu = model.current()
-    parts: list[str] = [ui.title_line(tr("Today — {0}", _today_words().lower()), marker=_emoji(menu, "giornata"))]
+    parts: list[str] = [ui.title_line(tr("Today — {0}", _today_words().lower()), marker=_emoji(menu, "day"))]
     for name in menu.today.get("tools") or []:
         tool = catalog.get(name)
         if not tool:
@@ -186,7 +186,7 @@ def aree(chat_id, message_id: int | None = None) -> None:
         lines.append(ui.note(tr("Often used")))
         rows += ui.grid([ui.button(menu.label(n), f"t:{store.sid(n)}") for n in frequent])
     rows += ui.grid([ui.button(a.button_text, f"n:a:{a.key}", icon=a.icon) for a in menu.areas
-                     if a.key != "altro" or a.sections])
+                     if a.key != "other" or a.sections])
     place(chat_id, ui.card(tr("Areas"), lines), ui.keyboard(rows), message_id)
 
 
@@ -276,10 +276,10 @@ def notifiche(chat_id, message_id: int | None = None) -> None:
     if not lines:
         lines.append(ui.note(tr("Nothing new.")))
     menu = model.current()
-    if menu.area("notifiche"):
+    if menu.area("notifications"):
         rows.append([ui.button(tr("Automatic alerts ›"), "n:a:notifiche")])
     rows.append([ui.button(tr("Refresh"), "n:ntf")])
-    place(chat_id, ui.card(tr("Notifications"), lines, marker=_emoji(menu, "notifiche")), ui.keyboard(rows), message_id)
+    place(chat_id, ui.card(tr("Notifications"), lines, marker=_emoji(menu, "notifications")), ui.keyboard(rows), message_id)
 
 
 def render_when(value: Any) -> str:

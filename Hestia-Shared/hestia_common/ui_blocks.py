@@ -1,4 +1,4 @@
-"""Components inside chat answers (Cindy idea 9, dossier docs/work/2026-10-24-tutto-brainstorm-cindy).
+"""Components inside chat answers (Cindy idea 9, dossier docs/work/2026-10-24-whole-brainstorm-cindy).
 
 A capable model may put, in its WebUI answer, a fenced block ``hestia-ui`` with **one JSON object per line**; each
 line is a component the WebUI draws with its own kit (``hxk-*``, stroke icons, theme tones — never emoji, never

@@ -108,7 +108,7 @@ Single database gateway.
 - Exposes generic search/filter/query APIs.
 - Vector search (memories, documents, entities) ranks inside Postgres with pgvector and returns only the top rows;
   no vector is scored in Python and no second vector store exists (LEANN evaluated 2026-11-06 and not adopted,
-  `docs/work/2026-11-06-ricerca-memorie-in-db`).
+  `docs/work/2026-11-06-memory-search-in-db`).
 - Stores **subscriptions** and **dispatch logs** for proactive notifications.
 - Exposes standardized maintenance reconcile routes (`/api/module/maintenance/reconcile` and alias `/api/maintenance/reconcile`) for assistant-triggered archive hygiene tasks.
 - **Backup** (2026-10-21, `docs/work/2026-10-20-backup-drive`): encrypted `pg_dump` of the whole database to
@@ -121,11 +121,11 @@ Single database gateway.
 ### Hestia-Oracle 🧠
 Conversational reasoning layer with unified agentic tool calling.
 - **Single tool-calling path:** all Hub commands + domain tools + memory tools flow through one ReAct agent loop (no separate pre-check or heuristic routing).
-- **Visible thinking:** emits `thinking` NDJSON events during the agent loop (reasoning, tool_call, tool_result) and a `tool.summary` signal after the answer. A `reasoning` frame is sent only when the model returned reasoning text, and clients title the block by what it holds: «Ragionamento» with at least one reasoning frame, «Strumenti usati» with tool frames alone (`docs/work/2026-11-11-ragionamento-vuoto`).
+- **Visible thinking:** emits `thinking` NDJSON events during the agent loop (reasoning, tool_call, tool_result) and a `tool.summary` signal after the answer. A `reasoning` frame is sent only when the model returned reasoning text, and clients title the block by what it holds: «Ragionamento» with at least one reasoning frame, «Strumenti usati» with tool frames alone (`docs/work/2026-11-11-empty-reasoning`).
 - **Memory tools:** `memory.save` and `memory.search` are first-class agent loop tools — the LLM decides when to persist or recall facts. Outside the chat (Telegram, site, other AIs) the doors are `memory_note` / `memory_recall` only.
-- **One tool per job:** two tools that do the same thing confuse the model; a double is removed, its endpoint stays (other modules call endpoints through Hub, not tools). Dossier `docs/work/2026-11-14-doppioni-strumenti`.
+- **One tool per job:** two tools that do the same thing confuse the model; a double is removed, its endpoint stays (other modules call endpoints through Hub, not tools). Dossier `docs/work/2026-11-14-duplicate-tools`.
 - **Single classify call:** mode + domain + action_intent detected in one LLM call (no separate action intent detection).
-- **Operating mode** `oracle.operating_mode` (dossier `docs/work/2026-11-06-moduli-come-agenti`): `classic` (classifier + one loop) or `agents` — each module is a specialist agent inside Oracle (its `when_to_use`, `manual`, only its tools, its use case `agent.<module>`); the main brain sees one `agent_<module>(task)` tool per module, no classifier. Reasoning stays in Oracle; modules only declare `when_to_use` + `manual` + `title` and their tools. Serial or parallel agents = the LLM bus workers. Clients get the standard `agent` frame.
+- **Operating mode** `oracle.operating_mode` (dossier `docs/work/2026-11-06-modules-as-agents`): `classic` (classifier + one loop) or `agents` — each module is a specialist agent inside Oracle (its `when_to_use`, `manual`, only its tools, its use case `agent.<module>`); the main brain sees one `agent_<module>(task)` tool per module, no classifier. Reasoning stays in Oracle; modules only declare `when_to_use` + `manual` + `title` and their tools. Serial or parallel agents = the LLM bus workers. Clients get the standard `agent` frame.
 - Handles chat sessions and long-term preferences via background memory extraction as safety net.
 - Uses Hub discovery + module tools for domain retrieval. Agent loop handles up to 25 turns with early exit for simple tasks.
 - Compiles user intents into generic subscription requests written to Archive.
@@ -182,7 +182,7 @@ Provider access model (single entry point):
   `themis.personal.places` (Casa, Lavoro, Palestra…). Modules read weather only through Hub
   (`hestia_common.weather_client`): Wardrobe (suggestions, packing), Chronos (calendar chips, `outdoor` needs),
   Hercules (outdoor activities); the daily recap gets «Domani a Casa» from Hecate's recap piece. Hecate also ensures module-owned secondary calendars
-  (`POST /api/gateway/calendar/calendars`, e.g. «Allenamenti»). Dossier `docs/work/2026-10-20-meteo-hecate`.
+  (`POST /api/gateway/calendar/calendars`, e.g. «Allenamenti»). Dossier `docs/work/2026-10-20-weather-hecate`.
 - Provider auth material (token.json, credentials.json, refresh tokens, service-account JSON) belongs in Hecate or its host-side setup flow, not in Chronos.
 - Google OAuth uses loopback redirect + PKCE (the old OOB flow is blocked by Google since 2023). Setup and troubleshooting: `Hestia-Hecate/hestia-hecate.md` → *Google setup*. From the phone: ask Telegram "collega Google Calendar", open the link, paste back the final `localhost` URL.
 
@@ -193,7 +193,7 @@ Host-side shared web fetch gateway.
 - Registers into Hub as `atlas` so callers can route through Hub (`/api/route/atlas/...`).
 
 ### Hestia-Telegram 💬
-Telegram client: chat with Oracle and **every assistant function** (SPEC `docs/work/2026-10-23-telegram-da-zero`).
+Telegram client: chat with Oracle and **every assistant function** (SPEC `docs/work/2026-10-23-telegram-from-scratch`).
 - Menus are configuration: defaults (data) + module hints (`telegram_group`, `telegram: {section, primary, summary,
   label}`) + Themis `telegram.menu.layout`; bottom keyboard Oggi · Aree · Notifiche · Impostazioni, 8-entry `/` menu,
   area cards, guided actions built from each tool's input schema (confirmation for writes, red «Elimina» for
@@ -234,14 +234,14 @@ Bidirectional calendar integration gateway (port 8008) **and the assistant's own
   else at the end of the range; the run records `flex {from, at, reason}`. **Standard activities:** every rule a
   module declares is listed by `GET /api/agenda/standard` with its state (eliminata, fallita, in pausa, modificata,
   attiva); `POST /api/agenda/standard/{key}/restore` puts the module's default back in one click (WebUI page
-  «Attività standard», tools `agenda_standard`, `agenda_standard_ripristina`).
+  «Attività standard», tools `agenda_standard`, `agenda_standard_restore`).
 - **Assistant presence:** the assistant's general state (Sveglio, In attesa, Non disturbare, Pisolino, Sonno
   profondo + overlays Occupato, Sto mangiando, Stanco). Signals → data-defined states (Themis
   `chronos.presence.states`) → effects (`work.light`, `work.heavy`, `llm.claude`, `notify.level`, `chat.style`).
   Night = agenda window `assistant.sleep`. **Oracle offline** (Oracle down past `argus.oracle.grace`): Argus sets
   signal `oracle.offline` → overlay «⏳ Non disponibile» (`chat.reply = queued`) + one Hermes notice; chat clients
   queue what Oracle cannot take in Archive (`/api/chat-queue`) and answer it when Chronos says Oracle is back
-  (`capabilities.chat_queue_drain`), each chat in one turn (`queued`: the model decides how to answer), then Chronos runs the «Mentre non c'ero» catch-up. Only fallback models left → overlay «Limitato» (`oracle.limited`); none left = «Non disponibile». Argus immune system: a module down for long is restarted via Hephaestus `/api/hephaestus/restart` up to `argus.repair.max_restarts` times, then one notice; incidents persist in Archive as the «Registro». Questions from the assistant (tool `ask_user`, `question` frame `ask_…`): the answer comes back as the next chat turn (`resume`), never a paused thread. A new owner message closes the session's open questions (an answer by voice or typed). Outside a chat a module asks with a Hermes notification `_question` (same kinds, same card on every client, first answer wins, answer routed to the module); routines forward the assistant's questions this way (dossier `docs/work/2026-10-30-domande-nelle-notifiche`). SPEC `docs/work/2026-10-19-oracle-offline` (v3). Writing while the assistant answers (dossier `docs/work/2026-11-18-problemi-del-test` B): clients keep one answer at a time per chat; texts written meanwhile wait and go together as the next turn, «Add now» hands one to the running answer (Oracle `POST /api/chat/steer`, read by the chat agent loop at its next step, signal `chat.steer_taken`; not taken = sent next). WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
+  (`capabilities.chat_queue_drain`), each chat in one turn (`queued`: the model decides how to answer), then Chronos runs the «Mentre non c'ero» catch-up. Only fallback models left → overlay «Limitato» (`oracle.limited`); none left = «Non disponibile». Argus immune system: a module down for long is restarted via Hephaestus `/api/hephaestus/restart` up to `argus.repair.max_restarts` times, then one notice; incidents persist in Archive as the «Registro». Questions from the assistant (tool `ask_user`, `question` frame `ask_…`): the answer comes back as the next chat turn (`resume`), never a paused thread. A new owner message closes the session's open questions (an answer by voice or typed). Outside a chat a module asks with a Hermes notification `_question` (same kinds, same card on every client, first answer wins, answer routed to the module); routines forward the assistant's questions this way (dossier `docs/work/2026-10-30-questions-in-notifications`). SPEC `docs/work/2026-10-19-oracle-offline` (v3). Writing while the assistant answers (dossier `docs/work/2026-11-18-real-test-problems` B): clients keep one answer at a time per chat; texts written meanwhile wait and go together as the next turn, «Add now» hands one to the running answer (Oracle `POST /api/chat/steer`, read by the chat agent loop at its next step, signal `chat.steer_taken`; not taken = sent next). WebUI badge shows what the state changes and its history (popover drawn over the page, not clipped by the sidebar). Every user chat counts as activity (Oracle pings with the chat's `client` or `notify_target`, WebUI included). Client: `hestia_common.presence_client`; storage in Archive.
 - Unified CRUD API over Google Calendar and Microsoft Outlook simultaneously.
 - `target_providers: []` in a request writes to all configured providers at once.
 - Provider failures are isolated per-provider and returned as structured error results.
@@ -273,7 +273,7 @@ System health and log intelligence monitor.
 - Sole monitoring authority for health/log anomaly detection.
 - Aggregates service health and logs via Hub monitor APIs.
 - Emits remediation intents when auto-fix policy allows.
-- Recurring errors and recurring `[🔄]` fallback lines become Forge proposals with a plain `title` and their `origin` (kind, area, count, window, sample line): nothing is declared in advance, what keeps falling back gets fixed (dossier `docs/work/2026-11-18-problemi-del-test` F).
+- Recurring errors and recurring `[🔄]` fallback lines become Forge proposals with a plain `title` and their `origin` (kind, area, count, window, sample line): nothing is declared in advance, what keeps falling back gets fixed (dossier `docs/work/2026-11-18-real-test-problems` F).
 - Does not mutate source code or execute code changes directly.
 
 ### Hestia-Hephaestus 🔧
@@ -307,8 +307,8 @@ Continuous improvement organ — dataset curation, benchmark evaluation, LoRA tr
 - **Owns the usage log** (wave 6): clients push taps (`POST /api/metis/usage`, Archive `metis-store`); «Adesso»
   (`GET /api/metis/adesso`: agenda + habits + recents + ideas of use case `metis.adesso` written by agenda jobs, never
   at each open) and «Scopri» (`GET /api/metis/scopri`: catalog tools never or rarely used). Telegram and WebUI read
-  the same lists; tools `metis_adesso`, `metis_scopri`.
-- **Owns the training dataset** (dossier `docs/work/2026-10-30-dataset-allenamento`): Oracle pushes one trace per
+  the same lists; tools `metis_now`, `metis_discover`.
+- **Owns the training dataset** (dossier `docs/work/2026-10-30-training-dataset`): Oracle pushes one trace per
   owner turn (`POST /api/metis/traces`: prompt, tool calls and results, answer); Metis keeps it in Archive
   `dataset-store` with automatic signals; votes join on `interaction_id` = trace_id. Rule: a conversation marked
   `training_off` or deleted never stays in the dataset; the only thing that leaves Hestia is the nightly review
@@ -404,14 +404,14 @@ calendar with stable keys, owner's edits win), likes, gift ideas the assistant n
 and «senti …» notices (agenda `hera.daily` + Hermes). Rows in Archive `people-store`. Details: `Hestia-Hera/hestia-hera.md`.
 
 ### Hestia-Kairos ⏳
-Deadlines module «Scadenze» (port 19028, `scadenze_*` tools): bills, insurance, car tax, inspection, documents,
+Deadlines module «Scadenze» (port 19028, `deadlines_*` tools): bills, insurance, car tax, inspection, documents,
 subscriptions with recurrence, lead time and advice (Oracle `kairos.consiglio`), mirrored as agenda events; mails by
 push (Iris `kairos:mail`) only **propose** a deadline (Hermes card); «Fra N giorni» pauses the notice and then reminds
 again. Rows in Archive `deadlines-store`. Details:
 `Hestia-Kairos/hestia-kairos.md`.
 
 ### Hestia-Psyche 🙂
-Mood module «Umore» (port 19029, `mood_*` tools, dossier `docs/work/2026-10-30-diario-umore`): check-ins of mood,
+Mood module «Umore» (port 19029, `mood_*` tools, dossier `docs/work/2026-10-30-mood-diary`): check-ins of mood,
 energy and stress with words and causes, from a tap, a tool or **Oracle's quiet capture** — when the owner says how
 he feels in chat («oggi sono stanco») Oracle, after the answer, sends it to the service declaring the Hub capability
 `mood_capture_endpoint` with no confirmation (deterministic gate first, then one short prompt, lexicon fallback;
@@ -420,27 +420,27 @@ insights are deterministic; reflection signals and weekly metrics feed Athena, w
 (Psyche reads no other module's data). Rows in Archive `mood-store`. Details: `Hestia-Psyche/hestia-psyche.md`.
 
 ### Hestia-Demeter 🥗
-Nutrition module «Alimentazione» (port 19026, `cibo_*` tools): diet, meals (kcal estimate through Oracle
+Nutrition module «Alimentazione» (port 19026, `food_*` tools): diet, meals (kcal estimate through Oracle
 `demeter.stima`, owner's numbers win), supplements and intakes; a coach of the weekly plan (supplements as slots,
 next to the workout when asked). Rows in Archive `food-store`. Details: `Hestia-Demeter/hestia-demeter.md`.
 
 ### Hestia-Lares 💡
-House module «Casa» (port 19024, `casa_*` tools): the only caller of Home Assistant (`LARES_HA_URL`/`LARES_HA_TOKEN`),
+House module «Casa» (port 19024, `home_*` tools): the only caller of Home Assistant (`LARES_HA_URL`/`LARES_HA_TOKEN`),
 websocket push of state changes into a mirror, commands, scenes, quick actions (Archive `home-store`), the owner's
 person entity → presence signal `home.present`. Details: `Hestia-Lares/hestia-lares.md`.
 
 ### Hestia-Calliope 📄
-Documents module «Documenti» (port 19027, API `/api/office`, `documento_*` tools): HTML draft → PDF / Word / Excel
+Documents module «Documenti» (port 19027, API `/api/office`, `document_*` tools): HTML draft → PDF / Word / Excel
 with three themes, reopened and checked before delivery; files in Archive blobs, records in `office-store`.
 Details: `Hestia-Calliope/hestia-calliope.md`.
 
 ### Hestia-Apollo 🎨
-Images module «Immagini» (port 19022, `immagine_*` tools): the only caller of image generators (remote ComfyUI,
+Images module «Immagini» (port 19022, `image_*` tools): the only caller of image generators (remote ComfyUI,
 `APOLLO_COMFYUI_URL`); flows per purpose uploaded by the owner, one job worker woken by new jobs, ComfyUI websocket,
 images in Archive blobs, `callback` push to the requester or a Hermes notice. Details: `Hestia-Apollo/hestia-apollo.md`.
 
 ### Hestia-Aphrodite 🌸
-Appearance module «Aspetto» (port 19023, `aspetto_*` tools): decides the look of each client (today's special
+Appearance module «Aspetto» (port 19023, `look_*` tools): decides the look of each client (today's special
 moment, dated profiles, holidays, season), pets, per-client choice (`auto` off = standard); pictures asked to Apollo;
 clients read `GET /api/appearance/now`. Rows in Archive `appearance-store`. Details: `Hestia-Aphrodite/hestia-aphrodite.md`.
 
@@ -452,7 +452,7 @@ with generic constraints), never when. **Chronos** places them in the free time 
 the rest of the week on pushed events (`/api/agenda/coach/report`, calendar sync, chat) and sends the weekly message
 via Oracle (text) and Hermes (delivery). Chronos reads no domain words; a new coach = one router + the tag.
 Needs tagged `outdoor` are kept out of rainy or dark hours (Hecate forecast at Casa; none = no filter).
-Dossier `docs/work/2026-10-20-coach-di-ogni-tipo`.
+Dossier `docs/work/2026-10-20-coach-of-every-kind`.
 
 ### Hestia-Hephaestus (Module Execution Role)
 Although Hephaestus has core safety responsibilities, it operates as an execution organ for remediation and controlled change workflows.
@@ -509,7 +509,7 @@ Although Hephaestus has core safety responsibilities, it operates as an executio
    - Themis = settings (declared by modules, stored by Archive, changed by the user; the assistant only proposes).
    Multiple services must not duplicate the same responsibility in parallel without an explicit contract reason.
 
-12. **Origin and authority of a turn (`hestia_common.origin`, dossier `docs/work/2026-10-24-tutto-brainstorm-cindy`):**
+12. **Origin and authority of a turn (`hestia_common.origin`, dossier `docs/work/2026-10-24-whole-brainstorm-cindy`):**
    whoever starts an assistant turn says so in `X-Hestia-Origin: <kind>[:<ref>]`, set by the caller's code, never by
    the model. `utente` (the owner's client, or `esterno` = an external AI through Hestia-MCP) may do anything;
    `routine` (a Chronos rule) may write but not delete; `autonomo` (a module on its own) may only propose, notify
@@ -602,7 +602,7 @@ Source folders named like a generic `.gitignore` rule (`downloads/`, `build/`, `
 1. Assistant-executable commands must be discoverable from Hub (`/api/discovery/commands`) with complete metadata.
    Hub's discovery is read only by Hestia-MCP: **clients list and run tools only through Hestia-MCP `/mcp`**
    (`hestia_common.mcp_client`, WebUI `HubClient.McpListToolsAsync`), never with their own resolver
-   (`docs/work/2026-10-18-moduli-core-e-mcp-esterno` §B2).
+   (`docs/work/2026-10-18-core-modules-and-external-mcp` §B2).
    A tool reaches external AIs only if its module adds `"external"` to `clients` (nothing leaves by default; empty
    or `*` is not enough); the module receives `X-Hestia-Access: <access name>` on such calls.
    Tool names of domain modules are `<domain>_<verb>` in English (`fitness_log_sets`, `selfcare_today`,
@@ -637,7 +637,7 @@ Source folders named like a generic `.gitignore` rule (`downloads/`, `build/`, `
    Wardrobe 50s, Plutus 60s, Kairos 70s, Demeter 80s, Hera 90s, then — the hundreds 100–190 being core — Calliope 200s,
    Apollo 210s, Aphrodite 220s, Lares 230s, Psyche 240s; a new module takes the next free one). Core/system modules declare `kind="core"` and take the
    hundreds (Hub 100, Argus 110, Oracle 120, Athena 130, Hermes 140, Chronos 150, Themis 160, Hephaestus 170,
-   Metis 180, Hestia-MCP 190); the WebUI groups them under *Sistema* and builds a ready-made *Sistema* dashboard from their `auto` widgets (Home takes the domain ones); Hub, which never registers with itself, folds its own manifest into the catalog and answers its plugin routes locally (`docs/work/2026-10-18-moduli-core-e-mcp-esterno/`). Module notifications carry `_link: {module, page}` so a
+   Metis 180, Hestia-MCP 190); the WebUI groups them under *Sistema* and builds a ready-made *Sistema* dashboard from their `auto` widgets (Home takes the domain ones); Hub, which never registers with itself, folds its own manifest into the catalog and answers its plugin routes locally (`docs/work/2026-10-18-core-modules-and-external-mcp/`). Module notifications carry `_link: {module, page}` so a
    client can open the plugin page. The WebUI shell itself also talks to modules only through these plugin doors
    (`PluginsService.call`): usage taps and «Adesso»/«Scopri» via Metis, the look of now via Aphrodite, Web Push
    keys and subscriptions via Hermes `/api/ui/push/*`; a suggested tool opens on the Hestia-MCP *Comandi* page
@@ -653,7 +653,7 @@ Source folders named like a generic `.gitignore` rule (`downloads/`, `build/`, `
    short signals + weekly metrics with `hestia_common.signals_client` (Archive `signals-store`, on write + daily agenda
    job `<module>.signals`). Athena reads only signals (never raw data), links weekly series of different areas and
    asks details via `topic`; its life observations reach the user only in the daily recap («Da tenere d'occhio»).
-   System health is a separate Athena track. `docs/work/2026-10-20-riflessione-a-livelli/`.
+   System health is a separate Athena track. `docs/work/2026-10-20-layered-reflection/`.
 6. **Module files**: bytes (photos, attachments) go to Archive `/api/blobs` (`owner_module`, deduplicated by sha256);
    the module keeps the blob ids in its own rows and serves images to clients as `{mime, data_b64}`.
 7. **Chat attachments for a module**: a module that can take a file sent in chat declares in its Hub capabilities
@@ -670,7 +670,7 @@ Source folders named like a generic `.gitignore` rule (`downloads/`, `build/`, `
    next[], note}` or `{module, empty: true}` (plain facts, never an LLM call) with capability `recap_endpoint`
    (`hestia_common.recap.recap_router`). Athena collects every piece through Hub, Oracle writes one text
    (`athena.recap`, deterministic list as fallback), Hermes delivers it; a quiet day sends nothing. The time is the
-   agenda job `athena.recap.evening` (flexible 20:00–23:30). `docs/work/2026-10-20-recap-giornaliero/SPEC.md` §3.2.
+   agenda job `athena.recap.evening` (flexible 20:00–23:30). `docs/work/2026-10-20-daily-recap/SPEC.md` §3.2.
 
 ## Governance Automation (Mandatory)
 
@@ -712,16 +712,16 @@ Applies to every user-facing Telegram delivery path (chat replies, tool results,
    `capabilities.notify_endpoint` on Hub (contract `ClientNotifyRequest` in swagger). Hermes never hardcodes a
    client; nobody else sends to the user's clients.
 11. **Document replies**: when Oracle responds to a file attachment, the reply follows the same NDJSON stream contract as text chat. Status frames show as typing indicators; the `final` frame is rendered as HTML and split by `build_chat_messages()`.
-12. **Chat reactions** (dossier `docs/work/2026-11-06-hestia-viva`): Oracle's `reaction` frame is Hestia's emoji on the owner's message; clients that can show reactions draw it (Telegram natively), and send the owner's reactions to her messages to Oracle `POST /api/chat/reaction`. Chat reactions are real emoji (chat content); UI chrome keeps stroke icons. A spoken turn (live voice, voice note answered aloud) sends `spoken: true`.
-14. **Name and proactivity** (dossier `docs/work/2026-11-12-identita-e-proattivita`): the assistant's name, she/he and the owner's name are personal settings (`themis.personal.*`); prompts that speak to the owner use the tokens of `hestia_common.identity`, never a fixed name. The assistant may write first: Athena decides when and why (window `athena.talk`, `athena.talk.max_per_day`), Oracle writes (`/api/chat/opener`), Hermes delivers (`_chat: true`, shown as chat text, never retracted). Life observations still reach the owner only in the evening recap. **Proof before proposals, no dice** (dossier `docs/work/2026-11-13-prima-osserva-poi-propone`): Athena proposes an improvement or a setting change only after days of observation and the same finding on several different days (`athena.evidence.*`; faults and «Pensa ora» never wait), and she writes first when her drive to talk (silence, things to say, answers received, how long she has known the owner) reaches `athena.talk.eagerness`, never at a random or fixed time. The owner sees both in the existing page Pensieri (card «Sta raccogliendo prove» in Sistema, tab «Ti scrive»): what a module shows the owner is in the owner's language, the hidden lines for the model never leave the module.
-13. **One identity, one composer** (dossiers `2026-11-06-hestia-viva`, `2026-11-12-prompt-ogni-situazione`): `prompt_config.system_identity()` (persona + style + language rule) is the system prompt of every path that speaks to the owner: chat in any mode, tool calling on any provider, the external agent, the assistant inside another AI, and texts a module asks for with `voice: true` on `/api/llm/generate`. No prompt may give the model another identity or add those blocks again; tool rules join only where the turn has tools. A module that writes to the owner sends what to say and the data, never its own «Sei …». **Oracle does not know the client**: the answer format (Telegram HTML, Markdown, speech) is sent by the client in `client_instructions`. **Hidden text is English** (prompts, labels, injected context); the answer follows the language of the owner's latest message, and what she writes on her own (notifications, recaps, the first message, formatted results) follows the one personal setting `themis.personal.language` (`{owner_language}`; a module prompt never names a language, dossier `2026-11-14-lingua-personale`). **Backend English, people texts translated** (dossier `2026-11-14-backend-inglese`): tool and field descriptions, `response_prompt`, module manuals and every internal prompt are English in the code; the fixed texts a person reads come from `hestia_common/locales/<lang>/` through `hestia_common.i18n`, never from the model-facing description. Fixed texts in code are written once in English and pass through `hestia_common.i18n.t` (imported as `tr`): the English source is the key of `locales/it/messages.json`, a missing translation shows the source (rule 15); a module-level constant is translated where it is used. Settings are translated once, where Themis serves them (`settings_client.translated`); tool texts fall back lang → English → Italian; every module that shows fixed texts calls `settings.follow_personal()`; error `detail`s, notices and cards of every module are fixed texts too (technical strings and text for the model never are). The WebUI and every plugin use the same catalog: `index.html` loads `/api/webui/i18n.js` (Themis `/api/settings/i18n`) before any bundle, the shell writes `tr('Testo')` / `{{ 'Testo' | tr }}`, a plugin `tr` from `@hestia/webui-sdk`. Languages: Italian and English. The standard for every module (examples, gate `tools/governance/check_i18n.py`, how to add a language): `docs/LANGUAGES.md`. **No Italian in the code** (owner 2026-11-19): ids, tool names, routes, setting keys, stored values, comments and logs are English too; the words a parser looks for in the owner's messages live in `locales/<lang>/words.json` (`i18n.words`), gate `tools/governance/check_english.py` (a baseline that only goes down, to zero). Modes change only the reasoning: Rapida off, Pensata on, CoT deep.
-15. **All code English, one catalog** (dossier `docs/work/2026-11-14-backend-inglese` v2.0, Marko 2026-11-16): prompts,
+12. **Chat reactions** (dossier `docs/work/2026-11-06-hestia-alive`): Oracle's `reaction` frame is Hestia's emoji on the owner's message; clients that can show reactions draw it (Telegram natively), and send the owner's reactions to her messages to Oracle `POST /api/chat/reaction`. Chat reactions are real emoji (chat content); UI chrome keeps stroke icons. A spoken turn (live voice, voice note answered aloud) sends `spoken: true`.
+14. **Name and proactivity** (dossier `docs/work/2026-11-12-identity-and-proactivity`): the assistant's name, she/he and the owner's name are personal settings (`themis.personal.*`); prompts that speak to the owner use the tokens of `hestia_common.identity`, never a fixed name. The assistant may write first: Athena decides when and why (window `athena.talk`, `athena.talk.max_per_day`), Oracle writes (`/api/chat/opener`), Hermes delivers (`_chat: true`, shown as chat text, never retracted). Life observations still reach the owner only in the evening recap. **Proof before proposals, no dice** (dossier `docs/work/2026-11-13-observe-then-propose`): Athena proposes an improvement or a setting change only after days of observation and the same finding on several different days (`athena.evidence.*`; faults and «Pensa ora» never wait), and she writes first when her drive to talk (silence, things to say, answers received, how long she has known the owner) reaches `athena.talk.eagerness`, never at a random or fixed time. The owner sees both in the existing page Pensieri (card «Sta raccogliendo prove» in Sistema, tab «Ti scrive»): what a module shows the owner is in the owner's language, the hidden lines for the model never leave the module.
+13. **One identity, one composer** (dossiers `2026-11-06-hestia-alive`, `2026-11-12-prompt-every-situation`): `prompt_config.system_identity()` (persona + style + language rule) is the system prompt of every path that speaks to the owner: chat in any mode, tool calling on any provider, the external agent, the assistant inside another AI, and texts a module asks for with `voice: true` on `/api/llm/generate`. No prompt may give the model another identity or add those blocks again; tool rules join only where the turn has tools. A module that writes to the owner sends what to say and the data, never its own «Sei …». **Oracle does not know the client**: the answer format (Telegram HTML, Markdown, speech) is sent by the client in `client_instructions`. **Hidden text is English** (prompts, labels, injected context); the answer follows the language of the owner's latest message, and what she writes on her own (notifications, recaps, the first message, formatted results) follows the one personal setting `themis.personal.language` (`{owner_language}`; a module prompt never names a language, dossier `2026-11-14-personal-language`). **Backend English, people texts translated** (dossier `2026-11-14-english-backend`): tool and field descriptions, `response_prompt`, module manuals and every internal prompt are English in the code; the fixed texts a person reads come from `hestia_common/locales/<lang>/` through `hestia_common.i18n`, never from the model-facing description. Fixed texts in code are written once in English and pass through `hestia_common.i18n.t` (imported as `tr`): the English source is the key of `locales/it/messages.json`, a missing translation shows the source (rule 15); a module-level constant is translated where it is used. Settings are translated once, where Themis serves them (`settings_client.translated`); tool texts fall back lang → English → Italian; every module that shows fixed texts calls `settings.follow_personal()`; error `detail`s, notices and cards of every module are fixed texts too (technical strings and text for the model never are). The WebUI and every plugin use the same catalog: `index.html` loads `/api/webui/i18n.js` (Themis `/api/settings/i18n`) before any bundle, the shell writes `tr('Testo')` / `{{ 'Testo' | tr }}`, a plugin `tr` from `@hestia/webui-sdk`. Languages: Italian and English. The standard for every module (examples, gate `tools/governance/check_i18n.py`, how to add a language): `docs/LANGUAGES.md`. **No Italian in the code** (owner 2026-11-19): ids, tool names, routes, setting keys, stored values, comments and logs are English too; the words a parser looks for in the owner's messages live in `locales/<lang>/words.json` (`i18n.words`), gate `tools/governance/check_english.py` (a baseline that only goes down, to zero). Modes change only the reasoning: Rapida off, Pensata on, CoT deep.
+15. **All code English, one catalog** (dossier `docs/work/2026-11-14-english-backend` v2.0, Marko 2026-11-16): prompts,
    hidden text and every source text are English; people texts are wrapped in `tr` and their Italian lives only in
    `Hestia-Shared/hestia_common/locales/it/messages.json`. Labels declared at import or registration (manifests,
    capabilities, agenda rules, settings, areas) are plain English translated at the edge (`i18n.localize`,
    `settings_client.translated`). Every module follows «Lingua» (`follow_personal()`). Standard: `docs/LANGUAGES.md`.
-14. **Name and proactivity** (dossier `docs/work/2026-11-12-identita-e-proattivita`): the assistant's name, she/he and the owner's name are personal settings (`themis.personal.*`); prompts that speak to the owner use the tokens of `hestia_common.identity`, never a fixed name. Fixed texts people read write `{assistant}` / `{g:lei|lui}` where they mean the assistant as a person (`hestia_common.i18n.t`, `settings_client.translated`, WebUI and SDK `tr`, plugin manifests): The clients call themselves with the chosen name too (tab and installed app, login, sidebar, Telegram bot name and description, push notifications, monitor messages); «Hestia» stays only for the software itself: releases and updates, the installer, the transfer/backup file format and technical module names (`Hestia-MCP`) (dossiers `docs/work/2026-11-16-nome-ovunque`, `docs/work/2026-11-17-nome-dei-client`). The message she writes first is saved in the conversation where the owner next writes, before his message (Oracle `opener_history`). The assistant may write first: Athena decides when and why (window `athena.talk`, `athena.talk.max_per_day`), Oracle writes (`/api/chat/opener`), Hermes delivers (`_chat: true`, shown as chat text, never retracted). Life observations still reach the owner only in the evening recap. **Proof before proposals, no dice** (dossier `docs/work/2026-11-13-prima-osserva-poi-propone`): Athena proposes an improvement or a setting change only after days of observation and the same finding on several different days (`athena.evidence.*`; faults and «Pensa ora» never wait), and she writes first when her drive to talk (silence, things to say, answers received, how long she has known the owner) reaches `athena.talk.eagerness`, never at a random or fixed time. The owner sees both in the existing page Pensieri (card «Sta raccogliendo prove» in Sistema, tab «Ti scrive»): what a module shows the owner is in the owner's language, the hidden lines for the model never leave the module.
-13. **One identity, one composer** (dossiers `2026-11-06-hestia-viva`, `2026-11-12-prompt-ogni-situazione`): `prompt_config.system_identity()` (persona + style + language rule) is the system prompt of every path that speaks to the owner: chat in any mode, tool calling on any provider, the external agent, the assistant inside another AI, and texts a module asks for with `voice: true` on `/api/llm/generate`. No prompt may give the model another identity or add those blocks again; tool rules join only where the turn has tools. A module that writes to the owner sends what to say and the data, never its own «Sei …». **Oracle does not know the client**: the answer format (Telegram HTML, Markdown, speech) is sent by the client in `client_instructions`. **Hidden text is English** (prompts, labels, injected context); the answer follows the language of the owner's latest message, and what she writes on her own (notifications, recaps, the first message, formatted results) follows the one personal setting `themis.personal.language` (`{owner_language}`; a module prompt never names a language, dossier `2026-11-14-lingua-personale`). **Backend English, people texts translated** (dossier `2026-11-14-backend-inglese`): tool and field descriptions, `response_prompt`, module manuals and every internal prompt are English in the code; the fixed texts a person reads come from `hestia_common/locales/<lang>/` through `hestia_common.i18n` (fallback Italian), never from the model-facing description. Fixed texts in code are written once in Italian and pass through `hestia_common.i18n.t` (imported as `tr`): the Italian source is the key of `locales/<lang>/messages.json`, a missing translation shows English, then the source; a module-level constant is translated where it is used. Settings are translated once, where Themis serves them (`settings_client.translated`); tool texts fall back lang → English → Italian; every module that shows fixed texts calls `settings.follow_personal()`; error `detail`s, notices and cards of every module are fixed texts too (technical strings and text for the model never are). The WebUI and every plugin use the same catalog: `index.html` loads `/api/webui/i18n.js` (Themis `/api/settings/i18n`) before any bundle, the shell writes `tr('Testo')` / `{{ 'Testo' | tr }}`, a plugin `tr` from `@hestia/webui-sdk`. Languages: Italian and English. The standard for every module (examples, gate `tools/governance/check_i18n.py`, how to add a language): `docs/LANGUAGES.md`. Modes change only the reasoning: Rapida off, Pensata on, CoT deep.
+14. **Name and proactivity** (dossier `docs/work/2026-11-12-identity-and-proactivity`): the assistant's name, she/he and the owner's name are personal settings (`themis.personal.*`); prompts that speak to the owner use the tokens of `hestia_common.identity`, never a fixed name. Fixed texts people read write `{assistant}` / `{g:lei|lui}` where they mean the assistant as a person (`hestia_common.i18n.t`, `settings_client.translated`, WebUI and SDK `tr`, plugin manifests): The clients call themselves with the chosen name too (tab and installed app, login, sidebar, Telegram bot name and description, push notifications, monitor messages); «Hestia» stays only for the software itself: releases and updates, the installer, the transfer/backup file format and technical module names (`Hestia-MCP`) (dossiers `docs/work/2026-11-16-name-everywhere`, `docs/work/2026-11-17-client-names`). The message she writes first is saved in the conversation where the owner next writes, before his message (Oracle `opener_history`). The assistant may write first: Athena decides when and why (window `athena.talk`, `athena.talk.max_per_day`), Oracle writes (`/api/chat/opener`), Hermes delivers (`_chat: true`, shown as chat text, never retracted). Life observations still reach the owner only in the evening recap. **Proof before proposals, no dice** (dossier `docs/work/2026-11-13-observe-then-propose`): Athena proposes an improvement or a setting change only after days of observation and the same finding on several different days (`athena.evidence.*`; faults and «Pensa ora» never wait), and she writes first when her drive to talk (silence, things to say, answers received, how long she has known the owner) reaches `athena.talk.eagerness`, never at a random or fixed time. The owner sees both in the existing page Pensieri (card «Sta raccogliendo prove» in Sistema, tab «Ti scrive»): what a module shows the owner is in the owner's language, the hidden lines for the model never leave the module.
+13. **One identity, one composer** (dossiers `2026-11-06-hestia-alive`, `2026-11-12-prompt-every-situation`): `prompt_config.system_identity()` (persona + style + language rule) is the system prompt of every path that speaks to the owner: chat in any mode, tool calling on any provider, the external agent, the assistant inside another AI, and texts a module asks for with `voice: true` on `/api/llm/generate`. No prompt may give the model another identity or add those blocks again; tool rules join only where the turn has tools. A module that writes to the owner sends what to say and the data, never its own «Sei …». **Oracle does not know the client**: the answer format (Telegram HTML, Markdown, speech) is sent by the client in `client_instructions`. **Hidden text is English** (prompts, labels, injected context); the answer follows the language of the owner's latest message, and what she writes on her own (notifications, recaps, the first message, formatted results) follows the one personal setting `themis.personal.language` (`{owner_language}`; a module prompt never names a language, dossier `2026-11-14-personal-language`). **Backend English, people texts translated** (dossier `2026-11-14-english-backend`): tool and field descriptions, `response_prompt`, module manuals and every internal prompt are English in the code; the fixed texts a person reads come from `hestia_common/locales/<lang>/` through `hestia_common.i18n` (fallback Italian), never from the model-facing description. Fixed texts in code are written once in Italian and pass through `hestia_common.i18n.t` (imported as `tr`): the Italian source is the key of `locales/<lang>/messages.json`, a missing translation shows English, then the source; a module-level constant is translated where it is used. Settings are translated once, where Themis serves them (`settings_client.translated`); tool texts fall back lang → English → Italian; every module that shows fixed texts calls `settings.follow_personal()`; error `detail`s, notices and cards of every module are fixed texts too (technical strings and text for the model never are). The WebUI and every plugin use the same catalog: `index.html` loads `/api/webui/i18n.js` (Themis `/api/settings/i18n`) before any bundle, the shell writes `tr('Testo')` / `{{ 'Testo' | tr }}`, a plugin `tr` from `@hestia/webui-sdk`. Languages: Italian and English. The standard for every module (examples, gate `tools/governance/check_i18n.py`, how to add a language): `docs/LANGUAGES.md`. Modes change only the reasoning: Rapida off, Pensata on, CoT deep.
 
 ## Logging Contract (Global Observability)
 
@@ -783,7 +783,7 @@ This creates:
 - Iris threads are grouped by normalized subject (Gmail thread ids are matched when present).
 - Hub registry is in memory: every service (Python ones, Hermes, the .NET WebUI) re-registers every 60 s, so it comes
   back after a Hub restart; the Hub shows a service offline after 180 s without a registration. Hermes and the WebUI
-  missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-banco-prova-cloud/`).
+  missed this until 2026-10-19 (found by the cloud test bench, `docs/work/2026-10-19-cloud-test-bench/`).
 
 ## Dependency and Flow Map
 

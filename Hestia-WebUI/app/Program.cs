@@ -154,7 +154,7 @@ using (var scope = app.Services.CreateScope())
             // /api/ai/mcp: the WebUI's own module tools. /mcp is the public door for external AIs.
             mcp_endpoint = $"{hestiaOpts.ServiceBaseUrl.TrimEnd('/')}/api/ai/mcp",
             module_tool_domains = new[] { "system", "settings" },
-            // Voice uses (dossier modulo-voce §5): the voice module shows them in «Motori» with chain and mode.
+            // Voice uses (dossier voice-module §5): the voice module shows them in «Motori» with chain and mode.
             voice_usecases = Hestia.WebUI.Controllers.VoiceController.UseCases,
         }
     };
@@ -206,7 +206,7 @@ app.Use(async (context, next) =>
     context.Response.Headers["Content-Security-Policy"] =
         // blob: = module plugin bundles (fetched with the token, imported as blob modules); https: images =
         // photos a module shows from the web (e.g. Scout listing photos). Client plugins SPEC §4.3.
-        // frame-ancestors: only Telegram Web/Desktop may embed the page (Mini App, docs/work/2026-10-23-telegram-da-zero);
+        // frame-ancestors: only Telegram Web/Desktop may embed the page (Mini App, docs/work/2026-10-23-telegram-from-scratch);
         // it replaces X-Frame-Options DENY, which cannot name an allowed origin.
         // media-src blob: = every sound the site plays (Ascolta, voice messages, Parla, the setup's voice try) is a
         // blob URL; without it default-src 'self' blocks them and the browser plays nothing (2026-11-07).

@@ -23,7 +23,7 @@ export const TAG_CSS: Record<string, string> = {
 };
 
 /**
- * Conversations of the owner (Cindy 26 + new sidebar, dossier 2026-10-24-tutto-brainstorm-cindy W7): list with
+ * Conversations of the owner (Cindy 26 + new sidebar, dossier 2026-10-24-whole-brainstorm-cindy W7): list with
  * search, tag and date filters, coloured tags, pinned; open one again in the chat (its messages come back and the
  * answers continue in it). Through the Oracle plugin door `/api/ui/chats*` (Archive keeps them).
  */
