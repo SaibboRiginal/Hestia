@@ -18,6 +18,10 @@
   holidays (Easter computed) > season.
 - **Per client** (`choice`, e.g. `webui`): `auto` off = the standard look (the owner's only switch), and the chosen
   pet. Clients only call `GET /api/appearance/now?client=`.
+- **Mascot** (dossier `docs/work/2026-11-18-problemi-del-test` G): three built-in mascots drawn by the clients
+  (`builtin:ember` «Little flame», `builtin:cat`, `builtin:owl`; `pet.drawn` = the key, no pictures, cannot be changed
+  or deleted) come first in `GET /pets`. A client that never chose gets `builtin:ember`; `pet: "none"` = no mascot;
+  a deleted pet falls back to the built-in one. Own pets keep their pictures (generated or uploaded).
 - **Pictures** are asked to the image module (`POST /route/apollo/api/images/jobs` with a callback to
   `/api/appearance/images/done`): a profile background, three poses per pet (idle, happy, sleep). An uploaded blob
   wins over a generated one.

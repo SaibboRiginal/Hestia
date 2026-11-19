@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { IconComponent } from '../ui';
+import { MascotComponent } from './mascot.component';
 import { AppearanceService } from '../services/appearance.service';
 
 interface Bit { left: number; delay: number; dur: number; size: number; alt: boolean; }
@@ -18,13 +19,13 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
 /**
  * Never in the way (pointer-events off): the light effect of the active graphic profile (snow, leaves, petals,
  * confetti, hearts, stars, pumpkins, a warm sun) — only on Home, and the falling bits fade out after about ten
- * seconds so reading is never disturbed (dossier 2026-10-29-revisione-e-test-frontend §6.4) — and the pet in the
- * corner on every page: a tap makes it happy, at night it sleeps (dossier 2026-10-24-tutto-brainstorm-cindy A2, W7).
+ * seconds so reading is never disturbed (dossier 2026-10-29-revisione-e-test-frontend §6.4) — and the mascot on every
+ * page (`<hx-mascot>`, dossier 2026-11-18-problemi-del-test G).
  * With «riduci movimento» or the «Animazioni: ridotte» knob the effect is off.
  */
 @Component({
   selector: 'hx-appearance-layer',
-  imports: [IconComponent],
+  imports: [IconComponent, MascotComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (onHome()) {
@@ -41,11 +42,7 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
         </div>
       }
     }
-    @if (petSrc(); as src) {
-      <button class="pet" [class.happy]="pose() === 'happy'" (click)="cheer()" [attr.aria-label]="petName()" [attr.title]="petName()">
-        <img [src]="src" alt="" draggable="false">
-      </button>
-    }`,
+    <hx-mascot />`,
   styles: [`
     .fx, .sun { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
     .fx { animation: hx-fx-life 11s var(--ease) forwards; }
@@ -66,14 +63,6 @@ const ICON_EFFECT: Record<string, string> = { hearts: 'heart', stars: 'star' };
                          100% { transform: translate(-12px, 105vh) rotate(320deg); } }
     @keyframes hx-spin-fall { from { transform: translateY(0) rotate(0); } to { transform: translateY(105vh) rotate(720deg); } }
     @media (prefers-reduced-motion: reduce) { .fx { display: none; } }
-    .pet { position: fixed; right: 14px; bottom: 96px; z-index: 6; width: 64px; height: 64px; padding: 0; border: 0; background: transparent;
-           cursor: pointer; border-radius: 50%; transition: transform var(--dur-fast) var(--ease); }
-    .pet:hover { transform: translateY(-2px); }
-    .pet:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--focus-ring); }
-    .pet.happy { animation: hx-hop .5s var(--ease) 2; }
-    .pet img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
-    @keyframes hx-hop { 50% { transform: translateY(-10px); } }
-    @media (max-width: 860px) { .pet { width: 48px; height: 48px; bottom: 84px; } }
   `],
 })
 export class AppearanceLayerComponent {
@@ -85,17 +74,4 @@ export class AppearanceLayerComponent {
   readonly bits = BITS;
   readonly effect = this.look.lightEffect;
   readonly icon = computed(() => ICON_EFFECT[this.effect()] || '');
-  private readonly happyUntil = signal(0);
-  readonly pose = computed(() => {
-    if (this.happyUntil() > 0) return 'happy';
-    const h = new Date().getHours();
-    return h >= 23 || h < 7 ? 'sleep' : 'idle';
-  });
-  readonly petName = computed(() => this.look.pet()?.name ?? '');
-  readonly petSrc = computed(() => this.look.pet() ? this.look.petImage(this.pose()) : '');
-
-  cheer(): void {
-    this.happyUntil.set(Date.now() + 2500);
-    setTimeout(() => this.happyUntil.set(0), 2500);
-  }
 }

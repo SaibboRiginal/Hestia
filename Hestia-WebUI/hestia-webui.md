@@ -147,9 +147,14 @@ Oracle and streams the NDJSON response back with proper line delimiters (Hub add
   through the Aphrodite plugin door at start, when the catalog shows the module and when the tab comes back after
   30 min. The profile accents (`accent`, `accent2`) go over the user's own theme (`ThemeService.setPalette`:
   `--accent`, `--accent-hover`, `--accent-soft`, `--accent-2`); the light effect (snow, leaves, petals, confetti,
-  hearts, stars, pumpkins, sun) is a fixed layer with no pointer events, off with *riduci movimento*; the pet sits
-  in the corner (pose `idle`, `sleep` 23–7, `happy` on tap; pictures via `host.image`). No Aphrodite = standard look.
-  Impostazioni → Personali → Aspetto shows the profile of now and links to the *Aspetto* page.
+  hearts, stars, pumpkins, sun) is a fixed layer with no pointer events, off with *riduci movimento*. The mascot
+  (`layout/mascot.component.ts`, dossier `docs/work/2026-11-18-problemi-del-test` G): built-in ones (`pet.drawn`:
+  ember, cat, owl) are inline SVG animated with CSS, pets with pictures use their poses (`host.image`). States: thinking
+  (answer being prepared, or «Parla» thinking), speaking (text streaming, read aloud, «Parla» speaking), listening
+  («Parla» listening), sleeping 23–7, happy on tap; still with reduced motion. Drag it: it docks to the nearest side,
+  place kept in `localStorage` (`hx.mascot.place`). No Aphrodite = standard look, no mascot.
+  Impostazioni → Personali → Aspetto: «Temi delle feste» (profile of now, link to *Aspetto*) and «Mascotte» (choose
+  it or none, `PUT /api/appearance/choice/webui`; also found with Ctrl+K).
 - **Web Push** (`services/push.service.ts`, `public/sw.js`): Impostazioni → Personali → Messaggi → *Notifiche su
   questo dispositivo*: VAPID key from `GET /api/ui/push/key` (Hermes door; no key = «Non ancora attive sul
   server»), `pushManager.subscribe`, `POST /api/ui/push/subscribe {subscription, device}` (device = browser + OS

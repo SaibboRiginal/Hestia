@@ -81,8 +81,19 @@ export function personalHits(query: string): Map<string, number> {
               }
               @case ('look') {
                 <div class="look">
-                  <span>@if (look.now(); as n) { Ora: <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }}{{ n.pet ? ' · ' + n.pet.name : '' }} } @else { {{ "Standard look" | tr }} }</span>
+                  <span>@if (look.now(); as n) { {{ "Now:" | tr }} <b>{{ n.profile.name }}</b>{{ n.why ? ' (' + n.why + ')' : '' }} } @else { {{ "Standard look" | tr }} }</span>
                   <a hx-btn size="sm" icon="palette" routerLink="/p/aphrodite/aspetto">{{ "Choose" | tr }}</a>
+                </div>
+              }
+              @case ('mascot') {
+                <div class="look">
+                  @if (look.hasLook()) {
+                    <select class="hx-select" [attr.aria-label]="'Mascot' | tr" (focus)="look.loadPets()" (change)="look.choosePet($any($event.target).value)">
+                      <option value="none" [selected]="!look.now()?.pet">{{ "None" | tr }}</option>
+                      @for (p of mascots(); track p.id) { <option [value]="p.id" [selected]="look.now()?.pet?.id === p.id">{{ p.name }}</option> }
+                    </select>
+                    <a hx-btn size="sm" variant="ghost" icon="plus" routerLink="/p/aphrodite/aspetto">{{ "Make your own" | tr }}</a>
+                  } @else { <span>{{ "Not available" | tr }}</span> }
                 </div>
               }
               @case ('push') {
@@ -179,6 +190,12 @@ export class PersonalSettingsComponent implements OnInit {
   notices = inject(NoticePrefsService);
   push = inject(PushService);
   look = inject(AppearanceService);
+  /** The mascots to choose from; the current one is there even before the list is loaded. */
+  readonly mascots = computed(() => {
+    const list = this.look.pets();
+    const cur = this.look.now()?.pet;
+    return cur && !list.some(p => p.id === cur.id) ? [{ id: cur.id, name: cur.name }, ...list] : list;
+  });
   private session = inject(SessionService);
   private toast = inject(ToastService);
   private dialogs = inject(DialogService);
@@ -224,7 +241,7 @@ export class PersonalSettingsComponent implements OnInit {
     on: tr('Active on this device.'), busy: tr('alt::One moment…'),
   })[this.push.state()]);
 
-  ngOnInit(): void { void this.push.refresh(); }
+  ngOnInit(): void { void this.push.refresh(); void this.look.loadPets(); }
 
   async enablePush() {
     if (await this.push.enable()) this.toast.success(tr('Notifications active on this device'));

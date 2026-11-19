@@ -14237,7 +14237,7 @@ paths:
   /api/appearance/pets:
     get:
       tags: [Aphrodite]
-      summary: "Pets"
+      summary: "Pets: the three built-in mascots drawn by the clients first (builtin:ember, builtin:cat, builtin:owl; drawn = key), then the own pets"
       servers:
         - url: http://localhost:19023
       responses:
@@ -14317,7 +14317,7 @@ paths:
         "200": {description: OK}
     put:
       tags: [Aphrodite]
-      summary: "Put choice"
+      summary: "Put choice: {auto?, pet?} — pet = a pet id or name, builtin:<key>, or none (no mascot); never chosen = builtin:ember"
       servers:
         - url: http://localhost:19023
       parameters:

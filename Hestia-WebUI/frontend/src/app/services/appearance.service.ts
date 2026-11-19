@@ -6,7 +6,8 @@ export interface AppearanceNow {
   auto: boolean;
   profile: { key: string; name: string; palette: Record<string, string>; effect: string; background?: string | null };
   why: string;
-  pet: { id: string; name: string; images: Record<string, string> } | null;
+  /** `drawn`: a built-in mascot the site draws itself (ember, cat, owl); '' = a pet with pictures. */
+  pet: { id: string; name: string; images: Record<string, string>; drawn?: string } | null;
 }
 
 const REFRESH_MS = 30 * 60_000;
@@ -53,6 +54,23 @@ export class AppearanceService {
   private apply(now: AppearanceNow | null): void {
     this.now.set(now);
     this.theme.setPalette(now?.profile.palette ?? {});
+  }
+
+  /** The mascots to choose from (built-in ones first), for Impostazioni → Personali → «Mascotte». */
+  readonly pets = signal<{ id: string; name: string; builtin?: boolean }[]>([]);
+  readonly hasLook = this.hasModule;
+
+  async loadPets(): Promise<void> {
+    if (!this.plugins.modules().has('aphrodite')) { this.pets.set([]); return; }
+    const r = await this.plugins.call<{ items?: { id: string; name: string; builtin?: boolean }[] }>('aphrodite', 'GET', '/api/appearance/pets');
+    if (r.ok) this.pets.set(r.data?.items ?? []);
+  }
+
+  /** The mascot on this site ('none' = no mascot); the look is read again so it shows at once. */
+  async choosePet(id: string): Promise<boolean> {
+    const r = await this.plugins.call('aphrodite', 'PUT', '/api/appearance/choice/webui', { body: { pet: id } });
+    if (r.ok) await this.load();
+    return r.ok;
   }
 
   /** URL of a pet pose (blob served by Aphrodite through the plugin image door), '' when the pose has no picture. */
