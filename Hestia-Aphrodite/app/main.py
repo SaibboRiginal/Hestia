@@ -144,7 +144,7 @@ def _choice(client: str = "webui", auto: bool | None = None, pet: str | None = N
     return {"saved": True, **out, "undo": undo("aspetto_scelta", client=client, auto=before["auto"], pet=before["pet"])}
 
 
-def _pet(name: str, species: str = "gatto", look_: str = "") -> dict:
+def _pet(name: str, species: str = "cat", look_: str = "") -> dict:
     p = look.save_pet({"name": name, "species": species, "look": look_})
     gen = look.generate("pet", p["id"])
     return {"saved": True, "id": p["id"], "name": p["name"], "images_asked": gen["asked"],
@@ -172,7 +172,7 @@ kit.tools([
             title="Upcoming themes", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_animale", description="Create a pet companion (name, species, look = what it looks like) and ask for its images.",
             parameters={"type": "object", "properties": {"name": S, "species": S, "look": S}, "required": ["name"]},
-            handler=lambda name, species="gatto", look="": _pet(name, species, look), title="New pet",
+            handler=lambda name, species="cat", look="": _pet(name, species, look), title="New pet",
             method="POST", clients=["telegram", "ui"], telegram_group=G, telegram={"section": "Look"}),
     MCPTool(name="aspetto_animali", description="The pets created.", parameters={"type": "object", "properties": {}},
             handler=lambda: (lambda rows: {"items": rows, "display": display(tr("Pets"), items=[

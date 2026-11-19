@@ -37,6 +37,7 @@ from core.services import stream_emitter as _stream_emitter
 from core.services import llm_bus as _llm_bus
 from core.services import llm_stats as _llm_stats
 from core.services import prefix_watch as _prefix_watch
+from core.services import steering as _steering
 from hestia_common.i18n import t as tr  # fixed texts in the owner's language
 from hestia_common.compact_output import Shaped, shape as shape_output
 
@@ -433,7 +434,20 @@ def _result_more_tool(store: dict[str, str], part_chars: int) -> ToolDefinition:
     )
 
 
-def run_agent_loop(
+def run_agent_loop(*args, **kwargs) -> tuple[str, list[str], list[dict]]:
+    """The ReAct agent loop (``_run_agent_loop``); the chat loop also takes the user's «Add now» texts
+    (``core.services.steering``) while it runs."""
+    if kwargs.get("loop_label", "chat") != "chat":
+        return _run_agent_loop(*args, **kwargs)
+    session = _llm_stats.current_session()
+    _steering.begin(session)
+    try:
+        return _run_agent_loop(*args, **kwargs)
+    finally:
+        _steering.end(session)
+
+
+def _run_agent_loop(
     user_message: str,
     history_text: str,
     preference_facts: list[str],
@@ -634,6 +648,14 @@ def run_agent_loop(
                 if _compacted is not None:
                     history_text = _compacted
 
+        if loop_label == "chat":   # «Add now»: what the user wrote meanwhile goes in before this step
+            _steers = _steering.take(_llm_stats.current_session())
+            if _steers:
+                scratchpad.append(ScratchMessage("user", _steering.note(_steers), turn))
+                logger.info("event=chat_steer_taken turn=%d count=%d", turn, len(_steers))
+                if on_thinking:
+                    on_thinking(_stream_emitter.emit_signal(
+                        "chat.steer_taken", "", {"ids": [s["id"] for s in _steers if s["id"]]}))
         prompt = _build_prompt(is_final=is_last_turn)
         if turn == 0:   # prefix watch: did the fixed part change since this conversation's previous turn?
             _sid = _llm_stats.current_session()

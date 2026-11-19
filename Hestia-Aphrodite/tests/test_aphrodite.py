@@ -60,7 +60,7 @@ def test_custom_dated_profile_and_validation(ap):
 
 def test_pet_pictures_by_push(ap):
     look, hub = ap
-    pet = look.save_pet({"name": "Miele", "species": "gatto", "look": "orange tabby"})
+    pet = look.save_pet({"name": "Miele", "species": "cat", "look": "orange tabby"})
     assert look.generate("pet", pet["id"])["asked"] == 3
     assert hub.calls[-1][3] == f"pet:{pet['id']}:sleep"
     look.image_done({"ref": f"pet:{pet['id']}:happy", "status": "done", "blob_ids": ["b9"]})
@@ -69,6 +69,23 @@ def test_pet_pictures_by_push(ap):
     look.generate("profile", "natale")
     look.image_done({"ref": "profile:natale:background", "status": "done", "blob_ids": ["b10"]})
     assert look.profile("natale")["background"] == "b10" and look.profile("natale")["builtin"] is True
+
+
+def test_drawn_mascot_by_default_and_can_be_turned_off(ap):
+    """The mascot shows without any picture (dossier 2026-11-18-problemi-del-test G)."""
+    look, _ = ap
+    assert look.now()["pet"]["drawn"] == "ember"                  # never chosen: the built-in mascot
+    assert [p["id"] for p in look.pets()][:3] == ["builtin:ember", "builtin:cat", "builtin:owl"]
+    look.set_choice("webui", pet="owl")
+    assert look.now()["pet"]["id"] == "builtin:owl"
+    look.set_choice("webui", pet="none")
+    assert look.now()["pet"] is None
+    with pytest.raises(Invalid):
+        look.delete_pet("builtin:cat")
+    pet = look.save_pet({"name": "Miele"})
+    look.set_choice("webui", pet=pet["id"])
+    look.delete_pet(pet["id"])
+    assert look.now()["pet"]["drawn"] == "ember"                  # its pet deleted: the built-in one comes back
 
 
 @pytest.mark.api

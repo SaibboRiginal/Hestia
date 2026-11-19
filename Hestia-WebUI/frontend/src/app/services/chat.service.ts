@@ -17,6 +17,8 @@ import { tr } from '../core/i18n';
 /** Status frames that only echo a cancel (the chat is already freed by `cancelStream`). */
 const STATUS_IGNORED = new Set(['Cancelled', 'Stream cancelled']);
 
+export type WaitingText = { id: string; text: string; sent?: boolean };
+
 @Injectable({ providedIn: 'root' })
 export class ChatService {
   /** Which chat this instance is: events are routed to the channel that sent last. */
@@ -32,6 +34,12 @@ export class ChatService {
   isStreaming = signal(false);
   currentStreamingId = signal<string | null>(null);
   pendingQuestion = signal<PendingQuestion | null>(null);
+  /** Written while the answer runs (dossier 2026-11-18-problemi-del-test B): sent when it ends, or «Add now»
+   *  hands one to the running answer (`sent` = asked, it disappears when the assistant takes it). */
+  waiting = signal<WaitingText[]>([]);
+  /** Session and mode of the running answer: the waiting texts go there. */
+  private stopped = false;
+  private running: { sessionId: string; mode: string; model: string; context?: string } | null = null;
   /** Where the answer to the assistant's own question goes on (same chat, mode and page context). */
   private resumeTarget: { sessionId: string; mode: string; context?: string } | null = null;
   private restored = false;
@@ -64,6 +72,8 @@ export class ChatService {
                     userMessageId?: string, spoken = false): Promise<void> {
     this.signalR.claim(this.channel);
     this.isStreaming.set(true);
+    this.running = { sessionId, mode, model, context };
+    this.stopped = false;
     this.thinkingBuffer = [];
     this.stepCounter = 0;
 
@@ -188,7 +198,52 @@ export class ChatService {
 
   /** «Stop»: the server stops the answer and the chat is free at once — never wait for a frame that may not come
    * (the server answers a cancel with a status frame, not with `stream_done`). */
+  /** Enter while the answer runs: the text waits and goes as the next message when the answer ends. */
+  queue(text: string): void {
+    const t = text.trim();
+    if (t) this.waiting.update(w => [...w, { id: uid(), text: t }]);
+  }
+
+  /** «Add now»: the running answer reads the text at its next step; if it cannot, the text stays waiting. */
+  steer(id: string): void {
+    const item = this.waiting().find(w => w.id === id);
+    if (!item || item.sent || !this.running || !this.isStreaming()) return;
+    this.waiting.update(w => w.map(x => x.id === id ? { ...x, sent: true } : x));
+    this.signalR.send({ type: 'steer', message: item.text, session_id: this.running.sessionId, id })
+      .catch(() => this.waiting.update(w => w.map(x => x.id === id ? { ...x, sent: false } : x)));
+  }
+
+  /** Take a waiting text back (it returns to the box when `edit`). */
+  unqueue(id: string): string {
+    const item = this.waiting().find(w => w.id === id);
+    this.waiting.update(w => w.filter(x => x.id !== id));
+    return item?.text ?? '';
+  }
+
+  /** The assistant took these «Add now» texts: they become the owner's bubbles above the answer being written. */
+  private steered(ids: string[]): void {
+    const taken = this.waiting().filter(w => ids.includes(w.id));
+    if (!taken.length) return;
+    this.waiting.update(w => w.filter(x => !ids.includes(x.id)));
+    const streamId = this.currentStreamingId();
+    this.messages.update(msgs => {
+      const at = streamId ? msgs.findIndex(m => m.id === streamId) : -1;
+      const bubbles: ChatMessage[] = taken.map(t => ({ id: uid(), role: 'user', content: t.text, timestamp: new Date() }));
+      return at < 0 ? [...msgs, ...bubbles] : [...msgs.slice(0, at), ...bubbles, ...msgs.slice(at)];
+    });
+  }
+
+  /** The answer ended: what waits goes as one next message (several texts = one turn, written in order). */
+  private flushWaiting(): void {
+    const items = this.waiting();
+    const target = this.running;
+    if (!items.length || !target) return;
+    this.waiting.set([]);
+    void this.sendMessage(items.map(i => i.text).join('\n\n'), target.sessionId, target.mode, target.model, target.context);
+  }
+
   cancelStream(): void {
+    this.stopped = true;
     const id = this.currentStreamingId();
     if (this.signalR.activeChannel === this.channel) this.signalR.send({ type: 'cancel' }).catch(() => {});
     if (id) this.finalizeStreaming(id, null, undefined, undefined, false, true);
@@ -260,6 +315,7 @@ export class ChatService {
       this.pendingQuestion.set(null);
     }
     this.messages.set([]);
+    this.waiting.set([]);
     this.thinkingBuffer = [];
     this.lastAssistantId = null;
   }
@@ -335,6 +391,9 @@ export class ChatService {
         if (streamId) {
           this.finalizeStreaming(streamId, null, undefined, undefined);
         }
+        // The turn is over on the server too: what was written meanwhile goes now (not after a stop: the page
+        // puts it back in the box).
+        if (!this.stopped) queueMicrotask(() => { if (!this.isStreaming()) this.flushWaiting(); });
         break;
 
       case 'status':
@@ -347,7 +406,16 @@ export class ChatService {
         break;
 
       case 'signal':
-        // Legacy machine events; the user-facing version arrives as a `notice` packet.
+        // Machine events; the user-facing version arrives as a `notice` packet. «Add now» taken: its bubbles.
+        if (event.event === 'chat.steer_taken') this.steered((event.data?.ids ?? []).map(String));
+        break;
+
+      case 'steer':
+        // Not taken (the answer was ending): it stays waiting and goes as the next message.
+        if (event.id && !event.accepted) {
+          this.waiting.update(w => w.map(x => x.id === event.id ? { ...x, sent: false } : x));
+          this.toast.show(tr('This answer cannot take it while it is being written: it goes as soon as the answer ends.'));
+        }
         break;
 
       case 'notice':

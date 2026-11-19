@@ -519,6 +519,14 @@ All interfaces consume the same event schema from Oracle:
 
 This makes UI behavior standardized: Telegram, web app, mobile app, or voice UI can all render the same lifecycle and user notifications.
 
+**«Add now» while the answer runs** (`core/services/steering.py`, dossier `docs/work/2026-11-18-problemi-del-test` B):
+`POST /api/chat/steer {session_id, text, id}` keeps a text for the chat turn of that session that is still running
+(`accepted: false` when none runs). `run_agent_loop` marks the chat loop running (`loop_label` `chat` only, not the
+module agents) and, at the start of every step, puts what arrived in the scratchpad as a `[USER]` line («USER ADDED
+WHILE YOU WORKED…») and emits the signal `chat.steer_taken {ids}`. What arrives after the last step is dropped when
+the loop ends (in memory only): the client sees it was not taken and sends it as the next message, so nothing is
+lost and nothing leaks into a later turn. Quick turns (no agent loop) refuse it the same way.
+
 ---
 
 ### Turn traces for the training dataset (dossier `docs/work/2026-10-30-dataset-allenamento`, D1)

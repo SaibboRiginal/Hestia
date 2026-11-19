@@ -78,6 +78,7 @@ export interface ThinkingMetadata {
 // ── SignalR / Server Events ───────────────────────────────────────────────
 
 export type ServerEventType =
+  | 'steer'
   | 'reaction'
   | 'queued'
   | 'queued_answer'
@@ -97,6 +98,9 @@ export type ServerEventType =
 
 export interface ServerEvent {
   type: ServerEventType;
+  /** steer frame: the browser's id of an «Add now» text and whether the running answer took it. */
+  id?: string;
+  accepted?: boolean;
   /** agent frame (Oracle operating mode «agents»): module agent at work. */
   agent_id?: string;
   module?: string;
@@ -166,7 +170,9 @@ export interface PendingQuestion {
 // ── WebSocket messages (client → server) ──────────────────────────────────
 
 export interface ClientMessage {
-  type: 'chat' | 'cancel' | 'retry' | 'question_answer';
+  type: 'chat' | 'cancel' | 'retry' | 'question_answer' | 'steer';
+  /** steer («Add now»): the browser's id of the text, given back when the assistant takes it. */
+  id?: string;
   message?: string;
   session_id?: string;
   mode?: string;

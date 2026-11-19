@@ -20,6 +20,11 @@ logger = logging.getLogger("hestia_aphrodite.service")
 
 EFFECTS = ("none", "snow", "leaves", "petals", "sun", "hearts", "confetti", "pumpkins", "stars")
 POSES = ("idle", "happy", "sleep")
+# Mascots drawn by the clients themselves (animated, no picture needed: dossier 2026-11-18-problemi-del-test G).
+# key → English name (translated when served). The default when the client never chose is the first one.
+DRAWN = {"ember": "Little flame", "cat": "Cat", "owl": "Owl"}
+DEFAULT_PET = "builtin:ember"
+NO_PET = "none"
 CLIENTS = {"webui": "Site"}
 
 
@@ -166,8 +171,8 @@ class Appearance:
     def set_choice(self, client: str, *, auto: bool | None = None, pet: str | None = None) -> dict:
         client = str(client or "webui")[:20]
         old = self.choice(client)
-        if pet:
-            self.pet(pet)
+        if pet and pet != NO_PET:
+            pet = self.pet(pet)["id"]
         data = {"auto": old["auto"] if auto is None else bool(auto), "pet": old["pet"] if pet is None else pet,
                 "updated_at": now_iso()}
         self.store.upsert("choice", client, data)
@@ -178,35 +183,47 @@ class Appearance:
         key, why = self.active() if c["auto"] else ("standard", tr("chosen by you"))
         p = self.profile(key)
         pet = None
-        if c["pet"]:
+        if c["pet"] != NO_PET:
             try:
-                pet = self.pet(c["pet"])
-            except NotFound:
-                pet = None
+                pet = self.pet(c["pet"] or DEFAULT_PET)
+            except NotFound:          # a deleted pet: the built-in mascot comes back
+                pet = self.pet(DEFAULT_PET)
         return {"client": client, "auto": c["auto"], "profile": {
             "key": key, "name": p["name"], "palette": p.get("palette") or {}, "effect": p.get("effect") or "none",
             "background": p.get("background")}, "why": why, "pet": pet and {
-            "id": pet["id"], "name": pet["name"], "images": pet.get("images") or {}}}
+            "id": pet["id"], "name": pet["name"], "images": pet.get("images") or {}, "drawn": pet.get("drawn", "")}}
 
     # ── pets ────────────────────────────────────────────────────────────────
+    @staticmethod
+    def drawn_pets() -> list[dict]:
+        """The mascots the clients draw (animated, always there, cannot be deleted)."""
+        return [{"id": f"builtin:{k}", "name": tr(v), "drawn": k, "builtin": True, "images": {}} for k, v in DRAWN.items()]
+
     def pets(self) -> list[dict]:
         self.store.refresh()
-        return sorted(self.store.items("pet"), key=lambda p: p["name"].casefold())
+        return self.drawn_pets() + sorted(self.store.items("pet"), key=lambda p: p["name"].casefold())
 
     def pet(self, ref: str) -> dict:
+        ref = str(ref or "")
+        drawn = next((p for p in self.drawn_pets() if ref in (p["id"], p["drawn"])
+                      or p["name"].casefold() == ref.casefold()), None)
+        if drawn:
+            return drawn
         self.store.refresh()
         p = self.store.data("pet", ref) or next((p for p in self.store.items("pet")
-                                                  if p["name"].casefold() == str(ref).casefold()), None)
+                                                  if p["name"].casefold() == ref.casefold()), None)
         if not p:
             raise NotFound(tr("no pet «{0}»", ref))
         return p
 
     def save_pet(self, body: dict, pid: str | None = None) -> dict:
         old = self.pet(pid) if pid else {}
+        if old.get("builtin"):
+            raise Invalid(tr("the built-in mascots cannot be changed"))
         name = str(body.get("name") or old.get("name") or "").strip()[:30]
         if not name:
             raise Invalid(tr("what is its name?"))
-        data = {"name": name, "species": str(body.get("species", old.get("species") or "gatto"))[:30],
+        data = {"name": name, "species": str(body.get("species", old.get("species") or "cat"))[:30],
                 "look": str(body.get("look", old.get("look") or ""))[:300], "images": old.get("images") or {},
                 "updated_at": now_iso()}
         for pose in POSES:                                   # an uploaded picture (blob id) wins over a generated one
@@ -218,6 +235,8 @@ class Appearance:
 
     def delete_pet(self, ref: str) -> dict:
         p = self.pet(ref)
+        if p.get("builtin"):
+            raise Invalid(tr("the built-in mascots cannot be deleted"))
         self.store.delete("pet", p["id"])
         return {"deleted": True}
 
@@ -232,6 +251,8 @@ class Appearance:
             asks.append((f"profile:{p['id']}:background", p["prompt"], "sfondo", 1536, 864))
         elif target == "pet":
             p = self.pet(ref)
+            if p.get("builtin"):
+                raise Invalid(tr("the built-in mascots are drawn by the site: no pictures to make"))
             look = f"{p['look']} " if p.get("look") else ""
             for pose, words in (("idle", "sitting calmly"), ("happy", "happy, jumping"), ("sleep", "sleeping curled up")):
                 asks.append((f"pet:{p['id']}:{pose}", f"cute small {p['species']} mascot, {look}{words}, flat "

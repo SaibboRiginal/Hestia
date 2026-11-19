@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { ButtonComponent, DialogService, IconComponent, MenuComponent, MenuItem, SpinnerComponent, ToastService } from '../../ui';
 import { ThinkingStepsComponent } from './thinking-steps.component';
 import { ChatModeComponent } from './chat-mode.component';
+import { ChatCommandsComponent } from './chat-commands.component';
 import { ChatContextComponent } from './chat-context.component';
 import { QuestionCardComponent } from './question-card.component';
 import { ChatQuickSettingsComponent } from '../settings/chat-quick-settings.component';
@@ -47,7 +48,7 @@ export function dayLabel(d: Date, now = new Date()): string {
 /** Chat with Hestia (Oracle via SignalR): streaming, reasoning, questions, attachments, feedback. */
 @Component({
   selector: 'app-chat-page',
-  imports: [TrPipe, FormsModule, ButtonComponent, IconComponent, SpinnerComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
+  imports: [TrPipe, FormsModule, ButtonComponent, ChatCommandsComponent, IconComponent, SpinnerComponent, MenuComponent, ThinkingStepsComponent, ChatQuickSettingsComponent,
             ChatModeComponent, ChatContextComponent, QuestionCardComponent, AssistantTextComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -182,11 +183,36 @@ export function dayLabel(d: Date, now = new Date()): string {
         </div>
       }
       <div class="composer hx-glass" [class.disabled]="signalR.connectionState() !== 'connected'">
+        <!-- Written while the answer runs (dossier 2026-11-18-problemi-del-test B): it goes when the answer ends,
+             or «Add now» gives it to the answer being written. -->
+        @if (chat.waiting().length) {
+          <ul class="waiting" [attr.aria-label]="'Waiting to be sent' | tr">
+            @for (w of chat.waiting(); track w.id) {
+              <li>
+                <hx-icon name="clock" [size]="14" />
+                <span class="wt" [title]="w.text">{{ w.text }}</span>
+                @if (chat.isStreaming()) {
+                  <button hx-btn variant="ghost" size="sm" [loading]="!!w.sent" [disabled]="!!w.sent" (click)="chat.steer(w.id)"
+                          [title]="'Your assistant reads it at the next step of the answer it is writing' | tr">{{ "Add now" | tr }}</button>
+                } @else {
+                  <button hx-btn variant="ghost" size="sm" icon="send" iconOnly [attr.aria-label]="'Send' | tr" (click)="sendWaiting(w.id)"></button>
+                }
+                <button hx-btn variant="ghost" size="sm" icon="edit" iconOnly [attr.aria-label]="'Edit' | tr" (click)="editWaiting(w.id)"></button>
+                <button hx-btn variant="ghost" size="sm" icon="x" iconOnly [attr.aria-label]="'alt::Remove' | tr" (click)="chat.unqueue(w.id)"></button>
+              </li>
+            }
+          </ul>
+          @if (chat.isStreaming()) { <div class="whint">{{ "It goes as soon as the answer ends." | tr }}</div> }
+        }
         @if (recording()) {
           <div class="rec" role="status">
             <span class="rdot"></span><span class="rtime">{{ duration(recSeconds()) }}</span>
             <span class="rhint" [class.cancel]="recCancel()">{{ recCancel() ? ('Release to cancel' | tr) : ('Release to send · slide left to cancel' | tr) }}</span>
           </div>
+        }
+        <!-- «/»: the commands, filtered while typing; the chosen one runs here (dossier problemi-del-test B). -->
+        @if (slashQuery() !== null) {
+          <hx-chat-commands #cmds [query]="slashQuery() ?? ''" (done)="commandDone($event)" (closed)="slashClosed = true" />
         }
         <textarea #ta [hidden]="recording()" [(ngModel)]="text" (keydown)="onKey($event)" (input)="grow()" rows="1"
                   [placeholder]="signalR.connectionState() === 'connected' ? ('Write to ' | tr) + identity.assistant() + '…' : ('Connecting…' | tr)"></textarea>
@@ -196,7 +222,8 @@ export function dayLabel(d: Date, now = new Date()): string {
           <hx-chat-mode [(mode)]="mode" />
           <div class="hx-grow"></div>
           @if (chat.isStreaming()) {
-            <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly  [attr.aria-label]="'Stop' | tr" (click)="chat.cancelStream()"></button>
+            @if (text.trim()) { <button hx-btn variant="ghost" size="sm" icon="send" iconOnly [attr.aria-label]="'Send when the answer ends' | tr" [title]="'Send when the answer ends' | tr" (click)="send()"></button> }
+            <button hx-btn variant="secondary" size="sm" icon="stop" iconOnly  [attr.aria-label]="'Stop' | tr" (click)="stop()"></button>
           } @else {
             @if (dictating()) { <span class="dhint" role="status">{{ "I'm listening: tap again to write the text" | tr }}</span> }
             <!-- One microphone, always here: a tap dictates into the box, holding it records a voice message. -->
@@ -252,6 +279,11 @@ export function dayLabel(d: Date, now = new Date()): string {
                 padding: 12px 12px 8px 16px; transition: border-color var(--dur-fast); }
     .composer:focus-within { border-color: var(--accent); }
     .composer.disabled { opacity: .7; }
+    .waiting { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .waiting li { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: var(--radius-sm);
+      background: var(--surface-2); color: var(--text-2); font-size: 13px; }
+    .waiting .wt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .whint { font-size: 12px; color: var(--text-3); margin: 0 0 6px 4px; }
     textarea { width: 100%; border: 0; outline: 0; resize: none; background: transparent; font-size: 15.5px; line-height: 1.5; max-height: 240px; color: var(--text); }
     textarea::placeholder { color: var(--text-3); }
     .tools { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
@@ -317,6 +349,23 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
   private dialogs = inject(DialogService);
   private bottom = viewChild<ElementRef<HTMLElement>>('bottom');
   private ta = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
+  private cmds = viewChild<ChatCommandsComponent>('cmds');
+  /** Esc closed the «/» list for the text in the box (it opens again when a new «/» is typed). */
+  slashClosed = false;
+
+  /** What follows «/» when the box holds only a command being typed; null = no list. */
+  slashQuery(): string | null {
+    const t = this.text;
+    if (!t.startsWith('/') || t.includes('\n') || this.recording()) { this.slashClosed = false; return null; }
+    return this.slashClosed ? null : t.slice(1);
+  }
+
+  commandDone(r: { title: string; html: string }) {
+    this.chat.addSystemReply('/' + r.title, r.html);
+    this.text = '';
+    this.slashClosed = false;
+    queueMicrotask(() => { this.grow(); this.ta()?.nativeElement.focus(); });
+  }
   voice = inject(VoiceService);
   live = inject(LiveVoiceService);
 
@@ -467,13 +516,37 @@ export class ChatPageComponent implements AfterViewChecked, OnDestroy {
 
   send() {
     const t = this.text.trim();
-    if (!t || this.chat.isStreaming()) return;
-    void this.chat.sendMessage(t, this.session.sessionId() || '', this.mode(), 'generic');
+    if (!t) return;
+    // While the answer runs the text waits (Enter queues): it goes when the answer ends, or with «Add now».
+    if (this.chat.isStreaming()) this.chat.queue(t);
+    else void this.chat.sendMessage(t, this.session.sessionId() || '', this.mode(), 'generic');
     this.text = '';
     queueMicrotask(() => this.grow());
   }
 
+  /** Stop: what was waiting goes back in the box, nothing is sent on its own. */
+  stop() {
+    this.chat.cancelStream();
+    const back = this.chat.waiting().map(w => w.text);
+    this.chat.waiting.set([]);
+    if (back.length) { this.text = [this.text.trim(), ...back].filter(Boolean).join('\n'); queueMicrotask(() => this.grow()); }
+  }
+
+  sendWaiting(id: string) {
+    const t = this.chat.unqueue(id);
+    if (t && !this.chat.isStreaming()) void this.chat.sendMessage(t, this.session.sessionId() || '', this.mode(), 'generic');
+  }
+
+  editWaiting(id: string) {
+    const t = this.chat.unqueue(id);
+    if (!t) return;
+    this.text = [this.text.trim(), t].filter(Boolean).join('\n');
+    queueMicrotask(() => { this.grow(); this.ta()?.nativeElement.focus(); });
+  }
+
   onKey(e: KeyboardEvent) {
+    const cmds = this.cmds();
+    if (cmds && this.slashQuery() !== null && cmds.key(e)) { e.preventDefault(); return; }
     if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); this.send(); }
   }
 

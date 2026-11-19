@@ -31,5 +31,14 @@
       agenda, sources without module names, Italian leftovers in the plugin translated; Argus: recurring `[🔄]` lines
       proposed like recurring errors, readable title (model, fallback sentence), origin. Tests `test_forge_proposer.py`,
       `test_forge_pause.py::test_proposal_keeps_its_title_and_origin`.
-- [ ] B — queue, steering, «/» commands
-- [ ] G — mascot
+- [x] B — writing while the answer runs: WebUI waiting list (Enter queues, sent together when the stream ends, not
+      after Stop; edit/remove) and «Add now» (`ChatHub` `steer` → Oracle `POST /api/chat/steer`,
+      `core/services/steering.py`; the chat agent loop reads it at its next step, signal `chat.steer_taken`; not taken =
+      sent next); Telegram one answer at a time per chat (`services/chat_wait.py`, note with «Add now»). «/» commands in
+      the chat box (`chat-commands.component.ts`: tools from Hestia-MCP, filtered while typing, fields for arguments, run
+      directly, result in the conversation). Tests Oracle `test_steering.py`, Telegram `test_chat_wait.py`.
+- [x] G — mascot: Aphrodite built-in mascots (`builtin:ember|cat|owl`, `pet.drawn`, default when never chosen, `none`
+      = no mascot, deleted pet → built-in; species default `cat`); WebUI `<hx-mascot>` (inline SVG + CSS: idle,
+      thinking, speaking, listening, sleeping, happy; pictures for own pets; drag and dock to the nearest side), personal
+      settings row «Mascot» (choose or none, Ctrl+K finds it), Aphrodite page section «Mascot». Test
+      `test_drawn_mascot_by_default_and_can_be_turned_off`.

@@ -59,7 +59,7 @@ export class AphroditeLook extends HestiaElement {
   private async savePet() {
     const d = this.petDraft;
     if (!d.name?.trim()) { this.host.toast(tr('What is its name?'), 'warning'); return; }
-    const r = await call(this.host, 'POST', '/tools/animale', { name: d.name, species: d.species || 'gatto', look: d.look || '' });
+    const r = await call(this.host, 'POST', '/tools/animale', { name: d.name, species: d.species || 'cat', look: d.look || '' });
     if (r.ok) { this.petDraft = null; this.host.toast(tr('Pet created: the images arrive when they\'re ready'), 'success'); this.load(); }
   }
   private async uploadPose(pet: any, pose: string) {
@@ -109,19 +109,20 @@ export class AphroditeLook extends HestiaElement {
         ${this.soon.length ? html`<div class="small muted">${tr("Next:")} ${this.soon.map(s => `${ddmm(s.date)} ${s.why}`).join(' · ')}</div>` : nothing}
       </div>
       <div class="card col">
-        <div class="between"><h3>${tr("Pet")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.petDraft = { species: 'gatto' }; }}>${tr("New")}</hxk-button></div>
-        <hxk-field label=${tr("On the site")} type="enum" .options=${[{ value: '', label: tr('None') }, ...this.pets.map(x => ({ value: x.id, label: x.name }))]}
-          .value=${n.pet?.id || ''} @change=${(e: any) => this.choose({ pet: e.detail })}></hxk-field>
+        <div class="between"><h3>${tr("Mascot")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.petDraft = { species: 'cat' }; }}>${tr("New")}</hxk-button></div>
+        <div class="small muted">${tr("It keeps you company on the site and shows what is happening: it thinks while the answer is prepared, talks while it is written or read aloud, listens to your voice, sleeps at night. Drag it where you like. The built-in ones are drawn and move by themselves; yours use pictures, made by the image module or uploaded.")}</div>
+        <hxk-field label=${tr("On the site")} type="enum" .options=${[{ value: 'none', label: tr('None') }, ...this.pets.map(x => ({ value: x.id, label: x.name }))]}
+          .value=${n.pet?.id || 'none'} @change=${(e: any) => this.choose({ pet: e.detail })}></hxk-field>
         ${this.petDraft ? html`<div class="form">
             <hxk-field label=${tr("Name")} .value=${this.petDraft.name || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, name: e.detail }; }}></hxk-field>
             <hxk-field label=${tr("Which animal")} .value=${this.petDraft.species} @change=${(e: any) => { this.petDraft = { ...this.petDraft, species: e.detail }; }}></hxk-field>
             <hxk-field label=${tr("What it's like")} placeholder=${tr("E.g. orange, green eyes")} .value=${this.petDraft.look || ''} @change=${(e: any) => { this.petDraft = { ...this.petDraft, look: e.detail }; }}></hxk-field></div>
           <div class="row"><hxk-button variant="primary" @click=${() => this.savePet()}>${tr("Create")}</hxk-button><hxk-button variant="ghost" @click=${() => { this.petDraft = null; }}>${tr("Cancel")}</hxk-button></div>` : nothing}
-        ${this.pets.map(x => html`<div class="pet"><div class="grow"><div>${x.name}</div><div class="small muted">${x.species}${x.look ? ` · ${x.look}` : ''}</div></div>
+        ${this.pets.filter(x => !x.builtin).map(x => html`<div class="pet"><div class="grow"><div>${x.name}</div><div class="small muted">${x.species}${x.look ? ` · ${x.look}` : ''}</div></div>
           ${Object.keys(POSE).map(pose => html`<div class="pose" title="${tr("{0}: tap to upload a picture of you", POSE[pose])}" @click=${() => this.uploadPose(x, pose)}>
             ${x.images?.[pose] ? html`<img src=${this.host.image(`${API}/image/${x.images[pose]}`)} alt=${POSE[pose]}>` : POSE[pose]}</div>`)}
           <hxk-button size="sm" variant="ghost" icon="refresh" @click=${() => this.regenerate('pet', x.id)}></hxk-button>
-          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete the pet?'), x.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/pets/${x.id}`); this.load(); } }}></hxk-button></div>`)}
+          <hxk-button size="sm" variant="ghost" icon="trash" @click=${async () => { if (await this.host.confirm(tr('Delete the mascot?'), x.name, { label: tr('Delete'), danger: true })) { await call(this.host, 'DELETE', `/pets/${x.id}`); this.load(); } }}></hxk-button></div>`)}
       </div>
       <div class="card col">
         <div class="between"><h3>${tr("Profiles")}</h3><hxk-button size="sm" icon="plus" @click=${() => { this.edit = { effect: 'none' }; }}>${tr("New")}</hxk-button></div>
