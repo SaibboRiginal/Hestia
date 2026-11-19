@@ -137,7 +137,7 @@ display, notices, voice, personal instructions (`oracle.chat.instructions`), plu
 mode and instructions are central settings (Themis, layer client `telegram`) through `personal_settings.py`.
 
 ### One answer at a time per chat (`services/chat_wait.py`)
-A text written while the assistant is still answering in the same chat waits (note «🕓 In attesa» with the button
+A text written while the assistant is still answering in the same chat waits (note «In attesa» with the button
 «Aggiungi ora», callback `cw:<id>`) and goes as the next turn when the answer ends; several waiting texts go
 together, in order. «Aggiungi ora» → Oracle `POST /api/chat/steer`: the running answer reads it at its next step
 (signal `chat.steer_taken`); a text it did not take still goes next. Dossier `docs/work/2026-11-18-problemi-del-test` B.

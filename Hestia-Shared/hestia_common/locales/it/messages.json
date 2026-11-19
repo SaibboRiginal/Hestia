@@ -7697,10 +7697,8 @@
  "Reached now:": "Raggiunti ora:",
  "What was sent to you, where it arrived and how it went": "Cosa ti è stato mandato, dove è arrivato e com'è andata",
  "Everywhere": "Ovunque",
- "🕓 <i>Waiting: it goes as soon as the answer ends.</i>": "🕓 <i>In attesa: parte appena finisce la risposta.</i>",
  "This answer cannot take it: it goes as soon as the answer ends.": "Questa risposta non può aggiungerlo: parte appena finisce.",
  "Already sent": "Già inviato",
- "✍️ <i>Added to the answer being written.</i>": "✍️ <i>Aggiunto alla risposta che sto scrivendo.</i>",
  "Add now": "Aggiungi ora",
  "No command with these words": "Nessun comando con queste parole",
  "Arrows to move, Enter to choose, Esc to close": "Frecce per spostarti, Invio per scegliere, Esc per chiudere",
@@ -7723,5 +7721,7 @@
  "Not available": "Non disponibile",
  "Little flame": "Fiammella",
  "Cat": "Gatto",
- "Owl": "Gufo"
+ "Owl": "Gufo",
+ "<i>Waiting: it goes as soon as the answer ends.</i>": "<i>In attesa: parte appena finisce la risposta.</i>",
+ "<i>Added to the answer being written.</i>": "<i>Aggiunto alla risposta che sto scrivendo.</i>"
 }

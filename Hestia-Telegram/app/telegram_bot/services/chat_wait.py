@@ -41,7 +41,7 @@ def hold(message, chat_id, text: str, status_msg=None) -> bool:
         if state is None:          # the answer just ended: the caller starts a turn instead
             return False
         state["held"].append(item)
-    note = tr("🕓 <i>Waiting: it goes as soon as the answer ends.</i>")
+    note = tr("<i>Waiting: it goes as soon as the answer ends.</i>")
     markup = ui.keyboard([[ui.button(tr("Add now"), f"{CALLBACK}{item['id']}")]])
     try:
         if status_msg is not None:
@@ -116,7 +116,7 @@ def handle_callback(call) -> None:
     if 0 < status < 400 and (result or {}).get("accepted"):
         item["sent"] = True
         try:
-            core.bot.edit_message_text(tr("✍️ <i>Added to the answer being written.</i>"), chat_id=chat_id,
+            core.bot.edit_message_text(tr("<i>Added to the answer being written.</i>"), chat_id=chat_id,
                                        message_id=call.message.message_id, parse_mode="HTML", reply_markup=None)
         except Exception:  # noqa: BLE001
             pass
