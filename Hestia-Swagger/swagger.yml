@@ -11081,7 +11081,7 @@ paths:
   /api/finance/attachments:
     post:
       tags: [Plutus]
-      summary: "Oracle hand-off (Hub capability attachment_handlers): statement PDF sent in chat {blob_id, filename} → preview + reply text {handled, text, import_id, counts} or {handled: false, reason}"
+      summary: "Oracle hand-off (Hub capability attachment_handlers): statement PDF sent in chat {blob_id, filename} → preview + reply text {handled, text (no ids), import_id, counts} or {handled: false, reason}; tool import_statement with commit=true and no import_id commits the latest preview"
       servers:
         - url: http://localhost:19020
       responses:

@@ -232,8 +232,8 @@ In `analyser.py`, before the normal analysis (not for audio/video), Oracle extra
 the first handler whose `mime` fits and whose `match` words appear in the user's message (any) or in the text
 (≥ `min_hits`). On a match it stores the file in Archive blobs (`owner_module=chat`, meta name/session/for) and calls
 `POST route/<module>/<path> {blob_id, filename, mime, message, session_id}`. The module answers `{handled, text, …}`:
-that text is the chat reply (saved in history, so a following «yes» reaches the module's tools with the ids it
-carries), plus signal `attachment_handled`; the file is not copied into the RAG archive. No match, module declines
+that text is the chat reply (saved in history; it carries no ids: a following «yes» reaches the module's tool, which
+finds its latest preview), plus signal `attachment_handled` («Handed to «area»», the area name, never the module); the file is not copied into the RAG archive. No match, module declines
 or any error → `[🔄]` and the usual document analysis (nothing lost). Handlers list cached 60 s.
 
 ### Retrieval Strategy

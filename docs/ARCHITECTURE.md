@@ -158,6 +158,9 @@ Proactive dispatch core — the only outbound messenger to the user's clients.
 - Recurring nudges (reminders) never pile up: the module sends `replaces: "<key>"`; Hermes keeps one live
   notification per key on every client with the skip counter (`resolves: true` / `closes` done ends it).
 - Read state is global; answers go to the module that asked, first answer wins.
+- What a notification shows the owner (every module, 2026-11-19): a plain `_title` and text in his language, the
+  area (`hestia_common.areas.module_label`) never the module name, no ids, no raw errors or log lines, no HTML code,
+  no command to type: a decision is an `_actions` button. One notice per event (`dedupe_key`), one proposal per trouble.
 - Voice: a module that wants its notifications also as audio says so with its own setting `<module>.notifications.voice`
   (`hestia_common.reminders.voice_setting`) and the event flag `_voice`; Hermes sends the text first, then the audio
   made by Echo as an `update` (Telegram: voice message replying to it; WebUI inbox: «Ascolta»). Superseded → audio dropped.
