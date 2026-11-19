@@ -190,6 +190,18 @@ def create_setup_router(repo: Path, data_dir: Path, hub_api_url: str, *, channel
         return service.oracle("POST", "/api/llm/setup/test", body={"provider": req.provider, "model": req.model},
                               timeout=60)
 
+    # ── Connections (hestia_common.connections): a card of a module saves its own key ──
+    @router.post("/connection-secret")
+    def connection_secret(body: dict):
+        """``{module, values: {<MODULE>_KEY_<NAME>: value}}`` → written into that module's .env (empty = cleared) and
+        re-read by the module at once. Values never come back nor go to the log."""
+        values = body.get("values") if isinstance(body.get("values"), dict) else {}
+        try:
+            return {"status": "ok", **service.set_connection_secrets(str(body.get("module") or ""),
+                                                                    {str(k): str(v or "") for k, v in values.items()})}
+        except secrets.SecretRefused as exc:
+            refused(exc)
+
     # ── Voice (Echo owns the speech providers: /api/voice/setup/*) ──
     @router.get("/voice/catalog")
     def voice_catalog(hosts: str = ""):

@@ -20,8 +20,8 @@ def client():
 
 @pytest.fixture()
 def google_env(monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid.apps.googleusercontent.com")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "gid.apps.googleusercontent.com")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "gsecret")
     monkeypatch.delenv("GOOGLE_OAUTH_REDIRECT_URI", raising=False)
     monkeypatch.setattr(hecate_main, "_refresh_calendar_registry",
                         lambda: {"active": ["google"], "unavailable": {}})
@@ -64,8 +64,8 @@ def test_initiate_respects_custom_redirect(client, google_env, monkeypatch):
 
 @pytest.mark.unit
 def test_initiate_missing_client_creds(client, monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "")
     resp = client.post("/api/gateway/auth/initiate/google")
     assert resp.status_code == 400
     assert "Desktop app" in resp.json()["detail"]["hint"]
@@ -183,8 +183,8 @@ def test_provider_falls_back_from_dead_file_token_to_env(monkeypatch):
 
     with open(os.environ["GOOGLE_TOKEN_FILE"], "w") as fh:
         json.dump({"refresh_token": "dead"}, fh)
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "gsecret")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "alive")
 
     tried = []
@@ -208,8 +208,8 @@ def test_provider_falls_back_from_dead_file_token_to_env(monkeypatch):
 def test_provider_error_explains_testing_mode(monkeypatch):
     from providers import google as gp
 
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "gsecret")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "dead")
 
     def fake_refresh(self, request):
@@ -224,14 +224,24 @@ def test_provider_error_explains_testing_mode(monkeypatch):
 @pytest.mark.unit
 def test_client_typed_in_webui_is_kept_and_used(client, monkeypatch, tmp_path):
     """Round 6 «Collega Google» by hand: the OAuth client from the page, no .env edit, no restart."""
-    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
-    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("HECATE_KEY_GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", raising=False)
     monkeypatch.setenv("GOOGLE_TOKEN_FILE", str(tmp_path / "google_token.json"))
     assert client.get("/api/gateway/auth/google").json()["client_set"] is False
     bad = client.post("/api/gateway/auth/google/client", json={"client_id": "nope", "client_secret": "x"})
     assert bad.status_code == 400
+    import connections
+    saved = {}
+
+    def save(values):            # Hephaestus through Hub writes Hecate's .env: here a dict + the process env
+        for name, value in values.items():
+            saved[connections.hub.key_env(name)] = value
+            monkeypatch.setenv(connections.hub.key_env(name), value)
+
+    monkeypatch.setattr(connections.hub, "save_secrets", save)
     raw = json.dumps({"installed": {"client_id": "abc.apps.googleusercontent.com", "client_secret": "GOCSPX-secret1"}})
     ok = client.post("/api/gateway/auth/google/client", json={"json": raw})
+    assert set(saved) == {"HECATE_KEY_GOOGLE_CLIENT_ID", "HECATE_KEY_GOOGLE_CLIENT_SECRET"}
     assert ok.status_code == 200 and "secret" not in json.dumps(ok.json()).replace("client_set", "")
     assert google_oauth.client_credentials() == ("abc.apps.googleusercontent.com", "GOCSPX-secret1")
     state = client.get("/api/gateway/auth/google").json()

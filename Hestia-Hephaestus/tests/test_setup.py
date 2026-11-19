@@ -271,3 +271,35 @@ def test_brain_hello_is_written_by_the_chosen_models(tmp_path):
     def down(*a, **k):
         raise RuntimeError("503")
     assert SetupService(repo, tmp_path / "data", hub_call=down).brain_hello()["ok"] is False
+
+
+def test_connection_secret_only_for_its_module_and_empty_clears(tmp_path):
+    """A connection card saves only <MODULE>_KEY_* of its own module (docs/work/2026-11-19-unified-connections)."""
+    repo = _repo(tmp_path)
+    (repo / "Hestia-Apollo/app").mkdir(parents=True)
+    with pytest.raises(secrets.SecretRefused):
+        secrets.set_connection_secret(repo, "apollo", "LARES_KEY_HOME_ASSISTANT", "x")
+    with pytest.raises(secrets.SecretRefused):
+        secrets.set_connection_secret(repo, "oracle", "ORACLE_KEY_GEMINI", "x")
+    with pytest.raises(secrets.SecretRefused):
+        secrets.set_connection_secret(repo, "apollo", "APOLLO_KEY_COMFYUI", "two words")
+    secrets.set_connection_secret(repo, "apollo", "APOLLO_KEY_COMFYUI", "abc")
+    assert (repo / "Hestia-Apollo/app/.env").read_text() == "APOLLO_KEY_COMFYUI=abc\n"
+    secrets.set_connection_secret(repo, "apollo", "APOLLO_KEY_COMFYUI", "")
+    assert (repo / "Hestia-Apollo/app/.env").read_text() == "APOLLO_KEY_COMFYUI=\n"
+
+
+def test_connection_secrets_reload_live_else_recreate(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / "Hestia-Lares/app").mkdir(parents=True)
+    hub, recreated = [], []
+    def hub_call(svc, path, method="GET", body=None, query=None, timeout=30):
+        hub.append((svc, path))
+        return {"keys": ["LARES_KEY_HOME_ASSISTANT"]}
+    service = SetupService(repo, tmp_path / "data", hub_call=hub_call,
+                           recreate=lambda svc, updates, **kw: recreated.append(svc) or (True, "ok"))
+    out = service.set_connection_secrets("lares", {"LARES_KEY_HOME_ASSISTANT": "tok"})
+    assert hub == [("lares", "/api/connections/reload-keys")] and recreated == [] and out["applied"]
+    service.hub_call = lambda *a, **k: {"keys": []}
+    out = service.set_connection_secrets("lares", {"LARES_KEY_HOME_ASSISTANT": "tok2"})
+    assert recreated == ["lares"] and out["applied"] and not out["reloaded"]

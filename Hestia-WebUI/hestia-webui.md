@@ -586,16 +586,15 @@ search (`setup-pick`, items with `lang`; default the chosen voice's language), n
 Modelli (2026-11-18: each stored vector keeps the model that made it, so the next ones are a real fallback and nothing
 is re-read; Gemini's `gemini-embedding-001` too); it sends `embedding: {steps}` only when the list changed. The recipe comes from what is chosen. Ascolto and
 Voce: one local engine (with a line per engine when there are several), then optional cloud services; «Conferma» on
-Voce writes both chains and queues the downloads. The «I tuoi servizi» screen mounts Hecate's one list of
-services `<hecate-connections>` (ctx `params.place = setup`) through `hx-plugin-outlet`, the same list as the
-Dispositivi page (every service the same card):
+Voce writes both chains and queues the downloads. The «I tuoi servizi» screen mounts `<hx-connections place="setup">`, the same list as the
+Connections page (every module's services, every service the same card):
 Google connects by hand there (OAuth client with a short guide, «Link Google», pasted address as fallback).
 «Outside home»: one line on what it is, «Active» right there, the steps while it starts, then the address with «Open»
 and «Copy», a warning with «Try again» when no address comes in 90 s. «All set»: each choice as a row that goes
 back to it. In the cloud rows a saved key
 is never typed again: its model list is read at once (no tokens), «Save and try» saves a new one. `setupGuard`
 redirects only when Hestia itself is opened (home), so a link opened from the setup in another tab (Download,
-Dispositivi) opens that page. Every choice (local, memory's, cloud models, voices) uses the same card picker
+Connections) opens that page. Every choice (local, memory's, cloud models, voices) uses the same card picker
 `setup-pick` (search always, first 5 and «Mostra tutti», the chosen one always visible). The Hub client has no
 global timeout (the old 30 s cap cut the 180 s setup calls, e.g. saving a key while the module restarts); each call
 sets its own, and the setup re-reads the state when an answer is lost. «From outside home» starts in the background
@@ -682,3 +681,13 @@ she/he reloads the page (`followIdentity`), except during the setup.
 
 ## Module agents (Oracle operating mode «agents», 2026-11-17)
 The `agent` frame passes through `ChatHub` (`OracleEvent` fields `agent_id`, `module`, `label`, `task`, `summary`, `ok`, `ms`, final `operating_mode`) and `chat.service.ts` shows it as steps of the reasoning block: «<job> al lavoro: <task>», each tool result, «<job>: fatto». Dossier `docs/work/2026-11-06-modules-as-agents`.
+
+**2026-11-19 (unified connections, dossier `docs/work/2026-11-19-unified-connections`)**: page **Connections**
+(`/connections`, `features/connections/`, sidebar *Sistema* entry and Ctrl+K) shows every module's linkable services
+(`connection` contributions of the catalog, `hestia_common.connections`) in one list grouped Accounts / Devices /
+Home services, with search past 6 and a «Test» button on each card. `<hx-connections>` creates the SDK element
+`<hxk-connections>` with one host per module (its own `api_prefix` through the plugin proxy), also used by the
+guided setup. `?open=<module>.<id>` opens one card: Ctrl+K lists every connection (searched by what it does and its
+keywords), a plugin calls `host.openConnection(id)`, and a setting declared with `editor="connection:<module>.<id>"`
+shows its value with «Edit in Connections» instead of a field. `/p/hecate/devices` redirects to `/connections`
+(Hecate's old «Dispositivi» page is gone). `PluginCatalog.Types` includes `connection`.

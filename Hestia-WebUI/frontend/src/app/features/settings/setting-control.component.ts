@@ -18,8 +18,13 @@ import { tr, TrPipe } from '../../core/i18n';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @let it = item();
+    @let card = connectionOf(it.editor);
     @if (it.editor === 'places') {
       <hx-places-editor [key]="it.key" [value]="it.value" [disabled]="disabled()" (commit)="commit.emit($event)" />
+    } @else if (card) {
+      <!-- Set and tested from its card in Connections (hestia_common.connections): one editor only. -->
+      <span class="conn"><span class="val">{{ text(it.value) || ('not set' | tr) }}</span>
+        <a class="editor" routerLink="/connections" [queryParams]="{ open: card }">{{ 'Edit in Connections' | tr }}</a></span>
     } @else {
     @switch (it.type) {
       @case ('bool') {
@@ -90,6 +95,8 @@ import { tr, TrPipe } from '../../core/i18n';
     .unit, .hint { font-size: 12px; color: var(--text-3); }
     .editor { font-size: 13px; color: var(--accent); text-decoration: none; }
     .editor:hover { text-decoration: underline; }
+    .conn { display: inline-flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    .conn .val { font-size: 13px; color: var(--text-2); overflow-wrap: anywhere; }
     hx-segmented { align-self: flex-start; flex-wrap: wrap; }
     hx-segmented.off { opacity: .5; pointer-events: none; }
   `],
@@ -133,6 +140,11 @@ export class SettingControlComponent {
   }
   commitList(v: string) { this.commit.emit(v.split('\n').map(s => s.trim()).filter(Boolean)); }
   /** Object values with a dedicated editor: link to it (the JSON stays editable below). */
+  /** `connection:<module>.<id>` → the card that edits this value (Connections page). */
+  connectionOf(editor?: string): string | null {
+    return editor?.startsWith('connection:') ? editor.slice('connection:'.length) : null;
+  }
+
   editorLink(editor?: string): { path: string; label: string } | null {
     return editor?.startsWith('llm_') ? { path: '/p/oracle/brain', label: tr('Edit in Oracle · Brain · Models') } : null;
   }

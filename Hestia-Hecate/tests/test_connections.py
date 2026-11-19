@@ -1,12 +1,16 @@
-"""Connected services as one list (Marko 2026-11-07: N services like a marketplace, the same card and the same way to
-connect for all). No network: a fake Garmin client, Google callables recorded."""
+"""Connected services as one list (Marko 2026-11-07: N services like a marketplace; 2026-11-19: the same way for every
+module, docs/work/2026-11-19-unified-connections). No network: a fake Garmin client, Google/Outlook callables recorded,
+the key writer (Hephaestus through Hub) replaced by a dict."""
 from __future__ import annotations
+
+import os
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import connections
+from hestia_common.connections import Connections
 from providers.garmin import GarminService
 from test_devices import FakeGarmin
 
@@ -36,30 +40,58 @@ class FakeGoogle:
         self.s["pending"] = False
 
 
+class FakeSettings:
+    def __init__(self):
+        self.values = {}
+
+    def get(self, key, default=None):
+        return self.values.get(key, default)
+
+    def put(self, key, value, **kw):
+        self.values[key] = value
+        return True
+
+
 @pytest.fixture()
 def world(tmp_path, monkeypatch):
-    monkeypatch.setattr(connections, "_REGISTRY", {})
+    hub = Connections("hecate", "/api/gateway/", env_file=tmp_path / ".env")
+    saved = {}
+
+    def save_secrets(values):
+        for name, value in values.items():
+            env = hub.key_env(name)
+            saved[env] = value
+            if value:
+                monkeypatch.setenv(env, value)
+            else:
+                monkeypatch.delenv(env, raising=False)
+
+    monkeypatch.setattr(hub, "save_secrets", save_secrets)
+    monkeypatch.setattr(connections, "hub", hub)
     g = FakeGoogle()
-    connections.register(connections.GoogleConnector(state=lambda: dict(g.s), save_client=g.save, initiate=g.initiate,
-                                                     complete=g.complete, cancel=g.cancel))
+    hub.register(connections.GoogleConnector(state=lambda: dict(g.s), save_client=g.save, initiate=g.initiate,
+                                             complete=g.complete, cancel=g.cancel))
     svc = GarminService(tmp_path / "g", factory=lambda e=None, p=None: FakeGarmin(e, p, mfa=bool(e)), env=lambda k: None)
     synced = []
-    connections.register(connections.GarminConnector(svc, sync=lambda: synced.append(1) or {"status": "ok"},
-                                                     first_sync=lambda: synced.append("first")))
-    connections.register(connections.PhoneConnector(lambda: {"configured": False}))
+    hub.register(connections.GarminConnector(svc, sync=lambda: synced.append(1) or {"status": "ok"},
+                                             first_sync=lambda: synced.append("first")))
+    hub.register(connections.PhoneConnector(lambda: {"configured": bool(os.getenv("HECATE_KEY_PHONE")), "last": {}},
+                                            connections=hub))
     app = FastAPI()
-    app.include_router(connections.router)
-    return {"c": TestClient(app), "g": g, "synced": synced}
+    app.include_router(hub.router())
+    return {"c": TestClient(app), "g": g, "synced": synced, "hub": hub, "saved": saved, "app": app}
 
 
-def test_one_list_same_shape_and_setup_hides_the_phone(world):
+def test_one_list_same_shape_groups_and_setup_hides_the_phone(world):
     items = world["c"].get("/api/gateway/connections").json()["items"]
     assert [i["id"] for i in items] == ["google", "garmin", "phone"]
-    for i in items:                                   # every service: the same fields, a step shown at once
-        assert set(i) >= {"id", "label", "icon", "what", "state", "detail", "step", "actions"}
+    assert [i["group"] for i in items] == ["account", "device", "device"]
+    for i in items:                                   # every service: the same fields, a step shown at once, Test
+        assert set(i) >= {"id", "label", "icon", "what", "group", "keywords", "state", "detail", "step", "actions", "test"}
         assert i["state"] == "not_connected" and i["step"]["kind"] == "form"
     setup = world["c"].get("/api/gateway/connections", params={"place": "setup"}).json()["items"]
     assert [i["id"] for i in setup] == ["google", "garmin"]
+    assert [m["id"] for m in world["hub"].manifest()] == ["google", "garmin", "phone"]
 
 
 def test_garmin_login_then_code_then_connected(world):
@@ -71,6 +103,8 @@ def test_garmin_login_then_code_then_connected(world):
     assert r["item"]["state"] == "connected" and world["synced"] == ["first"]
     assert [a["id"] for a in r["item"]["actions"]] == ["sync", "forget"]
     assert c.post("/api/gateway/connections/garmin/sync").json()["message"] == "Letto."
+    test = c.post("/api/gateway/connections/garmin/test").json()["result"]
+    assert test["ok"] is True and test["facts"] == []
     assert c.delete("/api/gateway/connections/garmin").json()["item"]["state"] == "not_connected"
 
 
@@ -87,3 +121,68 @@ def test_google_client_then_page_then_pasted_code(world):
     r = c.post("/api/gateway/connections/google", json={"values": {"code": "ok"}}).json()
     assert r["item"]["state"] == "connected"
     assert c.post("/api/gateway/connections/nothing/sync").status_code == 404
+
+
+def test_phone_key_is_created_here_shown_once_then_unlinked(world):
+    c = world["c"]
+    r = c.post("/api/gateway/connections/phone", json={"values": {}}).json()
+    key = world["saved"]["HECATE_KEY_PHONE"]
+    assert len(key) >= 24 and r["item"]["state"] == "waiting" and r["item"]["step"]["code"] == key
+    r = c.post("/api/gateway/connections/phone/hide").json()
+    assert r["item"]["state"] == "connected" and key not in str(r["item"])
+    assert c.delete("/api/gateway/connections/phone").json()["item"]["state"] == "not_connected"
+    assert world["saved"]["HECATE_KEY_PHONE"] == ""
+
+
+def test_outlook_app_then_microsoft_code_then_connected(world, monkeypatch):
+    for k in ("HECATE_KEY_OUTLOOK_CLIENT_ID", "HECATE_KEY_OUTLOOK_TENANT", "HECATE_KEY_OUTLOOK_CLIENT_SECRET"):
+        monkeypatch.delenv(k, raising=False)
+    polls = iter([{"status": "pending"}, {"status": "authorized"}])
+    linked = {"on": False}
+
+    def poll():
+        out = next(polls)
+        linked["on"] = out["status"] == "authorized"
+        return out
+
+    world["hub"].register(connections.OutlookConnector(
+        linked=lambda: linked["on"], initiate=lambda: {"user_code": "ABCD-1234", "verification_url": "https://microsoft.com/devicelogin"},
+        poll=poll, cancel=lambda: None, unlink=lambda: linked.update(on=False), connections=world["hub"]))
+    c = world["c"]
+    first = [i for i in c.get("/api/gateway/connections").json()["items"] if i["id"] == "outlook"][0]
+    assert first["group"] == "account" and [f["name"] for f in first["step"]["fields"]] == ["client_id", "tenant", "client_secret"]
+    assert c.post("/api/gateway/connections/outlook", json={"values": {"client_id": "x"}}).status_code == 422
+    r = c.post("/api/gateway/connections/outlook", json={"values": {"client_id": "11111111-2222-3333-4444-555555555555"}}).json()
+    assert world["saved"]["HECATE_KEY_OUTLOOK_TENANT"] == "common" and "HECATE_KEY_OUTLOOK_CLIENT_SECRET" not in world["saved"]
+    assert r["open_url"] == "https://microsoft.com/devicelogin"
+    assert r["item"]["state"] == "waiting" and r["item"]["step"]["code"] == "ABCD-1234"
+    again = [i for i in c.get("/api/gateway/connections").json()["items"] if i["id"] == "outlook"][0]
+    assert again["state"] == "connected"
+
+
+def test_gmail_instant_notices_card_saves_settings_and_the_account(world, monkeypatch):
+    monkeypatch.delenv("HECATE_KEY_GMAIL_PUBSUB_ACCOUNT", raising=False)
+    settings, restarted = FakeSettings(), []
+    status = {"configured": False}
+    world["hub"].register(connections.GmailPushConnector(
+        settings=settings, topic_key="hecate.gmail.push_topic", subscription_key="hecate.gmail.push_subscription",
+        status=lambda: dict(status), restart=lambda: restarted.append(1), connections=world["hub"]))
+    c = world["c"]
+    url = "/api/gateway/connections/gmail_push"
+    assert c.post(url, json={"values": {"topic": "x", "subscription": "y"}}).status_code == 422
+    good = {"topic": "projects/p/topics/t", "subscription": "projects/p/subscriptions/s"}
+    assert "JSON" in c.post(url, json={"values": good}).json()["detail"]
+    assert c.post(url, json={"values": {**good, "account": '{"type": "user"}'}}).status_code == 422
+    r = c.post(url, json={"values": {**good, "account": '{"type": "service_account", "private_key": "-----BEGIN KEY-----"}'}})
+    assert r.status_code == 200 and restarted == [1]
+    assert settings.values == {"hecate.gmail.push_topic": "projects/p/topics/t",
+                               "hecate.gmail.push_subscription": "projects/p/subscriptions/s"}
+    import base64
+    import json
+    raw = world["saved"]["HECATE_KEY_GMAIL_PUBSUB_ACCOUNT"]
+    assert " " not in raw and json.loads(base64.b64decode(raw))["type"] == "service_account"
+    status.update(configured=True, active=True)
+    row = [i for i in c.get("/api/gateway/connections").json()["items"] if i["id"] == "gmail_push"][0]
+    assert row["state"] == "connected" and row["in_setup"] is False
+    c.delete(url)
+    assert settings.values["hecate.gmail.push_topic"] == "" and world["saved"]["HECATE_KEY_GMAIL_PUBSUB_ACCOUNT"] == ""

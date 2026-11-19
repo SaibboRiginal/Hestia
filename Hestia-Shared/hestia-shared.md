@@ -358,6 +358,30 @@ instead of a generic «I couldn't mark it».
 adds a panel that clients show **inside the module's own settings** (WebUI *Impostazioni → Sistema → <module>*),
 below its Themis settings; the element calls only the module's `api_prefix` like any plugin element.
 
+## Connections (`hestia_common.connections`, dossier `docs/work/2026-11-19-unified-connections`)
+
+One contract for every external thing a module needs (an account, a device, a program at home): **who talks to the
+service declares its connection**, the WebUI page **Connections** draws all of them with one card
+(`<hxk-connections>` of the SDK, also in the guided setup and in Ctrl+K).
+
+- `Connections(module, prefix, env_file=…)` holds the module's `Connector`s; `PluginClient.webui(...).connections(c)`
+  publishes them in the manifest (UI kind `connection`, each with `source = api_prefix + "connections"`), and
+  `app.include_router(c.router())` serves `GET {prefix}connections[?place=setup]`, `POST {prefix}connections/{id}`
+  (the current step's values), `POST {prefix}connections/{id}/{action}` (`test` → `{result: {ok, detail, facts, at}}`),
+  `DELETE {prefix}connections/{id}` and `POST /api/connections/reload-keys`.
+- A `Connector` has `id, label, icon, what, group` (`account` · `device` · `home_service`), `keywords` (search),
+  `in_setup`, `order`; `state()` → `{state: connected|waiting|not_connected, detail, step, actions}` with `step` =
+  `{kind: form|wait, text, fields[{name, label, type, placeholder, value?}], submit, guide?, link?, code?, url?}`;
+  `submit`, `action`, `forget`, `test` (default: the state in words), `on_keys`. A refusal is `ConnectError(words)` → 422.
+- Where things live: an **address** is a Themis setting (declared with `editor="connection:<module>.<id>"`, so
+  Settings shows it with «Edit in Connections»); a typed **secret** is `<MODULE>_KEY_<NAME>`, written by Hephaestus
+  (`save_secret(s)` → `POST route/hephaestus/api/setup/connection-secret`) and re-read live (`reload_keys`); a
+  **sign-in token** stays in the module's `data/`. `.env` is never edited by hand.
+- `AddressConnector` is the ready card for "address + optional key + Test" (ComfyUI, Home Assistant): subclass with
+  `address_placeholder`, `key_label`, `key_required`, `key_help`, `guide`, and pass `settings`, `setting_key`,
+  `probe(address, key)` and `apply(address, key)`; call `apply_now` on warm.
+- Labels, `what`, `guide` are plain English declared at import (translated at the edge); texts built at runtime use `tr`.
+
 ## Areas and texts for people (`hestia_common.areas`, 2026-10-29)
 
 People never read module names or text written for the model. `AREAS` (Giornata, Allenamento, Spese, Casa…, with

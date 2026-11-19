@@ -27,6 +27,8 @@ WEATHER_CACHE_MINUTES = "hecate.weather.cache_minutes"
 PERSONAL_PLACES = "themis.personal.places"
 PHONE_HOME_WIFI = "hecate.phone.home_wifi"
 PHONE_APPS = "hecate.phone.app"
+GMAIL_PUSH_TOPIC = "hecate.gmail.push_topic"
+GMAIL_PUSH_SUBSCRIPTION = "hecate.gmail.push_subscription"
 
 settings = SettingsClient("hecate")
 settings.declare([
@@ -58,4 +60,10 @@ settings.declare([
             help="Names of the home Wi-Fi networks: when the phone is connected to one of these you are «home». Empty = the phone must say it itself (home field)."),
     setting(PHONE_APPS, "Apps to listen to", "list", [], group="Phone",
             help="Notifications from these apps (e.g. the bank, Satispay) go to the modules that use them, like expenses. Empty = all the phone sends."),
+    # Set from the «Gmail instant notices» card (Connections): Settings shows a link to it.
+    setting(GMAIL_PUSH_TOPIC, "Gmail instant notices: topic", "string", "", group="Email", editor="connection:hecate.gmail_push",
+            advanced=True, help="The Google Cloud Pub/Sub topic Gmail writes to (projects/<project>/topics/<topic>)."),
+    setting(GMAIL_PUSH_SUBSCRIPTION, "Gmail instant notices: subscription", "string", "", group="Email",
+            editor="connection:hecate.gmail_push", advanced=True,
+            help="The pull subscription Hestia reads (projects/<project>/subscriptions/<sub>)."),
 ]).declare_log_level().follow_personal()

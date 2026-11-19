@@ -441,6 +441,12 @@ telegram/token|code|claim, backup) are called by the WebUI through the Hub (`/ap
   `HESTIA_BACKUP_PASSPHRASE` (→ root `.env`, archive). Values: one line of printable ASCII; ids numeric; bot token
   in BotFather form. Written atomically (active line, else the commented `# KEY=` line, else appended); a value is
   never logged or returned (`event=setup_secret_set key=… file=… services=…`).
+- Connection keys (dossier `docs/work/2026-11-19-unified-connections`): `POST /api/setup/connection-secret
+  {module, values: {ENV: value}}` is what a connection card of `hestia_common.connections` calls through the Hub.
+  Only `<MODULE>_KEY_<NAME>` of that same module, for the modules in `secrets.CONNECTION_MODULES` (apollo, lares,
+  hecate → `app/.env`, hermes → `src/.env`); an empty value clears the key. Then the module re-reads them live
+  (`POST /api/connections/reload-keys`, in `service.LIVE`), else its container is re-created once →
+  `{keys, applied, reloaded, detail}`; values are never logged or returned.
 - Keys in seconds (round 6): for Oracle and Echo provider keys (`ORACLE_KEY_*`, `ECHO_KEY_*`, `service.LIVE`),
   `set_secrets` writes the `.env` and then asks the module to re-read it (`POST /api/llm/setup/reload-keys`,
   `/api/voice/setup/reload-keys` through the Hub); only when that fails or the key name does not come back the

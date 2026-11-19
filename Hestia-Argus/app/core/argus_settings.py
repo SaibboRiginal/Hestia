@@ -80,7 +80,7 @@ settings.declare([
             advanced=True, depends_on=_DOCKER,
             help="Discards the containers' /health access lines (only noise)."),
     setting(IGNORE_PATTERNS, "Texts to ignore in the logs", "list",
-            ["OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set"], group="Logs", order=14, depends_on=_DOCKER,
+            ["Outlook not linked"], group="Logs", order=14, depends_on=_DOCKER,
             help="Log lines containing one of these texts do not create notices."),
     setting(BUFFER_SIZE, "Lines in memory per container", "int", 500, group="Logs", min=50, max=10000,
             advanced=True, apply="restart", order=15, depends_on=_DOCKER,

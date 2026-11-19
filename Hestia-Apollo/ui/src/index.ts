@@ -61,7 +61,8 @@ export class ApolloImages extends HestiaElement {
     if (s === null) return html`<hxk-state kind="offline" @retry=${() => this.load()}></hxk-state>`;
     return html`<div class="page">
       <div class="between"><h1>${tr("Images")}</h1><hxk-button variant="ghost" icon="upload" @click=${() => this.host.navigate('workflows')}>${tr("Workflows (")}${s.flows})</hxk-button></div>
-      ${!s.configured ? html`<div class="card small">${tr("The generator is not linked: the address of your ComfyUI (APOLLO_COMFYUI_URL in the configuration file) and an uploaded workflow are needed.")}</div>`
+      ${!s.configured ? html`<div class="card small row wrap"><span>${tr("The generator is not linked: link your ComfyUI, then upload a workflow.")}</span>
+          <hxk-button variant="secondary" icon="link" @click=${() => this.host.openConnection('comfyui')}>${tr("Link ComfyUI")}</hxk-button></div>`
         : !s.reachable ? html`<div class="card small">${tr("ComfyUI doesn't answer now: the requests stay in the queue.")}</div>` : nothing}
       <div class="card col">
         <textarea placeholder=${tr("Describe the image (better in English)")} .value=${this.prompt} @input=${(e: any) => { this.prompt = e.target.value; }}></textarea>

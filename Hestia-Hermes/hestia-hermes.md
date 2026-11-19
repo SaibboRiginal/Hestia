@@ -118,8 +118,10 @@ within the cooldown window.
 - **Web Push** (C15, `src/modules/webpush.py`): the WebUI's browsers subscribe with `POST /api/push/subscribe
   {subscription, device}` (`GET /api/push/key` gives the VAPID public key; `DELETE /api/push/subscribe {endpoint}`).
   Subscriptions are rows of Archive `/api/hermes-store` (kind `push`). Every notification that rings on the WebUI is
-  also pushed (title, plain text ≤ 300, link, id; never form values); 404/410 subscriptions are dropped. Env
-  `HERMES_VAPID_PUBLIC_KEY` / `HERMES_VAPID_PRIVATE_KEY` / `HERMES_VAPID_SUBJECT`; empty = off.
+  also pushed (title, plain text ≤ 300, link, id; never form values); 404/410 subscriptions are dropped. The VAPID pair is made by Hermes itself on the first start (`webpush.ensure_keys`, P-256), used at once and
+  saved through Hephaestus as `HERMES_KEY_VAPID_PUBLIC` / `HERMES_KEY_VAPID_PRIVATE` in `src/.env` (retried in the
+  background until saved; nothing to type, nothing to edit by hand). `POST /api/connections/reload-keys` re-reads
+  `HERMES_KEY_*` (names only in the answer).
 
 ## Questions (dossier `docs/work/2026-10-30-questions-in-notifications`)
 
@@ -295,3 +297,5 @@ Notifications below the presence `notify.level` (all/important/urgent) are **hel
 
 ## Module agent (Oracle operating mode «agents», 2026-11-17)
 The Hub registration declares `when_to_use`, `manual` and `title`: in Oracle's operating mode `agents` they are this module's agent (job area, rules, label in the clients), which works only with this module's tools. Dossier `docs/work/2026-11-06-modules-as-agents`.
+
+**2026-11-19 (unified connections, dossier `docs/work/2026-11-19-unified-connections`)**: Web Push keys are generated and saved by Hestia (`HERMES_KEY_VAPID_*`); `HERMES_VAPID_*` env and compose entries are gone.

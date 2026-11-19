@@ -45,9 +45,9 @@ def test_health(client):
 
 def test_detect_providers_empty(monkeypatch):
     for key in [
-        "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
-        "GOOGLE_REFRESH_TOKEN", "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET",
-        "OUTLOOK_TENANT_ID", "OUTLOOK_REFRESH_TOKEN",
+        "GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "HECATE_KEY_GOOGLE_CLIENT_ID", "HECATE_KEY_GOOGLE_CLIENT_SECRET",
+        "GOOGLE_REFRESH_TOKEN", "HECATE_KEY_OUTLOOK_CLIENT_ID", "HECATE_KEY_OUTLOOK_CLIENT_SECRET",
+        "HECATE_KEY_OUTLOOK_TENANT", "OUTLOOK_REFRESH_TOKEN",
         "HECATE_ENABLE_PROVIDER_GOOGLE", "HECATE_ENABLE_PROVIDER_MICROSOFT",
     ]:
         monkeypatch.delenv(key, raising=False)
@@ -56,8 +56,8 @@ def test_detect_providers_empty(monkeypatch):
 
 
 def test_detect_providers_google_configured(monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "gsecret")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "gtoken")
 
     providers = {row["provider"]: row for row in hecate_main.detect_gateway_providers()}
@@ -67,7 +67,7 @@ def test_detect_providers_google_configured(monkeypatch):
 
 
 def test_detect_providers_google_force_enabled(monkeypatch):
-    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
+    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "HECATE_KEY_GOOGLE_CLIENT_ID", "HECATE_KEY_GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.setenv("HECATE_ENABLE_PROVIDER_GOOGLE", "true")
 
@@ -78,10 +78,9 @@ def test_detect_providers_google_force_enabled(monkeypatch):
 
 
 def test_detect_providers_microsoft_configured(monkeypatch):
-    monkeypatch.setenv("OUTLOOK_CLIENT_ID", "mid")
-    monkeypatch.setenv("OUTLOOK_CLIENT_SECRET", "msecret")
-    monkeypatch.setenv("OUTLOOK_TENANT_ID", "tenant")
-    monkeypatch.setenv("OUTLOOK_REFRESH_TOKEN", "mtoken")
+    monkeypatch.setenv("HECATE_KEY_OUTLOOK_CLIENT_ID", "mid")
+    monkeypatch.setenv("HECATE_KEY_OUTLOOK_CLIENT_SECRET", "msecret")
+    monkeypatch.setenv("HECATE_KEY_OUTLOOK_TENANT", "tenant")
 
     providers = {row["provider"]: row for row in hecate_main.detect_gateway_providers()}
     assert "microsoft" in providers
@@ -94,8 +93,8 @@ def test_detect_providers_microsoft_configured(monkeypatch):
 
 
 def test_gateway_providers_endpoint(client, monkeypatch):
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "gid")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "gsecret")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_ID", "gid")
+    monkeypatch.setenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "gsecret")
     monkeypatch.setenv("GOOGLE_REFRESH_TOKEN", "gtoken")
 
     resp = client.get("/api/gateway/providers")
@@ -106,9 +105,9 @@ def test_gateway_providers_endpoint(client, monkeypatch):
 
 
 def test_gateway_auth_status_endpoint(client, monkeypatch):
-    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
-                "GOOGLE_REFRESH_TOKEN", "OUTLOOK_CLIENT_ID", "OUTLOOK_CLIENT_SECRET",
-                "OUTLOOK_TENANT_ID", "OUTLOOK_REFRESH_TOKEN"]:
+    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "HECATE_KEY_GOOGLE_CLIENT_ID", "HECATE_KEY_GOOGLE_CLIENT_SECRET",
+                "GOOGLE_REFRESH_TOKEN", "HECATE_KEY_OUTLOOK_CLIENT_ID", "HECATE_KEY_OUTLOOK_CLIENT_SECRET",
+                "HECATE_KEY_OUTLOOK_TENANT", "OUTLOOK_REFRESH_TOKEN"]:
         monkeypatch.delenv(key, raising=False)
 
     resp = client.get("/api/gateway/auth/status")
@@ -130,7 +129,7 @@ def test_gateway_auth_refresh_unsupported_provider(client):
 
 
 def test_gateway_auth_refresh_unconfigured_provider(client, monkeypatch):
-    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
+    for key in ["GOOGLE_TOKEN_JSON", "GOOGLE_CREDENTIALS_JSON", "HECATE_KEY_GOOGLE_CLIENT_ID", "HECATE_KEY_GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"]:
         monkeypatch.delenv(key, raising=False)
     monkeypatch.delenv("HECATE_ENABLE_PROVIDER_GOOGLE", raising=False)
 
@@ -418,16 +417,16 @@ def test_auth_initiate_unsupported_provider(client):
 
 
 def test_auth_initiate_google_missing_credentials(client, monkeypatch):
-    monkeypatch.delenv("GOOGLE_CLIENT_ID", raising=False)
-    monkeypatch.delenv("GOOGLE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("HECATE_KEY_GOOGLE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", raising=False)
 
     resp = client.post("/api/gateway/auth/initiate/google")
     assert resp.status_code in (400, 501)
 
 
 def test_auth_initiate_microsoft_missing_credentials(client, monkeypatch):
-    monkeypatch.delenv("OUTLOOK_CLIENT_ID", raising=False)
-    monkeypatch.delenv("OUTLOOK_TENANT_ID", raising=False)
+    monkeypatch.delenv("HECATE_KEY_OUTLOOK_CLIENT_ID", raising=False)
+    monkeypatch.delenv("HECATE_KEY_OUTLOOK_TENANT", raising=False)
 
     resp = client.post("/api/gateway/auth/initiate/microsoft")
     assert resp.status_code in (400, 501)

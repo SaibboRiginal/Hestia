@@ -1,6 +1,7 @@
 """Hestia-Lares — the house on Home Assistant («Home», port 19024, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A3).
 
-Home Assistant is reached only from here (``LARES_HA_URL`` / ``LARES_HA_TOKEN`` in env). State changes arrive by
+Home Assistant is reached only from here, linked from the «Home Assistant» card (Connections,
+``hestia_common.connections``: address = Themis ``lares.home_assistant.address``, token = ``LARES_KEY_HOME_ASSISTANT``). State changes arrive by
 push on the HA websocket; favourites in Archive (``/api/home-store``); the chosen person entity → presence signal
 ``home.present``; tools for the assistant and Telegram over MCP.
 """
@@ -19,6 +20,7 @@ try:
 except ModuleNotFoundError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Hestia-Shared"))
 
+from hestia_common.connections import AddressConnector, Connections
 from hestia_common.display import action, display, item
 from hestia_common.mcp_helpers import MCPTool, undo
 from hestia_common.module_kit import ModuleKit
@@ -40,7 +42,29 @@ kit.settings.declare([
             options_source=f"{API}/persons/options",
             help="The Home Assistant person that is you: when you leave or come back, the assistant knows if you are home."),
 ])
-ha = HomeAssistant(os.getenv("LARES_HA_URL", ""), os.getenv("LARES_HA_TOKEN", ""))
+HA_ADDRESS = "lares.home_assistant.address"
+kit.settings.declare([
+    setting(HA_ADDRESS, "Home Assistant address", "string", "", group="Home", editor="connection:lares.home_assistant",
+            help="Where Home Assistant answers (e.g. http://homeassistant.local:8123): set it in Connections → Home Assistant, which also tests it."),
+])
+connections = Connections("lares", f"{API}/", env_file=Path(__file__).resolve().parent / ".env")
+ha = HomeAssistant("", "")
+
+
+class HomeAssistantConnector(AddressConnector):
+    id, label, icon, order = "home_assistant", "Home Assistant", "home", 20
+    what = "The house: lights, shutters, climate, sensors and who is home."
+    keywords = ("home assistant", "hass", "house", "lights", "domotics", "lares")
+    address_placeholder = "http://homeassistant.local:8123"
+    key_label = "Access token"
+    key_required = True
+    key_help = "The Home Assistant address and an access token."
+    guide = ("Home Assistant → your profile → Security → Long-lived access tokens → Create token: copy it here.",)
+
+
+ha_card = connections.register(HomeAssistantConnector(
+    connections, settings=kit.settings, setting_key=HA_ADDRESS, probe=lambda address, key: ha.probe(address, key),
+    apply=ha.configure))
 home = Home(kit.store, ha, kit.settings.get, presence=PresenceClient("lares", kit.hub_url))
 kit.health_extra = lambda: {"configured": ha.configured, "connected": home.connected}
 
@@ -181,7 +205,9 @@ transfer = Transfer("lares", kit.hub, sections=[
 ])
 app.include_router(transfer.router())
 kit.capabilities(transfer.capabilities)
+kit.on_warm(ha_card.apply_now)          # Themis values are there once the module is warm
 kit.on_warm(lambda: threading.Thread(target=_listen, daemon=True, name="lares-ha-ws").start())
+app.include_router(connections.router())
 kit.webui(icon="home", color="teal", description="The house on Home Assistant: lights, shutters, climate, scenes, quick actions.",
           pages=[page("home", "Home", element="lares-home", icon="home", order=230,
                       help="The house now, the quick actions and all Home Assistant devices by type.")],
@@ -189,4 +215,5 @@ kit.webui(icon="home", color="teal", description="The house on Home Assistant: l
                           open_page="home", icon="home")],
           quick_actions=[quick_action("action", "Home", "POST", f"{API}/favorites/{{id}}/run", icon="home",
                                       group="Home", source=f"{API}/quick", order=230)])
+kit.ui.connections(connections)
 kit.finish()

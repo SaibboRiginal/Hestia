@@ -95,6 +95,9 @@ services:
     restart: unless-stopped
     ports:
       - "19005:19005"
+    env_file:
+      - path: ./Hestia-Hermes/src/.env          # HERMES_KEY_* (Web Push pair) written by Hestia; optional
+        required: false
     environment:
       - HUB_API_URL=http://hestia_hub:19001/api
       - HERMES_SERVICE_BASE_URL=http://hestia_hermes:19005

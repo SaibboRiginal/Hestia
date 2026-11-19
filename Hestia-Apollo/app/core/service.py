@@ -229,12 +229,12 @@ class Images:
         return {**job, "id": jid}
 
     def _missing_notice(self, purpose: str, error: str) -> None:
-        msg = (tr("To create images the generator link is needed (address in the .env file).")
+        msg = (tr("To create images link ComfyUI in Connections.")
                if error == "not_configured" else
                tr("I have no workflow for «{0}»: upload it in Images → Workflows (from ComfyUI: Save → API Format).", PURPOSES.get(purpose, purpose)))
         self.hub.notify({"event_type": "service.action_required", "domain": "images",
                          "entity_id": f"apollo-missing-{purpose}",
                          "payload": {"kind": "apollo.missing_flow", "service": "apollo", "_source": tr("Images"),
-                                     "_title": tr("A workflow for images is missing"), "_message": msg, "level": "warning",
+                                     "_title": tr("ComfyUI is not linked") if error == "not_configured" else tr("A workflow for images is missing"), "_message": msg, "level": "warning",
                                      "target": "owner", "icon": "camera", "replaces": f"apollo.missing.{purpose}",
                                      "_link": {"module": "apollo", "page": "workflows"}}})

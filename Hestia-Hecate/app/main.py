@@ -92,6 +92,19 @@ try:
             telegram_visible=True, telegram_group="system",
                 telegram={"section": "Linked accounts"}),
         MCPTool(
+            name="connections_status",
+            description="Every external thing linked to the assistant (accounts, devices, programs at home such as ComfyUI or Home Assistant), of every module, with its state. Linking is done in the WebUI page Connections.",
+            parameters={"type": "object", "properties": {}},
+            handler=lambda **kw: {"status": "ok", "tool": "connections_status", "params": kw},
+            title="Connections", method="GET", path="/api/gateway/connections-overview",
+            clients=["telegram", "ui"], response_mode="oracle_natural",
+            response_prompt=(
+                "List each service with its state in a few words (linked, waiting, not linked). For one not linked say it "
+                "is linked from the Connections page of the site. Never name modules."
+            ),
+            telegram_visible=True, telegram_group="system",
+                telegram={"section": "Linked accounts", "primary": 1, "label": "Connections"}),
+        MCPTool(
             name="gateway_auth_verify",
             description=(
                 ("Check the sign-in of all providers (Google, Outlook) and SEND the owner a notification for "
@@ -219,15 +232,13 @@ app.include_router(create_log_control_router("hestia_hecate"))
 app.include_router(hecate_settings.router())
 app.include_router(devices_api.router)
 
-# ── WebUI plugin «Devices» (core): Garmin and the phone, set up without reading logs (brainstorm W7) ──
-from hestia_common.plugin_client import PluginClient, page as plugin_page  # noqa: E402
-UI_DIST = os.getenv("HECATE_UI_DIST", "/ui/dist")   # outside /code: a dev mount of app/ must not hide it
-ui = PluginClient("hecate", title="Accounts and devices", icon="link", color="teal", kind="core", dist=UI_DIST,
+# ── WebUI plugin (core): no page of its own; its connections (Google, Outlook, Garmin, phone, Gmail instant notices)
+# are drawn by the WebUI «Connections» page with the same card as every module's (hestia_common.connections). ──
+from hestia_common.plugin_client import PluginClient  # noqa: E402
+ui = PluginClient("hecate", title="Accounts and devices", icon="link", color="teal", kind="core",
                   description="The linked accounts and devices: calendar, mail, weather, watch, phone.",
                   version=os.getenv("HECATE_SERVICE_VERSION", "1.0.0"))
-ui.webui(entry="hecate.js", api_prefix="/api/gateway/",
-         pages=[plugin_page("devices", "Devices", element="hecate-devices", icon="pulse", order=105,
-                            help="The Garmin watch (sleep and activities every morning) and the Android phone (at home, charging, notifications of the chosen apps): link them and see the latest data received.")])
+ui.webui(entry="", api_prefix="/api/gateway/").connections(connections.hub)
 app.include_router(ui.router())
 
 vault = ArchiveClient()
@@ -364,18 +375,14 @@ def _provider_env_is_configured(provider: str) -> bool:
             or os.getenv("GOOGLE_TOKEN_JSON")
             or os.getenv("GOOGLE_CREDENTIALS_JSON")
             or (
-                os.getenv("GOOGLE_CLIENT_ID")
-                and os.getenv("GOOGLE_CLIENT_SECRET")
+                os.getenv("HECATE_KEY_GOOGLE_CLIENT_ID")
+                and os.getenv("HECATE_KEY_GOOGLE_CLIENT_SECRET")
                 and os.getenv("GOOGLE_REFRESH_TOKEN")
             )
         )
     if provider == "microsoft":
-        return bool(
-            os.getenv("OUTLOOK_CLIENT_ID")
-            and os.getenv("OUTLOOK_CLIENT_SECRET")
-            and os.getenv("OUTLOOK_TENANT_ID")
-            and os.getenv("OUTLOOK_REFRESH_TOKEN")
-        )
+        from providers import outlook as _outlook
+        return bool(_outlook.client()[0] and (_outlook.load_refresh_token() or _outlook.client()[2]))
     return False
 
 
@@ -453,6 +460,14 @@ def _refresh_calendar_registry() -> dict:
             "event=calendar_registry_reinitialized active=%s unavailable=%s",
             _calendar_registry.active_names, list(_calendar_registry.unavailable))
 
+    return _calendar_registry.status_report()
+
+
+def _reinit_calendar_registry() -> dict:
+    """A provider linked or unlinked from its card (Outlook): rebuild the registry so it is picked up or dropped."""
+    global _calendar_registry
+    _calendar_registry = CalendarProviderRegistry()
+    logger.info("event=calendar_registry_reinitialized active=%s", _calendar_registry.active_names)
     return _calendar_registry.status_report()
 
 
@@ -1249,6 +1264,18 @@ def _on_mail_settings(changed: dict) -> None:
 hecate_settings.on_change(_on_mail_settings)
 
 
+def _restart_gmail_push() -> None:
+    """The «Gmail instant notices» card changed: agenda rules (renew job on/off, safety interval) and the stream."""
+    threading.Thread(target=lambda: mail_agenda.register(_mail_agenda_rules()), daemon=True,
+                     name="hecate-mail-agenda").start()
+    if not gmail_pubsub.configured():
+        threading.Thread(target=lambda: mail_agenda.retire([MAIL_RENEW_JOB]), daemon=True,
+                         name="hecate-mail-retire").start()
+    if gmail_push.restart():
+        threading.Thread(target=lambda: gmail_push.renew(mail_gateway.gmail()), daemon=True,
+                         name="gmail-watch-renew").start()
+
+
 def start_mail_watch() -> None:
     """Startup: agenda rules (+ retire the renew job when push is not configured), Gmail push listener."""
     mail_agenda.register_async(_mail_agenda_rules)
@@ -1312,13 +1339,16 @@ def gateway_auth_google_state():
 @app.post("/api/gateway/auth/google/client")
 def gateway_auth_google_client(body: dict = Body(...)):
     """The OAuth client typed in the WebUI (id + secret, or the JSON downloaded from Google Cloud): kept in Hecate's
-    data folder, used at once (no restart). The secret never comes back."""
+    .env through Hestia (``hestia_common.connections``), used at once (no restart). The secret never comes back."""
     try:
         cid, secret = google_oauth.parse_client(str(body.get("client_id") or ""), str(body.get("client_secret") or ""),
                                                 str(body.get("json") or ""))
     except google_oauth.GoogleOAuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    google_oauth.save_client(cid, secret)
+    try:
+        google_oauth.save_client(cid, secret)
+    except connections.ConnectError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
     return {"status": "ok", "client_set": True}
 
 
@@ -1584,7 +1614,7 @@ def _initiate_google_device_flow() -> dict:
     if not client_id or not client_secret:
         raise HTTPException(
             status_code=400,
-            detail="GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set to start OAuth flow",
+            detail="HECATE_KEY_GOOGLE_CLIENT_ID and HECATE_KEY_GOOGLE_CLIENT_SECRET must be set to start OAuth flow",
         )
     try:
         resp = requests.post(
@@ -1780,13 +1810,10 @@ def _initiate_microsoft_oauth() -> dict:
     if not _OUTLOOK_LIBS_AVAILABLE:
         raise HTTPException(status_code=501, detail="msal not installed")
 
-    client_id = os.getenv("OUTLOOK_CLIENT_ID", "").strip()
-    tenant_id = os.getenv("OUTLOOK_TENANT_ID", "").strip()
-    if not client_id or not tenant_id:
-        raise HTTPException(
-            status_code=400,
-            detail="OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set to start OAuth flow",
-        )
+    from providers import outlook as _outlook
+    client_id, tenant_id, _ = _outlook.client()
+    if not client_id:
+        raise HTTPException(status_code=400, detail=tr("Outlook not linked: type the app's client ID in Connections."))
 
     try:
         import msal as _msal
@@ -1840,20 +1867,16 @@ def _poll_microsoft_oauth() -> dict:
             flow, exit_condition=lambda: True)
 
         if "access_token" in result:
-            refresh_token = result.get("refresh_token", "")
-            os.environ["OUTLOOK_REFRESH_TOKEN"] = refresh_token
+            from providers import outlook as _outlook
+            _outlook.save_refresh_token(str(result.get("refresh_token") or ""))
             _pending_auth.pop("microsoft", None)
-            refreshed = _refresh_calendar_registry()
+            refreshed = _reinit_calendar_registry()
             logger.info(
                 "event=microsoft_oauth_complete active_providers=%s", refreshed.get("active"))
             return {
                 "status": "authorized",
                 "provider": "microsoft",
                 "active_providers": refreshed.get("active", []),
-                "note": (
-                    "Refresh token stored in OUTLOOK_REFRESH_TOKEN for this process lifetime. "
-                    "Persist it to your env/secrets store to survive restarts."
-                ),
             }
         error = result.get("error", "")
         if error in ("authorization_pending", "slow_down"):
@@ -1888,9 +1911,72 @@ connections.register(connections.GoogleConnector(
     initiate=_google_words(_initiate_google_oauth),
     complete=_google_words(lambda code: _complete_google_oauth({"code": code})),
     cancel=lambda: gateway_auth_cancel("google")))
+connections.register(connections.GmailPushConnector(
+    settings=hecate_settings, topic_key=gmail_pubsub.TOPIC, subscription_key=gmail_pubsub.SUBSCRIPTION, status=gmail_push.status,
+    restart=lambda: _restart_gmail_push()))
+
+
+def _outlook_unlink() -> None:
+    from providers import outlook as _outlook
+    _outlook.save_refresh_token("")
+    connections.hub.save_secrets({"outlook_client_id": "", "outlook_tenant": "", "outlook_client_secret": ""})
+    _reinit_calendar_registry()
+
+
+def _outlook_initiate() -> dict:
+    try:
+        return _initiate_microsoft_oauth()
+    except HTTPException as exc:
+        raise connections.ConnectError(str(exc.detail)[:300])
+
+
+connections.register(connections.OutlookConnector(
+    linked=lambda: "outlook" in _calendar_registry.active_names, initiate=_outlook_initiate,
+    poll=_poll_microsoft_oauth, cancel=lambda: gateway_auth_cancel("microsoft"), unlink=_outlook_unlink))
 connections.register(connections.GarminConnector(
     devices_api.garmin, sync=lambda: devices_api.garmin_sync({"days": 2}),
     first_sync=lambda: threading.Thread(target=lambda: devices_api.garmin_sync({"days": 2}), daemon=True,
                                         name="garmin-first-sync").start()))
 connections.register(connections.PhoneConnector(devices_api.phone_status))
-app.include_router(connections.router)
+app.include_router(connections.hub.router())
+
+
+@app.get("/api/gateway/connections-overview")
+def connections_overview():
+    """Every connection of every module (catalog type «connection» → each module's own list, through Hub): the state
+    for the assistant and Telegram (tool ``connections_status``). Linking stays in the WebUI cards."""
+    hub = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    try:
+        cat = requests.get(f"{hub}/discovery/catalog", params={"client": "webui", "type": "connection"}, timeout=8).json()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[🔄] event=connections_overview_catalog_failed error=%s fallback=own", exc)
+        cat = {}
+    sources = {c.get("module"): c.get("source") for c in ((cat.get("contributions") or {}).get("webui") or {}).get("connection") or []
+               if c.get("module") and c.get("source")}
+    items, missing = [], []
+    for module, source in sorted(sources.items()):
+        if module == "hecate":
+            rows = connections.hub.items()
+        else:
+            try:
+                code, payload = _route_via_hub(module, source.lstrip("/"), method="GET", timeout_seconds=8)
+            except Exception as exc:  # noqa: BLE001 — one module down never hides the others
+                logger.warning("[🔄] event=connections_overview_module_failed module=%s error=%s", module, type(exc).__name__)
+                code, payload = 503, None
+            if code >= 400 or not isinstance(payload, dict):
+                missing.append(module)
+                continue
+            rows = payload.get("items") or []
+        items += [{"label": r.get("label"), "what": r.get("what"), "state": r.get("state"), "detail": r.get("detail"),
+                   "group": r.get("group")} for r in rows]
+    if not sources:
+        items = [{"label": r["label"], "what": r["what"], "state": r["state"], "detail": r["detail"], "group": r["group"]}
+                 for r in connections.hub.items()]
+    from hestia_common.display import display, item
+    word = {"connected": tr("linked"), "waiting": tr("waiting")}
+    tone = {"connected": "success", "waiting": "warning"}
+    rows = [item(tr(str(i["label"] or "")), [word.get(i["state"], tr("not linked"))], tone=tone.get(i["state"], ""))
+            for i in items]
+    return {"status": "ok", "items": items, "unreachable": len(missing),
+            "display": display(tr("Connections"), subtitle=tr("They are linked from the Connections page of the site."),
+                               items=rows, lines=[] if rows else [tr("Nothing to link yet.")])}

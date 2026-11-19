@@ -135,21 +135,9 @@ def is_public_redirect(uri: str) -> bool:
 
 
 def client_credentials() -> tuple[str, str]:
-    """The OAuth client: ``GOOGLE_CLIENT_ID``/``GOOGLE_CLIENT_SECRET`` from env, else the one typed in the WebUI
-    («Link Google» in Devices or in the guided setup), kept next to the token in Hecate's data folder."""
-    cid, secret = os.getenv("GOOGLE_CLIENT_ID", "").strip(), os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-    if cid and secret:
-        return cid, secret
-    try:
-        data = json.loads(_client_file().read_text(encoding="utf-8"))
-        return str(data.get("client_id") or "").strip(), str(data.get("client_secret") or "").strip()
-    except (OSError, ValueError):
-        return cid, secret
-
-
-def _client_file() -> Path:
-    token_file = Path(os.getenv("GOOGLE_TOKEN_FILE", "/code/data/google_token.json"))
-    return token_file.parent / "google_client.json"
+    """The OAuth client typed in the «Google» card (Connections or the guided setup): ``HECATE_KEY_GOOGLE_CLIENT_ID`` /
+    ``HECATE_KEY_GOOGLE_CLIENT_SECRET`` in Hecate's own .env, written by Hestia (``hestia_common.connections``)."""
+    return (os.getenv("HECATE_KEY_GOOGLE_CLIENT_ID", "").strip(), os.getenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "").strip())
 
 
 def parse_client(client_id: str = "", client_secret: str = "", raw_json: str = "") -> tuple[str, str]:
@@ -171,16 +159,10 @@ def parse_client(client_id: str = "", client_secret: str = "", raw_json: str = "
 
 
 def save_client(client_id: str, client_secret: str) -> None:
-    """Keep the OAuth client in Hecate's data folder (owner-only file); the secret is never logged nor returned."""
-    path = _client_file()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"client_id": client_id, "client_secret": client_secret}), encoding="utf-8")
-    try:
-        os.chmod(tmp, 0o600)
-    except OSError:
-        pass
-    tmp.replace(path)
+    """Keep the OAuth client in Hecate's .env (through Hephaestus, re-read at once); the secret is never logged nor
+    returned. Raises ``connections.ConnectError`` when it could not be saved."""
+    import connections   # Hecate's connectors (top-level module of the app)
+    connections.hub.save_secrets({"google_client_id": client_id, "google_client_secret": client_secret})
     logger.info("event=google_client_saved source=webui")
 
 
@@ -263,7 +245,7 @@ def start() -> dict:
     client_id, client_secret = client_credentials()
     if not client_id or not client_secret:
         raise GoogleOAuthError(
-            "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set to start OAuth flow",
+            "HECATE_KEY_GOOGLE_CLIENT_ID and HECATE_KEY_GOOGLE_CLIENT_SECRET must be set to start OAuth flow",
             hint="Create an OAuth client of type 'Desktop app' in Google Cloud Console "
                  "and put its id/secret in Hestia-Hecate/app/.env.")
 
@@ -404,7 +386,7 @@ def _hint_for(error: str) -> str:
             "('Web application'), or use a 'Desktop app' client for the localhost redirect. "
             "The Cloudflare quick-tunnel URL changes at every restart: re-add it, or set a "
             "fixed GOOGLE_OAUTH_REDIRECT_URI."),
-        "invalid_client": "GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are wrong or the client was deleted.",
+        "invalid_client": "HECATE_KEY_GOOGLE_CLIENT_ID / HECATE_KEY_GOOGLE_CLIENT_SECRET are wrong or the client was deleted.",
         "unauthorized_client": "This OAuth client type cannot use this flow — create a 'Desktop app' client.",
     }
     return hints.get(error, "")

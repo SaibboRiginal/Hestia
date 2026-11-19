@@ -32,6 +32,10 @@ WHITELIST: dict[str, Target] = {
     "HESTIA_BACKUP_PASSPHRASE": Target(".env", ("archive",)),
     "HF_TOKEN": Target("Hestia-Oracle/app/.env", ("oracle",)),
 }
+# Modules whose connection cards save a key (hestia_common.connections: «<MODULE>_KEY_<NAME>» in their own .env).
+CONNECTION_MODULES: dict[str, str] = {"apollo": "Hestia-Apollo/app/.env", "lares": "Hestia-Lares/app/.env",
+                                      "hecate": "Hestia-Hecate/app/.env", "hermes": "Hestia-Hermes/src/.env"}
+_CONNECTION_KEY = re.compile(r"^(" + "|".join(m.upper() for m in CONNECTION_MODULES) + r")_KEY_[A-Z0-9_]{1,40}$")
 _ORACLE_KEY = re.compile(r"^ORACLE_KEY_[A-Z0-9_]{1,40}$")
 _ECHO_KEY = re.compile(r"^ECHO_KEY_[A-Z0-9_]{1,40}$")     # speech services' keys (setup «Voice»)
 _VALUE_OK = re.compile(r"^[\x21-\x7e]{1,4096}$")          # printable ASCII, no spaces, no newlines, no quotes issues
@@ -50,6 +54,9 @@ def target_for(key: str) -> Target:
         return Target("Hestia-Oracle/app/.env", ("oracle",))
     if _ECHO_KEY.match(key):
         return Target("Hestia-Echo/app/.env", ("echo",))
+    if _CONNECTION_KEY.match(key):
+        module = key.split("_KEY_", 1)[0].lower()
+        return Target(CONNECTION_MODULES[module], (module,))
     raise SecretRefused(f"key not allowed: {key[:60]}")
 
 
@@ -99,6 +106,20 @@ def write_env(path: Path, key: str, value: str) -> None:
     if path.exists():
         os.chmod(tmp, path.stat().st_mode & 0o777)
     os.replace(tmp, path)
+
+
+def set_connection_secret(repo: Path, module: str, key: str, value: str) -> Target:
+    """A key a connection card of ``module`` saves: only ``<MODULE>_KEY_<NAME>`` of that module; empty = cleared."""
+    module = str(module or "").strip().lower()
+    if module not in CONNECTION_MODULES or not key.startswith(f"{module.upper()}_KEY_"):
+        raise SecretRefused(f"key not allowed for {module[:30]}: {key[:60]}")
+    target = target_for(key)
+    value = str(value or "").strip()
+    if value:
+        value = validate(key, value)
+    write_env(repo / target.env_file, key, value)
+    logger.info("event=setup_connection_secret_set key=%s file=%s cleared=%s", key, target.env_file, not value)
+    return target
 
 
 def set_secret(repo: Path, key: str, value: str) -> Target:

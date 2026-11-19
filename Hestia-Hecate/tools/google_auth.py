@@ -52,11 +52,11 @@ def main():
 
     # 1) Load client_id / client_secret from .env (process env wins)
     env = _load_env_vars(ENV_FILE)
-    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip() or env.get("GOOGLE_CLIENT_ID", "").strip()
-    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip() or env.get("GOOGLE_CLIENT_SECRET", "").strip()
+    client_id = os.getenv("HECATE_KEY_GOOGLE_CLIENT_ID", "").strip() or env.get("HECATE_KEY_GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("HECATE_KEY_GOOGLE_CLIENT_SECRET", "").strip() or env.get("HECATE_KEY_GOOGLE_CLIENT_SECRET", "").strip()
 
     if not client_id or not client_secret:
-        print("ERROR: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set in:")
+        print("ERROR: HECATE_KEY_GOOGLE_CLIENT_ID and HECATE_KEY_GOOGLE_CLIENT_SECRET must be set in:")
         print(f"       {ENV_FILE}")
         sys.exit(1)
 

@@ -27,7 +27,8 @@ CODE_TTL = 600
 CODE_TRIES = 5
 # Modules that re-read their provider keys from their own .env without a restart: (path, key prefix).
 LIVE = {"oracle": ("/api/llm/setup/reload-keys", "ORACLE_KEY_"),
-        "echo": ("/api/voice/setup/reload-keys", "ECHO_KEY_")}
+        "echo": ("/api/voice/setup/reload-keys", "ECHO_KEY_"),
+        **{m: ("/api/connections/reload-keys", f"{m.upper()}_KEY_") for m in secrets.CONNECTION_MODULES}}
 EMBEDDING_MODEL = "qwen3-embedding:0.6b"   # same as Oracle's llm_setup.EMBEDDING_MODEL
 
 
@@ -121,6 +122,19 @@ class SetupService:
             results[service] = {"reloaded": False, "recreated": ok, "applied": ok, "healthy": healthy,
                                 "detail": "" if ok else detail}
         return {"keys": sorted(values), "services": results}
+
+    def set_connection_secrets(self, module: str, values: dict[str, str]) -> dict[str, Any]:
+        """Keys saved by a connection card (``hestia_common.connections``): written into the module's .env (empty =
+        cleared), then the module re-reads them live; a failed re-read re-creates its container once."""
+        if not values:
+            raise secrets.SecretRefused("no key")
+        for key, value in values.items():
+            secrets.set_connection_secret(self.repo, module, key, value)
+        filled = {k: str(v or "").strip() for k, v in values.items() if str(v or "").strip()}
+        if self._reload_live(module, filled):
+            return {"keys": sorted(values), "applied": True, "reloaded": True, "detail": ""}
+        ok, detail = self.recreate(module, {k: str(v or "").strip() for k, v in values.items()})
+        return {"keys": sorted(values), "applied": ok, "reloaded": False, "detail": "" if ok else detail}
 
     def _reload_live(self, service: str, updates: dict[str, str]) -> bool:
         """The module re-reads its own .env (``POST …/setup/reload-keys``) and names the keys it now has."""

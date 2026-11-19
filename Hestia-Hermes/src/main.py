@@ -164,6 +164,34 @@ def start_settings():
     hermes_settings.start()
 
 
+_ENV_FILE = Path(__file__).resolve().parent / ".env"
+
+
+def _save_hermes_keys(values: dict) -> bool:
+    """Hephaestus writes Hermes' own keys (the Web Push pair) into its .env (hestia_common.connections)."""
+    import requests as _rq
+    hub = os.getenv("HUB_API_URL", "http://hestia_hub:19001/api").rstrip("/")
+    resp = _rq.post(f"{hub}/route/hephaestus/api/setup/connection-secret",
+                    json={"method": "POST", "headers": {}, "query": {}, "timeout_seconds": 40,
+                          "body": {"module": "hermes", "values": values}}, timeout=45)
+    resp.raise_for_status()
+    routed = resp.json() or {}
+    return int(routed.get("status_code", 500)) < 400 and bool((routed.get("payload") or {}).get("applied"))
+
+
+@app.on_event("startup")
+def start_webpush_keys():
+    """Web Push needs a VAPID pair: made here at the first start, nothing for the owner to do."""
+    webpush.ensure_keys(_save_hermes_keys)
+
+
+@app.post("/api/connections/reload-keys")
+def reload_keys():
+    """Internal (Hephaestus after writing a key): re-read ``HERMES_KEY_*`` from Hermes' own .env."""
+    from hestia_common import env_keys
+    return {"status": "ok", "keys": env_keys.reload(_ENV_FILE, "HERMES_KEY_")}
+
+
 @app.on_event("startup")
 def register_on_hub_startup():
     hub_api_url = os.getenv(

@@ -95,10 +95,10 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
 
 ## Setups that need Marko's devices (dossier `docs/work/2026-10-24-whole-cindy-brainstorm`)
 
-- **Garmin** (W4 B10): `pip` gets `garminconnect` with the Hecate image (`up-all.bat --build`). Telegram → Sistema →
-  Dispositivi → «Link Garmin» → «Insert» → email + password (+ the code Garmin mails, second form). Then
+- **Garmin** (W4 B10): `pip` gets `garminconnect` with the Hecate image (`up-all.bat --build`). WebUI → Connections →
+  Garmin (or Telegram «Link Garmin») → email + password (+ the code Garmin mails). Then
   «Read Garmin now»: yesterday's run appears in Allenamento → attività, the night in Cura di sé → diario (sonno).
-- **Phone** (W4 Cindy 32): put a long random `HECATE_PHONE_TOKEN` in `Hestia-Hecate/app/.env`; Tasker profile
+- **Phone** (W4 Cindy 32): WebUI → Connections → Android phone → «Create the phone's key» (shown once); Tasker profile
   «Wi-Fi connesso/disconnesso» → HTTP Request POST `https://<tunnel>/api/gateway/phone/push`, header
   `X-Hestia-Phone-Token: <token>`, body `{"type":"state","wifi":"%WIFII_SSID","charging":%BATT_CHARGING}` (Wi-Fi names
   in Themis «Home Wi-Fi»); profile «Notification» of the bank app → body `{"type":"notification","app":"%an",
@@ -110,15 +110,15 @@ python tools/cloud_test.py flows [area…]   # real user flows end to end (after
   `up-all.bat --build`, then open the WebUI: new sidebar (Cerca, Parla, Conversazioni, Sistema), Home «Now»,
   Chat «History» + «Detta». The `changes` frame («Ho fatto … Annulla») and the origin label need the new
   `OracleEvent.items` / `origin` fields: a reply from a routine must show «Avviato da …».
-- **Images / ComfyUI** (W5 A1): on the PC with the GPU start ComfyUI with `--listen 0.0.0.0`; root `.env`
-  `APOLLO_COMFYUI_URL=http://<pc>:8188`. ComfyUI → your txt2img workflow → *Save (API Format)* → WebUI Immagini →
+- **Images / ComfyUI** (W5 A1): on the PC with the GPU start ComfyUI with `--listen 0.0.0.0`; WebUI → Connections →
+  ComfyUI → address `http://host.docker.internal:8188` (same PC) or `http://<pc>:8188` → «Save and test» (version,
+  video card, models). ComfyUI → your txt2img workflow → *Save (API Format)* → WebUI Immagini →
   Flussi → upload it as «generico» (and «Mascot» for the pet). Then «Nuova immagine»: the job goes queued → running →
   done and Hermes says «Image ready». Aspetto → pet → «Genera» uses the «Mascot» flow.
-- **House / Home Assistant** (W5 A3): root `.env` `LARES_HA_URL` + `LARES_HA_TOKEN` (HA → profile → Security →
-  Long-lived access tokens). WebUI Casa shows the rooms; star a light → it appears as a Home chip and in Telegram Casa.
+- **House / Home Assistant** (W5 A3): WebUI → Connections → Home Assistant → address + token (HA → profile →
+  Security → Long-lived access tokens) → «Save and test». WebUI Casa shows the rooms; star a light → it appears as a Home chip and in Telegram Casa.
   Themis «You in Home Assistant» = your `person.*` → leaving home sets the presence.
-- **Web Push** (W2/W7 C15): `npx web-push generate-vapid-keys` once → root `.env` `HERMES_VAPID_PUBLIC_KEY`,
-  `HERMES_VAPID_PRIVATE_KEY`, `HERMES_VAPID_SUBJECT=mailto:…`. WebUI Impostazioni → Personali → «Notifiche sul
+- **Web Push** (W2/W7 C15): nothing to set (Hermes makes and saves its keys on the first start). WebUI Impostazioni → Personali → «Notifiche sul
   dispositivo» → Attiva (needs HTTPS or localhost). Close the tab, ask a reminder in 1 minute: the system notification
   opens the right page.
 - **llama-server** (W1 D17, optional): `.gguf` in `LLAMACPP_MODELS_DIR`, `LLAMACPP_MODEL=<file>`, then

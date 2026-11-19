@@ -1,6 +1,7 @@
 """Hestia-Apollo — images through a remote ComfyUI («Images», port 19022, dossier docs/work/2026-10-24-whole-cindy-brainstorm W5 A1).
 
-The only module that talks to image generators (``APOLLO_COMFYUI_URL`` / ``APOLLO_COMFYUI_KEY`` in env). Flows and
+The only module that talks to image generators: the remote ComfyUI is linked from the «ComfyUI» card (Connections,
+``hestia_common.connections``: address = Themis ``apollo.comfyui.address``, key = ``APOLLO_KEY_COMFYUI``). Flows and
 jobs in Archive (``/api/images-store``), images in Archive blobs, results pushed to the requester (``callback``) or
 told through Hermes; tools for the assistant and Telegram over MCP.
 """
@@ -19,10 +20,12 @@ try:
 except ModuleNotFoundError:
     sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Hestia-Shared"))
 
+from hestia_common.connections import AddressConnector, Connections
 from hestia_common.display import display, file, item
 from hestia_common.mcp_helpers import MCPTool
 from hestia_common.module_kit import ModuleKit, NotFound
 from hestia_common.plugin_client import page
+from hestia_common.settings_client import setting
 from hestia_common.transfer import StoreSection, Transfer
 
 from .core.comfy import ComfyUI
@@ -33,9 +36,33 @@ kit = ModuleKit("apollo", port=19022, api=API, domain="images", title="Images", 
                 when_to_use="create images (portraits, backgrounds, mascots, icons, illustrations)",
                 manual="image_create: describe the image in English in prompt, pick purpose; if ready soon you get it at once, otherwise a notice follows (image_status to see it). Workflows (image_flows) are uploaded by the user from ComfyUI.")
 app = kit.app
-comfy = ComfyUI(os.getenv("APOLLO_COMFYUI_URL", ""), os.getenv("APOLLO_COMFYUI_KEY", ""))
+COMFY_ADDRESS = "apollo.comfyui.address"
+kit.settings.declare([
+    setting(COMFY_ADDRESS, "ComfyUI address", "string", "", group="Images", editor="connection:apollo.comfyui",
+            help="Where your ComfyUI answers (e.g. http://192.168.1.50:8188): set it in Connections → ComfyUI, which also tests it."),
+])
+connections = Connections("apollo", f"{API}/", env_file=Path(__file__).resolve().parent / ".env")
+comfy = ComfyUI("", "")
+
+
+class ComfyConnector(AddressConnector):
+    id, label, icon, order = "comfyui", "ComfyUI", "camera", 10
+    what = "Makes the images (portraits, backgrounds, the mascot) on your computer with a video card."
+    keywords = ("comfy", "images", "image generator", "stable diffusion", "flux", "gpu", "apollo")
+    address_placeholder = "http://192.168.1.50:8188"
+    key_label = "Key"
+    key_help = "The address where ComfyUI answers. The key only if you put a proxy with a password in front of it."
+    guide = ("Start ComfyUI so it accepts the network: python main.py --listen 0.0.0.0 --port 8188",
+             "On the same computer as Hestia the address is http://host.docker.internal:8188, otherwise the computer's IP.",
+             "Then upload a workflow in Images → Workflows (from ComfyUI: Save → API Format).")
+
+
+comfy_card = connections.register(ComfyConnector(
+    connections, settings=kit.settings, setting_key=COMFY_ADDRESS,
+    probe=lambda address, key: comfy.probe(address, key), apply=comfy.configure))
 images = Images(kit.store, comfy, kit.hub)
 kit.health_extra = lambda: {"configured": comfy.configured}
+kit.on_warm(comfy_card.apply_now)       # Themis values are there once the module is warm
 
 
 @app.get(f"{API}/status")
@@ -163,10 +190,12 @@ def _start_worker() -> None:
 
 
 kit.on_warm(_start_worker)
+app.include_router(connections.router())
 kit.webui(icon="camera", color="purple", description="Images made with your ComfyUI: portraits, backgrounds, mascots.",
           pages=[page("images", "Images", element="apollo-images", icon="camera", order=210,
                       help="Create an image and see the ones made. You need your ComfyUI and one flow per type."),
                  page("job/:id", "Image", element="apollo-job", detail=True, parent="images"),
                  page("workflows", "Workflows", element="apollo-flows", icon="upload", order=211, parent="images",
                       help="Upload from ComfyUI the flow saved in API format (Save → API Format), one per image type.")])
+kit.ui.connections(connections)
 kit.finish()

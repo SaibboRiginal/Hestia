@@ -137,8 +137,10 @@ class TestMailWatchEndpoints:
 
     def test_pubsub_configured_adds_renew_and_slows_check(self, monkeypatch):
         import main
-        monkeypatch.setenv("HECATE_GMAIL_PUBSUB_TOPIC", "projects/p/topics/t")
-        monkeypatch.setenv("HECATE_GMAIL_PUBSUB_SUBSCRIPTION", "projects/p/subscriptions/s")
+        from core import gmail_pubsub
+        values = {gmail_pubsub.TOPIC: "projects/p/topics/t", gmail_pubsub.SUBSCRIPTION: "projects/p/subscriptions/s"}
+        monkeypatch.setattr(gmail_pubsub, "_setting", lambda key: values.get(key, ""))
+        monkeypatch.setenv("HECATE_KEY_GMAIL_PUBSUB_ACCOUNT", "e30=")
         rules = main._mail_agenda_rules()
         assert [r["key"] for r in rules] == ["hecate.mail_watch", "hecate.mail_watch_renew"]
         assert rules[0]["recurrence"] == "FREQ=MINUTELY;INTERVAL=360"

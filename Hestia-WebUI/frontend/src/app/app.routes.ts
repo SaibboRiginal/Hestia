@@ -28,6 +28,8 @@ export const routes: Routes = [
       { path: 'download', loadComponent: () => import('./features/downloads/downloads-page.component').then(m => m.DownloadsPageComponent), title: tr('Downloads · {assistant}') },
       { path: 'updates', loadComponent: () => import('./features/updates/updates-page.component').then(m => m.UpdatesPageComponent), title: tr('Updates · {assistant}') },
       { path: 'machines', loadComponent: () => import('./features/machines/machines-page.component').then(m => m.MachinesPageComponent), title: tr('Machines · {assistant}') },
+      { path: 'connections', loadComponent: () => import('./features/connections/connections-page.component').then(m => m.ConnectionsPageComponent), title: tr('Connections · {assistant}') },
+      { path: 'p/hecate/devices', redirectTo: 'connections' },
       { path: 'system', loadComponent: () => import('./features/system/system-page.component').then(m => m.SystemPageComponent), title: tr('System · {assistant}') },
       { path: 'd/:id', loadComponent: () => import('./features/plugins/dashboard-page.component').then(m => m.DashboardPageComponent), title: tr('Dashboard · {assistant}') },
       { matcher: pluginPageMatcher, loadComponent: () => import('./features/plugins/plugin-page.component').then(m => m.PluginPageComponent), title: assistantName() },

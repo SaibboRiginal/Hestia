@@ -1,7 +1,13 @@
+"""Outlook calendar (Microsoft Graph). The app is the one typed in the «Outlook» card (Connections):
+``HECATE_KEY_OUTLOOK_CLIENT_ID``, ``HECATE_KEY_OUTLOOK_TENANT`` (default ``common``), optional
+``HECATE_KEY_OUTLOOK_CLIENT_SECRET`` in Hecate's .env; the refresh token the sign-in gives is kept in
+``data/outlook_token.json`` (owner-only), so it survives restarts, and is replaced when Microsoft rotates it."""
 from __future__ import annotations
 
+import json
 import logging
 import os
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -23,10 +29,45 @@ _GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 _SCOPE_CALENDAR = ["https://graph.microsoft.com/Calendars.ReadWrite"]
 
 
+def client() -> tuple[str, str, str]:
+    """(client id, tenant, client secret) typed in the card."""
+    return (os.getenv("HECATE_KEY_OUTLOOK_CLIENT_ID", "").strip(),
+            os.getenv("HECATE_KEY_OUTLOOK_TENANT", "").strip() or "common",
+            os.getenv("HECATE_KEY_OUTLOOK_CLIENT_SECRET", "").strip())
+
+
+def token_file() -> Path:
+    token = Path(os.getenv("GOOGLE_TOKEN_FILE", "/code/data/google_token.json"))
+    return token.parent / "outlook_token.json"
+
+
+def load_refresh_token() -> str:
+    try:
+        return str(json.loads(token_file().read_text(encoding="utf-8")).get("refresh_token") or "").strip()
+    except (OSError, ValueError):
+        return ""
+
+
+def save_refresh_token(token: str) -> None:
+    path = token_file()
+    if not token:
+        path.unlink(missing_ok=True)
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"refresh_token": token}), encoding="utf-8")
+    try:
+        os.chmod(tmp, 0o600)
+    except OSError:
+        pass
+    tmp.replace(path)
+    logger.info("event=outlook_token_saved")
+
+
 class OutlookCalendarProvider(AbstractCalendarProvider):
     def __init__(self) -> None:
         self._token: Optional[str] = None
-        self._user_id: str = os.getenv("OUTLOOK_USER_ID", "me")
+        self._user_id: str = "me"
         self._init_error: Optional[str] = None
         self._setup()
 
@@ -94,14 +135,12 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             self._init_error = "msal and requests not installed"
             return
 
-        client_id = os.getenv("OUTLOOK_CLIENT_ID", "").strip()
-        tenant_id = os.getenv("OUTLOOK_TENANT_ID", "").strip()
-        if not client_id or not tenant_id:
-            self._init_error = "OUTLOOK_CLIENT_ID and OUTLOOK_TENANT_ID must be set."
+        client_id, tenant_id, client_secret = client()
+        if not client_id:
+            self._init_error = "Outlook not linked."
             return
 
-        refresh_token = os.getenv("OUTLOOK_REFRESH_TOKEN", "").strip()
-        client_secret = os.getenv("OUTLOOK_CLIENT_SECRET", "").strip()
+        refresh_token = load_refresh_token()
 
         if refresh_token:
             self._token = self._acquire_token_by_refresh(
@@ -110,7 +149,7 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
             self._token = self._acquire_token_client_credentials(
                 client_id, tenant_id, client_secret)
         else:
-            self._init_error = "Provide OUTLOOK_REFRESH_TOKEN or OUTLOOK_CLIENT_SECRET"
+            self._init_error = "Outlook not linked."
 
     def _acquire_token_by_refresh(
         self,
@@ -124,6 +163,8 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
         result = app.acquire_token_by_refresh_token(
             refresh_token, scopes=_SCOPE_CALENDAR)
         if "access_token" in result:
+            if result.get("refresh_token") and result["refresh_token"] != refresh_token:
+                save_refresh_token(str(result["refresh_token"]))     # Microsoft rotates it
             return str(result["access_token"])
         self._init_error = f"Token refresh failed: {result.get('error_description')}"
         logger.warning("event=outlook_refresh_failed %s", self._init_error)
@@ -149,9 +190,10 @@ class OutlookCalendarProvider(AbstractCalendarProvider):
         return {"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"}
 
     def _events_url(self, calendar_id: str) -> str:
+        who = "me" if self._user_id == "me" else f"users/{self._user_id}"
         if calendar_id == "primary" or not calendar_id:
-            return f"{_GRAPH_BASE}/users/{self._user_id}/calendar/events"
-        return f"{_GRAPH_BASE}/users/{self._user_id}/calendars/{calendar_id}/events"
+            return f"{_GRAPH_BASE}/{who}/calendar/events"
+        return f"{_GRAPH_BASE}/{who}/calendars/{calendar_id}/events"
 
     def _get(self, url: str, params: dict | None = None) -> dict:
         resp = _requests.get(

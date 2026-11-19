@@ -1,7 +1,8 @@
 """ComfyUI client: queue a workflow, wait for it on the websocket (push), fetch the images.
 
-Only Apollo talks to image generators. ``APOLLO_COMFYUI_URL`` (the remote ComfyUI, e.g. on Marko's PC or a rented
-GPU) and ``APOLLO_COMFYUI_KEY`` (optional bearer token of a proxy in front of it) are infrastructure/secret: env.
+Only Apollo talks to image generators. The remote ComfyUI (e.g. on Marko's PC or a rented GPU) is linked from the
+«ComfyUI» card (Connections): its address is the Themis setting ``apollo.comfyui.address``, the optional bearer token of
+a proxy in front of it is ``APOLLO_KEY_COMFYUI`` in Apollo's .env (``hestia_common.connections``).
 """
 from __future__ import annotations
 
@@ -31,12 +32,62 @@ class ComfyUI:
     def configured(self) -> bool:
         return bool(self.url)
 
+    def configure(self, url: str, key: str = "") -> None:
+        """The card saved a new address or key: used by the next job."""
+        self.url = (url or "").rstrip("/")
+        self.key = key or ""
+        logger.info("event=comfy_configured configured=%s key=%s", self.configured, bool(self.key))
+
+    def probe(self, url: str | None = None, key: str | None = None) -> dict:
+        """The «Test» button: reachable? version, GPU and free memory, the checkpoints it has → ``{ok, detail, facts}``."""
+        other = ComfyUI(self.url if url is None else url, self.key if key is None else key, session=self.http)
+        if not other.configured:
+            return {"ok": False, "detail": tr("Type the ComfyUI address first."), "facts": []}
+        try:
+            stats = other._get("/system_stats", timeout=8).json() or {}
+        except ComfyError as exc:
+            return {"ok": False, "detail": tr("ComfyUI does not answer: {0}", str(exc)[:160]), "facts": [
+                tr("Start ComfyUI so it accepts the network: python main.py --listen 0.0.0.0 --port 8188"),
+                tr("On the same computer as Hestia use http://host.docker.internal:8188, otherwise the computer's address.")]}
+        except ValueError:
+            return {"ok": False, "detail": tr("Something answers at that address, but it is not ComfyUI."), "facts": []}
+        facts = []
+        version = (stats.get("system") or {}).get("comfyui_version")
+        if version:
+            facts.append(tr("ComfyUI {0}", version))
+        gpus = [d for d in stats.get("devices") or [] if str(d.get("type") or "").lower() not in ("cpu", "")]
+        for d in gpus[:2]:
+            total, free = d.get("vram_total") or 0, d.get("vram_free") or 0
+            name = str(d.get("name") or "GPU").split(":", 1)[-1].strip()[:60]
+            facts.append(tr("Video card {0}: {1} GB free of {2} GB", name, round(free / 2**30, 1), round(total / 2**30, 1)))
+        if not gpus:
+            facts.append(tr("No video card found: images will be very slow."))
+        models = other.checkpoints()
+        facts.append(tr("Models: {0}", ", ".join(models[:8]) + (" …" if len(models) > 8 else "")) if models
+                     else tr("No model found in ComfyUI's checkpoints folder."))
+        return {"ok": True, "detail": tr("ComfyUI answers."), "facts": facts}
+
+    def checkpoints(self) -> list[str]:
+        """The model files ComfyUI has (``/models/checkpoints``; older versions: the loader's choices)."""
+        try:
+            data = self._get("/models/checkpoints", timeout=8).json()
+            if isinstance(data, list):
+                return [str(m) for m in data]
+        except (ComfyError, ValueError):
+            pass
+        try:
+            info = self._get("/object_info/CheckpointLoaderSimple", timeout=8).json() or {}
+            choice = (((info.get("CheckpointLoaderSimple") or {}).get("input") or {}).get("required") or {}).get("ckpt_name")
+            return [str(m) for m in (choice[0] if isinstance(choice, list) and choice and isinstance(choice[0], list) else [])]
+        except (ComfyError, ValueError, AttributeError):
+            return []
+
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.key}"} if self.key else {}
 
-    def _get(self, path: str, **params) -> requests.Response:
+    def _get(self, path: str, timeout: float = 30, **params) -> requests.Response:
         try:
-            resp = self.http.get(f"{self.url}{path}", params=params, headers=self._headers(), timeout=30)
+            resp = self.http.get(f"{self.url}{path}", params=params, headers=self._headers(), timeout=timeout)
         except requests.RequestException as exc:
             raise ComfyError(tr("the image generator does not answer: {0}", exc)) from exc
         if resp.status_code >= 400:
@@ -45,7 +96,7 @@ class ComfyUI:
 
     def ping(self) -> bool:
         try:
-            self._get("/system_stats")
+            self._get("/system_stats", timeout=5)
             return True
         except ComfyError:
             return False
