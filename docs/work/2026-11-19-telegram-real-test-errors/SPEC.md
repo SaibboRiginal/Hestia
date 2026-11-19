@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Version** | 1.0 |
+| **Version** | 1.1 |
 | **Source** | user via external chat (screenshot of the Telegram client, 2026-11-19) |
 | **Status** | Done |
 
@@ -22,7 +22,7 @@ What the owner reads on any client is plain, in his language: no ids, module nam
 ## 3. Scope and design
 - Forge `_notify`: one Hermes ingest with `_title`, `_message`, `_actions` (approve / reject / rollback endpoints), `_link` to the Development page, `dedupe_key`. `find_open_twin`: non-user sources get the open task for the same `origin.service` + `origin.kind`.
 - Repairs page: Approve / Undo buttons instead of typed notes.
-- Hermes `digest_line`: plain title or first real line, cut on a word with «…», no source.
+- Hermes `digest_line`: plain title or first real line, cut on a word with «…», no source; `<code>`/`<pre>` spans dropped, so notices stored before the fix show no ids either (v1.1).
 - Telegram `_split_html_link_bullets`: split only lists with links.
 - Hecate: plain notice with title and sign-in button, `dedupe_key hecate.<action>`, reason only in the log.
 - Argus: area labels (`module_label`), `_title`, no raw lines; prompts forbid module/code names.

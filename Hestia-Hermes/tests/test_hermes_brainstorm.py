@@ -166,3 +166,15 @@ def test_push_without_title_is_signed_with_the_chosen_name(monkeypatch):
     monkeypatch.setattr(i18n, "_reader", {"themis.personal.assistant_name": "Leo"}.get)
     assert webpush.payload_of({"message": "ciao"})["title"] == "Leo"
     assert webpush.payload_of({"title": "Spese", "message": "x"})["title"] == "Spese"
+
+
+@pytest.mark.unit
+def test_digest_line_is_plain_and_hides_ids_and_sources():
+    """docs/work/2026-11-19-telegram-real-test-errors: no module, no id, no word cut in half — old stored rows too."""
+    from modules.notifications import digest_line
+    old = {"source": "hephaestus", "message": "💡 <b>Development proposal</b> <code>88d8c8</code>\nAnswer"}
+    line = digest_line(old)
+    assert line == "💡 Development proposal" and "88d8c8" not in line and "hephaestus" not in line
+    long = {"title": "The assistant keeps using its backup way for the weather forecast every morning", "source": "x"}
+    cut = digest_line(long, 40)
+    assert cut.endswith("…") and len(cut) <= 40 and long["title"].startswith(cut[:-1])
